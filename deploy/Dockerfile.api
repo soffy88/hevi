@@ -33,6 +33,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcups2t64 libxcomposite1 libxdamage1 \
     && rm -rf /var/lib/apt/lists/*
 
+# 零成本线引擎(HEVI_LINE_ENGINE=zero)的本地 TTS:Piper 独立 venv,与宿主 .venv 解耦,
+# 可执行文件固定在 /opt/piper/bin/piper(compose 里 HEVI_TALKCRAFT_PIPER 指向它)。
+# 音色 .onnx 由 compose 只读挂到 /opt/piper/voices。单独一层,业务代码改动不失效缓存。
+RUN python -m venv /opt/piper \
+    && /opt/piper/bin/pip install --no-cache-dir piper-tts==1.8.0 \
+    && ln -sf /opt/piper/bin/piper /usr/local/bin/piper \
+    && mkdir -p /opt/piper/voices
+
 # Copy pre-installed venv (Linux amd64 Python 3.14)
 # Scripts in .venv/bin/ have shebangs pointing to the host path
 # /data/soffy/projects/hevi/.venv/bin/python3 — create a symlink so they resolve
@@ -53,7 +61,8 @@ COPY --chown=hevi:hevi hevi-remotion/ ./hevi-remotion/
 COPY --chown=hevi:hevi hevi/ ./hevi/
 COPY alembic.ini ./
 
-RUN mkdir -p /app/output /app/data /app/assets && \
+RUN mkdir -p /app/output /app/data /app/assets /app/.cache/hevi/zerolines && \
+    chown -R hevi:hevi /app/.cache && \
     chown hevi:hevi /app /app/output /app/data /app/assets
 USER hevi
 

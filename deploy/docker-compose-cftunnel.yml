@@ -146,8 +146,19 @@ services:
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
       # P1/P2: 教材 KU 主线查询(mneme 在宿主机 5433)
       MNEME_DATABASE_URL: ${MNEME_DATABASE_URL:-}
+      # 零成本线引擎(docs/ZEROLINES.md):11 条 zero 线默认走 CPU 本地管线
+      # (Piper TTS + Pexels 免费素材 + PIL + faster-whisper),订单槽 engine 仍可显式覆盖。
+      HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
+      HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
+      HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
     volumes:
       - /home/soffy/models:/models:ro
+      # 零成本线 Piper 音色(zh_CN-huayan-medium / en_US-ryan-medium),宿主只读
+      - ${HEVI_PIPER_VOICES_DIR:-/data/soffy/projects/hevi-zero/voices}:/opt/piper/voices:ro
+      # 零成本线缓存(Pexels 素材/whisper 中间件),容器重建不丢
+      - hevi-zero-cache:/app/.cache/hevi/zerolines
       - /home/soffy/Wan2GP:/Wan2GP:ro
       - /home/soffy/projects/hevi/output:/app/output
       # v9.1: 任务沙盒 + SQLite 任务库(data/hevi_tasks.db)持久化到宿主机,
@@ -220,3 +231,4 @@ networks:
 
 volumes:
   voicebox-data:
+  hevi-zero-cache:

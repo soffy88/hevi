@@ -23,6 +23,11 @@ CPU-only, no GPU, no paid API engine for 11 canonical Studio lines
 
 Default is unchanged (`legacy`). Precedence: order slot `engine` > env `HEVI_LINE_ENGINE` > `legacy`.
 
+Production (`deploy/docker-compose-cftunnel.yml`, since 2026-10-11) sets `HEVI_LINE_ENGINE=zero`, so the 11 zero lines
+default to the zero engine there; Piper lives in the API image at `/opt/piper/bin/piper`, voices are mounted read-only at
+`/opt/piper/voices`, whisper is `/models/faster-whisper-large-v3-turbo`, cache is the `hevi-zero-cache` volume.
+Override per deploy with `HEVI_LINE_ENGINE=legacy` in the env file, or per order with slot `engine`.
+
 ```python
 await produce(line_id="explainer", execute=True, slots={
     "engine": "zero", "title": "...", "script_lines": ["...", "..."], "queries": ["b-roll query", "..."],
