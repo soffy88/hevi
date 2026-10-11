@@ -3,7 +3,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from oprim.llm.llm_call import llm_call
+try:
+    from hevi.providers.llm_pick import resolve_text_llm
+except ImportError:
+    resolve_text_llm = None
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,26 +26,23 @@ def pick_sentences(segments: list[dict[str, Any]], count: int = 4) -> list[dict[
     if not segments:
         return []
     
-    # Try LLM first
-    prompt = f"请从以下句子中挑选出最具连续金句性质的 {count} 句话（必须连贯且字数不宜过少），输出其序号，逗号分隔，如：3,4,5,6\n"
-    for i, seg in enumerate(segments):
-        prompt += f"{i}: {seg['text']}\n"
-    
-    try:
-        resp = llm_call(prompt, provider="ollama", temperature=0.1, max_tokens=50)
-        # Parse the output
-        nums = []
-        for word in resp.text.replace(',', ' ').split():
-            try:
-                n = int(word)
-                if 0 <= n < len(segments):
-                    nums.append(n)
-            except ValueError:
-                pass
-        
-        if len(nums) == count:
-            return [segments[i] for i in sorted(nums)]
-    except Exception as e:
-        logger.warning("LLM sentence picking failed, fallback to rule: %s", e)
-    
+    # Try LLM first if registered
+    if resolve_text_llm is not None:
+        try:
+            llm = resolve_text_llm()
+            if llm is not None:
+                resp = llm.generate(prompt)
+                nums = []
+                for word in str(resp).replace(",", " ").split():
+                    try:
+                        n = int(word)
+                        if 0 <= n < len(segments):
+                            nums.append(n)
+                    except ValueError:
+                        pass
+                if len(nums) == count:
+                    return [segments[i] for i in sorted(nums)]
+        except Exception as e:
+            logger.warning("LLM sentence picking failed, fallback to rule: %s", e)
+
     return pick_sentences_rule(segments, count)
