@@ -107,6 +107,10 @@ AvatarPosition = Literal["right", "left"]
 AvatarLayout = Literal["pip", "host"]
 # host-panel styling (backdrop/accent); ignored by ``pip``
 AvatarStyle = Literal["studio", "brand"]
+# lip-sync model for ``mode="lipsync"``: ``wav2lip`` (default, ONNX CPU, ~real
+# time, 96 px mouth) or ``musetalk`` (MuseTalk 1.5, opt-in: sharper 256 px face,
+# ~40x slower than real time on CPU; needs HEVI_MUSETALK_HOME + its own venv).
+AvatarEngine = Literal["wav2lip", "musetalk"]
 
 
 @dataclass(frozen=True)
@@ -118,6 +122,7 @@ class AvatarSpec:
     position: side of the PiP circle, or of the host column for ``layout="host"``.
     layout: ``pip`` (default) or ``host`` (large presenter panel + card stage).
     style: host-panel look, ``studio`` (dark) or ``brand`` (warm, accent band).
+    engine: lip-sync model, ``wav2lip`` (default) or ``musetalk`` (opt-in, slow).
     """
 
     mode: AvatarMode = "lipsync"
@@ -125,6 +130,7 @@ class AvatarSpec:
     position: AvatarPosition = "right"
     layout: AvatarLayout = "pip"
     style: AvatarStyle = "studio"
+    engine: AvatarEngine = "wav2lip"
 
     @staticmethod
     def from_config(value: object) -> AvatarSpec | None:
@@ -134,6 +140,8 @@ class AvatarSpec:
             return AvatarSpec(mode="lipsync" if value is True else value)  # type: ignore[arg-type]
         if value == "host":
             return AvatarSpec(layout="host", position="left")
+        if value == "musetalk":
+            return AvatarSpec(engine="musetalk")
         if isinstance(value, dict):
             if value.get("enabled") is False:
                 return None
@@ -143,14 +151,17 @@ class AvatarSpec:
             if pos == "host":  # shorthand: position="host" == layout="host", host on the left
                 layout, pos = "host", value.get("side", "left")
             style = value.get("style", "studio")
+            engine = value.get("engine") or "wav2lip"
             if (
                 mode not in ("lipsync", "still")
                 or pos not in ("right", "left")
                 or layout not in ("pip", "host")
                 or style not in ("studio", "brand")
+                or engine not in ("wav2lip", "musetalk")
             ):
                 raise ValueError(f"bad avatar spec: {value}")
-            return AvatarSpec(mode=mode, image=value.get("image") or None, position=pos, layout=layout, style=style)
+            return AvatarSpec(mode=mode, image=value.get("image") or None, position=pos, layout=layout, style=style,
+                              engine=engine)
         raise ValueError(f"bad avatar spec: {value!r}")
 
 

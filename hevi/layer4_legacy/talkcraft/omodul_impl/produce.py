@@ -74,6 +74,11 @@ def _render(*, props_path: Path, out: Path, log: Path) -> float:
         raise TalkcraftError(f"remotion CLI missing under {REMOTION_DIR} (run npm ci there)")
     env = dict(os.environ)
     env["PATH"] = NODE_BIN + os.pathsep + env.get("PATH", "")
+    if not (REMOTION_DIR / "src/kbMeta.ts").is_file() or not (REMOTION_DIR / "src/mediaManifest.ts").is_file():
+        # generated, gitignored index files: a fresh checkout/worktree has none
+        g = subprocess.run(["node", "scripts/gen-index.mjs"], cwd=REMOTION_DIR, env=env, capture_output=True, text=True)
+        if g.returncode:
+            raise TalkcraftError(f"talkcraft gen-index failed: {g.stderr[-400:]}")
     t0 = time.monotonic()
     cmd = [
         str(cli), "render", "src/remotion/index.ts", "Main", str(out),
@@ -265,8 +270,11 @@ def produce_talkcraft(
             "mode": av.mode, "portrait_image": av.portrait, "face_score": round(av.face_score, 3),
             "frames": av.frames, "lipsync_corr": av.lipsync_corr, "lipsync_lag_frames": av.lipsync_lag_frames, "mouth_energy_mean": av.mouth_energy_mean,
             "build_seconds": av.seconds, "layouts": layouts,
-            "model": "wav2lip_gan_96.onnx + yoloface_8n.onnx (CPU)" if av.mode == "lipsync" else "none (idle motion)",
-            "licence_note": "Wav2Lip weights: research/non-commercial" if av.mode == "lipsync" else "no model weights",
+            "engine": av.engine, "engine_info": av.engine_info,
+            "model": {"wav2lip": "wav2lip_gan_96.onnx + yoloface_8n.onnx (CPU)",
+                      "musetalk": "MuseTalk 1.5 (unet + sd-vae-ft-mse + whisper-tiny + BiSeNet) + yoloface_8n"}.get(av.engine, "none (idle motion)"),
+            "licence_note": {"wav2lip": "Wav2Lip weights: research/non-commercial",
+                             "musetalk": "MuseTalk code MIT; weights stated commercially usable by authors"}.get(av.engine, "no model weights"),
         }
 
     # 5) gates

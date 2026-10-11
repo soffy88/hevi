@@ -4,6 +4,9 @@ Modes
 - ``lipsync``: Wav2Lip-GAN-96 (ONNX, CPU) re-draws the mouth of a still portrait
   from the narration; yoloface-8n finds the face.  Model licence: Wav2Lip is
   research/non-commercial unless licensed from its authors.
+- ``lipsync`` + ``engine="musetalk"``: MuseTalk 1.5 (opt-in, out-of-process,
+  see ``_musetalk.py``) regenerates the lower face at 256 px; sharper than
+  Wav2Lip but ~40x slower than real time on CPU.
 - ``still``: no model; the portrait breathes/sways/nods with the voice.  Use
   this when the lip-sync licence is a problem or the weights are absent.
 
@@ -36,6 +39,7 @@ from hevi.layer4_legacy.talkcraft.oskill_impl.avatar_math import (
     SR,
     avatar_square,
     decode_yoloface,
+    decode_yoloface_landmarks,
     frame_rms,
     host_crop,
     idle_motion,
@@ -44,6 +48,7 @@ from hevi.layer4_legacy.talkcraft.oskill_impl.avatar_math import (
     mel_chunks,
     melspectrogram,
     mouth_mask,
+    musetalk_face_box,
     overlay_layout,
 )
 
@@ -67,6 +72,8 @@ class AvatarResult:
     lipsync_lag_frames: int
     mouth_energy_mean: float
     seconds: float
+    engine: str = "wav2lip"
+    engine_info: dict[str, Any] | None = None
 
 
 def _session(name: str) -> Any:
@@ -100,6 +107,19 @@ def _detect_face(img: Image.Image, *, sess: Any = None, required: bool = True) -
     if face is None and required:
         raise MediaError("no face found in avatar portrait")
     return face
+
+
+def _detect_landmarks(img: Image.Image) -> list[tuple[float, float]]:
+    sess = _session("yoloface_8n.onnx")
+    w, h = img.size
+    s, px, py = letterbox(w=w, h=h)
+    canvas = Image.new("RGB", (640, 640), (0, 0, 0))
+    canvas.paste(img.resize((round(w * s), round(h * s)), Image.BILINEAR), (px, py))
+    x = (np.asarray(canvas, dtype=np.float32) / 255.0).transpose(2, 0, 1)[None]
+    lm = decode_yoloface_landmarks(output=sess.run(None, {"input": x})[0], scale=s, pad_x=px, pad_y=py)
+    if lm is None:
+        raise MediaError("no face landmarks found in avatar portrait")
+    return lm
 
 
 def build_avatar_clip(
@@ -144,7 +164,27 @@ def build_avatar_clip(
     mask = mouth_mask(w=fw, h=fh)[..., None]
 
     preds: np.ndarray | None = None
-    if spec.mode == "lipsync":
+    use_mt = spec.mode == "lipsync" and getattr(spec, "engine", "wav2lip") == "musetalk"
+    mt_patches: np.ndarray | None = None
+    mt_info: dict[str, Any] | None = None
+    if use_mt:
+        from hevi.layer4_legacy.talkcraft.omodul_impl._musetalk import render_patches
+
+        lm = _detect_landmarks(img)
+        mbox = musetalk_face_box(face=(x1, y1, x2, y2), nose_y=lm[2][1], w=W, h=H)
+        wav16 = work / f"{Path(name).stem}_16k.wav"
+        sf_ = np.clip(wav, -1, 1)
+        import wave
+
+        with wave.open(str(wav16), "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(SR)
+            wf.writeframes((sf_ * 32767).astype("<i2").tobytes())
+        mt_patches, pbox, mt_info = render_patches(portrait=portrait, box=mbox, wav16k=wav16, fps=FPS, frames=n, work=work)
+        mt_info["face_box"] = list(mbox)
+        src_np = np.asarray(img, dtype=np.uint8)
+    elif spec.mode == "lipsync":
         sess = _session("wav2lip_gan_96.onnx")
         mels = mel_chunks(mel=melspectrogram(wav=wav), fps=FPS, n_frames=n)
         masked = ref_bgr.copy()
@@ -168,7 +208,15 @@ def build_avatar_clip(
     ref_face_px = base_np[fb[1] : fb[3], fb[0] : fb[2]]
     for i in range(n):
         frame = base_np.copy()
-        if preds is not None:
+        if mt_patches is not None:
+            full = src_np.copy()
+            full[pbox[1] : pbox[3], pbox[0] : pbox[2]] = mt_patches[i]
+            frame = np.asarray(
+                Image.fromarray(full).crop((sx, sy, sx + cw, sy + ch)).resize((OW, OH), Image.LANCZOS), dtype=np.float32
+            )
+            lower = slice(fb[1] + fh // 2, fb[3])
+            mouth_energy[i] = float(np.mean(np.abs(frame[lower, fb[0] : fb[2]] - base_np[lower, fb[0] : fb[2]])))
+        elif preds is not None:
             gen = np.asarray(
                 Image.fromarray(np.clip(preds[i] * 255, 0, 255).astype(np.uint8)).resize((fw, fh), Image.BICUBIC),
                 dtype=np.float32,
@@ -189,13 +237,15 @@ def build_avatar_clip(
     enc.stdin.close()
     if enc.wait() != 0:
         raise MediaError("avatar encode failed")
-    corr, lag = lagged_correlation(mouth_energy, rms) if preds is not None else (None, 0)
+    lipsynced = preds is not None or mt_patches is not None
+    corr, lag = lagged_correlation(mouth_energy, rms) if lipsynced else (None, 0)
     np.savez_compressed(work / (Path(name).stem + "_metrics.npz"), mouth_energy=mouth_energy, rms=rms)
     return AvatarResult(
         clip=clip, mode=spec.mode, portrait=str(portrait), face_box=(x1, y1, x2, y2), face_score=score,
         frames=n, size=(OW, OH), face_in_clip=fb,  # type: ignore[arg-type]
         lipsync_corr=corr, lipsync_lag_frames=lag,
         mouth_energy_mean=round(float(mouth_energy.mean()), 3), seconds=round(time.monotonic() - t0, 1),
+        engine=("musetalk" if use_mt else "wav2lip") if spec.mode == "lipsync" else "none", engine_info=mt_info,
     )
 
 
