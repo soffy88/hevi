@@ -40,8 +40,8 @@ def _slots(line: str) -> dict[str, Any]:
     # Canonical real inputs are existing local source assets. They are inputs
     # only; no historical final artifact is copied or counted as output.
     source_video = "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_Apollo_14_Launch_Coverage.mp4"
-    podcast_video = "outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4"
-    presenter_image = "data/workspace/assets/celebrities30s/English/Michio Kaku.jpg"
+    podcast_video = "/data/soffy/projects/hevi/outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4"
+    presenter_image = "/data/soffy/projects/hevi/data/workspace/assets/celebrities30s/English/Michio Kaku.jpg"
     if line == "documentary_montage":
         values["source"] = source_video
     if line == "podcast_repurpose":
@@ -64,8 +64,8 @@ def _slots(line: str) -> dict[str, Any]:
 def _input_manifest() -> dict[str, Any]:
     paths = {
         "source_video": "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_Apollo_14_Launch_Coverage.mp4",
-        "podcast_video": "outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4",
-        "presenter_image": "data/workspace/assets/celebrities30s/English/Michio Kaku.jpg",
+        "podcast_video": "/data/soffy/projects/hevi/outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4",
+        "presenter_image": "/data/soffy/projects/hevi/data/workspace/assets/celebrities30s/English/Michio Kaku.jpg",
     }
     result = {}
     for name, raw in paths.items():

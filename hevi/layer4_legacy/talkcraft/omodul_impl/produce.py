@@ -74,6 +74,9 @@ def _render(*, props_path: Path, out: Path, log: Path) -> float:
         raise TalkcraftError(f"remotion CLI missing under {REMOTION_DIR} (run npm ci there)")
     env = dict(os.environ)
     env["PATH"] = NODE_BIN + os.pathsep + env.get("PATH", "")
+    kb_meta = REMOTION_DIR / "src/kbMeta.ts"
+    if not kb_meta.exists():
+        subprocess.run(["node", "scripts/gen-index.mjs"], cwd=REMOTION_DIR, env=env, check=False)
     t0 = time.monotonic()
     cmd = [
         str(cli), "render", "src/remotion/index.ts", "Main", str(out),

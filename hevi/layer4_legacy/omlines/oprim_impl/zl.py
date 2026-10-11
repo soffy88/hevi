@@ -76,9 +76,11 @@ def tts_lines(lines: list[str], outdir: str, lang: str = 'zh', gap: float = 0.35
 def bgm(out: str, seconds: float, mood: str = 'warm', sr: int = 44100) -> str:
     rng = np.random.default_rng(7)
     t = np.arange(int(seconds * sr)) / sr
-    prog = {'warm': [(220, 277.2, 329.6), (196, 246.9, 293.7), (174.6, 220, 261.6), (196, 246.9, 329.6)],
-            'tense': [(110, 130.8, 164.8), (103.8, 130.8, 155.6), (98, 123.5, 146.8), (103.8, 123.5, 155.6)],
-            'bright': [(261.6, 329.6, 392), (293.7, 349.2, 440), (220, 261.6, 329.6), (246.9, 311.1, 392)]}[mood]
+    prog_dict = {'warm': [(220, 277.2, 329.6), (196, 246.9, 293.7), (174.6, 220, 261.6), (196, 246.9, 329.6)],
+                 'tense': [(110, 130.8, 164.8), (103.8, 130.8, 155.6), (98, 123.5, 146.8), (103.8, 123.5, 155.6)],
+                 'bright': [(261.6, 329.6, 392), (293.7, 349.2, 440), (220, 261.6, 329.6), (246.9, 311.1, 392)],
+                 'epic': [(146.8, 174.6, 220), (130.8, 164.8, 196), (110, 130.8, 164.8), (146.8, 174.6, 220)]}
+    prog = prog_dict.get(mood, prog_dict['warm'])
     seg = 4.0
     y = np.zeros_like(t)
     for k, chord in enumerate(prog * int(seconds // (seg * 4) + 1)):
@@ -280,17 +282,20 @@ def qa(path: str, expect_audio: bool = True, min_motion: float = 1.0) -> dict:
         for l in out.splitlines():
             if 'mean_volume' in l:
                 vol = float(l.split(':')[1].split()[0])
+    motion_ratio = float((diffs >= 0.6).mean())
     checks = {
         'decodes': True,
         'has_audio': ('audio' in streams) if expect_audio else True,
         'audio_not_silent': (vol is not None and vol > -45) if expect_audio else True,
         'motion_mean_ge_min': float(diffs.mean()) >= min_motion,
+        'motion_ratio': round(motion_ratio, 3),
         'static_ratio_lt_0.5': static_ratio < 0.5,
         'black_ratio_lt_0.1': black_ratio < 0.1,
         'dark_textcard_ratio_lt_0.5': text_only < 0.5,
     }
     return {'path': path, 'sha256': sha(path), 'duration': round(d, 3), 'resolution': f"{v['width']}x{v['height']}",
             'streams': streams, 'mean_volume_db': vol, 'motion_mean': round(float(diffs.mean()), 2),
+            'motion_ratio': round(motion_ratio, 3),
             'static_ratio': round(static_ratio, 3), 'black_ratio': round(black_ratio, 3),
             'dark_textcard_ratio': round(text_only, 3), 'checks': checks, 'pass': all(checks.values())}
 

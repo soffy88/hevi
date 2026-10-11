@@ -1,7 +1,14 @@
 import asyncio
 import logging
 import json
+import os
 from pathlib import Path
+
+# Ensure required binaries are on PATH and direct downloads (no proxy)
+os.environ["PATH"] = f"/home/soffy/.local/bin:/home/soffy/.nvm/versions/node/v26.4.0/bin:{os.environ.get('PATH', '')}"
+for k in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"]:
+    os.environ.pop(k, None)
+
 from hevi.studio.veya import produce
 from scripts.qualify_autonomous_production import _slots
 from hevi.studio.production_catalog import CANONICAL_LINES
@@ -12,55 +19,76 @@ logging.basicConfig(level=logging.INFO)
 async def process_line(sem, line, root):
     async with sem:
         out_dir = root / line
-        if (out_dir / "contact_sheet.jpg").is_file():
-            # Already succeeded! We just need to read its record if it has one, or evaluate it again.
-            print(f"[{line}] Skipping, already completed.")
-            # find the mp4
-            mp4s = list(out_dir.glob("*.mp4"))
-            if mp4s:
-                art = str(mp4s[0])
-                q = zl.qa(art)
-                checks = q.get('checks', {})
-                return f"- {line}: {q['duration']}s, {q['resolution']}, audio:{checks.get('has_audio', False)}, motion_ratio:{checks.get('motion_ratio', 0):.2f}, tier:cached, SHA:{q['sha256']}"
-            
-        print(f"[{line}] Starting...")
+        print(f"[{line}] Starting fresh run...")
         try:
             job = await produce(
                 line_id=line,
                 slots=_slots(line),
-                output_dir=str(root / line),
+                output_dir=str(out_dir),
                 execute=True,
                 publish=False
             )
             art = job.artifact
             if not art or not Path(art).is_file():
-                return f"- {line}: FAILED (no artifact, status={job.status}, reason={job.reason})"
+                return {
+                    "line": line,
+                    "status": "FAILED",
+                    "reason": f"no artifact, status={job.status}, reason={job.reason}",
+                }
             
             q = zl.qa(art)
-            zl.contact_sheet(art, str(root / line / "contact_sheet.jpg"))
+            cs_path = str(out_dir / "contact_sheet.jpg")
+            zl.contact_sheet(art, cs_path)
             tier = job.production_order.get("fallback") or job.render_runtime
             
             checks = q.get('checks', {})
             has_audio = checks.get('has_audio', False)
-            motion_ratio = checks.get('motion_ratio', 0)
+            motion_ratio = q.get('motion_ratio', round(1.0 - q.get('static_ratio', 0.0), 3))
             
-            return f"- {line}: {q['duration']}s, {q['resolution']}, audio:{has_audio}, motion_ratio:{motion_ratio:.2f}, tier:{tier}, SHA:{q['sha256']}"
+            return {
+                "line": line,
+                "status": "SUCCESS",
+                "duration": q['duration'],
+                "resolution": q['resolution'],
+                "audio": has_audio,
+                "motion_ratio": motion_ratio,
+                "tier": tier,
+                "sha256": q['sha256'],
+                "path": art,
+                "contact_sheet": cs_path,
+                "qa_checks": checks,
+            }
         except Exception as e:
-            return f"- {line}: ERROR ({type(e).__name__}: {e})"
+            return {
+                "line": line,
+                "status": "ERROR",
+                "reason": f"{type(e).__name__}: {e}",
+            }
 
 async def main():
     root = Path("output/om_lines_e2e")
     root.mkdir(parents=True, exist_ok=True)
     
-    sem = asyncio.Semaphore(2)  # Max 2 concurrent lines
+    sem = asyncio.Semaphore(2)  # 2 concurrent lines
     tasks = [process_line(sem, line, root) for line in CANONICAL_LINES]
     results = await asyncio.gather(*tasks)
     
+    lines_md = []
+    for r in results:
+        if r["status"] == "SUCCESS":
+            lines_md.append(f"- {r['line']}: {r['duration']}s, {r['resolution']}, audio:{r['audio']}, motion_ratio:{r['motion_ratio']:.2f}, tier:{r['tier']}, SHA:{r['sha256']}")
+        else:
+            lines_md.append(f"- {r['line']}: FAILED ({r.get('reason', '')})")
+
+    content = "# OMLINES E2E Summary\n\n" + "\n".join(lines_md) + "\n\nAll tasks processed.\n"
     with open("OMLINES_DONE.md", "w") as f:
-        f.write("# OMLINES E2E Summary\n\n")
-        f.write("\n".join(results))
-        f.write("\n\nAll tasks processed.\n")
-    print("ALL DONE. Wrote OMLINES_DONE.md")
+        f.write(content)
+    
+    # Also dump detailed raw json for reporting
+    with open("output/om_lines_e2e/e2e_results.json", "w") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+        
+    print("ALL DONE. Wrote OMLINES_DONE.md and output/om_lines_e2e/e2e_results.json")
 
 if __name__ == "__main__":
     asyncio.run(main())
