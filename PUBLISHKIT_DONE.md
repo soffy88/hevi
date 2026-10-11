@@ -115,7 +115,52 @@ res = produce_whiteboard(storyboard, output_dir, {})
 输出 `output_dir/whiteboard_landscape.mp4`、`whiteboard_portrait.mp4`、
 `contact_sheet_*.jpg`；`records[].gates` 为实测 gate。
 
-## 六、已知问题 / 说明
+## 六、独立复核（接替 quota 中断后重做）
+
+接替因额度中断的 agent 续做（`agy_run.log` 显示上轮 `pi exited rc=1`）。
+本节数据均为本会话实测，不复用上轮报告。
+
+- **git 状态**：HEAD `56c7c3ab`，工作树 clean，`git status` 无未提交改动；
+  最近两次提交即为 `a0f0375c` / `56c7c3ab`，内容与本任务一致。
+- **产物 ffprobe + sha256**：见上表第二/三节，4 条视频全部
+  `1920×1080 / 1080×1920`、`h264+aac@48k`、`duration≥15s`，sha256 与 `e2e_summary.json`
+  完全一致。
+- **抽帧目视**（本会话从原始 mp4 重抽，未复用上轮 jpg）：
+  - `topic_a landscape 5s`：「白板讲解视频核心优势」+ 小机器人 + 「白板讲解」
+    字幕小标题 + 蓝框起笔；字幕 "今天我们要给大家介绍什么是白板讲解视频"。
+  - `topic_a landscape 15s`：左右卡片「手绘风格 / 它通常使用手绘风格的元素」
+    + 起笔中的对侧蓝框；字幕 "配合清晰自然的配音节奏"（与卡片同步）。
+  - `topic_a portrait 15s`：竖版原生 1080×1920，标题置顶、卡片纵向堆叠、
+    字幕贴近底部安全区。
+  - `topic_a landscape 25s`：单卡「一键成片」居中 + 落笔动画；标题/画布均重
+    新排版，与 5s/15s 帧显著不同 → 节奏随 beat 推进。
+  - `topic_b landscape 18s`：标题换为「大语言模型如何思考」，
+    右上角品牌水印「极客视界」，卡片「海量预训练 / 首先是海量网络语料的无监督预训练」
+    （关键词来自该 beat 的旁白稿），与 topic_a 内容完全不同。
+  - `topic_b portrait 6s`：竖版 intro，机器人和主标题「大语言模型如何思考」
+    + 副标题"你能否承认 AI究竟是如何理解并回答人类问题的"，品牌水印在右上。
+  - `topic_b portrait 18s`：竖版中段「海量预训练」卡 + 蓝框起笔 + 字幕
+    "接着通过指令微调与人类反馈强化学习对齐"，与横版同时不同帧。
+- **代码层扫描**：`grep "Beat 0\|Your Brand\|一句话说清" hevi hevi-remotion-whiteboard
+  scripts tests` → 仅测试断言（`assert "Beat 0" not in dsl_*`），无源码命中。
+- **垃圾文件**：`find . -maxdepth 4` 对 `blender_e2e_real.py / v2v_e2e_real.py /
+  pull_duix.sh` → 无命中；`grep "Write a dummy script.json" produce.py` → 0 命中。
+- **行为配置**：
+  - `pen.overflow = 0.0`（与上游默认 0.35 不同，逐句同步生效）。
+  - topic_a config 的 `brand.{name,slogan,watermark.enabled,endCard.enabled}`
+    全部为空/false → 帧中不出现品牌条；
+  - topic_b config `brand.name="极客视界"` + watermark/endCard on → 帧中可见
+    水印/片尾卡（与抽帧一致）。
+- **3O lint**：`scripts/ci/run_3o_v3_lint.py` → `3O_V3_LINT=FAIL`，失败 **4** 项
+  `check_no_sibling_call` / `check_omodul_signature` / `check_enabled_pillars` /
+  `check_oprim_keyword_only`，失败行均落在 `.venv/lib/python3.14/site-packages/oprim/`
+  内（仓库既有债务），与本轮改动无关，无新增。
+- **单测**：`JWT_SECRET=testsecret .venv/bin/python -m pytest -q
+  tests/test_whiteboard.py` → **9 passed**。
+
+结论：上轮返工完成可信、可复现，本会话无任何代码改动，仅做独立核验与本节追加。
+
+## 七、已知问题 / 说明
 - 本机 CPU-only，faster-whisper large-v3-turbo 逐条转写较慢（每条 30–60s 音频约 1–2min），
   整条 E2E（两主题 × 横竖）约 10–15min。
 - 白板为“手绘逐笔”风格：卡片外框先画、标题随后出现，因此标题文字会在该句旁白内略微滞后
