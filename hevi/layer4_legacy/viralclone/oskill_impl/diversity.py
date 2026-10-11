@@ -76,15 +76,18 @@ def evaluate_variant_pair_diversity(
     avg_dist = sum(distances) / len(distances) if distances else 64.0
     phash_sim = round(1.0 - (avg_dist / 64.0), 4)
 
-    # Gate: Reject if visual distance is too low AND text similarity is too high
+    # Gate: BOTH the visual distance and the script similarity must clear their
+    # thresholds. A zero/too-small pHash distance fails on its own, regardless of
+    # how different the text is (identical shots are not a new variant).
     passed = True
-    reason = "PASS"
-    if min_dist < min_phash_distance and t_sim > max_text_similarity:
+    reasons: list[str] = []
+    if min_dist < min_phash_distance:
         passed = False
-        reason = f"DIVERSITY_REJECTED: min_phash_dist={min_dist} (<{min_phash_distance}) and text_sim={t_sim} (>{max_text_similarity})"
-    elif min_dist == 0 and t_sim == 1.0:
+        reasons.append(f"phash_dist={min_dist} (<{min_phash_distance})")
+    if t_sim > max_text_similarity:
         passed = False
-        reason = "DIVERSITY_REJECTED: identical frames and text"
+        reasons.append(f"text_sim={t_sim} (>{max_text_similarity})")
+    reason = "PASS" if passed else "DIVERSITY_REJECTED: " + " and ".join(reasons)
 
     return DiversityRecord(
         pair=[id1, id2],

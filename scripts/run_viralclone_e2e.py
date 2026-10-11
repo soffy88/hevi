@@ -49,6 +49,7 @@ from hevi.layer4_legacy.viralclone.oskill_impl.diversity import (
 )
 from hevi.layer4_legacy.viralclone.oskill_impl.watermark import (
     compute_watermark_spec,
+    measure_glyph_bbox,
     verify_implicit_watermark_metadata,
 )
 from hevi.video_intelligence.contactsheet import build_contact_sheet
@@ -58,6 +59,30 @@ from hevi.viralclone import (
     generate_variant_matrix,
     produce_product_asset,
 )
+
+
+def _extract_frame_at(video: Path, t: float, out_path: Path) -> Path:
+    """Extract a single frame at an explicit timestamp."""
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            FFMPEG,
+            "-y",
+            "-v",
+            "error",
+            "-ss",
+            f"{t:.3f}",
+            "-i",
+            str(video),
+            "-frames:v",
+            "1",
+            "-q:v",
+            "3",
+            str(out_path),
+        ],
+        check=True,
+    )
+    return out_path
 
 
 def verify_non_static_frames(frames: list[Path]) -> dict[str, Any]:
@@ -93,37 +118,39 @@ def verify_and_capture_watermark(
     height: int,
     output_evidence_path: Path,
     expected_ratio: float = 0.05,
+    *,
+    reference_frame_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Inspect and measure watermark pixel size in the initial frame, saving evidence crop."""
+    """Measure the real rendered AI-mark glyph height in the frame and save evidence."""
     im = Image.open(frame_path).convert("RGB")
     short_edge = min(width, height)
-    min_font_height_px = int(round(short_edge * expected_ratio))
 
-    # Actual font size burned by build_ass_subtitles:
-    actual_font_size_px = int(round(short_edge * 0.055))
-    actual_ratio = round(actual_font_size_px / short_edge, 4)
+    measurement = measure_glyph_bbox(frame_path, reference_frame_path=reference_frame_path)
+    glyph_h = int(measurement.get("glyph_height_px", 0))
+    measured_ratio = round(glyph_h / short_edge, 4) if short_edge else 0.0
+    passed = bool(measurement.get("found")) and measured_ratio >= expected_ratio
 
-    # Annotate frame with measurement box for visual proof
+    # Annotate the *measured* bbox for visual proof.
     annotated = im.copy()
     draw = ImageDraw.Draw(annotated)
-    box_w = int(short_edge * 0.32)
-    box_h = int(actual_font_size_px * 1.6)
-    draw.rectangle([20, 20, 20 + box_w, 20 + box_h], outline=(0, 255, 0), width=3)
+    bbox = measurement.get("bbox_xyxy")
+    if bbox:
+        draw.rectangle(bbox, outline=(0, 255, 0), width=3)
     draw.text(
-        (25, 25 + box_h + 5),
-        f"GB45438 QA: {actual_font_size_px}px / {short_edge}px = {actual_ratio*100:.1f}% (>=5%)",
+        (24, max(4, (bbox[3] if bbox else 60) + 6)),
+        f"GB45438 QA: glyph {glyph_h}px / {short_edge}px = {measured_ratio*100:.1f}% (>=5%)",
         fill=(0, 255, 0),
     )
     annotated.save(output_evidence_path, format="JPEG", quality=92)
 
-    passed = actual_ratio >= expected_ratio
     return {
         "passed": passed,
         "short_edge_px": short_edge,
-        "measured_font_height_px": actual_font_size_px,
-        "measured_ratio": actual_ratio,
+        "measured_glyph_height_px": glyph_h,
+        "measured_ratio": measured_ratio,
         "threshold_ratio": expected_ratio,
         "display_duration_s": 2.5,
+        "glyph_bbox": bbox,
         "evidence_screenshot": str(output_evidence_path),
     }
 
@@ -136,15 +163,19 @@ def main() -> int:
 
     # 1. Inputs (Clean-room Real Media)
     ref_video = workspace / "artifacts/real_video/20261005T160434Z/artifacts/scene_interview_sub.mp4"
+    # B-roll interview WITHOUT burned-in subtitles (avoids caption collisions).
+    interview_video = workspace / "artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4"
     broll_video = workspace / "artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4"
     product_img = workspace / "data/product_assets/mars_camera_product.jpg"
 
     assert ref_video.is_file(), f"Reference video missing: {ref_video}"
+    assert interview_video.is_file(), f"Interview b-roll missing: {interview_video}"
     assert broll_video.is_file(), f"B-roll video missing: {broll_video}"
     assert product_img.is_file(), f"Product image missing: {product_img}"
 
     print(f"=== [ViralClone E2E] Starting Full Real Media Acceptance ===")
     print(f"Reference Video: {ref_video.name}")
+    print(f"Interview B-roll:{interview_video.name} (no burned subtitles)")
     print(f"B-roll Video:    {broll_video.name}")
     print(f"Product Asset:   {product_img.name}")
     print(f"Output Root:     {out_dir}")
@@ -174,30 +205,40 @@ def main() -> int:
     print(f"Template ID: {template_spec.template_id}, Segments: {len(template_spec.segments)}")
 
     # =========================================================================
-    # Phase 3: Physical Product Asset Compositing (P1-2)
+    # Phase 3: Physical Product Asset Compositing (P1-2) - 3 themed cards
     # =========================================================================
-    print("\n--- Phase 3: Product Asset Rembg & Card Generation ---")
+    print("\n--- Phase 3: Product Asset Rembg & Themed Card Generation ---")
     prod_dir = out_dir / "product_asset"
-    prod_res = produce_product_asset(
-        {},
-        {
-            "product_image": str(product_img),
-            "product_title": "NASA Mars 2020 Rover Camera",
-            "price_tag": "Aerospace Hardware",
-            "cta_text": "Explore Specs",
-            "selling_points": ["钛合金密封镜身", "极低温真空耐受", "超宽动态光谱"],
-            "width": 1280,
-            "height": 720,
-            "duration_s": 2.5,
-            "fps": 25,
-        },
-        prod_dir,
-    )
-    assert prod_res["status"] == "succeeded", f"Product card generation failed: {prod_res.get('reason')}"
-    product_video_path = Path(prod_res["report"]["product_video"])
-    cutout_png_path = Path(prod_res["report"]["cutout_png"])
+
+    product_copy = {
+        "product_image": str(product_img),
+        "product_title": "Mars 2020 Rover Camera",
+        "price_tag": "NASA/JPL-Caltech",
+        "cta_text": "Explore Specs",
+        # Non-fabricated, verifiable labels (the source is a real NASA/JPL image).
+        "selling_points": ["实拍商品图", "NASA/JPL", "公共领域"],
+        "duration_s": 2.5,
+        "fps": 25,
+    }
+
+    product_cards: dict[str, Path] = {}
+    cutout_png_path: Path | None = None
+    prod_reports: dict[str, Any] = {}
+    for key, theme, (w, h) in [
+        ("light", "light", (1280, 720)),
+        ("dark", "dark", (1280, 720)),
+        ("warm_vertical", "warm", (720, 1280)),
+    ]:
+        payload = {**product_copy, "theme": theme, "width": w, "height": h}
+        if cutout_png_path is not None:
+            payload["reuse_cutout"] = str(cutout_png_path)
+        res = produce_product_asset({}, payload, prod_dir / key)
+        assert res["status"] == "succeeded", f"Product card ({key}) failed: {res.get('reason')}"
+        product_cards[key] = Path(res["report"]["product_video"])
+        cutout_png_path = Path(res["report"]["cutout_png"])
+        prod_reports[key] = res["report"]
+        print(f"  [{key}] {product_cards[key]} ({res['report']['resolution']}, theme={theme})")
     print(f"Product cutout: {cutout_png_path}")
-    print(f"Product card video: {product_video_path}")
 
     # =========================================================================
     # Phase 4: Batch Variant Matrix Generation (P1-1)
@@ -205,95 +246,41 @@ def main() -> int:
     print("\n--- Phase 4: Batch Generating 3 Distinct Variants ---")
     variants_dir = out_dir / "variants"
 
-    # Define 3 rich variants with different angles, copies, languages, and broll selections
-    var1_spec = TemplateSpec(
-        template_id="tpl_var1_optics",
-        aspect_ratio="16:9",
-        width=1280,
-        height=720,
-        fps=25,
-        segments=[
-            TemplateSegment(
-                segment_id="s1_hook",
-                role="hook",
-                narration_slot="hook_line",
-                anchors=[VisualAnchor("cut", 0, 0, 0.0, 3.0)],
-            ),
-            TemplateSegment(
-                segment_id="s2_product",
-                role="selling_point",
-                narration_slot="selling_point_1",
-                anchors=[VisualAnchor("product_card", 1, 0, 0.0, 2.5)],
-            ),
-            TemplateSegment(
-                segment_id="s3_cta",
-                role="cta",
-                narration_slot="cta_line",
-                anchors=[VisualAnchor("cut", 2, 0, 0.0, 2.0)],
-            ),
-        ],
-    )
-
-    var2_spec = TemplateSpec(
-        template_id="tpl_var2_durability",
-        aspect_ratio="16:9",
-        width=1280,
-        height=720,
-        fps=25,
-        segments=[
-            TemplateSegment(
-                segment_id="s1_hook",
-                role="hook",
-                narration_slot="hook_line",
-                anchors=[VisualAnchor("cut", 0, 0, 0.0, 3.5)],
-            ),
-            TemplateSegment(
-                segment_id="s2_product",
-                role="selling_point",
-                narration_slot="selling_point_1",
-                anchors=[VisualAnchor("product_card", 1, 0, 0.0, 2.5)],
-            ),
-            TemplateSegment(
-                segment_id="s3_cta",
-                role="cta",
-                narration_slot="cta_line",
-                anchors=[VisualAnchor("cut", 2, 0, 0.0, 2.0)],
-            ),
-        ],
-    )
-
-    var3_spec = TemplateSpec(
-        template_id="tpl_var3_space_en",
-        aspect_ratio="16:9",
-        width=1280,
-        height=720,
-        fps=25,
-        segments=[
-            TemplateSegment(
-                segment_id="s1_hook",
-                role="hook",
-                narration_slot="hook_line",
-                anchors=[VisualAnchor("cut", 0, 0, 0.0, 3.0)],
-            ),
-            TemplateSegment(
-                segment_id="s2_product",
-                role="selling_point",
-                narration_slot="selling_point_1",
-                anchors=[VisualAnchor("product_card", 1, 0, 0.0, 2.5)],
-            ),
-            TemplateSegment(
-                segment_id="s3_cta",
-                role="cta",
-                narration_slot="cta_line",
-                anchors=[VisualAnchor("cut", 2, 0, 0.0, 2.0)],
-            ),
-        ],
-    )
+    # Define 3 rich variants: distinct sources, ordering, grade, transition and
+    # aspect ratio so the diversity gate is met on real structural differences.
+    def _spec(tid: str, aspect: str, w: int, h: int, hook_dur: float) -> TemplateSpec:
+        return TemplateSpec(
+            template_id=tid,
+            aspect_ratio=aspect,
+            width=w,
+            height=h,
+            fps=25,
+            segments=[
+                TemplateSegment(
+                    segment_id="s1_hook",
+                    role="hook",
+                    narration_slot="hook_line",
+                    anchors=[VisualAnchor("cut", 0, 0, 0.0, hook_dur)],
+                ),
+                TemplateSegment(
+                    segment_id="s2_product",
+                    role="selling_point",
+                    narration_slot="selling_point_1",
+                    anchors=[VisualAnchor("product_card", 1, 0, 0.0, 2.5)],
+                ),
+                TemplateSegment(
+                    segment_id="s3_cta",
+                    role="cta",
+                    narration_slot="cta_line",
+                    anchors=[VisualAnchor("cut", 2, 0, 0.0, 2.0)],
+                ),
+            ],
+        )
 
     variants_input = [
         {
             "variant_id": "var_1",
-            "template": var1_spec.to_dict(),
+            "template": _spec("tpl_var1_optics", "16:9", 1280, 720, 3.0).to_dict(),
             "slots": {
                 "product": "火星探测级全景成像相机",
                 "hook_line": "你见过能耐受零下两百度极寒的航天级相机吗？",
@@ -301,13 +288,15 @@ def main() -> int:
                 "cta_line": "点击左下角了解火星同款光学工程！",
                 "lang": "zh",
             },
-            "brolls": [str(broll_video.resolve())],
-            "product_video": str(product_video_path.resolve()),
+            "brolls": [str(broll_video.resolve()), str(interview_video.resolve())],
+            "product_video": str(product_cards["light"].resolve()),
+            "color_grade": "warm",
+            "transition": "fade",
             "aspect_ratio": "16:9",
         },
         {
             "variant_id": "var_2",
-            "template": var2_spec.to_dict(),
+            "template": _spec("tpl_var2_durability", "16:9", 1280, 720, 3.5).to_dict(),
             "slots": {
                 "product": "深空高灵敏科研级广角镜头",
                 "hook_line": "普通镜头一进低温就起雾结冰，那是你没用过航天级光学元件。",
@@ -315,13 +304,15 @@ def main() -> int:
                 "cta_line": "限时抢购，立即开启你的深空观测之旅！",
                 "lang": "zh",
             },
-            "brolls": [str(ref_video.resolve()), str(broll_video.resolve())],
-            "product_video": str(product_video_path.resolve()),
+            "brolls": [str(interview_video.resolve()), str(broll_video.resolve())],
+            "product_video": str(product_cards["dark"].resolve()),
+            "color_grade": "cool",
+            "transition": "fade_slow",
             "aspect_ratio": "16:9",
         },
         {
             "variant_id": "var_3",
-            "template": var3_spec.to_dict(),
+            "template": _spec("tpl_var3_space_en", "9:16", 720, 1280, 3.0).to_dict(),
             "slots": {
                 "product": "Mars Rover High-Res Camera",
                 "hook_line": "Why settle for ordinary lenses when you can capture the deep universe?",
@@ -329,9 +320,11 @@ def main() -> int:
                 "cta_line": "Click below to secure your space grade camera today!",
                 "lang": "en",
             },
-            "brolls": [str(broll_video.resolve()), str(ref_video.resolve())],
-            "product_video": str(product_video_path.resolve()),
-            "aspect_ratio": "16:9",
+            "brolls": [str(broll_video.resolve()), str(interview_video.resolve())],
+            "product_video": str(product_cards["warm_vertical"].resolve()),
+            "color_grade": "vivid",
+            "transition": "none",
+            "aspect_ratio": "9:16",
         },
     ]
 
@@ -372,11 +365,16 @@ def main() -> int:
         print(f"  Audio codec: {probe['audio_codec']}, Video codec: {probe['video_codec']}")
         print(f"  SHA256: {sha}")
 
-        # 2. Extract 6 frames & build contact sheet
+        # 2. Extract 6 frames at explicit midpoints & build contact sheet
         qa_frames_dir = vdir / "qa_frames"
-        sample_frames = _extract_frames(vpath, qa_frames_dir, fps=float(6.0 / max(1.0, probe["duration_s"])), max_frames=6)
+        n_frames = 6
+        ts = [(i + 0.5) * probe["duration_s"] / n_frames for i in range(n_frames)]
+        sample_frames = [
+            _extract_frame_at(vpath, t, qa_frames_dir / f"frame_{i:04d}.jpg")
+            for i, t in enumerate(ts)
+        ]
         contact_sheet_path = vdir / "contact_sheet_6frames.jpg"
-        ts_ms = [int(round(i * (probe["duration_s"] / max(1, len(sample_frames) - 1)) * 1000)) for i in range(len(sample_frames))]
+        ts_ms = [int(round(t * 1000)) for t in ts]
         build_contact_sheet(
             sample_frames,
             contact_sheet_path,
@@ -389,16 +387,26 @@ def main() -> int:
         non_static_qa = verify_non_static_frames(sample_frames)
         print(f"  Non-static motion check: {non_static_qa['non_static']} (avg pixel diff: {non_static_qa['mean_diff']})")
 
-        # 4. AI Watermark Visible QA
+        # 4. AI Watermark Visible QA. Measure the *rendered glyph height* from a
+        # t=0 frame against the watermark-free visual render at the SAME timestamp
+        # (avoids re-encode compression noise polluting the diff).
         watermark_qa_img = vdir / "ai_watermark_qa.jpg"
+        visual_cuts = vdir / "visual_cuts.mp4"
+        wm_frame = _extract_frames(vpath, vdir / "qa_wm_frames", fps=1.0, max_frames=1)
+        ref_frames = (
+            _extract_frames(visual_cuts, vdir / "qa_ref_frames", fps=1.0, max_frames=1)
+            if visual_cuts.is_file()
+            else []
+        )
         wm_qa = verify_and_capture_watermark(
-            sample_frames[0],
+            wm_frame[0] if wm_frame else sample_frames[0],
             probe["width"],
             probe["height"],
             watermark_qa_img,
             expected_ratio=0.05,
+            reference_frame_path=ref_frames[0] if ref_frames else None,
         )
-        print(f"  AI Watermark visible QA: {wm_qa['passed']} (ratio: {wm_qa['measured_ratio']*100:.1f}% >= 5%)")
+        print(f"  AI Watermark visible QA: {wm_qa['passed']} (measured glyph {wm_qa['measured_glyph_height_px']}px = {wm_qa['measured_ratio']*100:.1f}% >= 5%)")
 
         # 5. Container metadata read-back
         meta_qa = verify_implicit_watermark_metadata(vpath)
@@ -424,18 +432,36 @@ def main() -> int:
         "total_elapsed_s": round(time.time() - start_time, 2),
         "source_reference": {
             "name": ref_video.name,
+            "title": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch",
+            "url": "https://images.nasa.gov/details-KSC-20190716-MH-NAS01_0001-Return_to_the_Pad_Crew_Quarters_Broll_HQ_Provided-3226478",
             "license": "NASA Media (Public Domain)",
             "sha256": _sha256(ref_video),
         },
+        "source_broll": {
+            "name": broll_video.name,
+            "title": "Earth Views from the International Space Station",
+            "url": "https://images.nasa.gov/details-Earth%20Views%20from%20the%20International%20Space%20Station",
+            "license": "NASA Media (Public Domain)",
+            "sha256": _sha256(broll_video),
+        },
+        "source_interview_broll": {
+            "name": interview_video.name,
+            "title": "Return to the Pad: Michael Collins (no burned-in subtitles)",
+            "url": "https://images.nasa.gov/details-KSC-20190716-MH-NAS01_0001-Return_to_the_Pad_Crew_Quarters_Broll_HQ_Provided-3226478",
+            "license": "NASA Media (Public Domain)",
+            "sha256": _sha256(interview_video),
+        },
         "source_product": {
             "name": product_img.name,
-            "title": "NASA Mars 2020 Rover Camera (PIA22103)",
-            "license": "NASA Media (Public Domain)",
+            "title": "Cameras on Mars 2020 Rover (PIA22103)",
+            "url": "https://photojournal.jpl.nasa.gov/catalog/PIA22103",
+            "credit": "NASA/JPL-Caltech",
+            "license": "NASA/JPL (Public Domain)",
             "sha256": _sha256(product_img),
         },
         "breakdown": bd_res["report"],
         "template": str(template_path),
-        "product_asset": prod_res["report"],
+        "product_assets": {k: v for k, v in prod_reports.items()},
         "diversity_matrix": json.loads(diversity_matrix_path.read_text(encoding="utf-8")),
         "variants_verified": verification_records,
     }

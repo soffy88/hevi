@@ -47,10 +47,17 @@ def produce_product_asset(
     trail.append({"step": "validate_input", "source": str(inp)})
 
     try:
-        # 1. Background removal with rembg (u2net on CPU)
+        # 1. Background removal with rembg (u2net on CPU), unless a cutout is reused.
         cutout_png = dest / "product_cutout.png"
-        remove_product_background(inp, cutout_png)
-        trail.append({"step": "remove_background", "cutout": str(cutout_png)})
+        reuse_cutout = input_data.get("reuse_cutout")
+        if reuse_cutout and Path(reuse_cutout).is_file():
+            import shutil as _shutil
+
+            _shutil.copyfile(reuse_cutout, cutout_png)
+            trail.append({"step": "reuse_background_cutout", "cutout": str(cutout_png)})
+        else:
+            remove_product_background(inp, cutout_png)
+            trail.append({"step": "remove_background", "cutout": str(cutout_png)})
 
         # 2. Render animation frames with Ken Burns and UI components
         width = int(input_data.get("width") or 720)
@@ -59,6 +66,7 @@ def produce_product_asset(
         fps = int(input_data.get("fps") or 25)
 
         frames_dir = dest / "card_frames"
+        theme = str(input_data.get("theme") or "light")
         frames = render_product_card_animation_frames(
             cutout_path=cutout_png,
             output_dir=frames_dir,
@@ -70,8 +78,9 @@ def produce_product_asset(
             price_tag=str(input_data.get("price_tag") or "¥99"),
             cta_text=str(input_data.get("cta_text") or "立即抢购"),
             selling_points=list(input_data.get("selling_points") or ["官方正品", "权威实测", "极速发货"]),
+            theme=theme,
         )
-        trail.append({"step": "render_card_frames", "frame_count": len(frames)})
+        trail.append({"step": "render_card_frames", "frame_count": len(frames), "theme": theme})
 
         # 3. Encode into product video MP4 using ffmpeg
         product_video_mp4 = dest / "product_card.mp4"
@@ -104,6 +113,7 @@ def produce_product_asset(
         report = {
             "cutout_png": str(cutout_png),
             "product_video": str(product_video_mp4),
+            "theme": theme,
             "sha256": sha,
             "duration_s": probe["duration_s"],
             "resolution": f"{probe['width']}x{probe['height']}",

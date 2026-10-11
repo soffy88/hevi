@@ -202,9 +202,11 @@ def compile_and_render_template(
         ]
         trail.append({"step": "whisper_realignment", "words_count": len(aligned_words)})
 
-        # 5. Step 3: Align visual segments and anchors onto the new word timestamps
+        # 5. Step 3: Align visual segments and anchors onto the new word timestamps.
+        # Segment windows come from the exact Piper sentence cues (one per slot);
+        # Whisper word timestamps refine karaoke/anchor snapping.
         compiled_segments = align_segments_to_word_timestamps(
-            spec, slots, aligned_sents or sent_cues, aligned_words
+            spec, slots, sent_cues or aligned_sents, aligned_words
         )
         trail.append({"step": "word_anchor_alignment", "segments": compiled_segments})
 
@@ -265,6 +267,8 @@ def compile_and_render_template(
             height=spec.height,
             output_mp4=visual_mp4,
             fps=spec.fps,
+            color_grade=str(input_data.get("color_grade") or ""),
+            transition=str(input_data.get("transition") or ""),
         )
         trail.append({"step": "render_cuts", "path": str(visual_mp4)})
 
@@ -283,9 +287,14 @@ def compile_and_render_template(
         probe_final = _probe_video(final_mp4)
         sha_final = _sha256(final_mp4)
         sample_frames = _extract_frames(final_mp4, dest / "qa_frames", fps=1.0, max_frames=6)
+        # Matching watermark-free reference frames (same timestamps) for pixel QA.
+        ref_frames = _extract_frames(visual_mp4, dest / "qa_ref_frames", fps=1.0, max_frames=6)
+        ref_frame = str(ref_frames[0]) if ref_frames else None
 
-        # Watermark QA: verify pixel size and metadata
-        wm_qa = verify_watermark_in_frame(sample_frames[0], spec.width, spec.height, wm_spec)
+        # Watermark QA: measure the *actual rendered glyph height* in the frame.
+        wm_qa = verify_watermark_in_frame(
+            sample_frames[0], spec.width, spec.height, wm_spec, reference_frame_path=ref_frame
+        )
         meta_qa = verify_implicit_watermark_metadata(final_mp4)
 
         elapsed = time.time() - t0

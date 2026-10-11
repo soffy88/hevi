@@ -274,6 +274,41 @@ def _synthesize_voiceover_script(
     return out_wav, cues
 
 
+def _build_vf(
+    width: int,
+    height: int,
+    fps: int,
+    dur: float,
+    *,
+    color_grade: str = "",
+    transition: str = "",
+) -> str:
+    """Compose the per-clip ffmpeg filter chain (fit + optional grade/transition)."""
+    filters = [
+        f"scale={width}:{height}:force_original_aspect_ratio=decrease",
+        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black",
+        f"fps={fps}",
+        "setsar=1",
+    ]
+    grade = {
+        "warm": "colorbalance=rs=0.12:gs=0.02:bs=-0.12,eq=saturation=1.15:contrast=1.05",
+        "cool": "colorbalance=rs=-0.12:gs=0.0:bs=0.12,eq=saturation=1.15:contrast=1.05",
+        "vivid": "eq=saturation=1.35:contrast=1.12",
+        "mono": "hue=s=0,eq=contrast=1.1",
+    }.get(color_grade, "")
+    if grade:
+        filters.append(grade)
+    if transition == "fade":
+        filters.append("fade=t=in:st=0:d=0.3")
+    elif transition == "fade_slow":
+        filters.append("fade=t=in:st=0:d=0.6")
+    elif transition == "dip":
+        out_st = max(0.0, dur - 0.25)
+        filters.append("fade=t=in:st=0:d=0.25")
+        filters.append(f"fade=t=out:st={out_st:.3f}:d=0.25")
+    return ",".join(filters)
+
+
 def _render_video_clips_concat(
     clips: list[dict[str, Any]] | None = None,
     total_duration_s: float = 0.0,
@@ -283,8 +318,14 @@ def _render_video_clips_concat(
     *,
     fps: int = 25,
     cuts: list[dict[str, Any]] | None = None,
+    color_grade: str = "",
+    transition: str = "",
 ) -> Path:
-    """Render cut sequence into visual video stream scaled and padded to target dimensions."""
+    """Render cut sequence into visual video stream scaled and padded to target dimensions.
+
+    Short sources (e.g. a 2.5s product card used for a longer narration beat) are
+    looped so the visual track always fills the audio duration.
+    """
     clips = clips or cuts or []
     work = output_mp4.parent / "cuts_tmp"
     work.mkdir(parents=True, exist_ok=True)
@@ -294,13 +335,7 @@ def _render_video_clips_concat(
         src = Path(c["source"])
         dur = max(0.5, float(c["duration_s"]))
         target_clip = work / f"part_{idx:03d}.mp4"
-
-        # Fit/scale video or looping image into target aspect ratio
-        vf = (
-            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,"
-            f"fps={fps},setsar=1"
-        )
+        vf = _build_vf(width, height, fps, dur, color_grade=color_grade, transition=transition)
 
         if src.suffix.lower() in (".jpg", ".jpeg", ".png"):
             # Image input: loop for dur
@@ -324,12 +359,14 @@ def _render_video_clips_concat(
                 str(target_clip),
             ]
         elif src.is_file():
-            # Video input
+            # Video input: loop the source so short clips still fill ``dur``.
             cmd = [
                 FFMPEG,
                 "-y",
                 "-v",
                 "error",
+                "-stream_loop",
+                "-1",
                 "-ss",
                 f"{c.get('source_in_s', 0.0):.3f}",
                 "-i",
@@ -358,6 +395,8 @@ def _render_video_clips_concat(
                 f"color=c=0x181824:s={width}x{height}:r={fps}",
                 "-t",
                 f"{dur:.3f}",
+                "-vf",
+                vf,
                 "-pix_fmt",
                 "yuv420p",
                 "-c:v",
@@ -420,7 +459,18 @@ def _mux_final_video_with_subtitles(
         "-shortest",
     ]
     if metadata_comment:
-        cmd.extend(["-metadata", f"comment={metadata_comment}", "-metadata", f"AIGC={metadata_comment}"])
+        cmd.extend(
+            [
+                "-metadata",
+                f"comment={metadata_comment}",
+                "-metadata",
+                f"AIGC={metadata_comment}",
+                "-metadata",
+                f"description={metadata_comment}",
+                "-movflags",
+                "+use_metadata_tags",
+            ]
+        )
     cmd.append(str(output_path))
     subprocess.run(cmd, check=True)
     return output_path

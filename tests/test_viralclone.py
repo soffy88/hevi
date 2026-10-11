@@ -35,6 +35,7 @@ from hevi.layer4_legacy.viralclone.oskill_impl.diversity import (
     compute_phash_hamming_distance,
     compute_text_similarity,
     compute_variant_diversity_matrix,
+    evaluate_variant_pair_diversity,
 )
 from hevi.layer4_legacy.viralclone.oskill_impl.watermark import (
     compute_watermark_spec,
@@ -251,6 +252,70 @@ def test_diversity_hamming_and_matrix(tmp_path: Path) -> None:
     assert comps[0].passed is True
 
 
+def test_diversity_gate_rejects_zero_phash() -> None:
+    """A zero visual distance must fail even when the scripts differ completely."""
+    rec = evaluate_variant_pair_diversity(
+        "a",
+        "b",
+        "completely different english script about shoes",
+        "完全不同的中文脚本，讲的是航天相机",
+        ["ffff0000ffff0000"],
+        ["ffff0000ffff0000"],
+        min_phash_distance=3,
+        max_text_similarity=0.85,
+    )
+    assert rec.phash_distance == 0
+    assert rec.passed is False
+    assert "DIVERSITY_REJECTED" in rec.reason
+
+    # High visual distance but near-identical scripts must also fail.
+    rec2 = evaluate_variant_pair_diversity(
+        "a",
+        "b",
+        "buy the space camera now",
+        "buy the space camera now",
+        ["ffff0000ffff0000"],
+        ["0000ffff0000ffff"],
+        min_phash_distance=3,
+        max_text_similarity=0.85,
+    )
+    assert rec2.passed is False
+    assert "text_sim" in rec2.reason
+
+
+def test_captions_use_template_text_not_asr() -> None:
+    """Captions must render the template text; ASR words only supply timing."""
+    template_zh = "你见过能耐极寒的航天相机吗?"
+    asr_zh = "你见过能耐树林夏两百度极寒的航天极香剂吗?"  # homophone garbage
+    words_zh = [WordToken(ch, i * 0.2, (i + 1) * 0.2) for i, ch in enumerate(asr_zh)]
+    ass_zh = build_ass_subtitles(
+        words=words_zh,
+        sentences=[{"text": template_zh, "start_s": 0.0, "end_s": 0.2 * len(asr_zh)}],
+        width=1280,
+        height=720,
+        watermark_text="",
+    )
+    dialogue = [ln for ln in ass_zh.splitlines() if ln.startswith("Dialogue: 0")][0]
+    for ch in template_zh:
+        assert ch in dialogue
+    # The garbled ASR homophones must not leak into the caption.
+    assert "树林" not in dialogue
+    assert "香剂" not in dialogue
+
+    # English: words must keep inter-word spaces.
+    words_en = [WordToken(w, i * 0.3, (i + 1) * 0.3) for i, w in enumerate("Why settle for ordinary lenses".split())]
+    ass_en = build_ass_subtitles(
+        words=words_en,
+        sentences=[{"text": "Why settle for ordinary lenses", "start_s": 0.0, "end_s": 1.5}],
+        width=1280,
+        height=720,
+        watermark_text="",
+    )
+    dialogue_en = [ln for ln in ass_en.splitlines() if ln.startswith("Dialogue: 0")][0]
+    assert "Whysettle" not in dialogue_en
+    assert "{\\k" in dialogue_en
+
+
 def test_omodul_blocked_on_invalid_inputs(tmp_path: Path) -> None:
     # reference_breakdown with missing file
     res = reference_breakdown({}, {"video_path": "/nonexistent/video.mp4"}, tmp_path)
@@ -319,7 +384,8 @@ def test_real_media_produce_product_asset(tmp_path: Path) -> None:
 
 def test_real_media_compile_and_variants(tmp_path: Path) -> None:
     broll = Path("artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4")
-    if not broll.is_file():
+    interview = Path("artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4")
+    if not broll.is_file() or not interview.is_file():
         pytest.skip("Real media test artifact not found")
 
     spec = TemplateSpec(
@@ -367,7 +433,8 @@ def test_real_media_compile_and_variants(tmp_path: Path) -> None:
     assert rep["watermark_qa"]["passed"] is True
     assert rep["metadata_qa"]["has_implicit_watermark"] is True
 
-    # Test Variant Matrix with 2 distinct variants
+    # Test Variant Matrix with 2 genuinely distinct variants (different source
+    # material AND aspect ratio) so the diversity gate is exercised for real.
     out_variants = tmp_path / "variants_out"
     variants_input = [
         {
@@ -379,6 +446,8 @@ def test_real_media_compile_and_variants(tmp_path: Path) -> None:
                 "lang": "en",
             },
             "brolls": [str(broll.resolve())],
+            "color_grade": "warm",
+            "aspect_ratio": "16:9",
         },
         {
             "variant_id": "var_2",
@@ -388,7 +457,9 @@ def test_real_media_compile_and_variants(tmp_path: Path) -> None:
                 "cta_text": "Claim discount now.",
                 "lang": "en",
             },
-            "brolls": [str(broll.resolve())],
+            "brolls": [str(interview.resolve())],
+            "color_grade": "cool",
+            "aspect_ratio": "9:16",
         },
     ]
     res_var = generate_variant_matrix(
