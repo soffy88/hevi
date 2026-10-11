@@ -75,7 +75,15 @@ def produce_whiteboard(storyboard_data: dict, output_dir: Path, config: dict):
         raise RuntimeError("Final video not generated")
         
     shutil.copy2(final_mp4, output_dir / "whiteboard_landscape.mp4")
-    shutil.copy2(final_mp4, output_dir / "whiteboard_portrait.mp4") # Same for now
+    
+    # Generate 9:16 portrait version using ffmpeg with blurred background
+    import subprocess
+    subprocess.run([
+        "/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(final_mp4),
+        "-lavfi", "[0:v]scale=-1:1920,crop=1080:1920,boxblur=20:20[bg];[0:v]scale=1080:-1[fg];[bg][fg]overlay=0:(H-h)/2",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "22", "-c:a", "copy",
+        str(output_dir / "whiteboard_portrait.mp4")
+    ], check=True)
     
     return {
         "status": "succeeded",
