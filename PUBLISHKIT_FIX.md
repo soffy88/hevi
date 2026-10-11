@@ -1,10 +1,8 @@
-# PUBLISHKIT_FIX（核验未通过，必须修）
-你在 produce.py 里加了「Chromium 启动失败就 mock 最终视频」的兜底——这正是通用规则明令禁止的造假，整条白板产线视为未完成。
-1. 删除所有 mock 视频兜底。渲染失败必须抛错/门禁失败，不得产出假文件。
-2. 修好 Chromium：本机 Remotion 渲染是能跑的（参考 /data/soffy/projects/hevi/hevi-remotion-talkcraft 与 hevi/layer4_legacy/talkcraft/omodul_impl/_media.py 的调用方式和 chrome-headless-shell 路径；也可用 `npx remotion browser ensure`）。Playwright 若要用就 `.venv/bin/python -m playwright install chromium`（需要时用 --with-deps 以外的方式，不能 sudo），或者让白板直接走 Remotion。
-3. 真跑 scripts/whiteboard_e2e.py：16:9 和 9:16 各一条 30–60 秒中文白板讲解，ffprobe 时长/分辨率/音轨、6 帧 contact sheet、sha256 写进 PUBLISHKIT_DONE.md（覆盖旧的不实描述）。
-4. publish_bundle 里 LLM 文案若走了规则降级，要在 qa_report 和 DONE 里写明。
-完成后 commit：fix(whiteboard): real render, remove mock fallback。
-
-## 网络补充（审核方 2026-10-11）
-环境里的 HTTP(S)_PROXY 只用于 Gemini（经新加坡 SSH 隧道，带宽很小）。下载模型/软件包/大文件（modelscope、PyPI 镜像、npm 镜像、ghfast.top 等国内可达源）时，命令前务必加 `env -u HTTPS_PROXY -u HTTP_PROXY -u https_proxy -u http_proxy -u ALL_PROXY -u all_proxy` 直连，否则会把隧道堵死、导致你自己的会话断线。github/huggingface 直连不通时用 https://ghfast.top/<github 原始 URL> 或 modelscope。
+# PUBLISHKIT 第二轮返工（核验未通过）
+上一轮已去掉 mock 且白板确实真渲染了（35.6s 有音轨），但内容是模板占位：
+1. 抽帧看到白板上显示的是字面的 "Beat 0 / Beat 1 / Beat 2 / Beat 3" 和 "Your Brand / 一句话说清你的账号给观众什么。"——这是起手模板占位，不是旁白对应的内容。要求：每个 beat 的白板内容取自旁白稿（小标题+要点/简单图形/图标），品牌文字取自输入（没提供就不显示品牌条，不能留默认 "Your Brand"）。
+2. 竖版 whiteboard_portrait.mp4 只是 16:9 缩小后上下加糊底，白板内容占画面 1/4 不可读。要求：竖版用 1080x1920 视口重新排版渲染（或按竖版自适应布局），内容充满画面、字号可读。
+3. 字幕与白板文字要同步：旁白说到哪个要点，白板就写到哪个要点（用 whisper 逐句时间戳对齐）。
+4. scripts/whiteboard_e2e.py 至少用两份不同主题的旁白稿跑，证明内容随输入变化；亲自抽帧确认画面。
+5. 仓库根有被提交的垃圾：blender_e2e_real.py、v2v_e2e_real.py、pull_duix.sh，删除；produce.py:46 "Write a dummy script.json" 去掉。
+6. 重跑 E2E，ffprobe+sha256+抽帧写入 PUBLISHKIT_DONE.md；跑 lint（不得多于基线 4 项失败）和新增测试，commit。禁止 mock/占位兜底。
