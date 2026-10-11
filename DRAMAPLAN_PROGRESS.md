@@ -19,7 +19,17 @@
 - [x] 3. 章节事件图（storygraph）
 - [x] 4. 三层审稿 agent
 - [x] 5. bug2（定向返工 + 阈值系统性错配）
-- [ ] 6. 单测 + E2E 真跑 + DONE + commit
+- [x] 6. 单测 + E2E 真跑 + DONE + commit
+
+## 续做记录（接手 agent，2026-10-11）
+前任在阶段 6 前被额度中断，`DRAMAPLAN_DONE.md` 已写好但**未 commit**。接手后逐条独立复核：
+- 重跑 E2E `--run-id run2`（真实 NIM）→ 与 run1 结论一致，qa passed=true。
+- 重跑 NIM 探测 → 仍 OK（1.52s，json_stable）。
+- 重算 run1 产物 sha256 → 与 DONE 表内值逐字一致。
+- 新增单测 35 passed；旧测试分四批复跑合计 357 passed、0 failed。
+- lint 与基线逐字相同（4 个上游失败，hevi/ 零新增）。
+- 修正两处不实表述：产物实际未 `git add -f`（已补齐）；测试数字改为实测值。
+- 未改上游包（mtime 扫描确认）、无新增依赖、未 push。
 
 ## 关键发现
 - bug1 根因：`oskill.script_writer._chapters_for_duration` <300s 至少 2 章；`storyboard_planner`

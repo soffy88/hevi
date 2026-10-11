@@ -1,0 +1,48 @@
+{
+  "ep_number": 1,
+  "title": "第1集",
+  "scenes": [
+    {
+      "scene_no": 1,
+      "location": "沈府后院墙头",
+      "event_ids": [
+        "CH01E001"
+      ],
+      "summary": "沈砚之翻墙逃出，父亲怒喝不许归来。",
+      "narration": "沈砚之翻墙逃出，父亲怒喝不许归来。",
+      "dialogue": [
+        {
+          "speaker": "C002",
+          "text": "你若踏出这门，就永远别回来！",
+          "emotion": "愤怒"
+        }
+      ],
+      "shot_count": 2,
+      "duration_s": 34.285714285714285
+    },
+    {
+      "scene_no": 2,
+      "location": "巷口石桥旁",
+      "event_ids": [
+        "CH01E002"
+      ],
+      "summary": "福伯在巷口等候，交付盘缠布包及夫人遗留密信。",
+      "narration": "福伯在巷口等候，交付盘缠布包及夫人遗留密信。",
+      "dialogue": [
+        {
+          "speaker": "C003",
+          "text": "少爷，盘缠我备好了。",
+          "emotion": "忠诚"
+        }
+      ],
+      "shot_count": 2,
+      "duration_s": 25.714285714285715
+    }
+  ],
+  "characters_present": [
+    "C001",
+    "C002",
+    "C003",
+    "C004"
+  ]
+}

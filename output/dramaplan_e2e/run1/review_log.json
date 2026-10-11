@@ -1,0 +1,364 @@
+{
+  "story_source": "沈砚之与苏晚（原创）",
+  "target_episodes": 3,
+  "max_rounds": 2,
+  "llm_channel": "",
+  "llm_used": true,
+  "episodes": [
+    {
+      "ep_number": 1,
+      "title": "第1集",
+      "rounds": [
+        {
+          "round_index": 0,
+          "score": 60,
+          "passed": false,
+          "issues": [
+            {
+              "code": "duration_out_of_range",
+              "message": "估算时长 20.0s 超出目标 60.0s ±50%",
+              "scope": "episode",
+              "severity": "error",
+              "scene_no": null
+            },
+            {
+              "code": "llm:人物弧光",
+              "message": "沈砚之（C001）在逃亡前仅表达‘不得已’，缺乏内心挣扎或具体动机的铺垫，导致其决定显得突兀，人物弧光起点不够立体。",
+              "scope": "scene:1",
+              "severity": "warning",
+              "scene_no": 1
+            },
+            {
+              "code": "llm:逻辑连贯",
+              "message": "福伯（C003）突然出现在巷口交付盘缠与密信，但未说明他是如何得知沈砚之逃亡路线和时间的，信息来源缺失，削弱了情节的可信度。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            },
+            {
+              "code": "llm:节奏",
+              "message": "两个场景均为10秒，节奏过于平均，未能体现‘冲突→过场’的情感弧；第一场冲突戏太短，未充分渲染父子对峙的张力，第二场过场戏又缺乏停顿或反应，使转变显得机械。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            },
+            {
+              "code": "llm:台词质量",
+              "message": "台词功能性过强，缺乏潜台词和个性化表达。例如父亲的怒吼‘你若踏出这门，就永远别回来！’虽情绪到位，但缺少具体指向（如提及家族声誉、门规或过去事件），显得泛化；沈砚之的回应‘父亲，孩儿不得已’过于抽象，未透露具体困境，削弱了共鸣。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            }
+          ],
+          "revised_scenes": [],
+          "scene_diffs": []
+        },
+        {
+          "round_index": 1,
+          "score": 80,
+          "passed": true,
+          "issues": [
+            {
+              "code": "llm:人物弧光",
+              "message": "沈砚之在逃亡前的台词过于平淡，缺乏内心挣扎的层次感，未能有效体现其‘不得已’背后的复杂情感（如对父亲的怨恨、对命运的无奈或对未来的恐惧），导致人物弧光起点虚弱，后续转化缺乏情感支撑。",
+              "scope": "scene:1",
+              "severity": "warning",
+              "scene_no": 1
+            },
+            {
+              "code": "llm:台词质量",
+              "message": "福伯的台词‘少爷，盘缠我备好了，夫人遗嘱也在此’信息过载且语气平板，未能体现其作为老仆的沉郁与隐忍，建议加入停顿、眼神或肢体语言暗示（如颤抖递信、低声叹息），以增强情感真实度和人物厚度。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            },
+            {
+              "code": "llm:节奏",
+              "message": "两场景时长均为30秒，节奏过于平均，未能体现‘冲突→过场’的情感弧。第一场应为高压爆发（可适当延长至35秒，加入父亲追喊或砸门声），第二场应为安静过渡（可压缩至25秒，减少对白，强调环境音与人物孤独感），以形成明显情感起伏。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            },
+            {
+              "code": "llm:逻辑连贯",
+              "message": "父亲怒喝不许归来，却未见任何追捕或后续行动，其威慑力显得虚弱；同时福伯在巷口等候似乎过于便利，未交代其如何知晓沈砚之逃亡路线及时间，略有剧情便签感，建议暗示父亲曾派人监视或福伯得令行事，以增强因果链条。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            }
+          ],
+          "revised_scenes": [
+            1,
+            2
+          ],
+          "scene_diffs": [
+            {
+              "scene_no": 1,
+              "before": "ec671ad6635a",
+              "after": "8b28521bdddf"
+            },
+            {
+              "scene_no": 2,
+              "before": "00b51a5fec8c",
+              "after": "64ec73a1f5ba"
+            }
+          ]
+        }
+      ],
+      "final_score": 80,
+      "passed": true,
+      "script": {
+        "ep_number": 1,
+        "title": "第1集",
+        "scenes": [
+          {
+            "scene_no": 1,
+            "location": "沈府后院高墙",
+            "event_ids": [
+              "CH01E001"
+            ],
+            "summary": "沈砚之深夜翻墙逃出，父亲怒喝不许归来。",
+            "narration": "沈砚之深夜翻墙逃出，父亲怒喝不许归来。",
+            "dialogue": [
+              {
+                "speaker": "C002",
+                "text": "你若踏出这门，就永远别回来！",
+                "emotion": "愤怒"
+              },
+              {
+                "speaker": "C001",
+                "text": "父亲，孩儿不得已。",
+                "emotion": "无奈"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 30.0
+          },
+          {
+            "scene_no": 2,
+            "location": "巷口石板路",
+            "event_ids": [
+              "CH01E002"
+            ],
+            "summary": "福伯在巷口等候，交付盘缠与夫人遗留的密信。",
+            "narration": "福伯在巷口等候，交付盘缠与夫人遗留的密信。",
+            "dialogue": [
+              {
+                "speaker": "C003",
+                "text": "少爷，盘缠我备好了，夫人遗嘱也在此。",
+                "emotion": "忠诚"
+              },
+              {
+                "speaker": "C001",
+                "text": "多谢福伯。",
+                "emotion": "感激"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 30.0
+          }
+        ],
+        "characters_present": [
+          "C001",
+          "C002",
+          "C003",
+          "C004"
+        ]
+      }
+    },
+    {
+      "ep_number": 2,
+      "title": "第2集",
+      "rounds": [
+        {
+          "round_index": 0,
+          "score": 100,
+          "passed": true,
+          "issues": [],
+          "revised_scenes": [],
+          "scene_diffs": []
+        }
+      ],
+      "final_score": 100,
+      "passed": true,
+      "script": {
+        "ep_number": 2,
+        "title": "第2集",
+        "scenes": [
+          {
+            "scene_no": 1,
+            "location": "青州大雪中的荒野",
+            "event_ids": [
+              "CH02E001"
+            ],
+            "summary": "沈砚之在大雪中发现正专注绣寒梅图的苏晚。",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C004",
+                "text": "你终究还是来了。",
+                "emotion": "平静"
+              },
+              {
+                "speaker": "C001",
+                "text": "三年前你救我时，落下的是这个吧。",
+                "emotion": "低沉"
+              }
+            ],
+            "shot_count": 3,
+            "duration_s": 20.0
+          },
+          {
+            "scene_no": 2,
+            "location": "青州大雪中的荒野",
+            "event_ids": [
+              "CH02E002"
+            ],
+            "summary": "沈砚之出示半块玉玦，苏晚取出另一块，两块严丝合缝，揭开身世之谜。",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C001",
+                "text": "这半块玉，是你三年前留给我的。",
+                "emotion": "震惊"
+              },
+              {
+                "speaker": "C004",
+                "text": "原来我们，是同一来源。",
+                "emotion": "颤抖"
+              }
+            ],
+            "shot_count": 3,
+            "duration_s": 20.0
+          }
+        ],
+        "characters_present": [
+          "C001",
+          "C002",
+          "C003",
+          "C004"
+        ]
+      }
+    },
+    {
+      "ep_number": 3,
+      "title": "第3集",
+      "rounds": [
+        {
+          "round_index": 0,
+          "score": 85,
+          "passed": true,
+          "issues": [
+            {
+              "code": "llm:dialogue_quality",
+              "message": "苏晚的台词‘玉玦合璧，天意所归’略显说教，缺乏人物个性化表达，易让观众感受到说教感而非自然情感流露。",
+              "scope": "scene:1",
+              "severity": "warning",
+              "scene_no": 1
+            },
+            {
+              "code": "llm:emotional_arc",
+              "message": "沈砚之在厅堂场景的情感转变过于突兀：从‘握母亲密信手发抖’的震颤，直接跳到‘让我们重新开始’的缓和，中间缺乏痛苦挣扎、质疑或沉默的过渡，情感弧光显得生硬。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            },
+            {
+              "code": "llm:dialogue_quality",
+              "message": "苏晚对母亲牌位的台词‘娘，我回来了’情感真挚，但未体现其人物弧光：作为曾被误解、被迫离开的女儿，此处本可加入一句自我救赎或对过去愧疚的暗示（如‘娘，我终于知道，你一直在等我’），以强化其从‘被迫离开’到‘主动归来’的成长。",
+              "scope": "scene:3",
+              "severity": "warning",
+              "scene_no": 3
+            }
+          ],
+          "revised_scenes": [],
+          "scene_diffs": []
+        }
+      ],
+      "final_score": 85,
+      "passed": true,
+      "script": {
+        "ep_number": 3,
+        "title": "第3集",
+        "scenes": [
+          {
+            "scene_no": 1,
+            "location": "密室",
+            "event_ids": [
+              "CH02E003"
+            ],
+            "summary": "苏晚将玉玦与沈砚之的玉玦严丝合缝，沈砚之握母亲密信手发抖。",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C004",
+                "text": "玉玦合璧，天意所归。",
+                "emotion": "平静"
+              },
+              {
+                "speaker": "C001",
+                "text": "母亲的信……她早已知晓一切。",
+                "emotion": "震颤"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 18.0
+          },
+          {
+            "scene_no": 2,
+            "location": "沈府厅堂",
+            "event_ids": [
+              "CH03E001"
+            ],
+            "summary": "沈砚之带苏晚回沈府，沈崇山见玉玦痛哭忏悔。",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C002",
+                "text": "是我对不住你们兄妹……玉玦归位，罪难赎。",
+                "emotion": "痛悔"
+              },
+              {
+                "speaker": "C001",
+                "text": "父亲，让我们重新开始。",
+                "emotion": "缓和"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 20.0
+          },
+          {
+            "scene_no": 3,
+            "location": "祖堂",
+            "event_ids": [
+              "CH03E002"
+            ],
+            "summary": "沈砚之扶起父亲，苏晚跪拜母亲牌位称归来。",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C001",
+                "text": "父亲，起来吧。家，还在。",
+                "emotion": "坚定"
+              },
+              {
+                "speaker": "C004",
+                "text": "娘，我回来了。",
+                "emotion": "哽咽"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 18.0
+          }
+        ],
+        "characters_present": [
+          "C001",
+          "C002",
+          "C003",
+          "C004"
+        ]
+      }
+    }
+  ],
+  "passed": true
+}
