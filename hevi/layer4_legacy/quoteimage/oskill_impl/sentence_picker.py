@@ -31,6 +31,11 @@ def pick_sentences(segments: list[dict[str, Any]], count: int = 4) -> list[dict[
         try:
             llm = resolve_text_llm()
             if llm is not None:
+                prompt = (
+                    f"Select exactly {count} contiguous or highly cohesive sentence indices from the following transcript "
+                    f"for a quote card. Return only space-separated integer indices (0-indexed):\n"
+                    + "\n".join(f"{i}: {s.get('text', '')}" for i, s in enumerate(segments))
+                )
                 resp = llm.generate(prompt)
                 nums = []
                 for word in str(resp).replace(",", " ").split():

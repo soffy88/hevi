@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
-import pytest
 
+import pytest
+from PIL import Image, ImageDraw, ImageFont
+
+from hevi.layer4_legacy.quoteimage.omodul_impl.produce import produce_quote_image
 from hevi.layer4_legacy.quoteimage.omodul_impl.quality_gates import (
     QualityGateError,
     run_quality_gates,
 )
-from hevi.layer4_legacy.quoteimage.omodul_impl.produce import produce_quote_image
 from hevi.layer4_legacy.quoteimage.oprim_impl.detect_band import detect_subtitle_band
 
 
@@ -42,7 +43,7 @@ def _create_fixture_good_image(path: Path) -> Path:
     except Exception:
         font = ImageFont.load_default()
 
-    for i, (text, bg_col) in enumerate(zip(subtitles, colors)):
+    for i, (text, bg_col) in enumerate(zip(subtitles, colors, strict=False)):
         y0 = 900 + i * 135
         y1 = y0 + 135
         draw.rectangle([0, y0, width, y1], fill=bg_col)
@@ -116,6 +117,29 @@ def test_quality_gates_empty_image(tmp_path: Path):
     gates = run_quality_gates([bad_img_path])
     completeness = next(g for g in gates if g["name"] == "subtitle_completeness")
     assert not completeness["passed"], "Solid gray image must fail completeness check"
+
+
+def _create_fixture_black_bar_image(path: Path) -> Path:
+    """Generate an image with an unwanted pure black bar across the subtitle area."""
+    width, height = 1080, 1440
+    img = Image.new("RGB", (width, height), (220, 220, 225))
+    draw = ImageDraw.Draw(img)
+    # Hero area
+    draw.rectangle([0, 0, width, 900], fill=(230, 235, 240))
+    # Injected 70px black bar in subtitle region
+    draw.rectangle([0, 1000, width, 1070], fill=(0, 0, 0))
+    draw.text((200, 1100), "正常测试字幕", fill=(0, 0, 0))
+    img.save(path, quality=95)
+    return path
+
+
+def test_quality_gates_black_bar_detection(tmp_path: Path):
+    black_bar_path = tmp_path / "black_bar.jpg"
+    _create_fixture_black_bar_image(black_bar_path)
+
+    gates = run_quality_gates([black_bar_path])
+    bar_gate = next(g for g in gates if g["name"] == "black_bar")
+    assert not bar_gate["passed"], "Fixture with black bar must fail black_bar gate"
 
 
 def test_detect_subtitle_band_fallback():

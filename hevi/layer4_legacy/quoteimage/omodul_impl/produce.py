@@ -14,8 +14,8 @@ from hevi.layer4_legacy.quoteimage.oprim_impl.detect_band import detect_subtitle
 from hevi.layer4_legacy.quoteimage.oprim_impl.vendor_stitch import (
     command_render,
     command_render_script,
-    grab_frame,
     crop_band,
+    grab_frame,
 )
 from hevi.layer4_legacy.quoteimage.oprim_impl.whisper import WhisperAligner
 from hevi.layer4_legacy.quoteimage.oskill_impl.sentence_picker import pick_sentences
@@ -74,31 +74,103 @@ def _adjust_timestamps_for_native(
     band_top: float,
     band_bottom: float,
 ) -> list[float]:
-    """Ensure candidate timestamps in native mode hit active subtitles, avoiding blank transition frames."""
+    """Ensure candidate timestamps in native mode hit active subtitles, avoiding blank transition frames and mid-animation border collisions."""
+    import numpy as np
+    from PIL import ImageChops, ImageFilter
+
     adjusted = []
     for t in times:
         best_t = t
-        max_edge = 0.0
+        best_score = -1.0
         # Check around t in small increments
-        for dt in (0.0, 0.4, 0.8, -0.4, 1.2):
+        for dt in (0.0, 0.5, 1.0, 1.5, 2.0, -0.5):
             cand = max(0.0, t + dt)
             try:
                 frame = grab_frame(str(video_path), cand)
                 band, _, _ = crop_band(frame, band_top, band_bottom)
                 gray = band.convert("L")
-                import numpy as np
-                from PIL import ImageChops, ImageFilter
                 edges = ImageChops.subtract(gray, gray.filter(ImageFilter.MinFilter(3)))
                 edge_val = float(np.mean(np.array(edges)))
-                if edge_val > max_edge:
-                    max_edge = edge_val
+                if edge_val < 3.0:
+                    continue
+
+                # Check hero border to avoid picking mid-transition / cut-off entrance animation
+                hero = frame.crop((0, 0, frame.width, int(frame.height * band_bottom)))
+                h_edges = ImageChops.subtract(hero.convert("L"), hero.convert("L").filter(ImageFilter.MinFilter(3)))
+                h_np = np.array(h_edges)
+                margin = max(8, int(frame.width * 0.015))
+                left_d = float(np.mean(h_np[:, :margin] > 35) * 100)
+                right_d = float(np.mean(h_np[:, -margin:] > 35) * 100)
+                max_border = max(left_d, right_d)
+
+                score = edge_val
+                if max_border >= 1.0:
+                    score -= 50.0
+
+                if score > best_score:
+                    best_score = score
                     best_t = cand
-                if edge_val > 4.0:
-                    break
+                    if edge_val >= 4.0 and max_border < 0.8:
+                        break
             except Exception:
                 pass
         adjusted.append(round(best_t, 2))
     return adjusted
+
+
+def _find_coherent_native_window(
+    video_path: Path,
+    candidates: list[dict[str, Any]],
+    count: int,
+    band_top: float,
+    band_bottom: float,
+) -> list[dict[str, Any]]:
+    """Select a contiguous window of sentences that has active subtitles and visual scene coherence (no jarring dark/light card jumps)."""
+    if len(candidates) <= count:
+        return candidates
+
+    import numpy as np
+    from PIL import ImageChops, ImageFilter
+
+    scored_windows = []
+    for i in range(len(candidates) - count + 1):
+        win = candidates[i : i + count]
+        means = []
+        min_edge = 999.0
+        for s in win:
+            t = s["t"]
+            best_mean = 0.0
+            max_edge = 0.0
+            for dt in (0.0, 0.4, -0.4, 0.8):
+                cand = max(0.0, t + dt)
+                try:
+                    f = grab_frame(str(video_path), cand)
+                    b, _, _ = crop_band(f, band_top, band_bottom)
+                    gray = b.convert("L")
+                    edge = ImageChops.subtract(gray, gray.filter(ImageFilter.MinFilter(3)))
+                    val = float(np.mean(np.array(edge)))
+                    if val > max_edge:
+                        max_edge = val
+                        best_mean = float(np.mean(f))
+                    if val > 4.0:
+                        break
+                except Exception:
+                    pass
+            means.append(best_mean)
+            min_edge = min(min_edge, max_edge)
+
+        std_brightness = float(np.std(means))
+        # Penalty for high brightness std or missing subtitles
+        score = min_edge - (std_brightness * 0.15)
+        # If std_brightness is excessive (>50) or min_edge is too weak (<3), heavily penalize
+        if std_brightness > 45:
+            score -= 1000.0
+        if min_edge < 3.0:
+            score -= 1000.0
+        scored_windows.append((score, i, win))
+
+    scored_windows.sort(key=lambda x: x[0], reverse=True)
+    return scored_windows[0][2]
 
 
 def produce_quote_image(
@@ -129,10 +201,12 @@ def produce_quote_image(
         elif isinstance(explicit_script, list):
             picked = explicit_script
 
+    all_source_sentences: list[dict[str, Any]] = []
     if not picked:
         # Check adjacent project script metadata
         script_from_file = _load_script_from_source(video_path)
         if script_from_file:
+            all_source_sentences = script_from_file
             if strategy == "auto":
                 picked = pick_sentences(script_from_file, count=4)
             elif strategy == "time_range":
@@ -153,6 +227,7 @@ def produce_quote_image(
         # Fall back to Whisper ASR
         aligner = WhisperAligner()
         sentences = aligner.transcribe_segments(str(video_path))
+        all_source_sentences = sentences
         if strategy == "auto":
             picked = pick_sentences(sentences, count=4)
         elif strategy == "time_range":
@@ -181,6 +256,12 @@ def produce_quote_image(
         band_top, band_bottom = detect_subtitle_band(
             video_path=video_path,
             times=[s["t"] for s in picked],
+        )
+
+    # If auto strategy and candidate sentences are available, pick a window with scene brightness coherence
+    if strategy == "auto" and len(all_source_sentences) >= 4:
+        picked = _find_coherent_native_window(
+            video_path, all_source_sentences, count=4, band_top=band_top, band_bottom=band_bottom
         )
 
     if mode == "native":
@@ -227,10 +308,7 @@ def produce_quote_image(
         # If source has burned-in subtitles, crop above them so they don't overlap with drawn text
         frame_bottom = kwargs.get("frame_bottom")
         if frame_bottom is None:
-            if band_top < 0.98:
-                frame_bottom = band_top
-            else:
-                frame_bottom = 1.0
+            frame_bottom = band_top if band_top < 0.98 else 1.0
 
         band_center = kwargs.get("band_center")
         if band_center is None:

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import numpy as np
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont, ImageOps
 
@@ -563,6 +564,35 @@ def fit_fixed_canvas(stack, extents, size, fit="crop", crop_center=0.5):
     return canvas, note
 
 
+def clean_strip_avatar(band):
+    """Clean avatar or isolated peripheral clutter on the right margin of non-hero strips."""
+    ext = subtitle_extent(band)
+    if ext is None:
+        return band
+    w, _h = band.size
+    center = (ext[0] + ext[1]) / (2.0 * w)
+    if not (0.35 <= center <= 0.65):
+        return band
+
+    arr = np.array(band).copy()
+    left_x, right_x = ext
+    margin = 50
+    _left_safe = max(0, left_x - margin)
+    right_safe = min(w, right_x + margin)
+
+    near_text_right = arr[:, right_safe:min(w, right_safe + 80)]
+    far_right = arr[:, int(w * 0.78):]
+
+    if near_text_right.size > 0 and far_right.size > 0:
+        near_std = float(np.std(near_text_right))
+        far_std = float(np.std(far_right))
+        if near_std < 18 and far_std > 35:
+            bg_color = np.median(near_text_right, axis=(0, 1)).astype(np.uint8)
+            arr[:, right_safe:] = bg_color
+            return Image.fromarray(arr)
+    return band
+
+
 def render_one(
     video, times, out_path, aspect, out_width, top, bottom, hero_fraction,
     layout="natural", fit="crop", crop_center=0.5, check_duplicates=False,
@@ -571,7 +601,7 @@ def render_one(
     frames = [grab_frame(video, seconds) for seconds in times]
     first = frames[0]
     first_band, _, subtitle_bottom = crop_band(first, top, bottom)
-    bands = [crop_band(frame, top, bottom)[0] for frame in frames[1:]]
+    bands = [clean_strip_avatar(crop_band(frame, top, bottom)[0]) for frame in frames[1:]]
     if check_duplicates:
         ensure_distinct_frames(frames, times, [first_band, *bands])
     hero_source_height = subtitle_bottom
@@ -629,10 +659,10 @@ def scripted_render_one(
         source_strip_height = min(first_frame.height, max(1, round(first_frame.width * 0.05625)))
         strip_height = max(1, round(source_strip_height * out_width / first_frame.width))
         base_font = font_size or max(16, round(strip_height * 0.62))
-        base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.92))
+        base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.90))
         draw_scripted_subtitle(
             hero, lines[0]["text"], hero.height - strip_height // 2,
-            font_path, base_font, round(out_width * 0.92),
+            font_path, base_font, round(out_width * 0.90),
             speaker=lines[0].get("prefix"),
         )
         parts = [hero]
@@ -640,10 +670,12 @@ def scripted_render_one(
             height = min(frame.height, max(1, round(frame.width * 0.05625)))
             center = round(frame.height * band_center)
             y0 = max(0, min(frame.height - height, center - height // 2))
-            strip = scale_to_width(frame.crop((0, y0, frame.width, y0 + height)), out_width)
+            raw_strip = frame.crop((0, y0, frame.width, y0 + height))
+            blurred_strip = raw_strip.filter(ImageFilter.GaussianBlur(25))
+            strip = scale_to_width(blurred_strip, out_width)
             draw_scripted_subtitle(
                 strip, line["text"], strip.height // 2,
-                font_path, base_font, round(out_width * 0.92),
+                font_path, base_font, round(out_width * 0.90),
                 speaker=line.get("prefix"),
             )
             parts.append(strip)
@@ -667,7 +699,7 @@ def scripted_render_one(
         strip_heights[-1] += remaining - sum(strip_heights)
         base_font = font_size or max(24, round(out_width / 18))
         
-    base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.92))
+    base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.90))
 
     hero = ImageOps.fit(
         first_frame,
@@ -685,7 +717,7 @@ def scripted_render_one(
         first_line_y,
         font_path,
         base_font,
-        round(out_width * 0.92),
+        round(out_width * 0.90),
         speaker=lines[0].get("prefix"),
     )
 
@@ -697,7 +729,7 @@ def scripted_render_one(
         source_height = min(source_height, frame.height)
         center_y = round(frame.height * band_center)
         y0 = max(0, min(frame.height - source_height, center_y - source_height // 2))
-        band = frame.crop((0, y0, frame.width, y0 + source_height))
+        band = frame.crop((0, y0, frame.width, y0 + source_height)).filter(ImageFilter.GaussianBlur(25))
         strip = ImageOps.fit(
             band,
             (out_width, strip_height),
@@ -710,7 +742,7 @@ def scripted_render_one(
             strip.height // 2,
             font_path,
             base_font,
-            round(out_width * 0.92),
+            round(out_width * 0.90),
             speaker=line.get("prefix"),
         )
         strips.append(strip)

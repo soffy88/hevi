@@ -17,7 +17,7 @@ class WhisperAligner:
             model_dir, device="cpu", compute_type="int8", cpu_threads=threads
         )
 
-    def transcribe_segments(self, audio_path: str, language: str = "zh") -> list[dict[str, Any]]:
+    def transcribe_segments(self, audio_path: str, language: str | None = None) -> list[dict[str, Any]]:
         segments, _info = self._model.transcribe(
             audio_path,
             language=language,

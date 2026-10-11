@@ -1,11 +1,12 @@
-from PIL import Image, ImageChops, ImageStat, ImageFilter
 from pathlib import Path
 from typing import Any
+
 import numpy as np
+from PIL import Image, ImageChops, ImageFilter, ImageStat
+
 
 class QualityGateError(ValueError):
     """Raised when one or more quality gates fail."""
-    pass
 
 
 def run_quality_gates(images: list[Path]) -> list[dict[str, Any]]:
@@ -43,9 +44,11 @@ def run_quality_gates(images: list[Path]) -> list[dict[str, Any]]:
                 
                 # Subtitle analysis area (bottom half) - only for quote images, not contact sheet or samples
                 if "contact_sheet" not in img_path.name and "sample" not in img_path.name:
-                    bottom_part = gray.crop((0, int(gray.height * 0.5), gray.width, gray.height))
+                    bottom_part = gray.crop((0, int(gray.height * 0.45), gray.width, gray.height))
                     edges = ImageChops.subtract(bottom_part, bottom_part.filter(ImageFilter.MinFilter(3)))
                     edge_np = np.array(edges)
+                    bottom_np = np.array(bottom_part)
+                    overall_mean = float(np.mean(np.array(gray)))
                     
                     # 3. Subtitle completeness (Text pixel density)
                     edge_mean = np.mean(edge_np)
@@ -58,7 +61,32 @@ def run_quality_gates(images: list[Path]) -> list[dict[str, Any]]:
                         "image": img_path.name,
                     })
                     
-                    # 4. Duplicate strips
+                    # 4. Black bar / anomalous dark band detection (纯黑条/暗色带异常检测)
+                    # If image overall is non-black (mean > 35), but has a contiguous block of rows
+                    # in the subtitle area with mean brightness < 20 (or significantly darker than overall in bright videos, e.g. < 55 when overall > 150),
+                    # it indicates an erroneous black bar or anomalous dark slide band.
+                    row_means = np.mean(bottom_np, axis=1)
+                    dark_rows = (row_means < 20.0) | ((overall_mean > 150.0) & (row_means < 55.0))
+                    max_dark_block = 0
+                    current_dark_block = 0
+                    for is_dark in dark_rows:
+                        if is_dark:
+                            current_dark_block += 1
+                            if current_dark_block > max_dark_block:
+                                max_dark_block = current_dark_block
+                        else:
+                            current_dark_block = 0
+                    
+                    black_bar_pass = not (overall_mean > 35.0 and max_dark_block >= 12)
+                    gates.append({
+                        "name": "black_bar",
+                        "threshold": "contiguous_dark_rows<12",
+                        "passed": bool(black_bar_pass),
+                        "value": max_dark_block,
+                        "image": img_path.name,
+                    })
+
+                    # 5. Duplicate strips
                     h = bottom_part.height
                     slice_h = h // 4
                     duplicate_pass = True
@@ -70,21 +98,21 @@ def run_quality_gates(images: list[Path]) -> list[dict[str, Any]]:
                             sim = 255.0 - diff
                             if sim > max_sim:
                                 max_sim = sim
-                            if diff < 2.0:
+                            if diff < 2.5:
                                 duplicate_pass = False
                                 break
                     gates.append({
                         "name": "subtitle_duplicate",
-                        "threshold": "diff>2.0",
+                        "threshold": "diff>2.5",
                         "passed": bool(duplicate_pass),
                         "value": round(float(max_sim), 2),
                         "image": img_path.name,
                     })
 
-                    # 5. Subtitle truncation detection (横向截断/裁字检测)
+                    # 6. Subtitle truncation detection (横向截断/裁字检测)
                     # Checks if subtitle text is cut off at the left or right margin of the frame.
                     # In properly laid out quote images, text has safe margins and does not touch border pixels (<1.0%).
-                    bw, bh = bottom_part.size
+                    bw, _bh = bottom_part.size
                     text_edge = edge_np > 35
                     margin_x = max(8, int(bw * 0.015))
                     left_border = text_edge[:, :margin_x]
