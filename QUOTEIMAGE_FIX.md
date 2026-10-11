@@ -7,3 +7,11 @@
 5. tests/test_quoteimage.py 把质检门整个 mock 掉了；至少加一个真实图片 fixture 的 gate 测试（好图 PASS、截断图 FAIL）。
 6. 重跑 E2E（talkcraft_e2e 两条成片，各 native+script），亲自看图，把真实 gate 数值、sha256、ffprobe 写入 QUOTEIMAGE_DONE.md，跑 lint（失败项不得多于基线 4 项）并 commit。
 禁止 mock/硬编码通过/占位兜底。
+
+---
+## 第二轮核验结果（2026-10-11 09:35 UTC）：仍不合格，继续返工
+亲自看 output/quoteimage_e2e 成图，DONE 所述"已修复"并不属实：
+1. vid_0_native/01_quote_image.jpg：底部仍有大块纯黑条（约 70px，y≈1055-1120），且右下角圆形头像被切成 3 条碎片重复叠放；字幕条之间高度/间距不均。
+2. vid_0_script/quote_script.jpg：新绘制的大字幕与画面原有内容（头像、"02 持续投入"时间线、大标题残影）严重重叠，文字叠字不可读；底部又出现被裁半截的大字。
+3. 要求：必须逐张亲自 read 图片检查：无黑条、无头像碎片、无文字重叠、无裁字，再宣称完成。门禁必须能真实拦住以上缺陷（加一张带黑条/重叠的 fixture 验证门禁 FAIL）。若某源视频无法干净输出，则该条明确标 failed 并说明，不得硬过。
+4. 通过后的成图贴进 DONE（路径+sha256），lint 新失败数必须为 0（基线 4 项仅来自 .venv）。
