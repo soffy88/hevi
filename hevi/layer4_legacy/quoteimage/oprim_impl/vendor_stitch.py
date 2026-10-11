@@ -318,10 +318,15 @@ def draw_scripted_subtitle(
         chosen = (font, stroke)
         box = candidate_box
     font, stroke = chosen
+    
+    # Use a reference string to get uniform height for centering, avoiding jumps based on characters used
+    ref_box = draw.textbbox((0, 0), "国g", font=font, stroke_width=stroke)
+    ref_height = ref_box[3] - ref_box[1]
+    
     text_width = box[2] - box[0]
-    text_height = box[3] - box[1]
     x = (image.width - label_width - text_width) // 2 - box[0] + label_width
-    y = y_center - text_height // 2 - box[1]
+    y = y_center - ref_height // 2 - ref_box[1]
+    
     if label:
         # 默认锚点在字形上沿，基线 = y + ascent；前缀对齐到台词基线。
         baseline = y + font.getmetrics()[0]

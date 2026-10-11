@@ -20,36 +20,67 @@ def detect_subtitle_band(video_path, times):
     from PIL import ImageChops, ImageFilter
     from hevi.layer4_legacy.quoteimage.oprim_impl.vendor_stitch import grab_frame
     
-    top_min, bottom_max = 1.0, 0.0
+    if len(times) < 2:
+        return 0.78, 0.96
+
+    h = None
+    summed_rows = None
+
+    try:
+        ref_frame = grab_frame(str(video_path), times[0]).convert("L")
+        ref2_frame = grab_frame(str(video_path), times[-1]).convert("L")
+    except Exception:
+        return 0.78, 0.96
+
     for t in times:
         try:
-            frame = grab_frame(str(video_path), t)
-            gray = frame.convert("L")
-            edges = ImageChops.subtract(gray, gray.filter(ImageFilter.MinFilter(3)))
-            edge_data = np.array(edges)
-            row_sums = edge_data.sum(axis=1)
+            f1 = grab_frame(str(video_path), t)
+            f2 = grab_frame(str(video_path), t + 0.2)
+            gray1 = f1.convert("L")
+            gray2 = f2.convert("L")
+
+            edges = ImageChops.subtract(gray1, gray1.filter(ImageFilter.MinFilter(3)))
+            diff_fast = ImageChops.difference(gray1, gray2)
             
-            h = edge_data.shape[0]
-            bottom_start = int(h * 0.5)
-            row_sums[:bottom_start] = 0
+            diff_slow1 = ImageChops.difference(gray1, ref_frame)
+            diff_slow2 = ImageChops.difference(gray1, ref2_frame)
+
+            edges_np = np.array(edges)
+            dfast_np = np.array(diff_fast)
+            dslow1_np = np.array(diff_slow1)
+            dslow2_np = np.array(diff_slow2)
+
+            subtitle_mask = (edges_np > 20) & (dfast_np < 5) & ((dslow1_np > 30) | (dslow2_np > 30))
+            row_sums = subtitle_mask.sum(axis=1)
+
+            if h is None:
+                h = f1.height
+                summed_rows = np.zeros(h)
             
-            window = max(1, int(h * 0.02))
-            smoothed = np.convolve(row_sums, np.ones(window)/window, mode='same')
-            
-            threshold = np.max(smoothed) * 0.3
-            text_rows = np.where(smoothed > threshold)[0]
-            if len(text_rows) > 0:
-                top = max(0, text_rows[0] - window) / h
-                bottom = min(h, text_rows[-1] + window) / h
-                top = max(0.0, top - 0.02)
-                bottom = min(1.0, bottom + 0.02)
-                top_min = min(top_min, top)
-                bottom_max = max(bottom_max, bottom)
+            summed_rows += row_sums
         except Exception:
             pass
-            
-    if top_min < bottom_max:
-        return top_min, bottom_max
+
+    if h is None:
+        return 0.78, 0.96
+
+    window = max(1, int(h * 0.02))
+    smoothed = np.convolve(summed_rows, np.ones(window)/window, mode='same')
+    
+    peak_val = np.max(smoothed)
+    if peak_val < 5:
+        return 0.78, 0.96
+        
+    threshold = peak_val * 0.3
+    text_rows = np.where(smoothed > threshold)[0]
+    
+    if len(text_rows) > 0:
+        top = max(0, text_rows[0] - window) / h
+        bottom = min(h, text_rows[-1] + window) / h
+        top = max(0.0, top - 0.02)
+        bottom = min(1.0, bottom + 0.02)
+        return top, bottom
+        
     return 0.78, 0.96
 
 def produce_quote_image(
@@ -72,13 +103,15 @@ def produce_quote_image(
     if strategy == "auto":
         picked = pick_sentences(sentences, count=4)
     elif strategy == "time_range":
-        start_time = float(kwargs.get("start_time", 0))
-        end_time = float(kwargs.get("end_time", 999999))
+        if "start_time" not in kwargs or "end_time" not in kwargs:
+            return {"status": "failed", "error": "time_range strategy requires start_time and end_time."}
+        start_time = float(kwargs["start_time"])
+        end_time = float(kwargs["end_time"])
         picked = [s for s in sentences if start_time <= s["t"] <= end_time]
         if len(picked) > 6:
             picked = picked[:6]
     else:
-        return {"status": "failed", "error": "Unknown strategy and no fallback allowed."}
+        return {"status": "failed", "error": f"Unknown strategy {strategy} and no fallback allowed."}
         
     if not picked:
         return {"status": "failed", "error": "No sentences picked."}

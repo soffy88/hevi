@@ -9,12 +9,16 @@ async def run_e2e():
     
     videos = []
     
-    # Run talkcraft video (script mode)
-    talkcraft_videos = list(Path(".").glob("**/talkcraft_e2e/*.mp4"))
-    if talkcraft_videos:
-        videos.extend(talkcraft_videos)
-    else:
-        print("Warning: talkcraft_e2e mp4 not found")
+    # Run talkcraft video (script mode and native mode)
+    talkcraft_videos = [
+        Path("/data/soffy/projects/hevi-talkcraft/output/talkcraft_e2e/explainer/explainer_landscape.mp4"),
+        Path("/data/soffy/projects/hevi-talkcraft/output/talkcraft_e2e/talking_head/talking_head_landscape.mp4")
+    ]
+    for p in talkcraft_videos:
+        if p.exists():
+            videos.append(p)
+        else:
+            print(f"Warning: {p} not found")
 
     # Run hevi-zero videos (native mode)
     hevi_zero_dir = Path("/data/soffy/projects/hevi-zero/out/shorts_clip")
