@@ -59,11 +59,12 @@ def kinetic_words(texts: list[str], *, max_chars: int = 8) -> list[str]:
     for t in texts:
         for c in _CLAUSE.findall(t):
             c = c.strip()
-            while len(c) > max_chars:
-                words.append(c[:max_chars])
-                c = c[max_chars:]
-            if c:
-                words.append(c)
+            if not c:
+                continue
+            # split long clauses into balanced chunks (never orphan a 1-char tail)
+            n = -(-len(c) // max_chars)
+            size = -(-len(c) // n)
+            words.extend(c[k : k + size] for k in range(0, len(c), size))
     return words
 
 

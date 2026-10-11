@@ -84,6 +84,7 @@ def test_bgm_and_mouth_series() -> None:
 def test_captions_and_kinetic_plan() -> None:
     words = kinetic_words(["七十万年前，有人在这里点燃了第一堆火。", "周口店。"])
     assert words[0] == "七十万年前" and "周口店" in words and all(len(w) <= 8 for w in words)
+    assert kinetic_words(["去看看人类从哪里来"]) == ["去看看人类", "从哪里来"]  # balanced, no orphan
     cues = [(0.0, 3.0, "七十万年前，有人在这里点燃了第一堆火。"), (3.4, 4.5, "周口店。")]
     ev = kinetic_events(words=words, cues=cues, total=6.0, width=1280, height=720)
     starts = [e[0] for e in ev]
