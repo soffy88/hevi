@@ -1,12 +1,25 @@
-OpenMontage
-Copyright (c) calesthio
-License: AGPL-3.0
-- Includes `mocap-clips` data from OpenMontage (`ink-theater/mocap`).
+Hevi — third-party notices
+==========================
 
-Lanshu
+Lanshu styled explainer toolkit
 Copyright (c) cclank
-License: MIT
-- Includes explainer tools and HyperFrames styles from `cclank/lanshu`.
+License: MIT (see third_party/lanshu_explainer/LICENSE)
+- Includes the explainer tooling, the nine HyperFrames style kits, the finished
+  KV-cache reference films and the offline-vendored runtime libraries under
+  third_party/lanshu_explainer/.
 
-CMU Graphics Lab Motion Capture Database:
-All bundled clips derive from the CMU Graphics Lab Motion Capture Database (http://mocap.cs.cmu.edu), which is free for all uses, research and commercial.
+CMU Graphics Lab Motion Capture Database
+http://mocap.cs.cmu.edu — free for all uses, research and commercial.
+- The 2-D motion clips under assets/mocap-clips/clips/ are derived from the
+  database's BVH trials by our own converter (hevi/studio/cmumocap.py).
+- "This data was created with funding from NSF EIA-0196217. The database was
+  compiled by the CMU Graphics Lab."
+
+Offline-vendored JavaScript
+- GSAP (https://gsap.com, standard "no charge" license) and three.js
+  (https://threejs.org, MIT) are vendored under
+  hevi/providers/hyperframes/lanshu_assets/node_modules/ so renders work
+  without network access.
+
+No OpenMontage code, text or data is included in this worktree; the OpenMontage
+project was used only as a read-only design reference.

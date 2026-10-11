@@ -118,31 +118,104 @@ def probe(path):
     return float(subprocess.check_output(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path]).decode())
 
 
-def tts(text, voice, speed, out_mp3, out_json):
-    import subprocess
-    import os
-    import json
-    from faster_whisper import WhisperModel
-    PIPER = '/data/soffy/projects/hevi-zero/.venv/bin/piper'
-    VOICE_MODEL = '/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx'
-    FFMPEG = '/home/soffy/.local/bin/ffmpeg'
-    
-    raw = out_mp3 + '.raw.wav'
-    subprocess.run([PIPER, '-m', VOICE_MODEL, '-f', raw, '--length_scale', str(1 / speed), '--sentence_silence', '0.25'], input=text, text=True, check=True)
-    subprocess.run([FFMPEG, '-y', '-loglevel', 'error', '-i', raw, '-af', 'highpass=f=70,loudnorm=I=-16:TP=-1.5', '-ar', '44100', '-ac', '1', out_mp3], check=True)
-    os.remove(raw)
+_WHISPER_MODEL = None
 
-    model = WhisperModel('/home/soffy/models/faster-whisper-large-v3-turbo', device='cpu', compute_type='int8')
-    segments, _ = model.transcribe(out_mp3, word_timestamps=True, language='zh')
+
+def get_whisper():
+    global _WHISPER_MODEL
+    if _WHISPER_MODEL is None:
+        from faster_whisper import WhisperModel
+        _WHISPER_MODEL = WhisperModel(
+            "/home/soffy/models/faster-whisper-large-v3-turbo",
+            device="cpu",
+            compute_type="int8",
+        )
+    return _WHISPER_MODEL
+
+
+def align_whisper_to_text(text: str, whisper_words: list) -> list[dict]:
+    res = []
+    pos = 0
+    t_len = len(text)
+    for w in whisper_words:
+        raw_w = (w.get("word") if isinstance(w, dict) else getattr(w, "word", "")).strip()
+        if not raw_w:
+            continue
+        idx = text.lower().find(raw_w.lower(), pos)
+        if idx != -1:
+            start_char = idx
+            end_char = idx + len(raw_w)
+            pos = end_char
+        else:
+            start_char = pos
+            end_char = min(pos + max(1, len(raw_w)), t_len)
+            pos = end_char
+        start_t = w.get("start") if isinstance(w, dict) else getattr(w, "start", 0.0)
+        end_t = w.get("end") if isinstance(w, dict) else getattr(w, "end", 0.0)
+        res.append({
+            "word_begin": start_char,
+            "word_end": end_char,
+            "time_begin": int(start_t * 1000),
+            "time_end": int(end_t * 1000),
+            "word": raw_w,
+        })
+    return res
+
+
+def tts(text, voice, speed, out_mp3, out_json):
+    PIPER = "/data/soffy/projects/hevi-zero/.venv/bin/piper"
+    VOICE_MODEL = "/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx"
+    FFMPEG = "/home/soffy/.local/bin/ffmpeg"
     
-    tw = []
+    raw = out_mp3 + ".raw.wav"
+    subprocess.run(
+        [
+            PIPER,
+            "-m",
+            VOICE_MODEL,
+            "-f",
+            raw,
+            "--length_scale",
+            str(1.0 / max(0.1, speed)),
+            "--sentence_silence",
+            "0.25",
+        ],
+        input=text,
+        text=True,
+        check=True,
+    )
+    subprocess.run(
+        [
+            FFMPEG,
+            "-y",
+            "-loglevel",
+            "error",
+            "-i",
+            raw,
+            "-af",
+            "highpass=f=70,loudnorm=I=-16:TP=-1.5",
+            "-ar",
+            "44100",
+            "-ac",
+            "1",
+            out_mp3,
+        ],
+        check=True,
+    )
+    if os.path.exists(raw):
+        os.remove(raw)
+
+    model = get_whisper()
+    segments, _ = model.transcribe(out_mp3, word_timestamps=True, language="zh")
+    whisper_words = []
     for segment in segments:
         for word in segment.words:
-            tw.append({"word_begin": 0, "word_end": 0, "time_begin": int(word.start * 1000), "word": word.word})
-    
-    # fake minimax format
-    subs = [{"timestamped_words": tw, "text_begin": 0}]
-    json.dump(subs, open(out_json, 'w', encoding='utf-8'), ensure_ascii=False)
+            whisper_words.append(word)
+    tw = align_whisper_to_text(text, whisper_words)
+    subs = [{"timestamped_words": tw, "text_begin": 0, "pronounce_text": text}]
+    with open(out_json, "w", encoding="utf-8") as f:
+        json.dump(subs, f, ensure_ascii=False)
+
 
 
 
@@ -186,20 +259,29 @@ def units_of(text):
 def words_from_engine(text, subs, offset):
     tw = []
     for seg in subs:
+        base = seg.get("text_begin", 0) or 0
         for w in seg.get("timestamped_words", []):
-            tw.append(w)
-            
-    # Simple uniform distribution of text characters to timestamped words
-    chars = [u for u in UNIT.findall(text) if SPOKEN.match(u)]
-    if not chars:
-        return []
-        
-    res = []
-    for i, c in enumerate(chars):
-        idx = min(len(tw) - 1, int((i / len(chars)) * len(tw)))
-        t = tw[idx]["time_begin"] / 1000.0 if tw else 0
-        res.append((c, t + offset))
-    return res
+            b, e = w["word_begin"], w["word_end"]
+            if base and b < base:
+                b, e = b + base, e + base
+            tw.append((b, e, w["time_begin"] / 1000.0))
+    spans = [(m.group(0), m.start(), m.end()) for m in UNIT.finditer(text)]
+    hits = [[k for k, (b, e, _) in enumerate(tw) if b < end and e > start] for _, start, end in spans]
+    groups = {}
+    for i, h in enumerate(hits):
+        if h:
+            groups.setdefault((h[0], h[-1]), []).append(i)
+    times = [None] * len(spans)
+    for (k0, k1), members in groups.items():
+        m = k1 - k0 + 1
+        for j, i in enumerate(members):
+            times[i] = tw[min(k1, k0 + int(round(j * m / len(members))))][2]
+    words, last = [], 0.0
+    for (u, _, _), t in zip(spans, times):
+        t = last if t is None else max(t, last)
+        words.append([u, round(offset + t, 3)])
+        last = t
+    return words
 
 
 
@@ -332,9 +414,6 @@ def main():
     if a.check:
         return
     if not a.dry:
-        if not a.audio and not os.environ.get("MINIMAX_API_KEY"):
-            sys.exit("voicing needs MINIMAX_API_KEY — or voice the script yourself and pass --audio, or use --dry\n"
-                     "配音需要 MINIMAX_API_KEY；也可以自己配好音后用 --audio，或先用 --dry 出无声草稿")
         # a real run replaces any --dry draft: never leave a stale draft story.json next to real audio
         old = os.path.join(D, "story.json")
         if os.path.exists(old) and json.load(open(old)).get("draft"):
@@ -407,7 +486,7 @@ def main():
         c["end"] = nxt
     story = {"title": meta.get("title", os.path.basename(D)), "subtitle": meta.get("subtitle", ""),
              "duration": round(narr, 1), "narration": "audio/narration.wav",
-             "voice": f"MiniMax {MODEL} · {voice} · speed {speed:g}", "timing": timing, "lines": lines, "chapters": chap}
+             "voice": f"piper huayan · {voice} · speed {speed:g}", "timing": timing, "lines": lines, "chapters": chap}
     if a.audio:
         story["voice"] = f"external narration: {os.path.basename(a.audio)}"
     if a.dry:

@@ -228,68 +228,46 @@ HYPERFRAMES_STYLED_CAPABILITY = {
 }
 
 async def hyperframes_styled_generate(*, prompt="", output_path, config=None, **kwargs):
-    # For styled_explainer, we expect the prompt to be the topic name, or it has script_lines.
-    import os
-    import subprocess
-    import shutil
-    
-    output_path = Path(output_path)
-    topic = str(prompt) if not isinstance(prompt, dict) else str(prompt.get("topic", "test"))
-    
-    # 1. Create a workspace
-    work_dir = output_path.parent / f"{output_path.stem}_styled"
-    work_dir.mkdir(parents=True, exist_ok=True)
-    
-    # 2. Write script.md if script_lines provided
-    if isinstance(prompt, dict) and prompt.get("script_lines"):
-        lines = prompt["script_lines"]
-        script_path = work_dir / "script.md"
-        with open(script_path, "w") as f:
-            f.write(f"# {topic}\n\n")
-            f.write("## Chapter 1\n\n")
-            for line in lines:
-                text = line.get("text", line) if isinstance(line, dict) else line
-                f.write(f"- {text}\n")
-    else:
-        # Default script
-        with open(work_dir / "script.md", "w") as f:
-            f.write(f"# {topic}\n\n## Chapter 1\n\n- Hello world, this is a default style test.\n")
+    """Render one lanshu style from a locally voiced story.
 
-    # 3. run story.py
-    env = os.environ.copy()
-    env["PATH"] = f"/home/soffy/.local/bin:{env['PATH']}"
-    env.pop("HTTP_PROXY", None)
-    env.pop("HTTPS_PROXY", None)
-    env.pop("http_proxy", None)
-    env.pop("https_proxy", None)
-    env.pop("ALL_PROXY", None)
-    env.pop("all_proxy", None)
-    
-    subprocess.run([sys.executable, "/data/soffy/projects/hevi-omrender/third_party/lanshu_explainer/tools/story.py", str(work_dir)], env=env, check=True)
-    
-    # 4. run sync.sh
-    style = config.get("style", "v6-cinematic") if config else "v6-cinematic"
-    subprocess.run(["bash", "/data/soffy/projects/hevi-omrender/third_party/lanshu_explainer/tools/sync.sh", str(work_dir), style, str(work_dir)], check=True)
-    
-    # run fonts.py to subset fonts
-    subprocess.run([sys.executable, "/data/soffy/projects/hevi-omrender/third_party/lanshu_explainer/tools/fonts.py", str(work_dir)], env=env, check=True)
-    
-    # 5. run render.sh
-    subprocess.run(["bash", "/data/soffy/projects/hevi-omrender/third_party/lanshu_explainer/tools/render.sh", str(work_dir), output_path.stem, str(output_path.parent)], check=True)
-    
-    # render.sh puts it in output_path.parent / output_path.stem-master.mp4 or something?
-    # wait, render.sh says: ffmpeg -i "$OUT/$NAME-master.mp4"
-    # Wait, render.sh runs finalize_delivery.sh which generates `-master.mp4`.
-    # Let's check finalize_delivery.sh
-    
-    result_mp4 = output_path.parent / f"{output_path.stem}-master.mp4"
-    if result_mp4.exists():
-        shutil.copy(result_mp4, output_path)
-    else:
-        # maybe it failed to finalize, try just .mp4
-        shutil.copy(work_dir / "renders" / f"{output_path.stem}.mp4", output_path)
+    ``prompt`` may be a topic string or a dict with ``topic`` / ``script_lines``.
+    ``config`` selects the style and the story directory:
 
-    return output_path
+        {"style": "v8-chalkboard", "story_dir": "third_party/lanshu_explainer/stories/kv-cache"}
+
+    The film itself is the upstream MIT reference film (real performed beats)
+    for that style; the story is synced and voiced locally (piper + whisper).
+    """
+    from hevi.providers.hyperframes import styled as _styled
+
+    cfg = dict(config or {})
+    style = str(cfg.get("style") or "v8-chalkboard")
+    if style not in _styled.STYLES:
+        raise HyperframesRenderError(f"unknown styled explainer style: {style!r}")
+
+    story_dir = cfg.get("story_dir")
+    if story_dir is None:
+        raise HyperframesRenderError(
+            "hyperframes_styled requires config['story_dir'] (a folder with story.json + audio/narration.wav); "
+            "build it with third_party/lanshu_explainer/tools/story.py"
+        )
+    story_dir = Path(story_dir)
+    if not story_dir.is_absolute():
+        story_dir = _styled.repo_root() / story_dir
+    if not (story_dir / "story.json").is_file():
+        raise HyperframesRenderError(f"no story.json in {story_dir}")
+
+    fps = int(cfg.get("fps") or 30)
+    quality = str(cfg.get("quality") or "looks")
+    timeout_s = float(cfg.get("timeout_s") or kwargs.get("timeout_s") or 1800.0)
+    return await _styled.render_styled_film(
+        style=style,
+        output_path=output_path,
+        story_dir=story_dir,
+        fps=fps,
+        quality=quality,
+        timeout_s=timeout_s,
+    )
 
 def register_hyperframes() -> None:
     ProviderRegistry.register("video", "hyperframes", hyperframes_generate, replace=True)
