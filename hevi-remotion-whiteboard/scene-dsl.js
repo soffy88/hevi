@@ -181,7 +181,9 @@ class Scene {
   }
   // 品牌标：星号 + 手写名 + 品牌色下划线（同水印/片尾母题）。x 为左边，size 字号；返回宽度
   brandMark(x, y, size = 56, o = {}) {
-    const b = cfg.brand || {}; const name = o.name || b.name || 'Your Brand'; const accent = o.accent || b.accent || C.green;
+    const b = cfg.brand || {}; const name = o.name || b.name || '';
+    if (!name) return 0;
+    const accent = o.accent || b.accent || C.green;
     const w = measure(name, size).width;
     const r = size * 0.32, sx = x - r * 0.9, sy = y + r * 0.6;
     const star = [[sx, sy - r], [sx + r * 0.28, sy - r * 0.28], [sx + r, sy], [sx + r * 0.28, sy + r * 0.28], [sx, sy + r], [sx - r * 0.28, sy + r * 0.28], [sx - r, sy], [sx - r * 0.28, sy - r * 0.28], [sx, sy - r]];
@@ -223,8 +225,10 @@ class Scene {
         const hCap = Math.min(640, room), h = Math.min(hCap, Math.round(maxW * d.h / d.w));
         this.image(cw / 2, y + 10 + (hCap - h) / 2, o.sticker, { h, align: 'center' });
       }
-      const bw = measure(cfg.brand.name || 'Your Brand', 52).width;
-      this.brandMark(cw / 2 - bw / 2, brandY, 52);
+      if (cfg.brand && cfg.brand.name) {
+        const bw = measure(cfg.brand.name, 52).width;
+        this.brandMark(cw / 2 - bw / 2, brandY, 52);
+      }
     } else if (cw / ch < 1.6) {
       // 4:3 等偏方横版：标题通栏大字 → 副标 → 贴纸右下（尽量大，只避开会撞到的标题行）→ 品牌标左下
       let y = 96;
@@ -250,7 +254,9 @@ class Scene {
         }
         this.image(right - (h * asp) / 2, bottom - h, o.sticker, { h, align: 'center' });
       }
-      this.brandMark(120, ch - 150, 56);
+      if (cfg.brand && cfg.brand.name) {
+        this.brandMark(120, ch - 150, 56);
+      }
     } else {
       // 16:9 宽横版：左侧标题，右侧贴纸列（宽 36%），左下品牌标
       const stickerCol = o.sticker ? Math.round(cw * 0.36) : 0;
@@ -268,7 +274,9 @@ class Scene {
       });
       if (o.sub) this.text(114, y + lines.length * lh + 10, o.sub, { size: 48, color: C.gray });
       if (o.sticker) this.image(cw - stickerCol / 2 - 30, 150, o.sticker, { h: Math.min(Math.round(ch * 0.72), ch - 300), align: 'center' });
-      this.brandMark(120, ch - 150, 56);
+      if (cfg.brand && cfg.brand.name) {
+        this.brandMark(120, ch - 150, 56);
+      }
     }
     return this;
   }
@@ -353,31 +361,33 @@ const COVER_SIZES = { '4:3': [1440, 1080], '3:4': [1080, 1440], '16:9': [1920, 1
 const coverSize = (ratio) => COVER_SIZES[ratio] || COVER_SIZES['4:3'];
 
 // 片尾品牌卡：名字（或 logo）+ 品牌色划线 + slogan + CTA，一个 beat，逐笔画出。由 render.js 在成片末尾追加。
-function brandEndCard(brand) {
+function brandEndCard(brand, isPortrait = false) {
   const s = new Scene('99-brand', '品牌卡');
   s.nextBeat();
   const accent = brand.accent || C.green, ink = brand.ink || C.ink;
-  let nameW, top = 300, bottom;
+  const centerX = isPortrait ? CX_P : CX;
+  let nameW, top = isPortrait ? 520 : 300, bottom;
   const logo = brand.logo && expandHome(brand.logo);
   if (logo && fs.existsSync(logo)) {
-    const el = s.imageFile(CX, 230, logo, { h: 280, align: 'center' });
+    const el = s.imageFile(centerX, isPortrait ? 400 : 230, logo, { h: isPortrait ? 240 : 280, align: 'center' });
     nameW = el.width; top = el.y; bottom = el.y + el.height;
   } else {
-    const size = 150;
-    const t = s.text(CX, top, brand.name, { size, align: 'center', color: ink });
+    const size = isPortrait ? 110 : 150;
+    const t = s.text(centerX, top, brand.name, { size, align: 'center', color: ink });
     nameW = t.width; bottom = t.y + size * 1.1;
   }
   // 左上角星号（呼应头像）
-  const r = 26, sx = CX - nameW / 2 - 40, sy = top + 10;
+  const r = 26, sx = centerX - nameW / 2 - 40, sy = top + 10;
   const star = [[sx, sy - r], [sx + r * 0.28, sy - r * 0.28], [sx + r, sy], [sx + r * 0.28, sy + r * 0.28], [sx, sy + r], [sx - r * 0.28, sy + r * 0.28], [sx - r, sy], [sx - r * 0.28, sy - r * 0.28], [sx, sy - r]];
   s.line(star, { stroke: accent, fill: accent, fillStyle: 'solid', roughness: 0.8 });
   // 品牌色划线
-  s.line([[CX - nameW / 2 - 10, bottom + 22], [CX + nameW * 0.05, bottom + 34], [CX + nameW / 2 + 10, bottom + 12]], { stroke: accent, strokeWidth: 12, roughness: 1.3, round: true });
-  if (brand.slogan) s.text(CX, bottom + 90, brand.slogan, { size: 44, align: 'center', color: C.gray });
+  s.line([[centerX - nameW / 2 - 10, bottom + 22], [centerX + nameW * 0.05, bottom + 34], [centerX + nameW / 2 + 10, bottom + 12]], { stroke: accent, strokeWidth: 12, roughness: 1.3, round: true });
+  if (brand.slogan) s.text(centerX, bottom + 90, brand.slogan, { size: isPortrait ? 38 : 44, align: 'center', color: C.gray });
   if (brand.endCard && brand.endCard.cta) {
-    const y = bottom + 220;
-    s.rect(CX - 300, y, 600, 96, { round: true, fill: C.fYellow, fillStyle: 'solid', stroke: ink });
-    s.text(CX, y + 24, brand.endCard.cta, { size: 38, align: 'center', color: ink });
+    const y = bottom + (isPortrait ? 200 : 220);
+    const btnW = isPortrait ? 520 : 600;
+    s.rect(centerX - btnW / 2, y, btnW, 96, { round: true, fill: C.fYellow, fillStyle: 'solid', stroke: ink });
+    s.text(centerX, y + 24, brand.endCard.cta, { size: 38, align: 'center', color: ink });
   }
   return s;
 }

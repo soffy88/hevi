@@ -189,10 +189,19 @@ def produce_whiteboard(
         "brand": brand_cfg,
     }
 
+    portrait_config_obj = dict(base_config_obj)
+    portrait_config_obj["captions"] = {
+        **base_config_obj["captions"],
+        "baselineX": 540,
+        "baselineY": 1780,
+        "safeTop": 1700,
+        "fontSize": 44,
+    }
+
     landscape_cfg_path = landscape_dir / "config.json"
     portrait_cfg_path = portrait_dir / "config.json"
     landscape_cfg_path.write_text(json.dumps(base_config_obj, ensure_ascii=False, indent=2), encoding="utf-8")
-    portrait_cfg_path.write_text(json.dumps(base_config_obj, ensure_ascii=False, indent=2), encoding="utf-8")
+    portrait_cfg_path.write_text(json.dumps(portrait_config_obj, ensure_ascii=False, indent=2), encoding="utf-8")
 
     # Generate scenes.js for Landscape and Portrait
     runtime_root_str = str(RUNTIME_ROOT)

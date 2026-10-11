@@ -186,7 +186,7 @@ async function main() {
   if (wantCard && (!only.length || only.includes('99-brand'))) {
     // 片尾卡：总长 seconds，其中最后 holdSeconds 静止展示（画完再停一会儿）
     const secs = BRAND.endCard.seconds || 5.5, hold = BRAND.endCard.holdSeconds == null ? 1.5 : BRAND.endCard.holdSeconds;
-    const doc = brandEndCard(BRAND).toRenderDoc();
+    const doc = brandEndCard(BRAND, isPortrait).toRenderDoc();
     queue.push({ sc: { name: '99-brand', beatOf: doc.beatOf, segments: doc.segments }, isCard: true, doc, info: { duration: Math.max(1, secs - LEAD - HOLD - hold), segmentStarts: [0], total: secs, drawEnd: secs - hold } });
   }
 
@@ -229,7 +229,7 @@ async function main() {
     const rawVideo = path.join(P.out, `${sc.name}.raw.mp4`);
 
     const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-i', '-',
-      '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', String(FPS),
+      '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', String(FPS),
       rawVideo], { stdio: ['pipe', 'inherit', 'inherit'] });
     const frames = Math.ceil(total * FPS);
     const r = await encodeFrames(pages, frames, ff, sc.name);
