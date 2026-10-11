@@ -353,7 +353,7 @@ def evaluate_zero_lines(root: Path) -> list[Gate]:
             recs[rec.get("line_id") or rec_path.parent.name] = rec
     missing = sorted(set(ZERO_LINES) - set(recs))
     failed = sorted(line for line, r in recs.items() if r.get("status") != "succeeded")
-    add("Z1", "all 11 zero lines rendered with status succeeded", not missing and not failed,
+    add("Z1", f"all {len(ZERO_LINES)} zero lines rendered with status succeeded", not missing and not failed,
         f"{len(recs)} records" if not missing and not failed else f"missing={missing} failed={failed}")
     hash_bad, probe_bad, gate_bad, costly = [], [], [], []
     for line, rec in recs.items():
