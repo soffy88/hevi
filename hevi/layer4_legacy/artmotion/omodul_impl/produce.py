@@ -56,13 +56,29 @@ def produce_artmotion(
     total_s = duration(voice)
     
     # 3) Build spec.json
+    props_cues = []
+    props_data = {}
+    for seg in segments:
+        if "cues" in seg.props:
+            props_cues.extend(seg.props["cues"])
+        if "data" in seg.props:
+            props_data.update(seg.props["data"])
+            
     cues = []
     for i, (text, timing) in enumerate(zip(texts, timings)):
-        cues.append({
-            "at": timing.chars[0].start_s if timing.chars else timing.start_s,
-            "kind": "point",
-            "text": text,
-        })
+        at_t = timing.chars[0].start_s if timing.chars else timing.start_s
+        if i < len(props_cues):
+            cue = props_cues[i].copy()
+            cue["at"] = at_t
+            if "text" not in cue and cue.get("kind") not in ("bar", "highlight", "equation"):
+                cue["text"] = text
+            cues.append(cue)
+        else:
+            cues.append({
+                "at": at_t,
+                "kind": "point",
+                "text": text,
+            })
     fps = 30
     w, h = (1920, 1080) if aspect_ratio == "16:9" else (1080, 1920)
     spec = {
@@ -74,6 +90,8 @@ def produce_artmotion(
         "height": h,
         "cues": cues,
     }
+    if props_data:
+        spec["data"] = props_data
     spec_path = work / "spec.json"
     spec_path.write_text(json.dumps(spec, ensure_ascii=False, indent=2))
     
@@ -116,6 +134,8 @@ def produce_artmotion(
         "height": h,
         "duration_s": total_s,
         "render_seconds": render_s,
+        "style_id": style_id,
+        "grammar_id": grammar_id,
         "gates": gates,
         "sha256": get_sha(out_video),
     }]
