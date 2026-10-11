@@ -66,7 +66,7 @@ def tts_lines(lines: list[str], outdir: str, lang: str = 'zh', gap: float = 0.35
         t += d + gap
     lst = f'{outdir}/vo.txt'
     with open(lst, 'w') as f:
-        f.writelines(f"file '{p}'\n" for p in parts)
+        f.writelines(f"file '{os.path.abspath(p)}'\n" for p in parts)
     out = f'{outdir}/vo.wav'
     sh([FF, '-y', '-f', 'concat', '-safe', '0', '-i', lst, '-c', 'copy', out])
     return out, cues

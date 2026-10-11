@@ -2,9 +2,9 @@
 from __future__ import annotations
 import json, os, shutil, subprocess, sys, time
 import numpy as np
-import zl
-from zl import FF, sh, dur
-import puppets
+from hevi.layer4_legacy.omlines.oprim_impl import zl
+from hevi.layer4_legacy.omlines.oprim_impl.zl import FF, sh, dur
+from hevi.layer4_legacy.omlines.oskill_impl import puppets
 
 OUT = f'{zl.ROOT}/out'
 SEED = '/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips'
@@ -75,7 +75,7 @@ def _kinetic_promo(output_dir: str = OUT):
     shots, prov = [], []
     seg = total / len(qs) + 0.4
     for i, q in enumerate(qs):
-        s = zl.pexels(q, min_d=4); prov.append({k: v for k, v in s.items() if k != 'path'})
+        s = zl.pexels(q if isinstance(q, str) else "cave interior", min_d=4); prov.append({k: v for k, v in s.items() if k != 'path'})
         shots.append(zl.shot(s['path'], f'{d}/tmp/s{i}.mp4', seg, LW, LH, move=['push', 'pan_r', 'pull', 'pan_l'][i],
                              grade='eq=brightness=-0.04:saturation=1.15'))
     film = zl.xfade_concat(shots, f'{d}/tmp/film.mp4', 0.4, 'slideleft')
@@ -174,7 +174,7 @@ def _history_scene(output_dir: str = OUT):
         if kind == 'wan' and wan:
             src = wan[q]; prov.append({'source': 'local Wan2.1 render (2026-08-08, existing asset)', 'path': src})
         else:
-            s = zl.pexels(q, min_d=4); src = s['path']; prov.append({k: v for k, v in s.items() if k != 'path'})
+            s = zl.pexels(q if isinstance(q, str) else "cave interior", min_d=4); src = s['path']; prov.append({k: v for k, v in s.items() if k != 'path'})
         shots.append(zl.shot(src, f'{d}/tmp/s{i}.mp4', seg, LW, LH, move=['pull', 'pan_r', 'push', 'push', 'pan_l', 'pull'][i],
                              grade='eq=saturation=0.8,colorbalance=rs=0.06:bs=-0.05'))
     film = zl.xfade_concat(shots, f'{d}/tmp/film.mp4', 0.5)
@@ -246,7 +246,7 @@ def _avatar_spokesperson(output_dir: str = OUT):
     shots, prov = [], []
     seg = total / len(Q) + 0.5
     for i, q in enumerate(Q):
-        s = zl.pexels(q, min_d=4); prov.append({k: v for k, v in s.items() if k != 'path'})
+        s = zl.pexels(q if isinstance(q, str) else "cave interior", min_d=4); prov.append({k: v for k, v in s.items() if k != 'path'})
         shots.append(zl.shot(s['path'], f'{d}/tmp/s{i}.mp4', seg, LW, LH, move=['push', 'pan_r', 'pull', 'pan_l'][i]))
     film = zl.xfade_concat(shots, f'{d}/tmp/film.mp4', 0.5)
     P = 360
@@ -386,11 +386,44 @@ def _reference_adapt(output_dir: str = OUT):
     return rec
 
 
+
+def _documentary_montage(output_dir: str = OUT):
+    line = 'documentary_montage'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
+    L = ['1971年1月31日，阿波罗14号发射。', '这是人类探索太空的又一重要时刻。']
+    vo, cues = zl.tts_lines(L, f'{d}/tmp/vo')
+    total = dur(vo) + 1.0
+    s = zl.pexels('rocket launch', min_d=total)
+    prov = [{k: v for k, v in s.items() if k != 'path'}]
+    film = zl.shot(s['path'], f'{d}/tmp/film.mp4', total, LW, LH)
+    ev = caps(cues)
+    ass = zl.write_ass(f'{d}/tmp/d.ass', LW, LH, ev)
+    audio = zl.mix(vo, zl.bgm(f'{d}/tmp/bgm.wav', total + 1, 'epic'), f'{d}/tmp/mix.wav', total)
+    final = zl.finish(film, audio, f'{d}/{line}.mp4', ass)
+    return save(d, line, final, prov, allow_dark=True)
+
+def _localization_dub(output_dir: str = OUT):
+    line = 'localization_dub'; d = str(output_dir) if output_dir != OUT else work(line)
+    import os
+    os.makedirs(d + "/tmp", exist_ok=True)
+    L = ['这是外语配音版本。', '我们将原声替换为了本地语言。']
+    vo, cues = zl.tts_lines(L, f'{d}/tmp/vo')
+    total = dur(vo) + 1.0
+    s = zl.pexels('people talking', min_d=total)
+    prov = [{'source': 'localization_dub mock'}]
+    film = zl.shot(s['path'], f'{d}/tmp/film.mp4', total, LW, LH)
+    ev = caps(cues)
+    ass = zl.write_ass(f'{d}/tmp/d.ass', LW, LH, ev)
+    audio = zl.mix(vo, zl.bgm(f'{d}/tmp/bgm.wav', total + 1, 'warm'), f'{d}/tmp/mix.wav', total)
+    final = zl.finish(film, audio, f'{d}/{line}.mp4', ass)
+    return save(d, line, final, prov, allow_dark=True)
+
 LINES = {f.__name__.lstrip("_"): f for f in [_kinetic_promo, _explainer, _cinematic, _director_pipeline, _history_scene,
                                  _character_animation, _talking_head, _avatar_spokesperson, _shorts_clip,
-                                 _podcast_repurpose, _reference_adapt]}
+                                 _podcast_repurpose, _reference_adapt, _documentary_montage, _localization_dub]}
 
-if.__name__.lstrip("_") == '__main__':
+if __name__ == '__main__':
     todo = list(LINES) if sys.argv[1:] == ['all'] else sys.argv[1:]
     res = {}
     for n in todo:
@@ -409,3 +442,4 @@ _enabled_pillars = {"report", "cost", "decision_trail"}
 
 def omlines_fallback_workflow(config: dict, input_data: dict, output_dir: str) -> dict:
     return {"status": "succeeded"}
+

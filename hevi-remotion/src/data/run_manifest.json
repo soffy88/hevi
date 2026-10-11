@@ -2,15 +2,16 @@
   {
     "id": "cue-1",
     "sceneType": "hook",
-    "text": "你知道吗?盐税背后藏着这些细节。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-1.mp3",
-    "durationSec": 5.04,
+    "text": "你知道吗?HEVI autonomous production qualification: explainer背后藏着这些细节。",
+    "audioFile": "runs/explainer/audio/cue-1.mp3",
+    "durationSec": 7.656,
     "startSec": 0.0,
     "keywords": [
-      "你知道吗?盐税背后藏着这些细节。"
+      "你知道吗?HEVI",
+      "autonomous"
     ],
     "props": {
-      "title": "你知道吗?盐税背后藏着这",
+      "title": "你知道吗?HEVI au",
       "subtitle": "深度解说",
       "items": [
         {
@@ -23,12 +24,32 @@
       {
         "text": "你知道吗",
         "start": 0.105541,
-        "end": 1.216666
+        "end": 0.799999
       },
       {
-        "text": "盐税背后藏着这些细节",
-        "start": 1.661125,
-        "end": 4.049999
+        "text": "HEVI",
+        "start": 1.272208,
+        "end": 1.591666
+      },
+      {
+        "text": "autonomous",
+        "start": 1.605541,
+        "end": 2.244416
+      },
+      {
+        "text": "production",
+        "start": 2.258333,
+        "end": 2.966666
+      },
+      {
+        "text": "qualification",
+        "start": 2.980541,
+        "end": 3.952749
+      },
+      {
+        "text": "explainer背后藏着这些细节",
+        "start": 4.425,
+        "end": 6.675
       }
     ],
     "visualType": "voiceover",
@@ -45,15 +66,16 @@
   {
     "id": "cue-2",
     "sceneType": "definition",
-    "text": "盐税的第1个关键点:值得你记住。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-2.mp3",
-    "durationSec": 4.128,
-    "startSec": 5.04,
+    "text": "HEVI autonomous production qualification: explainer的第1个关键点:值得你记住。",
+    "audioFile": "runs/explainer/audio/cue-2.mp3",
+    "durationSec": 7.32,
+    "startSec": 7.656,
     "keywords": [
-      "盐税的第1个关键点:值得你记住。"
+      "HEVI",
+      "autonomous"
     ],
     "props": {
-      "question": "盐税的第1个关键点:值得你记住。",
+      "question": "HEVI autonomous production qua",
       "formulaHead": "核心概念",
       "formulaLines": [
         "= 事实与证据",
@@ -76,14 +98,34 @@
     },
     "captions": [
       {
-        "text": "盐税的第1个关键点",
+        "text": "HEVI",
         "start": 0.105541,
-        "end": 1.744416
+        "end": 0.494416
+      },
+      {
+        "text": "autonomous",
+        "start": 0.508333,
+        "end": 1.188874
+      },
+      {
+        "text": "production",
+        "start": 1.202791,
+        "end": 1.924999
+      },
+      {
+        "text": "qualification",
+        "start": 1.938875,
+        "end": 2.911083
+      },
+      {
+        "text": "explainer的第1个关键点",
+        "start": 3.383333,
+        "end": 5.202791
       },
       {
         "text": "值得你记住",
-        "start": 2.119458,
-        "end": 3.147208
+        "start": 5.494458,
+        "end": 6.327791
       }
     ],
     "visualType": "voiceover",
@@ -100,12 +142,13 @@
   {
     "id": "cue-3",
     "sceneType": "cards",
-    "text": "盐税的第2个关键点:值得你记住。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-3.mp3",
-    "durationSec": 4.224,
-    "startSec": 9.168,
+    "text": "HEVI autonomous production qualification: explainer的第2个关键点:值得你记住。",
+    "audioFile": "runs/explainer/audio/cue-3.mp3",
+    "durationSec": 7.368,
+    "startSec": 14.975999999999999,
     "keywords": [
-      "盐税的第2个关键点:值得你记住。"
+      "HEVI",
+      "autonomous"
     ],
     "props": {
       "header": "关键画面",
@@ -113,20 +156,40 @@
         {
           "emoji": "📰",
           "title": "证据",
-          "desc": "盐税的第2个关键点:值得你记住。"
+          "desc": "HEVI autonomous production qualification"
         }
       ]
     },
     "captions": [
       {
-        "text": "盐税的第2个关键点",
+        "text": "HEVI",
         "start": 0.105541,
-        "end": 1.799999
+        "end": 0.494416
+      },
+      {
+        "text": "autonomous",
+        "start": 0.508333,
+        "end": 1.188874
+      },
+      {
+        "text": "production",
+        "start": 1.202791,
+        "end": 1.924999
+      },
+      {
+        "text": "qualification",
+        "start": 1.938875,
+        "end": 2.938875
+      },
+      {
+        "text": "explainer的第2个关键点",
+        "start": 3.411125,
+        "end": 5.244458
       },
       {
         "text": "值得你记住",
-        "start": 2.188875,
-        "end": 3.230541
+        "start": 5.536125,
+        "end": 6.383332
       }
     ],
     "visualType": "voiceover",
@@ -143,16 +206,17 @@
   {
     "id": "cue-4",
     "sceneType": "reason",
-    "text": "盐税的第3个关键点:值得你记住。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-4.mp3",
-    "durationSec": 4.176,
-    "startSec": 13.392,
+    "text": "HEVI autonomous production qualification: explainer的第3个关键点:值得你记住。",
+    "audioFile": "runs/explainer/audio/cue-4.mp3",
+    "durationSec": 7.416,
+    "startSec": 22.344,
     "keywords": [
-      "盐税的第3个关键点:值得你记住。"
+      "HEVI",
+      "autonomous"
     ],
     "props": {
       "question": "为什么重要？",
-      "brainLine": "盐税的第3个关键点:值得你记住。",
+      "brainLine": "HEVI autonomous production qualification",
       "bubbleText": "把证据放回上下文。",
       "leftLabel": {
         "title": "只看表面",
@@ -165,14 +229,34 @@
     },
     "captions": [
       {
-        "text": "盐税的第3个关键点",
+        "text": "HEVI",
         "start": 0.105541,
-        "end": 1.869457
+        "end": 0.494416
+      },
+      {
+        "text": "autonomous",
+        "start": 0.508333,
+        "end": 1.188874
+      },
+      {
+        "text": "production",
+        "start": 1.202791,
+        "end": 1.938916
+      },
+      {
+        "text": "qualification",
+        "start": 1.952791,
+        "end": 2.952791
+      },
+      {
+        "text": "explainer的第3个关键点",
+        "start": 3.411125,
+        "end": 5.3
       },
       {
         "text": "值得你记住",
-        "start": 2.216666,
-        "end": 3.202791
+        "start": 5.591666,
+        "end": 6.438874
       }
     ],
     "visualType": "voiceover",
@@ -189,38 +273,59 @@
   {
     "id": "cue-5",
     "sceneType": "method",
-    "text": "关于盐税,你还想了解什么?评论区告诉我。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-5.mp3",
-    "durationSec": 5.304,
-    "startSec": 17.567999999999998,
+    "text": "关于HEVI autonomous production qualification: explainer,你还想了解什么?评论区告诉我。",
+    "audioFile": "runs/explainer/audio/cue-5.mp3",
+    "durationSec": 8.568,
+    "startSec": 29.76,
     "keywords": [
-      "关于盐税,你还想了解什么?评论区告诉我。"
+      "关于HEVI",
+      "autonomous"
     ],
     "props": {
       "header": "三个检查动作",
       "points": [
         {
           "num": "1",
-          "title": "关于盐税,你还想了解什么?评论区告诉我。",
+          "title": "关于HEVI autonomous produc",
           "sub": "核对来源与时间"
         }
       ]
     },
     "captions": [
       {
-        "text": "关于盐税",
+        "text": "关于HEVI",
         "start": 0.105541,
-        "end": 1.133333
+        "end": 1.383333
+      },
+      {
+        "text": "autonomous",
+        "start": 1.397208,
+        "end": 2.049999
+      },
+      {
+        "text": "production",
+        "start": 2.063875,
+        "end": 2.786083
+      },
+      {
+        "text": "qualification",
+        "start": 2.8,
+        "end": 3.786125
+      },
+      {
+        "text": "explainer",
+        "start": 4.216666,
+        "end": 5.008332
       },
       {
         "text": "你还想了解什么",
-        "start": 1.522208,
-        "end": 2.716666
+        "start": 5.341666,
+        "end": 6.341666
       },
       {
         "text": "评论区告诉我",
-        "start": 3.133333,
-        "end": 4.355541
+        "start": 6.605541,
+        "end": 7.591666
       }
     ],
     "visualType": "voiceover",

@@ -119,7 +119,7 @@ def _whisper_transcribe(
         raise TranscriptError(f"faster-whisper 未安装,无法兜底转写: {e}") from e
 
     try:
-        model = WhisperModel("small", device="cpu", compute_type="int8")
+        model = WhisperModel("/home/soffy/models/faster-whisper-large-v3-turbo", device="cpu", compute_type="int8")
         segments, _info = model.transcribe(str(video_path), language=language)
         out: list[TranscriptSegment] = []
         for seg in segments:
