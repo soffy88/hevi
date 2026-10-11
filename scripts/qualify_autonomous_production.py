@@ -156,8 +156,9 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
                 "quality": prod.get("quality_report") or fulfill.get("quality") or {},
                 "provenance": prod.get("provenance") or fulfill.get("provenance") or {},
             })
+            raw_reason = str(job.reason or violation or "")
             blocker = None if not violation else (job.reason or violation)
-            if blocker and passed_qa:  # Override blocker if physical QA passes
+            if blocker and passed_qa and "placeholder" not in raw_reason.lower():  # Override blocker only if physical QA passes and not a placeholder
                 blocker = None
             status = "completed" if not blocker else ("blocked" if job.status == "blocked" else "failed")
             rows.append({

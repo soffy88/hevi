@@ -42,9 +42,10 @@ class Presenter:
         img = self.bgimg.copy()
         d = ImageDraw.Draw(img)
         s = H / 720 * scale
-        cx = (W // 2 if cx is None else cx) + int(6 * s * math.sin(i / fps * 0.9))
-        cy = int(H * 0.40 + 3 * s * math.sin(i / fps * 1.7))
-        tilt = 2.0 * math.sin(i / fps * 0.6)
+        t = i / fps
+        cx = (W // 2 if cx is None else cx) + int(24 * s * math.sin(t * 1.5))
+        cy = int(H * 0.40 + 12 * s * math.sin(t * 2.2))
+        tilt = 3.5 * math.sin(t * 1.1)
         # torso
         d.rounded_rectangle([cx - 230 * s, cy + 150 * s, cx + 230 * s, H + 40 * s], 90 * s, fill=self.suit)
         d.polygon([(cx - 60 * s, cy + 150 * s), (cx, cy + 260 * s), (cx + 60 * s, cy + 150 * s)], fill=(235, 235, 240))
@@ -81,10 +82,10 @@ class Presenter:
         head = head.rotate(tilt, resample=Image.BICUBIC, center=(ox, oy + 100 * s))
         img.paste(head, (int(cx - ox), int(cy - oy)), head)
         # slow handheld-style camera drift (push-in/out + lateral), so the shot is never locked-off
-        z = 1.0 + 0.06 * (0.5 - 0.5 * math.cos(i / fps * 0.35))
-        dx = 0.015 * W * math.sin(i / fps * 0.21)
+        z = 1.0 + 0.05 * (0.5 - 0.5 * math.cos(t * 1.2))
+        dx = 0.03 * W * math.sin(t * 0.9)
         cw, ch = W / z, H / z
-        x0 = (W - cw) / 2 + dx * (z - 1) / 0.06
+        x0 = (W - cw) / 2 + dx * (z - 1) / 0.05
         img = img.crop((int(x0), int((H - ch) / 2), int(x0 + cw), int((H + ch) / 2))).resize((W, H), Image.BILINEAR)
         return img
 

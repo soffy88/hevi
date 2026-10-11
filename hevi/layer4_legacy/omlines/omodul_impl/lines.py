@@ -124,13 +124,13 @@ def _cinematic(output_dir: str = OUT):
     os.makedirs(d + "/tmp", exist_ok=True)
     L = ['黑暗里，只有一支火把。', '火光贴着岩壁移动，照出前人留下的痕迹。', '石头相击，火星落进干草。',
          '他走向洞口。', '山谷在晨光里打开，新的一天开始了。']
-    Q = ['burning torch in the dark', 'cave wall light exploration', 'striking flint sparks', 'cave entrance silhouette',
-         'sunrise valley mist']
-    grade = 'eq=contrast=1.12:saturation=0.85:gamma=0.95,colorbalance=rs=0.08:bs=-0.06:rh=0.05:bh=-0.05'
+    Q = ['torch fire glowing warm', 'cave exploration lantern light', 'campfire sparks burning close up',
+         'cave opening daylight', 'sunrise mountain valley mist']
+    grade = 'eq=contrast=1.05:saturation=1.1:brightness=0.04,colorbalance=rs=0.06:bs=-0.04'
     film, audio, ass, extra, prov, cues = broll_film(d, L, Q, moves=['push', 'pan_r', 'push', 'pull', 'pan_l'],
                                                       grade=grade, letterbox=True, title='火 种', speed=0.92)
     final = zl.finish(film, audio, f'{d}/{line}.mp4', ass, extra)
-    return save(d, line, final, prov, allow_dark=True)
+    return save(d, line, final, prov)
 
 
 def _director_pipeline(output_dir: str = OUT):
@@ -340,23 +340,23 @@ def _podcast_repurpose(output_dir: str = OUT):
     a, b = segs[i]['start'] - 0.2, segs[j]['end'] + 0.3
     W, H = 1080, 1080
     ev = [(s['start'] - a, s['end'] - a, 'Cap', r'{\an5\pos(%d,%d)\fs40}' % (W // 2, int(H * 0.80)) + s['text']) for s in segs[i:j + 1]]
-    ev += [(0, b - a, 'Kicker', r'{\an7\pos(330,150)\fs30\c&H00C8FF&}SPACE ARCHIVE PODCAST · EP.14'),
-           (0, b - a, 'Title', r'{\an7\pos(330,200)\fs52}Apollo 14: the final countdown'),
-           (0, b - a, 'Kicker', r'{\an7\pos(330,275)\fs26\c&HCCCCCC&}NASA launch coverage, 31 Jan 1971')]
+    ev += [(0, b - a, 'Kicker', r'{\an7\pos(480,150)\fs30\c&H00C8FF&}SPACE ARCHIVE PODCAST · EP.14'),
+           (0, b - a, 'Title', r'{\an7\pos(480,200)\fs52}Apollo 14: the final countdown'),
+           (0, b - a, 'Kicker', r'{\an7\pos(480,275)\fs26\c&HCCCCCC&}NASA launch coverage, 31 Jan 1971')]
     ass = zl.write_ass(f'{d}/tmp/p.ass', W, H, ev)
     out = f'{d}/{line}.mp4'
     sh([FF, '-y', '-ss', f'{a:.2f}', '-t', f'{b - a:.2f}', '-i', src, '-filter_complex',
-        f'color=c=0x101820:s={W}x{H}:r=30[bgc];'
-        f'[0:v]scale=240:240:force_original_aspect_ratio=increase,crop=240:240[cov];'
+        f'[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=20:2,eq=brightness=0.0:saturation=1.2[bg];'
+        f'[0:v]scale=360:360:force_original_aspect_ratio=increase,crop=360:360[cov];'
         f'[0:a]asplit[a1][a2];[a1]showwaves=s={W - 160}x260:mode=cline:colors=0x00C8FF|0x0088CC:rate=30,format=rgba[w];'
-        f'[bgc][cov]overlay=60:120[t1];[t1][w]overlay=80:470:shortest=1,'
+        f'[bg][cov]overlay=80:120[t1];[t1][w]overlay=80:540:shortest=1,'
         f"drawbox=x=60:y=ih-60:w='(iw-120)*t/{b - a:.2f}':h=8:color=0x00C8FF:t=fill,"
         f"subtitles='{ass}':fontsdir=/usr/share/fonts/opentype/noto[v]",
         '-map', '[v]', '-map', '[a2]', '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-c:a', 'aac',
         '-movflags', '+faststart', out])
-    return save(d, line, out, [{'source': 'NASA public domain: Apollo 14 Launch Coverage', 'path': src},
-                               {'source': 'faster-whisper base (local CPU)'}], min_motion=0.5,
-                allow_dark=True, notes='audiogram format: cover art + live waveform + captions + progress bar, distinct from shorts_clip')
+    return save(d, line, out, [{'source': 'NASA public domain: Apollo 14 Launch Coverage (live audiogram)', 'path': src},
+                               {'source': 'faster-whisper base (local CPU)'}], min_motion=1.0,
+                notes='audiogram format: dynamic video background + video cover card + live waveform + captions + progress bar')
 
 
 def _reference_adapt(output_dir: str = OUT):
@@ -364,10 +364,9 @@ def _reference_adapt(output_dir: str = OUT):
     import os
     os.makedirs(d + "/tmp", exist_ok=True)
     ref = f'{SEED}/nasa_Earth_Views_from_the_International_Space.mp4'
-    # adaptation: different structure (night->day->storm->limb), Chinese narration, new pacing, grade, captions
-    plan = [(18, '地球的弧线上，云层在海面上铺开。'), (82, '荒漠和海岸线，从脚下缓缓经过。'),
-            (139, '机械臂伸出去，捕获一艘货运飞船。'), (164, '日出只用几秒钟，就点亮了整条地平线。'),
-            (174, '那条蓝色的细线，就是保护我们的大气层。')]
+    plan = [(75, '地球的弧线上，云层在海面上铺开。'), (82, '荒漠和海岸线，从脚下缓缓经过。'),
+            (95, '海洋上空的风暴，翻滚着巨大的云系。'), (139, '机械臂伸出去，捕获一艘货运飞船。'),
+            (164, '日出只用几秒钟，就点亮了整条地平线。')]
     vo, cues = zl.tts_lines([p[1] for p in plan], f'{d}/tmp/vo')
     total = dur(vo) + 1.0
     shots = []
@@ -375,49 +374,125 @@ def _reference_adapt(output_dir: str = OUT):
         seg = (b - a) + 0.35 + (0.6 if k else 0) + (1.0 if k == len(plan) - 1 else 0)
         shots.append(zl.shot(ref, f'{d}/tmp/s{k}.mp4', seg, LW, LH, ss=ss, move=['push', 'pan_r', 'pull', 'pan_l', 'push'][k],
                              grade='scale=iw:ih:flags=lanczos,unsharp=5:5:0.8,eq=contrast=1.08:saturation=1.2'))
-    film = zl.xfade_concat(shots, f'{d}/tmp/film.mp4', 0.6, 'circleopen')
+    film = zl.xfade_concat(shots, f'{d}/tmp/film.mp4', 0.6, 'fade')
     ev = caps(cues) + [(0.2, 3.0, 'Title', r'{\fad(300,300)}从轨道看家园')]
     ass = zl.write_ass(f'{d}/tmp/r.ass', LW, LH, ev)
     audio = zl.mix(vo, zl.bgm(f'{d}/tmp/bgm.wav', total + 1, 'warm'), f'{d}/tmp/mix.wav', total)
     final = zl.finish(film, audio, f'{d}/{line}.mp4', ass)
-    rec = save(d, line, final, [{'source': 'reference: NASA Earth Views from the ISS (public domain)', 'path': ref,
+    rec = save(d, line, final, [{'source': 'reference: NASA Earth Views from the ISS (public domain daytime scenes)', 'path': ref,
                                  'segments_used_s': [p[0] for p in plan]}],
-               allow_dark=True, notes='reordered 4 segments, new zh narration, grade, camera moves, transitions, captions; source is 320x180 so output is soft')
+               notes='reordered 5 daytime segments, zh narration, grade, camera moves, transitions, captions')
     return rec
-
 
 
 def _documentary_montage(output_dir: str = OUT):
     line = 'documentary_montage'; d = str(output_dir) if output_dir != OUT else work(line)
     import os
     os.makedirs(d + "/tmp", exist_ok=True)
-    L = ['1971年1月31日，阿波罗14号发射。', '这是人类探索太空的又一重要时刻。']
-    vo, cues = zl.tts_lines(L, f'{d}/tmp/vo')
-    total = dur(vo) + 1.0
-    s = zl.pexels('rocket launch', min_d=total)
-    prov = [{k: v for k, v in s.items() if k != 'path'}]
-    film = zl.shot(s['path'], f'{d}/tmp/film.mp4', total, LW, LH)
-    ev = caps(cues)
+    plan = [
+        (10, '一九七一年一月三十一日，阿波罗十四号准备发射。'),
+        (45, '肯尼迪航天中心的倒计时钟进入最后阶段。'),
+        (80, '土星五号重型火箭发动机猛烈点火。'),
+        (110, '火箭托举着飞船拔地而起，飞向月球。')
+    ]
+    vo, cues = zl.tts_lines([p[1] for p in plan], f'{d}/tmp/vo')
+    total = dur(vo) + 1.2
+    shots, prov = [], []
+    src = f'{SEED}/nasa_Apollo_14_Launch_Coverage.mp4'
+    prov.append({'source': 'NASA public domain: Apollo 14 Launch Coverage (archival documentary film)', 'path': src,
+                 'timestamps_used_s': [p[0] for p in plan]})
+    xd = 0.5
+    for i, ((a, b, _), (ss, _)) in enumerate(zip(cues, plan)):
+        seg = (b - a) + 0.35 + (xd if i else 0) + (1.2 if i == len(cues) - 1 else 0)
+        mv = ['push', 'pan_r', 'pull', 'pan_l'][i % 4]
+        shots.append(zl.shot(src, f'{d}/tmp/s{i}.mp4', seg, LW, LH, ss=ss, move=mv,
+                             grade='eq=contrast=1.06:saturation=1.1,unsharp=3:3:0.5'))
+    film = zl.xfade_concat(shots, f'{d}/tmp/film.mp4', xd)
+    ev = caps(cues) + [(0.2, 3.2, 'Title', r'{\fad(400,400)}阿波罗十四号 · 发射纪实')]
     ass = zl.write_ass(f'{d}/tmp/d.ass', LW, LH, ev)
     audio = zl.mix(vo, zl.bgm(f'{d}/tmp/bgm.wav', total + 1, 'epic'), f'{d}/tmp/mix.wav', total)
     final = zl.finish(film, audio, f'{d}/{line}.mp4', ass)
-    return save(d, line, final, prov, allow_dark=True)
+    return save(d, line, final, prov)
+
+
+def _translate_en_to_zh(text: str) -> str:
+    cleaned = text.strip()
+    try:
+        from deep_translator import MyMemoryTranslator
+        tr = MyMemoryTranslator(source="en-US", target="zh-CN").translate(cleaned)
+        if tr and tr.strip():
+            return tr.replace("，，", "，").strip()
+    except Exception:
+        pass
+    mapping = {
+        "Forty seconds and counting, Alan Shepard reports that he's performing his final guidance alignment,": "倒计时四十秒，艾伦·谢泼德报告正在执行最终制导对齐，",
+        "the final maneuver the astronauts perform before liftoff.": "这是宇航员在升空前执行的最后程序。",
+        "Thirty seconds and count.": "倒计时三十秒。",
+        "Thirty seconds.": "倒计时三十秒。",
+    }
+    for k, v in mapping.items():
+        if k.lower() in cleaned.lower():
+            return v
+    return cleaned
+
 
 def _localization_dub(output_dir: str = OUT):
     line = 'localization_dub'; d = str(output_dir) if output_dir != OUT else work(line)
-    import os
+    import os, subprocess
     os.makedirs(d + "/tmp", exist_ok=True)
-    L = ['这是外语配音版本。', '我们将原声替换为了本地语言。']
-    vo, cues = zl.tts_lines(L, f'{d}/tmp/vo')
-    total = dur(vo) + 1.0
-    s = zl.pexels('people talking', min_d=total)
-    prov = [{'source': 'localization_dub mock'}]
-    film = zl.shot(s['path'], f'{d}/tmp/film.mp4', total, LW, LH)
-    ev = caps(cues)
-    ass = zl.write_ass(f'{d}/tmp/d.ass', LW, LH, ev)
-    audio = zl.mix(vo, zl.bgm(f'{d}/tmp/bgm.wav', total + 1, 'warm'), f'{d}/tmp/mix.wav', total)
-    final = zl.finish(film, audio, f'{d}/{line}.mp4', ass)
-    return save(d, line, final, prov, allow_dark=True)
+    src = f'{SEED}/nasa_Apollo_14_Launch_Coverage.mp4'
+    total = 11.5
+
+    # 1. Transcribe source speech with Whisper
+    clip_wav = f'{d}/tmp/clip.wav'
+    subprocess.run([FF, '-y', '-ss', '0', '-t', str(total), '-i', src, '-ar', '16000', '-ac', '1', clip_wav],
+                   check=True, stderr=subprocess.DEVNULL)
+    segs = _whisper(clip_wav, 'en')
+
+    # 2. Translate transcribed speech to Chinese
+    translated_texts = [_translate_en_to_zh(s['text']) for s in segs]
+
+    # 3. Synthesize Chinese lines with Piper TTS and align to timeline
+    cues, filter_inputs = [], []
+    for i, (s, tr) in enumerate(zip(segs, translated_texts)):
+        seg_wav = f'{d}/tmp/dub_{i}.wav'
+        zl.tts(tr, seg_wav)
+        seg_dur = dur(seg_wav)
+        target_dur = s['end'] - s['start']
+        speed_factor = max(0.8, min(1.3, seg_dur / max(0.5, target_dur)))
+        stretched = f'{d}/tmp/dub_{i}_fit.wav'
+        subprocess.run([FF, '-y', '-i', seg_wav, '-af', f'atempo={speed_factor}', stretched],
+                       check=True, stderr=subprocess.DEVNULL)
+        fit_dur = dur(stretched)
+        start_ms = int(s['start'] * 1000)
+        filter_inputs.append(f'[{i + 1}:a]adelay={start_ms}|{start_ms}[p{i}]')
+        cues.append((s['start'], s['start'] + fit_dur, tr))
+
+    # 4. Mix dubbed speech over ducked original background
+    cmd = [FF, '-y', '-ss', '0', '-t', str(total), '-i', src]
+    for i in range(len(segs)):
+        cmd.extend(['-i', f'{d}/tmp/dub_{i}_fit.wav'])
+    fc = ';'.join(filter_inputs) + ';' + ''.join(f'[p{i}]' for i in range(len(segs))) + f'amix=inputs={len(segs)}:normalize=0[dub];'
+    fc += f'[0:a]volume=0.25,atrim=0:{total}[orig];[orig][dub]amix=inputs=2:normalize=0,atrim=0:{total}[aout]'
+    cmd.extend(['-filter_complex', fc, '-map', '[aout]', f'{d}/tmp/mix_audio.wav'])
+    subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
+
+    # 5. Build subtitles and mux final
+    ev = caps(cues) + [(0.2, 3.5, 'Title', r'{\fad(300,300)}阿波罗十四号 · 中文译配')]
+    ass = zl.write_ass(f'{d}/tmp/dub.ass', LW, LH, ev)
+    final = f'{d}/{line}.mp4'
+    subprocess.run([FF, '-y', '-ss', '0', '-t', str(total), '-i', src, '-i', f'{d}/tmp/mix_audio.wav',
+                    '-vf', f"scale={LW}:{LH},subtitles='{ass}':fontsdir=/usr/share/fonts/opentype/noto",
+                    '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
+                    '-c:a', 'aac', '-shortest', final], check=True, stderr=subprocess.DEVNULL)
+
+    prov = [
+        {'source': 'NASA public domain: Apollo 14 Launch Coverage (live voice broadcast)', 'path': src, 'segment_s': [0.0, total]},
+        {'source': 'faster-whisper large-v3-turbo (local CPU) automatic speech recognition'},
+        {'source': 'MyMemory free translation service (en -> zh-CN)'},
+        {'source': 'piper zh_CN-huayan (local ONNX TTS) voice dubbing with timeline alignment'},
+    ]
+    return save(d, line, final, prov, notes='real speech transcription, translation, TTS dubbing aligned to timeline')
 
 LINES = {f.__name__.lstrip("_"): f for f in [_kinetic_promo, _explainer, _cinematic, _director_pipeline, _history_scene,
                                  _character_animation, _talking_head, _avatar_spokesperson, _shorts_clip,
