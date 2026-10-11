@@ -236,12 +236,15 @@ async function main() {
     console.log(`\r${sc.name}: done ${frames} frames in ${r.seconds.toFixed(0)}s  (${total.toFixed(1)}s)`);
     await r.closed;
 
+    // 时长上界：apad/anullsrc 都是无限流，必须用显式 whole_dur / -t 收口，
+    // 否则 ffmpeg 7.x 在 `-c:v copy` + `-shortest` 下会空转不退出（实测挂死）。
+    const durCap = total.toFixed(3);
     if (isCard) {
-      await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', rawVideo, '-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', outMp4]);
+      await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', rawVideo, '-f', 'lavfi', '-t', durCap, '-i', 'anullsrc=r=48000:cl=stereo', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-t', durCap, outMp4]);
     } else {
       await run('ffmpeg', ['-y', '-loglevel', 'error', '-i', rawVideo, '-i', audio,
-        '-filter_complex', `[1:a]adelay=${Math.round(LEAD * 1000)}|${Math.round(LEAD * 1000)},apad,aformat=sample_rates=48000:channel_layouts=stereo[a]`,
-        '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', outMp4]);
+        '-filter_complex', `[1:a]adelay=${Math.round(LEAD * 1000)}|${Math.round(LEAD * 1000)},apad=whole_dur=${durCap},aformat=sample_rates=48000:channel_layouts=stereo[a]`,
+        '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-t', durCap, outMp4]);
     }
     if (fs.existsSync(rawVideo)) fs.unlinkSync(rawVideo);
   }

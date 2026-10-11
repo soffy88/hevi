@@ -171,7 +171,10 @@ def produce_whiteboard(
                 "minSeconds": 0.35,
                 "gapSeconds": 0.12,
                 "charSeconds": [0.06, 0.2],
-                "overflow": 0.35,
+                # 0.0：每个 beat 的笔迹必须在本句旁白结束前画完（不侵占下一句的窗口），
+                # 这样 whisper 逐句时间戳与白板内容严格同步，不会出现"字幕已到下一条、
+                # 白板还在画上一条"的滞后。
+                "overflow": 0.0,
                 "travelMax": 1.6,
                 "fillMaxSeconds": 1.2,
             },
@@ -211,9 +214,15 @@ def produce_whiteboard(
     (landscape_dir / "scenes.js").write_text(landscape_js, encoding="utf-8")
     (portrait_dir / "scenes.js").write_text(portrait_js, encoding="utf-8")
 
-    # Build scene Excalidraw documents
-    subprocess.run(["node", "scenes.js"], cwd=landscape_dir, check=True)
-    subprocess.run(["node", "scenes.js"], cwd=portrait_dir, check=True)
+    # Build scene Excalidraw documents (pass the orientation config so brand accent /
+    # caption safe-line warnings use the same settings as the renderer).
+    env_ls_scenes = os.environ.copy()
+    env_ls_scenes["PATH"] = f"/home/soffy/.local/bin:{env_ls_scenes.get('PATH', '')}"
+    env_ls_scenes["WB_CONFIG_PATH"] = str(landscape_cfg_path)
+    env_pt_scenes = dict(env_ls_scenes)
+    env_pt_scenes["WB_CONFIG_PATH"] = str(portrait_cfg_path)
+    subprocess.run(["node", "scenes.js"], cwd=landscape_dir, check=True, env=env_ls_scenes)
+    subprocess.run(["node", "scenes.js"], cwd=portrait_dir, check=True, env=env_pt_scenes)
 
     # Audio synthesis and alignment: done once and shared
     audio_dir = landscape_dir / "work" / "audio"
