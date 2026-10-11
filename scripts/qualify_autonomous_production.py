@@ -122,8 +122,8 @@ def _blocker_matrix_row(line: str, row: dict[str, Any]) -> dict[str, Any]:
     elif row.get("provider") == "NIM" and "network_error" in lowered:
         kind, stage, remediation = "PROVIDER_CONFIGURATION", "provider_call", "audit NIM endpoint/model/function/account entitlement and configure an available route"
         software, env, inp, quality = False, True, False, False
-    elif "wav2lip" in lowered or "talkcraft" in lowered or "piper" in lowered:
-        kind, stage, remediation = "PROVIDER_RUNTIME", "render/avatar", "check the talkcraft host runtime (HEVI_TALKCRAFT_PIPER voice, Wav2Lip ONNX model) and rerun talking_head/avatar_spokesperson"
+    elif "wav2lip" in lowered or "talkcraft" in lowered or "piper" in lowered or "remotion render" in lowered:
+        kind, stage, remediation = "PROVIDER_RUNTIME", "render/avatar", "check the talkcraft host runtime (HEVI_TALKCRAFT_PIPER voice, Wav2Lip ONNX model, hevi-remotion-talkcraft gen-index: node scripts/gen-index.mjs) and rerun talking_head/avatar_spokesperson"
         software, env, inp, quality = False, True, False, False
     elif "pexels" in lowered:
         kind, stage, remediation = "PROVIDER_CREDENTIAL", "sourcing/stock", "configure PEXELS_API_KEY (free) for zero-engine b-roll lines"
