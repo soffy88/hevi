@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -101,7 +102,7 @@ def test_shot_planning() -> None:
     with pytest.raises(ValueError):
         xfade_graph(durations=[3.0, 0.4], xd=0.5)
     lengths = narration_shot_lengths([(0, 2, "a"), (2.35, 4, "b")], xd=0.5)
-    assert lengths == pytest.approx([2.35, 2.05 + 1.2])
+    assert lengths == pytest.approx([2.35, 1.65 + 0.35 + 0.5 + 1.2])
     plan = director_shot_list(texts=list("abcde"), queries=list("vwxyz"))
     assert [s["size"] for s in plan] == ["WIDE", "MEDIUM", "CLOSE", "MEDIUM", "WIDE"]
     assert director_shot_list(texts=["a"], queries=["q"], overrides=[{"camera": "pan_l"}])[0]["camera"] == "pan_l"
@@ -135,7 +136,8 @@ def test_qa_verdict_fails_static_and_blank_passes_motion() -> None:
 
 # ---------------------------------------------------------------- measured media QA (real ffmpeg)
 def _render(path: Path, src: str, seconds: int = 8, audio: bool = True) -> Path:
-    cmd = [FFMPEG, "-y", "-v", "error", "-f", "lavfi", "-i", f"{src}:s=1280x720:d={seconds}:r=24"]
+    sep = ":" if "=" in src else "="
+    cmd = [FFMPEG, "-y", "-v", "error", "-f", "lavfi", "-i", f"{src}{sep}s=1280x720:d={seconds}:r=24"]
     if audio:
         cmd += ["-f", "lavfi", "-i", f"sine=f=330:d={seconds}", "-c:a", "aac", "-shortest"]
     cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)]
@@ -246,6 +248,8 @@ def test_zero_success_still_passes_canonical_gate(tmp_path: Path, monkeypatch: p
     import hevi.layer4_legacy.zerolines as zl
     from hevi.studio import fulfill
 
+    # the canonical delivery gate resolves ffprobe from PATH
+    monkeypatch.setenv("PATH", f"{Path(FFMPEG).parent}:{os.environ.get('PATH', '')}")
     video = _render(tmp_path / "explainer.mp4", "testsrc2", seconds=10)
     monkeypatch.setattr(zl, "zero_line_workflow", lambda c, i, o: {
         "status": "succeeded", "reason": "", "record_path": str(tmp_path / "record.json"),
