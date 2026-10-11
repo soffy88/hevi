@@ -125,13 +125,13 @@ async def synthesize_storyboard(
     是相对 public/ 的路径(Remotion staticFile() 约定),不是绝对路径。
     """
     provider = (provider or _provider()).strip().lower()
-    if provider not in {"cosyvoice", "voicebox", "edge_tts"}:
+    if provider not in {"cosyvoice", "voicebox", "edge_tts", "piper"}:
         raise VoiceoverError(f"不支持的解说 TTS provider: {provider}")
     manifest: list[ManifestSegment] = []
     cursor = 0.0
     for seg in storyboard.segments:
         active_provider = provider
-        suffix = "wav" if provider in {"cosyvoice", "voicebox"} else "mp3"
+        suffix = "wav" if provider in {"cosyvoice", "voicebox", "piper"} else "mp3"
         out_path = audio_dir / f"{seg.id}.{suffix}"
         words: list[dict[str, Any]] = []
         try:
@@ -151,6 +151,9 @@ async def synthesize_storyboard(
                 )
             elif provider == "voicebox":
                 await synthesize_voicebox(seg.narration, out_path)
+            elif provider == "piper":
+                from hevi.audio.piper_tts_service import synth_with_piper
+                await synth_with_piper(seg.narration, out_path, voice=voice)
             else:
                 words = await _synthesize(seg.narration, out_path, voice=_edge_voice(voice), rate=rate)
         except Exception as e:

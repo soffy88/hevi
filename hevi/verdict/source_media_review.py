@@ -49,12 +49,11 @@ def detect_media_type(path: Path) -> str | None:
 
 def _ffprobe_json(path: Path) -> dict[str, Any] | None:
     """ffprobe 整文件 JSON(-show_format -show_streams)。失败返回 None。"""
-    if not shutil.which("ffprobe"):
-        return None
+    ffprobe_bin = "/home/soffy/.local/bin/ffprobe" if Path("/home/soffy/.local/bin/ffprobe").exists() else "ffprobe"
     try:
         result = subprocess.run(
             [
-                "ffprobe",
+                ffprobe_bin,
                 "-v",
                 "quiet",
                 "-print_format",
@@ -130,8 +129,8 @@ def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) ->
         scenes = _detect_scenes(path)
         result["technical_probe"] = {
             "duration_seconds": float(fmt.get("duration", 0) or 0),
-            "resolution": f"{v.get('width', '?'),
-            "scenes": scenes}x{v.get('height', '?')}",
+            "resolution": f"{v.get('width', '?')}x{v.get('height', '?')}",
+            "scenes": scenes,
             "fps": _parse_fps(str(v.get("r_frame_rate", "0/1"))),
             "codec": v.get("codec_name", "unknown"),
             "audio_codec": a.get("codec_name", ""),

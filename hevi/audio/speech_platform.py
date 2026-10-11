@@ -107,6 +107,17 @@ _TTS_SPECS: tuple[dict[str, Any], ...] = (
         "implementation": "hevi-adapter",
     },
     {
+        "id": "piper",
+        "name": "Piper TTS",
+        "mode": "local",
+        "requires_gpu": False,
+        "languages": ("zh", "en"),
+        "capabilities": ("tts", "cpu", "low_latency"),
+        "description": "Piper 本地离线高频中文旁白 (CPU-only zero cost)。",
+        "setup": "通过 hevi-zero 目录读取预装的 onnx 模型。",
+        "implementation": "hevi-adapter",
+    },
+    {
         "id": "pocket_tts",
         "name": "Pocket TTS",
         "mode": "local",
@@ -325,6 +336,20 @@ def list_voice_profiles() -> list[VoiceProfile]:
             ("rafael", "pt"),
         )
         if voice not in {profile.id for profile in profiles}
+    )
+    profiles.extend(
+        VoiceProfile(
+            id=voice,
+            name=f"Piper · {voice}",
+            source="builtin",
+            engine="piper",
+            language=language,
+            attributes={"provider_voice": voice, "cpu": True},
+        )
+        for voice, language in (
+            ("zh", "zh"),
+            ("en", "en"),
+        )
     )
     return profiles
 

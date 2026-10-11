@@ -184,119 +184,50 @@ async def _fulfill_stock_visuals(
     *,
     user_id: str = "explainer_session",
 ) -> None:
-    """🚨 v9.0: 视觉素材装填 —— 为 stock_broll cues 检索真实画面。
-
-    遍历所有 cues，对 visual_type==stock_broll 且没有 mediaUrl 的条目：
-    1. 从 cue.visual_search_query 提取关键词
-    2. 调用 StockSearchService.search() 检索 Pexels
-    3. 下载并通过 media-use 台账冻结到本地，再写入 cue.visual_config[assetUrl]
-    4. 如果检索失败，降级为 browser_broll fallback（用 search query 搜图）
-    """
+    import os
+    from hevi.sourcing.corpus import Corpus
+    corpus_dir = Path(os.environ.get("HEVI_CORPUS_DIR", "data/corpus"))
+    corpus = Corpus.load(corpus_dir)
+    api_key = os.environ.get("PEXELS_API_KEY", "")
 
     for idx, cue in enumerate(cues):
         if cue.visual_type != "stock_broll":
             continue
-
-        # Skip if already has a media URL
         if cue.visual_config.get("assetUrl"):
             continue
-
-        query = getattr(cue, "visual_search_query", "") or ""
+        query = getattr(cue, "visual_search_query", "") or getattr(cue, "text", "")
         if not query.strip():
-            logger.warning(f"stock_broll cue {idx} missing visual_search_query; skipping")
-            cue.visual_type = "voiceover"  # degrade gracefully
+            cue.visual_type = "voiceover"
             continue
+            
+        import asyncio
+        tasks = [
+            corpus.add_archive_org(query=query, count=2),
+            corpus.add_nasa_api(query=query, count=2),
+            corpus.add_wikimedia_commons(query=query, count=2),
+        ]
+        if api_key:
+            tasks.append(corpus.add_pexels(query=query, count=2, api_key=api_key))
+        
+        await asyncio.gather(*tasks, return_exceptions=True)
+        corpus.save()
 
-        try:
-            results = await stock_svc.search(
-                user_id=user_id,
-                query=query,
-                media_type="video",
-                count=3,
-            )
-            if results:
-                best = results[0] if isinstance(results, list) else results.get("results", [{}])[0]
-                if not isinstance(best, dict):
-                    continue
-                preview = best.get("preview_url") or best.get("video_url")
-                if preview:
-                    try:
-                        frozen = _freeze_stock_url(
-                            str(preview),
-                            media_type="video",
-                            intent=query,
-                            output_dir=output_dir,
-                            source_metadata={
-                                "provider": best.get("provider") or "stock_search",
-                                "source_page": (
-                                    best.get("source_page")
-                                    or best.get("source_url")
-                                    or best.get("page_url")
-                                ),
-                                "asset_id": (
-                                    best.get("asset_id")
-                                    or best.get("external_id")
-                                    or best.get("id")
-                                ),
-                                "intent": query,
-                            },
-                        )
-                    except Exception as exc:
-                        logger.warning("stock_broll cue %s freeze failed: %s", idx, exc)
-                    else:
-                        cue.visual_config["assetUrl"] = str(frozen)
-                        logger.info("stock_broll cue %s: froze %s", idx, frozen)
-                        continue
-        except Exception as exc:
-            logger.warning(f"Pexels search failed for cue {idx}: {exc}")
-
-        # Fallback: use image instead of video
-        try:
-            img_results = await stock_svc.search(
-                user_id=user_id,
-                query=query,
-                media_type="image",
-                count=1,
-            )
-            if img_results:
-                best = (
-                    img_results[0]
-                    if isinstance(img_results, list)
-                    else img_results.get("results", [{}])[0]
-                )
-                if not isinstance(best, dict):
-                    continue
-                img_url = best.get("thumbnail_url") or best.get("preview_url")
-                if img_url:
-                    try:
-                        frozen = _freeze_stock_url(
-                            str(img_url),
-                            media_type="image",
-                            intent=query,
-                            output_dir=output_dir,
-                            source_metadata={
-                                "provider": best.get("provider") or "stock_search",
-                                "source_page": (
-                                    best.get("source_page")
-                                    or best.get("source_url")
-                                    or best.get("page_url")
-                                ),
-                                "asset_id": (
-                                    best.get("asset_id")
-                                    or best.get("external_id")
-                                    or best.get("id")
-                                ),
-                                "intent": query,
-                            },
-                        )
-                    except Exception as exc:
-                        logger.warning("stock_broll cue %s image freeze failed: %s", idx, exc)
-                    else:
-                        cue.visual_config["assetUrl"] = str(frozen)
-                        logger.info("stock_broll cue %s: froze fallback image %s", idx, frozen)
-        except Exception as img_exc:
-            logger.error(f"All stock fallbacks failed for cue {idx}: {img_exc}")
-            cue.visual_type = "voiceover"  # last resort: no visual
+        hit = corpus.best_for_slot(query)
+        if hit and "local_abs_path" in hit:
+            import shutil
+            remotion_public = Path(__file__).resolve().parent.parent.parent / "hevi-remotion" / "public"
+            dest = remotion_public / "stock" / Path(hit["local_abs_path"]).name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(hit["local_abs_path"], dest)
+            cue.visual_config["assetUrl"] = f"stock/{dest.name}"
+            
+            # Write provenance
+            prov = output_dir / "provenance.jsonl"
+            with open(prov, "a") as f:
+                import json
+                f.write(json.dumps(hit, ensure_ascii=False) + "\n")
+        else:
+            cue.visual_type = "voiceover"
 
 
 PREVIEW_SECONDS = PREVIEW_TARGET_SECONDS
@@ -448,7 +379,7 @@ async def assemble_explainer_cues(
             cue.visual_type = "voiceover"
             cue.highlight_selector = None
     # 🚨 v9.0: 视觉素材装填 —— stock_broll 检索真实画面（在 HeyGen 之前）
-    if enable_stock_broll and stock_service is not None:
+    if enable_stock_broll:
         await _fulfill_stock_visuals(
             prepared_cues, stock_service, output_dir, user_id=stock_user_id
         )

@@ -610,7 +610,7 @@ def _extract_first_frame(video: Path, out: Path) -> Path:
     try:
         subprocess.run(
             [
-                "ffmpeg",
+                "/home/soffy/.local/bin/ffmpeg",
                 "-y",
                 "-v",
                 "error",
@@ -627,7 +627,7 @@ def _extract_first_frame(video: Path, out: Path) -> Path:
         )
         if out.exists() and out.stat().st_size > 0:
             return out
-    except OSError, subprocess.TimeoutExpired:
+    except (OSError, subprocess.TimeoutExpired):
         pass
     return out  # 不存在 → 调用方检查 exists
 

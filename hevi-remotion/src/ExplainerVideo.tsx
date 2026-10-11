@@ -84,7 +84,7 @@ const VisualOverlay: React.FC<{
   const assetSrc = typeof asset === "string"
     ? asset.startsWith("http") ? asset : staticFile(asset.replace(/^\//, ""))
     : null;
-  if (visualType === "browser_broll") {
+  if (visualType === "browser_broll" || visualType === "stock_broll") {
     return <BrowserBrollSegment src={assetSrc ?? undefined} />;
   }
   if (visualType === "heygen_avatar") {

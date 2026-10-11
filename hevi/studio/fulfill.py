@@ -331,9 +331,12 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
             line_id=line_id,
         )
 
-    visual_type: Literal["heygen_avatar", "voiceover"] = (
-        "heygen_avatar" if line_id in avatar_lines else "voiceover"
-    )
+    if line_id == "documentary_montage":
+        visual_type = "stock_broll"
+    elif line_id in avatar_lines:
+        visual_type = "heygen_avatar"
+    else:
+        visual_type = "voiceover"
     cues = [
         ExplainerCue(
             text=text,
@@ -342,14 +345,15 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
             if isinstance(item, dict)
             else 5.0,
             visual_config={},
+            visual_search_query=item.get("visual_search_query") if isinstance(item, dict) else None
         )
         for item, text in (
-            (item, str(item.get("text") or item.get("line") or "").strip())
+            (item, str(item.get("text") or item.get("line") or ""))
             if isinstance(item, dict)
-            else (item, str(item).strip())
+            else (item, str(item))
             for item in (order.get("script_lines") or texts)
         )
-        if text
+        if text.strip() or (isinstance(item, dict) and item.get("visual_search_query"))
     ]
     if not cues:
         return _blocked("脚本没有可渲染文本", target="explainer", line_id=line_id)

@@ -2,15 +2,13 @@
   {
     "id": "cue-1",
     "sceneType": "hook",
-    "text": "你知道吗?盐税背后藏着这些细节。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-1.mp3",
-    "durationSec": 5.04,
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-1.wav",
+    "durationSec": 6.0,
     "startSec": 0.0,
-    "keywords": [
-      "你知道吗?盐税背后藏着这些细节。"
-    ],
+    "keywords": [],
     "props": {
-      "title": "你知道吗?盐税背后藏着这",
+      "title": " ",
       "subtitle": "深度解说",
       "items": [
         {
@@ -19,21 +17,12 @@
         }
       ]
     },
-    "captions": [
-      {
-        "text": "你知道吗",
-        "start": 0.105541,
-        "end": 1.216666
-      },
-      {
-        "text": "盐税背后藏着这些细节",
-        "start": 1.661125,
-        "end": 4.049999
-      }
-    ],
-    "visualType": "voiceover",
+    "captions": [],
+    "visualType": "stock_broll",
     "visualConfig": {
-      "time_range": "00:00-05.0s",
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "forest landscape aerial view",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -45,15 +34,13 @@
   {
     "id": "cue-2",
     "sceneType": "definition",
-    "text": "盐税的第1个关键点:值得你记住。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-2.mp3",
-    "durationSec": 4.128,
-    "startSec": 5.04,
-    "keywords": [
-      "盐税的第1个关键点:值得你记住。"
-    ],
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-2.wav",
+    "durationSec": 6.0,
+    "startSec": 6.0,
+    "keywords": [],
     "props": {
-      "question": "盐税的第1个关键点:值得你记住。",
+      "question": " ",
       "formulaHead": "核心概念",
       "formulaLines": [
         "= 事实与证据",
@@ -74,21 +61,12 @@
         "sub": "行动方向"
       }
     },
-    "captions": [
-      {
-        "text": "盐税的第1个关键点",
-        "start": 0.105541,
-        "end": 1.744416
-      },
-      {
-        "text": "值得你记住",
-        "start": 2.119458,
-        "end": 3.147208
-      }
-    ],
-    "visualType": "voiceover",
+    "captions": [],
+    "visualType": "stock_broll",
     "visualConfig": {
-      "time_range": "00:00-05.0s",
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "wild animals in nature savanna",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -100,38 +78,27 @@
   {
     "id": "cue-3",
     "sceneType": "cards",
-    "text": "盐税的第2个关键点:值得你记住。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-3.mp3",
-    "durationSec": 4.224,
-    "startSec": 9.168,
-    "keywords": [
-      "盐税的第2个关键点:值得你记住。"
-    ],
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-3.wav",
+    "durationSec": 6.0,
+    "startSec": 12.0,
+    "keywords": [],
     "props": {
       "header": "关键画面",
       "cards": [
         {
           "emoji": "📰",
           "title": "证据",
-          "desc": "盐税的第2个关键点:值得你记住。"
+          "desc": " "
         }
       ]
     },
-    "captions": [
-      {
-        "text": "盐税的第2个关键点",
-        "start": 0.105541,
-        "end": 1.799999
-      },
-      {
-        "text": "值得你记住",
-        "start": 2.188875,
-        "end": 3.230541
-      }
-    ],
-    "visualType": "voiceover",
+    "captions": [],
+    "visualType": "stock_broll",
     "visualConfig": {
-      "time_range": "00:00-05.0s",
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "ocean waves crashing on the beach",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -143,16 +110,14 @@
   {
     "id": "cue-4",
     "sceneType": "reason",
-    "text": "盐税的第3个关键点:值得你记住。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-4.mp3",
-    "durationSec": 4.176,
-    "startSec": 13.392,
-    "keywords": [
-      "盐税的第3个关键点:值得你记住。"
-    ],
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-4.wav",
+    "durationSec": 6.0,
+    "startSec": 18.0,
+    "keywords": [],
     "props": {
       "question": "为什么重要？",
-      "brainLine": "盐税的第3个关键点:值得你记住。",
+      "brainLine": " ",
       "bubbleText": "把证据放回上下文。",
       "leftLabel": {
         "title": "只看表面",
@@ -163,21 +128,12 @@
         "sub": "做出判断"
       }
     },
-    "captions": [
-      {
-        "text": "盐税的第3个关键点",
-        "start": 0.105541,
-        "end": 1.869457
-      },
-      {
-        "text": "值得你记住",
-        "start": 2.216666,
-        "end": 3.202791
-      }
-    ],
-    "visualType": "voiceover",
+    "captions": [],
+    "visualType": "stock_broll",
     "visualConfig": {
-      "time_range": "00:00-05.0s",
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "sunset over the snow mountains",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -189,43 +145,205 @@
   {
     "id": "cue-5",
     "sceneType": "method",
-    "text": "关于盐税,你还想了解什么?评论区告诉我。",
-    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-5.mp3",
-    "durationSec": 5.304,
-    "startSec": 17.567999999999998,
-    "keywords": [
-      "关于盐税,你还想了解什么?评论区告诉我。"
-    ],
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-5.wav",
+    "durationSec": 6.0,
+    "startSec": 24.0,
+    "keywords": [],
     "props": {
       "header": "三个检查动作",
       "points": [
         {
           "num": "1",
-          "title": "关于盐税,你还想了解什么?评论区告诉我。",
+          "title": " ",
           "sub": "核对来源与时间"
         }
       ]
     },
-    "captions": [
-      {
-        "text": "关于盐税",
-        "start": 0.105541,
-        "end": 1.133333
-      },
-      {
-        "text": "你还想了解什么",
-        "start": 1.522208,
-        "end": 2.716666
-      },
-      {
-        "text": "评论区告诉我",
-        "start": 3.133333,
-        "end": 4.355541
-      }
-    ],
-    "visualType": "voiceover",
+    "captions": [],
+    "visualType": "stock_broll",
     "visualConfig": {
-      "time_range": "00:00-05.0s",
+      "assetUrl": "stock/archive_2354_Roads_to_Romance_Northern_Horizons_.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "birds flying in the blue sky",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-6",
+    "sceneType": "outro",
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-6.wav",
+    "durationSec": 6.0,
+    "startSec": 30.0,
+    "keywords": [],
+    "props": {
+      "setupLine1": "把复杂问题讲清楚。",
+      "setupLine2": "下一次做决定前，记住这句话。",
+      "quoteLine1": " ",
+      "quoteLine2": "证据决定判断。",
+      "ctaEmojis": [
+        "👍",
+        "⭐",
+        "🔔"
+      ],
+      "ctaText": "点赞 · 收藏 · 关注",
+      "byline": "我们下期见"
+    },
+    "captions": [],
+    "visualType": "stock_broll",
+    "visualConfig": {
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "macro photography of a flower",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-7",
+    "sceneType": "hook",
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-7.wav",
+    "durationSec": 6.0,
+    "startSec": 36.0,
+    "keywords": [],
+    "props": {
+      "title": " ",
+      "subtitle": "深度解说",
+      "items": [
+        {
+          "emoji": "🎙️",
+          "label": "重点"
+        }
+      ]
+    },
+    "captions": [],
+    "visualType": "stock_broll",
+    "visualConfig": {
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "river flowing through a green valley",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-8",
+    "sceneType": "definition",
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-8.wav",
+    "durationSec": 6.0,
+    "startSec": 42.0,
+    "keywords": [],
+    "props": {
+      "question": " ",
+      "formulaHead": "核心概念",
+      "formulaLines": [
+        "= 事实与证据",
+        "= 可验证结论"
+      ],
+      "sinkEmojis": [
+        "📌",
+        "🔎"
+      ],
+      "splitLeft": {
+        "emoji": "📚",
+        "title": "材料",
+        "sub": "来源与背景"
+      },
+      "splitRight": {
+        "emoji": "🧭",
+        "title": "结论",
+        "sub": "行动方向"
+      }
+    },
+    "captions": [],
+    "visualType": "stock_broll",
+    "visualConfig": {
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "stars moving in the night sky time lapse",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-9",
+    "sceneType": "cards",
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-9.wav",
+    "durationSec": 6.0,
+    "startSec": 48.0,
+    "keywords": [],
+    "props": {
+      "header": "关键画面",
+      "cards": [
+        {
+          "emoji": "📰",
+          "title": "证据",
+          "desc": " "
+        }
+      ]
+    },
+    "captions": [],
+    "visualType": "stock_broll",
+    "visualConfig": {
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "desert dunes blown by wind",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-10",
+    "sceneType": "reason",
+    "text": " ",
+    "audioFile": "runs/music/audio/cue-10.wav",
+    "durationSec": 6.0,
+    "startSec": 54.0,
+    "keywords": [],
+    "props": {
+      "question": "为什么重要？",
+      "brainLine": " ",
+      "bubbleText": "把证据放回上下文。",
+      "leftLabel": {
+        "title": "只看表面",
+        "sub": "容易误判"
+      },
+      "rightLabel": {
+        "title": "看清机制",
+        "sub": "做出判断"
+      }
+    },
+    "captions": [],
+    "visualType": "stock_broll",
+    "visualConfig": {
+      "assetUrl": "stock/archive_American1955.mp4",
+      "time_range": "00:00-06.0s",
+      "visual_search_query": "beautiful sunrise landscape",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },

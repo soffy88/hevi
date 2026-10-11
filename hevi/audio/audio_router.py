@@ -351,6 +351,22 @@ async def _synthesize_formal(
             output_path, requested_provider=provider, actual_provider="pocket_tts"
         )
 
+    if provider == "piper":
+        from hevi.audio.piper_tts_service import piper_available, synth_with_piper
+        
+        if not piper_available():
+            raise AudioRoutingError("Piper TTS (hevi-zero native) is not available")
+            
+        await synth_with_piper(
+            text,
+            output_path=output_path,
+            voice=str(_kw.get("voice") or "zh"),
+            speed=float(_kw.get("speed") or 1.0)
+        )
+        return _identity_envelope(
+            output_path, requested_provider=provider, actual_provider="piper"
+        )
+
     if provider == "voicebox":
         from hevi.explainer.voicebox_client import synthesize as vb_synthesize
 
