@@ -1102,6 +1102,24 @@ async def orchestrate_longvideo(
         # select_reference / consistency 视觉-LLM 调用(单镜头无跨镜一致性可言)。
         _is_short = duration_archetype == "short"
         _shot_budget = {"left": 1}  # short 跨章节总镜头预算(真·单镜头)
+        # DRAMAPLAN bug1:非 short 档用 target_duration_s 约束镜头数(上游 script_writer/
+        # storyboard_planner 不看时长)。按预期章数均摊每章上限,超出则合并相邻镜头。
+        # 锁定分镜路径不裁剪(用户已人工锁定镜头数)。
+        _target_duration_s = float(getattr(lv_config, "target_duration_s", 0.0) or 0.0)
+        _duration_budget_per_chapter = 0
+        if not _is_short and _locked_override is None and _target_duration_s > 0:
+            from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import (
+                expected_chapters_for_duration,
+                shot_budget_per_chapter,
+            )
+
+            _duration_budget_per_chapter = shot_budget_per_chapter(_target_duration_s)
+            logger.info(
+                "shot budget: target_duration_s=%.1f → 每章≤%d 镜(共 %d 章)",
+                _target_duration_s,
+                _duration_budget_per_chapter,
+                expected_chapters_for_duration(_target_duration_s),
+            )
         # SPEC-001 §5:旁路收集每个 shot_plan 的台词/旁白文本(oskill.ShotPlan.tts_text),
         # 供生成完成后跑 Tier0 跨集关系一致性守护——consistency_fn 那条管线只拿得到渲染完的
         # 视频帧(见 hevi/verdict/scorecard.py::check_relationship_consistency 顶部注释),
@@ -1125,6 +1143,18 @@ async def orchestrate_longvideo(
                         return []
                     plans = plans[: _shot_budget["left"]] if plans else plans
                     _shot_budget["left"] -= len(plans) if plans else 0
+                elif _duration_budget_per_chapter and plans:
+                    from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import (
+                        fit_shot_plans_to_budget,
+                    )
+
+                    if len(plans) > _duration_budget_per_chapter:
+                        logger.info(
+                            "shot budget: 本章 %d 镜 → 合并到 %d 镜",
+                            len(plans),
+                            _duration_budget_per_chapter,
+                        )
+                    plans = fit_shot_plans_to_budget(plans, _duration_budget_per_chapter)
             _shot_stats["total"] += len(plans) if plans else 0
             await _report("规划分镜脚本", 20.0, completed=0, total=_shot_stats["total"] or None)
             for p in plans or []:

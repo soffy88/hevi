@@ -31,6 +31,21 @@ from hevi.tongjian.schemas import GateResult
 
 logger = logging.getLogger(__name__)
 
+
+def _default_planning_llm() -> Any:
+    """短剧规划默认 LLM：免费/本地通道（不再默认 qwen_cloud 付费端点）。
+
+    解析失败返回 None，调用方 try/except 会走确定性降级（空壳 plan → 门会报错）。
+    """
+    from hevi.shortdrama.llm_channel import resolve_planning_llm
+
+    try:
+        _, llm = resolve_planning_llm()
+        return llm
+    except Exception as e:
+        logger.warning("season_plan: 无免费 LLM 通道,降级空壳: %s", e)
+        return None
+
 # 每集事件数的合理区间(集数是否撑得起原文体量的确定性判据,SPEC §3.4)。
 _MIN_EVENTS_PER_EP = 1
 _MAX_EVENTS_PER_EP = 12
@@ -151,9 +166,7 @@ async def generate_season_plan(
 ) -> SeasonPlan:
     """StoryGraph → 单个候选 SeasonPlan。LLM 调用失败 → 返回空壳(降级,不阻塞)。"""
     if llm is None:
-        from obase.provider_registry import ProviderRegistry
-
-        llm = ProviderRegistry.get().llm("qwen_cloud")
+        llm = _default_planning_llm()
 
     prompt = _PLAN_PROMPT_TEMPLATE.format(
         target_episodes=target_episodes, event_lines=_event_lines(story)
@@ -268,9 +281,7 @@ async def build_season_plan(
 ) -> tuple[SeasonPlan, GateResult]:
     """剧集规划主入口:生成 n 个候选,LLM-as-judge 选优,返回 (最优候选, G_SEASON 门结果)。"""
     if llm is None:
-        from obase.provider_registry import ProviderRegistry
-
-        llm = ProviderRegistry.get().llm("qwen_cloud")
+        llm = _default_planning_llm()
 
     candidates = [
         await generate_season_plan(story, target_episodes=target_episodes, llm=llm)

@@ -88,10 +88,15 @@ async def extract_story_graph(*, source_name: str, raw_text: str, llm: Any = Non
     警告",不因局部失败让整层抛异常。arcs 仍留空(见模块 docstring)。
     """
     if llm is None:
-        from obase.provider_registry import ProviderRegistry
+        # 短剧规划层默认走免费/本地通道（见 hevi/shortdrama/llm_channel.py），不再默认
+        # 落 qwen_cloud（付费 DashScope）。解析失败 → 走下方 try/except 的确定性空草稿降级。
+        from hevi.shortdrama.llm_channel import resolve_planning_llm
 
-        # 逐层显式选 qwen_cloud(非欠费云端,见 registry:187);"default" 仍是欠费公共端点。
-        llm = ProviderRegistry.get().llm("qwen_cloud")
+        try:
+            _, llm = resolve_planning_llm()
+        except Exception as _e:
+            logger.warning("story_graph: 无免费 LLM 通道,返回空草稿: %s", _e)
+            llm = None
 
     prompt = _EXTRACTION_PROMPT_TEMPLATE.format(source_name=source_name, raw_text=raw_text)
     try:
