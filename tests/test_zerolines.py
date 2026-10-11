@@ -314,3 +314,40 @@ def test_character_animation_real_render(tmp_path: Path) -> None:
     qa = out["qa"][0]
     assert qa["resolution"] == "1280x720" and qa["duration"] >= 11.5 and qa["pass"]
     assert Path(qa["contact_sheet"]).is_file()
+
+
+def test_acceptance_matrix_zero_gates_block_on_missing_or_tampered(tmp_path: Path) -> None:
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "acceptance_matrix.py"
+    import sys
+
+    spec = importlib.util.spec_from_file_location("acceptance_matrix_under_test", path)
+    mod = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules[spec.name] = mod  # dataclasses resolve their module via sys.modules
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.modules.pop(spec.name, None)
+    d = tmp_path / "explainer"
+    d.mkdir()
+    (d / "explainer.mp4").write_bytes(b"not the recorded bytes")
+    (d / "record.json").write_text(json.dumps({
+        "engine": "zero", "line_id": "explainer", "status": "succeeded", "cost": {"usd": 0.0, "paid_api": False},
+        "qa": [{"path": str(d / "explainer.mp4"), "sha256": "0" * 64, "duration": 10.0, "pass": True}]}))
+    gates = {g.key: g for g in mod.evaluate_zero_lines(tmp_path)}
+    assert gates["Z1"].status == "BLOCKED" and "missing" in gates["Z1"].evidence
+    assert gates["Z2"].status == "BLOCKED"
+
+
+def test_veya_auto_mode_does_not_hijack_zero_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hevi.studio import veya
+
+    monkeypatch.delenv("HEVI_LINE_ENGINE", raising=False)
+    assert veya._auto_mode("history_scene", "auto", {}) == "low_cost"
+    assert veya._auto_mode("history_scene", "auto", {"engine": "zero"}) == "auto"
+    assert veya._auto_mode("history_scene", "low_cost", {"engine": "zero"}) == "low_cost"
+    monkeypatch.setenv("HEVI_LINE_ENGINE", "zero")
+    assert veya._auto_mode("history_scene", "auto", {}) == "auto"
+    assert veya._auto_mode("emotional_reading", "auto", {}) == "low_cost"  # no zero engine for it

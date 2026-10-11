@@ -353,8 +353,11 @@ def podcast_repurpose(req: ZeroLineRequest, d: Path) -> Result:
     sh([FFMPEG, "-y", "-v", "error", "-ss", f"{a:.2f}", "-t", f"{b - a:.2f}", "-i", str(src), "-filter_complex",
         f"color=c=0x101820:s={W}x{H}:r=30[bgc];"
         f"[0:v]scale=240:240:force_original_aspect_ratio=increase,crop=240:240[cov];"
-        f"[0:a]asplit[a1][a2];[a1]showwaves=s={W - 160}x260:mode=cline:colors=0x00C8FF|0x0088CC:rate=30,format=rgba[w];"
-        f"[bgc][cov]overlay=60:120[t1];[t1][w]overlay=80:470:shortest=1,"
+        f"[0:a]asplit=3[a1][a2][a3];"
+        f"[a1]showwaves=s={W - 160}x220:mode=cline:colors=0x00C8FF|0x0088CC:rate=30,format=rgba[w];"
+        # scrolling spectrogram band: the audiogram visibly advances every frame while audio plays
+        f"[a3]showspectrum=s={W - 160}x150:slide=scroll:mode=combined:color=cool:scale=log:fps=30,format=rgba[sp];"
+        f"[bgc][cov]overlay=60:120[t1];[t1][w]overlay=80:440:shortest=1[t2];[t2][sp]overlay=80:670:shortest=1,"
         f"drawbox=x=60:y=ih-60:w='(iw-120)*t/{b - a:.2f}':h=8:color=0x00C8FF:t=fill,"
         f"{subtitles_filter(ass)}[v]",
         "-map", "[v]", "-map", "[a2]", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-c:a", "aac",
@@ -362,7 +365,7 @@ def podcast_repurpose(req: ZeroLineRequest, d: Path) -> Result:
     return {"finals": [out],
             "provenance": [{"source": "user-supplied source media", "path": str(src)},
                            {"source": f"faster-whisper ({Path(_wm()).name}, local CPU)"}],
-            "notes": "audiogram: cover + live waveform + captions + progress bar",
+            "notes": "audiogram: live source cover + waveform + scrolling spectrogram + captions + progress bar",
             "artifacts": {"transcript": str(d / "transcript.json")}}
 
 
