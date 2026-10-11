@@ -28,6 +28,19 @@ default to the zero engine there; Piper lives in the API image at `/opt/piper/bi
 `/opt/piper/voices`, whisper is `/models/faster-whisper-large-v3-turbo`, cache is the `hevi-zero-cache` volume.
 Override per deploy with `HEVI_LINE_ENGINE=legacy` in the env file, or per order with slot `engine`.
 
+Talkcraft presenter lines in production (since 2026-10-11): `talking_head` / `avatar_spokesperson` orders with
+`renderer="talkcraft"` render inside the API image. `deploy/Dockerfile.api` installs `hevi-remotion-talkcraft`
+from its own `package-lock.json` (`npm ci --omit=dev`, registry `HEVI_NPM_REGISTRY`, default npmmirror) because the host
+`node_modules` is a symlink outside the build context; Chrome Headless Shell 149.0.7790.0 is copied from the compose
+`additional_contexts.talkcraft_browser` (`HEVI_TALKCRAFT_BROWSER_DIR`, default the host vendor runtime's
+`node_modules/.remotion`) and checked offline at build time, so nothing downloads a browser at run time.
+Compose sets `HEVI_TALKCRAFT_REMOTION=/app/hevi-remotion-talkcraft`, `HEVI_TALKCRAFT_AVATAR_MODELS=/models/wav2lip`,
+`HEVI_TALKCRAFT_WHISPER=/models/faster-whisper-large-v3-turbo`, `HEVI_NODE_BIN=/usr/bin`, `HEVI_TALKCRAFT_THREADS=2`.
+
+Host write access: the API runs as uid 999 and bind-mounts `/home/soffy/projects/hevi/{data,output,assets}`
+(= `/data/soffy/projects/hevi/...`, owned by soffy 755). Grant it with ACLs instead of chown:
+`setfacl -R -m u:999:rwX,u:1000:rwX <dir> && setfacl -R -d -m u:999:rwX,u:1000:rwX,u::rwX,g::rX,o::rX <dir>`.
+
 ```python
 await produce(line_id="explainer", execute=True, slots={
     "engine": "zero", "title": "...", "script_lines": ["...", "..."], "queries": ["b-roll query", "..."],

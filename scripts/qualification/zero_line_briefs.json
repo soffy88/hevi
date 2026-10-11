@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
-  "description": "Qualification INPUT briefs for the 11 zero-cost lines (narration, b-roll queries, source media). These are inputs only; every output is rendered fresh and gated by measured QA. Relative media paths resolve against $HEVI_ASSET_ROOT (default: repo root). Recipe-required slots (manuscript / source_text / transcript) carry the same brief text.",
+  "description": "Qualification INPUT briefs for the 11 zero-cost lines (narration, b-roll queries, source media). These are inputs only; every output is rendered fresh and gated by measured QA. Relative media paths resolve against $HEVI_ASSET_ROOT (default: repo root). Every Studio recipe-required slot (hevi/studio/lines/<line>.yaml: topic / manuscript / source_text / transcript / media_path) is filled; manuscript / source_text / transcript carry the same brief text.",
   "lines": {
     "kinetic_promo": {
       "title": "周口店北京人遗址博物馆 · 北京房山",
+      "topic": "周口店北京人遗址博物馆秋季宣传",
       "script_lines": [
         "七十万年前，有人在这里点燃了第一堆火。",
         "周口店，北京人遗址。",
@@ -18,6 +19,7 @@
     },
     "explainer": {
       "title": "火，对早期人类意味着什么？",
+      "topic": "火对早期人类的意义",
       "script_lines": [
         "火，对早期人类意味着什么？",
         "第一，取暖。火让人类能在寒冷的季节和夜晚活下来。",
@@ -45,6 +47,7 @@
     },
     "cinematic": {
       "title": "火 种",
+      "topic": "火种：从洞穴到黎明",
       "script_lines": [
         "黑暗里，只有一支火把。",
         "火光贴着岩壁移动，照出前人留下的痕迹。",
@@ -108,6 +111,7 @@
       "source_name": "周口店北京人遗址"
     },
     "character_animation": {
+      "topic": "原始人走向洞口、拾石、点亮火把",
       "script_lines": [
         "他走向洞口。",
         "弯腰，捡起一块石头。",
@@ -117,6 +121,7 @@
     },
     "talking_head": {
       "title": "小周 · 历史一分钟",
+      "topic": "一分钟讲清楚北京人",
       "script_lines": [
         "大家好，今天用一分钟讲清楚北京人。",
         "北京人是生活在周口店一带的直立人，距今大约七十万到二十万年。",
@@ -127,6 +132,7 @@
     },
     "avatar_spokesperson": {
       "title": "社区图书馆 · 周末绘本共读",
+      "topic": "社区图书馆周末免费绘本共读活动",
       "script_lines": [
         "你好，我是社区图书馆的小林。",
         "这个周末，我们在儿童区举办免费的绘本共读活动。",
@@ -154,6 +160,7 @@
     },
     "podcast_repurpose": {
       "title": "Apollo 14: the final countdown",
+      "topic": "Apollo 14 发射倒计时（NASA 1971 发射直播）",
       "media_path": "data/workspace/assets/open-corpus-seed/clips/nasa_Apollo_14_Launch_Coverage.mp4",
       "zero_extras": {
         "source_lang": "en",

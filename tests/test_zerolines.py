@@ -352,3 +352,15 @@ def test_veya_auto_mode_does_not_hijack_zero_engine(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("HEVI_LINE_ENGINE", "zero")
     assert veya._auto_mode("history_scene", "auto", {}) == "auto"
     assert veya._auto_mode("emotional_reading", "auto", {}) == "low_cost"  # no zero engine for it
+
+
+def test_zero_line_briefs_fill_recipe_required_slots():
+    """Every qualification brief must satisfy its Studio recipe's required slots (no defaulting)."""
+    from hevi.studio.recipes import load_recipes
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "qualification" / "zero_line_briefs.json"
+    briefs = json.loads(path.read_text(encoding="utf-8"))["lines"]
+    recipes = load_recipes()
+    for line, brief in briefs.items():
+        assert line in recipes, line
+        assert recipes[line].missing_slots(brief) == [], (line, recipes[line].missing_slots(brief))

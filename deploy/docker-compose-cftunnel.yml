@@ -83,6 +83,12 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.api
+      # talkcraft 主播线的 chrome-headless-shell(Remotion 4.0.519 配套 149.0.7790.0),
+      # 取宿主 vendor runtime 已下载的那份,构建/运行都不联网下载浏览器。
+      additional_contexts:
+        talkcraft_browser: ${HEVI_TALKCRAFT_BROWSER_DIR:-/data/soffy/projects/vendor/video-talkcraft/runtime/node_modules/.remotion}
+      args:
+        NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
     restart: unless-stopped
     # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 全部分配给 hevi-gen-engine。
     deploy:
@@ -153,6 +159,14 @@ services:
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
       HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
+      # talkcraft 主播线(talking_head / avatar_spokesperson 订单 renderer=talkcraft):
+      # Remotion 子工程在镜像内 /app/hevi-remotion-talkcraft;Wav2Lip-GAN-96 + yoloface ONNX
+      # 与 faster-whisper 走 /models 只读挂载(宿主 /home/soffy/models);node 用镜像 /usr/bin。
+      HEVI_TALKCRAFT_REMOTION: /app/hevi-remotion-talkcraft
+      HEVI_TALKCRAFT_AVATAR_MODELS: /models/wav2lip
+      HEVI_TALKCRAFT_WHISPER: /models/faster-whisper-large-v3-turbo
+      HEVI_NODE_BIN: /usr/bin
+      HEVI_TALKCRAFT_THREADS: "2"
     volumes:
       - /home/soffy/models:/models:ro
       # 零成本线 Piper 音色(zh_CN-huayan-medium / en_US-ryan-medium),宿主只读
