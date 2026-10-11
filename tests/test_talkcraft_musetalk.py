@@ -6,7 +6,10 @@ import numpy as np
 import pytest
 
 from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec
-from hevi.layer4_legacy.talkcraft.oskill_impl.avatar_math import decode_yoloface_landmarks, musetalk_face_box
+from hevi.layer4_legacy.talkcraft.oskill_impl.avatar_math import (
+    decode_yoloface_landmarks,
+    musetalk_face_box,
+)
 
 
 def test_engine_default_and_opt_in():

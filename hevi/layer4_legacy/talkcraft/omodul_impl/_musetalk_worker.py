@@ -55,12 +55,11 @@ def main() -> int:
 
     real_avail = torch.cuda.is_available
     torch.cuda.is_available = lambda: False  # build on CPU, move explicitly
-    from transformers import WhisperModel
-
     from musetalk.utils.audio_processor import AudioProcessor
     from musetalk.utils.blending import get_crop_box, get_image
     from musetalk.utils.face_parsing import FaceParsing
     from musetalk.utils.utils import load_all_model
+    from transformers import WhisperModel
 
     torch.cuda.is_available = real_avail
     dev = a.device if (a.device == "cpu" or real_avail()) else "cpu"
