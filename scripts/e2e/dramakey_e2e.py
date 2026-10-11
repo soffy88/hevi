@@ -60,43 +60,49 @@ LAOSHAN_SHOTS = [
     {
         "idx": 0,
         "text": "王生邑之故家子也，少慕仙术，闻崂山多仙，遂负笈往游。",
-        "visual_desc": "青年书生身着青衫汉服，背负书箱，行走于苍茫秀丽的崂山云雾山道上",
+        "visual_desc": "年轻英俊书生身着青衫汉服头戴蓝巾，背负书箱，行走于苍茫秀丽的崂山云雾山道上",
         "visible_chars": ["王生"],
+        "primary_char": "王生",
         "camera_move": "push",
     },
     {
         "idx": 1,
         "text": "登一高顶，有道观甚幽，老道长坐蒲团上，白发垂领，神光爽迈。",
         "visual_desc": "白须长发老道长身穿灰白道袍，手持拂尘端坐于古朴幽静道观大殿的蒲团之上",
-        "visible_chars": ["王生", "老道长"],
+        "visible_chars": ["老道长"],
+        "primary_char": "老道长",
         "camera_move": "pan_r",
     },
     {
         "idx": 2,
         "text": "王生稽首而谈，甚服道长妙理，遂留为门徒。",
-        "visual_desc": "青年书生向白须道长躬身下拜，道长大殿内香烟袅袅，气氛庄严",
+        "visual_desc": "青年书生向白须道长恭敬躬身稽首下拜，道长大殿内香烟袅袅，气氛庄严",
         "visible_chars": ["王生", "老道长"],
+        "primary_char": "王生",
         "camera_move": "push",
     },
     {
         "idx": 3,
         "text": "次日清晨，老道长授王生一柄利斧，命其随众弟子往深山采樵。",
-        "visual_desc": "清晨道观庭院，老道长将斧头交给王生，众道童在侧待命",
+        "visual_desc": "清晨道观庭院，老道长将铁斧交给头戴蓝巾身着青衫的青年书生",
         "visible_chars": ["王生", "老道长"],
+        "primary_char": "王生",
         "camera_move": "pull",
     },
     {
         "idx": 4,
         "text": "王生未受过苦楚，执斧砍柴一月余，手足生茧，心中渐生悔退。",
-        "visual_desc": "青年书生在深山老林中挥斧砍柴，满头大汗，疲惫不堪",
+        "visual_desc": "青年书生在深山老林中挥铁斧砍柴，满头大汗，疲惫不堪",
         "visible_chars": ["王生"],
+        "primary_char": "王生",
         "camera_move": "pan_l",
     },
     {
         "idx": 5,
         "text": "忽一日傍晚，老道长携酒延客，共饮于大殿中庭。",
-        "visual_desc": "黄昏日落，古老道观庭院内排设宴席，古朴青瓷酒壶在案",
+        "visual_desc": "黄昏日落，古老道观庭院内排设宴席，古朴青瓷酒壶在案，道长与客共饮",
         "visible_chars": ["老道长"],
+        "primary_char": "老道长",
         "camera_move": "push",
     },
     {
@@ -104,13 +110,14 @@ LAOSHAN_SHOTS = [
         "text": "是夜天无明月，老道长取素纸一圆如镜，信手粘于殿壁之上。",
         "visual_desc": "白须道长手持圆圆的白素纸片，轻轻贴在青灰色的石壁墙上",
         "visible_chars": ["老道长"],
+        "primary_char": "老道长",
         "camera_move": "pan_r",
     },
     {
         "idx": 7,
         "text": "顷刻之间，纸化为一轮皎洁明月，月华流转，映照整座大殿。",
-        "visual_desc": "石壁上的素纸化作一轮明亮光洁的圆月，柔和月光洒满大殿，神奇玄妙",
-        "visible_chars": ["老道长"],
+        "visual_desc": "石壁上的素纸化作一轮巨大的皎洁明亮圆月，柔和纯白月华流转洒满大殿，神奇玄妙",
+        "visible_chars": [],
         "camera_move": "push",
     },
     {
@@ -118,20 +125,23 @@ LAOSHAN_SHOTS = [
         "text": "老道长举杯向壁邀月，与众宾客欢笑畅饮，玉液芬芳甘冽。",
         "visual_desc": "白须老道长与宾客在月光下举杯痛饮，夜色宜人，气氛欢洽",
         "visible_chars": ["老道长"],
+        "primary_char": "老道长",
         "camera_move": "pull",
     },
     {
         "idx": 9,
         "text": "老道长见王生立于旁，笑唤王生上前同饮，王生心甚惊奇。",
-        "visual_desc": "老道长微笑着招手让王生上前，青年书生神色惊喜敬佩",
+        "visual_desc": "老道长微笑着招手让王生上前，青年书生神色惊喜敬佩上前接酒",
         "visible_chars": ["王生", "老道长"],
+        "primary_char": "王生",
         "camera_move": "pan_l",
     },
     {
         "idx": 10,
         "text": "宴毕客散，老道长谓王生曰：念汝苦行，今传汝穿壁之仙术。",
-        "visual_desc": "深夜殿内烛光摇曳，老道长神色严肃地注视王生，传授仙法秘诀",
+        "visual_desc": "深夜殿内烛光摇曳，老道长神色严肃地注视青年书生，传授仙法秘诀",
         "visible_chars": ["王生", "老道长"],
+        "primary_char": "王生",
         "camera_move": "push",
     },
     {
@@ -139,13 +149,15 @@ LAOSHAN_SHOTS = [
         "text": "老道长令王生面壁直行，王生犹豫不前，畏其触坚碰额。",
         "visual_desc": "青年书生面对坚硬的花岗岩石壁，心怀恐惧，踌躇不敢上前",
         "visible_chars": ["王生", "老道长"],
+        "primary_char": "王生",
         "camera_move": "pull",
     },
     {
         "idx": 12,
         "text": "老道长抚须大笑，推之曰：俯首骤入，勿逡巡！",
-        "visual_desc": "白须老道长大笑着伸手轻推王生，指引其向坚壁冲去",
-        "visible_chars": ["老道长", "王生"],
+        "visual_desc": "白须老道长大笑着伸手轻推身着青衫的青年书生，指引其向坚壁冲去",
+        "visible_chars": ["王生", "老道长"],
+        "primary_char": "王生",
         "camera_move": "pan_r",
     },
     {
@@ -153,6 +165,7 @@ LAOSHAN_SHOTS = [
         "text": "王生闭目疾趋而往，果真飘然穿壁而出，回首大呼神妙！",
         "visual_desc": "青年书生如梦幻般神奇穿透坚硬石壁站在观外，回望高墙惊叹不已",
         "visible_chars": ["王生"],
+        "primary_char": "王生",
         "camera_move": "push",
     },
 ]
@@ -164,8 +177,8 @@ CHAR_CARDS = [
         aliases=["王七", "书生", "弟子"],
         gender="male",
         age_band="young",
-        appearance_zh="青年书生，青衫汉服，容貌清秀",
-        appearance_en_tokens="young handsome Chinese scholar in traditional blue Hanfu robes",
+        appearance_zh="青年英俊书生，头戴深蓝纶巾儒巾，身着青衫汉服白领边",
+        appearance_en_tokens="young handsome 20-year-old Chinese scholar, neat topknot bun with blue cloth scholar cap headwrap, elegant cyan blue Hanfu silk robe with white collar trim",
         voice="zh_CN-huayan-medium.onnx",
         voice_speed=1.05,
     ),
@@ -175,8 +188,8 @@ CHAR_CARDS = [
         aliases=["道长", "师父", "老道"],
         gender="male",
         age_band="elderly",
-        appearance_zh="长须白发老道士，仙风道骨，身着灰袍",
-        appearance_en_tokens="venerable elderly Taoist master with long flowing white beard and hair, traditional grey robes",
+        appearance_zh="仙风道骨白须老道士，头挽发髻插木簪，身着粗布灰白色道袍",
+        appearance_en_tokens="venerable elderly Taoist master with long flowing white beard and white hair, hair tied in topknot with wooden hairpin, traditional coarse grey Taoist robe",
         voice="zh_CN-huayan-medium.onnx",
         voice_speed=0.92,
     ),
@@ -196,7 +209,9 @@ def run_novel2video_e2e(run_id: str) -> dict:
     # Enforce real engine check
     engine_name = "sdturbo_cpu"
     engine = get_engine(engine_name)
+    assert engine.name == "sdturbo_cpu", f"E2E must use sdturbo_cpu engine, got {engine.name}"
     assert engine.name != "fake", "E2E path strictly forbids fake engine!"
+    assert engine.name != "cloud_stub", "E2E path strictly forbids cloud_stub engine!"
     assert engine.available(), "SD-Turbo CPU engine must be available for E2E!"
 
     cfg = RenderConfig(

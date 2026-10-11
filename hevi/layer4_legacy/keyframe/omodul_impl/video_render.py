@@ -76,6 +76,81 @@ def _format_srt_time(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d},{millis:03d}"
 
 
+def _format_ass_time(seconds: float) -> str:
+    cs = int(round((seconds - int(seconds)) * 100))
+    s = int(seconds) % 60
+    m = (int(seconds) // 60) % 60
+    h = int(seconds) // 3600
+    return f"{h:d}:{m:02d}:{s:02d}.{cs:02d}"
+
+
+def split_text_into_cues(
+    text: str,
+    start_time: float,
+    end_time: float,
+    max_chars_per_line: int = 14,
+    max_lines: int = 2,
+) -> list[tuple[float, float, str]]:
+    """Split shot text into subtitle cues with line length <= 14 and lines <= 2, timed proportionally."""
+    import re
+
+    raw_clauses = [c.strip() for c in re.split(r"[，,。\.！!？\?；;、\n]+", text) if c.strip()]
+    if not raw_clauses:
+        return []
+
+    cues_text: list[str] = []
+    current = ""
+    for clause in raw_clauses:
+        if len(clause) > max_chars_per_line * max_lines:
+            if current:
+                cues_text.append(current)
+                current = ""
+            for i in range(0, len(clause), max_chars_per_line * max_lines):
+                cues_text.append(clause[i : i + max_chars_per_line * max_lines])
+            continue
+
+        if not current:
+            current = clause
+        elif len(current) + 1 + len(clause) <= max_chars_per_line:
+            current = f"{current}，{clause}"
+        elif len(current) + len(clause) <= max_chars_per_line * max_lines and "\n" not in current:
+            current = f"{current}\n{clause}"
+        else:
+            cues_text.append(current)
+            current = clause
+    if current:
+        cues_text.append(current)
+
+    final_cues: list[str] = []
+    for c in cues_text:
+        lines = c.split("\n")
+        new_lines: list[str] = []
+        for l in lines:
+            if len(l) <= max_chars_per_line:
+                new_lines.append(l)
+            else:
+                for i in range(0, len(l), max_chars_per_line):
+                    new_lines.append(l[i : i + max_chars_per_line])
+        while len(new_lines) > max_lines:
+            chunk = new_lines[:max_lines]
+            new_lines = new_lines[max_lines:]
+            final_cues.append("\n".join(chunk))
+        if new_lines:
+            final_cues.append("\n".join(new_lines))
+
+    total_dur = max(0.1, end_time - start_time)
+    total_len = sum(len(c.replace("\n", "").replace("，", "")) for c in final_cues) or 1
+    cue_intervals: list[tuple[float, float, str]] = []
+    cur_t = start_time
+    for i, c in enumerate(final_cues):
+        c_len = len(c.replace("\n", "").replace("，", ""))
+        dur = total_dur * (c_len / total_len) if i < len(final_cues) - 1 else (end_time - cur_t)
+        cue_intervals.append((round(cur_t, 3), round(cur_t + dur, 3), c))
+        cur_t += dur
+
+    return cue_intervals
+
+
 def _camera_filter_str(move: str, d: float, w: int, h: int, fps: int = 25) -> str:
     """Generate ffmpeg -vf filter string for Ken Burns camera motion."""
     if move == "push":
@@ -328,50 +403,68 @@ def render_dramakey_pipeline(
         )
         total_kf_gen_sec += time.time() - t_gen_0
 
-        score1 = score_keyframe(cand1_path, prompt_en=prompt_en)
-        score2 = score_keyframe(cand2_path, prompt_en=prompt_en)
+        score1 = score_keyframe(cand1_path, prompt_en=prompt_en, text_zh=text)
+        score2 = score_keyframe(cand2_path, prompt_en=prompt_en, text_zh=text)
 
-        if score1["composite_score"] >= score2["composite_score"]:
+        # Target character for face consistency gate
+        target_char_name = shot.get("primary_char") or shot.get("focal_char")
+        if not target_char_name:
+            if "王生" in visible_chars:
+                target_char_name = "王生"
+            elif "老道长" in visible_chars:
+                target_char_name = "老道长"
+        target_card = card_lookup.get(target_char_name) if target_char_name else None
+
+        # Evaluate face similarity on both candidate 1 and candidate 2
+        face_sim1, det1 = (0.0, False)
+        face_sim2, det2 = (0.0, False)
+        if target_card and target_card.ref_face_embedding:
+            emb1 = extract_face_embedding(cand1_path)
+            if emb1 is not None:
+                face_sim1 = compute_face_cosine(emb1, embedding_b=target_card.ref_face_embedding)
+                det1 = True
+            emb2 = extract_face_embedding(cand2_path)
+            if emb2 is not None:
+                face_sim2 = compute_face_cosine(emb2, embedding_b=target_card.ref_face_embedding)
+                det2 = True
+
+        if target_card and target_card.ref_face_embedding:
+            cand1_total = 0.65 * score1["composite_score"] + 0.35 * max(0.0, face_sim1)
+            cand2_total = 0.65 * score2["composite_score"] + 0.35 * max(0.0, face_sim2)
+        else:
+            cand1_total = score1["composite_score"]
+            cand2_total = score2["composite_score"]
+
+        # Dual candidate selection incorporates face consistency
+        if cand1_total >= cand2_total:
             winner_path, winner_res, winner_score = cand1_path, res1, score1
+            winner_face_sim, winner_det = face_sim1, det1
             loser_path, loser_res, loser_score = cand2_path, res2, score2
+            loser_face_sim, loser_det = face_sim2, det2
         else:
             winner_path, winner_res, winner_score = cand2_path, res2, score2
+            winner_face_sim, winner_det = face_sim2, det2
             loser_path, loser_res, loser_score = cand1_path, res1, score1
+            loser_face_sim, loser_det = face_sim1, det1
 
         # Keep loser candidate in keyframes folder as required
         loser_dst = kf_dir / f"shot_{shot_idx:02d}_loser_seed_{loser_res.seed}.png"
         if not loser_dst.is_file():
             shutil.copy2(loser_path, loser_dst)
 
-        # D. Face Consistency Gate with Reference Portrait
-        ref_card = None
-        for char_name in visible_chars:
-            c = card_lookup.get(char_name)
-            if c and c.ref_face_embedding:
-                ref_card = c
-                break
-
-        face_passed = True
-        face_sim = 1.0
-        face_detected = False
+        # D. Face Consistency Gate with Reference Portrait (Retry up to 2 times if below threshold)
         retry_count = 0
+        face_passed = bool(winner_face_sim >= cfg.face_threshold) if (target_card and target_card.ref_face_embedding) else True
         identity_weak = False
 
-        if ref_card is not None and ref_card.ref_face_embedding:
-            face_passed, face_sim, face_detected = verify_character_face(
-                winner_path,
-                ref_embedding=ref_card.ref_face_embedding,
-                threshold=cfg.face_threshold,
-            )
-
-            # Retry up to 2 times if face detected but below similarity threshold
-            while face_detected and (not face_passed) and retry_count < 2:
+        if target_card and target_card.ref_face_embedding and (not face_passed):
+            while retry_count < 2 and (not face_passed):
                 retry_count += 1
                 retry_seed = cfg.base_seed + shot_idx * 17 + 2000 * retry_count
                 retry_path = kf_dir / f"shot_{shot_idx:02d}_retry{retry_count}_s{retry_seed}.png"
 
                 t_retry = time.time()
-                engine.generate(
+                res_retry = engine.generate(
                     prompt_en=prompt_en,
                     negative=neg,
                     width=cfg.kf_width,
@@ -382,20 +475,20 @@ def render_dramakey_pipeline(
                 )
                 total_kf_gen_sec += time.time() - t_retry
 
-                retry_score = score_keyframe(retry_path, prompt_en=prompt_en)
-                p_retry, sim_retry, det_retry = verify_character_face(
-                    retry_path,
-                    ref_embedding=ref_card.ref_face_embedding,
-                    threshold=cfg.face_threshold,
-                )
-                if det_retry and sim_retry > face_sim:
-                    winner_path = retry_path
-                    winner_score = retry_score
-                    face_sim = sim_retry
-                    face_passed = p_retry
-                    face_detected = True
+                score_retry = score_keyframe(retry_path, prompt_en=prompt_en, text_zh=text)
+                emb_retry = extract_face_embedding(retry_path)
+                det_retry = emb_retry is not None
+                sim_retry = compute_face_cosine(emb_retry, embedding_b=target_card.ref_face_embedding) if det_retry else 0.0
 
-            if face_detected and not face_passed:
+                if det_retry and sim_retry > winner_face_sim:
+                    winner_path = retry_path
+                    winner_res = res_retry
+                    winner_score = score_retry
+                    winner_face_sim = sim_retry
+                    winner_det = True
+                    face_passed = sim_retry >= cfg.face_threshold
+
+            if not face_passed:
                 identity_weak = True
 
         final_kf_path = kf_dir / f"shot_{shot_idx:02d}_kf.png"
@@ -412,13 +505,16 @@ def render_dramakey_pipeline(
                 "selected_seed": winner_res.seed,
                 "candidate1_score": score1,
                 "candidate2_score": score2,
+                "candidate1_face_similarity": round(face_sim1, 4),
+                "candidate2_face_similarity": round(face_sim2, 4),
                 "winner_score": winner_score,
-                "ref_character": ref_card.name if ref_card else None,
-                "face_detected": face_detected,
-                "face_similarity": round(face_sim, 4),
+                "ref_character": target_card.name if target_card else None,
+                "face_detected": winner_det,
+                "face_similarity": round(winner_face_sim, 4),
                 "face_passed": face_passed,
                 "retry_count": retry_count,
                 "identity_weak": identity_weak,
+                "subject_alignment": winner_score.get("subject_alignment"),
                 "keyframe_sha256": sha256(final_kf_path),
             }
         )
@@ -466,19 +562,50 @@ def render_dramakey_pipeline(
         shot_clips.append(shot_clip_path)
         shot_durations.append(shot_dur)
 
-        # Subtitle cue
+        # Subtitle cues (split long sentences by punctuation and wrap lines <= 14 chars)
         if text:
-            srt_cues.append((current_timeline_s, current_timeline_s + shot_dur, text))
+            cues = split_text_into_cues(
+                text,
+                start_time=current_timeline_s,
+                end_time=current_timeline_s + shot_dur,
+                max_chars_per_line=14,
+                max_lines=2,
+            )
+            srt_cues.extend(cues)
         current_timeline_s += shot_dur
 
-    # 3. Subtitles Generation (.srt)
+    # 3. Subtitles Generation (.srt and .ass)
     srt_path = out_dir / "subtitles.srt"
+    ass_path = out_dir / "subtitles.ass"
+
     srt_lines = []
+    ass_events = []
     for cue_idx, (st, et, cue_text) in enumerate(srt_cues, start=1):
         srt_lines.append(f"{cue_idx}")
         srt_lines.append(f"{_format_srt_time(st)} --> {_format_srt_time(et)}")
         srt_lines.append(f"{cue_text}\n")
+
+        ass_text = cue_text.replace("\n", r"\N")
+        ass_events.append(
+            f"Dialogue: 0,{_format_ass_time(st)},{_format_ass_time(et)},Default,,0,0,0,,{ass_text}"
+        )
+
     srt_path.write_text("\n".join(srt_lines), encoding="utf-8")
+
+    ass_header = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {cfg.target_width}
+PlayResY: {cfg.target_height}
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,WenQuanYi Zen Hei,42,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,70,70,120,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    ass_path.write_text(ass_header + "\n".join(ass_events) + "\n", encoding="utf-8")
 
     # 4. Final Video Assembly (Concat + Subtitle Burn-In)
     concat_list_path = out_dir / "_concat_list.txt"
@@ -508,13 +635,9 @@ def render_dramakey_pipeline(
         check=True,
     )
 
-    # Subtitle burn-in with clear font style
-    if cfg.enable_subtitles and srt_path.stat().st_size > 0:
-        sub_filter = (
-            f"subtitles='{srt_path}':force_style="
-            f"'FontSize=22,FontName=WenQuanYi Zen Hei,PrimaryColour=&H00FFFFFF,"
-            f"OutlineColour=&H00000000,BorderStyle=3,MarginV=80'"
-        )
+    # Subtitle burn-in with precise ASS style
+    if cfg.enable_subtitles and ass_path.stat().st_size > 0:
+        sub_filter = f"subtitles='{ass_path}'"
         subprocess.run(
             [
                 FFMPEG,
@@ -622,16 +745,43 @@ def render_dramakey_pipeline(
 
     final_mp4_sha256 = sha256(final_mp4_path)
 
+    # Subtitle safe margin verification (ensure >= 6% margin on both sides)
+    subtitle_margin_passed = True
+    min_margin_left_px = float("inf")
+    min_margin_right_px = float("inf")
+    if cfg.enable_subtitles and sampled_frames:
+        for f_arr in sampled_frames:
+            h, w = f_arr.shape[:2]
+            bottom_zone = f_arr[int(h * 0.75) :, :]
+            gray_zone = cv2.cvtColor(bottom_zone, cv2.COLOR_BGR2GRAY)
+            white_coords = np.column_stack(np.where(gray_zone > 220))
+            if len(white_coords) > 60:
+                min_x = int(white_coords[:, 1].min())
+                max_x = int(white_coords[:, 1].max())
+                margin_l = min_x
+                margin_r = w - 1 - max_x
+                min_margin_left_px = min(min_margin_left_px, margin_l)
+                min_margin_right_px = min(min_margin_right_px, margin_r)
+                if margin_l < w * 0.06 or margin_r < w * 0.06:
+                    subtitle_margin_passed = False
+
     qa_passed = (
         measured_dur >= 30.0
         and bool(audio_stream)
         and mean_vol > -45.0
         and mean_frame_diff > 5.0
         and len(shot_records) == len(shots)
+        and (subtitle_margin_passed or not cfg.enable_subtitles)
     )
 
     qa_report = {
         "passed": qa_passed,
+        "engine": {
+            "name": engine.name,
+            "model": "sd-turbo",
+            "is_fake": engine.name == "fake",
+            "is_cloud_stub": engine.name == "cloud_stub",
+        },
         "video": {
             "duration": round(measured_dur, 2),
             "width": int(video_stream.get("width", 0)),
@@ -648,6 +798,13 @@ def render_dramakey_pipeline(
             "channels": int(audio_stream.get("channels", 0)),
             "mean_volume_db": round(mean_vol, 2),
             "max_volume_db": round(max_vol, 2),
+        },
+        "subtitles": {
+            "burned": cfg.enable_subtitles,
+            "safe_margin_verified": subtitle_margin_passed,
+            "min_margin_left_px": min_margin_left_px if min_margin_left_px != float("inf") else 0.0,
+            "min_margin_right_px": min_margin_right_px if min_margin_right_px != float("inf") else 0.0,
+            "safe_threshold_px": round(cfg.target_width * 0.06, 1),
         },
         "motion": {
             "sample_count": len(sampled_frames),

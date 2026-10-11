@@ -316,3 +316,99 @@ def test_novel2video_workflow_render_flag(tmp_path: Path) -> None:
     assert Path(res_render["final_mp4"]).is_file()
     assert Path(res_render["qa_path"]).is_file()
     assert Path(res_render["record_path"]).is_file()
+
+
+def test_subtitle_wrapping_and_safe_margins(tmp_path: Path) -> None:
+    import subprocess
+    import cv2
+    from hevi.layer4_legacy.keyframe.omodul_impl.video_render import split_text_into_cues, _format_ass_time
+    from hevi.layer4_legacy.talkcraft.omodul_impl._media import FFMPEG
+
+    long_sentence = "登一高顶，有道观甚幽，老道长坐蒲团上，白发垂领，神光爽迈。"
+    cues = split_text_into_cues(long_sentence, start_time=0.0, end_time=6.0, max_chars_per_line=14, max_lines=2)
+    assert len(cues) >= 2, "Long sentence must be split into multiple cues"
+
+    for _, _, cue_text in cues:
+        lines = cue_text.split("\n")
+        assert len(lines) <= 2, f"Each cue must have <= 2 lines, got {len(lines)}"
+        for l in lines:
+            assert len(l) <= 14, f"Line exceeds 14 chars: {l} (len={len(l)})"
+
+    # Render a 1080x1920 test frame and verify subtitle pixels do not touch left or right edges (>= 6% margin)
+    blank_png = tmp_path / "blank.png"
+    subprocess.run(
+        [FFMPEG, "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=black:s=1080x1920:d=1", "-vframes", "1", str(blank_png)],
+        check=True,
+    )
+
+    ass_path = tmp_path / "test_sub.ass"
+    ass_events = []
+    for st, et, ctext in cues:
+        atext = ctext.replace("\n", r"\N")
+        ass_events.append(f"Dialogue: 0,{_format_ass_time(st)},{_format_ass_time(et)},Default,,0,0,0,,{atext}")
+
+    ass_content = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,WenQuanYi Zen Hei,42,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,2,70,70,120,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+""" + "\n".join(ass_events) + "\n"
+    ass_path.write_text(ass_content, encoding="utf-8")
+
+    out_png = tmp_path / "rendered_sub.png"
+    subprocess.run(
+        [FFMPEG, "-y", "-v", "error", "-i", str(blank_png), "-vf", f"subtitles='{ass_path}'", "-vframes", "1", str(out_png)],
+        check=True,
+    )
+
+    img = cv2.imread(str(out_png))
+    assert img is not None
+    h, w = img.shape[:2]
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    coords = np.column_stack(np.where(gray > 20))
+    assert len(coords) > 0, "Subtitles must be rendered and visible"
+
+    min_x = int(coords[:, 1].min())
+    max_x = int(coords[:, 1].max())
+    margin_left = min_x
+    margin_right = w - 1 - max_x
+
+    # Subtitles must not touch edges and maintain >= 6% margin
+    assert margin_left >= w * 0.06, f"Left margin {margin_left}px < {w * 0.06}px (6%)"
+    assert margin_right >= w * 0.06, f"Right margin {margin_right}px < {w * 0.06}px (6%)"
+
+
+def test_subject_alignment_and_moon_keyword(tmp_path: Path) -> None:
+    from hevi.layer4_legacy.keyframe.oprim_impl.image_score import verify_subject_alignment
+    from hevi.layer4_legacy.keyframe.oskill_impl.prompt_translator import zh_shot_to_sd_prompt
+
+    shot_moon = {
+        "text": "顷刻之间，纸化为一轮皎洁明月，月华流转，映照整座大殿。",
+        "visual_desc": "石壁上的素纸化作一轮巨大的皎洁明亮圆月，柔和纯白月华流转洒满大殿，神奇玄妙",
+        "visible_chars": [],
+    }
+    prompt_en, neg = zh_shot_to_sd_prompt(shot_moon)
+    assert "moon" in prompt_en.lower(), f"Prompt must contain moon keyword, got: {prompt_en}"
+    assert "person" in neg, "Negative prompt for solo moon shot should exclude person"
+
+    # Test dummy image alignment check
+    dummy_img = tmp_path / "dummy_moon.png"
+    arr = np.ones((128, 128, 3), dtype=np.uint8) * 180
+    Image.fromarray(arr).save(dummy_img)
+
+    align = verify_subject_alignment(
+        dummy_img,
+        text_zh=shot_moon["text"],
+        prompt_en=prompt_en,
+    )
+    assert "moon" in align["required_subjects"]
+    assert align["keywords_present"] is True
+    assert len(align["missing_keywords"]) == 0
+

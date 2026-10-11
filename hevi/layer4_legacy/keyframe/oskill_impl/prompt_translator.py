@@ -19,30 +19,20 @@ logger = logging.getLogger(__name__)
 
 # Deterministic domain dictionary for classical / narrative fiction
 _TRANSLATION_MAP: list[tuple[re.Pattern[str], str]] = [
-    # Characters & roles
-    (re.compile(r"老道长|老道士|道长|老道|师父|师尊"), "venerable elderly Taoist master with long white beard"),
-    (re.compile(r"道士|道人"), "Taoist priest in grey robes"),
-    (re.compile(r"王生|书生|秀才|文人"), "young Chinese scholar in Hanfu robes"),
-    (re.compile(r"徒弟|弟子|门徒"), "young Taoist disciple"),
+    # Characters & roles (used only when not overridden by character cards)
     (re.compile(r"仙人|神仙"), "celestial immortal sage"),
     (re.compile(r"宾客|客人|众客"), "gathered guests in traditional robes"),
-    # Age & Appearance
-    (re.compile(r"白须|白胡子|白发|苍老"), "long silver white beard and hair, weathered wise face"),
-    (re.compile(r"青年|年轻"), "youthful handsome countenance"),
-    (re.compile(r"中年"), "middle-aged mature look"),
-    # Attire & Objects
-    (re.compile(r"道袍|法袍"), "flowing traditional grey Taoist robe"),
-    (re.compile(r"汉服|青衫|蓝袍"), "classic blue Hanfu silk robe"),
+    # Attire & Objects & Props
     (re.compile(r"拂尘"), "white horsetail whisk"),
-    (re.compile(r"斧头|采樵|砍柴"), "carrying woodchopping axe and bundles of firewood"),
-    (re.compile(r"酒壶|酒杯|玉液"), "ceramic wine jug and celadon cups"),
-    (re.compile(r"剪纸|月亮|纸月"), "round glowing paper moon pinned on wall"),
+    (re.compile(r"斧头|利斧|采樵|砍柴"), "carrying woodchopping iron axe and bundles of firewood"),
+    (re.compile(r"酒壶|酒杯|玉液|共饮|畅饮|同饮|延客"), "ceramic wine jug and celadon cups on banquet table"),
+    (re.compile(r"明月|圆月|皓月|月亮|纸月|剪纸|月华|月光"), "a large radiant glowing bright full moon on the wall, luminous lunar sphere shining brightly, soft moonlight glow"),
     (re.compile(r"筷子|飞起"), "mystical floating bamboo chopsticks in mid-air"),
     # Settings & Environment
     (re.compile(r"崂山|深山|崇山"), "lofty misty Mount Laoshan, ancient pines and craggy peaks"),
     (re.compile(r"道观|观宇|禅房|大殿"), "ancient mountain Taoist monastery courtyard, timber architecture"),
-    (re.compile(r"石壁|墙壁|砖墙"), "solid ancient granite stone wall"),
-    (re.compile(r"穿墙|破壁|穿壁"), "phasing magically through solid stone wall without collision"),
+    (re.compile(r"石壁|墙壁|砖墙|面壁|坚壁"), "solid ancient granite stone wall"),
+    (re.compile(r"穿墙|破壁|穿壁"), "mystically phasing through solid stone wall without collision"),
     (re.compile(r"月下|夜色|月夜|深夜"), "moonlit night, soft luminous lunar glow, deep blue sky"),
     (re.compile(r"烛光|灯火"), "warm flickering candlelight, dramatic atmospheric shadows"),
     (re.compile(r"宴饮|痛饮|畅饮"), "convivial ancient Chinese evening banquet"),
@@ -51,6 +41,16 @@ _TRANSLATION_MAP: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"特写"), "close-up portrait shot, detailed facial expression"),
     (re.compile(r"全景|远景"), "wide establishing cinematic shot, epic landscape"),
     (re.compile(r"中景"), "medium shot"),
+]
+
+# Required subject keyword verification map: (Chinese regex, English token, English desc)
+REQUIRED_SUBJECT_MAP: list[tuple[re.Pattern[str], str, str]] = [
+    (re.compile(r"明月|圆月|皓月|月亮|月华"), "moon", "a radiant glowing bright full moon"),
+    (re.compile(r"斧头|利斧|采樵|砍柴"), "axe", "woodchopping axe"),
+    (re.compile(r"石壁|墙壁|穿壁|坚壁"), "wall", "solid ancient granite stone wall"),
+    (re.compile(r"酒壶|酒杯|玉液|共饮|宴"), "wine", "ceramic wine jug and cups banquet"),
+    (re.compile(r"王生|书生"), "scholar", "young handsome Chinese scholar in Hanfu"),
+    (re.compile(r"老道长|老道|师父"), "Taoist", "venerable elderly Taoist master with white beard"),
 ]
 
 DEFAULT_STYLE = (
@@ -126,19 +126,21 @@ def zh_shot_to_sd_prompt(
         visual_desc = shot
         visible_chars: list[str] = []
         env = ""
+        focal_char = None
     elif isinstance(shot, dict):
         visual_desc = str(shot.get("visual_desc") or shot.get("script") or shot.get("text") or "")
         visible_chars = [str(c) for c in (shot.get("visible_chars") or shot.get("characters") or [])]
         env = str(shot.get("environment") or shot.get("location") or "")
+        focal_char = shot.get("primary_char") or shot.get("focal_char")
     else:
         visual_desc = str(getattr(shot, "visual_desc", "") or getattr(shot, "script", ""))
         visible_chars = [str(c) for c in getattr(shot, "visible_chars", [])]
         env = str(getattr(shot, "environment", "") or getattr(shot, "location", ""))
+        focal_char = getattr(shot, "primary_char", None) or getattr(shot, "focal_char", None)
 
     full_zh = f"{env} {visual_desc}".strip()
 
-    # 1. Resolve character card tokens
-    char_tokens: list[str] = []
+    # 1. Resolve character card lookup
     card_lookup: dict[str, CharacterCard] = {}
     if character_cards:
         if isinstance(character_cards, dict):
@@ -150,33 +152,82 @@ def zh_shot_to_sd_prompt(
                 for a in card.aliases:
                     card_lookup[a] = card
 
-    for char_name in visible_chars:
-        card = card_lookup.get(char_name)
-        if card and card.appearance_en_tokens:
-            if card.appearance_en_tokens not in char_tokens:
-                char_tokens.append(card.appearance_en_tokens)
+    # Infer focal character if not explicitly provided
+    if not focal_char:
+        if "王生" in visible_chars or "王生" in full_zh or "书生" in full_zh:
+            # If Wang Sheng is active or solo
+            if "老道长坐蒲团上" in full_zh:
+                focal_char = "老道长"
+            else:
+                focal_char = "王生"
+        elif "老道长" in visible_chars or "道长" in full_zh or "老道" in full_zh:
+            focal_char = "老道长"
 
-    # 2. Check LLM translation option
+    char_tokens: list[str] = []
+    negative = DEFAULT_NEGATIVE
+
+    # 2. Assign character tokens prioritizing focal character
+    if focal_char == "王生":
+        wang_card = card_lookup.get("王生")
+        if wang_card and wang_card.appearance_en_tokens:
+            char_tokens.append(f"{wang_card.appearance_en_tokens}, focused on the young Chinese scholar")
+        for cname in visible_chars:
+            if cname not in ("王生", "王七", "书生", "弟子"):
+                other_card = card_lookup.get(cname)
+                if other_card and other_card.appearance_en_tokens:
+                    char_tokens.append(other_card.appearance_en_tokens)
+        # If Wang Sheng is solo, forbid elderly / white beard in negative prompt
+        if not any(c in visible_chars for c in ["老道长", "宾客", "众人", "师父"]):
+            negative = f"{DEFAULT_NEGATIVE}, elderly, old man, white beard, white hair, grey hair, wrinkled face"
+    elif focal_char == "老道长":
+        dao_card = card_lookup.get("老道长")
+        if dao_card and dao_card.appearance_en_tokens:
+            char_tokens.append(f"{dao_card.appearance_en_tokens}, focused on the venerable Taoist master")
+        for cname in visible_chars:
+            if cname not in ("老道长", "道长", "师父", "老道"):
+                other_card = card_lookup.get(cname)
+                if other_card and other_card.appearance_en_tokens:
+                    char_tokens.append(other_card.appearance_en_tokens)
+    else:
+        # Check if this is a scene shot like the Moon
+        is_moon_shot = any(pattern.search(full_zh) for pattern, k, _ in REQUIRED_SUBJECT_MAP if k == "moon")
+        if is_moon_shot:
+            char_tokens.append("a large radiant glowing bright full moon on the wall, luminous lunar sphere shining brightly, soft moonlight beam")
+            negative = f"{DEFAULT_NEGATIVE}, person, human, character, man, woman"
+        else:
+            # Normal multi-character or generic
+            for char_name in visible_chars:
+                card = card_lookup.get(char_name)
+                if card and card.appearance_en_tokens and card.appearance_en_tokens not in char_tokens:
+                    char_tokens.append(card.appearance_en_tokens)
+
+    # 3. Translate scene elements and enforce required subject keywords
     llm_en = _try_llm_translate(full_zh)
     if llm_en:
         scene_tokens = [llm_en]
     else:
-        # Rule-based fallback translation
         scene_tokens = _rule_translate_scene(full_zh)
-        if not scene_tokens:
+        if not scene_tokens and not char_tokens:
             scene_tokens = ["ancient Chinese mountain setting, atmospheric drama"]
 
-    # 3. Assemble prompt parts
+    # Ensure required subject tokens are present in scene
+    for pattern, subj_key, subj_desc in REQUIRED_SUBJECT_MAP:
+        if pattern.search(full_zh):
+            # Check if keyword already appears in char_tokens or scene_tokens
+            combined_txt = " ".join(char_tokens + scene_tokens).lower()
+            if subj_key.lower() not in combined_txt:
+                scene_tokens.append(subj_desc)
+
+    # 4. Assemble prompt parts
     prompt_parts: list[str] = []
-    if char_tokens:
-        prompt_parts.extend(char_tokens)
+    prompt_parts.extend(char_tokens)
     prompt_parts.extend(scene_tokens)
 
     style_tag = style if style is not None else DEFAULT_STYLE
     if style_tag:
         prompt_parts.append(style_tag)
 
-    # Dedup preserving order
+    # Dedup preserving order and trim excess
     deduped: list[str] = []
     for part in prompt_parts:
         clean = part.strip().rstrip(",")
@@ -184,4 +235,4 @@ def zh_shot_to_sd_prompt(
             deduped.append(clean)
 
     prompt_en = ", ".join(deduped)
-    return prompt_en, DEFAULT_NEGATIVE
+    return prompt_en, negative

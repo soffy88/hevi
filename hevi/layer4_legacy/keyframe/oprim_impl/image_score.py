@@ -143,14 +143,62 @@ def compute_clip_similarity(
         return 0.5
 
 
+SUBJECT_KEYWORD_RULES: list[tuple[str, str, str]] = [
+    (r"明月|圆月|皓月|月亮|月华|月光", "moon", "a radiant glowing bright full moon"),
+    (r"斧头|利斧|采樵|砍柴", "axe", "woodchopping axe"),
+    (r"石壁|墙壁|穿壁|坚壁", "wall", "ancient granite stone wall"),
+    (r"酒壶|酒杯|玉液|共饮|宴|痛饮", "wine", "ceramic wine jug banquet"),
+    (r"王生|书生|秀才", "scholar", "young handsome Chinese scholar"),
+    (r"老道长|老道|道长|师父", "taoist", "venerable elderly Taoist master with white beard"),
+]
+
+
+def verify_subject_alignment(
+    image_path: Path | str,
+    *,
+    text_zh: str | None = None,
+    prompt_en: str | None = None,
+) -> dict[str, Any]:
+    """Verify that required scene subject keywords appear in prompt and visually align via CLIP."""
+    import re
+
+    required_keys: list[str] = []
+    subject_descs: list[str] = []
+
+    if text_zh:
+        for pattern_str, key_en, desc_en in SUBJECT_KEYWORD_RULES:
+            if re.search(pattern_str, text_zh):
+                if key_en not in required_keys:
+                    required_keys.append(key_en)
+                    subject_descs.append(desc_en)
+
+    prompt_lower = (prompt_en or "").lower()
+    missing_keys = [k for k in required_keys if k not in prompt_lower]
+    keywords_present = len(missing_keys) == 0
+
+    # If subjects are detected, measure CLIP similarity specifically against subject description
+    clip_subj_score = 0.5
+    if subject_descs and image_path and Path(image_path).is_file():
+        combined_subject = ", ".join(subject_descs)
+        clip_subj_score = compute_clip_similarity(image_path, prompt_en=combined_subject)
+
+    return {
+        "required_subjects": required_keys,
+        "keywords_present": keywords_present,
+        "missing_keywords": missing_keys,
+        "clip_subject_score": round(clip_subj_score, 4),
+    }
+
+
 def score_keyframe(
     image_path: Path | str,
     *,
     prompt_en: str | None = None,
+    text_zh: str | None = None,
 ) -> dict[str, Any]:
     """Compute composite quality and relevance score for keyframe candidate.
 
-    Returns dict with composite_score, clip_score, sharpness, exposure, bad_image.
+    Returns dict with composite_score, clip_score, sharpness, exposure, bad_image, subject_alignment.
     """
     is_bad, bad_reason = detect_bad_image(image_path)
     if is_bad:
@@ -161,14 +209,26 @@ def score_keyframe(
             "exposure": 0.0,
             "bad_image": True,
             "bad_reason": bad_reason,
+            "subject_alignment": {
+                "required_subjects": [],
+                "keywords_present": False,
+                "missing_keywords": [],
+                "clip_subject_score": 0.0,
+            },
         }
 
     sharpness = compute_laplacian_sharpness(image_path)
     exposure = compute_exposure_score(image_path)
     clip_score = compute_clip_similarity(image_path, prompt_en=prompt_en or "") if prompt_en else 0.5
+    subj_align = verify_subject_alignment(image_path, text_zh=text_zh, prompt_en=prompt_en)
 
-    # Composite weight: 60% text alignment, 30% sharpness, 10% exposure
-    composite = 0.60 * clip_score + 0.30 * sharpness + 0.10 * exposure
+    # Composite weight: 50% prompt clip alignment, 20% subject alignment, 20% sharpness, 10% exposure
+    effective_clip = 0.70 * clip_score + 0.30 * subj_align["clip_subject_score"]
+    composite = 0.60 * effective_clip + 0.30 * sharpness + 0.10 * exposure
+
+    # If missing a mandatory scene subject keyword, apply penalty
+    if not subj_align["keywords_present"]:
+        composite *= 0.85
 
     return {
         "composite_score": round(composite, 4),
@@ -177,4 +237,6 @@ def score_keyframe(
         "exposure": round(exposure, 4),
         "bad_image": False,
         "bad_reason": "ok",
+        "subject_alignment": subj_align,
     }
+
