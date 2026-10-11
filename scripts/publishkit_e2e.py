@@ -2,11 +2,13 @@ import os
 import json
 import sys
 from pathlib import Path
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
 from hevi.publishkit.adapter import generate_publish_bundle
 
 def main():
-    root = Path(__file__).parent.parent
+    root = ROOT
     video_dir = root / "output/talkcraft_e2e/explainer"
     
     # Try finding an mp4

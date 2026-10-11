@@ -110,3 +110,88 @@ async def test_assembly_calls_whiteboard_attach(
     assert captured["enabled"] is True
     assert captured["kind"] == "whiteboard"
     assert captured["visual"] == "whiteboard"
+
+
+def test_whiteboard_compiler_extracts_meaningful_content() -> None:
+    from hevi.layer4_legacy.whiteboard.oskill_impl.compiler import (
+        compile_storyboard_to_dsl,
+        extract_beat_content,
+        parse_storyboard,
+    )
+
+    storyboard = {
+        "topic": "大语言模型如何思考",
+        "segments": [
+            {
+                "sceneType": "intro",
+                "narration": "今天我们要给大家介绍什么是大语言模型。| 核心原理是预测下一个词。| 让你一看就明白！",
+                "keywords": ["大模型介绍", "预测下一个词"],
+            }
+        ],
+    }
+
+    title0, points0 = extract_beat_content(
+        "今天我们要给大家介绍什么是大语言模型。",
+        keywords=["大模型介绍"],
+        beat_index=0,
+    )
+    assert title0 == "大模型介绍"
+    assert len(points0) > 0
+
+    segments = parse_storyboard(storyboard)
+    assert len(segments) == 1
+    assert len(segments[0].beats) == 3
+    assert segments[0].beats[0].title == "大模型介绍"
+
+    dsl_landscape = compile_storyboard_to_dsl(
+        storyboard,
+        orientation="landscape",
+        runtime_root="/path/to/whiteboard",
+    )
+    assert "Beat 0" not in dsl_landscape
+    assert "大语言模型如何思考" in dsl_landscape
+    assert "大模型介绍" in dsl_landscape
+
+    dsl_portrait = compile_storyboard_to_dsl(
+        storyboard,
+        orientation="portrait",
+        runtime_root="/path/to/whiteboard",
+    )
+    assert "CX_P" in dsl_portrait
+    assert "Beat 0" not in dsl_portrait
+    assert "大模型介绍" in dsl_portrait
+
+
+def test_align_words_to_segments() -> None:
+    from hevi.layer4_legacy.whiteboard.omodul_impl.tts_asr import align_words_to_segments
+
+    segments = ["第一句内容介绍。", "第二句详细分析。", "第三句给出结论。"]
+    words = [
+        {"w": "第一句", "s": 0.1, "e": 0.5},
+        {"w": "内容", "s": 0.5, "e": 0.9},
+        {"w": "介绍", "s": 0.9, "e": 1.4},
+        {"w": "第二句", "s": 1.7, "e": 2.1},
+        {"w": "详细", "s": 2.1, "e": 2.5},
+        {"w": "分析", "s": 2.5, "e": 3.0},
+        {"w": "第三句", "s": 3.4, "e": 3.8},
+        {"w": "给出", "s": 3.8, "e": 4.2},
+        {"w": "结论", "s": 4.2, "e": 4.7},
+    ]
+    starts = align_words_to_segments(segments, words, 4.8)
+    assert len(starts) == 3
+    assert starts[0] == 0.0
+    assert starts[1] >= 1.5
+    assert starts[2] >= 3.2
+    assert starts[1] < starts[2]
+
+
+def test_capabilities_includes_whiteboard_explainer() -> None:
+    from hevi.production.capabilities import _CATALOG, capability_catalog
+
+    assert "whiteboard_explainer" in _CATALOG
+    catalog_ids = {item["id"] for item in capability_catalog()}
+    assert "whiteboard_explainer" in catalog_ids
+    desc = _CATALOG["whiteboard_explainer"]
+    assert desc.id == "whiteboard_explainer"
+    assert "/api/explainer/run" in desc.routes
+
