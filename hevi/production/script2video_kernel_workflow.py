@@ -28,6 +28,17 @@ class Script2VideoKernelConfig:
     style: str = "cinematic"
     generate_portraits: bool = False
     generate_transitions: bool = False
+    render: bool = False
+    engine: str = "sdturbo_cpu"
+    target_width: int = 1080
+    target_height: int = 1920
+    fps: int = 25
+    kf_width: int = 512
+    kf_height: int = 512
+    face_threshold: float = 0.35
+    enable_tts: bool = True
+    enable_subtitles: bool = True
+    base_seed: int = 42
 
 
 @dataclass
@@ -121,6 +132,64 @@ async def script2video_kernel_workflow(
             "decision_trail": decision_trail,
         }
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        if config.render:
+            _step("render", 92.0)
+            from hevi.layer4_legacy.keyframe.omodul_impl.video_render import (
+                RenderConfig,
+                render_dramakey_pipeline,
+            )
+            from hevi.layer4_legacy.script2video.oprim_impl.character_fuse import (
+                fuse_characters_to_cards,
+            )
+
+            cards = fuse_characters_to_cards(input_data.characters)
+            render_cfg = RenderConfig(
+                engine=config.engine,
+                target_width=config.target_width,
+                target_height=config.target_height,
+                fps=config.fps,
+                kf_width=config.kf_width,
+                kf_height=config.kf_height,
+                face_threshold=config.face_threshold,
+                enable_tts=config.enable_tts,
+                enable_subtitles=config.enable_subtitles,
+                base_seed=config.base_seed,
+            )
+
+            render_res = render_dramakey_pipeline(
+                shots=input_data.shots,
+                output_dir=output_dir,
+                character_cards=cards,
+                config=render_cfg,
+                on_progress=on_step,
+            )
+
+            decision_trail.append(
+                {
+                    "stage": "render",
+                    "rendered_shots": len(input_data.shots),
+                    "final_mp4": render_res["final_mp4"],
+                    "qa_passed": render_res["qa_report"]["passed"],
+                }
+            )
+            _step("completed", 100.0)
+            return {
+                "status": render_res["status"],
+                "report_path": str(report_path),
+                "final_mp4": render_res["final_mp4"],
+                "qa_path": render_res["qa_path"],
+                "record_path": render_res["record_path"],
+                "characters_path": render_res["characters_path"],
+                "contact_sheet": render_res["contact_sheet"],
+                "qa_report": render_res["qa_report"],
+                "record_report": render_res["record_report"],
+                "decision_trail": decision_trail,
+                "generation_order": order,
+                "priority_shots": priority,
+                "rendered_shots": len(input_data.shots),
+            }
+
         _step("completed", 100.0)
         return {
             "status": "completed",

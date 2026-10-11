@@ -18,6 +18,7 @@ from hevi.layer4_legacy.script2video.oskill_impl.reference_select import (
     select_best_image,
     select_reference_images_and_prompt,
 )
+from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import shot_budget_for_duration
 from hevi.layer4_legacy.script2video.oskill_impl.shot_decompose import (
     decompose_all_shots,
     decompose_shot_visual,
@@ -42,4 +43,5 @@ __all__ = [
     "process_cameo_photos",
     "select_best_image",
     "select_reference_images_and_prompt",
+    "shot_budget_for_duration",
 ]

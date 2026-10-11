@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from hevi.director.kernel_bridge import plan_kernel_from_shot_list
 from hevi.director.pipeline_schemas import ShotList, ShotListItem
 from hevi.layer4_legacy.script2video.omodul_impl.idea_plan import plan_idea2video
 from hevi.layer4_legacy.script2video.omodul_impl.kernel_plan import plan_kernel_artifacts
@@ -159,6 +158,8 @@ def fuse_production(
         notes.append(f"cameo:{len(cameo.characters)}")
 
     if existing_shot_list is not None:
+        from hevi.director.kernel_bridge import plan_kernel_from_shot_list
+
         kernel = plan_kernel_from_shot_list(existing_shot_list, characters=None)
         shot_list = enrich_shot_list_with_kernel(existing_shot_list, kernel)
         characters = list(existing_characters or [])
