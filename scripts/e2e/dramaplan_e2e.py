@@ -261,10 +261,12 @@ async def _main_async(args: argparse.Namespace) -> int:
             s.event_id in book_event_ids for sb in storyboards for s in sb.shots
         ),
         # 场镜头数之和在预算内时分镜镜头数与之相等；超预算时按场削减（不截断丢镜）
+        # 分镜镜头数：不少于 min(剧本场镜头数之和, 预算)（不截断丢镜），不超过预算
+        # （预算有余时会给台词多的场补镜头，避免多人台词合成一镜）
         "storyboard_shot_count_matches_scenes": all(
-            sb.total_shots() == ep.script.total_shots()
-            if ep.script.total_shots() <= max(sb.shot_budget, 1)
-            else sb.total_shots() <= max(sb.shot_budget, len(ep.script.scenes))
+            min(ep.script.total_shots(), max(sb.shot_budget, len(ep.script.scenes)))
+            <= sb.total_shots()
+            <= max(sb.shot_budget, len(ep.script.scenes))
             for ep, sb in zip(log.episodes, storyboards, strict=False)
         ),
         # F1：剧本旁白/对白 → 分镜 tts 覆盖率 100%
@@ -287,6 +289,13 @@ async def _main_async(args: argparse.Namespace) -> int:
             if line.text.strip()[-1:] in ("？", "?", "！", "!")
         )
         and all("……。" not in s.tts_text for sb in storyboards for s in sb.shots),
+        # r5：tts 不含括号动作描写、不以省略号开头
+        "storyboard_tts_no_stage_directions": all(
+            not any(ch in s.tts_text for ch in "（）()")
+            and not s.tts_text.lstrip().startswith(("...", "…"))
+            for sb in storyboards
+            for s in sb.shots
+        ),
         "storyboard_shot_duration_floor": all(
             s.duration_s + 1e-6 >= max(MIN_SHOT_DURATION_S, _readable_chars(s.tts_text) / TTS_CHARS_PER_SEC)
             for sb in storyboards

@@ -216,3 +216,80 @@ def test_rule_layer_flags_foreign_token_in_dialogue():
     )
     issues = deterministic_checks(EpisodeScript(ep_number=1, scenes=[scene]), book, decision)
     assert any(i.code == "foreign_token" for i in issues)
+
+
+def test_r5_stage_directions_leave_tts_and_go_to_image_prompt():
+    scene = ScriptScene(
+        scene_no=1,
+        event_ids=["E1"],
+        dialogue=[
+            ScriptLine(speaker="福伯", text="...（颤手接过玉玦，久久不语）"),
+            ScriptLine(speaker="少爷", text="（缓缓将玉玦放入福伯掌心）它该归你了。"),
+        ],
+        shot_count=2,
+        duration_s=8,
+    )
+    script = EpisodeScript(ep_number=1, scenes=[scene])
+    sb = script_to_storyboard(script, _book())
+    joined = "".join(s.tts_text for s in sb.shots)
+    assert "（" not in joined and "(" not in joined and not joined.startswith(".")
+    assert "它该归你了。" in joined
+    prompts = " ".join(s.image_prompt for s in sb.shots)
+    assert "颤手接过玉玦" in prompts and "缓缓将玉玦放入福伯掌心" in prompts
+    assert storyboard_coverage(script, sb)["coverage"] == 1.0
+
+
+def test_r5_rule_layer_flags_stage_direction_in_dialogue():
+    decision = AdaptationDecision(ep_number=1, event_ids=["E1"])
+    scene = ScriptScene(
+        scene_no=1,
+        event_ids=["E1"],
+        dialogue=[ScriptLine(speaker="少爷", text="（叹气）走吧。")],
+        shot_count=1,
+        duration_s=5,
+    )
+    issues = deterministic_checks(EpisodeScript(ep_number=1, scenes=[scene]), _book(), decision)
+    assert any(i.code == "stage_direction_in_dialogue" for i in issues)
+
+
+def test_r5_spare_budget_avoids_mixing_two_speakers_in_one_shot():
+    from hevi.storygraph.schemas import OutlineEpisode
+
+    scene = ScriptScene(
+        scene_no=1,
+        event_ids=["E1"],
+        dialogue=[
+            ScriptLine(speaker="福伯", text="少爷，盘缠备好了。"),
+            ScriptLine(speaker="少爷", text="多谢福伯。"),
+            ScriptLine(speaker="福伯", text="路上小心。"),
+        ],
+        shot_count=2,
+        duration_s=9,
+    )
+    ep = OutlineEpisode(ep_number=1, target_duration_s=30, shot_budget=6)
+    sb = script_to_storyboard(EpisodeScript(ep_number=1, scenes=[scene]), _book(), ep)
+    assert len(sb.shots) == 3
+    assert all("、" not in s.speaker for s in sb.shots)
+
+
+def test_r5_merge_prefers_same_speaker_when_no_spare_budget():
+    scene = ScriptScene(
+        scene_no=1,
+        event_ids=["E1"],
+        dialogue=[
+            ScriptLine(speaker="福伯", text="少爷，盘缠备好了。"),
+            ScriptLine(speaker="福伯", text="信也在里面。"),
+            ScriptLine(speaker="少爷", text="多谢福伯。"),
+        ],
+        shot_count=2,
+        duration_s=9,
+    )
+    sb = script_to_storyboard(EpisodeScript(ep_number=1, scenes=[scene]), _book())
+    assert [s.speaker for s in sb.shots] == ["福伯", "少爷"]
+
+
+def test_r5_split_short_text_has_no_punctuation_only_shot():
+    parts = split_single_shot_plan(_Plan("s", 6.0, "p", "短。"), 3)
+    assert [p.tts_text for p in parts] == ["短。", "", ""]
+    parts = split_single_shot_plan(_Plan("s", 6.0, "p", "他说……我不知道……也许吧，明天再说。"), 2)
+    assert not parts[1].tts_text.startswith("…")

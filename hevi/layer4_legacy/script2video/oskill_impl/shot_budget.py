@@ -128,7 +128,8 @@ def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
     """把单个镜头按台词内容**顺序分组**拆分为 count 个子镜头。
 
     分句/分段按顺序均匀分配到子镜（全部保留，拼接后与原文一致）；
-    内容不足 count 份时按字符级再细分（绝不丢内容、不造空 tts）。
+    内容不足 count 份时按字符级再细分（绝不丢内容；不切出只含标点的子镜；
+    可读字数少于 count 时多出的子镜为空 tts 的纯画面镜，排在末尾）。子镜时长按字数加权。
     """
     if count <= 1:
         return [plan]
@@ -173,6 +174,9 @@ def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
                         best = c
             cut = best if best is not None else ideal
             cut = max(start + 1, min(cut, n_chars - (slots_left - 1)))
+            # 不把"……"/"..."拆到两镜
+            while 0 < cut < n_chars and flat[cut - 1] in "….·" and flat[cut] in "….·":
+                cut += 1
             out.append([flat[start:cut]])
             start = cut
         return out
@@ -215,10 +219,34 @@ def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
     else:
         groups = _char_level(flat_text)
 
+    # 只含标点/空白的子镜并入前一镜；可读字不足 count 时空子镜一律排在末尾（纯画面镜）
+    def _readable(t: str) -> int:
+        return sum(1 for ch in t if ch.isalnum())
+
+    texts = ["".join(g) for g in groups]
+    merged: list[str] = []
+    for t in texts:
+        if merged and not _readable(t):
+            merged[-1] += t
+        elif not merged and not _readable(t) and t:
+            merged.append(t)
+        else:
+            if merged and not _readable(merged[-1]):
+                merged[-1] += t
+            else:
+                merged.append(t)
+    merged = [t for t in merged if t] or [""]
+    merged += [""] * (count - len(merged))
+    groups = [[t] for t in merged[:count]]
+    # 子镜时长按可读字数加权（空子镜给最小权重），总时长不变
+    weights = [max(1, _readable(t)) for t in merged[:count]]
+    wsum = float(sum(weights)) or 1.0
+    part_durs = [round(total_dur * w / wsum, 2) for w in weights]
+
     parts: list[Any] = []
     accum_dur = 0.0
     for j, group in enumerate(groups):
-        dur = round(total_dur - accum_dur, 2) if j == count - 1 else base_dur
+        dur = round(total_dur - accum_dur, 2) if j == count - 1 else part_durs[j]
         accum_dur += dur
         sid = f"{original_id}_{j+1}"
         clause_text = "".join(group)

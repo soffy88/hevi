@@ -75,6 +75,21 @@ def _ensure_sentence_end(text: str) -> str:
     return f"{t}。" if t else ""
 
 
+_STAGE_RE = re.compile(r"[（(]([^（）()]*)[）)]")
+_LEAD_ELLIPSIS_RE = re.compile(r"^\s*(?:\.{2,}|…+)\s*")
+
+
+def _split_stage_directions(text: str) -> tuple[str, list[str]]:
+    """把台词里括号内的动作/神态描写剥离出来：返回 (可朗读文本, 动作描写列表)。
+
+    同时去掉开头孤立的省略号（"..."/"……"），避免 TTS 以停顿或英文句点开头。
+    """
+    actions = [a.strip() for a in _STAGE_RE.findall(str(text or "")) if a.strip()]
+    spoken = _STAGE_RE.sub("", str(text or ""))
+    spoken = _LEAD_ELLIPSIS_RE.sub("", spoken).strip()
+    return spoken, actions
+
+
 def _readable_chars(text: str) -> int:
     return sum(1 for ch in str(text or "") if ch not in _PUNCT_CHARS)
 
@@ -518,6 +533,10 @@ def _revise_single_scene_deterministic(
             text = text[:MAX_DIALOGUE_CHARS]
         if "taboo" in codes and any(k in text for k in taboo_keywords):
             continue
+        if "stage_direction_in_dialogue" in codes:
+            text, _acts = _split_stage_directions(text)
+            if not _readable_chars(text):
+                continue
         if "foreign_token" in codes:
             text = re.sub(r"[A-Za-z]{3,}", "", text).strip()
             if not text:
@@ -822,6 +841,16 @@ def deterministic_checks(
                     ReviewIssue(
                         code="dialogue_too_long",
                         message=f"台词 {len(line.text)} 字 > 上限 {MAX_DIALOGUE_CHARS}",
+                        scope=f"scene:{scene.scene_no}",
+                        scene_no=scene.scene_no,
+                    )
+                )
+            # 台词中混入括号动作描写或以省略号开头（TTS 会照念）判 error
+            if _STAGE_RE.search(line.text) or _LEAD_ELLIPSIS_RE.match(line.text):
+                issues.append(
+                    ReviewIssue(
+                        code="stage_direction_in_dialogue",
+                        message=f"台词含括号动作描写或以省略号开头: {line.text[:24]}",
                         scope=f"scene:{scene.scene_no}",
                         scene_no=scene.scene_no,
                     )
@@ -1211,7 +1240,8 @@ def _split_unit_text(text: str) -> tuple[str, str] | None:
     for i, piece in enumerate(pieces[:-1]):
         acc += len(piece)
         left, right = text[:acc], text[acc:]
-        if _readable_chars(left) == 0 or _readable_chars(right) == 0:
+        # 两半都至少 4 个可读字，避免切出"父亲，"这类过碎的镜头（不够切就保留为纯画面镜）
+        if _readable_chars(left) < 4 or _readable_chars(right) < 4:
             continue
         dist = abs(acc - total / 2)
         if best is None or dist < best[0]:
@@ -1221,8 +1251,14 @@ def _split_unit_text(text: str) -> tuple[str, str] | None:
     return text[: best[1]], text[best[1] :]
 
 
-def _plan_scene_shot_counts(scenes: list[ScriptScene], budget: int) -> list[int]:
-    """各场镜头数；超全集预算时从最大的场开始削减（每场至少 1 镜，绝不丢场）。"""
+def _plan_scene_shot_counts(
+    scenes: list[ScriptScene], budget: int, needs: list[int] | None = None
+) -> list[int]:
+    """各场镜头数。
+
+    - 超全集预算时从最大的场开始削减（每场至少 1 镜，绝不丢场）；
+    - 预算有余时，把余量补给"可朗读单元数 > 镜头数"的场（避免多人台词被迫合成一镜）。
+    """
     counts = [max(MIN_SCENE_SHOTS, s.shot_count) for s in scenes]
     if budget > 0:
         while sum(counts) > budget:
@@ -1230,7 +1266,79 @@ def _plan_scene_shot_counts(scenes: list[ScriptScene], budget: int) -> list[int]
             if counts[i] <= MIN_SCENE_SHOTS:
                 break
             counts[i] -= 1
+        if needs:
+            while sum(counts) < budget:
+                short = [i for i in range(len(counts)) if needs[i] > counts[i]]
+                if not short:
+                    break
+                i = max(short, key=lambda j: needs[j] - counts[j])
+                counts[i] += 1
     return counts
+
+
+def _scene_units(scene: ScriptScene, name_of: Any) -> tuple[list[dict[str, Any]], list[str]]:
+    """场内可朗读单元（旁白逐句 → 对白逐句）；括号动作描写剥离为 action，不进 tts。"""
+    units: list[dict[str, Any]] = []
+    pending_actions: list[str] = []
+    for clause in _SENTENCE_SPLIT_RE.split(scene.narration or ""):
+        spoken, acts = _split_stage_directions(clause)
+        if _readable_chars(spoken):
+            units.append({"speaker": "旁白", "text": spoken, "emotion": "", "actions": pending_actions + acts})
+            pending_actions = []
+        else:
+            pending_actions += acts
+    for line in scene.dialogue:
+        spoken, acts = _split_stage_directions(line.text)
+        if _readable_chars(spoken):
+            units.append(
+                {
+                    "speaker": name_of(line.speaker),
+                    "text": spoken,
+                    "emotion": line.emotion,
+                    "actions": pending_actions + acts,
+                }
+            )
+            pending_actions = []
+        else:
+            # 纯动作行：挂到上一镜（无上一镜则挂到下一句）
+            if units:
+                units[-1]["actions"] = units[-1]["actions"] + acts
+            else:
+                pending_actions += acts
+    leftover = pending_actions
+    return units, leftover
+
+
+def _merge_units_to(units: list[dict[str, Any]], n: int) -> list[list[dict[str, Any]]]:
+    """单元多于镜头数时：反复合并"代价最小"的相邻两组，优先同一说话人、字数少的组合。"""
+    groups = [[u] for u in units]
+
+    def _spk(g: list[dict[str, Any]]) -> set[str]:
+        return {u["speaker"] for u in g}
+
+    def _chars(g: list[dict[str, Any]]) -> int:
+        return sum(max(1, _readable_chars(u["text"])) for u in g)
+
+    while len(groups) > max(1, n):
+        best_i, best_cost = 0, None
+        for i in range(len(groups) - 1):
+            a, b = groups[i], groups[i + 1]
+            mixed = len(_spk(a) | _spk(b)) - 1  # 0 = 同一说话人
+            cost = mixed * 1000 + _chars(a) + _chars(b)
+            if best_cost is None or cost < best_cost:
+                best_i, best_cost = i, cost
+        groups[best_i : best_i + 2] = [groups[best_i] + groups[best_i + 1]]
+    return groups
+
+
+def _cut_gist(text: str, limit: int) -> str:
+    """截取台词要点：在 limit 内最后一个标点处截断，避免切在词中间。"""
+    t = text.strip()
+    if len(t) <= limit:
+        return t.rstrip("，,；;、 ")
+    head = t[:limit]
+    cut = max(head.rfind(p) for p in "，,。！？!?；;…")
+    return (head[:cut] if cut >= limit // 3 else head).rstrip("，,；;、… ")
 
 
 def script_to_storyboard(
@@ -1242,19 +1350,19 @@ def script_to_storyboard(
 ) -> EpisodeStoryboard:
     """从审稿通过的 EpisodeScript 生成镜头级分镜（每镜带 event_id、画面描述、台词/旁白、时长）。
 
-    DRAMAPLAN F1/F2/F5：
-    - 剧本每句旁白与对白**全部**按序进入分镜 tts（台词多于镜头时相邻合并，绝不丢弃）；
-    - tts 只放可朗读文本（不含镜头指令、说话人前缀），保留原句末标点；
+    DRAMAPLAN F1/F2/F5 + r5：
+    - 剧本每句旁白与对白**全部**按序进入分镜 tts（台词多于镜头时合并，优先同一说话人；
+      预算有余时先给该场补镜头，避免多人台词合成一镜）；
+    - tts 只放可朗读文本：剥离括号动作描写（移入该镜 image_prompt）、开头孤立省略号，
+      不含镜头指令和说话人前缀，保留原句末标点；
     - 每镜时长按字数分配，且 ≥ max(朗读时长, MIN_SHOT_DURATION_S)；
     - image_prompt 按该镜内容生成，画风来自 `style` 参数（默认国风动漫插画）。
-    镜头数 == 各场 shot_count 之和（超预算时按场削减，不截断丢镜）。
     """
     by_event = {e.event_id: e for e in book.events}
     char_id_to_name = {c.char_id: c.name for c in book.characters}
     known_names = {c.name for c in book.characters}
     target_duration = outline_ep.target_duration_s if outline_ep else script.total_duration()
     shot_budget = outline_ep.shot_budget if outline_ep else script.total_shots()
-    counts = _plan_scene_shot_counts(script.scenes, shot_budget)
     framing = ["全景交代环境", "中景人物互动", "近景情绪推进", "特写定格细节"]
 
     def _name(sp: str) -> str:
@@ -1262,62 +1370,36 @@ def script_to_storyboard(
             return char_id_to_name[sp]
         return sp
 
-    shots: list[EpisodeShot] = []
-    for scene, n_shots in zip(script.scenes, counts, strict=True):
-        # 1) 可朗读单元：旁白逐句 + 对白逐句（顺序：旁白交代 → 对白）
-        units: list[dict[str, str]] = []
-        for clause in _SENTENCE_SPLIT_RE.split(scene.narration or ""):
-            if _readable_chars(clause):
-                units.append({"speaker": "旁白", "text": clause.strip(), "emotion": ""})
-        for line in scene.dialogue:
-            if _readable_chars(line.text):
-                units.append(
-                    {"speaker": _name(line.speaker), "text": line.text.strip(), "emotion": line.emotion}
-                )
+    scene_units = [_scene_units(sc, _name) for sc in script.scenes]
+    needs = [len(u) for u, _ in scene_units]
+    counts = _plan_scene_shot_counts(script.scenes, shot_budget, needs)
 
-        # 2) 单元少于镜头数：把最长的可切单元在中点标点处一分为二
+    shots: list[EpisodeShot] = []
+    for scene, n_shots, (units, leftover_actions) in zip(script.scenes, counts, scene_units, strict=True):
+        units = [dict(u) for u in units]
+        if leftover_actions and units:
+            units[-1]["actions"] = units[-1]["actions"] + leftover_actions
+
+        # 单元少于镜头数：把最长的可切单元在中点标点处一分为二（左半段保留原标点）
         while len(units) < n_shots:
             order = sorted(range(len(units)), key=lambda i: -_readable_chars(units[i]["text"]))
             for i in order:
                 halves = _split_unit_text(units[i]["text"])
                 if halves:
                     left, right = halves
-                    # 左半段是句内片段：保留其原标点（如"，"），不补句号
                     units[i : i + 1] = [
                         dict(units[i], text=left, frag="1"),
-                        dict(units[i], text=right),
+                        dict(units[i], text=right, actions=[]),
                     ]
                     break
             else:
                 break
 
-        # 3) 分组：单元多于镜头数时相邻合并（按字数均衡），否则一单元一镜，余下为纯画面镜
-        groups: list[list[dict[str, str]]] = []
         if len(units) > n_shots:
-            i = 0
-            remaining_chars = sum(max(1, _readable_chars(u["text"])) for u in units)
-            for k in range(n_shots):
-                left_groups = n_shots - k
-                if left_groups == 1:
-                    groups.append(units[i:])
-                    break
-                target = remaining_chars / left_groups
-                g = [units[i]]
-                acc = max(1, _readable_chars(units[i]["text"]))
-                i += 1
-                while i < len(units) - (left_groups - 1):
-                    w = max(1, _readable_chars(units[i]["text"]))
-                    if acc + w / 2 > target:
-                        break
-                    g.append(units[i])
-                    acc += w
-                    i += 1
-                remaining_chars -= acc
-                groups.append(g)
+            groups = _merge_units_to(units, n_shots)
         else:
             groups = [[u] for u in units] + [[] for _ in range(n_shots - len(units))]
 
-        # 4) 时长：按朗读时长分配，单镜下限 MIN_SHOT_DURATION_S；场时长不足时以朗读为准拉长
         scene_dur = (
             scene.duration_s
             if scene.duration_s > 0
@@ -1349,30 +1431,39 @@ def script_to_storyboard(
                 if u["speaker"] != "旁白" and u["speaker"] not in speakers:
                     speakers.append(u["speaker"])
             speaker = "、".join(speakers) if speakers else ("旁白" if group else "")
+            actions = [a for u in group for a in u.get("actions", [])]
 
             prompt_parts: list[str] = []
             loc = scene.location or (ev.location if ev else "")
             if loc:
                 prompt_parts.append(f"场景：{loc}")
+            narr_text = "".join(u["text"] for u in group if u["speaker"] == "旁白")
+            mentioned = [c.name for c in book.characters if c.name and c.name in narr_text]
             if speakers:
                 prompt_parts.append(f"出场角色：{'、'.join(speakers)}")
-            elif ev and ev.actors:
+            elif mentioned:
+                prompt_parts.append(f"出场角色：{'、'.join(mentioned)}")
+            elif ev and ev.actors and group:
                 prompt_parts.append(
                     "出场角色：" + "、".join(char_id_to_name.get(a, a) for a in ev.actors)
                 )
             if speakers:
                 emo = next((u["emotion"] for u in group if u["emotion"]), "")
-                gist = "".join(u["text"] for u in group if u["speaker"] != "旁白")[:28].rstrip("，,；;、 ")
+                gist = _cut_gist("".join(u["text"] for u in group if u["speaker"] != "旁白"), 28)
                 prompt_parts.append(
                     f"画面：{'、'.join(speakers)}{emo + '地' if emo else ''}说「{gist}」时的神情与动作"
                 )
             elif group:
-                prompt_parts.append(
-                    f"画面：{''.join(u['text'] for u in group)[:60].rstrip('，,。！？!?；;…、 ')}"
-                )
+                prompt_parts.append(f"画面：{_cut_gist(narr_text, 60)}")
             else:
                 prompt_parts.append(f"画面：{scene.summary or (ev.summary if ev else '') or '环境空镜'}")
-            prompt_parts.append(framing[min(len(framing) - 1, j * len(framing) // max(1, n_shots))])
+            if actions:
+                prompt_parts.append("动作：" + "；".join(actions))
+            if n_shots <= len(framing):
+                fr = framing[min(len(framing) - 1, round(j * (len(framing) - 1) / max(1, n_shots - 1)))] if n_shots > 1 else framing[0]
+            else:
+                fr = framing[j % len(framing)]
+            prompt_parts.append(fr)
             image_prompt = "，".join(p for p in prompt_parts if p) + f"。{style}。"
 
             shots.append(
@@ -1397,9 +1488,10 @@ def script_to_storyboard(
 
 
 def storyboard_coverage(script: EpisodeScript, storyboard: EpisodeStoryboard) -> dict[str, Any]:
-    """QA：剧本旁白/对白在分镜 tts 中的覆盖率（按可读字逐句顺序匹配）。"""
+    """QA：剧本旁白/对白（剥离括号动作后）在分镜 tts 中**按序**出现的覆盖率。"""
     def _norm(t: str) -> str:
-        return "".join(ch for ch in str(t or "") if ch not in _PUNCT_CHARS)
+        spoken, _ = _split_stage_directions(t)
+        return "".join(ch for ch in spoken if ch not in _PUNCT_CHARS)
 
     missing: list[str] = []
     total = 0
@@ -1412,10 +1504,8 @@ def storyboard_coverage(script: EpisodeScript, storyboard: EpisodeStoryboard) ->
             total += 1
             idx = joined.find(_norm(sent), pos)
             if idx < 0:
-                idx = joined.find(_norm(sent))
-                if idx < 0:
-                    missing.append(f"SC{scene.scene_no:02d}:{sent[:20]}")
-                    continue
+                missing.append(f"SC{scene.scene_no:02d}:{sent[:20]}")
+                continue
             pos = idx + len(_norm(sent))
     covered = total - len(missing)
     return {

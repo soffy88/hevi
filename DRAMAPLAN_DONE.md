@@ -246,3 +246,14 @@ PATH=/home/soffy/.local/bin:$PATH .venv/bin/pytest tests/test_storygraph* tests/
 - `output/dramaplan_e2e/run9/`：llm_calls=30、failures=0、耗时 162.9s；qa.passed=true（唯一 false 为统计项 review_all_passed）。
 - 审稿真实分布：EP1 70→35→70 拒、EP2 70→80→70 拒、EP3 50→40→60 拒（最后一轮剩余问题为 llm:逻辑连贯/人物弧光/台词质量 与 1 条 scene_too_short）。审稿未全部通过是真实结果，未做任何放水。
 - 测试：相关 11 个测试文件 101 passed（含 test_zerolines）；新增 test_dramaplan_r4.py 13 passed；3O lint 仅基线 4 项。
+
+---
+## 第五轮（独立复核 r5 的 P1–P5，主审亲自修复）— run12 证据
+- **P1 括号动作描写**：`_split_stage_directions` 剥离（…）/(…) 内容与开头孤立省略号；动作移入该镜 image_prompt「动作：…」，tts 不含括号。规则层新增 `stage_direction_in_dialogue`（error，确定性补丁剥离）。QA 新增 `storyboard_tts_no_stage_directions`；`storyboard_coverage` 改为严格按序匹配（找不到不再从头搜）。
+- **P2 多人台词合镜**：`_plan_scene_shot_counts` 在全集预算有余时给"台词单元数>镜头数"的场补镜；仍需合并时 `_merge_units_to` 优先合并同一说话人、字数少的相邻组。run12 三集无任何「A、B」混合说话人镜头。
+- **P3 空镜/纯标点镜**：split 后只含标点的子镜并入前一镜；可读字不足 count 时空子镜（纯画面）排在末尾；子镜时长按可读字数加权。`split("短。",3)` → `["短。","",""]`。
+- **P4**：字符级切分不再把"……"拆到两镜；分镜层拆句要求两半都 ≥4 个可读字，避免"父亲，"这类碎镜。
+- **P5**：台词要点在 28 字内最后一个标点处截断；景别按镜头位置均匀映射（≤4 镜不重复）；纯旁白镜的出场角色取旁白中点名的角色。
+- QA `storyboard_shot_count_matches_scenes` 口径改为：min(剧本场镜头之和, 预算) ≤ 分镜镜头数 ≤ 预算（预算有余会补镜）。
+- run12（NIM 免费）：llm_calls=29、failures=0、153.8s；qa.passed=true（唯一 false 为统计项 review_all_passed）；覆盖率 10/10、12/12、8/8；镜头 10/12/12（预算 12）；分镜总时长 58.56/52.66/49.5s。审稿真实分布 EP1 10→80→100 过、EP2 40→55→80 拒、EP3 70→50→0 拒（如实）。
+- 测试：tests/test_dramaplan_r4.py 18 例 + storygraph_review/shot_budget/dramaplan_rework/orchestrator 共 57 passed。
