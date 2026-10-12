@@ -35,6 +35,12 @@ FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
 MODEL_DIR = Path(os.environ.get("HEVI_LIVE_AVATAR_MODELS", "/home/soffy/models/wav2lip"))
 CACHE = Path(os.environ.get("HEVI_LIVE_AVATAR_CACHE", str(Path.home() / ".cache/hevi/live_halfbody")))
 ASSETS = Path(__file__).resolve().parents[3] / "assets" / "halfbody"
+# HEVI_LIVE_AVATAR picks the host look. xiaoya_d = original AI-generated face (no real
+# person's likeness) animated offline with LivePortrait from the v1 motion clips.
+AVATARS = {
+    "xiaoya_d": ("xiaoya_d_idle.mp4", "xiaoya_d_talk.mp4"),
+    "v1": ("8135207.mp4", "8135208.mp4"),
+}
 W, H = 720, 1280
 FPS = int(os.environ.get("HEVI_LIVE_FPS", "25"))
 FONT_CANDIDATES = [
@@ -170,8 +176,11 @@ class HalfBodyAvatar:
     def __init__(self, idle: Path | None = None, talk: Path | None = None, *, label: str = "AI生成") -> None:
         self.yolo = _session("yoloface_8n.onnx")
         self.w2l = _session("wav2lip_gan_96.onnx")
-        self.idle = BaseClip.load(idle or ASSETS / "8135207.mp4", yolo=self.yolo)
-        self.talk = BaseClip.load(talk or ASSETS / "8135208.mp4", yolo=self.yolo)
+        d_idle, d_talk = AVATARS.get(os.environ.get("HEVI_LIVE_AVATAR", "xiaoya_d"), AVATARS["v1"])
+        if not (ASSETS / d_idle).is_file():  # fall back to the original stock host
+            d_idle, d_talk = AVATARS["v1"]
+        self.idle = BaseClip.load(idle or ASSETS / d_idle, yolo=self.yolo)
+        self.talk = BaseClip.load(talk or ASSETS / d_talk, yolo=self.yolo)
         self.label = label
         self.t = 0  # global clock: motion stays continuous across segments
         self.prev_kind = "idle"
