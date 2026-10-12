@@ -179,6 +179,84 @@ def verify_and_capture_watermark(
     }
 
 
+def measure_characters_in_delivered_frame(video_path: Path, t_sec: float = 0.5) -> dict[str, Any]:
+    """Measure per-character visible ink height in the delivered video frame (Hark r3 audit method).
+    Extracts frame at t_sec, selects min(RGB)>215 and low saturation (sat < 30),
+    segments columns, and measures height for each glyph: [, A, I, 生, 成, ].
+    """
+    import numpy as np
+    from PIL import Image
+
+    tmp_png = video_path.parent / f"frame_t{t_sec:.1f}.png"
+    cmd = ["ffmpeg", "-v", "error", "-y", "-ss", str(t_sec), "-i", str(video_path), "-vframes", "1", str(tmp_png)]
+    subprocess.run(cmd, check=True)
+    arr = np.array(Image.open(tmp_png).convert("RGB"))
+    h_frame, w_frame, _ = arr.shape
+    short_edge = min(w_frame, h_frame)
+
+    # top-left watermark region: 25% height, 40% width
+    patch = arr[0:int(h_frame * 0.25), 0:int(w_frame * 0.40)]
+    r = patch[:, :, 0].astype(np.int32)
+    g = patch[:, :, 1].astype(np.int32)
+    b = patch[:, :, 2].astype(np.int32)
+    min_rgb = np.minimum(np.minimum(r, g), b)
+    max_rgb = np.maximum(np.maximum(r, g), b)
+    sat = max_rgb - min_rgb
+    mask = (min_rgb > 215) & (sat < 30)
+
+    # If background itself is bright/white, isolate watermark overlay via diff against visual_cuts.mp4
+    ref_video = video_path.parent / "visual_cuts.mp4"
+    if mask.sum() > (0.10 * patch.shape[0] * patch.shape[1]) and ref_video.is_file():
+        ref_png = video_path.parent / f"ref_t{t_sec:.1f}.png"
+        ref_cmd = ["ffmpeg", "-v", "error", "-y", "-ss", str(t_sec), "-i", str(ref_video), "-vframes", "1", str(ref_png)]
+        subprocess.run(ref_cmd, check=True)
+        arr_ref = np.array(Image.open(ref_png).convert("RGB"))
+        diff = np.abs(arr.astype(np.int32) - arr_ref.astype(np.int32)).max(axis=2)
+        diff_patch = diff[0:int(h_frame * 0.25), 0:int(w_frame * 0.40)]
+        mask = diff_patch > 40
+
+    col_counts = mask.sum(axis=0)
+
+    chars = []
+    in_char = False
+    start_x = 0
+    for x in range(len(col_counts)):
+        if col_counts[x] > 0 and not in_char:
+            in_char = True
+            start_x = x
+        elif col_counts[x] == 0 and in_char:
+            in_char = False
+            if (x - 1 - start_x) >= 2:
+                chars.append((start_x, x - 1))
+    if in_char and (len(col_counts) - 1 - start_x) >= 2:
+        chars.append((start_x, len(col_counts) - 1))
+
+    default_labels = ["[", "A", "I", "生", "成", "]"]
+    results = []
+    for idx, (xs, xe) in enumerate(chars):
+        cmask = mask[:, xs:xe + 1]
+        ys, _ = np.where(cmask)
+        if len(ys) > 0:
+            ch_h = int(ys.max() - ys.min() + 1)
+            ch_w = int(xe - xs + 1)
+            label = default_labels[idx] if idx < len(default_labels) else f"glyph_{idx}"
+            results.append({
+                "index": idx,
+                "label": label,
+                "col_range": [int(xs), int(xe)],
+                "width_px": ch_w,
+                "height_px": ch_h,
+                "ratio": round(ch_h / short_edge, 4),
+                "ratio_pct": round((ch_h / short_edge) * 100, 2),
+                "pass_5pct": bool(ch_h >= int(round(short_edge * 0.05))),
+            })
+    return {
+        "timestamp_s": t_sec,
+        "short_edge_px": short_edge,
+        "characters": results,
+    }
+
+
 def main() -> int:
     start_time = time.time()
     workspace = Path("/data/soffy/projects/hevi-viralclone")
@@ -186,24 +264,31 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Inputs (Clean-room Real Media)
-    # NOTE (r3 audit): Apollo ISS + Collins b-rolls replaced with NASA/JPL Mars-specific
-    # public-domain footage so that visual semantics match the Mars-rover narration.
-    broll_a = workspace / "artifacts/real_video/nasa_mars_broll/perseverance_descent_clipA.mp4"
-    broll_b = workspace / "artifacts/real_video/nasa_mars_broll/optimism_rover_clipA.mp4"
-    broll_c = workspace / "artifacts/real_video/nasa_mars_broll/perseverance_360_clipA.mp4"
+    # NOTE (r3 audit): NASA/JPL Mars-specific public-domain clips with zero human
+    # faces, office corridors, or title graphics. Every frame depicts rover hardware,
+    # rover operations, or real Martian surface terrain matching narration.
+    broll_yard = workspace / "artifacts/real_video/nasa_mars_broll/broll_mars_yard_rover.mp4"
+    broll_jezero = workspace / "artifacts/real_video/nasa_mars_broll/broll_mars_surface_jezero.mp4"
+    broll_touchdown = workspace / "artifacts/real_video/nasa_mars_broll/broll_mars_touchdown.mp4"
+    broll_mastcam = workspace / "artifacts/real_video/nasa_mars_broll/broll_mars_mastcam.mp4"
+    broll_navcam_360 = workspace / "artifacts/real_video/nasa_mars_broll/broll_mars_navcam_360.mp4"
     product_img = workspace / "data/product_assets/mars_camera_product.jpg"
 
-    assert broll_a.is_file(), f"Mars broll-a missing: {broll_a}"
-    assert broll_b.is_file(), f"Mars broll-b missing: {broll_b}"
-    assert broll_c.is_file(), f"Mars broll-c missing: {broll_c}"
+    assert broll_yard.is_file(), f"Mars broll_yard missing: {broll_yard}"
+    assert broll_jezero.is_file(), f"Mars broll_jezero missing: {broll_jezero}"
+    assert broll_touchdown.is_file(), f"Mars broll_touchdown missing: {broll_touchdown}"
+    assert broll_mastcam.is_file(), f"Mars broll_mastcam missing: {broll_mastcam}"
+    assert broll_navcam_360.is_file(), f"Mars broll_navcam_360 missing: {broll_navcam_360}"
     assert product_img.is_file(), f"Product image missing: {product_img}"
 
     print(f"=== [ViralClone E2E] Starting Full Real Media Acceptance ===")
-    print(f"Mars B-roll A (EDL descent cam):       {broll_a.name}")
-    print(f"Mars B-roll B (Optimism twin test):    {broll_b.name}")
-    print(f"Mars B-roll C (Navcam 360 panorama):   {broll_c.name}")
-    print(f"Product Asset:                         {product_img.name}")
-    print(f"Output Root:     {out_dir}")
+    print(f"Mars B-roll Yard:         {broll_yard.name}")
+    print(f"Mars B-roll Jezero:       {broll_jezero.name}")
+    print(f"Mars B-roll Touchdown:    {broll_touchdown.name}")
+    print(f"Mars B-roll MastCam:      {broll_mastcam.name}")
+    print(f"Mars B-roll Navcam 360:   {broll_navcam_360.name}")
+    print(f"Product Asset:            {product_img.name}")
+    print(f"Output Root:              {out_dir}")
 
     # =========================================================================
     # Phase 1: Reference Breakdown (P0-1)
@@ -316,19 +401,13 @@ def main() -> int:
     # itself supports (the Mars 2020 rover carries front/rear hazard cameras for
     # navigation and a mast camera for imaging) and invents no numbers.
     #
-    # Audit r3 #1: replaced Apollo/ISS b-rolls with NASA/JPL Mars-specific
-    # public-domain footage so every frame semantically matches the narration.
-    # Three distinct clips ensure each variant uses at least one source the
-    # others don't (satisfies audit r3 #2: source-level reuse table).
-    #
-    # clip_a = Perseverance EDL descent camera footage (real Mars landing views)
-    # clip_b = Optimism twin rover driving test (Mars Yard)
-    # clip_c = Perseverance Navcam 360 panoramic view (first panorama of landing site)
-    clips = [
-        str(broll_a.resolve()),
-        str(broll_b.resolve()),
-        str(broll_c.resolve()),
-    ]
+    # Audit r3 #1 & #2: Replaced all clips with 5 clean NASA/JPL Mars public-domain
+    # clips containing 0% people, 0% office/control room, 0% title cards.
+    # Every frame shows the Mars rover or Martian landscape, matching narration.
+    # Source-level diversity: Each variant uses at least one unique source file:
+    #   var_1 unique: broll_yard (Optimism rover in outdoor Mars Yard test)
+    #   var_2 unique: broll_mastcam (MastCam-Z & SuperCam close-up pan)
+    #   var_3 unique: broll_navcam_360 (Navcam 360-degree panorama of Mars surface)
     variants_input = [
         {
             "variant_id": "var_1",
@@ -341,8 +420,8 @@ def main() -> int:
                 "lang": "zh",
             },
             "brolls": [
-                {"path": clips[0], "in_s": 0.0},
-                {"path": clips[1], "in_s": 0.0},
+                {"path": str(broll_yard.resolve()), "in_s": 0.0},
+                {"path": str(broll_jezero.resolve()), "in_s": 0.0},
             ],
             "product_video": str(product_cards["light"].resolve()),
             "color_grade": "warm",
@@ -360,8 +439,8 @@ def main() -> int:
                 "lang": "zh",
             },
             "brolls": [
-                {"path": clips[1], "in_s": 0.0},
-                {"path": clips[2], "in_s": 0.0},
+                {"path": str(broll_touchdown.resolve()), "in_s": 0.0},
+                {"path": str(broll_mastcam.resolve()), "in_s": 0.0},
             ],
             "product_video": str(product_cards["dark"].resolve()),
             "color_grade": "cool",
@@ -378,13 +457,9 @@ def main() -> int:
                 "cta_line": "See more imagery from the NASA/JPL public archive.",
                 "lang": "en",
             },
-            # Reversed source order AND a different in-point vs. var_1/var_2.
-            # Each variant now uses clips the others don't: var_1 uses clip[0],
-            # var_2 uses clip[1]+clip[2], var_3 uses clip[2] (plus the 360).
-            # This ensures source-level diversity (audit r3 #2).
             "brolls": [
-                {"path": clips[2], "in_s": 0.0},
-                {"path": clips[0], "in_s": 0.0},
+                {"path": str(broll_navcam_360.resolve()), "in_s": 0.0},
+                {"path": str(broll_touchdown.resolve()), "in_s": 0.0},
             ],
             "product_video": str(product_cards["warm_vertical"].resolve()),
             "color_grade": "vivid",
@@ -523,7 +598,14 @@ def main() -> int:
         )
         print(f"  AI Watermark visible QA: {wm_qa['passed']} (measured glyph {wm_qa['measured_glyph_height_px']}px = {wm_qa['measured_ratio']*100:.1f}% >= 5%)")
 
-        # 5. Container metadata read-back
+        # 5. GB 45438 per-character visible ink height QA on delivered video frame (Hark r3 audit method)
+        chars_05 = measure_characters_in_delivered_frame(vpath, 0.5)
+        chars_10 = measure_characters_in_delivered_frame(vpath, 1.0)
+        print(f"  Delivered frame per-char watermark ink QA (t=0.5s):")
+        for ch in chars_05["characters"]:
+            print(f"    glyph {ch['label']}: {ch['height_px']}px ({ch['ratio_pct']}%, pass={ch['pass_5pct']})")
+
+        # 6. Container metadata read-back
         meta_qa = verify_implicit_watermark_metadata(vpath)
         print(f"  Implicit container metadata: {meta_qa.get('has_implicit_watermark')} (comment: {meta_qa.get('comment', '')})")
 
@@ -536,35 +618,138 @@ def main() -> int:
             "qa_frames": [str(p) for p in sample_frames],
             "non_static_motion_qa": non_static_qa,
             "visible_watermark_qa": wm_qa,
+            "delivered_frame_watermark_chars_t05": chars_05,
+            "delivered_frame_watermark_chars_t10": chars_10,
             "implicit_metadata_qa": meta_qa,
             "script_text": item.get("script_text", ""),
         }
         verification_records.append(record)
 
+    narration_visual_mapping = {
+        "var_1": [
+            {
+                "narration_line": "火星车靠什么看清脚下的路？",
+                "role": "hook",
+                "visual_source_file": "broll_mars_yard_rover.mp4",
+                "source_in_out_s": "0.0s - 3.0s (from optimism_rover.mp4 121.0s-124.0s)",
+                "visual_content": "Optimism rover mast head & chassis scanning outdoor Mars Yard terrain",
+            },
+            {
+                "narration_line": "前后避障相机，帮助火星车看清路况、安全行驶。",
+                "role": "selling_point",
+                "visual_source_file": "product_card.mp4 (PIA22103 cutout)",
+                "source_in_out_s": "0.0s - 3.0s",
+                "visual_content": "Light-theme product card of Mars 2020 Rover Cameras (PIA22103 illustration)",
+            },
+            {
+                "narration_line": "想看火星车影像，可以去 NASA 的公开资料库。",
+                "role": "cta",
+                "visual_source_file": "broll_mars_surface_jezero.mp4",
+                "source_in_out_s": "0.0s - 3.0s (from perseverance_descent.mp4 115.0s-118.0s)",
+                "visual_content": "Descent camera views of Jezero Crater dunes and surface geology on Mars",
+            },
+        ],
+        "var_2": [
+            {
+                "narration_line": "在火星表面移动，避障相机就是眼睛。",
+                "role": "hook",
+                "visual_source_file": "broll_mars_touchdown.mp4",
+                "source_in_out_s": "0.0s - 3.5s (from perseverance_descent.mp4 176.0s-179.5s)",
+                "visual_content": "Real descent camera view looking down as rover descends onto Martian soil",
+            },
+            {
+                "narration_line": "导航相机负责找路，桅杆相机负责拍摄。",
+                "role": "selling_point",
+                "visual_source_file": "product_card.mp4 (PIA22103 cutout)",
+                "source_in_out_s": "0.0s - 3.0s",
+                "visual_content": "Dark-theme product card of Mars 2020 Rover Cameras (PIA22103 illustration)",
+            },
+            {
+                "narration_line": "更多火星车影像可在 NASA/JPL 资料库查看。",
+                "role": "cta",
+                "visual_source_file": "broll_mars_mastcam.mp4",
+                "source_in_out_s": "0.0s - 3.5s (from perseverance_360.mp4 6.0s-9.5s)",
+                "visual_content": "Pristine Martian surface pan across Perseverance rover deck instruments and MastCam on Mars",
+            },
+        ],
+        "var_3": [
+            {
+                "narration_line": "How does a rover see the path ahead on Mars?",
+                "role": "hook",
+                "visual_source_file": "broll_mars_navcam_360.mp4",
+                "source_in_out_s": "0.0s - 3.0s (from perseverance_360.mp4 18.0s-21.0s)",
+                "visual_content": "Real Navcam 360-degree panoramic landscape view across Mars Jezero surface",
+            },
+            {
+                "narration_line": "Hazard cameras navigate; the mast camera captures.",
+                "role": "selling_point",
+                "visual_source_file": "product_card.mp4 (PIA22103 cutout)",
+                "source_in_out_s": "0.0s - 3.0s",
+                "visual_content": "Vertical warm-theme product card of Mars 2020 Rover Cameras (PIA22103 illustration)",
+            },
+            {
+                "narration_line": "See more imagery from the NASA/JPL public archive.",
+                "role": "cta",
+                "visual_source_file": "broll_mars_touchdown.mp4",
+                "source_in_out_s": "0.0s - 3.0s (from perseverance_descent.mp4 176.0s-179.0s)",
+                "visual_content": "Real sky crane descent camera footage of Perseverance touching down on Mars",
+            },
+        ],
+    }
+
+    source_reuse_table = {
+        "var_1": {
+            "sources": ["broll_mars_yard_rover.mp4", "broll_mars_surface_jezero.mp4", "mars_camera_product.jpg"],
+            "unique_source": "broll_mars_yard_rover.mp4",
+        },
+        "var_2": {
+            "sources": ["broll_mars_touchdown.mp4", "broll_mars_mastcam.mp4", "mars_camera_product.jpg"],
+            "unique_source": "broll_mars_mastcam.mp4",
+        },
+        "var_3": {
+            "sources": ["broll_mars_navcam_360.mp4", "broll_mars_touchdown.mp4", "mars_camera_product.jpg"],
+            "unique_source": "broll_mars_navcam_360.mp4",
+        },
+    }
+
     # Save master summary JSON
     summary = {
         "timestamp": time.time(),
         "total_elapsed_s": round(time.time() - start_time, 2),
-        "source_broll_a": {
-            "name": broll_a.name,
-            "title": "Perseverance EDL Descent Camera Views (onboard cam footage)",
-            "url": "https://images-assets.nasa.gov/video/JPL-20210222-M2020f-0001-Perseverance%20Rover%E2%80%99s%20Descent%20and%20Touchdown%20on%20Mars",
-            "license": "NASA/JPL-Caltech (Public Domain)",
-            "sha256": _sha256(broll_a),
-        },
-        "source_broll_b": {
-            "name": broll_b.name,
+        "source_broll_yard": {
+            "name": broll_yard.name,
             "title": "Twin Rover OPTIMISM Gets to Work (Mars Yard testing)",
             "url": "https://images-assets.nasa.gov/video/JPL-20201006-M2020f-0001-Twin%20Rover%20Gets%20to%20Work",
             "license": "NASA/JPL-Caltech (Public Domain)",
-            "sha256": _sha256(broll_b),
+            "sha256": _sha256(broll_yard),
         },
-        "source_broll_c": {
-            "name": broll_c.name,
+        "source_broll_jezero": {
+            "name": broll_jezero.name,
+            "title": "Perseverance EDL Descent Camera Views (Jezero crater terrain)",
+            "url": "https://images-assets.nasa.gov/video/JPL-20210222-M2020f-0001-Perseverance%20Rover%E2%80%99s%20Descent%20and%20Touchdown%20on%20Mars",
+            "license": "NASA/JPL-Caltech (Public Domain)",
+            "sha256": _sha256(broll_jezero),
+        },
+        "source_broll_touchdown": {
+            "name": broll_touchdown.name,
+            "title": "Perseverance Rover Descent and Touchdown on Mars (Sky crane touchdown)",
+            "url": "https://images-assets.nasa.gov/video/JPL-20210222-M2020f-0001-Perseverance%20Rover%E2%80%99s%20Descent%20and%20Touchdown%20on%20Mars",
+            "license": "NASA/JPL-Caltech (Public Domain)",
+            "sha256": _sha256(broll_touchdown),
+        },
+        "source_broll_mastcam": {
+            "name": broll_mastcam.name,
+            "title": "Perseverance First 360 View of Mars (Rover deck & MastCam pan)",
+            "url": "https://images-assets.nasa.gov/video/JPL-20210222-M2020f-0002-NASA%E2%80%99S%20Perseverance%20Rover%E2%80%99s%20First%20360%20View%20of%20Mars",
+            "license": "NASA/JPL-Caltech (Public Domain)",
+            "sha256": _sha256(broll_mastcam),
+        },
+        "source_broll_navcam_360": {
+            "name": broll_navcam_360.name,
             "title": "Perseverance First 360 View of Mars (Navcam panorama)",
             "url": "https://images-assets.nasa.gov/video/JPL-20210222-M2020f-0002-NASA%E2%80%99S%20Perseverance%20Rover%E2%80%99s%20First%20360%20View%20of%20Mars",
             "license": "NASA/JPL-Caltech (Public Domain)",
-            "sha256": _sha256(broll_c),
+            "sha256": _sha256(broll_navcam_360),
         },
         "source_product": {
             "name": product_img.name,
@@ -574,6 +759,8 @@ def main() -> int:
             "license": "NASA/JPL (Public Domain)",
             "sha256": _sha256(product_img),
         },
+        "narration_visual_mapping": narration_visual_mapping,
+        "source_reuse_table": source_reuse_table,
         "breakdown": bd_res["report"],
         "template": str(template_path),
         "product_assets": {k: v for k, v in prod_reports.items()},

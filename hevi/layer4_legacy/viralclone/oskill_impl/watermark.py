@@ -34,13 +34,12 @@ def compute_watermark_spec(
     # GB 45438 requires the visible ink height of the AI mark to be at least 5 %
     # of the short edge. The mark contains Latin "AI" plus CJK "生成"; the
     # tallest ink is the CJK glyph at ~0.694 em, but the *smallest* ink is the
-    # Latin capitals (~0.55 em on Noto Sans). Audit r3 #3 therefore sizes the
-    # mark from the small-end: `latin_cap_ink_px = 0.55 * font_size_px`, so we
-    # solve for font_size_px >= required_min_px / 0.55. That gives font_size_px
-    # ≈ 0.091 * short_edge, which yields Latin-cap ink of ≈ 0.050 * short_edge
-    # and CJK ink of ≈ 0.063 * short_edge -- every glyph clears the 5 % floor.
-    em_per_latin_cap = 0.55
-    font_size_px = max(required_min_px, int(round(short_edge * 0.091)))
+    # Latin capitals (~0.505 em for "I" on Noto Sans). Audit r3 #3 therefore sizes
+    # the mark from the small-end: font_size_px >= required_min_px / 0.505 ≈
+    # 0.104 * short_edge. For 720p this yields Fontsize 75, giving Latin ink
+    # 38 px (5.28% >= 5%) and CJK ink 47-49 px (6.53-6.81%), clearing the floor
+    # with solid headroom.
+    font_size_px = max(required_min_px, int(round(short_edge * 0.104)))
 
     return WatermarkSpec(
         text=text,
@@ -129,7 +128,7 @@ def measure_latin_cap_ink_bbox(
     frame_width: int,
     frame_height: int,
     *,
-    region: tuple[float, float, float, float] = (0.0, 0.0, 0.2, 0.22),
+    region: tuple[float, float, float, float] = (0.0, 0.0, 0.55, 0.22),
     ink_level: int = 200,
 ) -> dict[str, Any]:
     """Measure the rendered ink height of the Latin capitals at the start of the
@@ -161,15 +160,44 @@ def measure_latin_cap_ink_bbox(
     arr = np.asarray(Image.open(out_png).convert("L")).astype(np.int16)
     patch = arr[y0:y1, x0:x1]
     mask = patch > ink_level
-    ys, xs = np.where(mask)
-    if len(ys) == 0:
+    col_counts = mask.sum(axis=0)
+    chars: list[tuple[int, int]] = []
+    in_char = False
+    start_x = 0
+    for x in range(len(col_counts)):
+        if col_counts[x] > 0 and not in_char:
+            in_char = True
+            start_x = x
+        elif col_counts[x] == 0 and in_char:
+            in_char = False
+            if (x - 1 - start_x) >= 2:
+                chars.append((start_x, x - 1))
+    if in_char and (len(col_counts) - 1 - start_x) >= 2:
+        chars.append((start_x, len(col_counts) - 1))
+
+    if not chars:
         return {"found": False, "glyph_height_px": 0, "method": "ass_flat_render", "region": [x0, y0, x1, y1]}
+
+    # Watermark text is "[ AI生成 ]" or "AI生成"
+    # If starting with bracket '[', Latin caps 'A' and 'I' are at index 1 and 2; otherwise index 0 and 1.
+    latin_indices = [1, 2] if len(chars) >= 4 else [0, 1] if len(chars) >= 2 else [0]
+    latin_indices = [i for i in latin_indices if i < len(chars)]
+
+    lx0 = chars[latin_indices[0]][0]
+    lx1 = chars[latin_indices[-1]][1]
+    lmask = mask[:, lx0:lx1 + 1]
+    lys, lxs = np.where(lmask)
+    if len(lys) == 0:
+        return {"found": False, "glyph_height_px": 0, "method": "ass_flat_render", "region": [x0, y0, x1, y1]}
+
+    latin_h = int(lys.max() - lys.min() + 1)
+    latin_w = int(lxs.max() - lxs.min() + 1)
 
     return {
         "found": True,
-        "glyph_height_px": int(ys.max() - ys.min() + 1),
-        "glyph_width_px": int(xs.max() - xs.min() + 1),
-        "bbox_xyxy": [int(x0 + xs.min()), int(y0 + ys.min()), int(x0 + xs.max()), int(y0 + ys.max())],
+        "glyph_height_px": latin_h,
+        "glyph_width_px": latin_w,
+        "bbox_xyxy": [int(x0 + lx0 + lxs.min()), int(y0 + lys.min()), int(x0 + lx0 + lxs.max()), int(y0 + lys.max())],
         "region": [x0, y0, x1, y1],
         "method": "ass_flat_render_ink_only_latin_caps",
         "note": "Latin capital glyph ink only; outline stroke excluded",
