@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -116,20 +117,27 @@ def _narration_end_from_srt(srt_path: Path) -> float | None:
 def _run_one(name: str, video: Path, script: Path, *, caption_box: dict | None,
              caption_cues: list[dict] | None, caption_source: str,
              cover_subtitle: str, topic: str = "", brand: str = "",
-             narration_end_s: float | None = None, silent_tail_s: float = 0.0) -> dict:
+             narration_end_s: float | None = None, silent_tail_s: float = 0.0,
+             portrait_video: Path | None = None) -> dict:
     print(f"\n--- {name} ---")
     print(f"  video : {video.relative_to(ROOT)}")
     print(f"  script: {script.relative_to(ROOT)}")
     out_dir = OUT_DIR / name
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    config: dict[str, Any] = {
+        "caption_box": caption_box, "caption_cues": caption_cues,
+        "caption_source": caption_source,
+        "cover_subtitle": cover_subtitle,
+        "topic": topic, "brand": brand,
+        "narration_end_s": narration_end_s, "silent_tail_s": silent_tail_s,
+    }
+    if portrait_video is not None:
+        config["portrait_video"] = str(portrait_video)
+
     res = generate_publish_bundle(
         video_path=video, script_path=script, output_dir=out_dir,
-        config={"caption_box": caption_box, "caption_cues": caption_cues,
-                "caption_source": caption_source,
-                "cover_subtitle": cover_subtitle,
-                "topic": topic, "brand": brand,
-                "narration_end_s": narration_end_s, "silent_tail_s": silent_tail_s},
+        config=config,
     )
 
     payload = res.as_dict()
@@ -185,6 +193,7 @@ def run_e2e() -> dict:
             caption_source="talkcraft work/timestamps.json（渲染端同一份 VO 时间戳）",
             cover_subtitle="公开资料整理", topic="复利为什么被称为世界第八大奇迹",
             narration_end_s=max((c["end_s"] for c in talk_cues), default=None),
+            portrait_video=ROOT / "output/talkcraft_e2e/explainer/explainer_portrait.mp4",
         ))
     else:
         skipped.append("talkcraft_explainer (缺成片或 timestamps.json)")
@@ -210,6 +219,7 @@ def run_e2e() -> dict:
                 cover_subtitle="手绘白板讲解", topic=title, brand=brand,
                 narration_end_s=_narration_end_from_srt(srt),
                 silent_tail_s=_silent_tail(cfg),
+                portrait_video=ROOT / f"output/whiteboard_e2e/{topic_key}/whiteboard_portrait.mp4",
             ))
         else:
             skipped.append(f"whiteboard_{topic_key} (缺成片或 script.json)")

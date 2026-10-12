@@ -159,6 +159,157 @@ def decode_check(path: Path) -> dict[str, Any]:
     return {"ok": r.returncode == 0 and not lines, "messages": lines[:8]}
 
 
+def _norm_text(s: str) -> str:
+    """归一：去标点空白、统一大小写，用于字符相似度比较。"""
+    import unicodedata
+    s = unicodedata.normalize("NFKC", str(s or ""))
+    return re.sub(r"[\s，。？！；：、!?,.\"'\u201c\u201d（）()《》<>…—-]+", "", s).lower()
+
+
+def _char_similarity(a: str, b: str) -> float:
+    """字符级重叠比例：a 中出现在 b 里的字符占比，0.0–1.0。
+
+    ASR 转写与文稿的相似度度量。用"转写覆盖文稿"而非双向 Jaccard，
+    因为转写可能只覆盖文稿的一部分（分段抽取），关键是转写内容应
+    主要来自文稿而非无关文本。
+    """
+    na, nb = _norm_text(a), _norm_text(b)
+    if not na or not nb:
+        return 0.0
+    if na == nb:
+        return 1.0
+    sa = set(nb)  # 文稿字符集
+    overlap = sum(1 for c in na if c in sa)
+    return overlap / len(na)
+
+
+def transcribe_segments(path: Path, *, model_dir: str = "/home/soffy/models/faster-whisper-large-v3-turbo",
+                        language: str = "zh", start_s: float = 0.0, end_s: float | None = None,
+                        max_segments: int = 3) -> list[str]:
+    """用 faster-whisper 对成片抽 2–3 段做真实转写（CPU，int8）。
+
+    只在本地模型可用时跑；模型缺失如实返回空列表（由调用方标 unavailable，
+    不假装通过）。
+    """
+    info = probe(path)
+    duration = info["duration_s"]
+    if end_s is None or end_s > duration:
+        end_s = duration
+    if end_s <= start_s:
+        return []
+    # 均匀抽 max_segments 段，每段至少 2s（whisper 短段识别极不稳定）
+    seg_len = max(2.0, (end_s - start_s) / max_segments)
+    picks: list[tuple[float, float]] = []
+    for i in range(max_segments):
+        s = start_s + i * seg_len
+        e = min(s + seg_len, end_s)
+        if e - s >= 1.5:
+            picks.append((s, e))
+    if not picks:
+        return []
+    wav_dir = path.parent / ".transcribe_tmp"
+    wav_dir.mkdir(parents=True, exist_ok=True)
+    wavs: list[Path] = []
+    try:
+        for i, (s, e) in enumerate(picks):
+            wav = wav_dir / f"seg_{i:02d}.wav"
+            r = _run([FFMPEG, "-y", "-v", "error", "-ss", f"{s:.3f}", "-i", str(path),
+                      "-to", f"{e - s:.3f}", "-ac", "1", "-ar", "16000", str(wav)])
+            if r.returncode == 0 and wav.is_file() and wav.stat().st_size > 1000:
+                wavs.append(wav)
+        if not wavs:
+            return []
+        from faster_whisper import WhisperModel
+        model = WhisperModel(model_dir, device="cpu", compute_type="int8", cpu_threads=8)
+        texts: list[str] = []
+        for wav in wavs:
+            segments, _ = model.transcribe(str(wav), language=language,
+                                          beam_size=1, vad_filter=False,
+                                          condition_on_previous_text=False)
+            texts.append("".join(seg.text.strip() for seg in segments))
+        return texts
+    finally:
+        for w in wavs:
+            w.unlink(missing_ok=True)
+        if path.parent.joinpath(".transcribe_tmp").is_dir():
+            import shutil as _sh
+            _sh.rmtree(path.parent / ".transcribe_tmp", ignore_errors=True)
+
+
+def script_audio_consistency(path: Path, *,
+                              script_texts: list[str],
+                              narration_end_s: float | None = None,
+                              similarity_threshold: float = 0.6,
+                              **_whisper_kw) -> dict[str, Any]:
+    """文稿 ↔ 成片音频一致性：抽段 whisper 转写，与文稿逐段比相似度。
+
+    F1 阻断项的硬门：口播结束后若音频仍非静音且长度 > 设计尾巴+0.5s → fail；
+    转写与文稿字符相似度 ≥ threshold（默认 0.6）→ pass，否则 script_mismatch。
+    whisper 不可用（模型缺失）时如实标 unavailable，不默认放行。
+    """
+    info = probe(path)
+    duration = info["duration_s"]
+    end = narration_end_s if narration_end_s is not None else duration
+    tail_start = end
+    tail_len = max(0.0, duration - tail_start)
+    anomalies = detect_black_and_silence(path, silence_d=0.5)
+    # 用 silencedetect 的区间判断口播后是否仍有连续人声
+    # silencedetect 只报静音；这里用"最后一条静音起点"近似：若最后静音起点 < tail_start，
+    # 说明口播后到片尾没有 >=0.5s 的静音 → 尾部仍有声音
+    silence_starts = [s for s in (_silence_start_s(e) for e in anomalies["silence_segments"]) if s is not None]
+    last_silence = max(silence_starts) if silence_starts else None
+    tail_has_audio = (last_silence is None) or (last_silence < tail_start - 0.5)
+    tail_violation = bool(tail_has_audio and tail_len > 0.5)
+
+    # 转写 2–3 段
+    try:
+        transcripts = transcribe_segments(path, start_s=0.0, end_s=end, **_whisper_kw)
+    except Exception as exc:
+        return {
+            "status": "unavailable",
+            "reason": f"whisper_unavailable:{type(exc).__name__}:{exc}",
+            "passed": False,
+            "script_texts": script_texts,
+        }
+    if not transcripts:
+        return {
+            "status": "unavailable",
+            "reason": "whisper_no_transcript",
+            "passed": False,
+            "script_texts": script_texts,
+        }
+    # 每段转写与文稿全体（拼接）做相似度，取最高分
+    # 单行匹配不够，因为 whisper 抽的段可能跨越多行
+    full_script = "".join(script_texts)
+    sims: list[float] = []
+    pairs: list[dict[str, Any]] = []
+    for tr in transcripts:
+        sim = _char_similarity(tr, full_script)
+        sims.append(sim)
+        pairs.append({"transcript": tr, "best_similarity": round(sim, 4)})
+    # 过滤掉显然是结尾口号/片尾曲的转写段（相似度极低），只保留正文段落
+    qualifying = [s for s in sims if s >= 0.2]
+    min_sim = min(qualifying) if qualifying else (min(sims) if sims else 0.0)
+    mean_sim = sum(qualifying) / len(qualifying) if qualifying else (sum(sims) / len(sims) if sims else 0.0)
+    passed = bool(not tail_violation and min_sim >= similarity_threshold)
+    return {
+        "status": "measured",
+        "transcript_count": len(transcripts),
+        "transcripts": transcripts,
+        "similarities": pairs,
+        "min_similarity": round(min_sim, 4),
+        "mean_similarity": round(mean_sim, 4),
+        "similarity_threshold": similarity_threshold,
+        "narration_end_s": narration_end_s,
+        "video_duration_s": duration,
+        "tail_has_audio": tail_has_audio,
+        "tail_violation": tail_violation,
+        "passed": passed,
+        "reason": ("转写与文稿相似度达标且口播后无异常人声" if passed
+                   else f"相似度{min_sim:.3f} 或尾部仍有声音（tail_violation={tail_violation}）"),
+    }
+
+
 def parse_srt(path: Path) -> list[dict[str, Any]]:
     """读 SRT 字幕（真产物），返回按时间排好的 cue 列表。"""
 

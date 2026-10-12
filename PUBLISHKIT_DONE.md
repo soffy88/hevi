@@ -111,7 +111,7 @@ hevi/publishkit/adapter.py        外观层：generate_publish_bundle(video, scr
 
 | case | 成片 | 分辨率/时长 | 音频 | 成片 sha256 |
 |---|---|---|---|---|
-| `talkcraft_explainer` | `output/talkcraft_e2e/explainer/explainer_landscape.mp4` | 960×540 / 60.000s | h264+aac@48000 | `d3915e587538507210a31a460b60b610c30d13f31bac77f90b40f468be3ef7ef` |
+| `talkcraft_explainer` | `output/talkcraft_e2e/explainer/explainer_landscape.mp4` | 1920×1080 / 32.800s | h264+aac@48000 | `6938634bfcd7c0492b42ef320c12de6ec0c6a1c328e876915bd9edc351fa2c94` |
 | `whiteboard_topic_a` | `output/whiteboard_e2e/topic_a/whiteboard_landscape.mp4` | 1920×1080 / 31.288s | h264+aac@48000 | `0fddf8a2…d9721` |
 | `whiteboard_topic_b` | `output/whiteboard_e2e/topic_b/whiteboard_landscape.mp4` | 1920×1080 / 41.121s | h264+aac@48000 | `8466e725…8c94c` |
 
@@ -271,6 +271,6 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 | `output/whiteboard_e2e/topic_a/whiteboard_portrait.mp4` | 1080×1920 | 30 fps | h264 / aac@48k | 31.288s | `52dd805f7e0787974adfe772b8cf65e00f1c77a4079aa8c577b0929ae5cd8d66` |
 | `output/whiteboard_e2e/topic_b/whiteboard_landscape.mp4` | 1920×1080 | 30 fps | h264 / aac@48k | 41.121s | `8466e7255c4a488a0904814fdfc73531f4d5488f0b26cebdc8246047fbe8c94c` |
 | `output/whiteboard_e2e/topic_b/whiteboard_portrait.mp4` | 1080×1920 | 30 fps | h264 / aac@48k | 41.121s | `7e599e8663dceb53762a98fa6471ca9c15cef68b9fd156f1b35e6267cc00b4cf` |
-| `output/talkcraft_e2e/explainer/explainer_landscape.mp4` | 960×540 | 30 fps | h264 / aac@48k | 60.000s | `d3915e587538507210a31a460b60b610c30d13f31bac77f90b40f468be3ef7ef` |
+| `output/talkcraft_e2e/explainer/explainer_landscape.mp4` | 1920×1080 | 30 fps | h264 / aac@48k | 32.800s | `6938634bfcd7c0492b42ef320c12de6ec0c6a1c328e876915bd9edc351fa2c94` |
 
 所有要求均已真机兑现，无任何 mock/占位兜底。

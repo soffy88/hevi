@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from hevi.layer4_legacy.publishkit.omodul_impl.cover import build_covers, run_cover_qa
-from hevi.layer4_legacy.publishkit.omodul_impl.qa import run_delivery_qa
+from hevi.layer4_legacy.publishkit.omodul_impl.qa import run_delivery_qa, script_audio_consistency
 from hevi.layer4_legacy.publishkit.oprim_impl.contracts import (
     PLATFORMS,
     PlatformCopy,
@@ -110,6 +110,15 @@ def build_publish_bundle(
         silent_tail_s=float(config.get("silent_tail_s") or 0.0),
     )
 
+    # 2b. 文稿 ↔ 成片音频一致性（F1）
+    script_texts = [line.text for line in doc.lines if line.text]
+    consistency = script_audio_consistency(
+        video_path,
+        script_texts=script_texts,
+        narration_end_s=narration_end_s,
+    )
+    qa["script_audio_consistency"] = consistency
+
     # 3. 事实核查清单与来源台账
     claims = extract_claims(doc)
     ledger = build_source_ledger(doc, claims, checked_on=checked_on)
@@ -136,12 +145,16 @@ def build_publish_bundle(
 
     copy_md = render_copy_md(doc, copies, checked_on=checked_on, version=config.get("copy_version", "v1"))
 
-    # 5. 封面生成 + 封面 QA
+    # 5. 封面生成 + 封面 QA（F3：3:4 竖版封面从竖版成片取帧）
+    portrait_video = config.get("portrait_video")
+    portrait_path = Path(portrait_video) if portrait_video else None
     covers = build_covers(
         video_path, bundle_dir,
         topic=doc.topic, subtitle=config.get("cover_subtitle", ""),
+        portrait_video=portrait_path,
     )
-    cover_qa = run_cover_qa(covers, topic=doc.topic, video=video_path)
+    cover_qa = run_cover_qa(covers, topic=doc.topic, video=video_path,
+                             portrait_video=portrait_path)
 
     # 6. 合规自查
     findings = run_compliance(doc, copies)
@@ -221,8 +234,18 @@ def _clip_to_limit(text: str, limit: int) -> str:
 
 
 def _gates(qa, cover_qa, findings, copies) -> tuple[PublishGate, ...]:
+    # F1：文稿↔成片音频一致性不通过时，交付 QA 整体不放行（不静默通过）
+    consistency = qa.get("script_audio_consistency") or {}
+    consistency_passed = bool(consistency.get("passed"))
+    delivery_ok = bool(qa["passed"]) and consistency_passed
+    delivery_val = (qa["passed"], consistency_passed) if not delivery_ok else "ok"
+    delivery_detail = (
+        "成片机器验收全过 + 文稿/音频一致"
+        if delivery_ok else
+        f"验收={qa['passed']} 一致性={consistency.get('status','missing')}"
+    )
     gates: list[PublishGate] = [
-        PublishGate("delivery_qa", qa["passed"], qa["passed"], "成片机器验收全过"),
+        PublishGate("delivery_qa", delivery_ok, delivery_val, delivery_detail),
         PublishGate("cover_ratios", cover_qa["passed"], cover_qa["passed"], "3:4 与 4:3 实测比例准确"),
         PublishGate("compliance", all(f.passed for f in findings), all(f.passed for f in findings), "三条红线无命中"),
         PublishGate(

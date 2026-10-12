@@ -158,7 +158,8 @@ def ratio_ok(width: int, height: int, ratio: str) -> bool:
     return width * rh == height * rw
 
 
-def run_cover_qa(covers: dict[str, Path], *, topic: str, video: Path) -> dict[str, Any]:
+def run_cover_qa(covers: dict[str, Path], *, topic: str, video: Path,
+                portrait_video: Path | None = None) -> dict[str, Any]:
     """封面 QA：比例实测 + 缩略可读性 + 主体占比，全部实测不臆测。"""
 
     entries = []
@@ -185,7 +186,8 @@ def run_cover_qa(covers: dict[str, Path], *, topic: str, video: Path) -> dict[st
             "ratio_check": f"{width}×{RATIOS[name][1]} == {height}×{RATIOS[name][0]}",
             "ratio_ok": ok,
             "thumb_320px": str(thumb),
-            "source_video": str(video),
+            "source_video": str(portrait_video) if (name == "3x4" and portrait_video is not None) else str(video),
+            "source_video_kind": "portrait" if (name == "3x4" and portrait_video is not None) else "landscape",
         })
         passed = passed and ok
 
@@ -207,13 +209,20 @@ def run_cover_qa(covers: dict[str, Path], *, topic: str, video: Path) -> dict[st
     }
 
 
-def build_covers(video: Path, out_dir: Path, *, topic: str, subtitle: str = "") -> dict[str, Path]:
-    """出三张比例准确的封面：3:4、4:3、16:9。"""
+def build_covers(video: Path, out_dir: Path, *, topic: str, subtitle: str = "",
+                 portrait_video: Path | None = None) -> dict[str, Path]:
+    """出三张比例准确的封面：3:4、4:3、16:9。
+
+    F3：3:4 竖版封面优先从 portrait_video 取帧（避免横版视频被硬裁）；
+    未提供时回退到原 video。
+    """
 
     out_dir.mkdir(parents=True, exist_ok=True)
     covers: dict[str, Path] = {}
+    source_for_34 = portrait_video or video
     for ratio in ("3x4", "4x3", "16x9"):
         dest = out_dir / f"cover_{ratio.replace('x', '_')}.jpg"
-        render_cover(video, dest, title=topic, ratio=ratio, subtitle=subtitle)
+        src = source_for_34 if ratio == "3x4" else video
+        render_cover(src, dest, title=topic, ratio=ratio, subtitle=subtitle)
         covers[ratio] = dest
     return covers
