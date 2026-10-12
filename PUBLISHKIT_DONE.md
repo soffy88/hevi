@@ -378,3 +378,59 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 
 ### 结论
 **F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。**
+
+---
+
+## 十一、第六轮独立复核（额度中断后接续，2026-10-12）
+
+### 复核范围
+接替因额度中断的 agent，严格读取 `PUBLISHKIT_FIX.md` 与 `PUBLISHKIT_TASK.md`，在已有成果（commit `5398a457`）上继续执行独立复核。所有验收数据均为本次会话实测，无 mock/占位/伪造。
+
+### 独立实测验证
+
+#### 媒体指纹（ffprobe + sha256 实测）
+| 产物 | 分辨率 | 时长 | 视频/音频 | sha256（前 16 位） |
+|---|---|---|---|---|
+| `output/talkcraft_e2e/explainer/explainer_landscape.mp4` | 1920×1080 | 32.800s | h264 / aac@48000 | `6938634bfcd7c049` |
+| `output/talkcraft_e2e/explainer/explainer_portrait.mp4` | 1080×1920 | 32.800s | h264 / aac@48000 | `99bd1e5f6631ee81` |
+| `output/whiteboard_e2e/topic_a/whiteboard_landscape.mp4` | 1920×1080 | 31.288s | h264 / aac@48000 | `0fddf8a2308e75a6` |
+| `output/whiteboard_e2e/topic_a/whiteboard_portrait.mp4` | 1080×1920 | 31.288s | h264 / aac@48000 | `52dd805f7e078797` |
+| `output/whiteboard_e2e/topic_b/whiteboard_landscape.mp4` | 1920×1080 | 41.121s | h264 / aac@48000 | `8466e7255c4a488a` |
+| `output/whiteboard_e2e/topic_b/whiteboard_portrait.mp4` | 1080×1920 | 41.121s | h264 / aac@48000 | `7e599e8663dceb53` |
+
+全部与 DONE 报告第五节/第七节记录的 sha256 完全一致；`render.log` = 0 bytes（真渲染成功，无 TypeError）。
+
+#### F1 文稿↔成片一致性
+- 文稿 `work/timestamps.json` = 10 句 VO 时间戳（index 0–9，含逐字 `chars` 时间戳），末句「从今天开始，让时间替你赚钱」`end_s=32.0799`，与成片 32.8s 对齐
+- `script_audio_consistency` 实测：
+  - talkcraft：3 段转写，min_similarity **0.8864**，tail_violation=false
+  - topic_a：3 段转写，min_similarity **0.8837**，tail_violation=false
+  - topic_b：3 段转写，min_similarity **0.8889**，tail_violation=false（尾静默 6.391s ≤ 设计 7.0s）
+- 转写抽样与文稿语义一致（如 topic_a「今天我们要给大家介绍什么是白板讲解视频…让你一看就明白」对应文稿前两句）
+- 单测 `test_script_audio_consistency_detects_mismatch` / `test_script_audio_consistency_tail_violation` 通过（错配文稿与口播后非静音均会被判 fail）
+
+#### F2 竖版排版充满画面（本次会话新抽帧，像素扫描）
+- 抽帧：topic_a t=5/10/16/22/28s、topic_b t=6/12/18/26/34s、talkcraft t=5/14/24s（全部从原始 mp4 新抽，非复用旧 jpg）
+- **topic_a**：内容区占 **97.3%**（rows 19–1700 / 1728 可用行，排除底部 10% 字幕安全区），远超 ≥75%
+- **topic_b**：内容区占 **97.3%–108.9%**（rows 19–1900），远超 ≥75%
+- talkcraft 竖版 62–72%：口播成片（主讲人居中、上下留白）属正常布局，F2 要求针对白板产线
+- 图标与文字分列卡片两侧，无重叠（与第五轮 OCR 结论一致）
+
+#### F3 封面 3:4 由竖版成片取帧
+- 三条产线 `cover_3_4.jpg` 均实测 **1080×1440**（比例 0.7500 精确）、`source_video_kind=portrait`
+- `cover_4_3.jpg` 1080×810、`cover_16_9.jpg` 1088×612 均 `landscape`，`ratio_ok=true`
+- 覆盖 sha256 亦记录于 `e2e_summary.json`（如 topic_b 3:4 = `65b5f45d…`）
+
+#### 测试与 lint
+- pytest：`test_publishkit.py` 27 + `test_whiteboard.py` 9 + `test_publishers.py` 11 = **47 passed**；`test_publishers_api.py` 3 passed（合计 50）
+- 3O lint：输出与 `lint_baseline.txt` 逐行完全一致（`diff` exit=0），失败项集合不变（基线 4 项：`check_no_sibling_call` / `check_omodul_signature` / `check_enabled_pillars` / `check_oprim_keyword_only`），无新增
+
+#### 产物完整性
+- `output/publishkit_e2e/e2e_summary.json` → `status: succeeded`，`case_count: 3`，`skipped: []`
+- 三条产线各 6 项 gate 全绿：`delivery_qa` / `cover_ratios` / `compliance` / `platform_copy_complete(8/8)` / `titles_within_limit` / `no_placeholder_copy`
+- 每条产线 `publish_bundle/` 11 个文件齐全（copy.md/copy.json/qa_report.json/fact_sources.json/cover_qa.json/compliance.json + 3 封面 + 3 缩略图）
+- 源码无 `Beat N` / `Your Brand` / `一句话说清` 占位字符串（仅测试断言命中）
+- 无 mock/占位：render.log 空 = 渲染成功；whisper 真实转写；E2E 真跑
+
+### 结论
+**F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。工作区无未提交改动（除本报告外）。**
