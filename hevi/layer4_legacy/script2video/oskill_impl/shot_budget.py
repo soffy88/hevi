@@ -125,7 +125,11 @@ def fit_shot_plans_to_budget(plans: list[Any], budget: int) -> list[Any]:
 
 
 def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
-    """把单个镜头按时长等分拆分为 count 个子镜头。"""
+    """把单个镜头按台词内容**顺序分组**拆分为 count 个子镜头。
+
+    分句/分段按顺序均匀分配到子镜（全部保留，拼接后与原文一致）；
+    内容不足 count 份时按字符级再细分（绝不丢内容、不造空 tts）。
+    """
     if count <= 1:
         return [plan]
     total_dur = float(_get(plan, "duration_s", 0) or 0)
@@ -136,16 +140,60 @@ def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
 
     import re
 
-    clauses = [c.strip() for c in re.split(r"[，,。！？!?；;\n]+", original_tts) if c.strip()]
+    # 按标点切分并保留标点本身（拼接后与原文逐字一致）
+    raw_tokens = [t for t in re.split(r"(?<=[，,。！？!?；;\n])", original_tts) if t.strip()]
+    if not raw_tokens:
+        raw_tokens = [original_tts] if original_tts else []
+
+    # 无内容时仍需提供空子镜（用空 tts）：返回 count 个空子镜，时长均匀分配
+    if not raw_tokens:
+        raw_tokens = [""]
+
+    n = len(raw_tokens)
+    groups: list[list[str]] = []
+    if n >= count:
+        # 句/段数足够：均匀按句分组
+        base, extra = divmod(n, count)
+        start = 0
+        for j in range(count):
+            size = base + (1 if j < extra else 0)
+            groups.append(raw_tokens[start : start + size])
+            start += size
+    else:
+        # 内容不足 count 句：按字符级均分（尽量落在标点后切），
+        # 保证原文逐字保留、且每个子镜都有内容
+        flat = "".join(raw_tokens)
+        n_chars = len(flat)
+        start = 0
+        for j in range(count):
+            if j == count - 1 or start >= n_chars:
+                # 最后一镜兜底接收全部剩余
+                groups.append([flat[start:]])
+                start = n_chars
+                continue
+            remaining = n_chars - start
+            slots_left = count - j
+            per = max(1, remaining // slots_left)
+            cut = min(n_chars, start + per)
+            # 尽量落在标点后切，避免切断句子
+            while cut > start + 1 and flat[cut - 1] not in "，,。！？!?；;\n":
+                cut -= 1
+            if cut <= start:
+                cut = min(n_chars, start + per)
+            groups.append([flat[start:cut]])
+            start = cut
 
     parts: list[Any] = []
     accum_dur = 0.0
-    for j in range(count):
+    for j, group in enumerate(groups):
         dur = round(total_dur - accum_dur, 2) if j == count - 1 else base_dur
         accum_dur += dur
         sid = f"{original_id}_{j+1}"
-        clause_text = clauses[j] if j < len(clauses) else ""
-        prompt = f"{original_prompt}（分镜{j+1}/{count}）" if original_prompt else ""
+        clause_text = "".join(group)
+        # 子镜画面描述按镜头序号给出景别递进（避免子镜画面完全相同）
+        camera_notes = ["远景交代环境", "中景角色互动", "近景情绪推进", "特写定格收束"]
+        note = camera_notes[j % len(camera_notes)]
+        prompt = f"{original_prompt}（分镜{j+1}/{count}，{note}）" if original_prompt else ""
         sub = _set(plan, "shot_id", sid)
         sub = _set(sub, "duration_s", dur)
         sub = _set(sub, "image_prompt", prompt)
