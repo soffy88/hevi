@@ -62,7 +62,11 @@ class StoryEvent(BaseModel):
     chapter_ref: str = ""
     # 跨章合并后保留的原始逐章 event_id(便于回溯/调试);单章时为空。
     merged_from: list[str] = Field(default_factory=list)
-    # 因果边来源："extracted" (LLM/手稿真实抽取) 或 "stitched" (跨章边界机械缝合)
+    # 因果边来源标注（R5）：以 "from->to" 为 key 的边级映射，
+    # 值为 "extracted" (LLM/手稿真实抽取) 或 "stitched" (跨章边界机械缝合)。
+    # 旧字段 causal_source 保留向后兼容，但新增调用请用此边级标注。
+    edge_sources: dict[str, str] = Field(default_factory=dict)
+    # 兼容字段：事件整体来源（默认 extracted；跨章缝合的**首事件**会标 stitched）。
     causal_source: str = "extracted"
 
 

@@ -259,6 +259,7 @@ def merge_chapter_graphs(
             )
 
     # 跨章因果缝合：每章首事件若无 causes，且存在上一章末事件，则补一条依赖。
+    # R5：缝合肥边在 "上一章末事件 → 本章首事件" 这条边上，标注到 edge_sources（边级）
     first_event_by_chapter: dict[str, StoryEvent] = {}
     last_event_by_chapter: dict[str, StoryEvent] = {}
     for ev in global_events:
@@ -271,10 +272,17 @@ def merge_chapter_graphs(
             first = first_event_by_chapter.get(cid)
             prev_last = last_event_by_chapter.get(prev_chapter_id)
             if first is not None and prev_last is not None and not first.causes:
-                first.causes = [prev_last.event_id]
+                # 边级标注："prev_last→first" 这条边是缝合的
+                edge_key = f"{prev_last.event_id}->{first.event_id}"
+                first.edge_sources[edge_key] = "stitched"
+                # 向后兼容：被缝合的首事件标 causal_source="stitched"
                 first.causal_source = "stitched"
+                first.causes = [prev_last.event_id]
                 if first.event_id not in prev_last.effects:
                     prev_last.effects.append(first.event_id)
+                    # 同步标注 prev_last.effects 里这条边
+                    rev_edge_key = f"{prev_last.event_id}->{first.event_id}"
+                    prev_last.edge_sources.setdefault(rev_edge_key, "stitched")
         prev_chapter_id = cid
 
     # 对白：speaker/event_id 重映射

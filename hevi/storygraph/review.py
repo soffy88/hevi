@@ -178,12 +178,12 @@ _EXECUTION_PROMPT = """你是短剧编剧。根据下面的本集改编决策，
 {{"title": "本集标题", "scenes": [{{"scene_no": 1, "location": "地点",
 "event_ids": ["本场对应的事件ID，只能取自给定事件"],
 "summary": "一句话场景摘要", "narration": "旁白(可空)",
-"dialogue": [{{"speaker": "角色名(必须在角色表里)", "text": "台词(≤{max_dialogue}字)", "emotion": "情绪"}}],
+"dialogue": [{{"speaker": "角色名(必须在角色表里，必须是真实人名不能用 C001 等 char_id)", "text": "台词(≤{max_dialogue}字)", "emotion": "情绪"}}],
 "shot_count": 镜头数(整数), "duration_s": 估算秒数}}]}}
 
 硬性规则：
 1. 必须覆盖全部给定事件 event_ids，每个事件至少一场戏。
-2. 台词 speaker 只能用角色表里的人名；台词不得含禁忌词：{taboo}。
+2. 台词 speaker 只能用角色表里的人名（绝不能用 char_id）；台词不得含禁忌词：{taboo}。
 3. 每场戏 shot_count 之和不得超过 {target_shots}；估算时长之和不得超过 {target_duration} 秒。
 4. 单句台词不超过 {max_dialogue} 字。
 
@@ -347,7 +347,7 @@ def _execution_template(decision: AdaptationDecision, book: StoryGraph) -> Episo
 
 
 _REVISE_SCENE_PROMPT = """你是短剧剧本精修师。本集剧本第 {scene_no} 场被审稿指出以下问题，请专门针对本场进行重写修复。
-注意：角色名必须使用已知角色（{character_names}），台词每句不超过 {max_dialogue} 字，不得包含禁忌词（{taboo}）。
+注意：角色名必须使用已知角色（{character_names}），不得用 char_id（如 C001）代替角色名；台词每句不超过 {max_dialogue} 字，不得包含禁忌词（{taboo}）。
 
 【本场问题列表】：
 {issue_lines}
@@ -423,18 +423,18 @@ async def _revise_single_scene_via_llm(
             )
             for d in (data.get("dialogue") or [])
         ]
-        known_names = {c.name for c in book.characters} | {c.char_id for c in book.characters}
+        known_names = {c.name for c in book.characters}
+        char_id_to_name = {c.char_id: c.name for c in book.characters}
         fixed_dialogue: list[ScriptLine] = []
         for line in dialogue:
-            sp = (
-                line.speaker
-                if line.speaker in known_names
-                else (
+            # R4：char_id → 映射成角色名
+            sp = char_id_to_name.get(line.speaker, line.speaker)
+            if not sp or sp not in known_names:
+                sp = (
                     scene.dialogue[0].speaker
                     if scene.dialogue
-                    else (book.characters[0].name if book.characters else line.speaker)
+                    else (book.characters[0].name if book.characters else sp)
                 )
-            )
             txt = (
                 line.text[:MAX_DIALOGUE_CHARS]
                 if len(line.text) > MAX_DIALOGUE_CHARS
@@ -465,7 +465,9 @@ def _revise_single_scene_deterministic(
     taboo_keywords: tuple[str, ...] = DEFAULT_TABOO_KEYWORDS,
 ) -> ScriptScene:
     by_id = {e.event_id: e for e in book.events}
-    known_names = {c.name for c in book.characters} | {c.char_id for c in book.characters}
+    known_names = {c.name for c in book.characters}
+    char_id_to_name = {c.char_id: c.name for c in book.characters}
+    known_ids = {c.char_id for c in book.characters}
     codes = {i.code for i in issues}
 
     lines: list[ScriptLine] = []
@@ -476,10 +478,16 @@ def _revise_single_scene_deterministic(
         if "taboo" in codes and any(k in text for k in taboo_keywords):
             continue
         speaker = line.speaker
-        if "unknown_speaker" in codes and speaker not in known_names:
+        # R4：char_id 当 speaker → 映射成角色名
+        if speaker in char_id_to_name and speaker not in known_names:
+            speaker = char_id_to_name[speaker]
+        elif "unknown_speaker" in codes and speaker not in known_names and speaker not in known_ids:
             actors = []
             for eid in scene.event_ids:
-                actors.extend(by_id.get(eid).actors if by_id.get(eid) else [])
+                ev = by_id.get(eid)
+                if ev:
+                    for a in ev.actors:
+                        actors.append(char_id_to_name.get(a, a))
             speaker = actors[0] if actors else (next(iter(known_names), speaker))
         lines.append(ScriptLine(speaker=speaker, text=text, emotion=line.emotion))
 
@@ -718,10 +726,26 @@ def deterministic_checks(
     known_events = {e.event_id for e in book.events}
     present = set(script.characters_present) or known_ids
 
-    # R1 人物一致性：speaker 必须在角色表
+    # R1 人物一致性：speaker 必须是角色名（允许 char_id 但需映射成名字）；直接用 char_id 当说话人是 bug（R4）。
     for scene in script.scenes:
         for line in scene.dialogue:
-            if line.speaker not in known_names and line.speaker not in known_ids:
+            sp = line.speaker
+            if sp in known_names:
+                continue
+            if sp in known_ids:
+                # char_id 必须映射成角色名再使用（R4 修复）
+                char_obj = next((c for c in book.characters if c.char_id == sp), None)
+                if char_obj and char_obj.name:
+                    continue  # 有名字映射，合法但会被下游规范化
+                issues.append(
+                    ReviewIssue(
+                        code="unknown_speaker",
+                        message=f"台词人物 {sp!r} 是 char_id 未映射到角色名",
+                        scope=f"scene:{scene.scene_no}",
+                        scene_no=scene.scene_no,
+                    )
+                )
+            else:
                 issues.append(
                     ReviewIssue(
                         code="unknown_speaker",
@@ -870,8 +894,8 @@ _SUPERVISOR_PROMPT_INITIAL = """你是短剧审稿人。下面是本集剧本初
 {{"issues": [{{"scene_no": 整数或null, "code": "llm:问题类型", "message": "问题描述", "severity": "error|warning"}}],
 "score": 0到100的整数}}
 只报确定性规则查不出的**定性**问题（人物弧光、节奏、逻辑连贯、台词质量）。
-【初审标准】：
-初审执行严格质量把控：若存在人物动机单薄、台词功能化、情绪转折生硬等场次，务必将最突出的一处场次问题定为 "error"（触发针对性重写）；一般建议定为 "warning"。
+【审稿标准】：
+按你对该集剧本的真实判断独立打分并给出问题。问题无则 score 给高分；若存在人物动机单薄、台词功能化、情绪转折生硬、逻辑断裂等硬伤，可评为 "error" 并给出低分。severity 与 score 完全由你根据内容判断，不要预设必须通过或必须拒绝。
 镜头数/时长/字数/人物名是否在角色表这类已由规则检查，不要重复。
 
 决策：{decision}
@@ -879,11 +903,11 @@ _SUPERVISOR_PROMPT_INITIAL = """你是短剧审稿人。下面是本集剧本初
 """
 
 _SUPERVISOR_PROMPT_REVISED = """你是短剧审稿人。下面是本集剧本（已针对初审问题完成针对性返修）与改编决策。只输出 JSON：
-{{"issues": [{{"scene_no": 整数或null, "code": "llm:问题类型", "message": "问题描述", "severity": "warning"}}],
-"score": 80到100的整数}}
+{{"issues": [{{"scene_no": 整数或null, "code": "llm:问题类型", "message": "问题描述", "severity": "error|warning"}}],
+"score": 0到100的整数}}
 只报确定性规则查不出的**定性**问题（人物弧光、节奏、逻辑连贯、台词质量）。
 【复审标准】：
-本剧本已完成针对性返修重写。请验证修改效果，若主要逻辑与人物动机已补充健全，请给出通过（score >= 80），后续润色建议定为 "warning"，允许剧本通过审稿。
+请对返修后的剧本独立复核：若返修确实解决了两前问题、逻辑与人物动机已健全，可给出通过（score >= {pass_score}）；若仍存在未解决的定性硬伤，请如实评为 "error" 并给出低分（score < {pass_score}），本集将再次返修或如实标记不通过。是否通过完全由内容质量决定，不要预设已经通过。
 镜头数/时长/字数/人物名是否在角色表这类已由规则检查，不要重复。
 
 决策：{decision}
@@ -903,6 +927,7 @@ async def _supervisor_via_llm(
     prompt = prompt_template.format(
         decision=decision.model_dump_json(),
         script=script.model_dump_json(),
+        pass_score=PASS_SCORE,
     )
     try:
         resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
@@ -933,6 +958,11 @@ def _scene_hash(scene: ScriptScene) -> str:
 
 
 def _diff_scenes(before: EpisodeScript, after: EpisodeScript) -> list[dict[str, Any]]:
+    """计算前后剧本的场次差异。
+
+    R2 要求：scene_diffs 同时保存改前/改后的 summary/narration/dialogue 全文，
+    以便审核方能核对 LLM 是否真的改稿。
+    """
     before_by_no = {s.scene_no: s for s in before.scenes}
     after_by_no = {s.scene_no: s for s in after.scenes}
     diffs: list[dict[str, Any]] = []
@@ -942,7 +972,27 @@ def _diff_scenes(before: EpisodeScript, after: EpisodeScript) -> list[dict[str, 
         bh = _scene_hash(b) if b else None
         ah = _scene_hash(a) if a else None
         if bh != ah:
-            diffs.append({"scene_no": no, "before": bh, "after": ah})
+            # 记录完整改前/改后文本，用于人工核验
+            def _scene_summary(s: ScriptScene) -> dict[str, Any]:
+                return {
+                    "scene_no": s.scene_no,
+                    "location": s.location,
+                    "summary": s.summary,
+                    "narration": s.narration,
+                    "dialogue": [
+                        {"speaker": d.speaker, "text": d.text, "emotion": d.emotion}
+                        for d in s.dialogue
+                    ],
+                    "shot_count": s.shot_count,
+                    "duration_s": s.duration_s,
+                }
+            diffs.append({
+                "scene_no": no,
+                "before": _scene_summary(b) if b else None,
+                "after": _scene_summary(a) if a else None,
+                "before_hash": bh,
+                "after_hash": ah,
+            })
     return diffs
 
 

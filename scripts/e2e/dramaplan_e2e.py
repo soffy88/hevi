@@ -221,7 +221,9 @@ async def _main_async(args: argparse.Namespace) -> int:
         "event_graph_nonempty": len(book.events) > 0,
         "characters_merged": len(book.characters) > 0,
         "stitched_edge_marked": any(
-            getattr(e, "causal_source", "") == "stitched" for e in book.events
+            getattr(e, "causal_source", "") == "stitched"
+            or any(v == "stitched" for v in getattr(e, "edge_sources", {}).values())
+            for e in book.events
         ),
         "outline_episodes_match": len(outline.episodes) == args.episodes,
         "outline_budget_sum_equals_total": sum(ep.shot_budget for ep in outline.episodes)
