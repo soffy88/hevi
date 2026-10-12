@@ -1,0 +1,155 @@
+{
+  "status": "ok",
+  "op": "review",
+  "input": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/nasa-earth-iss-0001_finecut.mp4",
+  "sha256": "db0868a12546fd670dfd0580d06343709ce1b091bd2b5f7b952255541367c8ad",
+  "duration_s": 14.0,
+  "resolution": "320x180",
+  "fps": 25.0,
+  "has_audio": true,
+  "verdict": "warn",
+  "allows_compose": true,
+  "violations": [],
+  "warnings": [
+    "未提供 SRT: 字幕越界未量测"
+  ],
+  "unmeasured": [
+    "subtitle",
+    "text_dependent"
+  ],
+  "metrics": {
+    "probe": {
+      "path": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/nasa-earth-iss-0001_finecut.mp4",
+      "kind": "video",
+      "width": 320,
+      "height": 180,
+      "duration_s": 14.0,
+      "fps": 25.0,
+      "has_audio": true,
+      "size_bytes": 515179,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "nb_frames": 349,
+      "sha256": "db0868a12546fd670dfd0580d06343709ce1b091bd2b5f7b952255541367c8ad"
+    },
+    "contact_sheet": {
+      "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/contact_sheet.png",
+      "width": 1280,
+      "height": 206,
+      "frames": 4,
+      "columns": 4,
+      "rows": 1
+    },
+    "frames": {
+      "count": 4,
+      "checks": [
+        {
+          "index": 0,
+          "timestamp_s": 1.75,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_00_001.75s.png",
+          "mean_luma": 117.543,
+          "stdev_luma": 40.914,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 1,
+          "timestamp_s": 5.25,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_01_005.25s.png",
+          "mean_luma": 116.078,
+          "stdev_luma": 43.016,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 2,
+          "timestamp_s": 8.75,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_02_008.75s.png",
+          "mean_luma": 114.39,
+          "stdev_luma": 47.758,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 3,
+          "timestamp_s": 12.25,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_03_012.25s.png",
+          "mean_luma": 146.221,
+          "stdev_luma": 17.865,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        }
+      ],
+      "black": 0,
+      "broken": 0,
+      "flat": 0
+    },
+    "audio": {
+      "has_audio": true,
+      "loudness_lufs": -22.3,
+      "silence_ratio": 0.0
+    },
+    "slideshow": {
+      "risk": 0.0,
+      "verdict": "green",
+      "components": {
+        "repeat": 0.0,
+        "static": 0.0,
+        "weak_motion": 0.0
+      },
+      "measured": {
+        "segment_count": 28,
+        "cut_count": 27,
+        "dense_frame_count": 28,
+        "mean_frame_delta": 7.519,
+        "max_frame_delta": 16.2556,
+        "short_segment_share": 0.0
+      },
+      "missing": [
+        "text_dependent"
+      ],
+      "reasons": [
+        "未量测(不计分): 文字依赖"
+      ],
+      "weights": {
+        "repeat": 0.25,
+        "static": 0.3,
+        "weak_motion": 0.25
+      },
+      "is_red": false
+    },
+    "promise": {
+      "evidence": {
+        "cuts": 28,
+        "motion_cuts": 28,
+        "still_cuts": 0,
+        "motion_ratio": 1.0,
+        "still_ratio": 0.0
+      },
+      "promise_type": "motion_led",
+      "motion_required": true,
+      "verdict": "ok",
+      "valid": true,
+      "motion_ratio": 1.0,
+      "violations": []
+    }
+  },
+  "output_dir": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss",
+  "artifacts": {
+    "contact_sheet": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/contact_sheet.png",
+    "frames": [
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_00_001.75s.png",
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_01_005.25s.png",
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_02_008.75s.png",
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/nasa-earth-iss/frames/frame_03_012.25s.png"
+    ]
+  }
+}

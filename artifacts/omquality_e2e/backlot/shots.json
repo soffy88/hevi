@@ -1,0 +1,238 @@
+{
+  "run_id": "omq-e2e-run",
+  "updated_at": "2026-10-12T01:41:38+00:00",
+  "shots": [
+    {
+      "scene_id": "sc01",
+      "index": 0,
+      "title": "B-roll 太空",
+      "prompt": "earth limb from orbit, slow push in, 4k",
+      "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc01/scene_broll_720p_thumb.png",
+      "source_path": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+      "duration_s": 0.0,
+      "cost_usd": 0.42,
+      "status": "approved",
+      "quality": {
+        "source": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4",
+        "measured": {
+          "mean_luma": 113.086,
+          "stdev_luma": 38.867,
+          "motion_delta": 27.5161
+        },
+        "unmeasured": [],
+        "notes": [],
+        "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc01/scene_broll_720p_thumb.png",
+        "frame": {
+          "index": 0,
+          "timestamp_s": 0.0,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc01/scene_broll_720p_thumb.png",
+          "mean_luma": 113.086,
+          "stdev_luma": 38.867,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        "components": {
+          "exposure": 1.0,
+          "contrast": 0.6073,
+          "motion": 1.0
+        },
+        "score": 0.9215,
+        "partial_score": 0.9215,
+        "weights": {
+          "exposure": 0.3,
+          "contrast": 0.2,
+          "motion": 0.5
+        }
+      },
+      "declared_score": null,
+      "decisions": [
+        {
+          "scene_id": "sc01",
+          "decision": "approved",
+          "reason": "构图与运动都达标",
+          "reviewer": "director",
+          "ts": "2026-10-12T01:41:38+00:00"
+        }
+      ]
+    },
+    {
+      "scene_id": "sc02",
+      "index": 1,
+      "title": "访谈口播",
+      "prompt": "talking head, medium shot, warm key light",
+      "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc02/scene_interview_720p_thumb.png",
+      "source_path": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4",
+      "duration_s": 0.0,
+      "cost_usd": 0.31,
+      "status": "approved",
+      "quality": {
+        "source": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4",
+        "measured": {
+          "mean_luma": 131.24,
+          "stdev_luma": 50.324,
+          "motion_delta": 49.6462
+        },
+        "unmeasured": [],
+        "notes": [],
+        "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc02/scene_interview_720p_thumb.png",
+        "frame": {
+          "index": 0,
+          "timestamp_s": 0.0,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc02/scene_interview_720p_thumb.png",
+          "mean_luma": 131.24,
+          "stdev_luma": 50.324,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        "components": {
+          "exposure": 1.0,
+          "contrast": 0.7863,
+          "motion": 1.0
+        },
+        "score": 0.9573,
+        "partial_score": 0.9573,
+        "weights": {
+          "exposure": 0.3,
+          "contrast": 0.2,
+          "motion": 0.5
+        }
+      },
+      "declared_score": null,
+      "decisions": [
+        {
+          "scene_id": "sc02",
+          "decision": "approved",
+          "reason": "口播可用, 保留",
+          "reviewer": "director",
+          "ts": "2026-10-12T01:41:38+00:00"
+        }
+      ]
+    },
+    {
+      "scene_id": "sc03",
+      "index": 2,
+      "title": "空间站外景",
+      "prompt": "iss exterior, orbital sunrise, long lens",
+      "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc03/nasa-collins-0001_finecut_thumb.png",
+      "source_path": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/nasa-collins-0001_finecut.mp4",
+      "duration_s": 0.0,
+      "cost_usd": 0.18,
+      "status": "rejected",
+      "quality": {
+        "source": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/nasa-collins-0001_finecut.mp4",
+        "measured": {
+          "mean_luma": 131.267,
+          "stdev_luma": 50.371,
+          "motion_delta": 49.6404
+        },
+        "unmeasured": [],
+        "notes": [],
+        "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc03/nasa-collins-0001_finecut_thumb.png",
+        "frame": {
+          "index": 0,
+          "timestamp_s": 0.0,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc03/nasa-collins-0001_finecut_thumb.png",
+          "mean_luma": 131.267,
+          "stdev_luma": 50.371,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        "components": {
+          "exposure": 1.0,
+          "contrast": 0.787,
+          "motion": 1.0
+        },
+        "score": 0.9574,
+        "partial_score": 0.9574,
+        "weights": {
+          "exposure": 0.3,
+          "contrast": 0.2,
+          "motion": 0.5
+        }
+      },
+      "declared_score": null,
+      "decisions": [
+        {
+          "scene_id": "sc03",
+          "decision": "rejected",
+          "reason": "色温偏冷, 与 B-roll 不接",
+          "reviewer": "director",
+          "ts": "2026-10-12T01:41:38+00:00"
+        }
+      ]
+    },
+    {
+      "scene_id": "sc04",
+      "index": 3,
+      "title": "ISS 远景",
+      "prompt": "iss wide shot against earth, locked off",
+      "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc04/nasa-earth-iss-0001_finecut_thumb.png",
+      "source_path": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/nasa-earth-iss-0001_finecut.mp4",
+      "duration_s": 0.0,
+      "cost_usd": 0.16,
+      "status": "pending",
+      "quality": {
+        "source": "/data/soffy/projects/hevi-omquality/artifacts/real_video/20261005T160434Z/artifacts/nasa-earth-iss-0001_finecut.mp4",
+        "measured": {
+          "mean_luma": 113.099,
+          "stdev_luma": 38.998,
+          "motion_delta": 27.5417
+        },
+        "unmeasured": [],
+        "notes": [],
+        "thumbnail": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc04/nasa-earth-iss-0001_finecut_thumb.png",
+        "frame": {
+          "index": 0,
+          "timestamp_s": 0.0,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/C_backlot/board/omq-e2e-run/quality/sc04/nasa-earth-iss-0001_finecut_thumb.png",
+          "mean_luma": 113.099,
+          "stdev_luma": 38.998,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        "components": {
+          "exposure": 1.0,
+          "contrast": 0.6093,
+          "motion": 1.0
+        },
+        "score": 0.9219,
+        "partial_score": 0.9219,
+        "weights": {
+          "exposure": 0.3,
+          "contrast": 0.2,
+          "motion": 0.5
+        }
+      },
+      "declared_score": null,
+      "decisions": []
+    }
+  ],
+  "summary": {
+    "run_id": "omq-e2e-run",
+    "total": 4,
+    "approved": 2,
+    "rejected": 1,
+    "pending": 1,
+    "total_cost_usd": 1.07,
+    "approved_cost_usd": 0.73,
+    "rejected_cost_usd": 0.18,
+    "quality_scored": 4,
+    "quality_unmeasured": 0,
+    "mean_quality": 0.9395,
+    "gate": "awaiting_review",
+    "costs": {
+      "sc01": 0.42,
+      "sc02": 0.31,
+      "sc03": 0.18,
+      "sc04": 0.16
+    }
+  }
+}

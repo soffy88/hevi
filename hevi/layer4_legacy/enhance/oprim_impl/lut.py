@@ -42,8 +42,14 @@ def apply_lut(
     intensity = max(0.0, min(1.0, float(intensity)))
     chain = f"lut3d=file='{cube}'"
     if intensity < 1.0:
-        # blend graded frame over the source at `intensity`
-        chain = f"split[a][b];[b]{chain}[g];[a][g]blend=all_mode=normal:all_opacity={intensity}"
+        # Blend at ``intensity``: out = intensity*graded + (1-intensity)*source.
+        # ffmpeg's blend computes A*opacity + B*(1-opacity) where A is the FIRST
+        # input, so the graded branch has to be first — putting the source first
+        # inverts the knob (intensity 0 would apply the full grade).
+        chain = (
+            f"split[src][grad];[grad]{chain}[g];[g][src]"
+            f"blend=all_mode=normal:all_opacity={intensity}"
+        )
     if kind == "image":
         run_ffmpeg(["-y", "-i", str(src), "-vf", chain, str(dest)], timeout_s=300.0)
     else:
