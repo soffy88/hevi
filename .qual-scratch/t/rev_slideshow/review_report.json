@@ -1,0 +1,160 @@
+{
+  "status": "ok",
+  "op": "review",
+  "input": ".qual-scratch/t/slideshow_risk.mp4",
+  "sha256": "8ef852afa0959ef8f20e7e3dab514e9dd4255e154d9347f53112971327c5d717",
+  "duration_s": 18.0,
+  "resolution": "640x480",
+  "fps": 25.0,
+  "has_audio": true,
+  "verdict": "red",
+  "allows_compose": false,
+  "violations": [
+    "字幕越界/过短 2 条 (共 2 条)"
+  ],
+  "warnings": [],
+  "unmeasured": [],
+  "metrics": {
+    "probe": {
+      "path": ".qual-scratch/t/slideshow_risk.mp4",
+      "kind": "video",
+      "width": 640,
+      "height": 480,
+      "duration_s": 18.0,
+      "fps": 25.0,
+      "has_audio": true,
+      "size_bytes": 270078,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "nb_frames": 450,
+      "sha256": "8ef852afa0959ef8f20e7e3dab514e9dd4255e154d9347f53112971327c5d717"
+    },
+    "contact_sheet": {
+      "path": ".qual-scratch/t/rev_slideshow/contact_sheet.png",
+      "width": 960,
+      "height": 206,
+      "frames": 4,
+      "columns": 4,
+      "rows": 1
+    },
+    "frames": {
+      "count": 4,
+      "checks": [
+        {
+          "index": 0,
+          "timestamp_s": 2.25,
+          "path": ".qual-scratch/t/rev_slideshow/frames/frame_00_002.25s.png",
+          "mean_luma": 75.212,
+          "stdev_luma": 88.725,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 1,
+          "timestamp_s": 6.75,
+          "path": ".qual-scratch/t/rev_slideshow/frames/frame_01_006.75s.png",
+          "mean_luma": 75.213,
+          "stdev_luma": 88.725,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 2,
+          "timestamp_s": 11.25,
+          "path": ".qual-scratch/t/rev_slideshow/frames/frame_02_011.25s.png",
+          "mean_luma": 27.824,
+          "stdev_luma": 18.358,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 3,
+          "timestamp_s": 15.75,
+          "path": ".qual-scratch/t/rev_slideshow/frames/frame_03_015.75s.png",
+          "mean_luma": 27.824,
+          "stdev_luma": 18.358,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        }
+      ],
+      "black": 0,
+      "broken": 0,
+      "flat": 0
+    },
+    "audio": {
+      "has_audio": true,
+      "loudness_lufs": -21.7,
+      "silence_ratio": 0.0
+    },
+    "subtitle": {
+      "cues": 2,
+      "past_end": 2,
+      "before_start": 0,
+      "too_short": 0,
+      "overlapping": 0,
+      "bounds_measured": true,
+      "violations": [
+        {
+          "index": 0,
+          "kind": "past_end",
+          "end_s": 18.2
+        },
+        {
+          "index": 1,
+          "kind": "past_end",
+          "end_s": 20.0
+        }
+      ],
+      "coverage": 1.0,
+      "subtitle_path": ".qual-scratch/t/slideshow_risk.srt",
+      "video_duration_s": 18.0
+    },
+    "slideshow": {
+      "risk": 0.3667,
+      "verdict": "green",
+      "components": {
+        "repeat": 0.0,
+        "static": 0.0,
+        "weak_motion": 0.6667,
+        "text_dependent": 1.0
+      },
+      "measured": {
+        "mean_hash_distance": 8.333,
+        "mean_frame_delta": 22.5588,
+        "max_frame_delta": 67.6763,
+        "weak_pair_ratio": 0.6667,
+        "subtitle_coverage": 1.0
+      },
+      "missing": [],
+      "reasons": [
+        "文字依赖分量 1.00 超标",
+        "运动强度分量 0.67 超标"
+      ],
+      "weights": {
+        "repeat": 0.25,
+        "static": 0.3,
+        "weak_motion": 0.25,
+        "text_dependent": 0.2
+      },
+      "is_red": false
+    }
+  },
+  "output_dir": ".qual-scratch/t/rev_slideshow",
+  "artifacts": {
+    "contact_sheet": ".qual-scratch/t/rev_slideshow/contact_sheet.png",
+    "frames": [
+      ".qual-scratch/t/rev_slideshow/frames/frame_00_002.25s.png",
+      ".qual-scratch/t/rev_slideshow/frames/frame_01_006.75s.png",
+      ".qual-scratch/t/rev_slideshow/frames/frame_02_011.25s.png",
+      ".qual-scratch/t/rev_slideshow/frames/frame_03_015.75s.png"
+    ]
+  }
+}

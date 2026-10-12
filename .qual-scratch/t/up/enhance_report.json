@@ -1,0 +1,28 @@
+{
+  "status": "ok",
+  "op": "upscale",
+  "input": ".qual-scratch/t/crop.png",
+  "input_kind": "image",
+  "output_dir": ".qual-scratch/t/up",
+  "results": [
+    {
+      "op": "upscale",
+      "input_path": ".qual-scratch/t/crop.png",
+      "output_path": ".qual-scratch/t/up/upscale_crop.png",
+      "backend": "RealESRGAN_x2plus",
+      "model": "RealESRGAN_x2plus",
+      "license": "commercial-ok",
+      "commercial_ok": true,
+      "metrics": {
+        "in_w": 256,
+        "in_h": 256,
+        "out_w": 512,
+        "out_h": 512,
+        "scale": 2,
+        "model": "RealESRGAN_x2plus"
+      },
+      "notes": []
+    }
+  ],
+  "notes": []
+}

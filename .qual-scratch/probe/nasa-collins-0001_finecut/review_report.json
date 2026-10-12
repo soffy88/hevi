@@ -1,0 +1,150 @@
+{
+  "status": "ok",
+  "op": "review",
+  "input": "artifacts/real_video/20261005T160434Z/artifacts/nasa-collins-0001_finecut.mp4",
+  "sha256": "f70d0f302a9f813e56c8199a65d72880cb74fb421bf25c81bee7ea7313d9373c",
+  "duration_s": 22.647,
+  "resolution": "320x180",
+  "fps": 25.0,
+  "has_audio": true,
+  "verdict": "warn",
+  "allows_compose": true,
+  "violations": [],
+  "warnings": [
+    "未提供 SRT: 字幕越界未量测"
+  ],
+  "unmeasured": [
+    "subtitle",
+    "text_dependent"
+  ],
+  "metrics": {
+    "probe": {
+      "path": "artifacts/real_video/20261005T160434Z/artifacts/nasa-collins-0001_finecut.mp4",
+      "kind": "video",
+      "width": 320,
+      "height": 180,
+      "duration_s": 22.647,
+      "fps": 25.0,
+      "has_audio": true,
+      "size_bytes": 1098013,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "nb_frames": 566,
+      "sha256": "f70d0f302a9f813e56c8199a65d72880cb74fb421bf25c81bee7ea7313d9373c"
+    },
+    "contact_sheet": {
+      "path": ".qual-scratch/probe/nasa-collins-0001_finecut/contact_sheet.png",
+      "width": 1280,
+      "height": 206,
+      "frames": 4,
+      "columns": 4,
+      "rows": 1
+    },
+    "frames": {
+      "count": 4,
+      "checks": [
+        {
+          "index": 0,
+          "timestamp_s": 2.83,
+          "path": ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_00_002.83s.png",
+          "mean_luma": 155.725,
+          "stdev_luma": 50.583,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 1,
+          "timestamp_s": 8.49,
+          "path": ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_01_008.49s.png",
+          "mean_luma": 154.564,
+          "stdev_luma": 46.244,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 2,
+          "timestamp_s": 14.15,
+          "path": ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_02_014.15s.png",
+          "mean_luma": 109.707,
+          "stdev_luma": 56.627,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 3,
+          "timestamp_s": 19.82,
+          "path": ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_03_019.82s.png",
+          "mean_luma": 108.688,
+          "stdev_luma": 47.415,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        }
+      ],
+      "black": 0,
+      "broken": 0,
+      "flat": 0
+    },
+    "audio": {
+      "has_audio": true,
+      "loudness_lufs": -18.4,
+      "silence_ratio": 0.0
+    },
+    "slideshow": {
+      "risk": 0.0,
+      "verdict": "green",
+      "components": {
+        "repeat": 0.0,
+        "static": 0.0,
+        "weak_motion": 0.0
+      },
+      "measured": {
+        "segment_count": 45,
+        "cut_count": 44,
+        "dense_frame_count": 45,
+        "mean_frame_delta": 28.3022,
+        "max_frame_delta": 73.7329,
+        "short_segment_share": 0.0
+      },
+      "missing": [
+        "text_dependent"
+      ],
+      "reasons": [
+        "未量测(不计分): 文字依赖"
+      ],
+      "weights": {
+        "repeat": 0.25,
+        "static": 0.3,
+        "weak_motion": 0.25
+      },
+      "is_red": false
+    },
+    "promise": {
+      "evidence": {
+        "cuts": 45,
+        "motion_cuts": 0,
+        "still_cuts": 45,
+        "motion_ratio": 0.0,
+        "still_ratio": 1.0
+      },
+      "error": "promise 无法解析: dictionary update sequence element #0 has length 1; 2 is required"
+    }
+  },
+  "output_dir": ".qual-scratch/probe/nasa-collins-0001_finecut",
+  "artifacts": {
+    "contact_sheet": ".qual-scratch/probe/nasa-collins-0001_finecut/contact_sheet.png",
+    "frames": [
+      ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_00_002.83s.png",
+      ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_01_008.49s.png",
+      ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_02_014.15s.png",
+      ".qual-scratch/probe/nasa-collins-0001_finecut/frames/frame_03_019.82s.png"
+    ]
+  }
+}
