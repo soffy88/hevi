@@ -23,9 +23,7 @@ SCENES['12_bauhaus'] = (() => {
     // 左上黑横条、红竖条
     g.fillStyle = C.ink; g.fillRect(60, 61, 256, 13);
     g.fillStyle = C.red; g.fillRect(292, 105, 24, 468);
-    // 竖排 bauhaus（自下而上读）
-    g.save(); g.translate(262, 1000); g.rotate(-Math.PI / 2); g.font = font(210); g.fillStyle = C.ink; g.textBaseline = 'alphabetic';
-    const w = g.measureText('bauhaus').width; g.scale(820 / w, 1); g.fillText('bauhaus', 0, 0); g.restore();
+    // [纹理模式] bauhaus 文字已移除（不再画示范文字）
     // 小灰方块
     g.fillStyle = '#9a9894'; g.fillRect(875, 150, 31, 31);
     // 地线、黄三角
@@ -33,22 +31,9 @@ SCENES['12_bauhaus'] = (() => {
     g.fillStyle = C.yellow; g.beginPath(); g.moveTo(1738, 898); g.lineTo(1822, 898); g.lineTo(1822, 793); g.closePath(); g.fill();
     // 右侧细斜线
     g.strokeStyle = C.ink; g.lineWidth = 2; g.beginPath(); g.moveTo(1610, 740); g.lineTo(1900, 842); g.stroke();
-    // katze
-    g.fillStyle = C.ink; g.fillRect(345, 946, 25, 25);
-    g.font = font(150); g.fillStyle = C.red; g.textBaseline = 'alphabetic'; g.fillText('katze', 392, 1042);
-    g.strokeStyle = C.ink; g.lineWidth = 2; g.beginPath(); g.moveTo(800, 1040); g.lineTo(1180, 1040); g.stroke();
-    // 右下两行小字
-    g.fillStyle = C.ink; g.fillRect(1224, 953, 12, 60);
-    g.font = font(31, 'Poppins-600'); g.letterSpacing = '1px'; g.fillText('staatliches bauhaus weimar', 1250, 977); g.fillText('ausstellung  juli – september', 1250, 1014); g.letterSpacing = '0px';
-    // 桌（黑面＋镀铬管腿＋黑底座）
-    g.fillStyle = C.ink; g.fillRect(820, 643, 380, 21); g.fillRect(925, 883, 170, 17);
-    const cg = g.createLinearGradient(1000, 0, 1017, 0); cg.addColorStop(0, '#8a8a88'); cg.addColorStop(0.4, '#f2f2ee'); cg.addColorStop(1, '#7a7a78');
-    g.fillStyle = cg; g.fillRect(1000, 664, 17, 220); g.strokeStyle = '#555'; g.lineWidth = 1.5; g.strokeRect(1000, 664, 17, 220);
-    // 布劳耶式悬臂椅（镀铬管）
-    const tube = (pts) => { [[15, '#4a4a48'], [10, C.chrome], [3, '#fafaf6']].forEach(([w, col], k) => { g.strokeStyle = col; g.lineWidth = w; g.lineJoin = 'round'; g.lineCap = 'round'; g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0] - (k === 2 ? 2 : 0), p[1] - (k === 2 ? 2 : 0)) : g.moveTo(p[0], p[1])); g.stroke(); }); };
-    tube([[1508, 888], [1318, 888], [1300, 868], [1300, 770], [1318, 742], [1450, 736]]);
-    tube([[1466, 738], [1470, 480]]);
-    g.fillStyle = C.ink; g.fillRect(1450, 486, 14, 44);
+    // [纹理模式] katze 文字已移除（不再画示范文字）
+    // [纹理模式] 右下小字已移除（不再画示范文字）
+    // [纹理模式] 桌和椅已移除（不再画示范家具）
     // 纸面颗粒＋黑色斑点（旧印刷）
     g.drawImage(P.grain('bh', 0.02, [40, 35, 30], 0.35), 0, 0);
   });

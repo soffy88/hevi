@@ -229,12 +229,12 @@ SCENES['17_ink'] = (() => {
         c.beginPath(); c.ellipse(bx, by, 11, 6, -0.2, 0, Math.PI * 2); c.fill(); c.beginPath(); c.arc(bx - 11, by - 4, 5, 0, Math.PI * 2); c.fill();
         leaf(c, bx - 2, by - 2, -1.2 - fl * 0.7, 28, 9, 0.9); leaf(c, bx + 4, by - 1, -0.5 - fl * 0.5, 24, 8, 0.75);
         c.fillStyle = '#f2ead6'; c.beginPath(); c.arc(bx - 13, by - 5, 2, 0, Math.PI * 2); c.fill(); c.restore(); }
-      // 静态笔触（写完就缓存）
+      // 静态笔触（写完就缓存）—— 窗框桌腿是水墨风格的一部分
       const stat = (c2, rv) => { WIN.forEach((s, i) => brush(c2, s.p, { w: s.w, dry: s.dry, seed: 10 + i, reveal: ss(s.d, s.d + s.l, rv), tone: s.tone || 0.88 })); TABLE.forEach((s, i) => brush(c2, s.p, { w: s.w, dry: s.dry, seed: 30 + i, reveal: ss(s.d, s.d + s.l, rv), tone: s.tone || 0.88 })); };
       if (rev < 1) stat(c, rev); else c.drawImage(P.cached('ink_static', W, H, g => stat(g, 1)), 0, 0);
       bamboo(c, t, rev);
-      // 挂轴＋虾（三只，沿各自弧线游）— 仅画挂轴（静态装饰），不画虾
-      c.save(); c.globalAlpha = ss(0.15, 0.35, lt); scrollStatic(c); c.restore();
+      // 挂轴＋虾（三只，沿各自弧线游）— [纹理模式] 已移除（不再画示范装饰元素）
+      // c.save(); c.globalAlpha = ss(0.15, 0.35, lt); scrollStatic(c); c.restore();
       // [纹理模式] 猫和少女已移除（不再画示范人物/动物）
       // 热气：两缕淡墨游丝
       if (lt > 0.3) { c.save(); c.globalAlpha = ss(0.3, 0.5, lt);

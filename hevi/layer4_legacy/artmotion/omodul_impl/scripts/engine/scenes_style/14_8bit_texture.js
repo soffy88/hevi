@@ -210,26 +210,8 @@ SCENES['14_8bit'] = (() => {
       // 盆栽在 630 帧（lt≈0.19）抖一下
       const sw = lt > 0.15 && lt < 0.24 ? [0, 1, 0, -1][Math.floor(lt * 30) % 4] : 0;
       plant(g, sw);
-      // 角色
-      const CL = catLayers(ch, lt), K = CL.K;
-      g.drawImage(CL.body, 0, 0); g.drawImage(CL.head, 0, 0);
-      // 猫脸：像素眼（2×2 黑＋1 白高光）、粉鼻、白胡须
-      K.eyes.forEach(e => { const x = Math.round(e.x / S), y = Math.round(e.y / S); if (ch.blink) px(g, x - 1, y, 2, 1, C.black); else { px(g, x - 1, y - 1, 2, 2, C.black); px(g, x - 1, y - 1, 1, 1, C.white); } });
-      px(g, Math.round(K.nose[0] / S), Math.round(K.nose[1] / S), 1, 1, C.pink);
-      const hx = Math.round((K.headC[0] + 70) / S), hy = Math.round(K.headC[1] / S) + 2;
-      px(g, hx, hy, 3, 1, C.white); px(g, hx, hy + 2, 3, 1, C.white); px(g, hx - 17, hy + 1, 2, 1, C.white); px(g, hx - 17, hy + 3, 2, 1, C.white);
-      const GL = girlLayers(ch, lt), G = GL.G;
-      g.drawImage(GL.back, 0, 0); g.drawImage(GL.body, 0, 0); g.drawImage(GL.hair, 0, 0); g.drawImage(GL.face, 0, 0); g.drawImage(GL.bangs, 0, 0);
-      // 少女五官（逐像素）：1×2 黑眼＋眉、腮红、红唇
-      const ex = Math.round(G.eye.x / S), ey = Math.round(G.eye.y / S);
-      if (ch.blink) px(g, ex - 1, ey, 2, 1, C.black); else { px(g, ex, ey - 1, 1, 2, C.black); px(g, ex - 1, ey - 3, 2, 1, C.hairDk); }
-      px(g, Math.round(G.cheek[0] / S) - 1, Math.round(G.cheek[1] / S), 2, 1, C.pink);
-      px(g, Math.round(G.lips[1][0] / S), Math.round(G.lips[1][1] / S), 1, 1, C.red);
-      g.drawImage(GL.arm, 0, 0);
-      const [sx, sy0] = cupPx(g, G);
-      // 像素热气：三列 1×2 的点，30fps 每帧上移 1px，循环 6px
-      const ph = Math.floor(lt * 30), sy = sy0 - 1;
-      for (let k = 0; k < 3; k++) for (let j = 0; j < 2; j++) { const y = sy - ((ph + k * 2 + j * 3) % 6) - j * 3; px(g, sx - 2 + k * 2 + ((ph + k) % 2), y, 1, 2, k === 1 ? C.white : C.gray); }
+      // [纹理模式] 猫已移除（不再画示范动物）
+      // [纹理模式] 少女和杯子已移除（不再画示范人物）
       // 放大 8 倍（最近邻）
       c.imageSmoothingEnabled = false; c.drawImage(L, 0, 0, LW, LH, 0, 0, W, H); c.imageSmoothingEnabled = true;
       hud(c, lt);
