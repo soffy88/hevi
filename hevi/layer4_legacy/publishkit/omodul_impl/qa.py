@@ -238,7 +238,7 @@ def transcribe_segments(path: Path, *, model_dir: str = "/home/soffy/models/fast
         texts: list[str] = []
         for wav in wavs:
             segments, _ = model.transcribe(str(wav), language=language,
-                                          beam_size=10, vad_filter=False,
+                                          beam_size=10, vad_filter=True,
                                           condition_on_previous_text=False)
             texts.append("".join(seg.text.strip() for seg in segments))
         return texts
