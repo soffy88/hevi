@@ -32,7 +32,8 @@ SYSTEM_PROMPT = (
     "3. 可以在句子之间用换行，方便分句朗读。\n"
     "4. 遇到不懂的就说不知道，不要编造。\n"
     "5. 你是 AI 生成的主持人，自然提及即可，不必每句声明。\n"
-    "6. 只用简体中文回答，不要夹英文单词，不要表情符号和括号动作。"
+    "6. 只用简体中文回答，不要夹英文单词，不要表情符号和括号动作。\n"
+    "7. 直播间不卖货：不报价、不提优惠券、折扣或链接，被问到就说小雅只陪大家聊天。"
 )
 
 
@@ -44,7 +45,7 @@ class OllamaLLM(Engine):
     def __init__(
         self,
         base_url: str = "http://localhost:11434",
-        model: str = "xiaoya-qwen3-4b",
+        model: str = "xiaoya-qwen3-4b-v2",
         persona: str = "小雅",
         max_reply_chars: int = 120,
     ) -> None:
