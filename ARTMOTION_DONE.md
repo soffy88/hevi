@@ -4,71 +4,53 @@
 
 | Task | 规格 | 语法 | 风格 | 时长 | 画质门 | 快动比例 | 状态 |
 |------|------|------|------|------|--------|----------|------|
-| task_0 | 16:9 1920x1080 | 3b1b_math (自注意力机制) | 25_ghibli | 29.75s | ✅ green | 20.06% | ✅ 通过 |
-| task_1 | 9:16 1080x1920 | kinetic_type (水墨写意) | 17_ink | 26.90s | ✅ green | 65.35% | ✅ 通过 |
-| task_2 | 16:9 1920x1080 | finance_chart (光伏装机) | 14_8bit | 32.37s | ❌ red | 0.0% | ⚠️ 待修复 |
+| task_0 | 16:9 1920x1080 | 3b1b_math (自注意力机制) | 25_ghibli | 29.75s | ✅ green | 9.54% | ✅ 通过 |
+| task_1 | 9:16 1080x1920 | kinetic_type (水墨写意) | 17_ink | 26.90s | ✅ green | 35.02% | ✅ 通过 |
+| task_2 | 16:9 1920x1080 | finance_chart (光伏装机) | 14_8bit | 32.00s | ✅ green | 7.27% | ✅ 通过 |
+| task_3_comparison | 9:16 1080x1920 | kinetic_type (唐宋风骨) | 17_ink | 27.08s | ✅ green | 33.22% | ✅ 通过 |
 
 ## 输出文件
 
-- `output/artmotion_e2e/task_0/artmotion_landscape.mp4` (16.8 MB)
-- `output/artmotion_e2e/task_1/artmotion_portrait.mp4` (28.5 MB)
-- `output/artmotion_e2e/task_2/artmotion_landscape.mp4` (9.6 MB)
+- `output/artmotion_e2e/task_0/artmotion_landscape.mp4` (sha256 d6d37746...)
+- `output/artmotion_e2e/task_1/artmotion_portrait.mp4` (sha256 9a3b9513...)
+- `output/artmotion_e2e/task_2/artmotion_landscape.mp4` (sha256 3c68c842...)
+- `output/artmotion_e2e/task_3_comparison/artmotion_portrait.mp4` (sha256 93d8f7b4...)
 
-## 关键发现
+每条都有 `deliver_out/交付说明.md`（由 deliver.py 生成）和 `.sheet.jpg` contact sheet。
 
-1. **task_0, task_1** 通过 film_gate 所有门禁：
-   - gate_light: green
-   - fast_ratio > 0 (足够快的镜头动作)
-   - duration ≥ 15s
+## 关键发现与修复
 
-2. **task_2 (finance_chart)** 失败原因：
-   - 35种风格场景（CLIPs）中，finance_chart 没有内部相机动画
-   - 其他 clip 有 CAM.with() 或相机运动
-   - finance_chart 是静态图表渲染，缺乏镜头漂移
+1. **时长不达标**：原始渲染 16-17 秒，现在全部 27-32 秒（20-40 秒要求内）。
+2. **内容是测试填充语**：已替换为真实中文解说稿（自注意力机制、水墨写意美学、光伏装机真实数据、唐宋诗词风骨）。
+3. **35 种艺术风格已接上**：`produce.py` 的 STYLE_REGISTRY 含 35 种风格，`clip.js` 加载 `scenes/{styleId}.js`。
+4. **E2E 对照实验**：task_1 vs task_3_comparison 是同一语法+风格、不同解说稿的对照，证明画面内容随输入变化。
+5. **单元测试**：tests/test_artmotion.py 4 个用例全部通过。
 
-3. **已实施改进**：
-   - clip.js 全局默认相机漂移和呼吸缩放（DRIFT_SEED=7）
-   - 增加脉冲幅度以产生更多快动帧
-   - finance_chart.js 需要添加 CAM.with() 包裹绘图逻辑
+### task_2 (finance_chart) 修复细节
 
-## 后续行动
+**根本原因**：`t3_finance_chart.js` 在 `ctx.alpha=true` 时调用 `c0.setTransform(1, 0, 0, 1, 0, 0)` 重置了 clip.js 应用的相机变换，导致镜头运动被剥离。
 
-### 立即修复 task_2
-```bash
-# 修改 t3_finance_chart.js 添加相机微动
-sed -i '93a\    const {W,H}=ctx; const dx=Math.sin(t*0.5)*3, dy=Math.cos(t*0.7)*3;' \
-  hevi/layer4_legacy/artmotion/omodul_impl/scripts/engine/clips/t3_finance_chart.js
-```
+**修复**：删除 `c0.setTransform(1, 0, 0, 1, 0, 0)` 这一行，保留 clip.js 的相机运动（`clip.js` 已有 CAM_EVENTS 生成 punch/pan/slam 事件 + 持续漂移 + 呼吸缩放）。
 
-### 补充单元测试
-当前 tests/test_artmotion.py 只有 1 个用例。建议添加：
-- test_finance_chart_camera_motion
-- test_style_variety_covers
-- test_film_gate_compliance
-
-### 完成 E2E 对照实验
-- task_3_comparison: 同一 story 用不同风格渲染对比
-- 验证 ARTMOTION_STYLE_VARIETY 机制
+**修复后指标**：fast_ratio 从 0.0 → 0.0727（绿灯阈值 0.06），gate_light 从 red → green。
 
 ## 技术细节
 
-### CLIP.md 风格覆盖
-- 覆盖 35 种艺术风格（CSS 滤镜 + canvas 绘图）
-- 使用 CLIP.md 定义：style_id, css_filters, canvas_filter_func, label
-- 支持：水粉、赛璐珞、铅笔画、复古胶片、色粉画等
+### clip.js 相机系统
+- CAM_EVENTS：从 cues 生成 punch/pan/slam 事件，每 0.8 秒补一个空档动作
+- driftVec：两路不同频率正弦漂移（22px + 8px 幅度）
+- breath：z 在 1.0-1.08 之间呼吸缩放（周期 8 秒）
 
-### film_gate.py 门禁逻辑
-- gate_light: red/green 基于相邻帧差异率
-- fast_ratio: 100ms 内像素差异均值 ≥ 9 的帧占比
-- duration 检查：≥ 15 秒，< 220 秒
+### film_gate.py 门禁
+- fast_ratio：相邻帧灰度差 ≥9 的帧占比（绿灯 ≥0.06）
+- blank_run_s：中段近乎纯色空画面连续时长（红灯 ≥0.3s）
+- blue_purple_share：蓝紫底画面占比（红灯 ≥0.30）
 
-### render.py 生成管道
-- HTML: 渲染脚本 → styleScene.draw() → canvas API
-- MP4: FFmpeg HLS 段拼接 (1080p, 30fps)
+### 35 种风格
+全部在 `hevi/layer4_legacy/artmotion/omodul_impl/scripts/engine/scenes/` 下，纯 canvas 代码实现。
 
 ## 相关文档
 
-- `HEVI_ARCH.md` - HeVi 架构设计
-- `TASK_SUMMARY.md` - 任务完成情况
-- `ARTMOTION_FIX.md` - 问题列表与修复方案
-- `skills/hyperframes-artmotion/SKILL.md` - SKILL.md 完整版
+- `ARTMOTION_TASK.md` - 任务要求
+- `ARTMOTION_FIX.md` - 审核方修复清单
+- `output/artmotion_e2e/summary.json` - E2E 完整指标
