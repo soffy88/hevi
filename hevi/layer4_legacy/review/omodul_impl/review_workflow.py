@@ -246,12 +246,19 @@ def _measure_slideshow(
         text_dep = None  # type: ignore[assignment]
         missing.append("text_dependent")
 
-    # 5) cut-anomaly: flag when every dense frame is a cut (extreme high-frequency
-    #    noise — no motion continuity at all, classic screen corruption).
+    # 5) cut-anomaly: flag when every dense frame is a cut AND motion is near-zero.
+    #    "extreme high-frequency noise" — corrupted video has tiny pixel diffs with
+    #    no coherent motion, not normal action footage with frequent cuts.
     cut_ratio = max(0.0, min(1.0, cut_count / max(total, 1)))
     measured["cut_ratio"] = round(cut_ratio, 4)
     from hevi.layer4_legacy.review.oskill_impl.slideshow_risk import CUT_RATIO_ANOMALY_FLOOR
-    is_cut_anomaly = bool(cut_ratio >= CUT_RATIO_ANOMALY_FLOOR)
+    # Only flag as anomaly when high cut ratio coincides with near-zero motion.
+    # Normal videos with frequent cuts (high deltas) are NOT anomalous.
+    mean_delta = (sum(deltas) / len(deltas)) if deltas else 0.0
+    MOTION_FLOOR_ANOMALY = 2.0  # below this, cuts indicate noise not content
+    is_cut_anomaly = bool(
+        cut_ratio >= CUT_RATIO_ANOMALY_FLOOR and mean_delta < MOTION_FLOOR_ANOMALY
+    )
 
     risk = score_slideshow_risk(
         repeat=repeat,
@@ -399,6 +406,7 @@ def review_finished_video_workflow(
     flat = [c for c in checks if c.get("is_flat")]
     noise = [c for c in checks if c.get("is_noise")]
     blocky = [c for c in checks if c.get("is_blocky")]
+    color_anomaly = [c for c in checks if c.get("is_color_anomaly")]
     metrics["frames"] = {
         "count": len(checks),
         "checks": checks,
@@ -407,6 +415,7 @@ def review_finished_video_workflow(
         "flat": len(flat),
         "noise": len(noise),
         "blocky": len(blocky),
+        "color_anomaly": len(color_anomaly),
     }
     if broken:
         violations.append(f"{len(broken)}/{len(checks)} 帧不可解码(破图)")
@@ -426,6 +435,10 @@ def review_finished_video_workflow(
         violations.append(
             f"{len(blocky)}/{len(checks)} 帧为宏块花屏(blockiness="
             f"{blocky[0].get('blockiness', 0):.1f})"
+        )
+    if color_anomaly:
+        violations.append(
+            f"{len(color_anomaly)}/{len(checks)} 帧色度异常(疑似绿屏/纯色/半屏块)"
         )
 
     # ---- audio -----------------------------------------------------------
