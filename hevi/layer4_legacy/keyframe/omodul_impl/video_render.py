@@ -834,15 +834,31 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Threshold 100 not 45: the burned copy is re-encoded h264 whose mid-level
             # noise (~3-8/255 at edges from scaling) must not be counted as subtitle
             # pixels. White subtitle text yields diff > 150 across every glyph.
-            mask = diff > 100
+            mask = (diff > 100).astype(np.uint8)
             # Subtitles live in the lower half of the frame; ignore encode noise elsewhere.
             frame_h, frame_w = mask.shape
-            mask[: int(frame_h * 0.5), :] = False
-            ys, xs = np.where(mask)
-            if xs.size < 80:
+            mask[: int(frame_h * 0.5), :] = 0
+            # Filter isolated h264 speckle via morphological close + connected
+            # components: a real subtitle glyph block has area >= 80 px; stray
+            # 1-2 px specks from re-encode at the frame edges would otherwise
+            # poison the x-range and falsely fail the safe-margin gate.
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 4))
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+            n_cc, _, stats, _ = cv2.connectedComponentsWithStats(mask, 8)
+            comp_xs: list[int] = []
+            comp_pixels = 0
+            for cc_i in range(1, n_cc):
+                if stats[cc_i, cv2.CC_STAT_AREA] < 80:
+                    continue
+                comp_pixels += int(stats[cc_i, cv2.CC_STAT_AREA])
+                comp_xs.append(int(stats[cc_i, cv2.CC_STAT_LEFT]))
+                comp_xs.append(
+                    int(stats[cc_i, cv2.CC_STAT_LEFT] + stats[cc_i, cv2.CC_STAT_WIDTH] - 1)
+                )
+            if comp_pixels < 80:
                 continue
-            min_x = int(xs.min())
-            max_x = int(xs.max())
+            min_x = min(comp_xs)
+            max_x = max(comp_xs)
             margin_l = min_x
             margin_r = frame_w - 1 - max_x
             min_margin_left_px = min(min_margin_left_px, margin_l)
