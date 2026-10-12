@@ -283,12 +283,23 @@ def _build_vf(
     color_grade: str = "",
     transition: str = "",
 ) -> str:
-    """Compose the per-clip ffmpeg filter chain (fit + optional grade/transition)."""
+    """Compose the per-clip ffmpeg filter chain (fit + optional grade/transition).
+
+    Aspect mismatch is filled with a **blurred, over-scaled copy of the same
+    frame** rather than black padding. Padding a 16:9 source into a 9:16 frame
+    left ~70% of the portrait variants as black bars; the blurred fill keeps the
+    whole frame occupied while the sharp foreground still shows the full shot.
+    When the aspect already matches, the background is fully covered and the
+    blur is never visible, so the same chain is safe for every aspect.
+    """
     filters = [
-        f"scale={width}:{height}:force_original_aspect_ratio=decrease",
-        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black",
-        f"fps={fps}",
-        "setsar=1",
+        "split=2[vc_bg][vc_fg]",
+        # Background: cover the frame, then blur it.
+        f"[vc_bg]scale={width}:{height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},gblur=sigma=28[bg]",
+        # Foreground: fit entirely, centred.
+        f"[vc_fg]scale={width}:{height}:force_original_aspect_ratio=decrease[fg]",
+        f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,fps={fps}",
     ]
     grade = {
         "warm": "colorbalance=rs=0.12:gs=0.02:bs=-0.12,eq=saturation=1.15:contrast=1.05",
@@ -325,6 +336,10 @@ def _render_video_clips_concat(
 
     Short sources (e.g. the ~3s product card used for a longer narration beat) are
     looped so the visual track always fills the audio duration.
+
+    ``transition`` is an *entry* transition: it is applied to the first clip only.
+    Applying it to every clip would fade each mid-video cut up from black and
+    punch real black gaps into the middle of the video.
     """
     clips = clips or cuts or []
     work = output_mp4.parent / "cuts_tmp"
@@ -335,7 +350,8 @@ def _render_video_clips_concat(
         src = Path(c["source"])
         dur = max(0.5, float(c["duration_s"]))
         target_clip = work / f"part_{idx:03d}.mp4"
-        vf = _build_vf(width, height, fps, dur, color_grade=color_grade, transition=transition)
+        clip_transition = transition if idx == 0 else ""
+        vf = _build_vf(width, height, fps, dur, color_grade=color_grade, transition=clip_transition)
 
         if src.suffix.lower() in (".jpg", ".jpeg", ".png"):
             # Image input: loop for dur

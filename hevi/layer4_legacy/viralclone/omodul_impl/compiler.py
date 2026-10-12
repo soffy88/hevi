@@ -291,9 +291,16 @@ def compile_and_render_template(
         ref_frames = _extract_frames(visual_mp4, dest / "qa_ref_frames", fps=1.0, max_frames=6)
         ref_frame = str(ref_frames[0]) if ref_frames else None
 
-        # Watermark QA: measure the *actual rendered glyph height* in the frame.
+        # Watermark QA: measure the *actual rendered glyph ink height* from the
+        # delivered ASS (deterministic, noise-free) and confirm the overlay is
+        # really burned into the delivered frame.
         wm_qa = verify_watermark_in_frame(
-            sample_frames[0], spec.width, spec.height, wm_spec, reference_frame_path=ref_frame
+            sample_frames[0],
+            spec.width,
+            spec.height,
+            wm_spec,
+            reference_frame_path=ref_frame,
+            ass_path=ass_path,
         )
         meta_qa = verify_implicit_watermark_metadata(final_mp4)
 

@@ -22,6 +22,8 @@ from hevi.layer4_legacy.viralclone.oskill_impl.product_card import (
 )
 from hevi.layer4_legacy.viralclone.oskill_impl.watermark import (
     compute_watermark_spec,
+    detect_overlay_in_frame,
+    measure_ass_glyph_bbox,
     verify_implicit_watermark_metadata,
     verify_watermark_in_frame,
 )
@@ -36,8 +38,10 @@ __all__ = [
     "compute_variant_diversity_matrix",
     "compute_watermark_spec",
     "composite_product_card_frame",
+    "detect_overlay_in_frame",
     "detect_subtitle_box_from_frames",
     "evaluate_variant_pair_diversity",
+    "measure_ass_glyph_bbox",
     "remove_product_background",
     "render_product_card_animation_frames",
     "verify_implicit_watermark_metadata",

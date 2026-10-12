@@ -152,13 +152,23 @@ def build_timeline_from_anchors(
     compiled_segments: list[dict[str, Any]],
     aligned_words: list[WordToken],
     *,
-    broll_sources: list[str] | None = None,
+    broll_sources: list[Any] | None = None,
     product_video_path: str = "",
     bgm_path: str = "",
 ) -> Timeline:
     """Build canonical Hevi Timeline JSON structure anchored on speech timestamps."""
     clips: list[TimelineClip] = []
-    brolls = list(broll_sources or [])
+    # A b-roll entry may be a plain path string, or a mapping
+    # ``{"path": ..., "in_s": <float>}`` to start that clip at a different point
+    # inside the source. Variants use the mapping form so each one can show
+    # footage segments the others never show.
+    brolls: list[tuple[str, float]] = []
+    for entry in broll_sources or []:
+        if isinstance(entry, dict):
+            brolls.append((str(entry.get("path") or entry.get("source") or ""),
+                           float(entry.get("in_s") or entry.get("source_in_s") or 0.0)))
+        else:
+            brolls.append((str(entry), 0.0))
     broll_cursor = 0
 
     # Video track: cuts derived from segment boundaries and visual anchors
@@ -169,10 +179,11 @@ def build_timeline_from_anchors(
 
         # Select video source based on anchors or role
         has_product = any(a["event_type"] == "product_card" for a in seg["anchors"])
+        src_in_s = 0.0
         if has_product and product_video_path:
             src = product_video_path
         elif brolls:
-            src = brolls[broll_cursor % len(brolls)]
+            src, src_in_s = brolls[broll_cursor % len(brolls)]
             broll_cursor += 1
         else:
             src = product_video_path or "source_default"
@@ -186,6 +197,7 @@ def build_timeline_from_anchors(
                 label=f"{role}: {seg['text'][:15]}",
                 action="keep",
                 source=src,
+                source_in_s=src_in_s,
                 text=seg["text"],
                 transition="cut" if idx == 0 else "dissolve",
                 effect="none",

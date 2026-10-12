@@ -1,20 +1,22 @@
-# VIRALCLONE 返工（巡检 2026-10-11 21:10 CST 实看 3 个变体成片）
-通过项：3 个 MP4（1280x720、有音轨、AI生成 角标可见）、rembg 商品卡已出。
-## 必须修复
-1. **商品卡画面文字互相重叠**：变体里的商品卡镜头（NASA Mars 2020 Rover Camera）标题“Aerospace Hardware”与橙色卖点文字、红色按钮“Explore Specs”相互叠压，底部字幕又压在按钮上，视觉混乱。重排版：标题/卖点/按钮分区不重叠，字幕安全区避开按钮。
-2. **烧录字幕重叠**：var_2 底部同时出现素材原有英文字幕（“I was a young boy when…”）和新烧的中文字幕，叠在一起。要么裁掉/遮盖素材原字幕区域，要么换用无字幕片段，要么把新字幕放到不重叠的位置。
-3. **var_3 英文字幕无空格**（“Whysettleforordinarylenseswhenyoucan…”）：修复词间空格（词锚定模板里词级时间戳拼接时必须带空格）。
-4. **变体素材过于单一且互相雷同**：var_1 与 var_3 视觉几乎相同（同一段 ISS 画面 + 同一商品卡），只换字幕语言。差异度数值必须真实反映，要求 3 个变体在镜头顺序/素材选择/节奏/转场/配色上有可见差异，并在 DONE 里给出差异度数值（例如逐变体 pHash/镜头序列/文案词差）。
-5. 商品卡视频 product_card.mp4 无音轨、仅 2.48s，作为变体内镜头可以，但请确认变体里商品卡停留足够读完文字。
-## 验收
-重出 ≥3 变体，抽 6 帧 contact sheet 亲眼看（无重叠、无无空格字幕、有 AI 标识），更新 DONE，跑新增测试与 3O lint，提交。
+# VIRALCLONE 返工 r2（Hark 独立核验 2026-10-12 08:20 CST，HEAD b72abdff + 未提交改动）
 
-## 独立核验补充（2026-10-11 21:35 CST，Hark 独立审计，以下问题同样必须修复）
-6. **新增测试实际失败，DONE 报告 "15 passed" 不实**：`JWT_SECRET=testsecret .venv/bin/python -m pytest tests/test_viralclone.py tests/test_zerolines.py` 结果 `1 failed, 33 passed`，失败项 `test_real_media_compile_and_variants`：`rep["metadata_qa"]["has_implicit_watermark"]` 为 False（tests/test_viralclone.py:368）。说明 compile 路径（非 e2e 脚本路径）没有写入/读回 AIGC 隐式标识。修复 compile/render 路径的 metadata 注入，测试必须真实通过，不得改断言放水。
-7. **AI 显式标识尺寸数据不实**：DONE 写 "40px / 720px = 5.56%"，但 subtitles.ass 中 Watermark 样式 Fontsize=36，实测 1280x720 帧里 "[ AI生成 ]" 字形高度约 22px（约 3%），并非 ≥5%。按 GB 45438 要求把标识字形实际像素高度做到 ≥ 短边 5%（≥36px 实测字形高度，不是字号），并用像素测量（裁剪帧求文字 bbox）计算比例，不要用字号冒充。
-8. **差异度闸门逻辑失效**：diversity_matrix.json 中 var_3 vs var_1 `phash_distance: 0` 仍判 PASS（min_phash_distance=3）。画面距离为 0 必须判 FAIL，不能靠"语言不同→文本相似度 0"放过。修闸门（画面与文案都需达标或明确的加权规则）并补单测覆盖 phash=0 必须失败。
-9. **中文文案/字幕是乱码级错字**：var_1 字幕 "你见过能耐树林夏两百度极寒的航天极香剂吗?"、"钛合金奈高压密封合升级断真空环境依然从容稳定点"、var_2 "普通镜头一镜低问就起雾结丼那时你没用过航天极光学元件"——看起来是把 TTS 音频再 ASR 回写成字幕，错字严重。字幕文本必须用模板填槽后的原文案，词级时间只用于对齐（强制对齐/按字符比例分配），不得用 ASR 识别结果替换原文。
-10. **参考片出处补全**：DONE 里参考片/B-roll 只写标题和 Public Domain，补上原始 URL（NASA 页面/images.nasa.gov id）；商品图补 https://photojournal.jpl.nasa.gov/catalog/PIA22103 （"Cameras on Mars 2020 Rover"，Credit NASA/JPL-Caltech）。注意该图是整车示意，商品卡标题写 "Camera" 可接受但卖点不要编造参数。
-## 验收补充
-- `tests/test_viralclone.py` + `tests/test_zerolines.py` 全绿；3O lint 失败项不得多于基线 4 项（check_no_sibling_call / check_omodul_signature / check_enabled_pillars / check_oprim_keyword_only，均为 .venv 既有）。
-- DONE 里所有数字必须来自本轮实测输出（ffprobe、sha256、像素测量、diversity_matrix.json），与文件一致。
+## 本轮已确认修好（不要回退）
+- #1 商品卡排版：标题/标签/出处/按钮分区，三变体均无叠字；#2 var_2 无原素材英文字幕叠压；#3 var_3 英文词间空格正确；
+- #6 测试：tests/test_viralclone.py + tests/test_zerolines.py 36 passed；#8 diversity 闸门有 test_diversity_gate_rejects_zero_phash；
+- #9 中文字幕为填槽原文（“你见过能耐受零下两百度极寒的航天级相机吗？”等），无 ASR 错字；#10 出处 URL 已补；
+- 元数据 AIGC 标签三片均有；三片音轨正常；时间对齐 pHash 均值 var1-var2=40、var1-var3=22、var2-var3=31（64bit）。
+
+## 必须修复（阻断）
+1. **AI 显式标识仍未达 ≥ 短边 5%（FIX #7 未完成）**：output/viralclone_e2e 现有成片（ASS Watermark Fontsize=49）在 t=1s 实测（var_3 纯黑底，阈值 128）：“AI” 墨迹高 25px、“生” 30px、“成” 32px，含方括号 33px；短边 720 → 3.5%–4.4%，低于 36px。你未提交的 watermark.py（0.085 em + 像素复测）方向正确，完成后：
+   - 用新参数**重新跑 e2e 重出全部 3 个变体**（现有 final.mp4 仍是 10-11 14:24 UTC 的旧片）；
+   - 在 DONE 写每个变体 t=1s 帧的实测墨迹 bbox 高度（px 与 % ，按汉字“生/成”墨迹，不含描边），须 ≥36px；
+   - commit 代码 + 新产物证据。
+
+## 应修复（本轮一并处理）
+2. **商品卡标签“实拍商品图”不实**：PIA22103 是 NASA/JPL 示意渲染图，不是实拍。改为“示意图”/“NASA/JPL 渲染图”之类，或删除该标签。
+3. **口播/字幕编造参数**：“反射率低于百分之零点一”“钛合金耐高压密封镜身”“零下两百度”等无出处的硬参数不要写进文案；改为不含具体数值的描述，或只用能在素材出处页找到的事实。
+4. **变体素材复用**：三变体全部只用同两段 B-roll（ISS 地球画面 + 走廊采访）+ 同一商品图，仅换顺序/配色/画幅。逐帧最近邻 pHash：var_1 有 6/12 帧在 var_2 中有近似重复（≤10）。至少让每个变体有一段别的变体未用的公域素材或不同片段区间（in/out 点不同），并在 DONE 里给出逐对“时间对齐 pHash 均值”和“最近邻近重复帧数”。
+5. var_3（720x1280）竖版里横版素材上下黑边约占 70% 画面：改为裁切填充（center-crop/模糊背景填充），不要大黑边。
+
+## 验收
+重出 ≥3 变体 → 每个抽 6 帧 contact sheet 亲眼看 → 跑 `JWT_SECRET=testsecret .venv/bin/python -m pytest tests/test_viralclone.py tests/test_zerolines.py` 全绿 + scripts/ci/run_3o_v3_lint.py 不多于基线 4 项 → 更新 VIRALCLONE_DONE.md（数字全部来自本轮实测）→ git commit。不要合并、不要 push。

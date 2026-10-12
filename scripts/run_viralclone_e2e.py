@@ -49,6 +49,8 @@ from hevi.layer4_legacy.viralclone.oskill_impl.diversity import (
 )
 from hevi.layer4_legacy.viralclone.oskill_impl.watermark import (
     compute_watermark_spec,
+    detect_overlay_in_frame,
+    measure_ass_glyph_bbox,
     measure_glyph_bbox,
     verify_implicit_watermark_metadata,
 )
@@ -120,15 +122,35 @@ def verify_and_capture_watermark(
     expected_ratio: float = 0.05,
     *,
     reference_frame_path: Path | None = None,
+    ass_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Measure the real rendered AI-mark glyph height in the frame and save evidence."""
+    """Measure the real rendered AI-mark **glyph ink** height and save evidence.
+
+    Sizing comes from a deterministic libass re-render of the delivered ASS
+    (ink only, outline excluded). Presence is confirmed by diffing the delivered
+    frame against the watermark-free reference encode.
+    """
     im = Image.open(frame_path).convert("RGB")
     short_edge = min(width, height)
 
-    measurement = measure_glyph_bbox(frame_path, reference_frame_path=reference_frame_path)
+    if ass_path is not None and ass_path.is_file():
+        measurement = measure_ass_glyph_bbox(ass_path, width, height)
+    else:
+        measurement = measure_glyph_bbox(
+            frame_path, reference_frame_path=reference_frame_path
+        )
+
+    presence: dict[str, Any] = {"present": None, "reason": "no_reference_frame"}
+    if reference_frame_path is not None:
+        presence = detect_overlay_in_frame(frame_path, reference_frame_path)
+
     glyph_h = int(measurement.get("glyph_height_px", 0))
     measured_ratio = round(glyph_h / short_edge, 4) if short_edge else 0.0
-    passed = bool(measurement.get("found")) and measured_ratio >= expected_ratio
+    passed = (
+        bool(measurement.get("found"))
+        and (presence.get("present") is not False)
+        and measured_ratio >= expected_ratio
+    )
 
     # Annotate the *measured* bbox for visual proof.
     annotated = im.copy()
@@ -138,7 +160,7 @@ def verify_and_capture_watermark(
         draw.rectangle(bbox, outline=(0, 255, 0), width=3)
     draw.text(
         (24, max(4, (bbox[3] if bbox else 60) + 6)),
-        f"GB45438 QA: glyph {glyph_h}px / {short_edge}px = {measured_ratio*100:.1f}% (>=5%)",
+        f"GB45438 QA: ink {glyph_h}px / {short_edge}px = {measured_ratio*100:.1f}% (>=5%)",
         fill=(0, 255, 0),
     )
     annotated.save(output_evidence_path, format="JPEG", quality=92)
@@ -149,6 +171,8 @@ def verify_and_capture_watermark(
         "measured_glyph_height_px": glyph_h,
         "measured_ratio": measured_ratio,
         "threshold_ratio": expected_ratio,
+        "measurement_method": measurement.get("method"),
+        "overlay_present": presence,
         "display_duration_s": 2.5,
         "glyph_bbox": bbox,
         "evidence_screenshot": str(output_evidence_path),
@@ -215,8 +239,10 @@ def main() -> int:
         "product_title": "Mars 2020 Rover Camera",
         "price_tag": "NASA/JPL-Caltech",
         "cta_text": "Explore Specs",
-        # Non-fabricated, verifiable labels (the source is a real NASA/JPL image).
-        "selling_points": ["实拍商品图", "NASA/JPL", "公共领域"],
+        # Labels must be factually accurate: PIA22103 is a NASA/JPL *rendered
+        # illustration* of the rover, not a photograph of a retail product.
+        # (Audit r2 #2: the old "实拍商品图" badge was false.)
+        "selling_points": ["渲染示意图", "NASA/JPL", "公共领域"],
         "duration_s": 2.5,
         "fps": 25,
     }
@@ -280,22 +306,31 @@ def main() -> int:
             ],
         )
 
-    # Variant 1 starts with ISS (B-roll) then interview. Variant 3 starts with the
-    # interview then ISS — the reversed opening shot alone pushes the early-frame
-    # pHash distance well past the diversity gate, on top of the different aspect
-    # ratio and English narration.
+    # Narration carries no invented specifications. Audit r2 #3 rejected claims
+    # like "反射率低于百分之零点一" / "零下两百度" / "钛合金耐高压密封镜身",
+    # which have no source. The copy below sticks to what the source material
+    # itself supports (the Mars 2020 rover carries front/rear hazard cameras for
+    # navigation and a mast camera for imaging) and invents no numbers.
+    #
+    # Audit r2 #4: each variant also starts its b-rolls at a *different* in-point
+    # so no variant shows the same footage segments as another. The `finecut`
+    # files next to the sources are only 320x180 duplicates of the same two
+    # clips, so distinct in/out points are what actually differentiate them.
     variants_input = [
         {
             "variant_id": "var_1",
             "template": _spec("tpl_var1_optics", "16:9", 1280, 720, 3.0).to_dict(),
             "slots": {
-                "product": "火星探测级全景成像相机",
-                "hook_line": "你见过能耐受零下两百度极寒的航天级相机吗？",
-                "selling_point_1": "钛合金耐高压密封镜身，极端真空环境依然从容稳定。",
-                "cta_line": "点击左下角了解火星同款光学工程！",
+                "product": "火星车导航与成像相机组",
+                "hook_line": "火星车靠什么看清脚下的路？",
+                "selling_point_1": "前后避障相机，一路记录着陆和行驶。",
+                "cta_line": "想看火星车影像，可以去 NASA 的公开资料库。",
                 "lang": "zh",
             },
-            "brolls": [str(broll_video.resolve()), str(interview_video.resolve())],
+            "brolls": [
+                {"path": str(broll_video.resolve()), "in_s": 0.0},
+                {"path": str(interview_video.resolve()), "in_s": 0.0},
+            ],
             "product_video": str(product_cards["light"].resolve()),
             "color_grade": "warm",
             "transition": "fade",
@@ -305,13 +340,16 @@ def main() -> int:
             "variant_id": "var_2",
             "template": _spec("tpl_var2_durability", "16:9", 1280, 720, 3.5).to_dict(),
             "slots": {
-                "product": "深空高灵敏科研级广角镜头",
-                "hook_line": "普通镜头一进低温就起雾结冰，那是你没用过航天级光学元件。",
-                "selling_point_1": "纳米多层增透镀膜，反射率低于百分之零点一。",
-                "cta_line": "限时抢购，立即开启你的深空观测之旅！",
+                "product": "火星车多组相机协同工作",
+                "hook_line": "在火星表面移动，避障相机就是眼睛。",
+                "selling_point_1": "导航相机负责找路，桅杆相机负责拍摄。",
+                "cta_line": "更多火星车影像可在 NASA/JPL 资料库查看。",
                 "lang": "zh",
             },
-            "brolls": [str(interview_video.resolve()), str(broll_video.resolve())],
+            "brolls": [
+                {"path": str(interview_video.resolve()), "in_s": 5.5},
+                {"path": str(broll_video.resolve()), "in_s": 3.0},
+            ],
             "product_video": str(product_cards["dark"].resolve()),
             "color_grade": "cool",
             "transition": "fade_slow",
@@ -321,14 +359,17 @@ def main() -> int:
             "variant_id": "var_3",
             "template": _spec("tpl_var3_space_en", "9:16", 720, 1280, 3.0).to_dict(),
             "slots": {
-                "product": "Mars Rover High-Res Camera",
-                "hook_line": "Why settle for ordinary lenses when you can capture the deep universe?",
-                "selling_point_1": "Aerospace titanium chassis built for extreme planetary survey.",
-                "cta_line": "Click below to secure your space grade camera today!",
+                "product": "Mars 2020 Rover Camera Set",
+                "hook_line": "How does a rover see the path ahead on Mars?",
+                "selling_point_1": "Hazard cameras navigate; the mast camera captures.",
+                "cta_line": "See more imagery from the NASA/JPL public archive.",
                 "lang": "en",
             },
-            # Reversed source order vs. var_1 — pushes pHash distance up.
-            "brolls": [str(interview_video.resolve()), str(broll_video.resolve())],
+            # Reversed source order AND a different in-point vs. var_1/var_2.
+            "brolls": [
+                {"path": str(interview_video.resolve()), "in_s": 11.0},
+                {"path": str(broll_video.resolve()), "in_s": 7.0},
+            ],
             "product_video": str(product_cards["warm_vertical"].resolve()),
             "color_grade": "vivid",
             "transition": "none",
@@ -352,6 +393,53 @@ def main() -> int:
     # Copy diversity matrix to e2e root as well
     diversity_matrix_path = out_dir / "diversity_matrix.json"
     shutil.copyfile(var_res["report"]["diversity_matrix_json"], diversity_matrix_path)
+
+    # ---- Footprint-level reuse audit (audit r2 #4) -------------------------
+    # The diversity gate above hashes one representative frame per variant, which
+    # can hide wholesale frame reuse. This measures, per pair:
+    #   * time-aligned mean pHash Hamming distance (frame i of A vs frame i of B)
+    #   * nearest-neighbour duplicate count: frames of A whose closest frame in B
+    #     is within DUPLICATE_THRESHOLD bits (i.e. effectively the same picture)
+    DUPLICATE_THRESHOLD = 10
+    frame_hashes: dict[str, list[str]] = {}
+    for item in var_res["report"]["variants"]:
+        vid = item["variant_id"]
+        vpath = Path(item["video_path"])
+        frames = _extract_frames(vpath, vpath.parent / "reuse_frames", fps=1.0, max_frames=24)
+        frame_hashes[vid] = [compute_frame_phash(f) for f in frames]
+
+    reuse_pairs: list[dict[str, Any]] = []
+    ids = sorted(frame_hashes)
+    for i in range(len(ids)):
+        for j in range(i + 1, len(ids)):
+            a_id, b_id = ids[i], ids[j]
+            ha, hb = frame_hashes[a_id], frame_hashes[b_id]
+            aligned = [
+                compute_phash_hamming_distance(x, y)
+                for x, y in zip(ha, hb)
+            ]
+            nn_dupes = sum(
+                1
+                for x in ha
+                if min(compute_phash_hamming_distance(x, y) for y in hb) <= DUPLICATE_THRESHOLD
+            )
+            reuse_pairs.append({
+                "pair": [a_id, b_id],
+                "frames_compared": len(ha),
+                "time_aligned_mean_phash_distance": round(sum(aligned) / len(aligned), 2) if aligned else None,
+                "nearest_neighbor_duplicate_frames": nn_dupes,
+                "nearest_neighbor_duplicate_ratio": round(nn_dupes / len(ha), 4) if ha else None,
+                "duplicate_threshold": DUPLICATE_THRESHOLD,
+            })
+            print(
+                f"  Reuse audit {a_id} vs {b_id}: time-aligned mean pHash "
+                f"{reuse_pairs[-1]['time_aligned_mean_phash_distance']}, "
+                f"duplicate frames {nn_dupes}/{len(ha)}"
+            )
+    reuse_audit = {"threshold": DUPLICATE_THRESHOLD, "pairs": reuse_pairs}
+    (out_dir / "reuse_audit.json").write_text(
+        json.dumps(reuse_audit, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     # =========================================================================
     # Phase 5: Deep Quality Assurance & Verification On Each Variant
@@ -395,9 +483,11 @@ def main() -> int:
         non_static_qa = verify_non_static_frames(sample_frames)
         print(f"  Non-static motion check: {non_static_qa['non_static']} (avg pixel diff: {non_static_qa['mean_diff']})")
 
-        # 4. AI Watermark Visible QA. Measure the *rendered glyph height* from a
-        # t=0 frame against the watermark-free visual render at the SAME timestamp
-        # (avoids re-encode compression noise polluting the diff).
+        # 4. AI Watermark Visible QA. Size is measured from the glyph **ink** of
+        # the delivered ASS via a deterministic libass re-render (a frame-vs-frame
+        # diff would include the outline stroke plus cross-encode codec noise,
+        # which inflates the box past the true ink height). Presence is still
+        # confirmed by diffing the delivered frame against visual_cuts.mp4.
         watermark_qa_img = vdir / "ai_watermark_qa.jpg"
         visual_cuts = vdir / "visual_cuts.mp4"
         wm_frame = _extract_frames(vpath, vdir / "qa_wm_frames", fps=1.0, max_frames=1)
@@ -413,6 +503,7 @@ def main() -> int:
             watermark_qa_img,
             expected_ratio=0.05,
             reference_frame_path=ref_frames[0] if ref_frames else None,
+            ass_path=vdir / "subtitles.ass",
         )
         print(f"  AI Watermark visible QA: {wm_qa['passed']} (measured glyph {wm_qa['measured_glyph_height_px']}px = {wm_qa['measured_ratio']*100:.1f}% >= 5%)")
 
@@ -471,6 +562,7 @@ def main() -> int:
         "template": str(template_path),
         "product_assets": {k: v for k, v in prod_reports.items()},
         "diversity_matrix": json.loads(diversity_matrix_path.read_text(encoding="utf-8")),
+        "reuse_audit": reuse_audit,
         "variants_verified": verification_records,
     }
 

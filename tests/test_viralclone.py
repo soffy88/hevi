@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
@@ -39,6 +40,7 @@ from hevi.layer4_legacy.viralclone.oskill_impl.diversity import (
 )
 from hevi.layer4_legacy.viralclone.oskill_impl.watermark import (
     compute_watermark_spec,
+    measure_ass_glyph_bbox,
     verify_watermark_in_frame,
 )
 from hevi.viralclone import (
@@ -216,6 +218,232 @@ def test_watermark_spec_gb45438() -> None:
     spec_land = compute_watermark_spec(1280, 720)
     assert spec_land.font_size_px >= 36
     assert spec_land.duration_s >= 2.0
+
+
+def test_watermark_measured_ink_height_clears_5pct(tmp_path: Path) -> None:
+    """GB 45438 must be certified against the rendered glyph **ink**, not the
+    ASS font size and not the ink+outline footprint.
+
+    Regression guard: an earlier implementation measured the box from a
+    frame-vs-frame diff of two *different* encodes, which picks up the 2px black
+    outline plus codec noise and reported ~39-40px for a mark whose real ink was
+    only 34px (4.72%, i.e. non-compliant). The size is now measured from a
+    deterministic libass re-render of the delivered ASS.
+    """
+    for (w, h) in ((1280, 720), (720, 1280)):
+        spec = compute_watermark_spec(w, h)
+        ass = build_ass_subtitles(
+            words=[],
+            sentences=[],
+            width=w,
+            height=h,
+            font_name="Noto Sans CJK SC",
+            font_size=40,
+            watermark_text=spec.text,
+            watermark_duration_s=spec.duration_s,
+            watermark_font_size=spec.font_size_px,
+        )
+        ass_path = tmp_path / f"wm_{w}x{h}.ass"
+        ass_path.write_text(ass, encoding="utf-8")
+
+        measurement = measure_ass_glyph_bbox(ass_path, w, h)
+        assert measurement["found"], f"no glyph found for {w}x{h}"
+        ink_px = measurement["glyph_height_px"]
+        short_edge = min(w, h)
+        # Real headroom above the 5% floor, not a 1-pixel edge case.
+        assert ink_px >= short_edge * 0.05, (
+            f"glyph ink {ink_px}px / {short_edge}px = {ink_px/short_edge:.4f} < 5%"
+        )
+        assert ink_px >= 36, f"ink {ink_px}px is below the 36px (5% of 720) bar"
+
+
+def test_watermark_verifier_fails_when_ink_below_threshold(tmp_path: Path) -> None:
+    """The verifier must reject a deliberately undersized mark (regression guard
+    against the gate silently passing on an outline-inflated measurement)."""
+    w, h = 1280, 720
+    ass = build_ass_subtitles(
+        words=[],
+        sentences=[],
+        width=w,
+        height=h,
+        font_name="Noto Sans CJK SC",
+        font_size=40,
+        watermark_text="AI生成",
+        watermark_duration_s=2.5,
+        watermark_font_size=36,  # too small: ink lands well under 5%
+    )
+    ass_path = tmp_path / "small.ass"
+    ass_path.write_text(ass, encoding="utf-8")
+
+    frame = tmp_path / "frame.png"
+    Image.new("RGB", (w, h), (40, 40, 40)).save(frame)
+    small_spec = compute_watermark_spec(w, h)
+    small_spec.font_size_px = 36
+    qa = verify_watermark_in_frame(frame, w, h, small_spec, ass_path=ass_path)
+    assert qa["measured_glyph_height_px"] < 36
+    assert qa["measured_ratio"] < 0.05
+    assert qa["passed"] is False
+
+
+def test_transition_applies_to_first_clip_only() -> None:
+    """Regression guard: an entry fade must never be applied to every clip.
+
+    Applying ``fade``/``fade_slow``/``dip`` to each part of the concat made every
+    mid-video cut fade up from black, punching a real ~0.36s black gap into
+    var_2 right before the product card.
+    """
+    from hevi.layer4_legacy.viralclone.omodul_impl._media import _build_vf
+
+    first = _build_vf(1280, 720, 25, 4.0, transition="fade_slow")
+    later = _build_vf(1280, 720, 25, 4.0, transition="")
+    assert "fade=t=in" in first
+    assert "fade=t=in" not in later, "entry fade must not reach non-first clips"
+
+
+def test_broll_in_points_reach_the_timeline() -> None:
+    """Audit r2 #4: variants must be able to start b-rolls at different in-points
+    so they show genuinely different footage segments."""
+    spec = TemplateSpec(
+        template_id="tpl_inpoints",
+        aspect_ratio="16:9",
+        width=1280,
+        height=720,
+        fps=25,
+        segments=[
+            TemplateSegment(
+                segment_id="s1_hook",
+                role="hook",
+                narration_slot="hook_text",
+                anchors=[VisualAnchor(event_type="cut", sentence_idx=0, word_offset_idx=0)],
+            ),
+            TemplateSegment(
+                segment_id="s2_cta",
+                role="cta",
+                narration_slot="cta_text",
+                anchors=[VisualAnchor(event_type="cut", sentence_idx=1, word_offset_idx=0)],
+            ),
+        ],
+    )
+    segments = [
+        {"start_s": 0.0, "duration_s": 3.0, "role": "hook", "text": "one",
+         "anchors": [{"event_type": "cut", "sentence_idx": 0, "word_offset_idx": 0}]},
+        {"start_s": 3.0, "duration_s": 2.0, "role": "cta", "text": "two",
+         "anchors": [{"event_type": "cut", "sentence_idx": 1, "word_offset_idx": 0}]},
+    ]
+
+    # Mapping form -> distinct in-points per clip.
+    tl = build_timeline_from_anchors(
+        "t", "title", spec, segments, [],
+        broll_sources=[{"path": "/a.mp4", "in_s": 5.5}, {"path": "/b.mp4", "in_s": 7.0}],
+    )
+    in_pts = [c.source_in_s for c in tl.clips if c.track == "video"]
+    assert in_pts == [5.5, 7.0], in_pts
+
+    # Plain-string form still works (backwards compatibility).
+    tl2 = build_timeline_from_anchors("t", "title", spec, segments, [], broll_sources=["/a.mp4", "/b.mp4"])
+    assert [c.source_in_s for c in tl2.clips if c.track == "video"] == [0.0, 0.0]
+
+
+def test_aspect_mismatch_uses_blurred_fill_not_black_padding() -> None:
+    """Audit r2 #5: a 9:16 frame must not letterbox a 16:9 source with black bars."""
+    from hevi.layer4_legacy.viralclone.omodul_impl._media import _build_vf
+
+    vf = _build_vf(720, 1280, 25, 3.0)
+    assert "pad=" not in vf, f"black padding reintroduced: {vf}"
+    assert "gblur=" in vf and "overlay=" in vf
+
+
+def test_portrait_render_has_no_letterbox_bars(tmp_path: Path) -> None:
+    """Render 16:9 footage into 9:16 and assert the bars are gone.
+
+    The top and bottom bands must not be flat black; the blurred background fill
+    should cover the whole frame.
+    """
+    import cv2
+    import numpy as np
+
+    from hevi.layer4_legacy.viralclone.omodul_impl._media import _render_video_clips_concat
+
+    src = tmp_path / "wide.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-v", "error", "-f", "lavfi",
+            "-i", "testsrc=s=640x360:d=2:r=25",
+            "-pix_fmt", "yuv420p", "-c:v", "libx264", str(src), "-y",
+        ],
+        check=True,
+    )
+    out = _render_video_clips_concat(
+        clips=[{"source": str(src), "duration_s": 2.0, "source_in_s": 0.0}],
+        total_duration_s=2.0,
+        width=720,
+        height=1280,
+        output_mp4=tmp_path / "portrait.mp4",
+        fps=25,
+    )
+    cap = cv2.VideoCapture(str(out))
+    ok, frame = cap.read()
+    cap.release()
+    assert ok
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    top = float(gray[:80].mean())
+    bottom = float(gray[-80:].mean())
+    assert top > 5, f"top band is black (mean luma {top:.1f})"
+    assert bottom > 5, f"bottom band is black (mean luma {bottom:.1f})"
+
+
+def test_rendered_variant_has_no_black_gaps(tmp_path: Path) -> None:
+    """A rendered multi-clip variant must not contain a mid-video black gap."""
+    from hevi.layer4_legacy.viralclone.omodul_impl._media import _render_video_clips_concat
+
+    import cv2
+    import numpy as np
+
+    # Two distinct real-looking sources, both short.
+    srcs = []
+    for i, color in enumerate(((30, 60, 120), (200, 120, 40))):
+        p = tmp_path / f"src_{i}.mp4"
+        subprocess.run(
+            [
+                "ffmpeg", "-v", "error", "-f", "lavfi",
+                "-i", f"color=c=0x{color[0]:02x}{color[1]:02x}{color[2]:02x}:s=640x360:d=2:r=25",
+                "-pix_fmt", "yuv420p", "-c:v", "libx264", str(p), "-y",
+            ],
+            check=True,
+        )
+        srcs.append(p)
+
+    out = _render_video_clips_concat(
+        clips=[
+            {"source": str(srcs[0]), "duration_s": 2.0, "source_in_s": 0.0},
+            {"source": str(srcs[1]), "duration_s": 2.0, "source_in_s": 0.0},
+        ],
+        total_duration_s=4.0,
+        width=640,
+        height=360,
+        output_mp4=tmp_path / "concat.mp4",
+        fps=25,
+        transition="fade_slow",
+    )
+    cap = cv2.VideoCapture(str(out))
+    black = []
+    idx = 0
+    while True:
+        ok, frame = cap.read()
+        if not ok:
+            break
+        if float(np.mean(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))) < 20:
+            black.append(idx)
+        idx += 1
+    cap.release()
+
+    # The opening entry fade legitimately darkens the head (0.6s == 15 frames at
+    # 25fps). Nothing may go black *after* that — in particular the clip boundary
+    # at 2.0s must not fade up from black.
+    headroom = int(0.6 * 25) + 2
+    late_black = [f for f in black if f > headroom]
+    assert not late_black, f"mid-video black frames at {late_black}"
+    assert 50 not in black, "clip boundary at 2.0s is black (fade applied per-clip)"
 
 
 def test_diversity_hamming_and_matrix(tmp_path: Path) -> None:
