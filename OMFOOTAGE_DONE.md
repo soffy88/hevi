@@ -158,3 +158,14 @@
 - **E2E 产物**（主审本地抽帧亲眼看过）：
   - piper：`output/om_footage_e2e/piper/landscape.mp4` 1920×1080、85.23s、有音轨；画面依次为航天飞机发射台、发射、土星五号、月面设备、空间站、月面、夜间地球、任务控制中心、地球轨道、火星车模型、韦伯星云，与 10 句旁白检索词对应（个别镜头为非铺满的加边画面，约 56s 处有一段暗镜头）。
   - music：`output/om_footage_e2e/music/landscape.mp4` 63.0s；森林航拍、长颈鹿草原、海浪、雪山日照、水鸟、河谷、星空、沙地、日出海湾等 10 个槽位各不相同，不再是同一个 1955 年片头字卡。瑕疵：两段 ESA/野生动物素材自带第三方水印/烧录英文字幕。
+
+### 第二轮（复核 r9 三项阻断修复，2026-10-12 19:35）
+- 研究注入：research_refs（真实来源 URL）写入片尾 cue 的 visual_config，并追加旁白+字幕「本片内容参考维基百科公开资料。」；小模型拒答（I can't…/抱歉…）被过滤，置信度按总结与检索原文词面重合度计算（不再写死 0.9）；查不到资料时 finding 如实为空，删除了编造结论+拼接 Wikipedia URL 的兜底。
+- music 配乐：旁白轨均值 < -45dB 时不再侧链闪避，BGM -6dB 直出；music 成片 mean -32.1dB（此前 -50.1dB）。
+- 测试：test_corpus 改为假字节必须被拒收 + ffmpeg 生成真实 6s 片段可收录；test_corpus/explainer_render/research_brief/explainer_research_duration/material_corpus 共 51 passed。
+- 重跑 E2E（HEVI_REMOTION_CONCURRENCY=2）：piper 横/竖 87.77s、mean -25.4dB；music 63.0s、mean -32.1dB；日志 CLIP embedding failed = 0。
+- **更正**：本文前文中旧的 sha256/时长（85.291s 等）与"music 素材来自 Archive.org"已过时/不实（本轮 music 素材为 Pexels/Wikimedia/NASA，Archive.org 接口返回 500）。当前成片 sha256：
+  - 781f1a627734b0ad9cd72fcd0f44b884763050f1ac6be42aaa18db824cfcb084  piper/landscape.mp4
+  - 164ef4cb363c34eb83ecac928b94b06d281fbe3f97d857bf6bc779dbe57dac3c  piper/portrait.mp4
+  - 9a300498081c0c2a88b6de8e13d713f5be3e3ca85c857c7c4b92c64ddd5373b6  music/landscape.mp4
+  - 6ed3727b80945747f774c15f7dd4479a5fa8e647ad369d8e4ca6d2b589c54e26  music/portrait.mp4

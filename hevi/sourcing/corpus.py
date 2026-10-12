@@ -796,7 +796,7 @@ def _valid_video(path: Path, min_bytes: int = 20 * 1024, min_duration: float = 1
         if not path.exists() or path.stat().st_size < min_bytes:
             return False
         out = subprocess.run(
-            ["/home/soffy/.local/bin/ffprobe", "-v", "error", "-select_streams", "v:0",
+            [shutil.which("ffprobe") or "/home/soffy/.local/bin/ffprobe", "-v", "error", "-select_streams", "v:0",
              "-show_entries", "stream=codec_name:format=duration", "-of", "default=nw=1", str(path)],
             capture_output=True, text=True, timeout=30,
         ).stdout

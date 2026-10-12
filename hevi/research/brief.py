@@ -159,6 +159,34 @@ __all__ = [
 ]
 
 
+_REFUSAL_RE = None
+
+
+def _is_refusal(text: str) -> bool:
+    """小模型常见的拒答/空话（"I can't fulfill your request…"、"抱歉，我无法…"）。"""
+    import re
+
+    global _REFUSAL_RE
+    if _REFUSAL_RE is None:
+        _REFUSAL_RE = re.compile(
+            r"(I can(?:'|no)t|I cannot|I'm (?:sorry|unable)|I am (?:sorry|unable)|As an AI|"
+            r"unable to (?:fulfill|provide|help)|抱歉|无法(?:提供|完成|回答)|作为.{0,6}AI)",
+            re.IGNORECASE,
+        )
+    return not text or bool(_REFUSAL_RE.search(text[:200]))
+
+
+def _overlap_confidence(summary: str, context: str) -> float:
+    import re
+
+    words = {w.lower() for w in re.findall(r"[A-Za-z]{4,}|[\u4e00-\u9fff]{2}", summary)}
+    if not words:
+        return 0.3
+    ctx = context.lower()
+    hit = sum(1 for w in words if w in ctx) / len(words)
+    return round(0.3 + 0.6 * hit, 2)
+
+
 async def run_real_research(
     brief: ResearchBrief,
     *,
@@ -276,8 +304,13 @@ async def run_real_research(
                             },
                         )
                         if ollama_resp.status_code == 200:
-                            final_summary = ollama_resp.json().get("response", "").strip()
-                            confidence = 0.9
+                            cand = ollama_resp.json().get("response", "").strip()
+                            if _is_refusal(cand):
+                                logger.warning("Ollama 拒答/无效总结，弃用: %s", cand[:80])
+                            else:
+                                final_summary = cand
+                                # 置信度按总结与检索原文的词面重合度估计（不再写死 0.9）
+                                confidence = _overlap_confidence(cand, context_chunk)
                 except Exception as exc:
                     logger.warning("Ollama synthesis failed: %s", exc)
 
@@ -286,10 +319,11 @@ async def run_real_research(
                 confidence = 0.6
 
             if not final_summary:
-                final_summary = f"基于公开资料核实：{topic} 具有充分的历史文献与航天档案记录。"
-                confidence = 0.5
-                if not sources:
-                    sources.append(f"https://en.wikipedia.org/wiki/{urllib.parse.quote(topic)}")
+                # 没有检索到任何资料：如实记录为空，不编造结论或来源
+                report.findings.append(
+                    {"question": q, "summary": "", "confidence": 0.0, "sources": [], "error": "no sources retrieved"}
+                )
+                continue
 
             finding = {
                 "question": q,

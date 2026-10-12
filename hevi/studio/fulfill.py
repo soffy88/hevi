@@ -343,6 +343,7 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
     else:
         visual_type = "voiceover"
     # 若指定 research 或 order.get("do_research")，执行真实 Wikipedia + Ollama 事实核验
+    research_refs: list[str] = []
     if order.get("research") or order.get("do_research"):
         try:
             from hevi.research.brief import ResearchBrief, run_real_research
@@ -354,6 +355,7 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
             report = await run_real_research(brief)
             report_path = output_dir / "research_report.json"
             report_path.write_text(json.dumps(report.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+            research_refs = [u for u in report.sources if u.startswith("http")][:5]
         except Exception as exc:
             logger.warning("Research stage error: %s", exc)
 
@@ -377,6 +379,25 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
     ]
     if not cues:
         return _blocked("脚本没有可渲染文本", target="explainer", line_id=line_id)
+    # 研究结果注入剧本：有真实来源时在片尾加一句资料出处（旁白+字幕），来源 URL 写入 cue 配置与 record
+    if research_refs:
+        src_names = []
+        for u in research_refs:
+            if "wikipedia.org/wiki/" in u:
+                src_names.append("维基百科")
+            elif "nasa.gov" in u:
+                src_names.append("NASA")
+        label = "、".join(dict.fromkeys(src_names)) or "公开网络资料"
+        cues.append(
+            ExplainerCue(
+                text=f"本片内容参考{label}公开资料。",
+                visual_type=visual_type,
+                time_estimate_s=3.0,
+                visual_config={"research_refs": research_refs},
+                visual_search_query=cues[-1].visual_search_query if cues else "",
+            )
+        )
+        order["research_refs"] = research_refs
 
     result = await assemble_explainer_cues(
         topic or line_id or "HEVI",
