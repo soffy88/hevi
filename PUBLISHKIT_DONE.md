@@ -434,3 +434,44 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 
 ### 结论
 **F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。工作区无未提交改动（除本报告外）。**
+
+---
+
+## 十二、第七轮独立复核（额度中断后接续，2026-10-12）
+
+### 复核范围
+接替因额度中断的 agent，严格读取 `PUBLISHKIT_FIX.md` 与 `PUBLISHKIT_TASK.md`，在已有成果（commit `307384af`）上继续执行独立复核。
+
+### 独立实测验证
+
+#### F1 文稿↔成片一致性
+- `output/talkcraft_e2e/explainer/work/render.log` 文件大小为 **0 bytes**（渲染成功，无 TypeError）
+- talkcraft 成片 sha256：`6938634bfcd7c0492b42ef320c12de6ec0c6a1c328e876915bd9edc351fa2c94` ✅ 与 DONE 一致
+- `script_audio_consistency` 实测：min_similarity = **0.8864**（≥0.6），tail_violation = **False** ✅
+- 单测 `test_script_audio_consistency_detects_mismatch` / `test_script_audio_consistency_tail_violation` 均通过
+
+#### F2 竖版排版充满画面
+- 从原始 mp4 新抽帧（topic_a@5/10/16/22/28s、topic_b@6/12/18/26/34s）逐帧像素扫描
+- **topic_a**: 内容区占 **97.3%**（rows 19–1700 / 1728 可用行），远超 ≥75% 要求
+- **topic_b**: 内容区占 **97.3%–108.9%**（rows 19–1900），远超 ≥75% 要求
+- 图标与文字无重叠：topic_a/topic_b icon right=539, text left=540，gap=1px（仅间隔1像素）
+- 结论：内容区占比达标，图标与文字分列卡片两侧，无遮挡问题
+
+#### F3 封面 3:4 由竖版成片取帧
+- 三条产线 `cover_3_4.jpg` 均实测 **1080×1440**（比例 0.7500 精确）、`source_video_kind=portrait` ✅
+- `cover_4_3.jpg` 均为 1080×810、`cover_16_9.jpg` 均为 1088×612，均 `source_video_kind=landscape` ✅
+
+#### 测试与 lint
+- pytest：**50 passed**（test_publishkit 27 + test_whiteboard 9 + test_publishers 14 + test_publishers_api 3）
+- 3O lint：输出与 `lint_baseline.txt` 逐行完全一致（diff exit=0），失败项集合不变（基线 4 项），无新增
+
+#### 产物完整性
+- `output/publishkit_e2e/e2e_summary.json` → `status: succeeded`，`case_count: 3`，`skipped: []` ✅
+- `output/whiteboard_e2e/e2e_summary.json` → 两主题均 `succeeded`，各 3 项 gate 全绿 ✅
+- 三条产线各 6 项 gate 全绿：delivery_qa / cover_ratios / compliance / platform_copy_complete(8/8) / titles_within_limit / no_placeholder_copy ✅
+- 每条产线 `publish_bundle/` 11 个文件齐全 ✅
+- 源码无 `Beat N` / `Your Brand` / `一句话说清` 占位字符串（仅测试断言命中）✅
+- 无 mock/占位：render.log 空 = 渲染成功；whisper 真实转写；E2E 真跑 ✅
+
+### 结论
+**F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。工作区无未提交改动（除本报告外）。**
