@@ -289,3 +289,18 @@ if __name__ == "__main__":
   - cb6e0936f768776c592aa6f6eccda75de87def558f48d884713576ff3b0a4782  vid_2_native/01_quote_image.jpg
   - 3f5a519f28ab07ac204551e72c30e52be18d281948dc406d06d6b18a42000e84  vid_2_script/quote_script.jpg
   - 1c7d3ef491f32aeded5275560aaab17643c3fa1337dc8de8f8ac38792bc5ffb3  vid_3_script/quote_script.jpg
+
+### 第五轮（复核 r5 阻断修复，2026-10-12 20:25）
+- **短句落在跨句字幕卡里**：`sentence_single_card` 增加 neighbor_times；相邻句开口时同一张卡仍在屏（IoU≥0.5）即判为"该卡还带着别句"，剔除。fixture：shorts_clip_01 "Let's see."（6.5–6.88s）单看不变但邻句时同卡 → FAIL；shorts_clip_02 "You guys inspired me."（0–1.6s）→ PASS。
+- vid_2_native 现仅收 2 句整句单卡：「THERE'S NEIL.」「SOMEWHERE, YEAH.」，画面烧录字与 record picked_sentences 一致（主审看图核对）。
+- script 模式 hero 记录真实：无其它可用帧时 hero_time 记为实际取帧时刻（vid_3_script 0.64s），且该帧字幕带已裁掉才判通过。
+- 更正：上一节"vid_2_native 两行字幕完整"已不适用（本轮 vid_2_native 两句均为单行）。
+- 测试 15 passed；E2E 7/8 succeeded，vid_3_native 仍如实 failed（逐段滚动字幕，仅 1 句整句单卡）。
+- 成图 sha256：
+  - bca59e7c8633afc37b0b317c4b82419cdd1662291ad5756eca351e656bbbef0a  vid_0_native/01_quote_image.jpg
+  - 9ea0af264aa4b85d84a9a126c5c4bc754bacce9e6d14f441b069f08861c812e0  vid_0_script/quote_script.jpg
+  - b2223ee4a52dd50283d174408ab527d2ea65c23c428f2771213f8d1ebe2265cc  vid_1_native/01_quote_image.jpg
+  - 32bbebe40efad22244da221fd981e576aabeba2a835e2623d3f32f89ead960d5  vid_1_script/quote_script.jpg
+  - caf85ef53eca95b9c5869f8d2dfa7ccbd37d2c8c5c965398a6a49970e24b52fd  vid_2_native/01_quote_image.jpg
+  - 3f5a519f28ab07ac204551e72c30e52be18d281948dc406d06d6b18a42000e84  vid_2_script/quote_script.jpg
+  - 1c7d3ef491f32aeded5275560aaab17643c3fa1337dc8de8f8ac38792bc5ffb3  vid_3_script/quote_script.jpg

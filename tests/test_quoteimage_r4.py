@@ -88,3 +88,34 @@ def test_side_fill_has_no_hard_vertical_seam():
     # no column-to-column jump anywhere in the filled band
     jumps = np.abs(np.diff(out, axis=1)).max()
     assert jumps < 40, f"hard seam of {jumps} levels remains"
+
+
+@pytest.mark.skipif(not SHORTS_01.exists(), reason="E2E source video not on this host")
+def test_short_sentence_inside_cross_sentence_card_is_rejected():
+    # vid_2 r5 defect: ASR "Let's see." (6.5–6.88s) sits inside the card "LET'S SEE, LET'S FIND",
+    # which is still on screen while the next sentence ("Let's find that…") is spoken.
+    def grab(t: float):
+        return grab_frame(str(SHORTS_01), t)
+
+    frame = grab(6.6)
+    rows = _text_rows(frame)
+    h = frame.height
+    top, bot = (rows[0] - 6) / h, (rows[-1] + 7) / h
+    alone, _ = sentence_single_card(grab, 6.5, 6.88, top, bot)
+    assert alone is True  # within its own span the card does not change …
+    single, _ = sentence_single_card(grab, 6.5, 6.88, top, bot, neighbor_times=[7.05])
+    assert single is False  # … but the neighbour is spoken over the same card → half sentence
+
+
+@pytest.mark.skipif(not SHORTS_02.exists(), reason="E2E source video not on this host")
+def test_complete_single_card_sentence_passes():
+    # vid_3: "You guys inspired me." (0–1.6s) is one complete caption card of its own
+    def grab(t: float):
+        return grab_frame(str(SHORTS_02), t)
+
+    frame = grab(0.64)
+    rows = _text_rows(frame)
+    h = frame.height
+    top, bot = (rows[0] - 6) / h, (rows[-1] + 7) / h
+    single, best = sentence_single_card(grab, 0.0, 1.6, top, bot, neighbor_times=[2.2])
+    assert single is True and best is not None

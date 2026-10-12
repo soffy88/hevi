@@ -350,16 +350,24 @@ def produce_quote_image(
         # 一句话在整段时长内只显示一张字幕卡时才收录，并取字幕最完整的时刻。
         complete: list[dict[str, Any]] = []
         excluded: list[dict[str, Any]] = []
-        for s_ in candidates_to_use:
+        for idx_, s_ in enumerate(candidates_to_use):
             if duration and "start" in s_ and "end" in s_:
+                nbrs = []
+                if idx_ > 0 and "end" in candidates_to_use[idx_ - 1]:
+                    prev = candidates_to_use[idx_ - 1]
+                    nbrs.append(max(float(prev["start"]), float(prev["end"]) - 0.15))
+                if idx_ + 1 < len(candidates_to_use) and "start" in candidates_to_use[idx_ + 1]:
+                    nxt = candidates_to_use[idx_ + 1]
+                    nbrs.append(min(float(nxt["end"]), float(nxt["start"]) + 0.15))
                 ok, best_t = sentence_single_card(_grab, float(s_["start"]), float(s_["end"]),
-                                                  band_top, band_bottom)
+                                                  band_top, band_bottom, neighbor_times=nbrs)
                 if ok and best_t is not None:
                     complete.append({**s_, "t": best_t, "_verified": True})
                 else:
                     excluded.append({"text": s_.get("text", ""), "t": s_.get("t"),
                                      "reason": "no subtitle on screen" if best_t is None
-                                     else "sentence split across several subtitle cards"})
+                                     else "not one complete card of its own (split across cards, "
+                                          "or the card also carries a neighbouring sentence)"})
             else:
                 complete.append(s_)
         extra_record["excluded_sentences"] = excluded
@@ -448,6 +456,7 @@ def produce_quote_image(
         # r4 FIX#3：hero 取字幕带为空的帧；整片字幕不断时把 hero 裁到字幕带之上
         hero_time = None
         hero_bottom = None
+        hero_time_record = None
         if duration:
             spans = [
                 (float(s_.get("start", s_["t"] - 1.0)), float(s_.get("end", s_["t"] + 1.0)))
@@ -473,14 +482,18 @@ def produce_quote_image(
                 if hero_mass >= 0.0015:
                     hero_bottom = float(band_top)  # 裁掉该帧自己的字幕带
             else:
+                # 没有可用的其它帧：hero 用第 1 条字幕的帧，但裁掉字幕带（画面里看不到这句字幕）
                 hero_bottom = float(band_top)
                 hero_mass = 0.0
-            hero_ok = (hero_time is None or not _in_picked(hero_time))
+            hero_frame_t = hero_time if hero_time is not None else float(picked[0]["t"])
+            # 通过条件：hero 帧不在入选句内；或在入选句内但其字幕带已被裁掉
+            hero_ok = (not _in_picked(hero_frame_t)) or hero_bottom is not None
             gate_extra.append({"name": "hero_not_duplicating_strips",
                                "threshold": "hero time outside picked sentences; own subtitle band cropped",
                                "passed": hero_ok, "value": round(hero_mass, 5),
-                               "hero_time": hero_time, "hero_cropped_above_band": hero_bottom})
-        extra_record["hero_time"] = hero_time
+                               "hero_time": hero_frame_t, "hero_cropped_above_band": hero_bottom})
+            hero_time_record = hero_frame_t
+        extra_record["hero_time"] = hero_time_record
         extra_record["hero_bottom"] = hero_bottom
         # times = 各字幕条所用时间点；hero 实际取帧时刻单独记录在 hero_time
         extra_record["rendered_times"] = [float(s_["t"]) for s_ in picked]

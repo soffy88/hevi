@@ -131,6 +131,7 @@ def sentence_single_card(
     top: float,
     bottom: float,
     step: float = 0.4,
+    neighbor_times: Sequence[float] = (),
 ) -> tuple[bool, float | None]:
     """Does one subtitle card stay on screen for the whole sentence?
 
@@ -157,10 +158,23 @@ def sentence_single_card(
     inked = [m for m in masks if m is not None]
     if not inked:
         return False, None
-    for a, b in zip(inked, inked[1:]):
-        inter = np.logical_and(a, b).sum()
+    def _iou(a: np.ndarray, b: np.ndarray) -> float:
         union = np.logical_or(a, b).sum()
-        if union and inter / union < 0.5:
+        return float(np.logical_and(a, b).sum() / union) if union else 0.0
+
+    for a, b in zip(inked, inked[1:]):
+        if _iou(a, b) < 0.5:
+            return False, best_t
+    # the card must belong to THIS sentence only: if the same card is still/already on
+    # screen while a neighbouring sentence is spoken, it carries other words (a short ASR
+    # sentence inside a cross-sentence caption card) → a frame would show a half sentence
+    ref = inked[len(inked) // 2]
+    for nt in neighbor_times:
+        try:
+            m = _band_mask(grab(nt), top, bottom)
+        except BaseException:
+            continue
+        if m.size and float(m.mean()) > 0.002 and _iou(ref, m) >= 0.5:
             return False, best_t
     return True, best_t
 
