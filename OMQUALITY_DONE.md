@@ -162,7 +162,28 @@ Web：`npx tsc --noEmit` exit 0。
 - `.venv/bin/python scripts/ci/run_3o_v3_lint.py` → 基线 4 项失败，无新增
 - r4 复核重跑（/tmp/vfy_omq/*.mp4 原始坏片）：11 bad + 1 good，全部通过
 
-**git 状态**：分支 `feat/omquality-3o`，工作区干净；HEAD 链：`0356d6dd`（E2E fixture 修正）← `89b80c40`（11 坏片回归测试）← `7ae21cc9`（cut-anomaly 误报修复）← `0465250c`（cut-anomaly 接入 verdict + BLOCKY_RATIO_FLOOR 提升）← `233d2cc7`（r4 复核 6 项修复）← `ef78a80d`（r4 复核记录）← `862f8e5a`（b3f2a101 续做记录）← `b3f2a101`（黑屏静音 fixture）← `d7f67db0`（噪点/块效应/频谱平坦度/cut-anomaly 修复）← `46872ae6`（wip）← `176b6a73`（初始 DONE+manifest）。
+### r4 复核重跑（2026-10-12 续做）
+
+复核方用 ffmpeg 现做 11 条坏片 + 1 条正常片（脚本 `OMQUALITY_r4_make_bad_clips.sh`，产物在 `/tmp/vfy_omq/`），逐条跑 `review_finished_video_workflow`。实测结果：
+
+| 片 | 期望 | 实测 | 说明 |
+|---|---|---|---|
+| bad1 全片随机噪点（真音轨） | FAIL → red | **red ✔** | noise 4/4 |
+| bad2 正常片 4–7s 局部噪点花屏 | FAIL → red | **red ✔** | 1/4 帧 noise |
+| bad3 libx264 -qp 51 宏块 | FAIL → warn/True | **red ✔** | blockiness=1.8 ≥ 阈值 |
+| bad3b mpeg2 qscale 31 低分辨率宏块 | FAIL → warn/True | **red ✔** | blockiness=3.5 |
+| bad4 全片解码绿屏（YUV=0）| FAIL → red | **red ✔** | color_anomaly + 冻结 |
+| bad4b 正常片 6–9s 纯绿闪屏 | FAIL → warn/True | **red ✔** | color_anomaly + 局部坏段 |
+| bad5 下半屏灰块（整片） | FAIL → warn/True | **red ✔** | region_flat 6s 连续 |
+| bad6 黑屏+静音 | FAIL → red | **red ✔** | 黑帧 + 静音 + 冻结 |
+| bad7 3–11s 静音段（57%） | FAIL → warn/True | **red ✔** | 连续静音段 8s |
+| bad8 5–8s +40dB 削波爆音 | FAIL → warn/True | **red ✔** | 削波 0.77% > 0.1% |
+| bad8b 每 0.5s 一次满幅 click | FAIL → warn/True | **red ✔** | 瞬态 656 次 > 50 |
+| base 正常片 | PASS | warn/True ✔ | |
+
+完整结果见 `output/om_quality_e2e/r4_verify_results.json`。
+
+**git 状态**：分支 `feat/omquality-3o`，工作区干净；HEAD 链：`1d7d576a`（DONE r4 复核记录）← `0356d6dd`（E2E fixture 修正）← `89b80c40`（11 坏片回归测试）← `7ae21cc9`（cut-anomaly 误报修复）← `0465250c`（cut-anomaly 接入 verdict + BLOCKY_RATIO_FLOOR 提升）← `233d2cc7`（r4 复核 6 项修复）← `ef78a80d`（r4 复核记录）← `862f8e5a`（b3f2a101 续做记录）← `b3f2a101`（黑屏静音 fixture）← `d7f67db0`（噪点/块效应/频谱平坦度/cut-anomaly 修复）← `46872ae6`（wip）← `176b6a73`（初始 DONE+manifest）。
 
 ### 审片门禁测试补全（2026-10-12 续做）
 
