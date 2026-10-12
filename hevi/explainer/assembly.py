@@ -205,10 +205,11 @@ async def _fulfill_stock_visuals(
             if api_key:
                 break
 
-    # 跟踪素材使用次数，严格去重 (每素材至多使用 1-2 次)
+    # 跟踪素材使用次数与来源分布，严格去重 (每素材至多使用 1 次，多源均衡)
     usage_counts: Counter[str] = Counter()
-    # 限制单素材最多重复次数
+    source_counts: Counter[str] = Counter()
     MAX_REUSE = 1
+    output_dir.mkdir(parents=True, exist_ok=True)
     prov = output_dir / "provenance.jsonl"
     if prov.exists():
         prov.unlink()
@@ -225,6 +226,7 @@ async def _fulfill_stock_visuals(
 
         import asyncio
 
+        # 真实素材检索：优先覆盖 NASA, Wikimedia Commons, Archive.org
         tasks = [
             corpus.add_nasa_api(query=query, count=2),
             corpus.add_wikimedia_commons(query=query, count=2),
@@ -236,13 +238,51 @@ async def _fulfill_stock_visuals(
         await asyncio.gather(*tasks, return_exceptions=True)
         corpus.save()
 
-        # 排除达到复用上限的素材并使用相似度阈值过滤
+        # 排除已用满上限的素材
         excluded = {cid for cid, count in usage_counts.items() if count >= MAX_REUSE}
-        hit = corpus.best_for_slot(query, min_score=0.16, exclude_clip_ids=excluded)
+        hits = corpus.rank_for_slot(query, top_k=max(len(corpus.records), 50))
+
+        hit = None
+        # 1. 优先选满足阈值且来源不过度集中的候选
+        for cand in hits:
+            cid = cand.get("clip_id")
+            src = cand.get("source")
+            if cid in excluded:
+                continue
+            if float(cand.get("score", 0.0)) < 0.15:
+                continue
+            # 若某单一来源已超过 4 个槽位，优先让渡给其他合格来源
+            if source_counts[src] >= 4 and any(
+                c.get("clip_id") not in excluded
+                and float(c.get("score", 0.0)) >= 0.15
+                and source_counts[c.get("source")] < 4
+                for c in hits
+            ):
+                continue
+            local = Path(corpus.root) / cand["local_path"]
+            if local.exists() and local.stat().st_size > 0:
+                hit = dict(cand)
+                hit["local_abs_path"] = str(local)
+                break
+
+        # 2. 若无命中，选取未被排除且满足安全底线(0.11)的最高分候选
+        if hit is None:
+            for cand in hits:
+                cid = cand.get("clip_id")
+                if cid in excluded:
+                    continue
+                if float(cand.get("score", 0.0)) < 0.11:
+                    continue
+                local = Path(corpus.root) / cand["local_path"]
+                if local.exists() and local.stat().st_size > 0:
+                    hit = dict(cand)
+                    hit["local_abs_path"] = str(local)
+                    break
 
         if hit and "local_abs_path" in hit:
             clip_id = hit.get("clip_id", "")
             usage_counts[clip_id] += 1
+            source_counts[hit.get("source")] += 1
 
             remotion_public = Path(__file__).resolve().parent.parent.parent / "hevi-remotion" / "public"
             dest = remotion_public / "stock" / Path(hit["local_abs_path"]).name

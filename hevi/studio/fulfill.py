@@ -303,6 +303,8 @@ async def _render_talkcraft_host_line(
 async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     """Render explainer-compatible Studio lines into portrait + landscape MP4."""
 
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     from hevi.explainer.assembly import assemble_explainer_cues
     from hevi.explainer.contracts import ExplainerCue
 

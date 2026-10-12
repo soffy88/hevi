@@ -223,11 +223,30 @@ class Corpus:
         added: list[ClipRecord] = []
         own_client = client is None
         proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy") or "http://127.0.0.1:7890"
-        client = client or httpx.AsyncClient(proxy=proxy, timeout=60, follow_redirects=True)
+        headers = {"User-Agent": "HeviResearchBot/1.0 (https://github.com/hevi-research; hevi@example.com)"}
+        client = client or httpx.AsyncClient(proxy=proxy, headers=headers, timeout=60, follow_redirects=True)
         try:
-            items = await _archive_search(
-                query=query, count=count, collection=collection, client=client
-            )
+            search_queries = [query]
+            words = query.split()
+            if len(words) > 2:
+                search_queries.append(" ".join(words[:2]))
+                search_queries.append(words[0])
+
+            items = []
+            for sq in search_queries:
+                items = await _archive_search(
+                    query=sq, count=count, collection=collection, client=client
+                )
+                if items:
+                    break
+            if not items and collection:
+                for sq in search_queries:
+                    items = await _archive_search(
+                        query=sq, count=count, collection="", client=client
+                    )
+                    if items:
+                        break
+
             for it in items:
                 try:
                     rec = await self._download_archive_item(
@@ -299,11 +318,24 @@ class Corpus:
         added = []
         own_client = client is None
         proxy = os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy") or "http://127.0.0.1:7890"
-        client = client or httpx.AsyncClient(proxy=proxy, timeout=60, follow_redirects=True)
+        headers = {"User-Agent": "HeviResearchBot/1.0 (https://github.com/hevi-research; hevi@example.com)"}
+        client = client or httpx.AsyncClient(proxy=proxy, headers=headers, timeout=60, follow_redirects=True)
         try:
-            resp = await client.get("https://images-api.nasa.gov/search", params={"q": query, "media_type": "video"})
-            resp.raise_for_status()
-            items = resp.json().get("collection", {}).get("items", [])[:count]
+            search_queries = [query]
+            words = query.split()
+            if len(words) > 2:
+                search_queries.append(" ".join(words[:2]))
+                search_queries.append(words[0])
+
+            items = []
+            for sq in search_queries:
+                resp = await client.get("https://images-api.nasa.gov/search", params={"q": sq, "media_type": "video"})
+                if resp.status_code == 200:
+                    it_list = resp.json().get("collection", {}).get("items", [])
+                    if it_list:
+                        items = it_list[:count]
+                        break
+
             for it in items:
                 try:
                     data = it["data"][0]
@@ -361,20 +393,31 @@ class Corpus:
         }
         client = client or httpx.AsyncClient(proxy=proxy, headers=headers, timeout=60, follow_redirects=True)
         try:
-            # Action API search
-            params = {
-                "action": "query",
-                "format": "json",
-                "generator": "search",
-                "gsrsearch": f"{query} filetype:video",
-                "gsrnamespace": 6,
-                "gsrlimit": count,
-                "prop": "imageinfo",
-                "iiprop": "url|mime|extmetadata",
-            }
-            resp = await client.get("https://commons.wikimedia.org/w/api.php", params=params)
-            resp.raise_for_status()
-            pages = resp.json().get("query", {}).get("pages", {}).values()
+            search_queries = [query]
+            words = query.split()
+            if len(words) > 2:
+                search_queries.append(" ".join(words[:2]))
+                search_queries.append(words[0])
+
+            pages = []
+            for sq in search_queries:
+                params = {
+                    "action": "query",
+                    "format": "json",
+                    "generator": "search",
+                    "gsrsearch": f"{sq} filetype:video",
+                    "gsrnamespace": 6,
+                    "gsrlimit": count,
+                    "prop": "imageinfo",
+                    "iiprop": "url|mime|extmetadata",
+                }
+                resp = await client.get("https://commons.wikimedia.org/w/api.php", params=params)
+                if resp.status_code == 200:
+                    p_dict = resp.json().get("query", {}).get("pages", {})
+                    if p_dict:
+                        pages = list(p_dict.values())
+                        break
+
             for p in pages:
                 try:
                     ii = p.get("imageinfo", [{}])[0]
@@ -660,7 +703,7 @@ class Corpus:
         self,
         query: str,
         *,
-        min_score: float = 0.16,
+        min_score: float | None = None,
         exclude_clip_ids: set[str] | None = None,
     ) -> dict[str, Any] | None:
         """freevideo B-roll 消费入口:场景槽 → 最佳片段(本地路径)。支持去重排除已选 clip_id 与相似度阈值。"""
@@ -668,11 +711,11 @@ class Corpus:
         if not hits:
             return None
 
-        # 1. 优先选满足排除条件且相似度达到 min_score 阈值的候选
+        # 选满足排除条件且相似度达到 min_score 阈值的候选（低于阈值换下一个候选）
         for cand in hits:
             if exclude_clip_ids and cand.get("clip_id") in exclude_clip_ids:
                 continue
-            if float(cand.get("score", 0.0)) < min_score:
+            if min_score is not None and float(cand.get("score", 0.0)) < min_score:
                 continue
             local = Path(self.root) / cand["local_path"]
             if local.exists() and local.stat().st_size > 0:
@@ -680,23 +723,6 @@ class Corpus:
                 hit["local_abs_path"] = str(local)
                 return hit
 
-        # 2. 若无候选达到 min_score，挑选未被排除的最高分候选
-        for cand in hits:
-            if exclude_clip_ids and cand.get("clip_id") in exclude_clip_ids:
-                continue
-            local = Path(self.root) / cand["local_path"]
-            if local.exists() and local.stat().st_size > 0:
-                hit = dict(cand)
-                hit["local_abs_path"] = str(local)
-                return hit
-
-        # 3. 如果全部在 exclude 集合中，则退化使用最高分
-        for cand in hits:
-            local = Path(self.root) / cand["local_path"]
-            if local.exists() and local.stat().st_size > 0:
-                hit = dict(cand)
-                hit["local_abs_path"] = str(local)
-                return hit
         return None
 
 
@@ -707,7 +733,10 @@ async def _archive_search(
     *, query: str, count: int, collection: str, client: httpx.AsyncClient
 ) -> list[dict[str, Any]]:
     """Archive.org advancedsearch:collection 内按 query 检影片条目。"""
-    q = f"collection:{collection} AND ({query}) AND mediatype:movies"
+    if collection:
+        q = f"collection:{collection} AND ({query}) AND mediatype:movies"
+    else:
+        q = f"({query}) AND mediatype:movies"
     resp = await client.get(
         _ARCHIVE_SEARCH,
         params={"q": q, "fl[]": ["identifier", "title"], "rows": count, "output": "json"},
@@ -758,12 +787,26 @@ def _extract_good_subclip(src_video: Path, out_video: Path, target_duration: flo
     out_str = str(out_video)
     best_segment: tuple[float, float] | None = None
 
+    # 尝试加载 CLIP 用于字卡语义比对
+    title_tokens = None
+    clip_model = None
+    clip_preprocess = None
     try:
-        # 限制只扫描前 60 秒，避免长视频扫描耗时过长
+        clip_model, clip_preprocess, clip_tok = _ensure_open_clip_model()
+        import torch
+        with torch.no_grad():
+            t_tok = clip_tok(["a movie opening title card with text, company logo, opening credits"])
+            title_tokens = clip_model.encode_text(t_tok)
+            title_tokens /= title_tokens.norm(dim=-1, keepdim=True)
+    except Exception:
+        pass
+
+    try:
+        # 扫描前 180 秒（老电影片头通常长达数十秒）
         video = open_video(src_str)
         scene_manager = SceneManager()
         scene_manager.add_detector(ContentDetector(threshold=27.0))
-        scene_manager.detect_scenes(video, frame_skip=2, duration=60.0)
+        scene_manager.detect_scenes(video, frame_skip=3, duration=180.0)
         scenes = scene_manager.get_scene_list()
 
         cap = cv2.VideoCapture(src_str)
@@ -779,48 +822,84 @@ def _extract_good_subclip(src_video: Path, out_video: Path, target_duration: flo
 
             times = np.linspace(start_s + 0.5, min(start_s + target_duration, end_s) - 0.5, 5)
             frames = []
+            rgb_frames = []
             for t in times:
                 cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
                 ret, f = cap.read()
                 if ret:
                     frames.append(cv2.cvtColor(f, cv2.COLOR_BGR2GRAY))
+                    rgb_frames.append(f)
             if len(frames) < 3:
                 continue
 
             b_mean = float(np.mean([np.mean(f) for f in frames]))
-            if b_mean < 20.0:  # 黑帧
+            min_b = float(np.min([np.mean(f) for f in frames]))
+            if b_mean < 25.0 or min_b < 18.0:  # 黑帧或过渡暗场
                 continue
 
             diffs = [np.mean(cv2.absdiff(frames[i], frames[i + 1])) for i in range(len(frames) - 1)]
             m_mean = float(np.mean(diffs)) if diffs else 0.0
-            if m_mean < 0.8:  # 静态图片/字幕卡
+            if m_mean < 1.8:  # 静态图片/字幕卡/画面无明显动态
                 continue
 
-            # 字卡检测：单帧中过暗像素比例过高（白字黑底卡片）
-            text_card = any(float((f < 40).mean()) > 0.82 for f in frames)
+            # 字卡检测：单帧极暗或极亮底色卡片
+            text_card = any(float((f < 45).mean()) > 0.80 or float((f > 215).mean()) > 0.80 for f in frames)
             if text_card:
                 continue
+
+            # CLIP title card 语义检测
+            if title_tokens is not None and clip_model is not None and clip_preprocess is not None and rgb_frames:
+                try:
+                    import torch
+                    from PIL import Image
+                    mid_img = Image.fromarray(cv2.cvtColor(rgb_frames[len(rgb_frames) // 2], cv2.COLOR_BGR2RGB))
+                    img_tensor = clip_preprocess(mid_img).unsqueeze(0)
+                    with torch.no_grad():
+                        im_feat = clip_model.encode_image(img_tensor)
+                        im_feat /= im_feat.norm(dim=-1, keepdim=True)
+                        sim = float((im_feat @ title_tokens.T)[0, 0].item())
+                    if sim > 0.22:
+                        continue  # 判定为字卡或 Logo
+                except Exception:
+                    pass
 
             best_segment = (start_s, min(start_s + target_duration, end_s))
             break
 
-        # 若场景检测未匹配到满足质量的片段，滑动扫描不同时间窗（避开可能长达数十秒的片头）
+        # 若场景检测未匹配到满足质量的片段，滑动扫描不同时间窗（避开片头）
         if not best_segment:
-            for cand_start in [15.0, 25.0, 35.0, 10.0, 5.0, 1.0]:
+            for cand_start in [60.0, 75.0, 90.0, 110.0, 45.0, 30.0, 15.0]:
                 times = np.linspace(cand_start + 0.5, cand_start + target_duration - 0.5, 5)
                 frames = []
+                rgb_frames = []
                 for t in times:
                     cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
                     ret, f = cap.read()
                     if ret:
                         frames.append(cv2.cvtColor(f, cv2.COLOR_BGR2GRAY))
+                        rgb_frames.append(f)
                 if len(frames) < 3:
                     continue
                 b_mean = float(np.mean([np.mean(f) for f in frames]))
+                min_b = float(np.min([np.mean(f) for f in frames]))
                 diffs = [np.mean(cv2.absdiff(frames[i], frames[i + 1])) for i in range(len(frames) - 1)]
                 m_mean = float(np.mean(diffs)) if diffs else 0.0
-                text_card = any(float((f < 40).mean()) > 0.82 for f in frames)
-                if b_mean >= 20.0 and m_mean >= 0.8 and not text_card:
+                text_card = any(float((f < 45).mean()) > 0.80 or float((f > 215).mean()) > 0.80 for f in frames)
+                if b_mean >= 25.0 and min_b >= 18.0 and m_mean >= 1.8 and not text_card:
+                    if title_tokens is not None and clip_model is not None and clip_preprocess is not None and rgb_frames:
+                        try:
+                            import torch
+                            from PIL import Image
+                            mid_img = Image.fromarray(cv2.cvtColor(rgb_frames[len(rgb_frames) // 2], cv2.COLOR_BGR2RGB))
+                            img_tensor = clip_preprocess(mid_img).unsqueeze(0)
+                            with torch.no_grad():
+                                im_feat = clip_model.encode_image(img_tensor)
+                                im_feat /= im_feat.norm(dim=-1, keepdim=True)
+                                sim = float((im_feat @ title_tokens.T)[0, 0].item())
+                            if sim > 0.22:
+                                continue
+                        except Exception:
+                            pass
                     best_segment = (cand_start, cand_start + target_duration)
                     break
 
@@ -829,8 +908,8 @@ def _extract_good_subclip(src_video: Path, out_video: Path, target_duration: flo
         logger.warning("Scene detection failed for %s: %s", src_video, exc)
 
     if not best_segment:
-        # 降级：从 3 秒处截取目标时长
-        best_segment = (3.0, 3.0 + target_duration)
+        # 降级：从 15 秒处截取目标时长（避开 0-10 秒最常见的片头）
+        best_segment = (15.0, 15.0 + target_duration)
 
     start, end = best_segment
     cmd = [
@@ -851,10 +930,12 @@ def _extract_good_subclip(src_video: Path, out_video: Path, target_duration: flo
     ]
     res = subprocess.run(cmd, capture_output=True)
     if res.returncode != 0 or not out_video.exists() or out_video.stat().st_size == 0:
-        # 若失败，直接转码原视频前几秒
+        # 若失败，直接转码原视频
         fallback_cmd = [
             "/home/soffy/.local/bin/ffmpeg",
             "-y",
+            "-ss",
+            "15.0",
             "-i",
             src_str,
             "-t",
@@ -873,7 +954,7 @@ def _extract_first_frame(video: Path, out: Path) -> Path:
     """ffmpeg 抽代表帧(取片段中间位置，多点采样避开黑帧)。"""
     import cv2
 
-    for ss in ["2.5", "1.5", "3.5", "0.5"]:
+    for ss in ["2.5", "3.0", "1.5", "3.5", "4.0", "0.5"]:
         try:
             subprocess.run(
                 [
@@ -894,7 +975,7 @@ def _extract_first_frame(video: Path, out: Path) -> Path:
             )
             if out.exists() and out.stat().st_size > 0:
                 f = cv2.imread(str(out), cv2.IMREAD_GRAYSCALE)
-                if f is not None and float(f.mean()) >= 18.0:
+                if f is not None and float(f.mean()) >= 25.0:
                     return out
         except (OSError, subprocess.TimeoutExpired):
             pass
