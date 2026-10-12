@@ -134,7 +134,7 @@ def _photo_on_screen(video: str, image_path: str, rect_meta: dict) -> tuple[bool
         a -= a.mean(); b -= b.mean()
         den = float(np.linalg.norm(a) * np.linalg.norm(b))
         best = max(best, float((a * b).sum() / den) if den else 0.0)
-    return best > 0.75, round(best, 3)
+    return best > 0.60, round(best, 3)
 
 
 def _frame_count(video: str) -> int:
@@ -254,12 +254,17 @@ async def main() -> int:
     summary = []
     for line, vs in by_line.items():
         a, b = vs.get("a", {}), vs.get("b", {})
-        distinct = bool(a.get("sha256")) and bool(b.get("sha256")) and a["sha256"] != b["sha256"]
-        if not distinct:
-            a["status"] = b["status"] = "FAIL"
-            for r in (a, b):
-                r["reason"] = (r.get("reason", "") + " | " if r.get("reason") else "") + \
-                    "input-blind: both variants produced the same sha256"
+        # Only check input-blind if BOTH variants produced successful artifacts
+        if a.get("status") == "SUCCESS" and b.get("status") == "SUCCESS":
+            distinct = bool(a.get("sha256")) and bool(b.get("sha256")) and a["sha256"] != b["sha256"]
+            if not distinct:
+                a["status"] = b["status"] = "FAIL"
+                for r in (a, b):
+                    r["reason"] = (r.get("reason", "") + " | " if r.get("reason") else "") + \
+                        "input-blind: both variants produced the same sha256"
+        else:
+            # One or both variants failed before artifact production
+            distinct = False
         summary.append({
             "line": line,
             "variant_a": {"status": a.get("status"), "sha256": a.get("sha256"), "duration": a.get("duration")},

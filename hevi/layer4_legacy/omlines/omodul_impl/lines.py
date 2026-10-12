@@ -329,7 +329,7 @@ def _character_animation(slots=None, output_dir=OUT):
     at = [at[i] if i < len(at) else 0.6 + i * 2.0 for i in range(len(cues))]
     parts = []
     for i, ((a, b, t), s) in enumerate(zip(cues, at)):
-        parts.append(f'[{i}:a]atrim={a}:{b},asetpts=PTS-STARTPTS,adelay={int(s * 1000)}|{int(s * 1000)}[p{i}]')
+        parts.append(f'[0:a]atrim={a}:{b},asetpts=PTS-STARTPTS,adelay={int(s * 1000)}|{int(s * 1000)}[p{i}]')
     sh([FF, '-y', '-i', vo, '-filter_complex', ';'.join(parts) + ';' + ''.join(f'[p{i}]' for i in range(len(cues))) +
         f'amix=inputs={len(cues)}:normalize=0,apad,atrim=0:12[a]', '-map', '[a]', f'{d}/tmp/vo_timed.wav'])
     audio = zl.mix(f'{d}/tmp/vo_timed.wav', zl.bgm(f'{d}/tmp/bgm.wav', 13, 'warm'), f'{d}/tmp/mix.wav', 12.0)
@@ -470,10 +470,21 @@ def _shorts_clip(slots=None, output_dir=OUT):
         ev.append((0, b - a, 'Kicker', r'{\an8\pos(%d,140)\fs38}' % (W // 2) + topic))
         ass = zl.write_ass(f'{d}/tmp/c{k}.ass', W, H, ev)
         out = f'{d}/{line}_{k + 1:02d}.mp4'
-        sh([FF, '-y', '-ss', f'{a:.2f}', '-t', f'{b - a:.2f}', '-i', src, '-filter_complex',
-            f'[0:v]split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=30:3,eq=brightness=-0.15[b];'
-            f'[fg]scale={W}:-2:flags=lanczos,unsharp=5:5:0.6[f];[b][f]overlay=0:(H-h)/2-80,'
-            f"subtitles='{d}/tmp/c{k}.ass':fontsdir=/usr/share/fonts/opentype/noto[v]",
+        # Zoompan on the whole source for guaranteed motion (Ken Burns effect)
+        # plus animated crop pan on a blurred copy as background
+        clip_dur = max(0.1, float(b - a))
+        frames = int(clip_dur * 30)
+        zoomstep = 0.0005
+        fc = (
+            f"[0:v]split[bg][fg];"
+            f"[bg]scale={W + 120}:{H + 120}:force_original_aspect_ratio=increase,"
+            f"crop={W}:{H}:x='(iw-{W})*t/{clip_dur:.3f}':y='(ih-{H})*0.5*(1+sin(t/3))',"
+            f"boxblur=30:3,eq=brightness=-0.15[b];"
+            f"[fg]zoompan=z='zoom+{zoomstep}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps=30[x];"
+            f"[b][x]overlay=0:(H-h)/2-80,"
+            f"subtitles='{d}/tmp/c{k}.ass':fontsdir=/usr/share/fonts/opentype/noto[v]"
+        )
+        sh([FF, '-y', '-ss', f'{a:.2f}', '-t', f'{b - a:.2f}', '-i', src, '-filter_complex', fc,
             '-map', '[v]', '-map', '0:a', '-af', 'loudnorm=I=-15', '-c:v', 'libx264', '-preset', 'medium', '-crf', '20',
             '-c:a', 'aac', '-movflags', '+faststart', out])
         outs.append(out)
