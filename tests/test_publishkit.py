@@ -335,13 +335,29 @@ def test_cover_3x4_uses_portrait_when_available(real_clip: Path, tmp_path: Path)
 
 
 def test_script_audio_consistency_detects_mismatch(real_clip: Path) -> None:
-    """F1：转写与文稿字符相似度低于阈值 → fail。纯音调测试片的转写与中文文稿完全不匹配。"""
+    """F1：真实中文错配对 → 相似度 < 阈值 → fail。
+
+    用 talkcraft 复利成片（真实中文人声）+ 白板 topic_a 文稿，
+    两者内容完全不相关，字符相似度应远低于阈值。
+    """
     from hevi.layer4_legacy.publishkit.omodul_impl.qa import script_audio_consistency
 
+    # talkcraft 复利成片路径
+    talkcraft_video = Path("output/talkcraft_e2e/explainer/explainer_landscape.mp4")
+    if not talkcraft_video.is_file():
+        pytest.skip("talkcraft E2E 成片不存在（需先跑 scripts/publishkit_e2e.py）")
+
+    # 白板 topic_a 文稿（与复利内容完全无关）
+    whiteboard_script = [
+        "今天我们要给大家介绍什么是白板讲解视频。",
+        "这种视频的好处是通俗易懂，特别适合解释复杂的概念。",
+        "让你一看就明白！",
+    ]
+
     result = script_audio_consistency(
-        real_clip,
-        script_texts=["完全无关的文本内容", "测试文稿不匹配"],
-        narration_end_s=2.5,
+        talkcraft_video,
+        script_texts=whiteboard_script,
+        narration_end_s=32.0,
         similarity_threshold=0.6,
     )
     # faster-whisper 缺失时 unavailable；可用时必须 fail
@@ -349,6 +365,37 @@ def test_script_audio_consistency_detects_mismatch(real_clip: Path) -> None:
     if result["status"] == "measured":
         assert result["passed"] is False
         assert result["min_similarity"] < 0.6
+
+
+def test_script_audio_consistency_matching_pair_passes(real_clip: Path) -> None:
+    """F1：真实中文匹配对 → 相似度 ≥ 阈值 → pass。
+
+    用白板 topic_a 成片 + topic_a 文稿（同一内容的真实中文口播），
+    字符相似度应 ≥ 0.6。
+    """
+    from hevi.layer4_legacy.publishkit.omodul_impl.qa import script_audio_consistency
+
+    whiteboard_video = Path("output/whiteboard_e2e/topic_a/whiteboard_landscape.mp4")
+    if not whiteboard_video.is_file():
+        pytest.skip("whiteboard E2E 成片不存在（需先跑 scripts/whiteboard_e2e.py）")
+
+    # topic_a 文稿（与成片音频内容一致）
+    matching_script = [
+        "今天我们要给大家介绍什么是白板讲解视频。",
+        "这种视频的好处是通俗易懂，特别适合解释复杂的概念。",
+        "让你一看就明白！",
+    ]
+
+    result = script_audio_consistency(
+        whiteboard_video,
+        script_texts=matching_script,
+        narration_end_s=10.0,
+        similarity_threshold=0.6,
+    )
+    assert result["status"] in ("unavailable", "measured")
+    if result["status"] == "measured":
+        assert result["passed"] is True
+        assert result["min_similarity"] >= 0.6
 
 
 def test_script_audio_consistency_tail_violation(real_clip: Path) -> None:
