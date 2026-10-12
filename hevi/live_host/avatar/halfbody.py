@@ -35,7 +35,8 @@ FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
 MODEL_DIR = Path(os.environ.get("HEVI_LIVE_AVATAR_MODELS", "/home/soffy/models/wav2lip"))
 CACHE = Path(os.environ.get("HEVI_LIVE_AVATAR_CACHE", str(Path.home() / ".cache/hevi/live_halfbody")))
 ASSETS = Path(__file__).resolve().parents[3] / "assets" / "halfbody"
-W, H, FPS = 720, 1280, 25
+W, H = 720, 1280
+FPS = int(os.environ.get("HEVI_LIVE_FPS", "25"))
 FONT_CANDIDATES = [
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
