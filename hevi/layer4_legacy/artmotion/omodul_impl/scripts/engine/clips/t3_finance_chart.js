@@ -92,7 +92,7 @@ return {
   },
   draw(c0, t, ctx) {
     // alpha：字和线叠在别的画面上可能看不见。先画进缓冲，再带一圈主题底色的光晕合成
-    if (ctx.alpha) c0.setTransform(1, 0, 0, 1, 0, 0);
+    // 注意：不要 reset transform，保留 clip.js 的相机运动
     const c = ctx.alpha ? (BUF = BUF || document.createElement('canvas'), BUF.width = ctx.W, BUF.height = ctx.H, BUF.getContext('2d')) : c0;
     const { W, H, u, data: d } = ctx, { m, F, yS, xs, S, kind } = L, fs = ctx.portrait ? 1.2 : 1;   // 竖屏在手机上看：小字放大两成
     const qt = ctx.of('title')[0] || { at: 0 }, lt = ctx.lt(t, qt.at);
