@@ -831,7 +831,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             if burned is None or clean is None or burned.shape != clean.shape:
                 continue
             diff = cv2.absdiff(burned, clean).max(axis=2)
-            mask = diff > 45
+            # Threshold 100 not 45: the burned copy is re-encoded h264 whose mid-level
+            # noise (~3-8/255 at edges from scaling) must not be counted as subtitle
+            # pixels. White subtitle text yields diff > 150 across every glyph.
+            mask = diff > 100
             # Subtitles live in the lower half of the frame; ignore encode noise elsewhere.
             frame_h, frame_w = mask.shape
             mask[: int(frame_h * 0.5), :] = False
