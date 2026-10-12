@@ -97,7 +97,15 @@ async def _main_async(args: argparse.Namespace) -> int:
         build_book_event_graph,
         outline_to_story,
     )
-    from hevi.storygraph.review import run_three_layer_review, script_to_storyboard, write_review_log
+    from hevi.storygraph.review import (
+        MIN_SHOT_DURATION_S,
+        TTS_CHARS_PER_SEC,
+        _readable_chars,
+        run_three_layer_review,
+        script_to_storyboard,
+        storyboard_coverage,
+        write_review_log,
+    )
 
     run_id = args.run_id or time.strftime("%Y%m%d-%H%M%S")
     out_dir = Path(args.out_root) / run_id
@@ -218,6 +226,18 @@ async def _main_async(args: argparse.Namespace) -> int:
         e.ep_number for e in log.episodes if any(r.round_index > 0 for r in e.rounds)
     ]
     review_has_revision = bool(revision_episodes)
+    coverage = {
+        f"ep{ep.ep_number:02d}": storyboard_coverage(ep.script, sb)
+        for ep, sb in zip(log.episodes, storyboards, strict=False)
+    }
+    record["storyboard_coverage"] = coverage
+    record["storyboard_duration_s"] = {
+        f"ep{sb.ep_number:02d}": {
+            "target": sb.target_duration_s,
+            "storyboard_total": round(sum(s.duration_s for s in sb.shots), 2),
+        }
+        for sb in storyboards
+    }
     book_event_ids = {e.event_id for e in book.events}
     qa = {
         "chapters_ge_3": len(book.chapters) >= 3,
@@ -240,9 +260,50 @@ async def _main_async(args: argparse.Namespace) -> int:
         "storyboard_events_in_graph": all(
             s.event_id in book_event_ids for sb in storyboards for s in sb.shots
         ),
+        # 场镜头数之和在预算内时分镜镜头数与之相等；超预算时按场削减（不截断丢镜）
         "storyboard_shot_count_matches_scenes": all(
             sb.total_shots() == ep.script.total_shots()
+            if ep.script.total_shots() <= max(sb.shot_budget, 1)
+            else sb.total_shots() <= max(sb.shot_budget, len(ep.script.scenes))
             for ep, sb in zip(log.episodes, storyboards, strict=False)
+        ),
+        # F1：剧本旁白/对白 → 分镜 tts 覆盖率 100%
+        "storyboard_line_coverage_100": all(c["coverage"] == 1.0 for c in coverage.values()),
+        # F2：tts 不含镜头指令/说话人前缀，问句/感叹句末标点保留，无"……。"
+        "storyboard_tts_no_camera_prefix": all(
+            not any(
+                k in s.tts_text
+                for k in ("动作特写：", "环境细节：", "人物近景：", "镜头拉开：", "全景：", "特写：")
+            )
+            and not any(f"{c.name}：" in s.tts_text for c in book.characters)
+            for sb in storyboards
+            for s in sb.shots
+        ),
+        "storyboard_question_marks_kept": all(
+            line.text.strip() in "".join(s.tts_text for s in sb.shots)
+            for ep, sb in zip(log.episodes, storyboards, strict=False)
+            for scene in ep.script.scenes
+            for line in scene.dialogue
+            if line.text.strip()[-1:] in ("？", "?", "！", "!")
+        )
+        and all("……。" not in s.tts_text for sb in storyboards for s in sb.shots),
+        "storyboard_shot_duration_floor": all(
+            s.duration_s + 1e-6 >= max(MIN_SHOT_DURATION_S, _readable_chars(s.tts_text) / TTS_CHARS_PER_SEC)
+            for sb in storyboards
+            for s in sb.shots
+        ),
+        # F3：最终剧本无空场（无可朗读对白/旁白）
+        "script_no_empty_scene": all(
+            _readable_chars((scene.narration or "") + "".join(l.text for l in scene.dialogue)) > 0
+            for ep in log.episodes
+            for scene in ep.script.scenes
+        ),
+        # F5：画面描述逐镜不同、不写死写实
+        "storyboard_prompts_distinct_per_episode": all(
+            len({s.image_prompt for s in sb.shots}) == len(sb.shots) for sb in storyboards
+        ),
+        "storyboard_no_hardcoded_photoreal": all(
+            "写实短剧风格" not in s.image_prompt for sb in storyboards for s in sb.shots
         ),
         "storyboard_shot_count_within_budget": all(
             sb.total_shots() <= outline_ep.shot_budget
@@ -259,6 +320,7 @@ async def _main_async(args: argparse.Namespace) -> int:
             "出场角色：C" not in s.image_prompt for sb in storyboards for s in sb.shots
         ),
         "memory_db_created": memory_db_path.exists(),
+        "storyboard_coverage": coverage,
         "llm_calls": llm.calls,
     }
     qa["passed"] = all(

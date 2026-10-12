@@ -228,3 +228,21 @@ PATH=/home/soffy/.local/bin:$PATH .venv/bin/pytest tests/test_storygraph* tests/
 - 未调用任何付费视频与文本 API。
 - 所有提交使用 `-c user.name="hevi-dramaplan agent" -c user.email=dramaplan@hevi.local`，未修改共享 `.git/config`。
 - 无 push、无 merge、无 rebase。
+
+---
+## 第四轮返工（F1–F6，主审亲自修复，2026-10-12）— run9 证据
+
+改动文件：`hevi/storygraph/review.py`、`hevi/layer4_legacy/script2video/oskill_impl/shot_budget.py`、`scripts/e2e/dramaplan_e2e.py`、新增 `tests/test_dramaplan_r4.py`（13 例）。
+
+- **F1 分镜不丢台词/旁白**：`script_to_storyboard` 重写：旁白逐句 + 对白逐句作为可朗读单元，单元多于镜头时按字数均衡**相邻合并**，少于镜头时在中点标点处拆分；删除 `shots[:shot_budget]` 截断，超预算改为按场削减镜头数（每场 ≥1）。新增 `storyboard_coverage()`。run9 覆盖率 ep01 14/14、ep02 9/9、ep03 10/10 = 100%（`qa.json: storyboard_line_coverage_100=true`）。
+- **F2 tts 质量**：tts 只含可朗读文本（无「动作特写：」等镜头指令、无「角色名：」前缀，说话人在 `speaker` 字段）；`_ensure_sentence_end` 保留原句末 ？！…，仅无标点时补"。"；拆分出的句内片段保留原逗号。单镜时长 = max(1.5s, 字数/5 字每秒×1.1)，按场时长等比放大、不足时以朗读时长为准拉长（run9 分镜总时长 ep01 71.96s / ep02 42.72s / ep03 69.51s，目标 60s，如实记录在 record.json `storyboard_duration_s`）。规则层新增 `scene_too_short`（>7 字/秒或每镜 <1.5s 判 error）。
+- **F3 改稿守卫**：执行层 LLM 改写后可读字数为 0 或 <原场 40% 即拒收、走确定性补丁（run8/run9 日志实测触发：「第 1 场内容缩水（21→0 字），拒收」）。`empty_scene` 改为"无可朗读对白/旁白"（摘要不算）。run9 `script_no_empty_scene=true`。
+- **F4 split 兜底**：字符级切分只在均分点 ±per/3 内找标点，找不到按均分点切，不再回退成单字；句数足够时按字数均衡分组，max/min>2 时退到字符级。`split("甲乙丙丁戊己庚辛，壬癸。",2)` → `["甲乙丙丁戊己","庚辛，壬癸。"]`，3 → `["甲乙丙丁","戊己庚辛，","壬癸。"]`。
+- **F5 画面描述**：每镜 image_prompt 由该镜说话人+情绪+台词要点（或旁白内容）生成，run9 每集 10 镜 prompt 全部不同；画风改为 `style` 参数，默认 `DEFAULT_STORYBOARD_STYLE="国风动漫插画风格，非写实"`，不再写死「写实短剧风格」。
+- **新增规则**：`foreign_token`（台词混入 ≥3 字母外文词判 error，确定性补丁会剔除；run8 出现过 LLM 串语种 "anfangs"）。
+- **F6 说明（如实）**：监督层最终 score 由 `_score_from_issues`（100−20×error−5×warning）按问题条数计算，**不是 LLM 直接打分**；LLM 只贡献 `llm:*` 问题条目。
+
+### run9（NIM 免费通道 nvidia/nemotron-3-super-120b-a12b，未调用付费 API）
+- `output/dramaplan_e2e/run9/`：llm_calls=30、failures=0、耗时 162.9s；qa.passed=true（唯一 false 为统计项 review_all_passed）。
+- 审稿真实分布：EP1 70→35→70 拒、EP2 70→80→70 拒、EP3 50→40→60 拒（最后一轮剩余问题为 llm:逻辑连贯/人物弧光/台词质量 与 1 条 scene_too_short）。审稿未全部通过是真实结果，未做任何放水。
+- 测试：相关 11 个测试文件 101 passed（含 test_zerolines）；新增 test_dramaplan_r4.py 13 passed；3O lint 仅基线 4 项。

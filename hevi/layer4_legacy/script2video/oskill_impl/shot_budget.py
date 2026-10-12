@@ -149,39 +149,71 @@ def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
     if not raw_tokens:
         raw_tokens = [""]
 
-    n = len(raw_tokens)
-    groups: list[list[str]] = []
-    if n >= count:
-        # 句/段数足够：均匀按句分组
-        base, extra = divmod(n, count)
-        start = 0
-        for j in range(count):
-            size = base + (1 if j < extra else 0)
-            groups.append(raw_tokens[start : start + size])
-            start += size
-    else:
-        # 内容不足 count 句：按字符级均分（尽量落在标点后切），
-        # 保证原文逐字保留、且每个子镜都有内容
-        flat = "".join(raw_tokens)
+    def _char_level(flat: str) -> list[list[str]]:
+        # 按字符均分；只在均分点附近（±per/3）找标点切，找不到就按均分点切，绝不回退成单字镜
+        out: list[list[str]] = []
         n_chars = len(flat)
         start = 0
         for j in range(count):
             if j == count - 1 or start >= n_chars:
-                # 最后一镜兜底接收全部剩余
-                groups.append([flat[start:]])
+                out.append([flat[start:]])
                 start = n_chars
                 continue
             remaining = n_chars - start
             slots_left = count - j
             per = max(1, remaining // slots_left)
-            cut = min(n_chars, start + per)
-            # 尽量落在标点后切，避免切断句子
-            while cut > start + 1 and flat[cut - 1] not in "，,。！？!?；;\n":
-                cut -= 1
-            if cut <= start:
-                cut = min(n_chars, start + per)
-            groups.append([flat[start:cut]])
+            ideal = min(n_chars, start + per)
+            win = max(1, per // 3)
+            lo = max(start + 1, ideal - win)
+            hi = min(n_chars - (slots_left - 1), ideal + win)
+            best = None
+            for c in range(lo, hi + 1):
+                if flat[c - 1] in "，,。！？!?；;\n":
+                    if best is None or abs(c - ideal) < abs(best - ideal):
+                        best = c
+            cut = best if best is not None else ideal
+            cut = max(start + 1, min(cut, n_chars - (slots_left - 1)))
+            out.append([flat[start:cut]])
             start = cut
+        return out
+
+    def _token_level(tokens: list[str]) -> list[list[str]]:
+        # 句/段数足够：按字数均衡的相邻分组（保持顺序，每组至少 1 段）
+        out: list[list[str]] = []
+        i = 0
+        remaining = sum(len(t) for t in tokens)
+        for k in range(count):
+            left = count - k
+            if left == 1:
+                out.append(tokens[i:])
+                break
+            target = remaining / left
+            g = [tokens[i]]
+            acc = len(tokens[i])
+            i += 1
+            while i < len(tokens) - (left - 1) and acc + len(tokens[i]) / 2 <= target:
+                g.append(tokens[i])
+                acc += len(tokens[i])
+                i += 1
+            remaining -= acc
+            out.append(g)
+        return out
+
+    def _ratio(gs: list[list[str]]) -> float:
+        lens = [len("".join(g)) for g in gs]
+        return (max(lens) / max(1, min(lens))) if lens else 1.0
+
+    n = len(raw_tokens)
+    flat_text = "".join(raw_tokens)
+    if n >= count:
+        groups = _token_level(raw_tokens)
+        # 字数允许时子镜字数 max/min ≤ 2，否则退到字符级均分
+        if _ratio(groups) > 2 and len(flat_text) >= 2 * count:
+            alt = _char_level(flat_text)
+            if _ratio(alt) < _ratio(groups):
+                groups = alt
+    else:
+        groups = _char_level(flat_text)
 
     parts: list[Any] = []
     accum_dur = 0.0
@@ -193,7 +225,12 @@ def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
         # 子镜画面描述按镜头序号给出景别递进（避免子镜画面完全相同）
         camera_notes = ["远景交代环境", "中景角色互动", "近景情绪推进", "特写定格收束"]
         note = camera_notes[j % len(camera_notes)]
-        prompt = f"{original_prompt}（分镜{j+1}/{count}，{note}）" if original_prompt else ""
+        gist = clause_text.strip()[:24]
+        prompt = (
+            f"{original_prompt}（分镜{j+1}/{count}，{note}，表现「{gist}」）"
+            if original_prompt and gist
+            else (f"{original_prompt}（分镜{j+1}/{count}，{note}）" if original_prompt else "")
+        )
         sub = _set(plan, "shot_id", sid)
         sub = _set(sub, "duration_s", dur)
         sub = _set(sub, "image_prompt", prompt)

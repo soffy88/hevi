@@ -50,6 +50,41 @@ DEFAULT_TABOO_KEYWORDS: tuple[str, ...] = (
 DURATION_TOLERANCE = 0.5
 # 监督层通过线。
 PASS_SCORE = 80
+# 朗读速度估算（中文 TTS 约 4.5–5.5 字/秒）与单镜时长下限（DRAMAPLAN F2）。
+TTS_CHARS_PER_SEC = 5.0
+MIN_SHOT_DURATION_S = 1.5
+# 规则层硬门：场时长折算语速超过该值（字/秒）即判 scene_too_short（分镜层仍按 TTS_CHARS_PER_SEC 拉长）。
+SCENE_MAX_CHARS_PER_SEC = 7.0
+# 分镜画风默认值：组内默认国风动漫插画，写实真人默认关闭（DRAMAPLAN F5）。
+DEFAULT_STORYBOARD_STYLE = "国风动漫插画风格，非写实"
+# 执行层改稿内容缩水守卫：改后可读字数低于原场该比例即拒收（DRAMAPLAN F3）。
+MIN_REVISION_CONTENT_RATIO = 0.4
+
+_TERMINAL_PUNCT = "。！？!?…」』”\"）)～~"
+_PUNCT_CHARS = set("，,。！？!?；;：:、…「」『』“”\"‘’'（）()《》〈〉—-～~ \t\n")
+
+
+def _ensure_sentence_end(text: str) -> str:
+    """保留原句末标点（问号/感叹号/省略号等），仅在无句末标点时补"。"。"""
+    t = str(text or "").strip()
+    if not t:
+        return ""
+    if t[-1] in _TERMINAL_PUNCT:
+        return t
+    t = t.rstrip("，,、；;：: ")
+    return f"{t}。" if t else ""
+
+
+def _readable_chars(text: str) -> int:
+    return sum(1 for ch in str(text or "") if ch not in _PUNCT_CHARS)
+
+
+def _estimate_read_s(text: str) -> float:
+    return _readable_chars(text) / TTS_CHARS_PER_SEC
+
+
+def _scene_spoken_text(scene: "ScriptScene") -> str:
+    return (scene.narration or "") + "".join(line.text or "" for line in scene.dialogue)
 
 
 # ── 剧本/审稿数据结构 ─────────────────────────────────────────────────────────
@@ -483,6 +518,10 @@ def _revise_single_scene_deterministic(
             text = text[:MAX_DIALOGUE_CHARS]
         if "taboo" in codes and any(k in text for k in taboo_keywords):
             continue
+        if "foreign_token" in codes:
+            text = re.sub(r"[A-Za-z]{3,}", "", text).strip()
+            if not text:
+                continue
         speaker = line.speaker
         # R4：char_id 当 speaker → 映射成角色名
         if speaker in char_id_to_name and speaker not in known_names:
@@ -502,13 +541,15 @@ def _revise_single_scene_deterministic(
     if any(c.startswith("llm:") for c in codes):
         summary = f"{summary}（定性优化）"
 
-    return scene.model_copy(
-        update={
-            "dialogue": lines,
-            "narration": narration,
-            "summary": summary,
-        }
-    )
+    update: dict[str, Any] = {"dialogue": lines, "narration": narration, "summary": summary}
+    if "scene_too_short" in codes:
+        spoken = narration + "".join(line.text for line in lines)
+        need = max(
+            _estimate_read_s(spoken),
+            MIN_SHOT_DURATION_S * max(MIN_SCENE_SHOTS, scene.shot_count),
+        )
+        update["duration_s"] = round(max(scene.duration_s, need * 1.1), 1)
+    return scene.model_copy(update=update)
 
 
 async def revise_episode_script_async(
@@ -556,6 +597,19 @@ async def revise_episode_script_async(
             revised = await _revise_single_scene_via_llm(
                 scene, scene_issues, book, llm, taboo_keywords
             )
+        if revised is not None:
+            before_chars = _readable_chars(_scene_spoken_text(scene))
+            after_chars = _readable_chars(_scene_spoken_text(revised))
+            if after_chars == 0 or (
+                before_chars > 0 and after_chars < before_chars * MIN_REVISION_CONTENT_RATIO
+            ):
+                logger.warning(
+                    "执行层改写第 %s 场内容缩水（%s→%s 字），拒收该改写，走确定性补丁",
+                    scene.scene_no,
+                    before_chars,
+                    after_chars,
+                )
+                revised = None
         if revised is None:
             revised = _revise_single_scene_deterministic(
                 scene, scene_issues, book, taboo_keywords
@@ -772,6 +826,17 @@ def deterministic_checks(
                         scene_no=scene.scene_no,
                     )
                 )
+            # 台词中混入外文单词（LLM 串语种，如 run8 的 "anfangs"）判 error
+            foreign = re.findall(r"[A-Za-z]{3,}", line.text)
+            if foreign:
+                issues.append(
+                    ReviewIssue(
+                        code="foreign_token",
+                        message=f"台词混入外文词 {foreign[:3]}: {line.text[:20]}",
+                        scope=f"scene:{scene.scene_no}",
+                        scene_no=scene.scene_no,
+                    )
+                )
             if any(k in line.text for k in taboo_keywords):
                 issues.append(
                     ReviewIssue(
@@ -781,16 +846,35 @@ def deterministic_checks(
                         scene_no=scene.scene_no,
                     )
                 )
-        # R7 场非空
-        if not scene.dialogue and not scene.narration and not scene.summary:
+        # R7 场非空：摘要不会被朗读，无对白且无旁白即为空场（DRAMAPLAN F3）
+        spoken = _scene_spoken_text(scene)
+        if _readable_chars(spoken) == 0:
             issues.append(
                 ReviewIssue(
                     code="empty_scene",
-                    message="场景无对白/旁白/摘要",
+                    message="场景无可朗读的对白/旁白",
                     scope=f"scene:{scene.scene_no}",
                     scene_no=scene.scene_no,
                 )
             )
+        # F2 场时长下限：场时长需容纳朗读时长，且每镜 ≥ MIN_SHOT_DURATION_S
+        elif scene.duration_s > 0:
+            need = max(
+                _readable_chars(spoken) / SCENE_MAX_CHARS_PER_SEC,
+                MIN_SHOT_DURATION_S * max(MIN_SCENE_SHOTS, scene.shot_count),
+            )
+            if scene.duration_s + 1e-6 < need:
+                issues.append(
+                    ReviewIssue(
+                        code="scene_too_short",
+                        message=(
+                            f"场时长 {scene.duration_s:.1f}s 不足以读完 {_readable_chars(spoken)} 字"
+                            f"/容纳 {scene.shot_count} 镜（至少需 {need:.1f}s）"
+                        ),
+                        scope=f"scene:{scene.scene_no}",
+                        scene_no=scene.scene_no,
+                    )
+                )
         # R2 因果/事件引用
         for eid in scene.event_ids:
             if eid not in known_events:
@@ -1112,126 +1196,184 @@ async def run_three_layer_review(
     )
 
 
+_UNIT_SPLIT_RE = re.compile(r"(?<=[。！？!?…；;，,])")
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？!?…])")
+
+
+def _split_unit_text(text: str) -> tuple[str, str] | None:
+    """在最靠近中点的标点后把一句切成两半（两半都需含可读字）；无合适切点返回 None。"""
+    pieces = [p for p in _UNIT_SPLIT_RE.split(text) if p]
+    if len(pieces) < 2:
+        return None
+    total = len(text)
+    best: tuple[float, int] | None = None
+    acc = 0
+    for i, piece in enumerate(pieces[:-1]):
+        acc += len(piece)
+        left, right = text[:acc], text[acc:]
+        if _readable_chars(left) == 0 or _readable_chars(right) == 0:
+            continue
+        dist = abs(acc - total / 2)
+        if best is None or dist < best[0]:
+            best = (dist, acc)
+    if best is None:
+        return None
+    return text[: best[1]], text[best[1] :]
+
+
+def _plan_scene_shot_counts(scenes: list[ScriptScene], budget: int) -> list[int]:
+    """各场镜头数；超全集预算时从最大的场开始削减（每场至少 1 镜，绝不丢场）。"""
+    counts = [max(MIN_SCENE_SHOTS, s.shot_count) for s in scenes]
+    if budget > 0:
+        while sum(counts) > budget:
+            i = max(range(len(counts)), key=lambda j: counts[j])
+            if counts[i] <= MIN_SCENE_SHOTS:
+                break
+            counts[i] -= 1
+    return counts
+
+
 def script_to_storyboard(
     script: EpisodeScript,
     book: StoryGraph,
     outline_ep: OutlineEpisode | None = None,
+    *,
+    style: str = DEFAULT_STORYBOARD_STYLE,
 ) -> EpisodeStoryboard:
     """从审稿通过的 EpisodeScript 生成镜头级分镜（每镜带 event_id、画面描述、台词/旁白、时长）。
-    镜头数 == 场 shot_count 之和，Σ <= 本集预算（DRAMAPLAN P3）。
+
+    DRAMAPLAN F1/F2/F5：
+    - 剧本每句旁白与对白**全部**按序进入分镜 tts（台词多于镜头时相邻合并，绝不丢弃）；
+    - tts 只放可朗读文本（不含镜头指令、说话人前缀），保留原句末标点；
+    - 每镜时长按字数分配，且 ≥ max(朗读时长, MIN_SHOT_DURATION_S)；
+    - image_prompt 按该镜内容生成，画风来自 `style` 参数（默认国风动漫插画）。
+    镜头数 == 各场 shot_count 之和（超预算时按场削减，不截断丢镜）。
     """
     by_event = {e.event_id: e for e in book.events}
-    # R4：char_id → 角色名映射，避免分镜中出现 C001 等原始 ID
     char_id_to_name = {c.char_id: c.name for c in book.characters}
     known_names = {c.name for c in book.characters}
     target_duration = outline_ep.target_duration_s if outline_ep else script.total_duration()
     shot_budget = outline_ep.shot_budget if outline_ep else script.total_shots()
+    counts = _plan_scene_shot_counts(script.scenes, shot_budget)
+    framing = ["全景交代环境", "中景人物互动", "近景情绪推进", "特写定格细节"]
+
+    def _name(sp: str) -> str:
+        if sp in char_id_to_name and sp not in known_names:
+            return char_id_to_name[sp]
+        return sp
 
     shots: list[EpisodeShot] = []
-    for scene in script.scenes:
-        n_shots = max(MIN_SCENE_SHOTS, scene.shot_count)
+    for scene, n_shots in zip(script.scenes, counts, strict=True):
+        # 1) 可朗读单元：旁白逐句 + 对白逐句（顺序：旁白交代 → 对白）
+        units: list[dict[str, str]] = []
+        for clause in _SENTENCE_SPLIT_RE.split(scene.narration or ""):
+            if _readable_chars(clause):
+                units.append({"speaker": "旁白", "text": clause.strip(), "emotion": ""})
+        for line in scene.dialogue:
+            if _readable_chars(line.text):
+                units.append(
+                    {"speaker": _name(line.speaker), "text": line.text.strip(), "emotion": line.emotion}
+                )
+
+        # 2) 单元少于镜头数：把最长的可切单元在中点标点处一分为二
+        while len(units) < n_shots:
+            order = sorted(range(len(units)), key=lambda i: -_readable_chars(units[i]["text"]))
+            for i in order:
+                halves = _split_unit_text(units[i]["text"])
+                if halves:
+                    left, right = halves
+                    # 左半段是句内片段：保留其原标点（如"，"），不补句号
+                    units[i : i + 1] = [
+                        dict(units[i], text=left, frag="1"),
+                        dict(units[i], text=right),
+                    ]
+                    break
+            else:
+                break
+
+        # 3) 分组：单元多于镜头数时相邻合并（按字数均衡），否则一单元一镜，余下为纯画面镜
+        groups: list[list[dict[str, str]]] = []
+        if len(units) > n_shots:
+            i = 0
+            remaining_chars = sum(max(1, _readable_chars(u["text"])) for u in units)
+            for k in range(n_shots):
+                left_groups = n_shots - k
+                if left_groups == 1:
+                    groups.append(units[i:])
+                    break
+                target = remaining_chars / left_groups
+                g = [units[i]]
+                acc = max(1, _readable_chars(units[i]["text"]))
+                i += 1
+                while i < len(units) - (left_groups - 1):
+                    w = max(1, _readable_chars(units[i]["text"]))
+                    if acc + w / 2 > target:
+                        break
+                    g.append(units[i])
+                    acc += w
+                    i += 1
+                remaining_chars -= acc
+                groups.append(g)
+        else:
+            groups = [[u] for u in units] + [[] for _ in range(n_shots - len(units))]
+
+        # 4) 时长：按朗读时长分配，单镜下限 MIN_SHOT_DURATION_S；场时长不足时以朗读为准拉长
         scene_dur = (
             scene.duration_s
             if scene.duration_s > 0
             else (target_duration / max(1, len(script.scenes)))
         )
-        per_shot_dur = round(scene_dur / n_shots, 2) if n_shots > 0 else 5.0
+        tts_list = [
+            "".join(
+                u["text"].strip() if u.get("frag") else _ensure_sentence_end(u["text"])
+                for u in g
+            )
+            for g in groups
+        ]
+        weights = [max(MIN_SHOT_DURATION_S, _estimate_read_s(t) * 1.1) for t in tts_list]
+        scale = max(1.0, scene_dur / sum(weights)) if weights else 1.0
+        durations = [round(w * scale, 2) for w in weights]
 
-        for j in range(n_shots):
+        for j, (group, tts_text, dur) in enumerate(zip(groups, tts_list, durations, strict=True)):
             shot_id = f"EP{script.ep_number:02d}_SC{scene.scene_no:02d}_SH{j+1:02d}"
-
             if scene.event_ids:
-                eid = scene.event_ids[j % len(scene.event_ids)]
+                eid = scene.event_ids[min(len(scene.event_ids) - 1, j * len(scene.event_ids) // n_shots)]
             elif book.events:
                 eid = book.events[0].event_id
             else:
                 eid = "EVT_000"
-
             ev = by_event.get(eid)
 
-            speaker = ""
-            tts_text = ""
+            speakers: list[str] = []
+            for u in group:
+                if u["speaker"] != "旁白" and u["speaker"] not in speakers:
+                    speakers.append(u["speaker"])
+            speaker = "、".join(speakers) if speakers else ("旁白" if group else "")
 
-            def _clean_tts(text: str) -> str:
-                t = str(text or "").strip().rstrip("。，,；;！!？?")
-                return f"{t}。" if t else ""
-
-            if scene.dialogue:
-                if j < len(scene.dialogue):
-                    line = scene.dialogue[j]
-                    # R4：把 char_id 映射成角色名
-                    sp = line.speaker
-                    if sp in char_id_to_name and sp not in known_names:
-                        sp = char_id_to_name[sp]
-                    speaker = sp
-                    clean_txt = str(line.text or "").strip().rstrip("。，,；;！!？?")
-                    tts_text = f"{speaker}：{clean_txt}。" if speaker else f"{clean_txt}。"
-                else:
-                    # R4：台词不足时补旁白/场景描述，避免循环复用相同台词。
-                    # 多个额外镜头按序号推导镜头动作，保证相邻镜头台词不同
-                    speaker = "旁白"
-                    filler_notes = ["镜头拉开", "人物近景", "动作特写", "环境细节"]
-                    extra_idx = j - len(scene.dialogue)
-                    fill = filler_notes[extra_idx % len(filler_notes)]
-                    if scene.narration and extra_idx == 0:
-                        tts_text = _clean_tts(scene.narration)
-                    elif scene.summary and extra_idx == 0:
-                        tts_text = f"{fill}：{_clean_tts(scene.summary)}"
-                    elif scene.summary:
-                        tts_text = f"{fill}：{_clean_tts(scene.summary)}"
-                    elif ev and ev.summary:
-                        tts_text = f"{fill}：{_clean_tts(ev.summary)}"
-                    elif scene.narration:
-                        tts_text = f"{fill}：{_clean_tts(scene.narration)}"
-                    tts_text = _clean_tts(tts_text)
-            else:
-                # 无对白：分句分配或差异化镜头描述，避免重复
-                speaker = "旁白"
-                filler_notes = ["镜头拉开", "人物近景", "动作特写", "环境细节"]
-                fill = filler_notes[j % len(filler_notes)]
-                narr_clauses = [
-                    c for c in re.split(r"(?<=[。！？!?\n])", scene.narration or "") if c.strip()
-                ]
-                if narr_clauses and j < len(narr_clauses):
-                    tts_text = _clean_tts(narr_clauses[j])
-                elif j == 0 and scene.narration:
-                    tts_text = _clean_tts(scene.narration)
-                elif scene.summary:
-                    tts_text = f"{fill}：{_clean_tts(scene.summary)}"
-                elif ev and ev.summary:
-                    tts_text = f"{fill}：{_clean_tts(ev.summary)}"
-                elif scene.narration:
-                    tts_text = f"{fill}：{_clean_tts(scene.narration)}"
-                tts_text = _clean_tts(tts_text)
-
-            prompt_parts = []
-            if scene.location:
-                prompt_parts.append(f"场景：{scene.location}")
-            elif ev and ev.location:
-                prompt_parts.append(f"场景：{ev.location}")
-
-            if speaker and speaker != "旁白":
-                sp_name = char_id_to_name.get(speaker, speaker)
-                prompt_parts.append(f"出场角色：{sp_name}")
+            prompt_parts: list[str] = []
+            loc = scene.location or (ev.location if ev else "")
+            if loc:
+                prompt_parts.append(f"场景：{loc}")
+            if speakers:
+                prompt_parts.append(f"出场角色：{'、'.join(speakers)}")
             elif ev and ev.actors:
-                actor_names = [char_id_to_name.get(a, a) for a in ev.actors]
-                prompt_parts.append(f"出场角色：{'、'.join(actor_names)}")
-
-            action_desc = scene.summary or (ev.summary if ev else "") or "人物特写与情境展开"
-            prompt_parts.append(f"画面：{action_desc}")
-            if j == 0:
-                prompt_parts.append("全景交代环境")
-            elif j == n_shots - 1:
-                prompt_parts.append("特写定格情绪")
+                prompt_parts.append(
+                    "出场角色：" + "、".join(char_id_to_name.get(a, a) for a in ev.actors)
+                )
+            if speakers:
+                emo = next((u["emotion"] for u in group if u["emotion"]), "")
+                gist = "".join(u["text"] for u in group if u["speaker"] != "旁白")[:28].rstrip("，,；;、 ")
+                prompt_parts.append(
+                    f"画面：{'、'.join(speakers)}{emo + '地' if emo else ''}说「{gist}」时的神情与动作"
+                )
+            elif group:
+                prompt_parts.append(
+                    f"画面：{''.join(u['text'] for u in group)[:60].rstrip('，,。！？!?；;…、 ')}"
+                )
             else:
-                prompt_parts.append("中景角色对峙与互动")
-
-            image_prompt = "，".join(prompt_parts) + "。写实短剧风格，电影级光影。"
-
-            if j == n_shots - 1 and n_shots > 1:
-                cur_dur = round(max(1.0, scene_dur - per_shot_dur * (n_shots - 1)), 2)
-            else:
-                cur_dur = per_shot_dur
+                prompt_parts.append(f"画面：{scene.summary or (ev.summary if ev else '') or '环境空镜'}")
+            prompt_parts.append(framing[min(len(framing) - 1, j * len(framing) // max(1, n_shots))])
+            image_prompt = "，".join(p for p in prompt_parts if p) + f"。{style}。"
 
             shots.append(
                 EpisodeShot(
@@ -1240,13 +1382,10 @@ def script_to_storyboard(
                     event_id=eid,
                     image_prompt=image_prompt,
                     tts_text=tts_text,
-                    duration_s=cur_dur,
+                    duration_s=dur,
                     speaker=speaker,
                 )
             )
-
-    if shot_budget > 0 and len(shots) > shot_budget:
-        shots = shots[:shot_budget]
 
     return EpisodeStoryboard(
         ep_number=script.ep_number,
@@ -1255,6 +1394,36 @@ def script_to_storyboard(
         shot_budget=shot_budget,
         shots=shots,
     )
+
+
+def storyboard_coverage(script: EpisodeScript, storyboard: EpisodeStoryboard) -> dict[str, Any]:
+    """QA：剧本旁白/对白在分镜 tts 中的覆盖率（按可读字逐句顺序匹配）。"""
+    def _norm(t: str) -> str:
+        return "".join(ch for ch in str(t or "") if ch not in _PUNCT_CHARS)
+
+    missing: list[str] = []
+    total = 0
+    for scene in script.scenes:
+        joined = _norm("".join(s.tts_text for s in storyboard.shots if s.scene_no == scene.scene_no))
+        pos = 0
+        sentences = [c for c in _SENTENCE_SPLIT_RE.split(scene.narration or "") if _norm(c)]
+        sentences += [line.text for line in scene.dialogue if _norm(line.text)]
+        for sent in sentences:
+            total += 1
+            idx = joined.find(_norm(sent), pos)
+            if idx < 0:
+                idx = joined.find(_norm(sent))
+                if idx < 0:
+                    missing.append(f"SC{scene.scene_no:02d}:{sent[:20]}")
+                    continue
+            pos = idx + len(_norm(sent))
+    covered = total - len(missing)
+    return {
+        "total_lines": total,
+        "covered_lines": covered,
+        "coverage": (covered / total) if total else 1.0,
+        "missing": missing,
+    }
 
 
 def write_review_log(log: ReviewLog, path: str | Path) -> Path:
@@ -1313,6 +1482,7 @@ __all__ = [
     "review_episode",
     "run_three_layer_review",
     "script_to_storyboard",
+    "storyboard_coverage",
     "supervisor_layer",
     "write_review_log",
 ]
