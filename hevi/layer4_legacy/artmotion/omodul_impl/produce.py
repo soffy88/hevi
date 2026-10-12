@@ -36,11 +36,13 @@ def sanitize_latex(text: str) -> str:
     if not text:
         return ''
     out = text
+    # First apply named-command → Unicode replacements while the braces are intact
     for cmd, replacement in SAFE_MATH_MAP.items():
         out = out.replace(cmd, replacement)
+    # Remove remaining backslash-letter sequences (unknown LaTeX commands)
     out = re.sub(r'\\[a-zA-Z]+', '', out)
-    out = out.replace('{', '').replace('}', '')
-    out = out.replace('\\', '')
+    # Finally strip backslashes and curly braces
+    out = out.replace('\\', '').replace('{', '').replace('}', '')
     return out.strip()
 
 
