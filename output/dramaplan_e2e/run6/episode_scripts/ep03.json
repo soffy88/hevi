@@ -8,23 +8,18 @@
       "event_ids": [
         "CH03E001"
       ],
-      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横。",
+      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横",
       "narration": "",
       "dialogue": [
         {
           "speaker": "沈砚之",
-          "text": "父亲，晚儿回来了。",
-          "emotion": "平静"
+          "text": "父亲，儿媳苏晚已至，玉玦合璧。",
+          "emotion": "冷峻"
         },
         {
           "speaker": "沈崇山",
-          "text": "玉玦……是她留下的？",
-          "emotion": "激动"
-        },
-        {
-          "speaker": "苏晚",
-          "text": "娘的东西，我带回来了。",
-          "emotion": "柔和"
+          "text": "是我对不住你们兄妹。",
+          "emotion": "悔恨"
         }
       ],
       "shot_count": 3,
@@ -32,49 +27,56 @@
     },
     {
       "scene_no": 2,
-      "location": "沈府书房",
+      "location": "沈府祖堂",
       "event_ids": [
         "CH03E002"
       ],
-      "summary": "沈崇山忏悔对兄妹的亏欠，沈砚之扶起父亲。",
+      "summary": "沈崇山忏悔，沈砚之扶起父亲，苏晚跪拜母亲牌位",
       "narration": "",
       "dialogue": [
         {
-          "speaker": "沈崇山",
-          "text": "是我对不住你们兄妹。",
-          "emotion": "悔恨"
+          "speaker": "沈砚之",
+          "text": "父亲请起，儿已尽孝。",
+          "emotion": "坚定"
         },
         {
-          "speaker": "沈砚之",
-          "text": "父亲请起，儿不怪您。",
-          "emotion": "温和"
+          "speaker": "沈崇山",
+          "text": "我愧对天地，更愧对你们。",
+          "emotion": "自责"
         }
       ],
-      "shot_count": 2,
-      "duration_s": 10.0
+      "shot_count": 3,
+      "duration_s": 12.0
     },
     {
       "scene_no": 3,
-      "location": "沈府祖堂廊下",
+      "location": "沈府祖堂",
       "event_ids": [
         "CH03E003"
       ],
-      "summary": "苏晚跪拜母亲牌位称归来，福伯在廊下抹泪。",
+      "summary": "苏晚在母亲牌位前轻声说：娘，我回来了",
       "narration": "",
       "dialogue": [
         {
           "speaker": "苏晚",
           "text": "娘，我回来了。",
-          "emotion": "悲伤"
-        },
-        {
-          "speaker": "福伯",
-          "text": "小姐终于回家了……",
-          "emotion": "感动"
+          "emotion": "柔情"
         }
       ],
       "shot_count": 2,
-      "duration_s": 10.0
+      "duration_s": 8.0
+    },
+    {
+      "scene_no": 4,
+      "location": "沈府院外",
+      "event_ids": [
+        "CH03E004"
+      ],
+      "summary": "雪停了，东方既白",
+      "narration": "雪停霁色，天光渐亮，万物复苏。",
+      "dialogue": [],
+      "shot_count": 2,
+      "duration_s": 6.0
     }
   ],
   "characters_present": [

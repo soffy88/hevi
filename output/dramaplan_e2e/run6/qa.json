@@ -18,44 +18,44 @@
   "storyboard_shot_count_within_budget": true,
   "outline_events_covered": true,
   "memory_db_created": true,
-  "llm_calls": 23,
+  "llm_calls": 25,
   "passed": true,
   "artifacts": {
     "event_graph.json": {
-      "sha256": "58744b4029c140427f94560891ded1348eb6d28a05d10da40a39d8317d8e7667",
-      "bytes": 12918
+      "sha256": "8b1b9d3ddd30403843fe61d0a42ea9c2784a26e9fc23e0db6fd86c98f88cbf90",
+      "bytes": 14405
     },
     "adaptation_outline.json": {
-      "sha256": "f0fa5d7f1e6e3a91dc440ee323f3f00c6f91a7d36d0068b3ff6dcadc10b26766",
-      "bytes": 1636
+      "sha256": "5d1e354822aab46bee0315e9fc949d0fd2d9c48a91e7b998b1fd7cb275f16bca",
+      "bytes": 1720
     },
     "review_log.json": {
-      "sha256": "6004893df57fb9bf155bb739a7d8f8f3da50f3c18d3fa8dddca023bfd13779ba",
-      "bytes": 44738
+      "sha256": "3c74f61f99c9773be3503a9ba73c81ad5053307677a34cf6e1ef6d78ae99b009",
+      "bytes": 51966
     },
     "episode_scripts/ep01.json": {
-      "sha256": "60e1b04127df7e999eceab73442464403de246f5c87fb4124bec540f53a87c88",
-      "bytes": 2178
+      "sha256": "0dc6d042fc47a6037615d8032fe397c19f843f7208351bb55ce58a69740d12f1",
+      "bytes": 3624
     },
     "episode_scripts/ep02.json": {
-      "sha256": "e219ed6b624427192abac075904b21daf9330a0b6cf0869c68cbd1425082739e",
-      "bytes": 2530
+      "sha256": "2cdb7973fa4e6e04c899296c9ee608d0ad23a9b3fb1df972f42368c3aadf5286",
+      "bytes": 3644
     },
     "episode_scripts/ep03.json": {
-      "sha256": "219892a27b815a3e850f9391a04ae075675ea27331dddf485e74aae17e7890d5",
-      "bytes": 1982
+      "sha256": "f9be551f0987e7d45f08bb7c8645aee8571d721a33e6244b8f2cd324d899a27c",
+      "bytes": 2027
     },
     "storyboards/ep01.json": {
-      "sha256": "5d4eb70626e05f6c9f60433854e7683ba737fdab7c75b02005fbafdec213e369",
-      "bytes": 6416
+      "sha256": "d22257bb8f38e2043450d9af302e850c81c7c63e6e2fc1a71235b525814dd999",
+      "bytes": 7272
     },
     "storyboards/ep02.json": {
-      "sha256": "9d35380b882df896678fbd6d7e3804570b8a05b97c8931783df8517d18832474",
-      "bytes": 7354
+      "sha256": "cffe2855ebd49022e6f8384bd354314da778b4f5fdb2d8369f5d963993de6302",
+      "bytes": 7587
     },
     "storyboards/ep03.json": {
-      "sha256": "67f9f0788dbc21914ba87a3f8a9f966cb8aa863b21b295da48a5f40733bf42c7",
-      "bytes": 3100
+      "sha256": "f6154f78dda79ce48a93f52023994813db895cf43c5d0eb430af99c02bcba28e",
+      "bytes": 4424
     }
   }
 }
