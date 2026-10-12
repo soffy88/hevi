@@ -263,7 +263,14 @@ def _measure_slideshow(
     import dataclasses as _dc
     risk = _dc.replace(risk, is_cut_anomaly=is_cut_anomaly)
     if is_cut_anomaly:
-        risk = _dc.replace(risk, reasons=risk.reasons + ("切片比例异常高(≈100%切点)",))
+        # Cut-anomaly (≈100% cuts) means the clip is visually broken — no motion
+        # continuity at all.  This must force a red verdict; adding only a reason
+        # string lets the clip pass as green/amber, which is wrong (FIX #7).
+        risk = _dc.replace(
+            risk,
+            verdict="red",
+            reasons=risk.reasons + ("切片比例异常高(≈100%切点) — 判红",),
+        )
     cuts = cuts_from_segments(segments=segments, deltas=deltas, motion_floor=motion_floor)
     return risk.to_dict(), measured, tuple(missing), cuts
 

@@ -25,7 +25,12 @@ FLAT_STDEV_LUMA = 3.0
 
 #: Spatial quality thresholds for 破图/花屏 detection.
 NOISE_LOCAL_DIFF_FLOOR = 30.0  # local_diff above this suggests noise
-BLOCKINESS_FLOOR = 40.0        # periodic 16px discontinuity threshold
+#: Blockiness: ratio of 16px/8px grid boundary-pair diff to interior diff.
+#: Real macroblock artefacts produce a ratio ≫ 1; clean frames are near 1.
+BLOCKY_RATIO_FLOOR = 1.8
+#: Kept for backwards-compatibility with imports/tests; no longer used by
+#: frame_stats (the ratio-based detector supersedes the absolute threshold).
+BLOCKINESS_FLOOR = 40.0
 EDGE_DENSITY_FLOOR = 0.50      # fraction of strong edges (noise has ~1.0)
 MIN_SPATIAL_VARIATION = 5.0    # minimum stdev for non-flat frame
 
@@ -260,7 +265,6 @@ def frame_stats(
     ratio16 = b16 / max(i16, 1e-9)
     ratio8 = b8 / max(i8, 1e-9)
     blockiness = round(max(ratio16, ratio8), 3)
-    BLOCKY_RATIO_FLOOR = 1.8
     is_blocky = bool(blockiness >= BLOCKY_RATIO_FLOOR)
 
     # Noise: high local-diff AND high edge density together.
@@ -407,6 +411,7 @@ def probe_frame_count(*, path: str | Path) -> int:
 __all__ = [
     "BLACK_MEAN_LUMA",
     "NOISE_LOCAL_DIFF_FLOOR",
+    "BLOCKY_RATIO_FLOOR",
     "BLOCKINESS_FLOOR",
     "EDGE_DENSITY_FLOOR",
     "MIN_SPATIAL_VARIATION",
