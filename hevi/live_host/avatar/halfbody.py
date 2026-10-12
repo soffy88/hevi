@@ -63,6 +63,36 @@ def _session(name: str):
     return ort.InferenceSession(str(path), sess_options=o, providers=["CPUExecutionProvider"])
 
 
+
+MOUTH_MODE = os.environ.get("HEVI_LIVE_MOUTH", "v2")
+_EMASK: dict = {}
+
+
+def mouth_ellipse(*, w: int, h: int) -> np.ndarray:
+    """只覆盖嘴和上下巴的椭圆软遮罩，脸颊/下颌保留原片清晰像素（v2）。"""
+    key = (w, h)
+    if key not in _EMASK:
+        import cv2
+        ys = (np.arange(h)[:, None] / h - 0.74) / 0.25
+        xs = (np.arange(w)[None, :] / w - 0.5) / 0.33
+        m = np.clip((1.0 - (xs**2 + ys**2)) / 0.45, 0, 1).astype(np.float32)
+        k = max(3, (min(w, h) // 12) | 1)
+        _EMASK[key] = cv2.GaussianBlur(m, (k, k), 0)[..., None]
+    return _EMASK[key]
+
+
+def enhance_mouth(gen: np.ndarray, orig: np.ndarray, m: np.ndarray) -> np.ndarray:
+    """v2：反锐化 + 颜色对齐原片，减轻 96px 放大后的糊感与色差。gen/orig float32 HxWx3。"""
+    import cv2
+    blur = cv2.GaussianBlur(gen, (0, 0), 1.6)
+    sharp = gen + 0.9 * (gen - blur)
+    w = m[..., 0] > 0.3
+    if w.sum() > 20:
+        gm, gs = sharp[w].mean(0), sharp[w].std(0) + 1e-3
+        om, os_ = orig[w].mean(0), orig[w].std(0) + 1e-3
+        sharp = (sharp - gm) * np.clip(os_ / gs, 0.8, 1.25) + om
+    return np.clip(sharp, 0, 255)
+
 def load_wav16k(path: Path) -> np.ndarray:
     raw = subprocess.run(
         [FFMPEG, "-v", "error", "-i", str(path), "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"],
@@ -196,7 +226,7 @@ class HalfBodyAvatar:
                 hh = y2 - y1
                 bx = (int(max(0, x1)), int(max(0, y1)), int(min(W, x2)), int(min(H, y2 + 0.10 * hh)))
                 boxes.append(bx)
-                crop = Image.fromarray(clip.frames[i][bx[1] : bx[3], bx[0] : bx[2]]).resize((FACE, FACE), Image.BILINEAR)
+                crop = Image.fromarray(clip.frames[i][bx[1] : bx[3], bx[0] : bx[2]]).resize((FACE, FACE), Image.BILINEAR if MOUTH_MODE == "v1" else Image.LANCZOS)
                 crops.append(np.asarray(crop, dtype=np.float32)[..., ::-1] / 255.0)
             ref = np.stack(crops)
             masked = ref.copy()
@@ -208,9 +238,12 @@ class HalfBodyAvatar:
                 fr = clip.frames[i].copy()  # 只把嘴部框转 float，整帧保持 uint8
                 bx = boxes[k]
                 fw, fh = bx[2] - bx[0], bx[3] - bx[1]
-                gen = np.asarray(Image.fromarray(np.clip(preds[k] * 255, 0, 255).astype(np.uint8)).resize((fw, fh), Image.BICUBIC), dtype=np.float32)
-                m = mouth_mask(w=fw, h=fh)[..., None]
+                v2 = MOUTH_MODE != "v1"
+                gen = np.asarray(Image.fromarray(np.clip(preds[k] * 255, 0, 255).astype(np.uint8)).resize((fw, fh), Image.LANCZOS if v2 else Image.BICUBIC), dtype=np.float32)
+                m = mouth_ellipse(w=fw, h=fh) if v2 else mouth_mask(w=fw, h=fh)[..., None]
                 orig = fr[bx[1] : bx[3], bx[0] : bx[2]].astype(np.float32)
+                if v2:
+                    gen = enhance_mouth(gen, orig, m)
                 blend = orig * (1 - m) + gen * m
                 fr[bx[1] : bx[3], bx[0] : bx[2]] = np.clip(blend, 0, 255).astype(np.uint8)
                 self.stats["mouth"].append(float(np.mean(np.abs(blend[fh // 2 :] - orig[fh // 2 :]))))
