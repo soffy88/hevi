@@ -80,7 +80,7 @@ class EngineConfig:
 
     # ollama
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3.2:3b"
+    ollama_model: str = "xiaoya-qwen3-4b"
     persona: str = "小雅"
     max_reply_chars: int = 120
 

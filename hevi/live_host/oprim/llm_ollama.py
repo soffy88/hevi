@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Iterator
 
@@ -11,6 +12,17 @@ import httpx
 from hevi.live_host.schemas import Engine
 
 logger = logging.getLogger(__name__)
+
+# 微调模型偶尔吐出的特殊标记（<tool_call>/<think> 等）与夹杂的英文碎片，播报前剔除
+_TAG = re.compile(r"</?\s*(tool_call|tool_response|think)\s*>|<\|[^|>]*\|>")
+_LATIN = re.compile(r"(?<![A-Za-z])(?!AI(?![A-Za-z]))[A-Za-z_][A-Za-z_]*")
+
+
+def clean_text(t: str) -> str:
+    t = _TAG.sub("", t)
+    t = _LATIN.sub("", t)
+    t = re.sub(r"[\u3040-\u30ff]+", "", t)  # 偶发日文假名
+    return t
 
 SYSTEM_PROMPT = (
     "你是{persona}，一个亲切、专业、幽默的中文直播主持人（赛博小雅）。"
@@ -32,7 +44,7 @@ class OllamaLLM(Engine):
     def __init__(
         self,
         base_url: str = "http://localhost:11434",
-        model: str = "llama3.2:3b",
+        model: str = "xiaoya-qwen3-4b",
         persona: str = "小雅",
         max_reply_chars: int = 120,
     ) -> None:
@@ -83,6 +95,9 @@ class OllamaLLM(Engine):
                     if not piece:
                         continue
                     buffer += piece
+                    if "<" in buffer and ">" not in buffer[buffer.rfind("<"):]:
+                        continue  # 可能是被切开的特殊标记，等它收齐
+                    buffer = clean_text(buffer).lstrip()
                     while True:
                         idx = next((i for i, c in enumerate(buffer) if c in punct), None)
                         if idx is None:
@@ -91,7 +106,7 @@ class OllamaLLM(Engine):
                         buffer = buffer[idx + 1 :]
                         if sentence:
                             yield sentence
-        tail = buffer.strip()
+        tail = clean_text(buffer).strip()
         if tail:
             yield tail
 
