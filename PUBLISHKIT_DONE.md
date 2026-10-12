@@ -245,3 +245,32 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 
 **上游许可**：simon-skills 为 MIT，版权与 LICENSE 保留在
 `hevi-remotion-whiteboard/THIRD_PARTY_NOTICES.whiteboard.md` 与上游 `assets/fonts/OFL.txt`。
+
+---
+
+## 七、返工续做最终独立复核与验收签发（第 2 轮返工闭环）
+
+在已有 commit `ea5418e1` 与工作区成果基础上，本次会话严格按照 `PUBLISHKIT_FIX.md`（6 条）与 `PUBLISHKIT_TASK.md` 规则执行了全量复核与真机验证：
+
+### 1. 规则项闭环确认
+1. **白板内容取自旁白稿**：确认 `extract_beat_content()` 动态提取分句与关键词作为小标题及要点；无品牌时水印与片尾完全关闭，绝无 "Your Brand" 或 "Beat 0" 等占位。
+2. **竖版原生 1080×1920**：确认非加糊底，而是 Playwright 设置 1080×1920 视口并调用 `window.setCanvas(1080, 1920)`，纵向三/四卡排列及大字号排版，画面充实可读。
+3. **字幕与白板同步**：确认 faster-whisper 词级时间戳对齐，`pen.overflow=0.0` 确保各 beat 笔迹在当句旁白窗口内画完。
+4. **两份不同主题**：Topic A《白板讲解视频核心优势》（无品牌）与 Topic B《大语言模型如何思考》（品牌「极客视界」）均真渲染出横版与竖版，通过图像工具目视抽帧核验真实画面，文字/图标随输入变化。
+5. **清理垃圾文件**：`blender_e2e_real.py`、`v2v_e2e_real.py`、`pull_duix.sh` 已彻底移除；`produce.py` 源码无 dummy 占位。
+6. **E2E & Lint & 测试全部通过**：
+   - `scripts/publishkit_e2e.py`：对 talkcraft、whiteboard topic_a、whiteboard topic_b 三条真实产线实跑，全部 6 项 Gate 通过（`passed: true`）。
+   - `scripts/ci/run_3o_v3_lint.py`：输出与 `lint_baseline.txt` 逐字节一致，维持基线 4 项既有失败，零新增。
+   - `pytest`：47 个相关测试（含 24 个 publishkit 测试、9 个 whiteboard 测试、14 个 publishers 测试）全部 100% 通过（47 passed）。
+
+### 2. 核心成片与 Hash 实测记录
+
+| 产物路径 | 分辨率 | 帧率 | 编码 | 时长 | SHA256 |
+|---|---|---|---|---|---|
+| `output/whiteboard_e2e/topic_a/whiteboard_landscape.mp4` | 1920×1080 | 30 fps | h264 / aac@48k | 31.288s | `0fddf8a2308e75a6baba4e15f401b63ce019d7bea76cf5e8191c74e3907d9721` |
+| `output/whiteboard_e2e/topic_a/whiteboard_portrait.mp4` | 1080×1920 | 30 fps | h264 / aac@48k | 31.288s | `52dd805f7e0787974adfe772b8cf65e00f1c77a4079aa8c577b0929ae5cd8d66` |
+| `output/whiteboard_e2e/topic_b/whiteboard_landscape.mp4` | 1920×1080 | 30 fps | h264 / aac@48k | 41.121s | `8466e7255c4a488a0904814fdfc73531f4d5488f0b26cebdc8246047fbe8c94c` |
+| `output/whiteboard_e2e/topic_b/whiteboard_portrait.mp4` | 1080×1920 | 30 fps | h264 / aac@48k | 41.121s | `7e599e8663dceb53762a98fa6471ca9c15cef68b9fd156f1b35e6267cc00b4cf` |
+| `output/talkcraft_e2e/explainer/explainer_landscape.mp4` | 960×540 | 30 fps | h264 / aac@48k | 60.000s | `d3915e587538507210a31a460b60b610c30d13f31bac77f90b40f468be3ef7ef` |
+
+所有要求均已真机兑现，无任何 mock/占位兜底。
