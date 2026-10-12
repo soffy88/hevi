@@ -1,71 +1,30 @@
-# DRAMAPLAN_FIX（审核方首轮独立核验，2026-10-12）— 不通过，返工
+# DRAMAPLAN_FIX 第三轮（审核方独立核验 @32ac9d98，2026-10-12）— 不通过，返工
 
-核验对象：feat/dramaplan-3o @8970bd0d（基线 98e216af）。
-已确认通过、**不要改坏**的部分：新增+旧测试 114 passed；3O lint 仍是基线 4 项失败、无新增；
-E2E 只走 NIM 免费通道；E2E 路径无 mock/placeholder；三层审稿的确定性规则确实能拒稿；
-bug2 阈值尺度校准（0.75→0.35）与 `select_rework_shots`/`full_rework` 合理；clean-room 抽查无问题。
+已确认通过、**不要改坏**：
+- P1 真实 orchestrator 路径（审核方用 orchestrate_longvideo 实调，仅替换上游 shot generator=每章 5 镜）：30/60/120s → 6/12/24 镜，严格单调；archetype 1-5min 未设时长 → 按 180s 得 36 镜；storyboard_planner 收到 shots_per_scene_min/max。
+- P2 大纲每集 12、Σ=36=total；P3 storyboards 每镜 event_id 均在图内、镜头数=Σscene.shot_count≤预算；P5 chapters 用 memory_store.by_key 检索前文摘要注入 prompt；
+- 测试 206 passed（test_director_verdict 需 PATH 含 ffmpeg）；3O lint=基线 4 项；AGPL 长行比对仅样板代码。
 
-下面每一条都必须修，修完在 DRAMAPLAN_DONE.md 里逐条写“如何修的 + 证据（测试名/命令输出）”。
-
-## P1. bug1 没有真修好：时长只能“往下压”，不能“往上加”，60s 与 120s 实际镜头数相同
-- `longvideo_orchestrator._counting_shot_gen_fn` 只在 `len(plans) > 每章预算` 时 `fit_shot_plans_to_budget` 合并，
-  从不增加镜头。上游 storyboard 每章典型 ~5 镜（STATUS 记录“收敛到约 10 镜”）→ 30s 被压到 6，
-  但 60s(预算 12) 和 120s(预算 24) 都还是 ~10 镜，300s 也还是 ~10 镜。“镜头数随时长单调增加”在真实路径上不成立。
-- `tests/test_shot_budget.py::test_shot_count_monotonic_across_durations_after_fit` 用人造的 20 镜输入，
-  恰好掩盖了这个问题；且没有任何测试走 orchestrator 路径。
-- 要求：
-  1. 在 hevi 侧实现“不足预算时补足/扩展”：例如把预算传给上游可控参数
-     （上游 `oskill.storyboard_planner(shots_per_scene_min, shots_per_scene_max)` 就是现成的杠杆——
-     在 hevi 内包一层调用或在 `_counting_shot_gen_fn` 前重分配），或在 hevi 侧把长镜头按时长拆分成多镜。
-     **仍然禁止修改 site-packages。**
-  2. 加一个走 `_counting_shot_gen_fn`/orchestrator 真实调用链的测试（fake 上游 storyboard，固定每章 5 镜），
-     断言 target_duration_s=30/60/120 时最终镜头数严格单调递增且每个都落在 `shot_budget_for_duration` 预算内（允许 ±章数 的取整误差，写明）。
-  3. 未显式设 `target_duration_s` 时（按 archetype 推导的时长，如 1-5min→180s）也应套用同一预算，或在 DONE 写明为何不套。
-
-## P2. 改编大纲的镜头预算自相矛盾
-- `build_adaptation_outline`：`total_shot_budget = 集数 × shot_budget_for_duration(每集时长)`（60s→36），
-  但每集 `shot_budget = shot_budget_per_chapter(每集时长)`（60s→6，这是“上游每章”预算，不是“每集”预算），
-  run1–run4 的 adaptation_outline.json 都是 total=36、各集合计 18。
-- 要求：每集预算用 `shot_budget_for_duration(episode_duration_s)`，保证 Σ各集 == total（或 ≤ 且写明原因）；
-  加单测断言这条不变式；重跑 E2E 产出新 run。
-
-## P3. 事件图没有驱动分镜（只到“分场稿”，且没接进任何生产路径）
-- `build_book_event_graph / build_adaptation_outline / outline_to_story / run_three_layer_review`
-  在 `hevi/` 内**零调用方**，只在 `scripts/e2e/dramaplan_e2e.py` 和单测里用；`outline_to_story→season_planner` 只在单测里验证。
-- episode_scripts 只有场级 `shot_count` 数字，没有镜头级分镜（每镜画面描述/台词/时长/对应事件ID）。
-- 要求：
-  1. 从审稿通过的 EpisodeScript 生成镜头级分镜（每镜带 `event_id`、画面描述、台词/旁白、时长；
-     镜头数=该场 shot_count，Σ = 本集预算内），可直接转成上游 `oskill._schemas.ShotPlan` 列表或 season_planner/dispatch 能消费的结构。
-  2. 在短剧通道接一个真实入口（例如 `season_planner`/`hevi/shortdrama` 的“长篇模式”函数或 CLI 选项）：
-     长篇文本 → 事件图 → 大纲 → 三层审稿 → 分镜，一条链调用；不要求出视频、不要调付费视频供应商。
-  3. E2E 新增 `storyboards/epXX.json`，qa.json 增加脚本计算的检查：每个镜头的 event_id 都在事件图内、
-     本集镜头数 == Σscene.shot_count 且 ≤ 本集预算、每集覆盖其大纲事件。
-
-## P4. 三层审稿的“返修”只是确定性打补丁，LLM 监督意见永远不会被处理；日志字段有误导
-- `revise_episode_script` 只做截断台词、换说话人、删禁忌句、等比缩时长/镜头数；执行层从不带着问题列表再调 LLM 改稿。
-  LLM 监督意见一律 warning、不进硬门、也从不触发返修，所以 run3/run4 里“逻辑连贯/人物弧光”等问题四轮都原样留着。
-- `RoundRecord.revised_scenes` 取的是**上一轮所有带 scene_no 的 issue（含 LLM warning）**，不是真正被修改的场：
-  run3 EP1 round1 记 revised_scenes=[1,2]，实际触发返修的是整集级 `duration_out_of_range`。
-- 要求：
-  1. 执行层返修：对被点名的场（规则 error 或 LLM 标 error 的定性问题），带问题列表**调 LLM 只重写这些场**，
-     解析失败再回退确定性补丁；未点名场保持对象/哈希不变（保留现有 diff 断言）。
-  2. 允许 LLM 监督给出 `severity=error` 的定性问题进入返修回路（硬门仍以规则为准，或设一个可配置开关，写明）。
-  3. `revised_scenes` 改为由 scene_diffs 实际变化的场推出；再加一个字段记录“触发返修的 issue codes”。
-  4. 单测：fake LLM 第一轮返回带 error 的定性问题 → 执行层只对该场再次调用 LLM（断言调用的 prompt 只含该场）→ 第二轮通过。
-  5. E2E 至少一集出现“LLM 定性问题 → LLM 改场 → 再审”的真实记录。
-
-## P5. 长上下文记忆是摆设
-- `extract_chapter_graphs` 只 `memory_store.remember(...)` 写入，从不检索；E2E 也没传 memory_store。chapters.py 文档写“按需召回”与事实不符。
-- 要求：逐章抽取时检索前文章节摘要/已知角色表（`hevi/memory/store.py`）注入 prompt，用于跨章人物合并与因果；E2E 启用它；
-  单测断言第 N 章的 prompt 含第 N-1 章摘要且不含全文。
-
-## P6. 报告失实处要更正
-- DONE 把 `CH01E002.effects=["CH02E001"]` 当成“跨章因果边真实存在”的证据，但这是 `merge_chapter_graphs` 机械缝合（上一章末事件→下一章首事件），不是抽取结果。
-  要么让 LLM 基于前文摘要真正判断跨章因果（配合 P5），要么在 DONE 和 event_graph.json 里给缝合边打标（如 `causal_source: "stitched"`）。
-- bug2 测试名/文档写“provider 调用次数=3”，实际是 6 次底层调用（每镜 2 变体）、断言的是镜头集合。按任务书改成断言“被调用的镜头数=3 且非目标镜头调用次数=0”，并在 DONE 如实写 6 次底层调用的原因。
-- 任务书提到 `task_service.py` 约 394 行的返工入口：确认该路径也走镜头级挑选（或说明它不是自动返工入口）。
-
+## R1（阻断）审稿回路被提示词操纵，"返修—再审"是预设结果
+- `review.py::_SUPERVISOR_PROMPT_INITIAL` 写着「**务必**将最突出的一处场次问题定为 "error"」——强制制造错误以保证出现返修轮；
+  `_SUPERVISOR_PROMPT_REVISED` 的 JSON 模板只允许 `"severity": "warning"`、`"score": 80到100`，并要求「允许剧本通过审稿」——复审永远不可能拒稿。
+  所以 run5 三集都是 rounds=2、必过，qa 的 review_has_revision_round / review_all_passed 无意义。
+- 要求：初审/复审用同一中立标准（error|warning 均允许、score 0–100，不得暗示必须报错或必须通过）；复审仍可拒稿，达到 max_rounds 未过就如实 passed=false 并记录。
+  E2E 的 review_has_revision_round 不得作为必过项；如实报告真实出现返修的集数。单测：复审 LLM 返回 error → 不通过并进入下一轮。
+## R2 返修前后文本无法核对
+- review_log 只存 12 位 hash（scene_diffs before/after），没有改前文本，无法证明 LLM 真改稿。要求 scene_diffs 同时保存 before/after 的 summary/narration/dialogue 全文（或 unified diff），E2E 至少一集展示真实 LLM 改写内容。
+## R3 镜头拆分丢台词/造空镜（生产路径 bug）
+- `shot_budget.split_single_shot_plan`：子镜只取 `clauses[j]`，当分句数 > 拆分数时其余分句**被丢弃**；分句数 < 拆分数时子镜 tts 为空。
+  审核实测（orchestrator 路径，每镜 tts="第0句，前半，后半，尾巴。"）：60s 拆 2 → 只剩「第0句」「前半」，「后半，尾巴」丢失；120s 拆 3 → 「尾巴」丢失。
+  另外 image_prompt 仅追加「（分镜j/n）」，子镜画面描述完全相同。
+- 要求：分句按顺序**分组**分配到子镜，全部保留（拼接后与原文一致），不足时按时长分配而不是空串；子镜 image_prompt 给出区分（景别/动作递进）。单测断言 "".join(子镜 tts) 覆盖全部原文、无空 tts。
+- P1.2 的单测 `test_orchestrator_counting_shot_gen_chain_with_fixed_5_shots` 是在测试里重写了一遍 _counting_shot_gen_fn，不是真调用链：改为 monkeypatch `default_longvideo_shot_generator` 与 `agentic_longvideo_pipeline`，调用真正的 `orchestrate_longvideo`（可参考审核脚本思路：fake pipeline 内调用 providers["shot_gen_fn"]）。
+## R4 分镜/剧本质量问题
+- 最终剧本与分镜出现角色 ID 当说话人：ep01 场2 `C003：少爷，盘缠我备好了。` / `C001：多谢福伯。`（ep2 也有 C001/C004，LLM 监督已指出却仍放行）。规则层把 char_id 当合法人名放过——改为必须映射成角色名，char_id 作说话人视为 error。
+- script_to_storyboard 重复台词：ep01 SH04 与 SH01 台词完全相同。对白不足时用旁白/动作描述补，不要循环复用。
+## R5 缝合标记口径
+- causal_source 标在「被缝合的目标事件」节点上（CH02E001/CH03E001 = stitched），而其自身 effects 是抽取的；真正的缝合边在 CH01E002→CH02E001。改为边级标注（如 `stitched_edges: [[from,to]]` 或 causes_sources 映射），DONE 如实描述。
 ## 完成标准
-- 新增/修改测试全绿；`test_storygraph / test_shortdrama_* / test_shot_preparation / test_script2video_kernel / test_director` 不回归；lint 不新增失败。
-- 新 E2E run（免费 NIM 或 ollama），产物含 storyboards/，record.json 写通道与调用次数。
-- 不改 site-packages、不调付费 API、不 push/merge。完成后更新 DRAMAPLAN_DONE.md 并 git commit。
+- 新 E2E run6（免费 NIM/ollama），record.json 写通道与调用次数；DONE 逐条写证据，不得夸大。不改 site-packages、不调付费 API、不 push/merge。
+- 提交作者：共享 .git/config 被写成 "OMQUALITY agent"，请用 `git -c user.name="hevi-dramaplan agent" -c user.email=dramaplan@hevi.local commit ...`，不要修改 .git/config。
+- 长任务必须 `nohup setsid ... > e2e_run.log 2>&1 &` 独立启动并 `sleep 300` 循环轮询到产物完成再结束会话。
