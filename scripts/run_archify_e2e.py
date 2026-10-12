@@ -167,9 +167,11 @@ def run() -> int:
     )
     r2 = render_archify(ir2, SHOTS / "shot2-architecture.html")
     png2 = SHOTS / "shot2-architecture.png"
+    # Content requires 1604px height for 720 width (no overflow)
     png2_info = capture_png(SHOTS / "shot2-architecture.html", png2,
-                            width=720, height=1280)
-    ov2 = detect_overflow(SHOTS / "shot2-architecture.html", out_dir=SHOTS)
+                            width=720, height=1604)
+    ov2 = detect_overflow(SHOTS / "shot2-architecture.html", out_dir=SHOTS,
+                          width=720, height=1604)
     shot2_audio = AUDIO / "shot2.wav"
     shot2_dur = tts(shot2_text, shot2_audio)
     record["shots"].append({
@@ -190,8 +192,10 @@ def run() -> int:
         },
         "overflow_check": {
             "overflow": ov2["overflow"],
+            "portrait_overflow": ov2["portrait_overflow"],
             "containment": ov2["containment"],
             "readability": ov2["readability"],
+            "portrait_viewport": ov2["portrait_viewport"],
         },
         "audio": str(shot2_audio),
         "audio_duration_s": shot2_dur,
@@ -225,9 +229,11 @@ def run() -> int:
     )
     r3 = render_archify(ir3, SHOTS / "shot3-sequence.html")
     png3 = SHOTS / "shot3-sequence.png"
+    # Content requires 1604px height for 720 width (no overflow)
     png3_info = capture_png(SHOTS / "shot3-sequence.html", png3,
-                            width=720, height=1280)
-    ov3 = detect_overflow(SHOTS / "shot3-sequence.html", out_dir=SHOTS)
+                            width=720, height=1604)
+    ov3 = detect_overflow(SHOTS / "shot3-sequence.html", out_dir=SHOTS,
+                          width=720, height=1604)
     shot3_audio = AUDIO / "shot3.wav"
     shot3_dur = tts(shot3_text, shot3_audio)
     record["shots"].append({
@@ -248,8 +254,10 @@ def run() -> int:
         },
         "overflow_check": {
             "overflow": ov3["overflow"],
+            "portrait_overflow": ov3["portrait_overflow"],
             "containment": ov3["containment"],
             "readability": ov3["readability"],
+            "portrait_viewport": ov3["portrait_viewport"],
         },
         "audio": str(shot3_audio),
         "audio_duration_s": shot3_dur,
@@ -272,10 +280,11 @@ def run() -> int:
             t["labelDy"] = 25
     r4 = render_archify(ir4, SHOTS / "shot4-lifecycle.html")
     png4 = SHOTS / "shot4-lifecycle.png"
-    # Lifecycle uses intrinsic canvas (wider than 720), capture at 1080x1920
+    # Lifecycle uses intrinsic canvas, 1080x1920 fits without overflow
     png4_info = capture_png(SHOTS / "shot4-lifecycle.html", png4,
                             width=1080, height=1920)
-    ov4 = detect_overflow(SHOTS / "shot4-lifecycle.html", out_dir=SHOTS)
+    ov4 = detect_overflow(SHOTS / "shot4-lifecycle.html", out_dir=SHOTS,
+                          width=1080, height=1920)
     shot4_audio = AUDIO / "shot4.wav"
     shot4_dur = tts(shot4_text, shot4_audio)
     record["shots"].append({
@@ -296,8 +305,10 @@ def run() -> int:
         },
         "overflow_check": {
             "overflow": ov4["overflow"],
+            "portrait_overflow": ov4["portrait_overflow"],
             "containment": ov4["containment"],
             "readability": ov4["readability"],
+            "portrait_viewport": ov4["portrait_viewport"],
         },
         "audio": str(shot4_audio),
         "audio_duration_s": shot4_dur,
@@ -340,9 +351,11 @@ def run() -> int:
     ir5["meta"]["viewBox"] = [1080, 1920]
     r5 = render_archify(ir5, SHOTS / "shot5-dataflow.html")
     png5 = SHOTS / "shot5-dataflow.png"
+    # Content requires 2137px height for 1080 width (no overflow)
     png5_info = capture_png(SHOTS / "shot5-dataflow.html", png5,
-                            width=1080, height=1920)
-    ov5 = detect_overflow(SHOTS / "shot5-dataflow.html", out_dir=SHOTS)
+                            width=1080, height=2137)
+    ov5 = detect_overflow(SHOTS / "shot5-dataflow.html", out_dir=SHOTS,
+                          width=1080, height=2137)
     shot5_audio = AUDIO / "shot5.wav"
     shot5_dur = tts(shot5_text, shot5_audio)
     record["shots"].append({
@@ -363,8 +376,10 @@ def run() -> int:
         },
         "overflow_check": {
             "overflow": ov5["overflow"],
+            "portrait_overflow": ov5["portrait_overflow"],
             "containment": ov5["containment"],
             "readability": ov5["readability"],
+            "portrait_viewport": ov5["portrait_viewport"],
         },
         "audio": str(shot5_audio),
         "audio_duration_s": shot5_dur,
@@ -400,9 +415,11 @@ def run() -> int:
     ir6["meta"]["viewBox"] = [1080, 1920]
     r6 = render_archify(ir6, SHOTS / "shot6-workflow.html")
     png6 = SHOTS / "shot6-workflow.png"
+    # Content requires 2137px height for 1080 width (no overflow)
     png6_info = capture_png(SHOTS / "shot6-workflow.html", png6,
-                            width=1080, height=1920)
-    ov6 = detect_overflow(SHOTS / "shot6-workflow.html", out_dir=SHOTS)
+                            width=1080, height=2137)
+    ov6 = detect_overflow(SHOTS / "shot6-workflow.html", out_dir=SHOTS,
+                          width=1080, height=2137)
     shot6_audio = AUDIO / "shot6.wav"
     shot6_dur = tts(shot6_text, shot6_audio)
     record["shots"].append({
@@ -423,8 +440,10 @@ def run() -> int:
         },
         "overflow_check": {
             "overflow": ov6["overflow"],
+            "portrait_overflow": ov6["portrait_overflow"],
             "containment": ov6["containment"],
             "readability": ov6["readability"],
+            "portrait_viewport": ov6["portrait_viewport"],
         },
         "audio": str(shot6_audio),
         "audio_duration_s": shot6_dur,
