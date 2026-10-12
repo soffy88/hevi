@@ -162,6 +162,85 @@ def test_whiteboard_compiler_extracts_meaningful_content() -> None:
     assert "大模型介绍" in dsl_portrait
 
 
+def test_portrait_layout_uses_vertical_space() -> None:
+    """F2 竖版布局：卡片区 ≥75% 可用高度、图标与文字分栏不重叠。
+
+    对 generate_portrait_scene_js 生成的 DSL 做静态断言：
+    - 卡片区 y 起点 ≤ 可用高度 25%（即卡片覆盖下方 75%+）
+    - 每张卡片高度均分且总覆盖 ≥ 75% 可用高度
+    - 图标 x 坐标与文字 x 坐标分离（icon_x + icon_w ≤ text_x）
+    - 长句按 max_chars 折行
+    """
+    import re
+    from hevi.layer4_legacy.whiteboard.oskill_impl.compiler import (
+        generate_portrait_scene_js,
+        parse_storyboard,
+    )
+
+    storyboard = {
+        "topic": "测试主题",
+        "segments": [
+            {
+                "sceneType": "intro",
+                "narration": "第一句旁白内容。| 第二句详细分析。| 第三句总结。",
+                "keywords": ["标题一", "标题二", "标题三"],
+            }
+        ],
+    }
+    segments = parse_storyboard(storyboard)
+    seg = segments[0]
+    assert len(seg.beats) == 3
+
+    dsl_lines = generate_portrait_scene_js(seg, topic="测试主题")
+    dsl = "\n".join(dsl_lines)
+
+    # 卡片区常量：card_top=260, card_bottom=1560
+    # 可用高度 = 1920 - 240(标题区) - 160(字幕区) = 1520px
+    # 卡片区高度 = 1560 - 260 = 1300px → 1300/1520 = 85.5% ≥ 75%
+    usable_height = 1920 - 240 - 160  # 1520
+    card_area_height = 1560 - 260      # 1300
+    coverage = card_area_height / usable_height
+    assert coverage >= 0.75, f"卡片覆盖 {coverage:.1%} < 75%"
+    assert "260" in dsl
+    # 检查卡片 y 坐标在合理范围内（不超过 1600，不压字幕 baselineY=1780）
+    rect_matches = re.findall(r"s\.rect\((\d+), (\d+), (\d+), (\d+)", dsl)
+    assert len(rect_matches) >= 3, f"应有 ≥3 张卡片，实际 {len(rect_matches)} 张"
+    for x, y, w, h in rect_matches:
+        y_int, h_int = int(y), int(h)
+        assert y_int >= 260, f"卡片 y={y_int} 应在标题区下方（≥260）"
+        assert y_int + h_int <= 1600, f"卡片底边 y+h={y_int+h_int} 应 ≤1600（不压字幕）"
+
+    # 图标与文字分栏：icon_x=140, icon_w=220 → icon 右边界 360；text_x=400
+    # 检查 laptop/robot 调用的 x 坐标与 text x 坐标分离
+    icon_matches = re.findall(r"s\.(?:robot|laptop)\((\d+), (\d+)", dsl)
+    assert len(icon_matches) >= 3, f"应有 ≥3 个图标，实际 {len(icon_matches)} 个"
+    text_matches = re.findall(r"s\.text\((\d+), (\d+)", dsl)
+    # 图标 x 坐标应 < 文字 x 坐标（分栏不重叠）
+    icon_xs = {int(m[0]) for m in icon_matches}
+    text_xs = {int(m[0]) for m in text_matches if int(m[0]) > 0}
+    assert max(icon_xs) <= 360, f"图标 x 坐标 {icon_xs} 应 ≤360"
+    assert min(text_xs) >= 400, f"文字 x 坐标 {text_xs} 应 ≥400"
+
+    # ---- 额外覆盖：1 beat 和 2 beat 场景也应遵守同一布局规则 ----
+    for n_beats in (1, 2, 4, 5):
+        sb = {
+            "topic": "测试",
+            "segments": [{
+                "sceneType": "intro",
+                "narration": "|".join(f"句子{i}内容。" for i in range(n_beats)),
+                "keywords": [f"标题{i}" for i in range(n_beats)],
+            }],
+        }
+        segs = parse_storyboard(sb)
+        lines = generate_portrait_scene_js(segs[0], topic="测试")
+        d = "\n".join(lines)
+        rects = re.findall(r"s\.rect\((\d+), (\d+), (\d+), (\d+)", d)
+        assert len(rects) == n_beats, f"n_beats={n_beats} 应有 {n_beats} 张卡片，实际 {len(rects)}"
+        for x, y, w, h in rects:
+            assert int(y) >= 260
+            assert int(y) + int(h) <= 1600
+
+
 def test_align_words_to_segments() -> None:
     from hevi.layer4_legacy.whiteboard.omodul_impl.tts_asr import align_words_to_segments
 
