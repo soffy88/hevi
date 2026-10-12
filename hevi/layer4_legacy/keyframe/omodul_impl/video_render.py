@@ -399,25 +399,53 @@ def render_dramakey_pipeline(
         cand2_path = kf_dir / f"shot_{shot_idx:02d}_cand2_s{seed_2}.png"
 
         t_gen_0 = time.time()
-        res1 = engine.generate(
-            prompt_en=prompt_en,
-            negative=neg,
-            width=cfg.kf_width,
-            height=cfg.kf_height,
-            steps=cfg.steps,
-            seed=seed_1,
-            output_path=cand1_path,
-        )
-        res2 = engine.generate(
-            prompt_en=prompt_en,
-            negative=neg,
-            width=cfg.kf_width,
-            height=cfg.kf_height,
-            steps=cfg.steps,
-            seed=seed_2,
-            output_path=cand2_path,
-        )
-        total_kf_gen_sec += time.time() - t_gen_0
+        if not cand1_path.is_file() or cand1_path.stat().st_size == 0:
+            res1 = engine.generate(
+                prompt_en=prompt_en,
+                negative=neg,
+                width=cfg.kf_width,
+                height=cfg.kf_height,
+                steps=cfg.steps,
+                seed=seed_1,
+                output_path=cand1_path,
+            )
+            total_kf_gen_sec += res1.sec
+        else:
+            res1 = KeyframeResult(
+                path=cand1_path,
+                seed=seed_1,
+                engine=engine.name,
+                model="sd-turbo",
+                sec=0.0,
+                rss_mb=0.0,
+                width=cfg.kf_width,
+                height=cfg.kf_height,
+                steps=cfg.steps,
+            )
+
+        if not cand2_path.is_file() or cand2_path.stat().st_size == 0:
+            res2 = engine.generate(
+                prompt_en=prompt_en,
+                negative=neg,
+                width=cfg.kf_width,
+                height=cfg.kf_height,
+                steps=cfg.steps,
+                seed=seed_2,
+                output_path=cand2_path,
+            )
+            total_kf_gen_sec += res2.sec
+        else:
+            res2 = KeyframeResult(
+                path=cand2_path,
+                seed=seed_2,
+                engine=engine.name,
+                model="sd-turbo",
+                sec=0.0,
+                rss_mb=0.0,
+                width=cfg.kf_width,
+                height=cfg.kf_height,
+                steps=cfg.steps,
+            )
 
         score1 = score_keyframe(cand1_path, prompt_en=prompt_en, text_zh=text)
         score2 = score_keyframe(cand2_path, prompt_en=prompt_en, text_zh=text)
@@ -479,17 +507,29 @@ def render_dramakey_pipeline(
                 retry_seed = cfg.base_seed + shot_idx * 17 + 2000 * retry_count
                 retry_path = kf_dir / f"shot_{shot_idx:02d}_retry{retry_count}_s{retry_seed}.png"
 
-                t_retry = time.time()
-                res_retry = engine.generate(
-                    prompt_en=prompt_en,
-                    negative=neg,
-                    width=cfg.kf_width,
-                    height=cfg.kf_height,
-                    steps=cfg.steps,
-                    seed=retry_seed,
-                    output_path=retry_path,
-                )
-                total_kf_gen_sec += time.time() - t_retry
+                if not retry_path.is_file() or retry_path.stat().st_size == 0:
+                    res_retry = engine.generate(
+                        prompt_en=prompt_en,
+                        negative=neg,
+                        width=cfg.kf_width,
+                        height=cfg.kf_height,
+                        steps=cfg.steps,
+                        seed=retry_seed,
+                        output_path=retry_path,
+                    )
+                    total_kf_gen_sec += res_retry.sec
+                else:
+                    res_retry = KeyframeResult(
+                        path=retry_path,
+                        seed=retry_seed,
+                        engine=engine.name,
+                        model="sd-turbo",
+                        sec=0.0,
+                        rss_mb=0.0,
+                        width=cfg.kf_width,
+                        height=cfg.kf_height,
+                        steps=cfg.steps,
+                    )
 
                 score_retry = score_keyframe(retry_path, prompt_en=prompt_en, text_zh=text)
                 emb_retry = extract_face_embedding(retry_path)
@@ -576,7 +616,8 @@ def render_dramakey_pipeline(
             "-shortest",
             str(shot_clip_path),
         ]
-        subprocess.run(clip_cmd, check=True)
+        if not shot_clip_path.is_file() or shot_clip_path.stat().st_size == 0:
+            subprocess.run(clip_cmd, check=True)
 
         shot_clips.append(shot_clip_path)
         shot_durations.append(shot_dur)

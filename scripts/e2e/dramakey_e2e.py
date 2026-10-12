@@ -316,7 +316,13 @@ def run_script2video_30s_sample(run_id: str) -> dict:
 
 
 def main() -> int:
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    import argparse
+
+    parser = argparse.ArgumentParser(description="DRAMAKEY E2E Acceptance Pipeline")
+    parser.add_argument("--run-id", type=str, default=None, help="Optional run ID timestamp")
+    args, _ = parser.parse_known_args()
+
+    timestamp = args.run_id or datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     logger.info("=== DRAMAKEY ACCEPTANCE PIPELINE START (%s) ===", timestamp)
 
     # 1. Novel2Video 60-90s E2E
