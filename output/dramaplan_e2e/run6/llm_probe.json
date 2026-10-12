@@ -1,7 +1,7 @@
 {
   "channel": "nim",
   "available": true,
-  "latency_s": 1.11,
+  "latency_s": 1.3,
   "json_stable": true,
   "content_head": "{\"ok\": true, \"n\": 3}"
 }

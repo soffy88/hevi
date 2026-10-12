@@ -8,7 +8,8 @@
   "all_episodes_have_scripts": true,
   "review_revision_episodes": [
     1,
-    2
+    2,
+    3
   ],
   "review_has_revision_round": true,
   "review_all_passed": false,
@@ -18,44 +19,44 @@
   "storyboard_shot_count_within_budget": true,
   "outline_events_covered": true,
   "memory_db_created": true,
-  "llm_calls": 25,
+  "llm_calls": 29,
   "passed": true,
   "artifacts": {
     "event_graph.json": {
-      "sha256": "8b1b9d3ddd30403843fe61d0a42ea9c2784a26e9fc23e0db6fd86c98f88cbf90",
-      "bytes": 14405
+      "sha256": "7f4b11023376de6d96c725ee6cc5577f4eece1b1f5fd20e76ffb7bf9ce4ad4a6",
+      "bytes": 12169
     },
     "adaptation_outline.json": {
-      "sha256": "5d1e354822aab46bee0315e9fc949d0fd2d9c48a91e7b998b1fd7cb275f16bca",
-      "bytes": 1720
+      "sha256": "c48e36c8969e05a2b8a9c07c6471d717b86f7f8e5970a869cdebedc897cf2e63",
+      "bytes": 1491
     },
     "review_log.json": {
-      "sha256": "3c74f61f99c9773be3503a9ba73c81ad5053307677a34cf6e1ef6d78ae99b009",
-      "bytes": 51966
+      "sha256": "10f405134067727329ba32f99f23e34d01b09ddf574d8c8b21ca378954353b8f",
+      "bytes": 48685
     },
     "episode_scripts/ep01.json": {
-      "sha256": "0dc6d042fc47a6037615d8032fe397c19f843f7208351bb55ce58a69740d12f1",
-      "bytes": 3624
+      "sha256": "5afde494419fa9d75b0d1e614506190b10d3ebf29a8945ca17911f2d08ac7537",
+      "bytes": 2418
     },
     "episode_scripts/ep02.json": {
-      "sha256": "2cdb7973fa4e6e04c899296c9ee608d0ad23a9b3fb1df972f42368c3aadf5286",
-      "bytes": 3644
+      "sha256": "ac2c453beac333f7c050146c9ce0368c8c02d0c8735b8ec0235e405fd46efea7",
+      "bytes": 2388
     },
     "episode_scripts/ep03.json": {
-      "sha256": "f9be551f0987e7d45f08bb7c8645aee8571d721a33e6244b8f2cd324d899a27c",
-      "bytes": 2027
+      "sha256": "6b6d75e09744050bc0578806427ff5433ef2ccea53bf6de6981c5031404bb825",
+      "bytes": 2270
     },
     "storyboards/ep01.json": {
-      "sha256": "d22257bb8f38e2043450d9af302e850c81c7c63e6e2fc1a71235b525814dd999",
-      "bytes": 7272
+      "sha256": "831416e7b8b44cb1cf52978d6f35d9f323996696abee95c59dcf3fbdc5705295",
+      "bytes": 4816
     },
     "storyboards/ep02.json": {
-      "sha256": "cffe2855ebd49022e6f8384bd354314da778b4f5fdb2d8369f5d963993de6302",
-      "bytes": 7587
+      "sha256": "76904199849bd7a15d34e3f6e8ab0c2aaad1ce626e55acd4172c23963b06e90d",
+      "bytes": 5610
     },
     "storyboards/ep03.json": {
-      "sha256": "f6154f78dda79ce48a93f52023994813db895cf43c5d0eb430af99c02bcba28e",
-      "bytes": 4424
+      "sha256": "b433ac7d8896736eed548bdec6d86c62f5f0d18f8ffb6197da9dd8bdfea1fe01",
+      "bytes": 8011
     }
   }
 }

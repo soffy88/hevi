@@ -3,11 +3,11 @@
   "channel": "nim",
   "steps": {
     "event_graph": {
-      "elapsed_s": 29.24,
+      "elapsed_s": 25.72,
       "chapters": 3,
       "characters": 4,
-      "events": 10,
-      "quotes": 7
+      "events": 7,
+      "quotes": 6
     },
     "outline": {
       "elapsed_s": 0.0,
@@ -17,20 +17,20 @@
       "dropped_events": 0
     },
     "review": {
-      "elapsed_s": 91.31,
+      "elapsed_s": 110.93,
       "episodes": 3,
       "passed": false,
       "rounds": [
         3,
         3,
-        1
+        3
       ],
-      "revision_rounds": 4
+      "revision_rounds": 6
     }
   },
-  "llm_calls": 25,
+  "llm_calls": 29,
   "llm_failures": 0,
-  "llm_total_s": 120.49,
-  "elapsed_s": 121.82,
+  "llm_total_s": 136.54,
+  "elapsed_s": 138.14,
   "qa_passed": true
 }

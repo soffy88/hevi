@@ -4,79 +4,56 @@
   "scenes": [
     {
       "scene_no": 1,
-      "location": "沈府大厅",
+      "location": "古宅密室",
       "event_ids": [
-        "CH03E001"
+        "CH02E003"
       ],
-      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横",
-      "narration": "",
-      "dialogue": [
-        {
-          "speaker": "沈砚之",
-          "text": "父亲，儿媳苏晚已至，玉玦合璧。",
-          "emotion": "冷峻"
-        },
-        {
-          "speaker": "沈崇山",
-          "text": "是我对不住你们兄妹。",
-          "emotion": "悔恨"
-        }
-      ],
-      "shot_count": 3,
-      "duration_s": 12.0
+      "summary": "苏晚取出玉玦与沈砚之手中半块相合，沈砚之震惊认出她是沈崇山失散的义女；苏晚情绪激荡，泪光闪烁，声音颤抖地透露母亲遗言，真相在静谧密室中如雷轰顶，她终于明白自己身世之谜，心绪难平。",
+      "narration": "密室灯火昏黄，古玉温润，两块玉玦在指尖缓缓贴合，纹路如脉搏般对齐，空气瞬间凝固。",
+      "dialogue": [],
+      "shot_count": 4,
+      "duration_s": 15.0
     },
     {
       "scene_no": 2,
-      "location": "沈府祖堂",
+      "location": "沈府厅堂",
       "event_ids": [
-        "CH03E002"
+        "CH03E001"
       ],
-      "summary": "沈崇山忏悔，沈砚之扶起父亲，苏晚跪拜母亲牌位",
+      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦痛悔流泪，沈砚之以自然情感回应父亲悔恨，暗含对苏晚的守护与感激，避免生硬补设定。",
       "narration": "",
       "dialogue": [
         {
-          "speaker": "沈砚之",
-          "text": "父亲请起，儿已尽孝。",
-          "emotion": "坚定"
+          "speaker": "沈崇山",
+          "text": "是我对不住你们兄妹……玉玦合璧，天理昭昭。",
+          "emotion": "悔恨"
         },
         {
-          "speaker": "沈崇山",
-          "text": "我愧对天地，更愧对你们。",
-          "emotion": "自责"
+          "speaker": "沈砚之",
+          "text": "父亲，您当年收留苏晚，她才得以安身。今日她能站在此地，全是您的恩德。",
+          "emotion": "平静中带感激"
         }
       ],
       "shot_count": 3,
-      "duration_s": 12.0
+      "duration_s": 23.0
     },
     {
       "scene_no": 3,
       "location": "沈府祖堂",
       "event_ids": [
-        "CH03E003"
+        "CH03E002"
       ],
-      "summary": "苏晚在母亲牌位前轻声说：娘，我回来了",
-      "narration": "",
+      "summary": "沈砚之扶起父亲后，苏晚缓步走至祖堂，凝视母亲牌位良久，泪光闪烁，最终跪下磕头，轻声唤‘娘’，表达归属与思念，情感缓缓铺开，仪式感沉静而深远。",
+      "narration": "祖堂灯烛微摇，红木案几沐浴在暮色中，苏晚的影子在墙上缓缓拉长，仿佛时光在此刻倒流。",
       "dialogue": [
         {
           "speaker": "苏晚",
-          "text": "娘，我回来了。",
-          "emotion": "柔情"
+          "text": "娘，我终于回来了……",
+          "emotion": "悲伤而释然"
         }
       ],
-      "shot_count": 2,
-      "duration_s": 8.0
-    },
-    {
-      "scene_no": 4,
-      "location": "沈府院外",
-      "event_ids": [
-        "CH03E004"
-      ],
-      "summary": "雪停了，东方既白",
-      "narration": "雪停霁色，天光渐亮，万物复苏。",
-      "dialogue": [],
-      "shot_count": 2,
-      "duration_s": 6.0
+      "shot_count": 5,
+      "duration_s": 2.0
     }
   ],
   "characters_present": [

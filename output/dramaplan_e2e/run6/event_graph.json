@@ -40,7 +40,7 @@
       "aliases": [
         "父亲"
       ],
-      "description": "外貌与性格的可视化特征(文中无则空字符串)",
+      "description": "威严、愤怒",
       "role": "antagonist",
       "faction": "沈府",
       "first_appearance": [
@@ -61,7 +61,7 @@
       "aliases": [
         "老仆"
       ],
-      "description": "外貌与性格的可视化特征(文中无则空字符串)",
+      "description": "年迈、忠诚",
       "role": "supporting",
       "faction": "沈府",
       "first_appearance": [
@@ -86,9 +86,9 @@
       "aliases": [
         "晚儿"
       ],
-      "description": "身着素衣、专注绣花、神情淡然",
+      "description": "身姿纤细、手执金针、神情淡然",
       "role": "protagonist",
-      "faction": "沈府",
+      "faction": "绣坊",
       "first_appearance": [
         22,
         34
@@ -118,18 +118,24 @@
       "valence": -0.8,
       "evolution": [
         {
-          "event_id": "CH01E002",
+          "event_id": "CH01E001",
           "relation_type": "父子",
-          "valence": -0.9
+          "valence": -0.8
         }
       ]
     },
     {
       "from_char": "C003",
       "to_char": "C001",
-      "relation_type": "主从",
+      "relation_type": "主仆",
       "valence": 0.7,
-      "evolution": []
+      "evolution": [
+        {
+          "event_id": "CH01E002",
+          "relation_type": "主仆",
+          "valence": 0.7
+        }
+      ]
     },
     {
       "from_char": "C001",
@@ -138,9 +144,9 @@
       "valence": 0.8,
       "evolution": [
         {
-          "event_id": "CH02E002",
+          "event_id": "CH02E003",
           "relation_type": "亲属",
-          "valence": 0.8
+          "valence": 0.9
         }
       ]
     },
@@ -148,12 +154,12 @@
       "from_char": "C002",
       "to_char": "C001",
       "relation_type": "亲属",
-      "valence": 0.5,
+      "valence": -0.3,
       "evolution": [
         {
           "event_id": "CH03E001",
           "relation_type": "亲属",
-          "valence": 0.8
+          "valence": 0.6
         }
       ]
     },
@@ -161,27 +167,21 @@
       "from_char": "C002",
       "to_char": "C004",
       "relation_type": "亲属",
-      "valence": 0.5,
+      "valence": -0.5,
       "evolution": [
         {
           "event_id": "CH03E001",
           "relation_type": "亲属",
-          "valence": 0.8
+          "valence": 0.7
         }
       ]
     },
     {
-      "from_char": "C004",
-      "to_char": "C002",
-      "relation_type": "亲属",
-      "valence": 0.5,
-      "evolution": [
-        {
-          "event_id": "CH03E001",
-          "relation_type": "亲属",
-          "valence": 0.8
-        }
-      ]
+      "from_char": "C003",
+      "to_char": "C001",
+      "relation_type": "主从",
+      "valence": 0.9,
+      "evolution": []
     },
     {
       "from_char": "C003",
@@ -194,11 +194,12 @@
   "events": [
     {
       "event_id": "CH01E001",
-      "summary": "沈砚之在子夜翻出沈府后墙逃离，怀中藏有半块玉玦",
+      "summary": "沈砚之在子夜翻墙出逃，父亲怒喝不许返回",
       "actors": [
-        "C001"
+        "C001",
+        "C002"
       ],
-      "location": "沈府后墙",
+      "location": "沈府后墙外",
       "time_hint": "子夜",
       "causes": [],
       "effects": [
@@ -207,8 +208,8 @@
       "beat_type": "冲突",
       "dramatic_weight": 5,
       "source_span": [
-        0,
-        22
+        48,
+        62
       ],
       "chapter_ref": "CH01",
       "merged_from": [
@@ -219,32 +220,7 @@
     },
     {
       "event_id": "CH01E002",
-      "summary": "父亲沈崇山在祠堂怒喝警告，若离家则永不许回",
-      "actors": [
-        "C002"
-      ],
-      "location": "祠堂",
-      "time_hint": "子夜",
-      "causes": [
-        "CH01E001"
-      ],
-      "effects": [],
-      "beat_type": "冲突",
-      "dramatic_weight": 5,
-      "source_span": [
-        34,
-        63
-      ],
-      "chapter_ref": "CH01",
-      "merged_from": [
-        "E002"
-      ],
-      "edge_sources": {},
-      "causal_source": "extracted"
-    },
-    {
-      "event_id": "CH01E003",
-      "summary": "老仆福伯在巷口等候并交付盘缠布包及夫人遗留的密信",
+      "summary": "福伯在巷口等候并交付盘缠与母亲遗留的密信",
       "actors": [
         "C003",
         "C001"
@@ -260,15 +236,15 @@
       "beat_type": "过场",
       "dramatic_weight": 3,
       "source_span": [
-        93,
-        142
+        110,
+        120
       ],
       "chapter_ref": "CH01",
       "merged_from": [
-        "E003"
+        "E002"
       ],
       "edge_sources": {
-        "CH01E003->CH02E001": "stitched"
+        "CH01E002->CH02E001": "stitched"
       },
       "causal_source": "extracted"
     },
@@ -282,7 +258,7 @@
       "location": "青州城西绣坊",
       "time_hint": "青州落了大雪",
       "causes": [
-        "CH01E003"
+        "CH01E002"
       ],
       "effects": [
         "CH02E002"
@@ -298,13 +274,13 @@
         "E001"
       ],
       "edge_sources": {
-        "CH01E003->CH02E001": "stitched"
+        "CH01E002->CH02E001": "stitched"
       },
       "causal_source": "stitched"
     },
     {
       "event_id": "CH02E002",
-      "summary": "沈砚之出示半块玉玦，苏晚取出另一块玉玦两块严丝合缝，揭示身世真相",
+      "summary": "沈砚之出示半块玉玦，苏晚取出另一块玉玦配合，两块严丝合缝",
       "actors": [
         "C001",
         "C004"
@@ -320,8 +296,8 @@
       "beat_type": "转折",
       "dramatic_weight": 5,
       "source_span": [
-        60,
-        114
+        0,
+        0
       ],
       "chapter_ref": "CH02",
       "merged_from": [
@@ -332,9 +308,10 @@
     },
     {
       "event_id": "CH02E003",
-      "summary": "沈砚之阅读母亲密信得知苏晚是其妹妹，情绪激动手抖",
+      "summary": "苏晚不答，取出另一块玉玦配合，沈砚之得知她是沈崇山失散的义女，母亲密信 révélé 真相",
       "actors": [
-        "C001"
+        "C001",
+        "C004"
       ],
       "location": "青州城西绣坊",
       "time_hint": "青州落了大雪",
@@ -347,8 +324,8 @@
       "beat_type": "高潮",
       "dramatic_weight": 5,
       "source_span": [
-        129,
-        163
+        89,
+        114
       ],
       "chapter_ref": "CH02",
       "merged_from": [
@@ -361,26 +338,25 @@
     },
     {
       "event_id": "CH03E001",
-      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横",
+      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦痛悔流泪",
       "actors": [
         "C001",
         "C004",
         "C002"
       ],
       "location": "沈府阶前",
-      "time_hint": "",
+      "time_hint": "雪停后，东方既白",
       "causes": [
         "CH02E003"
       ],
       "effects": [
-        "CH03E002",
-        "CH03E003"
+        "CH03E002"
       ],
       "beat_type": "转折",
       "dramatic_weight": 5,
       "source_span": [
         11,
-        33
+        34
       ],
       "chapter_ref": "CH03",
       "merged_from": [
@@ -393,77 +369,27 @@
     },
     {
       "event_id": "CH03E002",
-      "summary": "沈崇山忏悔，沈砚之扶起父亲，苏晚跪拜母亲牌位",
+      "summary": "沈砚之扶起父亲，苏晚跪拜母亲牌位称归",
       "actors": [
-        "C002",
         "C001",
+        "C002",
         "C004"
       ],
       "location": "沈府祠堂",
-      "time_hint": "",
+      "time_hint": "雪停后，东方既白",
       "causes": [
         "CH03E001"
-      ],
-      "effects": [
-        "CH03E004"
-      ],
-      "beat_type": "高潮",
-      "dramatic_weight": 5,
-      "source_span": [
-        11,
-        88
-      ],
-      "chapter_ref": "CH03",
-      "merged_from": [
-        "E002"
-      ],
-      "edge_sources": {},
-      "causal_source": "extracted"
-    },
-    {
-      "event_id": "CH03E003",
-      "summary": "苏晚在母亲牌位前轻声说：娘，我回来了",
-      "actors": [
-        "C004"
-      ],
-      "location": "沈府祠堂母亲牌位前",
-      "time_hint": "",
-      "causes": [
-        "CH03E002"
       ],
       "effects": [],
       "beat_type": "收束",
       "dramatic_weight": 4,
       "source_span": [
-        79,
-        102
+        71,
+        93
       ],
       "chapter_ref": "CH03",
       "merged_from": [
-        "E003"
-      ],
-      "edge_sources": {},
-      "causal_source": "extracted"
-    },
-    {
-      "event_id": "CH03E004",
-      "summary": "雪停了，东方既白",
-      "actors": [],
-      "location": "沈府",
-      "time_hint": "",
-      "causes": [
-        "CH03E003"
-      ],
-      "effects": [],
-      "beat_type": "过场",
-      "dramatic_weight": 2,
-      "source_span": [
-        102,
-        111
-      ],
-      "chapter_ref": "CH03",
-      "merged_from": [
-        "E004"
+        "E002"
       ],
       "edge_sources": {},
       "causal_source": "extracted"
@@ -474,8 +400,8 @@
       "quote_id": "Q001",
       "speaker": "C002",
       "original": "你若踏出这门，就永远别回来！",
-      "modern": "你要是敢出这门，以后就别想回来！",
-      "event_id": "CH01E002",
+      "modern": "你要是敢出这门，就别想再回来！",
+      "event_id": "CH01E001",
       "emotion": "愤怒"
     },
     {
@@ -483,14 +409,14 @@
       "speaker": "C003",
       "original": "少爷，盘缠我备好了。",
       "modern": "少爷，路费我都准备好了。",
-      "event_id": "CH01E003",
-      "emotion": "恭敬"
+      "event_id": "CH01E002",
+      "emotion": "恳切"
     },
     {
       "quote_id": "Q003",
       "speaker": "C004",
       "original": "你终究还是来了。",
-      "modern": "你终于还是来了啊。",
+      "modern": "你终于来了啊。",
       "event_id": "CH02E001",
       "emotion": "平静中略带感慨"
     },
@@ -498,33 +424,25 @@
       "quote_id": "Q004",
       "speaker": "C001",
       "original": "三年前你救我时，落下的是这个吧。",
-      "modern": "三年前你救我时，掉的就是这个吧？",
+      "modern": "三年前你救我时，掉的是不是这个？",
       "event_id": "CH02E002",
       "emotion": "试探且急切"
     },
     {
       "quote_id": "Q005",
-      "speaker": "母亲（沈砚之母）",
-      "original": "晚儿是你的妹妹，护好她。",
-      "modern": "晚儿是你妹妹，你得好好保护她。",
-      "event_id": "CH02E003",
-      "emotion": "嘱托且坚定"
-    },
-    {
-      "quote_id": "Q006",
       "speaker": "C002",
       "original": "是我对不住你们兄妹。",
       "modern": "我对不起你们兄妹。",
-      "event_id": "CH03E002",
+      "event_id": "CH03E001",
       "emotion": "悔恨"
     },
     {
-      "quote_id": "Q007",
+      "quote_id": "Q006",
       "speaker": "C004",
       "original": "娘，我回来了。",
-      "modern": "娘，我回来了。",
-      "event_id": "CH03E003",
-      "emotion": "思念"
+      "modern": "娘，我回来啦。",
+      "event_id": "CH03E002",
+      "emotion": "怀念"
     }
   ],
   "locations": [
@@ -538,7 +456,7 @@
     },
     {
       "location_id": "L002",
-      "name": "祠堂",
+      "name": "巷口",
       "type": "宅邸",
       "events": [
         "CH01E002"
@@ -546,14 +464,6 @@
     },
     {
       "location_id": "L003",
-      "name": "巷口",
-      "type": "宅邸",
-      "events": [
-        "CH01E003"
-      ]
-    },
-    {
-      "location_id": "L004",
       "name": "青州城西绣坊",
       "type": "宅邸",
       "events": [
@@ -563,7 +473,7 @@
       ]
     },
     {
-      "location_id": "L005",
+      "location_id": "L004",
       "name": "沈府阶前",
       "type": "宅邸",
       "events": [
@@ -571,20 +481,11 @@
       ]
     },
     {
-      "location_id": "L006",
+      "location_id": "L005",
       "name": "沈府祠堂",
       "type": "宅邸",
       "events": [
-        "CH03E002",
-        "CH03E003"
-      ]
-    },
-    {
-      "location_id": "L007",
-      "name": "沈府",
-      "type": "宅邸",
-      "events": [
-        "CH03E004"
+        "CH03E002"
       ]
     }
   ],
@@ -598,8 +499,7 @@
       "char_count": 172,
       "event_ids": [
         "E001",
-        "E002",
-        "E003"
+        "E002"
       ]
     },
     {
@@ -622,9 +522,7 @@
       "char_count": 111,
       "event_ids": [
         "E001",
-        "E002",
-        "E003",
-        "E004"
+        "E002"
       ]
     }
   ],
