@@ -3,13 +3,16 @@
 对标 OpenMontage Backlot(阶段亮灯/脚本落屏/花费上墙/contact sheet 审批/回放),
 hevi 此前只有事后 verdict 与导演台 DP2, 无**运行中**的生产事件流。
 
-本包为后端事件流 + 简单状态 API(前端板后续排期):
+本包为后端事件流 + 分镜联系表审批门 + 回放:
   - `BacklotEvent`: 一次生产事件的不可变记录(run_id/stage/event_type/payload/ts)
   - `BacklotEventLog`: JSONL 追加持久化(与 replay_trace/decision_trail 同风格,
     无 DB 依赖) + 内存尾部缓存(最近 N 条, 供状态板即时查询)
   - `backlot_status()`: run 级汇总(阶段亮灯/事件计数/最后心跳/花费估算输入)
+  - `StoryboardBoard`(`hevi.backlot.storyboard`): 分镜联系表审批门, approve/reject
+    写回状态 + 质量分实测
+  - `build_replay` / `render_replay_video`(`hevi.backlot.replay`): REPLAY 回放
   - 事件类型约定: stage_start / stage_done / stage_fail / shot_done / cost /
-    heartbeat / note —— 消费方(流水线打点)按需 emit。
+    heartbeat / note / shot_decision —— 消费方(流水线打点)按需 emit。
 
 3O 归属: obase 边界(best-effort 打点, 任何失败不阻断主流水线)。
 """
@@ -33,6 +36,7 @@ EVENT_SHOT_DONE = "shot_done"
 EVENT_COST = "cost"
 EVENT_HEARTBEAT = "heartbeat"
 EVENT_NOTE = "note"
+EVENT_SHOT_DECISION = "shot_decision"
 
 # 内存尾部缓存条数(状态板即时查询窗口)
 _TAIL_LIMIT = 200
@@ -168,6 +172,7 @@ __all__ = [
     "EVENT_COST",
     "EVENT_HEARTBEAT",
     "EVENT_NOTE",
+    "EVENT_SHOT_DECISION",
     "EVENT_SHOT_DONE",
     "EVENT_STAGE_DONE",
     "EVENT_STAGE_FAIL",
