@@ -212,9 +212,12 @@ async def _main_async(args: argparse.Namespace) -> int:
     record["elapsed_s"] = round(time.monotonic() - started, 2)
 
     # 5) QA：全部由脚本实测计算，不手写 passed
-    review_has_revision = any(
-        r.round_index > 0 for e in log.episodes for r in e.rounds
-    )
+    # R1：review_has_revision_round 仅作统计（如实报告真实出现返修的集数），
+    # 不作为必过项——审稿回路被提示词操纵已修复，返修可能真实发生也可能不发生。
+    revision_episodes = [
+        e.ep_number for e in log.episodes if any(r.round_index > 0 for r in e.rounds)
+    ]
+    review_has_revision = bool(revision_episodes)
     book_event_ids = {e.event_id for e in book.events}
     qa = {
         "chapters_ge_3": len(book.chapters) >= 3,
@@ -229,6 +232,8 @@ async def _main_async(args: argparse.Namespace) -> int:
         "outline_budget_sum_equals_total": sum(ep.shot_budget for ep in outline.episodes)
         == outline.total_shot_budget,
         "all_episodes_have_scripts": all(e.script is not None for e in log.episodes),
+        # R1：真实出现返修的集数（统计项，非必过项）
+        "review_revision_episodes": revision_episodes,
         "review_has_revision_round": review_has_revision,
         "review_all_passed": log.passed,
         "all_storyboards_exist": len(storyboards) == args.episodes,

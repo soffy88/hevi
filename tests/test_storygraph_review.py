@@ -444,3 +444,131 @@ async def test_plan_longform_drama_pipeline(tmp_path: Path):
     assert paths["review_log"].exists()
     assert paths["storyboard_ep01"].exists()
     assert paths["storyboard_ep02"].exists()
+
+
+async def test_revision_round_can_be_rejected_by_llm_error():
+    """R1 要求：复审 LLM 返回 severity=error 必须被拒，本集进入下一轮。"""
+    book = _book()
+    outline = _outline()
+    initial_script = {
+        "title": "第1集",
+        "scenes": [
+            {
+                "scene_no": 1,
+                "location": "老宅",
+                "event_ids": ["CH01E001"],
+                "summary": "张三归乡",
+                "narration": "张三归乡",
+                "dialogue": [
+                    {"speaker": "张三", "text": "我终于回来了。", "emotion": "感慨"}
+                ],
+                "shot_count": 2,
+                "duration_s": 10.0,
+            },
+            {
+                "scene_no": 2,
+                "location": "门庭",
+                "event_ids": ["CH01E002"],
+                "summary": "李四迎接",
+                "narration": "李四迎接",
+                "dialogue": [
+                    {"speaker": "李四", "text": "你终于回来了。", "emotion": "欣喜"}
+                ],
+                "shot_count": 2,
+                "duration_s": 10.0,
+            },
+        ],
+    }
+    revision_count = 0
+    supervisor_round = 0
+
+    async def fake_llm(*, messages, max_tokens=2048, **kwargs):
+        nonlocal supervisor_round, revision_count
+        prompt = messages[-1]["content"]
+        if "短剧编剧" in prompt:
+            return {"content": json.dumps(initial_script, ensure_ascii=False)}
+        if "短剧审稿人" in prompt:
+            supervisor_round += 1
+            if supervisor_round == 1:
+                # 首轮 error，触发返修
+                return {
+                    "content": json.dumps(
+                        {
+                            "issues": [
+                                {
+                                    "scene_no": 1,
+                                    "code": "llm:weak_arc",
+                                    "message": "张三内心动机单薄",
+                                    "severity": "error",
+                                }
+                            ],
+                            "score": 65,
+                        },
+                        ensure_ascii=False,
+                    )
+                }
+            # 复审仍给 error → 继续拒稿，进入下一轮
+            if supervisor_round == 2:
+                return {
+                    "content": json.dumps(
+                        {
+                            "issues": [
+                                {
+                                    "scene_no": 1,
+                                    "code": "llm:still_weak",
+                                    "message": "仍然动机单薄",
+                                    "severity": "error",
+                                }
+                            ],
+                            "score": 60,
+                        },
+                        ensure_ascii=False,
+                    )
+                }
+            # 第三轮继续 error（max_rounds=2 只允许 2 次返修，所以不会走到这里；但为保险）
+            return {
+                "content": json.dumps(
+                    {
+                        "issues": [
+                            {
+                                "scene_no": 1,
+                                "code": "llm:still_weak",
+                                "message": "仍然动机单薄",
+                                "severity": "error",
+                            }
+                        ],
+                        "score": 60,
+                    },
+                    ensure_ascii=False,
+                )
+            }
+        if "短剧剧本精修师" in prompt:
+            revision_count += 1
+            return {
+                "content": json.dumps(
+                    {
+                        "scene_no": 1,
+                        "location": "老宅正堂",
+                        "summary": "修订版",
+                        "narration": " revised.",
+                        "dialogue": [{"speaker": "张三", "text": "我回来了（修）。", "emotion": "坚定"}],
+                        "shot_count": 2,
+                        "duration_s": 10.0,
+                    },
+                    ensure_ascii=False,
+                )
+            }
+        return {"content": "{}"}
+
+    # max_rounds=2 → 最多两轮返修；两轮均被复审拒 → 最终 passed=False
+    log = await review_episode(book, outline, 1, llm=fake_llm, max_rounds=2)
+
+    # 至少触发过一轮返修
+    assert any(r.round_index > 0 for r in log.rounds)
+    # 最终未通过（复审仍给 error）
+    assert not log.passed
+    # 复审错误导致再次触发返修（revision_count >= 2）
+    assert revision_count >= 2
+    # 末轮带 error 问题（score 因 LLM error 下降，不一定 < 80）
+    assert log.rounds[-1].issues
+    assert any(i.severity == "error" for i in log.rounds[-1].issues)
