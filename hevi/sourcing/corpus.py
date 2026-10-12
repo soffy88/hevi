@@ -517,7 +517,20 @@ class Corpus:
         return added
 
     def _index_record(self, rec: ClipRecord) -> None:
-        """收录:抽首帧 + CLIP 嵌入 + 记录追加。嵌入失败降级为零向量(检索仍可用文本侧)。"""
+        """收录:校验片段 → 抽首帧 + CLIP 嵌入 + 记录追加。
+
+        缓存里的子片段若是空壳/截断文件（如只有 moov 头的 707 字节 mp4），先用 *_raw.mp4
+        重新截取；仍无效则拒收（抛 ValueError），绝不把坏文件收进语料。
+        """
+        clip_path = Path(self.root) / rec.local_path
+        if not _valid_video(clip_path):
+            raw = clip_path.with_name(clip_path.stem + "_raw.mp4")
+            if raw.exists() and _valid_video(raw):
+                logger.warning("clip %s 缓存子片段无效，从 raw 重新截取", rec.clip_id)
+                clip_path.unlink(missing_ok=True)
+                _extract_good_subclip(raw, clip_path, target_duration=6.0)
+            if not _valid_video(clip_path):
+                raise ValueError(f"invalid clip file for {rec.clip_id}: {clip_path}")
         existing_idx = None
         for i, existing in enumerate(self.records):
             if existing.clip_id == rec.clip_id:
@@ -775,6 +788,24 @@ def _to_english(text: str, *, timeout_s: float = 30.0) -> str:
         return out if out else text
     except Exception:
         return text
+
+
+def _valid_video(path: Path, min_bytes: int = 20 * 1024, min_duration: float = 1.0) -> bool:
+    """文件存在、够大、能解码出 ≥min_duration 秒的视频流。"""
+    try:
+        if not path.exists() or path.stat().st_size < min_bytes:
+            return False
+        out = subprocess.run(
+            ["/home/soffy/.local/bin/ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=codec_name:format=duration", "-of", "default=nw=1", str(path)],
+            capture_output=True, text=True, timeout=30,
+        ).stdout
+        if "codec_name=" not in out:
+            return False
+        m = re.search(r"duration=([0-9.]+)", out)
+        return bool(m) and float(m.group(1)) >= min_duration
+    except Exception:
+        return False
 
 
 def _extract_good_subclip(src_video: Path, out_video: Path, target_duration: float = 6.0) -> None:

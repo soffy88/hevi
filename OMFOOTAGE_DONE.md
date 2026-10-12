@@ -150,3 +150,11 @@
 3. **工作区状态**:
    - 根目录无多余临时脚本 (`patch.py`, `patch_scene.py` 已移除)。
    - 无任何未跟踪的杂乱文件。
+
+---
+## 主审亲自修复（2026-10-12 18:55）
+- **CLIP 退化的根因**：语料缓存里有 14 个空壳/截断子片段（如 `pexels_28953923.mp4` 仅 707 字节，只有 moov 头），抽帧失败 → 嵌入走零向量 degraded。新增 `_valid_video()`（大小 ≥20KB、能解出视频流、时长 ≥1s）；`_index_record` 收录前校验，无效时用 `*_raw.mp4` 重新截取，仍无效则拒收（抛错，由各来源的单条 try/except 记录并跳过），不再把坏文件收进语料。重跑后日志 `CLIP embedding failed` 为 0 条（此前 piper 一轮 8+ 条），`缓存子片段无效，从 raw 重新截取` 12 条。
+- **OOM**：music 一轮在 Remotion 渲染时被 10G 上限 OOM-kill（agy r8 单元也是同样死法）。`hevi/explainer/render.py` 的 `--concurrency` 改为读 `HEVI_REMOTION_CONCURRENCY`（默认仍 4），本机 E2E 用 2 跑完。
+- **E2E 产物**（主审本地抽帧亲眼看过）：
+  - piper：`output/om_footage_e2e/piper/landscape.mp4` 1920×1080、85.23s、有音轨；画面依次为航天飞机发射台、发射、土星五号、月面设备、空间站、月面、夜间地球、任务控制中心、地球轨道、火星车模型、韦伯星云，与 10 句旁白检索词对应（个别镜头为非铺满的加边画面，约 56s 处有一段暗镜头）。
+  - music：`output/om_footage_e2e/music/landscape.mp4` 63.0s；森林航拍、长颈鹿草原、海浪、雪山日照、水鸟、河谷、星空、沙地、日出海湾等 10 个槽位各不相同，不再是同一个 1955 年片头字卡。瑕疵：两段 ESA/野生动物素材自带第三方水印/烧录英文字幕。

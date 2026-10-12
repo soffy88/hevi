@@ -8,6 +8,7 @@ src/data/run_manifest.json,所以渲染段用锁把该 job 的 manifest 拷进�
 from __future__ import annotations
 
 import asyncio
+import os
 import logging
 import shutil
 import subprocess
@@ -184,7 +185,8 @@ async def _run_remotion_render(composition_id: str, output_path: Path) -> None:
         "render",
         composition_id,
         str(output_path),
-        "--concurrency=4",
+        # memory-bounded hosts can lower this (each worker is a headless Chromium decoding video)
+        f"--concurrency={os.environ.get('HEVI_REMOTION_CONCURRENCY', '4')}",
         cwd=str(_HEVI_REMOTION_DIR),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
