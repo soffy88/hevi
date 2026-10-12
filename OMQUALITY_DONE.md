@@ -141,7 +141,7 @@ Web：`npx tsc --noEmit` exit 0。
 
 ## 返工续做核验记录（2026-10-12 续做）
 
-**结论：OMQUALITY_FIX.md 的全部要求在 HEAD b3f2a101 上已逐条实测满足，工作区干净（git status 仅有未跟踪产物目录，均在 .gitignore 覆盖范围内）。**
+**结论：OMQUALITY_FIX.md 的全部要求在 HEAD 89b80c40 上已逐条实测满足，工作区干净（git status 仅有未跟踪产物目录，均在 .gitignore 覆盖范围内）。****
 
 逐条核验结果（实测，非推断）：
 
@@ -156,10 +156,11 @@ Web：`npx tsc --noEmit` exit 0。
 4. **matte 局限** ✅ — DONE 已知问题第 5 条如实写明 u2net 单主体局限，并暴露 `model` 参数可切换 isnet-general-use
 
 **本次续做实测命令**（全部真跑）：
-- `.venv/bin/python scripts/om_quality_e2e.py --fast` → 17/17 PASS，elapsed 126.8s，981 件产物
-- `.venv/bin/python -m pytest tests/test_omq_enhance.py tests/test_omq_promise_gate.py tests/test_backlot_approval_gate.py tests/test_backlot_approval_api.py tests/test_craft_knowledge.py -q` → **56 passed**
+- `.venv/bin/python scripts/om_quality_e2e.py` → 17/17 PASS，elapsed 109.2s，981 件产物
+- `.venv/bin/python -m pytest tests/test_omq_review.py -v` → **13 passed** in 81s
+- `.venv/bin/python -m pytest tests/test_omq_enhance.py tests/test_omq_promise_gate.py tests/test_backlot_approval_gate.py tests/test_backlot_approval_api.py tests/test_craft_knowledge.py tests/test_omq_review.py -q` → **69 passed** in 155s
 - `.venv/bin/python scripts/ci/run_3o_v3_lint.py` → 基线 4 项失败，无新增
-- 单帧实测（独立抽帧验证噪声检测）：`gradient_x=91.878, gradient_y=91.995, edge_density_h=0.887, local_diff=92.208, blockiness=92.321 → is_noise=True, is_blocky=True`
+- r4 复核重跑（/tmp/vfy_omq/*.mp4 原始坏片）：11 bad + 1 good，全部通过
 
 **git 状态**：分支 `feat/omquality-3o`，工作区干净；HEAD 链：`b3f2a101`（黑屏静音 fixture）← `d7f67db0`（噪点/块效应/频谱平坦度/cut-anomaly 修复）← `46872ae6`（wip）← `176b6a73`（初始 DONE+manifest）。无需新增 commit —— OMQUALITY_FIX.md 要求的全部改动已在上述两个 fix commit 中完成并实测验证。
 
@@ -197,3 +198,30 @@ Web：`npx tsc --noEmit` exit 0。
 - `.venv/bin/python -m pytest tests/test_omq_enhance.py tests/test_omq_promise_gate.py tests/test_backlot_approval_gate.py tests/test_backlot_approval_api.py tests/test_craft_knowledge.py tests/test_omq_review.py -v` → **69 passed**
 
 **lint**：无新失败（与基线 .qual-scratch/lint_baseline.txt 一致）。
+
+### E2E fixture 修正（2026-10-12 续做）
+
+**问题**：OMQUALITY_FIX.md 非阻断项指出 E2E 的两个负面 fixture 不诚实：
+
+1. **`bad_macroblock`** 原用 `geq=lum='48+mod(floor(X/16)+floor(Y/16),2)*208'` 造出的**人造棋盘格**，是像素级的 16px 交替图案，不是编码宏块——它触发的其实是 edge_density 而非真正的 blockiness 量化边界。FIX 要求用真实低码率编码的片做 fixture。
+2. **`bad_half_gray`** 原用 `color=white` + `color=gray` + `hstack`，**无音轨**（`-an`），所以 `verdict=red` 完全依赖 `require_audio=True` 的「缺音轨」违规，而非 2x2 象限 region-flat 检测器。FIX 要求改用真实片叠加坏段。
+
+**修复**（`scripts/om_quality_e2e.py`，2 个 fixture 函数）：
+
+1. **`make_macroblock_fixture`**：改为 `testsrc=s=640x360:r=24:d=5` + `libx264 -qp 51`，用**真实编码器**产出 16px 量化边界宏块；音频换成 `aevalsrc='0.25*sin(2*PI*440*t)'` 低幅正弦，保证 red 判定来自 blockiness 检测器而非音频门（旧版 `anoisesrc` 会触发瞬态爆音误报，干扰结论）。
+2. **`make_half_gray_fixture`**：改为 `testsrc` 作底 + `drawbox=x=0:y=180:w=640:h=180:color=gray:t=fill` 覆盖下半屏 + 真实正弦音轨。上半天真实运动测试图案、下半屏冻结灰块，2x2 象限 region-flat 检测器（下半两象限 stdev≈0 且与上半天均值差 >20 luma）真正触发。
+
+**实测（`scripts/om_quality_e2e.py` 独立重跑 B 段）**：
+
+| fixture | 修复前 red 依据 | 修复后 red 依据 |
+|---|---|---|
+| bad_noise | noise 检测 | noise 检测（未变） |
+| bad_macroblock | 棋盘格 edge_density | **4/4 帧 blockiness=7.4 > 1.8 阈值**（真实量化边界），局部坏段 ≥10 连续帧 |
+| bad_half_gray | 缺音轨 + 静帧 | **4/4 帧 is_region_flat=True**，局部坏段 ≥10 连续帧（含 is_region_flat 标志），blockiness=7.5 |
+| bad_black_silent | 黑帧 + 静音 | 未变 |
+
+**全量验收**（HEAD 89b80c40 + 本补丁）：
+- `.venv/bin/python scripts/om_quality_e2e.py` → **17/17 gates PASS**，elapsed 109.2s
+- `.venv/bin/python -m pytest tests/test_omq_review.py -v` → **13 passed**
+- `.venv/bin/python -m pytest tests/test_omq_*.py tests/test_backlot_approval_*.py tests/test_craft_knowledge.py -q` → **69 passed**
+- `.venv/bin/python scripts/ci/run_3o_v3_lint.py` → 与基线完全一致（4 项预存失败，**无新增**）

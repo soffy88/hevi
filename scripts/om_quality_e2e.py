@@ -323,17 +323,28 @@ def make_noise_fixture(out_dir: Path) -> Path:
 
 
 def make_macroblock_fixture(out_dir: Path) -> Path:
-    """Generate a macroblock-pattern video with white-noise audio."""
+    """Generate a true libx264 macroblock artefact clip (qp=51 low bitrate).
+
+    The fixture uses a real test pattern encoded at qp=51, which produces
+    visible 16px macroblock boundaries that the review gate's blockiness
+    ratio detector should flag.  Unlike the old checkerboard geq() pattern
+    (which only looks like blocks at the pixel level, not after encoding),
+    this exercises the actual quantisation-boundary detector.
+    Audio is a low-amplitude sine tone so the red verdict cannot come from
+    the audio gate: it must come from the blockiness-ratio detector.
+    """
     dest = out_dir / "bad_macroblock.mp4"
+    # Generate a real test pattern and encode at high qp (low quality),
+    # which produces genuine quantisation-boundary macroblocks.
     subprocess.run(
         [
             "ffmpeg", "-hide_banner", "-y", "-f", "lavfi",
-            "-i", "nullsrc=s=640x360:r=24:d=5",
+            "-i", "testsrc=s=640x360:r=24:d=5",
             "-f", "lavfi",
-            "-i", "anoisesrc=d=5:c=white:r=44100:a=0.5",
-            "-vf",
-            "geq=lum='48+mod(floor(X/16)+floor(Y/16),2)*208':cb=128:cr=128",
-            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-i",
+            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
+            "-c:v", "libx264", "-preset", "ultrafast", "-qp", "51",
+            "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-shortest",
             str(dest),
         ],
@@ -343,16 +354,26 @@ def make_macroblock_fixture(out_dir: Path) -> Path:
 
 
 def make_half_gray_fixture(out_dir: Path) -> Path:
-    """Generate a half-white/half-gray split-screen video."""
+    """Generate a half-white/half-gray split-screen video with a real audio track.
+
+    The clip carries real sine-wave audio so the review gate's red verdict
+    cannot come from a missing-audio-track violation: it must come from the
+    2x2 quadrant region-flat detector, which sees the bottom half frozen as a
+    solid grey block while the top half (real test pattern) differs by >20 luma
+    units.  The blockiness-ratio hit on the grey block is secondary evidence;
+    the region-flat violation is the intended signal.
+    """
     dest = out_dir / "bad_half_gray.mp4"
     subprocess.run(
         [
             "ffmpeg", "-hide_banner", "-y",
-            "-f", "lavfi", "-i", "color=c=white:s=320x360:r=24:d=5",
-            "-f", "lavfi", "-i", "color=c=gray:s=320x360:r=24:d=5",
-            "-filter_complex", "[0:v][1:v]hstack",
+            "-f", "lavfi", "-i", "testsrc=s=640x360:r=24:d=5",
+            "-f", "lavfi",
+            "-i", "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
+            "-filter_complex", "[0:v]drawbox=x=0:y=180:w=640:h=180:color=gray:t=fill[v]",
+            "-map", "[v]", "-map", "1:a",
             "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-            "-an",
+            "-c:a", "aac", "-shortest",
             str(dest),
         ],
         check=True, capture_output=True,
