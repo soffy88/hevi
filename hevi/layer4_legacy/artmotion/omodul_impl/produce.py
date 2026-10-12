@@ -1,10 +1,12 @@
+import math
 import json
-import hashlib
 import time
 import shutil
 import subprocess
 import os
+import re
 import sys
+import hashlib
 from pathlib import Path
 from typing import Any
 from dataclasses import asdict
@@ -13,6 +15,41 @@ from hevi.layer4_legacy.talkcraft.oprim_impl.sync import NarrationSegment
 from hevi.layer4_legacy.talkcraft.omodul_impl.produce import GAP_S, LEAD_S, _load_cached_timings
 from hevi.layer4_legacy.talkcraft.omodul_impl._media import piper_tts, concat_with_gaps, duration
 from hevi.layer4_legacy.talkcraft.omodul_impl._whisper import WhisperAligner
+
+# LaTeX sanitization: strip all markup, map math symbols to Unicode equivalents.
+# Prevents LaTeX source like "\\text{Softmax}" "\\sqrt{d_k}" from rendering on screen.
+SAFE_MATH_MAP = {
+    '\\text': '', '\\mathrm': '', '\\mathbf': '', '\\mathit': '', '\\mathbb': '',
+    '\\sqrt': '\u221a', '\\cdot': '\u00b7', '\\times': '\u00d7', '\\div': '\u00f7',
+    '\\approx': '\u2248', '\\infty': '\u221e', '\\prime': '\u2032',
+    '\\leq': '\u2264', '\\geq': '\u2265', '\\neq': '\u2260',
+    '\\sum': '\u2211', '\\prod': '\u220f', '\\int': '\u222b',
+    '\\pi': '\u03c0', '\\alpha': '\u03b1', '\\beta': '\u03b2', '\\gamma': '\u03b3',
+    '\\delta': '\u03b4', '\\epsilon': '\u03b5', '\\theta': '\u03b8', '\\lambda': '\u03bb',
+    '\\mu': '\u03bc', '\\sigma': '\u03c3', '\\tau': '\u03c4', '\\phi': '\u03c6',
+    '\\omega': '\u03c9', '\\Omega': '\u03a9', '\\Delta': '\u0394', '\\Sigma': '\u03a3',
+}
+
+def sanitize_latex(text: str) -> str:
+    """Strip LaTeX markup from a token, return plain text with Unicode math symbols.
+    Removes backslashes, curly braces, and unescaped math commands; maps common ones to Unicode."""
+    if not text:
+        return ''
+    out = text
+    for cmd, replacement in SAFE_MATH_MAP.items():
+        out = out.replace(cmd, replacement)
+    out = re.sub(r'\\[a-zA-Z]+', '', out)
+    out = out.replace('{', '').replace('}', '')
+    out = out.replace('\\', '')
+    return out.strip()
+
+
+STYLE_SCENE_MODE: dict[str, str] = {
+    "17_ink": "texture",
+    "25_ghibli": "texture",
+    "14_8bit": "texture",
+    "12_bauhaus": "texture",
+}
 
 STYLE_REGISTRY: dict[str, str] = {
     "01_cave": "01_cave",
@@ -226,6 +263,13 @@ def produce_artmotion(
             cue["at"] = at_t
             if "text" not in cue and cue.get("kind") not in ("bar", "highlight", "equation", "number", "card"):
                 cue["text"] = text
+            # Sanitize all text fields for equation and text cues
+            if "text" in cue and isinstance(cue["text"], str):
+                cue["text"] = sanitize_latex(cue["text"])
+            if cue.get("kind") == "equation" and "data" in cue and "tokens" in cue["data"]:
+                for token in cue["data"]["tokens"]:
+                    if "s" in token:
+                        token["s"] = sanitize_latex(token["s"])
             cues.append(cue)
         else:
             cues.append({
