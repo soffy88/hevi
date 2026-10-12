@@ -1183,14 +1183,17 @@ def qc_slideshow_risk(p: dict[str, Any]) -> dict[str, Any]:
             1.0, float(cov) / max(float(p.get("text_cue_coverage", 0.8)), 1e-6)
         )
     risk = score_slideshow_risk(**kwargs)
-    out: dict[str, Any] = {"risk": risk.to_dict()}
+    out: dict[str, Any] = {}
     promise = p.get("promise") or p.get("delivery_promise")
     if promise and cuts:
         from hevi.production.delivery_promise import DeliveryPromise
 
         verdict = DeliveryPromise.from_dict(_resolve_promise_spec(promise)).validate_cuts(cuts)
         out["promise_check"] = verdict
-    return _ok(**out)
+    if risk.verdict == "unknown":
+        # §8-d: a qc_* op with no observed evidence must not return a pass.
+        return _blocked("QC_SLIDESHOW_RISK_NOT_EVALUATED", **out)
+    return _ok(risk=risk.to_dict(), **out)
 
 
 def qc_frame_check(p: dict[str, Any]) -> dict[str, Any]:
@@ -1200,6 +1203,10 @@ def qc_frame_check(p: dict[str, Any]) -> dict[str, Any]:
     fp = p.get("frame_path") or p.get("path")
     if not fp:
         return _fail("frame_path required")
+    from pathlib import Path as _Path
+
+    if not _Path(str(fp)).is_file():
+        return _blocked("QC_FRAME_CHECK_NOT_EVALUATED", frame_path=str(fp))
     check = frame_stats(
         path=fp,
         index=int(p.get("index", 0)),
