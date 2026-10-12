@@ -1,3 +1,5 @@
+# Copyright (c) 2026 程意 (upstream native-subtitle-quote-image)
+# Adapted and modified for Hevi 3O pipeline under MIT License (see third_party/native-subtitle-quote-image/LICENSE)
 from __future__ import annotations
 
 from pathlib import Path

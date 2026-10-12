@@ -175,7 +175,7 @@ def test_quality_gates_duplicate_detection(tmp_path: Path):
 
 
 def _create_fixture_tiny_font_image(path: Path) -> Path:
-    """Generate an image with unreadable tiny font (<18px glyph height)."""
+    """Generate an image with unreadable tiny font (<32px glyph height at 720 width)."""
     width, height = 720, 960
     img = Image.new("RGB", (width, height), (35, 40, 50))
     draw = ImageDraw.Draw(img)
@@ -194,6 +194,27 @@ def _create_fixture_tiny_font_image(path: Path) -> Path:
     return path
 
 
+def _create_fixture_readable_font_image(path: Path) -> Path:
+    """Generate an image with readable font (>=32px glyph height at 720 width)."""
+    width, height = 720, 960
+    img = Image.new("RGB", (width, height), (35, 40, 50))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([0, 0, width, 500], fill=(50, 55, 65))
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 40)
+    except Exception:
+        font = ImageFont.load_default()
+
+    for i in range(4):
+        y0 = 500 + i * 100
+        y1 = y0 + 100
+        draw.rectangle([0, y0, width, y1], fill=(35, 40, 50))
+        draw.text((60, y0 + 20), "大字幕测试清晰台词", fill=(255, 255, 255), font=font,
+                  stroke_width=2, stroke_fill=(0, 0, 0))
+    img.save(path, quality=95)
+    return path
+
+
 def test_quality_gates_font_size_detection(tmp_path: Path):
     tiny_path = tmp_path / "tiny_font.jpg"
     _create_fixture_tiny_font_image(tiny_path)
@@ -201,7 +222,15 @@ def test_quality_gates_font_size_detection(tmp_path: Path):
     gates = run_quality_gates([tiny_path])
     font_gate = next(g for g in gates if g["name"] == "font_size")
     assert not font_gate["passed"], "Fixture with tiny font must fail font_size gate"
-    assert font_gate["value"] < 18.0, f"Expected font_size value < 18.0, got {font_gate['value']}"
+    assert font_gate["value"] < 32.0, f"Expected font_size value < 32.0, got {font_gate['value']}"
+
+    readable_path = tmp_path / "readable_font.jpg"
+    _create_fixture_readable_font_image(readable_path)
+
+    gates = run_quality_gates([readable_path])
+    font_gate = next(g for g in gates if g["name"] == "font_size")
+    assert font_gate["passed"], "Fixture with readable font must pass font_size gate"
+    assert font_gate["value"] >= 32.0, f"Expected font_size value >= 32.0, got {font_gate['value']}"
 
 
 def test_detect_subtitle_band_fallback():

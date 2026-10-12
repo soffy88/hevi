@@ -566,40 +566,57 @@ def fit_fixed_canvas(stack, extents, size, fit="crop", crop_center=0.5):
     return canvas, note
 
 
+def _sample_background_color(band, ext):
+    """Sample a clean background color from the area just outside the subtitle text."""
+    w, h = band.size
+    if ext is None:
+        return None
+    left_x, right_x = ext
+    arr = np.array(band)
+    samples = []
+    # Sample from both sides of the text region
+    if left_x > 8:
+        sample_left = arr[:, max(0, left_x - 24):left_x]
+        if sample_left.size > 0:
+            samples.append(sample_left)
+    if right_x < w - 8:
+        sample_right = arr[:, right_x:min(w, right_x + 24)]
+        if sample_right.size > 0:
+            samples.append(sample_right)
+    if not samples:
+        return None
+    return np.median(np.concatenate(samples, axis=1), axis=(0, 1)).astype(np.uint8)
+
+
 def clean_strip_non_subtitle(band):
-    """Clean avatar, host body/clothing, and peripheral clutter outside subtitle text band in non-hero strips."""
+    """Return a strip where all non-subtitle area is replaced with a clean background.
+    
+    Keeps the subtitle band at its native width (so all strips stack uniformly), but
+    replaces any peripheral clutter (host body, clothing, graphics, badges) with a
+    sampled clean background color from just outside the subtitle text region.
+    This preserves the subtitle text while eliminating avatar fragments and host clothing
+    that would otherwise appear as repeated fragments across strips.
+    """
     ext = subtitle_extent(band)
     if ext is None:
         return band
-    w, _h = band.size
+    w, h = band.size
     left_x, right_x = ext
-    margin = max(40, int(w * 0.03))
+    margin = max(16, int(w * 0.015))
     left_safe = max(0, left_x - margin)
     right_safe = min(w, right_x + margin)
-
-    arr = np.array(band).copy()
-
-    # Sample clean background color immediately adjacent to the text
-    sample_left = arr[:, max(0, left_x - 30):left_x]
-    sample_right = arr[:, right_x:min(w, right_x + 30)]
-    samples = []
-    if sample_left.size > 0:
-        samples.append(sample_left)
-    if sample_right.size > 0:
-        samples.append(sample_right)
-    if not samples:
+    if left_safe <= 0 and right_safe >= w:
         return band
 
-    bg_color = np.median(np.concatenate(samples, axis=1), axis=(0, 1)).astype(np.uint8)
+    bg_color = _sample_background_color(band, ext)
+    if bg_color is None:
+        return band
 
-    # Clean left peripheral clutter (e.g. host body, neckline, orange arrows, graphics)
+    arr = np.array(band).copy()
     if left_safe > 0:
         arr[:, :left_safe] = bg_color
-
-    # Clean right peripheral clutter (e.g. avatar badge, icons, graphics)
     if right_safe < w:
         arr[:, right_safe:] = bg_color
-
     return Image.fromarray(arr)
 
 
@@ -664,8 +681,42 @@ def scripted_render_one(
     first_frame = frames[0]
     out_width = out_width or (first_frame.width if layout == "natural" else 1440)
 
-    # Base font size: strictly unified, proportional to width (>= 32px for 720 width)
-    base_font = font_size or max(32, round(out_width * 36 / 720))
+    # Base font size: strictly unified across all lines, never shrunk.
+    # FIX requires the *actual rendered ink height* (not nominal font size,
+    # not textbbox height which includes font-box padding) to be >= 32px at
+    # 720 output width. Measure real ink by rendering a probe glyph and
+    # scanning pixel rows for non-background content.
+    MIN_RENDERED_TEXT_PX = 32  # at 720 width
+    if font_size:
+        base_font = font_size
+    else:
+        # Render a probe glyph at size 40 and measure its actual ink height
+        _probe_size = 40
+        _probe_font = load_subtitle_font(font_path, _probe_size, "国gTt")
+        _probe_stroke = max(2, _probe_size // 14)
+        _probe_img = Image.new("RGB", (200, 100), (20, 24, 32))
+        _probe_draw = ImageDraw.Draw(_probe_img)
+        _probe_draw.text((10, 10), "国gTt", font=_probe_font,
+                         fill="white", stroke_width=_probe_stroke,
+                         stroke_fill="black")
+        _probe_arr = np.mean(np.array(_probe_img), axis=2)
+        _ink_rows = (_probe_arr > 100).sum(axis=1) > 0
+        _probe_ink_h = 0
+        _run = 0
+        for _h in _ink_rows:
+            if _h:
+                _run += 1
+                if _run > _probe_ink_h:
+                    _probe_ink_h = _run
+            else:
+                _run = 0
+        # Scale so that at out_width, the rendered ink height is >= target.
+        # Add ~20% headroom: font metrics scale slightly non-linearly,
+        # and different line contents can render with smaller ink heights
+        # (e.g. short words with no ascenders/descenders).
+        _target = MIN_RENDERED_TEXT_PX * out_width / 720.0 * 1.20
+        _needed_scale = _target / max(_probe_ink_h, 1)
+        base_font = max(32, int(round(_probe_size * _needed_scale)))
     stroke = max(2, base_font // 14)
     dummy = Image.new("RGB", (1, 1))
     draw_dummy = ImageDraw.Draw(dummy)

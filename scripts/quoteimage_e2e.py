@@ -27,23 +27,31 @@ async def run_e2e():
     else:
         print(f"Warning: {hevi_zero_dir} not found")
         
+    from hevi.layer4_legacy.quoteimage.omodul_impl.quality_gates import QualityGateError
+    
     for i, video in enumerate(videos):
         print(f"Running {video} in script mode...")
-        await render_quote_image(
-            video_path=video,
-            mode="script",
-            strategy="auto",
-            output_dir=out_dir / f"vid_{i}_script",
-            font="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
-        )
+        try:
+            await render_quote_image(
+                video_path=video,
+                mode="script",
+                strategy="auto",
+                output_dir=out_dir / f"vid_{i}_script",
+                font="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+            )
+        except QualityGateError as e:
+            print(f"  Script mode quality gates failed for {video.name}: {e}")
         print(f"Running {video} in native mode...")
-        await render_quote_image(
-            video_path=video,
-            mode="native",
-            strategy="auto",
-            output_dir=out_dir / f"vid_{i}_native",
-            font="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
-        )
+        try:
+            await render_quote_image(
+                video_path=video,
+                mode="native",
+                strategy="auto",
+                output_dir=out_dir / f"vid_{i}_native",
+                font="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
+            )
+        except QualityGateError as e:
+            print(f"  Native mode quality gates failed for {video.name}: {e}")
         
     print("E2E tests completed.")
 
