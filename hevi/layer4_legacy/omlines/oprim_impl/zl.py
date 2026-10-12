@@ -17,10 +17,14 @@ FONT_PATH = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
 os.makedirs(CACHE, exist_ok=True)
 
 
-def sh(cmd: list[str]) -> None:
-    r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+def sh(cmd: list[str], capture: bool = False):
+    """Run ``cmd``.  With ``capture`` return stdout as bytes instead of discarding it."""
+    r = subprocess.run(cmd, stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+                       stderr=subprocess.PIPE, text=not capture)
     if r.returncode:
-        raise RuntimeError(f"cmd failed: {' '.join(cmd)[:300]}\n{r.stderr[-1500:]}")
+        err = r.stderr if isinstance(r.stderr, str) else r.stderr.decode('utf-8', 'replace')
+        raise RuntimeError(f"cmd failed: {' '.join(cmd)[:300]}\n{err[-1500:]}")
+    return r.stdout if capture else None
 
 
 def dur(p: str) -> float:

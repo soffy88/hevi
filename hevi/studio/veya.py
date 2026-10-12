@@ -54,6 +54,26 @@ def reset_veya() -> None:
     _JOBS.clear()
 
 
+def _fallback_fulfill(fb: dict[str, Any], line_id: str, artifact: str, product: str) -> tuple[dict[str, Any], str]:
+    """Build fulfill data from the *measured* fallback record (never hardcoded)."""
+    rec = fb.get("record") or {}
+    qa = rec.get("qa") or {}
+    verified = bool(artifact and Path(artifact).is_file() and qa.get("pass"))
+    if not product:
+        recipe = get_recipe(line_id)
+        product = recipe.product if recipe else line_id
+    return {
+        "artifact_verification": {
+            "verified": verified,
+            "sha256": qa.get("sha256"),
+            "duration": qa.get("duration"),
+            "resolution": qa.get("resolution"),
+        },
+        "quality": qa,
+        "provenance": {"fallback_used": True, "line": rec.get("provenance")},
+    }, product
+
+
 def list_capabilities() -> dict[str, Any]:
     lines = [
         {
@@ -144,15 +164,16 @@ async def produce(
                 fb = await asyncio.to_thread(omlines_fallback_workflow, {}, filled, dest_root / job_id)
                 if fb.get("status") == "succeeded":
                     artifact = str(fb.get("result_video_path") or "")
+                    fulfill, product = _fallback_fulfill(fb, line_id, artifact, "")
                     job = ProduceJob(
                         job_id=job_id,
                         line_id=line_id,
                         status="ready" if artifact else "failed",
                         render_runtime="omlines_free_tier",
-                        product="情绪读书视频" if line_id == "emotional_reading" else "历史场景",
+                        product=product,
                         artifact=artifact,
                         production_order={"fallback": "omlines_free_tier"},
-                        fulfill={"artifact_verification": {"verified": True}, "quality": {"passed": True}, "provenance": {"fallback_used": True}},
+                        fulfill=fulfill,
                         slate={"status": "completed"},
                         reason=fb.get("reason", "")
                     )
@@ -233,15 +254,16 @@ async def produce(
             fb = await asyncio.to_thread(omlines_fallback_workflow, {}, filled, dest_root)
             if fb.get("status") == "succeeded":
                 artifact = str(fb.get("result_video_path") or "")
+                fulfill, product = _fallback_fulfill(fb, line_id, artifact, rec.product)
                 job = ProduceJob(
                     job_id=str(uuid.uuid4()),
                     line_id=line_id,
                     status="ready" if artifact else "failed",
                     render_runtime="omlines_free_tier",
-                    product=rec.product,
+                    product=product,
                     artifact=artifact,
                     production_order={"fallback": "omlines_free_tier"},
-                    fulfill={"artifact_verification": {"verified": True}, "quality": {"passed": True}, "provenance": {"fallback_used": True}},
+                    fulfill=fulfill,
                     slate={"status": "completed"},
                     reason=fb.get("reason", "")
                 )

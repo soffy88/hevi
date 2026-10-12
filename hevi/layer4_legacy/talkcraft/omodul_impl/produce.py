@@ -270,6 +270,9 @@ def produce_talkcraft(
             "build_seconds": av.seconds, "layouts": layouts,
             "model": "wav2lip_gan_96.onnx + yoloface_8n.onnx (CPU)" if av.mode == "lipsync" else "none (idle motion)",
             "licence_note": "Wav2Lip weights: research/non-commercial" if av.mode == "lipsync" else "no model weights",
+            # frame-space rectangles of the presenter panel, so downstream QA can
+            # prove the caller-supplied image_path is actually on screen
+            "host_boxes": host_boxes,
         }
 
     # 5) gates

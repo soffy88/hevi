@@ -35,27 +35,75 @@ def _git_sha() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 
 
-def _slots(line: str) -> dict[str, Any]:
-    values: dict[str, Any] = {"topic": f"HEVI autonomous production qualification: {line}"}
+# Two independent, *real* input sets.  Variant A and B use different topics and
+# different source media / presenter photos so a slot-blind producer would be
+# caught immediately by the E2E (identical output for both variants).
+_INPUT_APOLLO = "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_Apollo_14_Launch_Coverage.mp4"
+_INPUT_EARTH = "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_Earth_Views_from_the_International_Space.mp4"
+_INPUT_KSC = "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_KSC-20190716-MH-NAS01_0001-Return_to_the.mp4"
+_INPUT_NISAR = "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_JPL-20240109-NISARf-0001-Tracking_Earth_.mp4"
+_INPUT_PODCAST = "/data/soffy/projects/hevi/outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4"
+_INPUT_PODCAST_2 = "/data/soffy/projects/hevi/outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_02.mp4"
+_INPUT_FACE_KAKU = "/data/soffy/projects/hevi/data/workspace/assets/celebrities30s/English/Michio Kaku.jpg"
+_INPUT_FACE_HARARI = "/data/soffy/projects/hevi/data/workspace/assets/celebrities30s/English/Yuval Harari.jpg"
+
+# speech language of each source clip, measured with the same local ASR used by the lines
+_INPUT_LANG = {_INPUT_APOLLO: "en", _INPUT_NISAR: "en", _INPUT_PODCAST: "zh", _INPUT_PODCAST_2: "zh"}
+
+_INPUT_MEDIA: dict[str, dict[str, str]] = {
+    "documentary_montage": {"a": _INPUT_APOLLO, "b": _INPUT_KSC},
+    "reference_adapt": {"a": _INPUT_EARTH, "b": _INPUT_NISAR},
+    "shorts_clip": {"a": _INPUT_PODCAST, "b": _INPUT_PODCAST_2},
+    "podcast_repurpose": {"a": _INPUT_PODCAST, "b": _INPUT_PODCAST_2},
+    "localization_dub": {"a": _INPUT_APOLLO, "b": _INPUT_NISAR},
+}
+_INPUT_IMAGE: dict[str, dict[str, str]] = {
+    "talking_head": {"a": _INPUT_FACE_KAKU, "b": _INPUT_FACE_HARARI},
+    "avatar_spokesperson": {"a": _INPUT_FACE_KAKU, "b": _INPUT_FACE_HARARI},
+}
+
+_INPUT_SETS: dict[str, dict[str, str]] = {
+    "a": {line: "长城修建史" for line in CANONICAL_LINES},
+    "b": {line: "咖啡的起源" for line in CANONICAL_LINES},
+}
+_INPUT_SETS["a"]["localization_dub"] = "阿波罗14号任务"
+_INPUT_SETS["b"]["localization_dub"] = "航天发射解说"
+
+
+def _slots(line: str, variant: str = "a") -> dict[str, Any]:
+    """Build the canonical input slot bag for ``line``.
+
+    ``variant`` selects a *different real* input set so the free tier can be
+    proven to be input-driven: variant "a" and variant "b" differ in topic and
+    (where the line consumes them) in the supplied media / presenter photo.
+    Nothing here is a built-in demo sample of the line's own output.
+    """
+    if variant not in _INPUT_SETS:
+        raise ValueError(f"unknown input variant {variant!r}")
+    topic = _INPUT_SETS[variant][line]
+    values: dict[str, Any] = {"topic": topic, "variant": variant}
     # Canonical real inputs are existing local source assets. They are inputs
     # only; no historical final artifact is copied or counted as output.
-    source_video = "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_Apollo_14_Launch_Coverage.mp4"
-    podcast_video = "/data/soffy/projects/hevi/outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4"
-    presenter_image = "/data/soffy/projects/hevi/data/workspace/assets/celebrities30s/English/Michio Kaku.jpg"
+    media = _INPUT_MEDIA.get(line, {}).get(variant)
+    presenter_image = _INPUT_IMAGE.get(line, {}).get(variant)
     if line == "documentary_montage":
-        values["source"] = source_video
-    if line == "podcast_repurpose":
-        values.update({"source": podcast_video, "media_path": podcast_video})
-    if line == "shorts_clip":
-        values["media_path"] = podcast_video
+        values["source"] = media
+    if line == "reference_adapt":
+        values["media_path"] = media
+    if line in {"shorts_clip", "podcast_repurpose", "localization_dub"}:
+        values.update({"source": media, "media_path": media,
+                       "lang": _INPUT_LANG.get(str(media), "en")})
     if line == "localization_dub":
-        values.update({"media_path": source_video, "lang": "en", "dub": True, "translation_provider": "deep_translator"})
+        values["dub"] = True
     if line in {"talking_head", "avatar_spokesperson"}:
         values["image_path"] = presenter_image
         values["renderer"] = "talkcraft"
-    if line == "history_scene": values["source_text"] = values["topic"]
-    if line == "director_pipeline": values["manuscript"] = values["topic"]
-    if line == "reference_adapt": values["transcript"] = values["topic"]
+    if line == "history_scene":
+        values["source_text"] = f"{topic}。要说清楚它，得从最早的那段记载讲起。当时的条件决定了后来的一切走向，一点点累积起来，就成了今天我们看到的模样。"
+    if line == "director_pipeline":
+        values["manuscript"] = f"{topic}。开场把氛围立住。镜头推近，看清细节。节奏加快，情绪推上来。最后回到起点，收住。"
+    if line == "reference_adapt":
+        values["transcript"] = [topic, "这一段画面是整支片子的支点。", "细节在对焦之后才真正显现出来。"]
     if line in {"documentary_montage", "explainer", "reference_adapt", "history_scene", "cinematic", "director_pipeline", "talking_head", "avatar_spokesperson"}:
         values["tts_engine"] = "edge_tts"
     return values
@@ -63,9 +111,14 @@ def _slots(line: str) -> dict[str, Any]:
 
 def _input_manifest() -> dict[str, Any]:
     paths = {
-        "source_video": "/data/soffy/projects/hevi/data/workspace/assets/open-corpus-seed/clips/nasa_Apollo_14_Launch_Coverage.mp4",
-        "podcast_video": "/data/soffy/projects/hevi/outputs/13-line-product-acceptance/artifacts/podcast_repurpose/clip_01.mp4",
-        "presenter_image": "/data/soffy/projects/hevi/data/workspace/assets/celebrities30s/English/Michio Kaku.jpg",
+        "source_video": _INPUT_APOLLO,
+        "source_video_b": _INPUT_KSC,
+        "earth_video": _INPUT_EARTH,
+        "nisar_video": _INPUT_NISAR,
+        "podcast_video": _INPUT_PODCAST,
+        "podcast_video_2": _INPUT_PODCAST_2,
+        "presenter_image": _INPUT_FACE_KAKU,
+        "presenter_image_2": _INPUT_FACE_HARARI,
     }
     result = {}
     for name, raw in paths.items():

@@ -2,9 +2,80 @@
 from __future__ import annotations
 import math
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps, ImageEnhance
 
 FONT_PATH = '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc'
+
+
+def _fit_cover(im, W, H):
+    return ImageOps.fit(im, (W, H), method=Image.BICUBIC)
+
+
+def _dump_rect(rect_out, fps, W, H, rects, kind):
+    """Write the per-frame composite rect of the supplied photo.
+
+    Downstream QA uses this sidecar to crop the exact region where the caller
+    supplied ``image_path`` was pasted and to prove (by pixel comparison) that
+    the photo really is on screen -- instead of trusting a boolean.
+    """
+    if not rect_out:
+        return
+    import json
+    with open(rect_out, 'w') as f:
+        json.dump({'kind': kind, 'fps': fps, 'frame_w': W, 'frame_h': H, 'rects': rects}, f)
+
+
+def photo_frames(image_path, W, H, fps, mouth, darken=0.5, rect_out=None):
+    """Full-frame presenter built from a real supplied photo.
+
+    The photo is the subject (contained, slowly zooming and swaying) over a
+    blurred/darkened copy of itself, with an audio-driven equaliser bar so the
+    mouth of the narration is visible.  Used by the ``talking_head`` line so the
+    caller-supplied ``image_path`` is literally on screen.
+    """
+    base = Image.open(image_path).convert('RGB')
+    bg = _fit_cover(base, W, H).filter(ImageFilter.GaussianBlur(30))
+    bg = ImageEnhance.Brightness(bg).enhance(darken)
+    subj = ImageOps.contain(base, (int(W * 0.74), int(H * 0.80)), method=Image.BICUBIC)
+    sw, sh = subj.size
+    rects = []
+    for i, mo in enumerate(mouth):
+        t = i / fps
+        z = 1.0 + 0.07 * (0.5 - 0.5 * math.cos(t * 1.5))
+        dx = int(22 * math.sin(t * 1.1))
+        dy = int(12 * math.sin(t * 1.7))
+        f = bg.copy()
+        s2 = subj.resize((max(2, int(sw * z)), max(2, int(sh * z))), Image.BICUBIC)
+        px, py = (W - s2.size[0]) // 2 + dx, (H - s2.size[1]) // 2 + dy
+        f.paste(s2, (px, py))
+        rects.append([px, py, s2.size[0], s2.size[1]])
+        d = ImageDraw.Draw(f, 'RGBA')
+        # equaliser lives at the TOP of the frame so the burned-in lower third
+        # (topic) and the caption band at the bottom stay legible
+        bw, x0, y0 = 16, 52, 150
+        for k in range(20):
+            env = max(0.0, min(1.0, float(mo) * (0.55 + 0.45 * abs(math.sin(t * 3.1 + k * 0.7)))))
+            hgt = int(6 + 48 * env)
+            d.rectangle([x0 + k * (bw + 7), y0 - hgt, x0 + k * (bw + 7) + bw, y0], fill=(0, 200, 255, 210))
+        yield np.asarray(f)
+    _dump_rect(rect_out, fps, W, H, rects, 'full')
+
+
+def photo_pip_frames(image_path, S, fps, mouth, rect_out=None):
+    """Square picture-in-picture avatar from a real photo (circular mask applied later)."""
+    base = Image.open(image_path).convert('RGB')
+    subj = _fit_cover(base, S, S)
+    rects = []
+    for i, _mo in enumerate(mouth):
+        t = i / fps
+        z = 1.0 + 0.06 * (0.5 - 0.5 * math.cos(t * 1.5))
+        s2 = subj.resize((max(2, int(S * z)), max(2, int(S * z))), Image.BICUBIC)
+        f = Image.new('RGB', (S, S), (0, 0, 0))
+        px, py = (S - s2.size[0]) // 2, (S - s2.size[1]) // 2
+        f.paste(s2, (px, py))
+        rects.append([px, py, s2.size[0], s2.size[1]])
+        yield np.asarray(f)
+    _dump_rect(rect_out, fps, S, S, rects, 'pip')
 
 
 def _grad(W, H, top, bot):
