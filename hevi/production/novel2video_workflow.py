@@ -109,7 +109,7 @@ async def novel2video_workflow(
             )
 
             # Convert planned scenes into shots
-            max_shots = shot_budget_for_duration(config.target_duration_s)
+            max_shots = shot_budget_for_duration(config.target_duration_s, min_shot_s=3.0, max_shot_s=5.0)
             raw_shots: list[dict[str, Any]] = []
             all_characters = []
             for s_idx, scene in enumerate(plan.scenes):

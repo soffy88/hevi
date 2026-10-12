@@ -81,19 +81,32 @@ _EXTRACTION_PROMPT_TEMPLATE = """你是小说文本结构化专家。把下面�
 """
 
 
-async def extract_story_graph(*, source_name: str, raw_text: str, llm: Any = None) -> StoryGraph:
+async def extract_story_graph(
+    *,
+    source_name: str,
+    raw_text: str,
+    llm: Any = None,
+    prior_context: str | None = None,
+) -> StoryGraph:
     """小说手稿 → StoryGraph。LLM 结构化抽取草稿,代码定位真实下标 + 分配确定性 ID。
 
     降级策略同 tongjian L0:任何字段解析失败走"能用的部分正常收,解不出的部分丢弃并记
     警告",不因局部失败让整层抛异常。arcs 仍留空(见模块 docstring)。
     """
     if llm is None:
-        from obase.provider_registry import ProviderRegistry
+        # 短剧规划层默认走免费/本地通道（见 hevi/shortdrama/llm_channel.py），不再默认
+        # 落 qwen_cloud（付费 DashScope）。解析失败 → 走下方 try/except 的确定性空草稿降级。
+        from hevi.shortdrama.llm_channel import resolve_planning_llm
 
-        # 逐层显式选 qwen_cloud(非欠费云端,见 registry:187);"default" 仍是欠费公共端点。
-        llm = ProviderRegistry.get().llm("qwen_cloud")
+        try:
+            _, llm = resolve_planning_llm()
+        except Exception as _e:
+            logger.warning("story_graph: 无免费 LLM 通道,返回空草稿: %s", _e)
+            llm = None
 
     prompt = _EXTRACTION_PROMPT_TEMPLATE.format(source_name=source_name, raw_text=raw_text)
+    if prior_context:
+        prompt = f"{prior_context}\n\n{prompt}"
     try:
         draft = await _call_llm_json(llm, prompt)
     except Exception as e:

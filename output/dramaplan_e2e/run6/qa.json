@@ -1,0 +1,64 @@
+{
+  "chapters_ge_3": true,
+  "event_graph_nonempty": true,
+  "characters_merged": true,
+  "stitched_edge_marked": true,
+  "outline_episodes_match": true,
+  "outline_budget_sum_equals_total": true,
+  "all_episodes_have_scripts": true,
+  "review_revision_episodes": [
+    1,
+    2,
+    3
+  ],
+  "review_has_revision_round": true,
+  "review_all_passed": false,
+  "all_storyboards_exist": true,
+  "storyboard_events_in_graph": true,
+  "storyboard_shot_count_matches_scenes": true,
+  "storyboard_shot_count_within_budget": true,
+  "outline_events_covered": true,
+  "storyboard_no_char_id_speaker": true,
+  "storyboard_no_char_id_in_prompt": true,
+  "memory_db_created": true,
+  "llm_calls": 29,
+  "passed": true,
+  "artifacts": {
+    "event_graph.json": {
+      "sha256": "4fadb5a1b4f2874262ee4ac958dee1bdb0739bc14d1c8b21932efc804907a0e8",
+      "bytes": 13009
+    },
+    "adaptation_outline.json": {
+      "sha256": "b3144e390f2f5d374c4f3fb89005d8632f7e6d7e7a8dc0a627db7dda68386498",
+      "bytes": 1537
+    },
+    "review_log.json": {
+      "sha256": "1650089c7310583d6ed974fc6791b0c49b9843e3cd46af333b452bc8b3bd1420",
+      "bytes": 58608
+    },
+    "episode_scripts/ep01.json": {
+      "sha256": "941ea13d3635cd7b6ec113f09a1a8096cf9fc23cc49c814477e191c77ef8baea",
+      "bytes": 2808
+    },
+    "episode_scripts/ep02.json": {
+      "sha256": "f3cef57fd2be06747899fd71cff9ff00a57098e1cc9c00e81779baab90973774",
+      "bytes": 3936
+    },
+    "episode_scripts/ep03.json": {
+      "sha256": "b49b42d42bcc2cb10fcdd2e3e86231665ceed2f1c89af86358b453fa36125aa8",
+      "bytes": 2970
+    },
+    "storyboards/ep01.json": {
+      "sha256": "59f16eef810ef87736c50d5a6e9058fe3d7d9e892ad5223d801384ba420fbf7c",
+      "bytes": 6934
+    },
+    "storyboards/ep02.json": {
+      "sha256": "c33ac045acbdfb48e301095f1ae08a037b6d23bfaccb662506afff958db5f394",
+      "bytes": 7865
+    },
+    "storyboards/ep03.json": {
+      "sha256": "7b3eace7b185a5b037e9d3e64e8451a278cec5370e634ca6c9bcfa5aa34136af",
+      "bytes": 7344
+    }
+  }
+}

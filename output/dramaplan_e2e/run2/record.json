@@ -1,0 +1,36 @@
+{
+  "run_id": "run2",
+  "channel": "nim",
+  "steps": {
+    "event_graph": {
+      "elapsed_s": 30.74,
+      "chapters": 3,
+      "characters": 4,
+      "events": 7,
+      "quotes": 6
+    },
+    "outline": {
+      "elapsed_s": 0.0,
+      "episodes": 3,
+      "total_shot_budget": 36,
+      "compressed": false,
+      "dropped_events": 0
+    },
+    "review": {
+      "elapsed_s": 45.04,
+      "episodes": 3,
+      "passed": true,
+      "rounds": [
+        2,
+        1,
+        1
+      ],
+      "revision_rounds": 1
+    }
+  },
+  "llm_calls": 10,
+  "llm_failures": 0,
+  "llm_total_s": 75.78,
+  "elapsed_s": 77.6,
+  "qa_passed": true
+}

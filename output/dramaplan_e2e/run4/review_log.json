@@ -1,0 +1,376 @@
+{
+  "story_source": "沈砚之与苏晚（原创）",
+  "target_episodes": 3,
+  "max_rounds": 2,
+  "llm_channel": "",
+  "llm_used": true,
+  "episodes": [
+    {
+      "ep_number": 1,
+      "title": "第1集",
+      "rounds": [
+        {
+          "round_index": 0,
+          "score": 60,
+          "passed": false,
+          "issues": [
+            {
+              "code": "duration_out_of_range",
+              "message": "估算时长 15.0s 超出目标 60.0s ±50%",
+              "scope": "episode",
+              "severity": "error",
+              "scene_no": null
+            },
+            {
+              "code": "llm:人物弧光",
+              "message": "父亲（C002）的愤怒表达过于单一，缺乏内在矛盾或痛点暗示，使其角色显得刻板，难以引发观众共情或预示后续复杂家庭关系。",
+              "scope": "scene:1",
+              "severity": "warning",
+              "scene_no": 1
+            },
+            {
+              "code": "llm:台词质量",
+              "message": "福伯（C003）的台词‘少爷，盘缠我备好了’过于功能化，缺乏生活化细节或潜台词（如犹豫、担忧、暗藏的忠诚考验），使其忠厚人设流于表白而非行为展现。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            },
+            {
+              "code": "llm:节奏",
+              "message": "两场景衔接生硬：从高墙愤怒驱逐直接跳至巷口福伯递物，中间缺少主角内心转化的过渡（如孤独、决心、恐惧），导致情感弧‘冲突→过场’显得命令式而非自然流动。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            },
+            {
+              "code": "llm:逻辑连贯",
+              "message": "父亲为何在儿子翻墙逃出后仅怒斥而不派人追捕或封锁？若真要绝情，为何不直接锁门或打伤？此行为逻辑与其‘愤怒’强度不匹配，削弱了冲突的可信度。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            }
+          ],
+          "revised_scenes": [],
+          "scene_diffs": []
+        },
+        {
+          "round_index": 1,
+          "score": 80,
+          "passed": true,
+          "issues": [
+            {
+              "code": "llm:人物弧光",
+              "message": "父亲（C002）在第一场景中仅以愤怒斥责出现，缺乏后续情感转化或暗示（如悔意、担忧），导致其角色在本集中显得单一且功能化，未能为后续可能的和解或悲剧埋下伏笔，削弱了情感深度。",
+              "scope": "scene:1",
+              "severity": "warning",
+              "scene_no": 1
+            },
+            {
+              "code": "llm:台词质量",
+              "message": "福伯（C003）的台词‘少爷，盘缠我备好了’过于平淡功能化，缺乏人物特色或潜台词（如含蓄的忧虑、对母亲的怀念、对少爷前途的无声祝福），使忠厚这一人设仅停留在表层叙事，未通过语言细节强化人物立体感。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            },
+            {
+              "code": "llm:节奏",
+              "message": "两场景均为线性推进（逃出→交付物品），缺乏张力起伏或情感呼应；第一场以愤怒结束，第二场以平淡交接开始，情感过渡生硬，未能有效实现‘冲突→过场’的弧光，过场感过于刻意且缺少缓冲或反思空间。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            },
+            {
+              "code": "llm:逻辑连贯",
+              "message": "父亲怒斥‘永远别回来’，但随即在第二场景中福伯仍公开在巷口等候并交付盘缠与密信，这一行为与父亲的绝情命令形成直接矛盾：若父亲真不愿其归来，为何仍有家人暗中资助？此逻辑冲突未被解释或转化为人物矛盾（如福伯违背命令、父亲另有暗中安排），削弱了剧情可信度。",
+              "scope": "episode",
+              "severity": "warning",
+              "scene_no": null
+            }
+          ],
+          "revised_scenes": [
+            1,
+            2
+          ],
+          "scene_diffs": [
+            {
+              "scene_no": 1,
+              "before": "cc7191aceac8",
+              "after": "47bbdcbc62e9"
+            },
+            {
+              "scene_no": 2,
+              "before": "d49dbddf1302",
+              "after": "412b5172a773"
+            }
+          ]
+        }
+      ],
+      "final_score": 80,
+      "passed": true,
+      "script": {
+        "ep_number": 1,
+        "title": "第1集",
+        "scenes": [
+          {
+            "scene_no": 1,
+            "location": "沈府后院高墙",
+            "event_ids": [
+              "CH01E001"
+            ],
+            "summary": "沈砚之翻墙逃出，父亲怒斥不许归来。",
+            "narration": "沈砚之翻墙逃出，父亲怒斥不许归来。",
+            "dialogue": [
+              {
+                "speaker": "C002",
+                "text": "你若踏出这门，就永远别回来！",
+                "emotion": "愤怒"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 32.0
+          },
+          {
+            "scene_no": 2,
+            "location": "巷口",
+            "event_ids": [
+              "CH01E002"
+            ],
+            "summary": "福伯在巷口等候，交付盘缠布包及母亲遗留密信。",
+            "narration": "福伯在巷口等候，交付盘缠布包及母亲遗留密信。",
+            "dialogue": [
+              {
+                "speaker": "C003",
+                "text": "少爷，盘缠我备好了。",
+                "emotion": "忠厚"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 28.0
+          }
+        ],
+        "characters_present": [
+          "C001",
+          "C002",
+          "C003",
+          "C004"
+        ]
+      }
+    },
+    {
+      "ep_number": 2,
+      "title": "第2集",
+      "rounds": [
+        {
+          "round_index": 0,
+          "score": 85,
+          "passed": true,
+          "issues": [
+            {
+              "code": "llm:人物弧光",
+              "message": "苏晚在雪中静默绣花，沈砚之出现后仅说一句“你终究还是来了”，但未见其内心波动或行为细节（如是否紧张、是否带武器、为何此时出现），导致人物动机略显突兀，弧光起点不够扎实。",
+              "scope": "scene:1",
+              "severity": "warning",
+              "scene_no": 1
+            },
+            {
+              "code": "llm:逻辑连贯",
+              "message": "两块玉玦‘严丝合缝’身份之谜瞬间揭开，但未交代玉玦的来源、为何分裂、为何双方各持一半多年未察觉，亦未见苏晚或沈砚之对这一发现的情绪处理（如震惊后是否质疑、是否恐惧、是否释然），导致重大信息爆炸后情感未跟上，逻辑上像是‘信息dump’而非自然揭示。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            },
+            {
+              "code": "llm:台词质量",
+              "message": "苏晚的台词‘原来，我们是同源’略显说教和哲学化，不符合其此前沉默寡言、动作驱动的人物设定；若是真正震惊的身世揭露，更应是颤抖的质问、沉默的泪水或一个破碎的‘为什么？’，而非抽象结论。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            }
+          ],
+          "revised_scenes": [],
+          "scene_diffs": []
+        }
+      ],
+      "final_score": 85,
+      "passed": true,
+      "script": {
+        "ep_number": 2,
+        "title": "第2集",
+        "scenes": [
+          {
+            "scene_no": 1,
+            "location": "青州大雪林间",
+            "event_ids": [
+              "CH02E001"
+            ],
+            "summary": "沈砚之在大雪中发现正绣寒梅图的苏晚，两人静默相对。",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C004",
+                "text": "你终究还是来了。",
+                "emotion": "温柔"
+              },
+              {
+                "speaker": "C001",
+                "text": "三年前你救我时，落下的是这个吧。",
+                "emotion": "凝重"
+              }
+            ],
+            "shot_count": 3,
+            "duration_s": 20.0
+          },
+          {
+            "scene_no": 2,
+            "location": "青州大雪林间",
+            "event_ids": [
+              "CH02E002"
+            ],
+            "summary": "沈砚之出示半块玉玦，苏晚取出另一半，两块严丝合缝，身世之谜揭开。",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C001",
+                "text": "这玉，与你身上的，竟能合璧。",
+                "emotion": "震惊"
+              },
+              {
+                "speaker": "C004",
+                "text": "原来，我们是同源。",
+                "emotion": "复杂"
+              }
+            ],
+            "shot_count": 3,
+            "duration_s": 18.0
+          }
+        ],
+        "characters_present": [
+          "C001",
+          "C002",
+          "C003",
+          "C004"
+        ]
+      }
+    },
+    {
+      "ep_number": 3,
+      "title": "第3集",
+      "rounds": [
+        {
+          "round_index": 0,
+          "score": 85,
+          "passed": true,
+          "issues": [
+            {
+              "code": "llm:台词质量",
+              "message": "苏晚出示密信的台词略显说教，'证明晚儿是沈家义女，也是你的妹妹' 信息堆砌感强，缺乏潜台词与情感层次，可通过更含蓄的表达（如颤抖递出信件、轻声‘这是母亲留给你的’）增强沉浸感。",
+              "scope": "scene:1",
+              "severity": "warning",
+              "scene_no": 1
+            },
+            {
+              "code": "llm:逻辑连贯",
+              "message": "沈崇山在大厅突然忏悔落泪，但前文未铺垫其知晓苏晚身份的渠道或内心挣扎，情感爆发显得突兀，需补充暗示（如之前曾私下查看密信、或目光闪躲）以增强说服力。",
+              "scope": "scene:2",
+              "severity": "warning",
+              "scene_no": 2
+            },
+            {
+              "code": "llm:人物弧光",
+              "message": "苏晚在祠堂称‘娘’情感真挚，但其从身份震惊到接受归属的转变过于速成，缺乏挣扎与犹豫的过程，建议在第2场后加入一段独白或沉默镜头，显示她在接受身份前的内心波折。",
+              "scope": "scene:3",
+              "severity": "warning",
+              "scene_no": 3
+            }
+          ],
+          "revised_scenes": [],
+          "scene_diffs": []
+        }
+      ],
+      "final_score": 85,
+      "passed": true,
+      "script": {
+        "ep_number": 3,
+        "title": "第3集",
+        "scenes": [
+          {
+            "scene_no": 1,
+            "location": "沈府书房",
+            "event_ids": [
+              "CH02E003"
+            ],
+            "summary": "苏晚出示母亲密信，证实身份，沈砚之得知她是妹妹并情绪激动",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C004",
+                "text": "母亲留下的密信，证明晚儿是沈家义女，也是你的妹妹。",
+                "emotion": "温柔坚定"
+              },
+              {
+                "speaker": "C001",
+                "text": "什么？我……我竟有妹妹？",
+                "emotion": "震惊激动"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 15.0
+          },
+          {
+            "scene_no": 2,
+            "location": "沈府大厅",
+            "event_ids": [
+              "CH03E001"
+            ],
+            "summary": "沈砚之带苏晚回沈府，沈崇山见玉玦落泪忏悔",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C002",
+                "text": "是我对不住你们兄妹……当年错得太深。",
+                "emotion": "悔恨愧疚"
+              },
+              {
+                "speaker": "C001",
+                "text": "父亲……",
+                "emotion": "复杂激动"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 12.0
+          },
+          {
+            "scene_no": 3,
+            "location": "祠堂",
+            "event_ids": [
+              "CH03E002"
+            ],
+            "summary": "祠堂灯亮，福伯抹泪，苏晚跪拜母亲牌位称娘",
+            "narration": "",
+            "dialogue": [
+              {
+                "speaker": "C003",
+                "text": "小姐终于回来了……老奴替小姐母亲看着你。",
+                "emotion": "感动落泪"
+              },
+              {
+                "speaker": "C004",
+                "text": "娘，我回来了。",
+                "emotion": "哽咽温柔"
+              }
+            ],
+            "shot_count": 2,
+            "duration_s": 13.0
+          }
+        ],
+        "characters_present": [
+          "C001",
+          "C002",
+          "C003",
+          "C004"
+        ]
+      }
+    }
+  ],
+  "passed": true
+}

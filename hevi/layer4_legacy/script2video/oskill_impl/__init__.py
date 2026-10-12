@@ -18,10 +18,18 @@ from hevi.layer4_legacy.script2video.oskill_impl.reference_select import (
     select_best_image,
     select_reference_images_and_prompt,
 )
-from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import shot_budget_for_duration
 from hevi.layer4_legacy.script2video.oskill_impl.shot_decompose import (
     decompose_all_shots,
     decompose_shot_visual,
+)
+from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import (
+    adjust_shot_plans_to_budget,
+    expected_chapters_for_duration,
+    expand_shot_plans_to_budget,
+    fit_shot_plans_to_budget,
+    merge_shot_plans,
+    shot_budget_for_duration,
+    shot_budget_per_chapter,
 )
 from hevi.layer4_legacy.script2video.oskill_impl.transition_video import (
     generate_all_transitions,
@@ -29,9 +37,14 @@ from hevi.layer4_legacy.script2video.oskill_impl.transition_video import (
 )
 
 __all__ = [
+    "adjust_shot_plans_to_budget",
     "construct_camera_tree",
     "decompose_all_shots",
     "decompose_shot_visual",
+    "expected_chapters_for_duration",
+    "expand_shot_plans_to_budget",
+    "fit_shot_plans_to_budget",
+    "merge_shot_plans",
     "generate_all_portraits",
     "generate_all_transitions",
     "generate_and_select",
@@ -44,4 +57,5 @@ __all__ = [
     "select_best_image",
     "select_reference_images_and_prompt",
     "shot_budget_for_duration",
+    "shot_budget_per_chapter",
 ]

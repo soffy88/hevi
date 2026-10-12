@@ -165,9 +165,9 @@ def test_character_fusion_and_alias_matching() -> None:
 
 
 def test_shot_budget_for_duration() -> None:
-    assert shot_budget_for_duration(30.0) == 8
-    assert shot_budget_for_duration(60.0) == 15
-    assert shot_budget_for_duration(90.0) == 22
+    assert shot_budget_for_duration(30.0, min_shot_s=3.0, max_shot_s=5.0) == 8
+    assert shot_budget_for_duration(60.0, min_shot_s=3.0, max_shot_s=5.0) == 15
+    assert shot_budget_for_duration(90.0, min_shot_s=3.0, max_shot_s=5.0) == 22
     assert shot_budget_for_duration(0.0) == 1
 
 

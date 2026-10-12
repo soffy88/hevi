@@ -1,0 +1,37 @@
+{
+  "chapters_ge_3": true,
+  "event_graph_nonempty": true,
+  "characters_merged": true,
+  "outline_episodes_match": true,
+  "all_episodes_have_scripts": true,
+  "review_has_revision_round": true,
+  "review_all_passed": true,
+  "llm_calls": 10,
+  "passed": true,
+  "artifacts": {
+    "event_graph.json": {
+      "sha256": "ec72833b1943ada5be69d4605dc46dad77275cfc908c2cf6137e2ec019a3185f",
+      "bytes": 11195
+    },
+    "adaptation_outline.json": {
+      "sha256": "3fe482ee98cb26aaff8a8220cee5fc50068dde77a3f867628a95a2d038b28e3b",
+      "bytes": 1507
+    },
+    "review_log.json": {
+      "sha256": "59437aa84219ab97fc2489a5abc1812ca63ca5094be4c6de1403609a73ad1c37",
+      "bytes": 13883
+    },
+    "episode_scripts/ep01.json": {
+      "sha256": "c9533fe6513815060f8bde42a856aef46b8d974e58b621474b79859b36c3e442",
+      "bytes": 1122
+    },
+    "episode_scripts/ep02.json": {
+      "sha256": "eab17d7ebb56baef556416ba93779edf1cede8ef03660dd09adc4037804d543d",
+      "bytes": 1344
+    },
+    "episode_scripts/ep03.json": {
+      "sha256": "1f1238305d60a88b5f50622827c940370e2f96edb6dde39ad1fcdad09fe55439",
+      "bytes": 1953
+    }
+  }
+}
