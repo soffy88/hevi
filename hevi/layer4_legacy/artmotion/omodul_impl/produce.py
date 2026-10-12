@@ -45,6 +45,8 @@ def sanitize_latex(text: str) -> str:
 
 
 STYLE_SCENE_MODE: dict[str, str] = {
+    # 这些风格场景原本是完整叙事插画（少女、猫、虾、bauhaus 人偶等）。
+    # 纹理模式只加载背景纹理/底子，不画人物/动物/装饰，让语法层（数学、图表、文字）做主角。
     "17_ink": "texture",
     "25_ghibli": "texture",
     "14_8bit": "texture",
@@ -281,11 +283,14 @@ def produce_artmotion(
     w, h = (1920, 1080) if aspect_ratio == "16:9" else (1080, 1920)
     resolved_style = resolve_style_id(style_id)
     matched_theme = STYLE_THEME_MAP.get(resolved_style, "paper")
+    # 纹理模式：仅加载背景纹理，不画人物/动物
+    texture_mode = resolved_style in STYLE_SCENE_MODE and STYLE_SCENE_MODE[resolved_style] == "texture"
 
     spec = {
         "grammar": grammar_id,
         "style": resolved_style,
         "theme": matched_theme,
+        "texture_mode": texture_mode,
         "duration": total_s,
         "fps": fps,
         "width": w,

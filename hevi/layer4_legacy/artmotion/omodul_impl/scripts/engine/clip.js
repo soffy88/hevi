@@ -54,13 +54,18 @@ async function boot() {
   window.SCENES = window.SCENES || {};
   let styleScene = null;
   const styleId = spec.style || spec.style_id;
+  // 纹理模式：仅加载背景纹理，不画人物/动物（避免叙事元素覆盖内容层）
+  const textureMode = spec.texture_mode || ['17_ink', '25_ghibli', '14_8bit', '12_bauhaus'].includes(styleId);
   if (styleId) {
-    const sx = new XMLHttpRequest(); sx.open('GET', `scenes/${styleId}.js`, false);
-    try { sx.send(); } catch (e) { return fail(`请求风格场景失败 scenes/${styleId}.js: ` + e); }
-    if (sx.status !== 200) return fail(`没有这个风格场景：scenes/${styleId}.js（HTTP ${sx.status}）`);
-    try { (0, eval)(sx.responseText + `\n//# sourceURL=scenes/${styleId}.js`); } catch (e) { return fail(`scenes/${styleId}.js 执行出错 ${e.stack || e}`); }
+    const scenePath = textureMode ? `scenes_style/${styleId}_texture.js` : `scenes/${styleId}.js`;
+    const sx = new XMLHttpRequest(); sx.open('GET', scenePath, false);
+    try { sx.send(); } catch (e) { return fail(`请求风格场景失败 ${scenePath}: ` + e); }
+    if (sx.status !== 200) return fail(`没有这个风格场景：${scenePath}（HTTP ${sx.status}）`);
+    try { (0, eval)(sx.responseText + `\n//# sourceURL=${scenePath}`); } catch (e) { return fail(`${scenePath} 执行出错 ${e.stack || e}`); }
     styleScene = window.SCENES[styleId];
-    if (!styleScene || typeof styleScene.draw !== 'function') return fail(`scenes/${styleId}.js 没注册 SCENES['${styleId}'] = { draw }`);
+    if (!styleScene || typeof styleScene.draw !== 'function') return fail(`${scenePath} 没注册 SCENES['${styleId}'] = { draw }`);
+    // 纹理模式下不显示标签
+    if (textureMode) spec.show_style_label = false;
   }
   // 主题色板：在加载素材之前核，写错就别白等图片
   let pal = null;

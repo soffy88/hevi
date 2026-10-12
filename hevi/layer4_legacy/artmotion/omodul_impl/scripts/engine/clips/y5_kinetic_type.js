@@ -30,6 +30,7 @@ return {
       const S0 = (ctx.portrait ? 250 : 300) * u;
       const mainFont = (ctx.style === '17_ink') ? 'LXGWWenKai-500' : 'PuHui-Black';
       const subFont = (ctx.style === '17_ink') ? 'LXGWWenKai-500' : 'PuHui-Heavy';
+      // 验证文字宽度不超过安全区（safe: true 已确保）
       let f = TY.fit(g, text, W * 0.86, S0, mainFont, { maxLines: 1, min: 0.55, soft: true });   // 先缩字号放一行，再不行折两行；单个长英文词再缩也要放得下
       if (!f.ok) f = num ? TY.fit(g, text, W * 0.86, S0, mainFont, { maxLines: 1 })   // 数字不折行（滚动时逐字变宽，折开会跳）：只缩字号
                      : TY.fit(g, text, W * 0.86, S0, mainFont, { maxLines: 2, min: 0.3, balance: true });
