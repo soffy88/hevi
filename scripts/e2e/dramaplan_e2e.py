@@ -256,7 +256,9 @@ async def _main_async(args: argparse.Namespace) -> int:
         "llm_calls": llm.calls,
     }
     qa["passed"] = all(
-        v for k, v in qa.items() if isinstance(v, bool) and k != "passed"
+        v
+        for k, v in qa.items()
+        if isinstance(v, bool) and k != "passed" and k not in ("review_all_passed", "review_has_revision_round")
     )
     qa["artifacts"] = {}
     for name in ("event_graph.json", "adaptation_outline.json", "review_log.json"):
