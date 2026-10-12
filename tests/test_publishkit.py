@@ -310,6 +310,66 @@ def test_cover_ratios_are_exact(real_clip: Path, tmp_path: Path) -> None:
     assert qa["provenance"]["upstream_ai_cover_rule_met"] is False
 
 
+def test_cover_3x4_uses_portrait_when_available(real_clip: Path, tmp_path: Path) -> None:
+    """F3：提供 portrait_video 时，3:4 封面应从竖版取帧（source_video_kind=portrait）。"""
+    from hevi.layer4_legacy.publishkit.omodul_impl.cover import build_covers, run_cover_qa
+
+    portrait_clip = tmp_path / "portrait.mp4"
+    subprocess.run(
+        [FFMPEG, "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=360x640:d=3",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(portrait_clip)],
+        check=True, capture_output=True,
+    )
+    covers = build_covers(real_clip, tmp_path, topic="竖版封面", subtitle="",
+                          portrait_video=portrait_clip)
+    qa = run_cover_qa(covers, topic="竖版封面", video=real_clip,
+                      portrait_video=portrait_clip)
+    by_ratio = {c["ratio"]: c for c in qa["covers"]}
+    assert by_ratio["3x4"]["source_video_kind"] == "portrait"
+    assert by_ratio["4x3"]["source_video_kind"] == "landscape"
+    assert by_ratio["16x9"]["source_video_kind"] == "landscape"
+    assert qa["passed"] is True
+
+
+# F1：文稿 ↔ 成片音频一致性检查
+
+
+def test_script_audio_consistency_detects_mismatch(real_clip: Path) -> None:
+    """F1：转写与文稿字符相似度低于阈值 → fail。纯音调测试片的转写与中文文稿完全不匹配。"""
+    from hevi.layer4_legacy.publishkit.omodul_impl.qa import script_audio_consistency
+
+    result = script_audio_consistency(
+        real_clip,
+        script_texts=["完全无关的文本内容", "测试文稿不匹配"],
+        narration_end_s=2.5,
+        similarity_threshold=0.6,
+    )
+    # faster-whisper 缺失时 unavailable；可用时必须 fail
+    assert result["status"] in ("unavailable", "measured")
+    if result["status"] == "measured":
+        assert result["passed"] is False
+        assert result["min_similarity"] < 0.6
+
+
+def test_script_audio_consistency_tail_violation(real_clip: Path) -> None:
+    """F1(a)：口播结束后仍有非静音 → tail_violation。3 秒测试片 narration_end=1.0，
+    后 2 秒仍有 440Hz 正弦波，silencedetect 不应报静音 → tail_has_audio=True。"""
+    from hevi.layer4_legacy.publishkit.omodul_impl.qa import script_audio_consistency
+
+    result = script_audio_consistency(
+        real_clip,
+        script_texts=["测试文稿"],
+        narration_end_s=1.0,
+        similarity_threshold=0.6,
+    )
+    assert result["status"] in ("unavailable", "measured")
+    if result["status"] == "measured":
+        # narration_end=1.0 但视频到 3.0s 仍有声音 → 尾部违规
+        assert result["tail_has_audio"] is True
+        assert result["tail_violation"] is True
+        assert result["passed"] is False
+
+
 def test_silence_split_uses_narration_end() -> None:
     from hevi.layer4_legacy.publishkit.omodul_impl.qa import split_silence
 
