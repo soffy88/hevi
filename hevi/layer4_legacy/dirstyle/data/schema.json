@@ -11,7 +11,7 @@
   ],
   "properties": {
     "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
-    "kind": {"type": "string", "enum": ["director", "genre"], "default": "director"},
+    "kind": {"type": "string", "enum": ["director", "genre", "stickman"], "default": "director"},
     "display_zh": {"type": "string", "minLength": 1},
     "display_en": {"type": "string", "minLength": 1},
     "source": {
@@ -19,7 +19,7 @@
       "additionalProperties": false,
       "required": ["origin"],
       "properties": {
-        "origin": {"enum": ["article", "mikefluff", "nolanx", "awesome_seedance", "ai_shortfilm_prompts"]},
+        "origin": {"enum": ["article", "mikefluff", "nolanx", "awesome_seedance", "ai_shortfilm_prompts", "stickman-video-director"]},
         "upstream_commit": {"type": "string", "minLength": 0},
         "license": {"type": "string", "minLength": 1},
         "absorbed_from": {"type": "string"}
@@ -67,6 +67,10 @@
     "negative": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
     "fits": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
     "avoid": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "character_dna": {"type": "string", "minLength": 0, "description": "Frozen character anchor sentence for stickman-style art styles. Repeated verbatim in every clip prompt."},
+    "voice_profile": {"type": "string", "minLength": 0, "description": "Frozen English narrator voice block; repeated verbatim across all clips."},
+    "line_weight": {"type": "string", "minLength": 0, "description": "Stroke width spec (e.g. 'uniform medium, smooth, consistent')."},
+    "palette_wordlist": {"type": "array", "items": {"type": "string"}, "description": "Ordinary-language color names used in prompts (no hex/RGB)."},
     "anime_safe": {"type": "object", "additionalProperties": false, "required": ["conflict_words"], "properties": {
       "conflict_words": {"type": "array", "items": {"type": "string"}},
       "rewrites": {"type": "object", "additionalProperties": {"type": "string"}},

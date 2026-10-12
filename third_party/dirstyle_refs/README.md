@@ -8,6 +8,7 @@
 | `nolanx/` | github.com/nolanx-ai/nolanx.ai | 595d863 | MIT | 方法论 skill（director-visual-language、cinema-studio-lens-look、shot-size-and-angle-language、storyboard-shot-design、lighting-continuity-design、sd2-pe、short-drama-hook-engineering）：吸收**镜头尺寸/角度/运镜词表**和"抽象词→具体决策"规则，用于编译器的运镜库和虚词黑名单。 |
 | `awesome_seedance/` | github.com/ZeroLu/awesome-seedance | ea0d373 | MIT | Seedance 2.0 实战提示词（含王家卫雨夜电话亭、Villeneuve、竖屏霸总短剧、短剧雨夜）：参考**时间码分段写法**和竖屏短剧写法；可作为编译器输出样例/测试对照。 |
 | `ai_shortfilm_prompts/` | github.com/jnMetaCode/ai-shortfilm-prompts | 5e7c374 | MIT（仅 [A] 部分） | **只吸收 MIT [A] 部分**（templates/、methodology、cheatsheet）：21+ 套类型模板（micro-drama、found-footage-horror、fashion-film、food-asmr、cyberpunk-city、genre-camera-sop、camera-move-library、atmosphere-prefabs…）→ 作为"题材模板（genre）"层，与导演风格正交组合。**不得复制 prompts/ 下 Mx-Shell [B] All-Rights-Reserved 内容**（本次已未拷贝）。 |
+| `stickman-video-director/` | github.com/kaomei/stickman-video-director | 821a381 | MIT | **火柴人风格 5 种**（1A 白底黑线/1B 黑底白线/2A 现代科技/2B 彩色故事/3 史前手绘黑色幽默），含 5 段心跳叙事结构、Omni Flash 提示词契约、配音连续性契约；吸收至 `data/stickman_*.json` 及 `omodul_impl/export_flow_pack.py`。 |
 
 ## 许可证
 

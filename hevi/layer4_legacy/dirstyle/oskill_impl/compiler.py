@@ -46,6 +46,7 @@ def compile_prompt(
     *,
     style: DirectorStyle | None = None,
     keyframe_style: str | None = None,
+    director_style_id: str | None = None,
 ) -> dict[str, Any]:
     """Compile a prompt for the given director style + scene.
 
@@ -66,6 +67,77 @@ def compile_prompt(
     if style is None:
         from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
         style = get_style(style_id)
+
+    # ---- Stickman art-style branch ----
+    # For stickman styles the character DNA anchor must be verbatim-frozen at
+    # the start of the positive prompt. The regular six-dimension prose would
+    # duplicate / contradict the DNA lock, so we take a shorter path.
+    if style.is_stickman():
+        dna = style.character_dna.strip()
+        lw = style.line_weight.strip()
+        pw = ", ".join(style.palette_wordlist)
+        comp = "; ".join(style.composition.get("rules", []))
+        rhythm = f"avg {style.rhythm['avg_shot_s']}s/clip, {style.rhythm['cut_rule']}"
+
+        pos_parts: list[str] = []
+        provenance: list[str] = []
+        for label, val in (
+            ("character_dna", dna),
+            ("line_weight", lw),
+            ("palette_words", pw),
+            ("composition", comp),
+            ("rhythm", rhythm),
+        ):
+            if val:
+                pos_parts.append(val)
+                provenance.append(f"{label}: {val}")
+        # optional director overlay (composition / color / motion / rhythm only)
+        if director_style_id:
+            from hevi.layer4_legacy.dirstyle.oprim_impl import get_style as _gs
+            try:
+                d_style = _gs(director_style_id)
+                if d_style.id != style_id:
+                    overlay = [
+                        "; ".join(d_style.composition.get("rules", [])),
+                        "; ".join(d_style.color.get("rules", [])),
+                        "; ".join(d_style.motion.get("rules", [])),
+                        f"avg {d_style.rhythm['avg_shot_s']}s/shot, {d_style.rhythm['cut_rule']}",
+                    ]
+                    overlay = [o for o in overlay if o]
+                    if overlay:
+                        pos_parts.append(", ".join(overlay))
+                        provenance.append(f"director_overlay: {director_style_id}")
+                    extra_neg = [n for n in d_style.negative if n not in style.negative]
+                    negative_extra = extra_neg
+                else:
+                    negative_extra = []
+            except ValueError:
+                negative_extra = []
+        else:
+            negative_extra = []
+        if scene and scene.strip():
+            pos_parts.append(scene.strip())
+            provenance.append(f"scene: {scene.strip()}")
+        if action and action.strip():
+            pos_parts.append(action.strip())
+            provenance.append(f"action: {action.strip()}")
+        if camera_move and camera_move.strip():
+            pos_parts.append(camera_move.strip())
+            provenance.append(f"camera_move: {camera_move.strip()}")
+
+        positive = _strip_vague(", ".join(p for p in pos_parts if p.strip()))
+        negative = ", ".join(list(style.negative) + negative_extra)
+        return {
+            "positive": positive,
+            "negative": negative,
+            "camera": camera_move or "; ".join(style.motion["rules"]),
+            "aspect_note": style.lens_aspect["aspect"],
+            "style_id": style_id,
+            "provenance": provenance,
+            "keyframe_style": keyframe_style,
+            "character_dna": dna,
+            "director_style_id": director_style_id,
+        }
 
     pos_parts: list[str] = []
     provenance: list[str] = []

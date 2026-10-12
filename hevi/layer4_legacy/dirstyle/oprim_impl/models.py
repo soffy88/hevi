@@ -1,4 +1,4 @@
-"""Director style dataclass contracts and validators (3O oprim)."""
+"""DirectorStyle dataclass contracts and validators (3O oprim)."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -40,6 +40,10 @@ class DirectorStyle:
     grade: dict[str, Any]
     kind: str = "director"
     anime_safe: dict[str, Any] = field(default_factory=dict)
+    character_dna: str = ""
+    voice_profile: str = ""
+    line_weight: str = ""
+    palette_wordlist: list[str] = field(default_factory=list)
 
     @property
     def grade_steps(self) -> list[StyleGradeStep]:
@@ -70,6 +74,10 @@ class DirectorStyle:
         except Exception:
             return False
 
+    def is_stickman(self) -> bool:
+        """True when this style is a stickman art style (character DNA based)."""
+        return self.kind == "stickman" or bool(self.character_dna)
+
 
 def from_dict(data: dict[str, Any]) -> DirectorStyle:
     return DirectorStyle(
@@ -91,6 +99,10 @@ def from_dict(data: dict[str, Any]) -> DirectorStyle:
         grade=data.get("grade", {}),
         kind=data.get("kind", "director"),
         anime_safe=data.get("anime_safe", {}),
+        character_dna=data.get("character_dna", ""),
+        voice_profile=data.get("voice_profile", ""),
+        line_weight=data.get("line_weight", ""),
+        palette_wordlist=data.get("palette_wordlist", []),
     )
 
 
@@ -98,6 +110,15 @@ def from_dict(data: dict[str, Any]) -> DirectorStyle:
 ARTICLE_DIRECTOR_IDS: tuple[str, ...] = (
     "wong_kar_wai", "zhang_yimou", "hou_hsiao_hsien", "jiang_wen",
     "johnnie_to", "jia_zhangke", "nolan", "wes_anderson", "tarantino", "fincher",
+)
+
+# Stickman art styles from the vendored stickman-video-director skill.
+STICKMAN_STYLE_IDS: tuple[str, ...] = (
+    "stickman_1a_light",
+    "stickman_1b_dark",
+    "stickman_2a_studio_tech",
+    "stickman_2b_cinematic_story",
+    "stickman_3_prehistoric",
 )
 
 
@@ -109,8 +130,8 @@ __all__ = [
     "ARTICLE_DIRECTOR_IDS",
     "DIRSTYLE_DATA_DIR",
     "DirectorStyle",
+    "STICKMAN_STYLE_IDS",
     "StyleGradeStep",
-    "WIKI_DIR_DATA_DIR",
     "from_dict",
     "SCHEMA_PATH",
 ]
