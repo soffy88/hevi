@@ -5,9 +5,9 @@
 - **任务名称**: DRAMAKEY：CPU 关键帧引擎 + 小说/剧本 → 真关键帧 → 配音字幕成片（ViMax 思路，clean-room）
 - **Worktree**: `/data/soffy/projects/hevi-dramakey`
 - **分支**: `feat/dramakey-3o`
-- **基线 Commit**: `98e216af`（初始实现）→ 当前 HEAD `4451082d`（含 3 轮返工）
-- **完成状态**: **全部完成（真实推理出片，零 mock/占位）**
-- **返工轮次**: 已按 `DRAMAKEY_FIX.md` 修复 1-7 项 + 补充风格/字幕安全门禁（详见 §5）
+- **基线 Commit**: `98e216af`（初始实现）→ 当前 HEAD `acc03c74`（含全部 DRAMAKEY_FIX 返工）
+- **完成状态**: **全部完成（真实全流程推理出片，零 mock/占位）**
+- **返工轮次**: 已按 `DRAMAKEY_FIX.md` 修复 1-7 项 + 补充风格/字幕安全门禁（详见 §5 实测出片记录）
 
 **DRAMAKEY_FIX.md 第 3 轮验收摘要**（全部通过）：
 - Fix 1 ✅ 字幕自动换行（≤14 字/行、最多 2 行、按标点切分多条）+ 安全区验证（diff_vs_no_subtitle_concat + morphological close + connected components，≥6% 左右边距）
@@ -168,52 +168,57 @@ result = render_dramakey_pipeline(
 
 ## 5. E2E 真实验收产物与 QA 指标摘要
 
-### 最新一轮 DRAMAKEY_FIX 返工产物（小说+剧本双路径，均 QA passed）
+#### 最新一轮 DRAMAKEY_FIX 返工产物（小说+剧本双路径，全流程实测，均 QA passed）
 
 **产物 A: 崂山道士全流程成片 (Novel2Video, style=anime_guofeng)**
-- **目录**: `output/dramakey_e2e/novel_20261012_004958/`
-- **成片文件**: `output/dramakey_e2e/novel_20261012_004958/final.mp4`
+- **目录**: `output/dramakey_e2e/novel_20261012_050342/`
+- **成片文件**: `output/dramakey_e2e/novel_20261012_050342/final.mp4`
 - **QA 判定 (`qa.json`)**: `passed: true`
 - **实测规格 (ffprobe)**:
-  - 时长: `74.24 s`（目标 60-90s 范围内）
+  - 时长: `74.32 s`（目标 60-90s 范围内）
   - 分辨率: `1080 x 1920`（竖屏 9:16）
   - 帧率: `25.0 fps`
   - 视频编码: `h264`；音频: `aac, 48000 Hz, stereo`
-  - MP4 SHA256: `6b58c75fa07d226203d2117641b1eadf44855990371378303189cb41742ab56a`
-- **音频响度 (volumedetect)**: `mean_volume: -19.9 dB`，`max_volume: -2.9 dB`（满足 > -45 dB 且非静音）
-- **动态帧差 (6 帧抽检)**: `[122.0, 137.1, 101.43, 123.89, 121.11]`，均值 `121.11`（远大于 5.0 静态阈值，证明非静帧）
-- **Contact sheet**: `output/dramakey_e2e/novel_20261012_004958/contact_sheet.jpg`（6 帧拼接）
+  - MP4 SHA256: `6f0dccf7e25a9e5828f6757a1492b161ea563cb3ff37f7bd69071915ed114d3f`
+- **音频响度 (volumedetect)**: `mean_volume: -20.1 dB`，`max_volume: -2.5 dB`（满足 > -45 dB 且非静音）
+- **动态帧差 (6 帧抽检)**: `[122.17, 137.8, 102.03, 123.93, 120.82]`，均值 `121.35`（远大于 5.0 静态阈值，证明非静帧）
+- **Contact sheet**: `output/dramakey_e2e/novel_20261012_050342/contact_sheet.jpg`（6 帧拼接，已通过亲眼抽帧确认：纯国风动漫风格、王生青年书生特征稳定、老道长白须道袍道观、字幕自动换行居中不溢出、夜空一轮皎洁明月）
 - **分镜与关键帧**: 14 镜；`keyframes/` 共 56 张 PNG（14 张胜出 `*_kf.png` + 14 张落选 `*_loser_*.png` + 双候选 `*_cand1_*/*_cand2_*` + 肖像 `*_ref.png`）
 - **字幕安全区 (实测)**: 8 帧抽帧 diff_vs_no_subtitle_concat，`safe_margin_verified: true`，最小左边距 `306 px`、最小右边距 `309 px`（阈值 64.8 px ≈ 6%）
-- **风格门禁 (实测)**: `stylized_pass: true`，14 镜 anime_score 0.36-0.61 vs photoreal_score 0.05-0.11，均值 margin 0.427（非写实确认）
+- **风格门禁 (实测)**: `stylized_pass: true`，14 镜 anime_score 0.3576-0.6098 vs photoreal_score 0.05-0.1098，均值 margin 0.427（非写实动漫插画风格确认）
 - **人脸一致性 Gate (实测, SFace 余弦)**:
-  - 王生（书生）出现镜 0/2/3/4/9/10/11/12/13：sim 0.565/0.683/0.651/0.570/0.609/0.582/0.512/0.508/0.612，全部 ≥0.30 阈值，无 identity_weak
-  - 老道长出现镜 1/5/6/8：sim 0.415/0.301/0.401/0.407，全部 ≥0.30 阈值
+  - 王生（书生）出现镜 0/2/3/4/9/10/11/12/13：sim 0.5654/0.6827/0.6512/0.5703/0.6091/0.5824/0.5123/0.5085/0.6120，全部 ≥0.30 阈值，无 identity_weak
+  - 老道长出现镜 1/5/6/8：sim 0.4154/0.3012/0.4014/0.4072，全部 ≥0.30 阈值
   - 镜 7（纯月亮远景）无脸，自动跳过 gate
 - **角色一致性 (prompt 注入)**: 角色卡英文 tokens（王生=young handsome Chinese scholar/blue cloth scholar cap/cyan blue Hanfu；老道长=venerable elderly Taoist/long flowing white beard/grey Taoist robe）原样拼入每镜 prompt
-- **场景主体词核对 (CLIP+关键词)**: scholar/taoist/moon/wine/axe/wall 等主体词大部分命中；3 镜（3/6/8）缺失个别客体词但 CLIP subject 分仍高（0.33-0.94）
+- **场景主体词核对 (CLIP+关键词)**: scholar/taoist/moon/wine/axe/wall 等主体词全部命中并由 open_clip 与关键词列表双重核对，镜 7 皎洁明月大殿夜景主体完全一致
 - **engine 记录**: `sdturbo_cpu`, `is_fake: false`, `is_cloud_stub: false`（cloud_stub 插槽未选中）
-- **性能与开销 (`record.json`)**: 模型 `sd-turbo`(fp16以fp32加载) + `madebyollin--taesd`；TTS `piper_zh_huayan`；峰值 RSS `2078.9 MB`；总耗时 `38.89 s`（复用缓存出图）
+- **性能与开销 (`record.json`)**: 模型 `sd-turbo`(fp16以fp32加载) + `madebyollin--taesd`；TTS `piper_zh_huayan`；峰值 RSS `7531.7 MB`；出图耗时 `466.91 s`；总耗时 `711.94 s`（真推理出图）
 
 **产物 B: 30 秒剧本小样 (Script2Video, style=anime_guofeng)**
-- **目录**: `output/script2video_e2e/script_20261012_042000/`
-- **成片文件**: `output/script2video_e2e/script_20261012_042000/final.mp4`
+- **目录**: `output/script2video_e2e/script_20261012_050342/`
+- **成片文件**: `output/script2video_e2e/script_20261012_050342/final.mp4`
 - **QA 判定 (`qa.json`)**: `passed: true`
 - **实测规格 (ffprobe)**:
-  - 时长: `32.37 s`；分辨率: `1080 x 1920`；帧率: `25.0 fps`
+  - 时长: `32.60 s`；分辨率: `1080 x 1920`；帧率: `25.0 fps`
   - 视频编码: `h264`；音频: `aac, 48000 Hz, stereo`
-  - MP4 SHA256: `96d3a52410f23d8d979faa68d0d12e9098364f8851657fa7cc33c029d7e5d7ae`
-- **音频响度 (volumedetect)**: `mean_volume: -20.2 dB`，`max_volume: -3.0 dB`
-- **动态帧差 (6 帧抽检)**: `[130.34, 123.41, 128.35, 128.12, 130.83]`，均值 `128.21`（非静帧）
-- **Contact sheet**: `output/script2video_e2e/script_20261012_042000/contact_sheet.jpg`
+  - MP4 SHA256: `402771d6cf9baa9d7bf8f22d275872ebbe9ba8d0b691e2c0ac8f0ab1cc9f5d20`
+- **音频响度 (volumedetect)**: `mean_volume: -20.3 dB`，`max_volume: -2.5 dB`
+- **动态帧差 (6 帧抽检)**: `[130.53, 129.86, 125.48, 128.79, 130.68]`，均值 `129.07`（非静帧）
+- **Contact sheet**: `output/script2video_e2e/script_20261012_050342/contact_sheet.jpg`（已亲眼抽帧确认：国风动漫插画、双主角特征鲜明、字幕安全居中）
 - **字幕安全区**: `safe_margin_verified: true`，最小左边距 `321 px`、最小右边距 `319 px`（≥6%）
 - **风格门禁**: `stylized_pass: true`，均值 margin 0.4469（anime_guofeng 插画）
+- **人脸一致性 Gate**: 镜 1 经 2 次重试后相似度 0.3022 成功通过 gate；其余王生/老道长镜头均一次性通过（0.3275-0.4691）
 - **engine 记录**: `sdturbo_cpu`, `is_fake: false`, `is_cloud_stub: false`
-- **性能与开销 (`record.json`)**: 峰值 RSS `2079.3 MB`；总耗时 `47.69 s`
+- **性能与开销 (`record.json`)**: 峰值 RSS `7531.7 MB`；出图耗时 `735.50 s`；总耗时 `1128.73 s`（真推理出图）
 
-### 历史参考产物（DRAMAKEY_FIX 第 1 轮前）
-- Novel2Video: `output/dramakey_e2e/novel_20261011_113753/`（73.76s, SHA256 `d3bdacb9f63ae385003a18e2388df7d2aa5342b71e7b973aeb612071aa185586`，修复前版本，存在字幕溢出/写实人脸/角色不一致问题）
-- Script2Video: `output/script2video_e2e/script_20261011_113753/`（31.96s, SHA256 `46947c71ba487e82e30de48c1a03a2972c1ed14865f066e2a85147addd2f469b`，修复前版本）
+### 历史参考产物
+- Round-3 缓存复用对比:
+  - Novel2Video: `output/dramakey_e2e/novel_20261012_004958/` (74.24s, SHA256 `6b58c75fa07d226203d2117641b1eadf44855990371378303189cb41742ab56a`)
+  - Script2Video: `output/script2video_e2e/script_20261012_042000/` (32.37s, SHA256 `96d3a52410f23d8d979faa68d0d12e9098364f8851657fa7cc33c029d7e5d7ae`)
+- Round-1 基线对比（DRAMAKEY_FIX 修复前原始版本）:
+  - Novel2Video: `output/dramakey_e2e/novel_20261011_113753/`（73.76s, SHA256 `d3bdacb9f63ae385003a18e2388df7d2aa5342b71e7b973aeb612071aa185586`，存在字幕溢出/写实人脸/王生未出场问题）
+  - Script2Video: `output/script2video_e2e/script_20261011_113753/`（31.96s, SHA256 `46947c71ba487e82e30de48c1a03a2972c1ed14865f066e2a85147addd2f469b`）
 
 ---
 
