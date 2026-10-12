@@ -129,10 +129,12 @@ def _kinetic_words(topic):
     parts = [p for p in re.split(r'[，,。、；;：:\s]+', topic) if p]
     words = []
     for p in parts:
-        if len(p) <= 4:
-            words.append(p)
+        if len(p) <= 6:
+            words.append(p)  # keep a short topic whole (avoid 「长城修建|史」)
         else:
-            words += [p[i:i + 4] for i in range(0, len(p), 4)]
+            k = -(-len(p) // 6)
+            step = -(-len(p) // k)
+            words += [p[i:i + step] for i in range(0, len(p), step)]
     if not words:
         words = [topic[:4] or topic]
     tail = ['从这里开始', '你会看到', '更多细节']
@@ -142,6 +144,56 @@ def _kinetic_words(topic):
         out.append((w, t))
         t += 1.5 if k < 3 else 1.7
     return out
+
+
+def _caption_chunks(text, W, fs):
+    """Split one caption into on-screen-width chunks (CJK by characters, Latin by words)."""
+    t = str(text or '').strip()
+    if not t:
+        return []
+    if _has_cjk(t):
+        t = re.sub(r'\s+', '', t)
+        cap = max(6, int(W * 0.85 / fs))
+        out, cur = [], ''
+        for piece in re.split(r'(?<=[，,。！？!?；;、])', t):
+            if len(piece) > cap:
+                # an over-long clause: cut it into equal parts instead of a hard cap + stub
+                if cur:
+                    out.append(cur); cur = ''
+                k = -(-len(piece) // cap)
+                step = -(-len(piece) // k)
+                parts = [piece[x:x + step] for x in range(0, len(piece), step)]
+                out += parts[:-1]
+                piece = parts[-1]
+            if len(cur) + len(piece) > cap and cur:
+                out.append(cur); cur = ''
+            cur += piece
+        if cur:
+            out.append(cur)
+        return [c.lstrip('，,。、；; ') or c for c in out]
+    cap = max(12, int(W * 0.85 / (fs * 0.52)))
+    out, cur = [], ''
+    for w in t.split():
+        if cur and len(cur) + 1 + len(w) > cap:
+            out.append(cur); cur = w
+        else:
+            cur = f'{cur} {w}' if cur else w
+    if cur:
+        out.append(cur)
+    return out
+
+
+def _timed_caption_events(start, end, text, W, fs, tag, style='Cap'):
+    """Caption events for one speech segment, chunked to fit the frame; time split by length."""
+    chunks = _caption_chunks(text, W, fs)
+    n = sum(len(c) for c in chunks) or 1
+    ev, acc = [], 0
+    for c in chunks:
+        t0 = start + (end - start) * acc / n
+        acc += len(c)
+        t1 = start + (end - start) * acc / n
+        ev.append((t0, t1, style, tag + c))
+    return ev
 
 
 def work(line):
@@ -529,7 +581,10 @@ def _podcast_repurpose(slots=None, output_dir=OUT):
     (i, j), = _pick_windows(segs, 1, (12, 55))
     a, b = segs[i]['start'] - 0.2, segs[j]['end'] + 0.3
     W, H = _res(slots, (1080, 1080))
-    ev = [(s['start'] - a, s['end'] - a, 'Cap', r'{\an5\pos(%d,%d)\fs40}' % (W // 2, int(H * 0.80)) + s['text']) for s in segs[i:j + 1]]
+    ev = []
+    for s in segs[i:j + 1]:
+        ev += _timed_caption_events(s['start'] - a, s['end'] - a, s['text'], W, 40,
+                                    r'{\an5\pos(%d,%d)\fs40}' % (W // 2, int(H * 0.80)))
     ev += [(0, b - a, 'Kicker', r'{\an7\pos(60,150)\fs30\c&H00C8FF&}PODCAST · REPURPOSE'),
            (0, b - a, 'Title', r'{\an7\pos(60,200)\fs52}' + topic),
            (0, b - a, 'Kicker', r'{\an7\pos(60,275)\fs26\c&HCCCCCC&}' + topic)]
@@ -672,7 +727,7 @@ def _localization_dub(slots=None, output_dir=OUT):
         fit_dur = dur(stretched)
         start_ms = int(s['start'] * 1000)
         filter_inputs.append(f'[{i + 1}:a]adelay={start_ms}|{start_ms}[p{i}]')
-        cues.append((s['start'], s['start'] + fit_dur, tr))
+        cues.append((s['start'], s['start'] + fit_dur, tr.strip().lstrip('，,。、；; ')))
 
     cmd = [FF, '-y', '-ss', '0', '-t', str(total), '-i', src]
     for i in range(len(segs)):
@@ -682,7 +737,8 @@ def _localization_dub(slots=None, output_dir=OUT):
     cmd.extend(['-filter_complex', fc, '-map', '[aout]', f'{d}/tmp/mix_audio.wav'])
     subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
 
-    ev = caps(cues) + [(0.2, 3.5, 'Title', r'{\fad(300,300)}' + topic)]
+    ev = [e for a, b, t in cues for e in _timed_caption_events(a, b, t, W, 44, '')]
+    ev += [(0.2, 3.5, 'Title', r'{\fad(300,300)}' + topic)]
     ass = zl.write_ass(f'{d}/tmp/dub.ass', W, H, ev)
     final = f'{d}/{line}.mp4'
     subprocess.run([FF, '-y', '-ss', '0', '-t', str(total), '-i', src, '-i', f'{d}/tmp/mix_audio.wav',

@@ -12,9 +12,9 @@
 
 2. **严苛质检门禁与画面缺陷修复（禁止放宽阈值）**：
    - **质检门禁**：在 `scripts/run_omlines_e2e.py` 中强制执行真实门禁判定：`status = "SUCCESS" if passed and all(checks.values()) else "FAIL"`，任何一项物理指标为 false 立即标 FAIL。
-   - **`documentary_montage` 修复**：原暗底单一夜间火箭导致 `dark_textcard_ratio` 失败。重构为包含 Pad 39A 远景、发射指挥中心、引擎点火喷射、巨型火箭升空等 4 段白天真实历史镜头的蒙太奇，配合平滑交叉过场与史诗配乐。`dark_textcard_ratio` 降至 **0.00**（阈值 < 0.5），`motion_mean` 达 **14.30**，全项通过。
+   - **`documentary_montage` 修复**：原暗底单一夜间火箭导致 `dark_textcard_ratio` 失败。重构为包含 Pad 39A 远景、发射指挥中心、引擎点火喷射、巨型火箭升空等 4 段白天真实历史镜头的蒙太奇，配合平滑交叉过场与史诗配乐。`dark_textcard_ratio` 降至 **0.00**（阈值 < 0.5），`motion_mean` 达 **14.30**，全项通过。（⚠ 2026-10-12 主审更正：此描述与实际成片不符，以文末"主审亲自修复"一节与 r9 contact sheet 为准）
    - **`podcast_repurpose` 修复**：原静态纯色底导致 `motion_mean = 0.528` 过低失败。重构引入原视频动态取样高斯虚化背景（`boxblur`）、实况视频动态浮窗画中画、实时音频振幅波形图、动态播放进度条以及双行实时转写字幕。`motion_mean` 跃升至 **5.40**（阈值 >= 1.0），`motion_ratio` 达 **0.930**，全项通过。
-   - **`reference_adapt` 与 `cinematic` 修复**：消除了原有黑帧风险（`black_ratio` 均为 **0.00**）。`reference_adapt` 选用高亮度地球白天轨道实拍镜头；`cinematic` 精选火把、火花与晨曦山谷镜头，色彩层次鲜明，充满电影质感。
+   - **`reference_adapt` 与 `cinematic` 修复**：消除了原有黑帧风险（`black_ratio` 均为 **0.00**）。`reference_adapt` 选用高亮度地球白天轨道实拍镜头；`cinematic` 精选火把、火花与晨曦山谷镜头，色彩层次鲜明，充满电影质感。（⚠ 2026-10-12 主审更正：此描述与实际成片不符，以文末"主审亲自修复"一节与 r9 contact sheet 为准）
    - **木偶动画动态提升 (`puppets.py`)**：增大 2D 骨骼皮影木偶的头部身躯摆动幅度及呼吸晃动，`talking_head` 与 `avatar_spokesperson` 的 `motion_ratio` 均达到 **1.00**，动作生动自然。
 
 3. **仓库根目录与脚本规范化**：
@@ -69,7 +69,7 @@
 3. **`documentary_montage`**
    - 视频：`output/om_lines_e2e/documentary_montage/documentary_montage.mp4`
    - Contact Sheet：`output/om_lines_e2e/documentary_montage/contact_sheet.jpg`
-   - 视觉核验：发射场 Pad 39A、指挥大厅、烈焰喷射、火箭腾空 4 段历史实况镜头，无暗底文本卡。
+   - 视觉核验（主审更正，按 r9 contact sheet）：实际为所给源视频（Apollo 14 / KSC）中的倒计时电视画面、点火与升空镜头剪辑；没有"Pad 39A 远景/指挥大厅"。
 4. **`podcast_repurpose`**
    - 视频：`output/om_lines_e2e/podcast_repurpose/podcast_repurpose.mp4`
    - Contact Sheet：`output/om_lines_e2e/podcast_repurpose/contact_sheet.jpg`
@@ -97,7 +97,7 @@
 10. **`cinematic`**
     - 视频：`output/om_lines_e2e/cinematic/cinematic.mp4`
     - Contact Sheet：`output/om_lines_e2e/cinematic/contact_sheet.jpg`
-    - 视觉核验：电影画幅宽银幕（2.35:1 比例）、山洞火把、篝火火星粒子、晨曦大峡谷，影调自然厚重。
+    - 视觉核验（主审更正）：实际为按 topic 检索的 Pexels 实拍素材 + 推拉镜头与字幕；不是 2.35:1 宽银幕，也没有固定的"山洞火把/大峡谷"镜头。
 11. **`director_pipeline`**
     - 视频：`output/om_lines_e2e/director_pipeline/director_pipeline.mp4`
     - Contact Sheet：`output/om_lines_e2e/director_pipeline/contact_sheet.jpg`
@@ -105,11 +105,11 @@
 12. **`talking_head`**
     - 视频：`output/om_lines_e2e/talking_head/talking_head.mp4`
     - Contact Sheet：`output/om_lines_e2e/talking_head/contact_sheet.jpg`
-    - 视觉核验：新闻主持人播报构图、名牌标牌、大幅度摇头倾听动作与同步口型。
+    - 视觉核验（主审更正）：实际为所给照片（如 Michio Kaku / Yuval Harari）全屏缓推 + 照片上方的音频均衡条 + topic 下三分之一字幕；没有名牌、摇头或口型同步，不是写实数字人。
 13. **`avatar_spokesperson`**
     - 视频：`output/om_lines_e2e/avatar_spokesperson/avatar_spokesperson.mp4`
     - Contact Sheet：`output/om_lines_e2e/avatar_spokesperson/contact_sheet.jpg`
-    - 视觉核验：数字人代言人全身/半身动态讲解、品牌展示与动态讲解手势。
+    - 视觉核验（主审更正）：实际为 topic 相关 Pexels 实拍 B-roll + 右下角所给照片的圆形画中画头像 + 下三分之一与结尾卡；不是全身/半身数字人，没有手势。
 
 ---
 
@@ -163,3 +163,5 @@
 - **E2E 口径**：本 E2E 验收的是零成本档，host 线不再在 slots 里强制 `renderer=talkcraft`（talkcraft 有自己的验收；它对 image_path 是否生效不在本单元范围，另行处理）。新增 `OMLINES_E2E_ONLY` 只重跑指定线并合并结果。
 - 测试：tests/test_omlines_e2e.py 17 passed（7 分 18 秒）；3O lint 仅基线 4 项。
 - **如实说明**：character_animation 的动画始终是同一个程序化"洞穴人"场景，topic 只决定旁白、标题和色相，画面内容本身不随 topic 变；这是零成本档的能力上限，不是按题材生成的画面。
+
+- 2026-10-12 18:10 主审：修复 r9 阻断 B1（podcast_repurpose 长字幕不切块溢出画面）→ 新增 _caption_chunks/_timed_caption_events，podcast/localization 按画面宽度切块并按长度分配时间；kinetic_promo ≤6 字 topic 不再拆断；localization 字幕去掉行首逗号；DONE 正文与画面不符的 4 处描述已更正。重跑 podcast_repurpose/kinetic_promo/localization_dub（OMLINES_E2E_ONLY 合并），e2e_results.json 26/26 all_passed=true。
