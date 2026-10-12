@@ -1,0 +1,105 @@
+{
+  "architecture_qualification": "PASS",
+  "duplicate_side_effects": 0,
+  "false_success": 0,
+  "invariants": {
+    "no_product_execution_branch": true,
+    "no_second_asset_authority": true,
+    "no_second_motion_authority": true,
+    "no_second_qa_authority": true,
+    "no_second_recipe_authority": true,
+    "no_second_renderer": true,
+    "no_second_shot_authority": true,
+    "one_product_compiler": true,
+    "one_runtime": true,
+    "semantic_score_reachable": true
+  },
+  "mock_used": false,
+  "products": {
+    "P01_AVATAR_EXPLAINER": {
+      "intent_hash": "444aba335151137ebf6e0f89942e8d7e0a21a2e4541290732ba737528406e14e",
+      "narrative_grammar_id": "explanatory",
+      "presenter_grammar_id": "avatar_explainer",
+      "recipe_fingerprint": "a849312804b238cfe702c6d3f62d65d638ac70b930526dd2824186d87305fb8d",
+      "visual_grammar_id": "educational_clarity",
+      "visual_style_id": "educational_clarity"
+    },
+    "P02_HISTORY_RECONSTRUCTION": {
+      "intent_hash": "9e9a927416fe44c744e45c0059824a17d9d6af977c697bcaba252f0c6c170adc",
+      "narrative_grammar_id": "story",
+      "presenter_grammar_id": "historical_reconstruction",
+      "recipe_fingerprint": "8c07998dee7a5b34cb74990d056d5493855695b17bfc071bbfe684046b905cbd",
+      "visual_grammar_id": "dramatic_reconstruction",
+      "visual_style_id": "cinematic_drama"
+    },
+    "P03_DOCUMENTARY": {
+      "intent_hash": "35f5d05f16eb147f1239c6038c1c7edee8613eec2fa458b58fd0a61426c2a240",
+      "narrative_grammar_id": "documentary",
+      "presenter_grammar_id": "documentary_explainer",
+      "recipe_fingerprint": "176ebab6c5ee4a31cf0b09ba0eef722a49bccbd749f99f6b21817c13ca5ec333",
+      "visual_grammar_id": "documentary_realism",
+      "visual_style_id": "documentary_realism"
+    },
+    "P04_SCIENCE_EXPLAINER": {
+      "intent_hash": "7e41002fa32b66e7e87ef1f8a2cd859f028266b408f14b002d823b7ad05e4caf",
+      "narrative_grammar_id": "explanatory",
+      "presenter_grammar_id": "avatar_explainer",
+      "recipe_fingerprint": "eea7f7c575579dbd8ee2f78f6eb7621c34aa76c61b414e830f4d401fc1fec016",
+      "visual_grammar_id": "educational_clarity",
+      "visual_style_id": "educational_clarity"
+    },
+    "P05_NEWS_ANALYSIS": {
+      "intent_hash": "db17db2125072beab716765b80bc2b88b3b17381946bc17893c04580421f7b59",
+      "narrative_grammar_id": "documentary",
+      "presenter_grammar_id": "documentary_explainer",
+      "recipe_fingerprint": "cc440a9f5166e8865b2ea63c2ae4caef67d2062feaabdddc1bd699fb471afa2e",
+      "visual_grammar_id": "documentary_realism",
+      "visual_style_id": "documentary_realism"
+    },
+    "P06_EDUCATIONAL": {
+      "intent_hash": "721fc14cac6a66016bd34f1b4cdc51454d8873f6c8564c8088a8c7e60cea2884",
+      "narrative_grammar_id": "explanatory",
+      "presenter_grammar_id": "educational_lecture",
+      "recipe_fingerprint": "df00743982601ed9485fd5102c2b0421c89674f1b93ed999a6f7d5a5fc68a665",
+      "visual_grammar_id": "educational_clarity",
+      "visual_style_id": "educational_clarity"
+    },
+    "P07_MARKETING": {
+      "intent_hash": "c133ab2121fff3d21cce2af9b829dfd1602fc5f5df1607e6660b5a7edd8a4c2a",
+      "narrative_grammar_id": "explanatory",
+      "presenter_grammar_id": "product_presentation",
+      "recipe_fingerprint": "18717fbb911d2cb3512299fb57abc4c325d48d3369c5572481658408504fda9e",
+      "visual_grammar_id": "educational_clarity",
+      "visual_style_id": "educational_clarity"
+    },
+    "P08_BRAND_STORY": {
+      "intent_hash": "759790e5996b94731189bdab69da244f8d1ee79a3c604b8d1acc79913c03ac53",
+      "narrative_grammar_id": "story",
+      "presenter_grammar_id": "documentary_explainer",
+      "recipe_fingerprint": "4d8c948fd7831940aa253671d7ac0d95d521c051b7bcbc3939fab839577efbf3",
+      "visual_grammar_id": "dramatic_reconstruction",
+      "visual_style_id": "cinematic_drama"
+    },
+    "P09_SHORT_VIDEO": {
+      "intent_hash": "efed49badb16b0345c89648c2ecb0fb4c3fe9b3f18eca79a1cb010315e554f3f",
+      "narrative_grammar_id": "short_form",
+      "presenter_grammar_id": "avatar_explainer",
+      "recipe_fingerprint": "fb2690e58409916b1025187d5af62630da1c35720d2205415220a56704a598ec",
+      "visual_grammar_id": "educational_clarity",
+      "visual_style_id": "educational_clarity"
+    },
+    "P10_CINEMATIC_STORY": {
+      "intent_hash": "948e5920856bd3e907169fcaa4e5d94ff6be416e6ca56764a18c4d4fd0b9771c",
+      "narrative_grammar_id": "story",
+      "presenter_grammar_id": "historical_reconstruction",
+      "recipe_fingerprint": "d3cda68ec18cc4573577f0df2a052a6691760377a44a71fb97e786c3322d3d4c",
+      "visual_grammar_id": "dramatic_reconstruction",
+      "visual_style_id": "cinematic_drama"
+    }
+  },
+  "provider_blockers": [
+    "no provider credentials configured",
+    "CUDA reports no device"
+  ],
+  "real_render_qualification": "BLOCKED_BY_PROVIDER"
+}

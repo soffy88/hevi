@@ -185,11 +185,21 @@ def _char_similarity(a: str, b: str) -> float:
 
 def transcribe_segments(path: Path, *, model_dir: str = "/home/soffy/models/faster-whisper-large-v3-turbo",
                         language: str = "zh", start_s: float = 0.0, end_s: float | None = None,
-                        max_segments: int = 3) -> list[str]:
-    """用 faster-whisper 对成片抽 2–3 段做真实转写（CPU，int8）。
+                        max_segments: int = 0,
+                        segment_len_s: float = 4.0,
+                        min_segment_s: float = 1.5) -> list[str]:
+    """用 faster-whisper 对成片抽段做真实转写（CPU，int8）。
 
     只在本地模型可用时跑；模型缺失如实返回空列表（由调用方标 unavailable，
     不假装通过）。
+
+    分段策略：whisper large-v3-turbo 在单段过长时会出现系统性幻觉
+    （把无关台词如“请不吝点赞 订阅转发…”插到转写里；这是该模型在
+    中文口播上的已知问题，提高 beam_size / 开关 VAD 都无法规避，只有
+    缩短单段长度可以）。实测结论：段长 > 5s 即可能出现幻觉，≤ 4s 基本
+    完全消除。因此默认每段 4s（32s 成片约 8 段）。``max_segments`` 保留为
+    兼容参数：>0 时忽略 ``segment_len_s``，按 max_segments 均分（此时段长
+    可能 > 4s，调用方需自行接受幻觉风险）。
     """
     info = probe(path)
     duration = info["duration_s"]
@@ -197,14 +207,18 @@ def transcribe_segments(path: Path, *, model_dir: str = "/home/soffy/models/fast
         end_s = duration
     if end_s <= start_s:
         return []
-    # 均匀抽 max_segments 段，每段至少 2s（whisper 短段识别极不稳定）
-    seg_len = max(2.0, (end_s - start_s) / max_segments)
+    span = end_s - start_s
+    if max_segments > 0:
+        target_len = span / max_segments
+    else:
+        target_len = segment_len_s
     picks: list[tuple[float, float]] = []
-    for i in range(max_segments):
-        s = start_s + i * seg_len
-        e = min(s + seg_len, end_s)
-        if e - s >= 1.5:
+    s = start_s
+    while s < end_s:
+        e = min(s + target_len, end_s)
+        if e - s >= min_segment_s:
             picks.append((s, e))
+        s = e
     if not picks:
         return []
     wav_dir = path.parent / ".transcribe_tmp"
@@ -224,7 +238,7 @@ def transcribe_segments(path: Path, *, model_dir: str = "/home/soffy/models/fast
         texts: list[str] = []
         for wav in wavs:
             segments, _ = model.transcribe(str(wav), language=language,
-                                          beam_size=1, vad_filter=False,
+                                          beam_size=10, vad_filter=False,
                                           condition_on_previous_text=False)
             texts.append("".join(seg.text.strip() for seg in segments))
         return texts
@@ -278,8 +292,9 @@ def script_audio_consistency(path: Path, *,
             "passed": False,
             "script_texts": script_texts,
         }
-    # 每段转写与文稿全体（拼接）做相似度，取最高分
-    # 单行匹配不够，因为 whisper 抽的段可能跨越多行
+    # 每段转写与文稿全体（拼接）做相似度
+    # F1 要求：每段转写与文稿相似度 ≥ threshold，不达标 → fail
+    # 不应用 0.2 低阈值过滤——任何转写段低于 threshold 即视为 script_mismatch
     full_script = "".join(script_texts)
     sims: list[float] = []
     pairs: list[dict[str, Any]] = []
@@ -287,10 +302,8 @@ def script_audio_consistency(path: Path, *,
         sim = _char_similarity(tr, full_script)
         sims.append(sim)
         pairs.append({"transcript": tr, "best_similarity": round(sim, 4)})
-    # 过滤掉显然是结尾口号/片尾曲的转写段（相似度极低），只保留正文段落
-    qualifying = [s for s in sims if s >= 0.2]
-    min_sim = min(qualifying) if qualifying else (min(sims) if sims else 0.0)
-    mean_sim = sum(qualifying) / len(qualifying) if qualifying else (sum(sims) / len(sims) if sims else 0.0)
+    min_sim = min(sims) if sims else 0.0
+    mean_sim = sum(sims) / len(sims) if sims else 0.0
     passed = bool(not tail_violation and min_sim >= similarity_threshold)
     return {
         "status": "measured",
