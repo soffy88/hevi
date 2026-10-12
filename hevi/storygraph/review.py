@@ -1114,6 +1114,9 @@ def script_to_storyboard(
     镜头数 == 场 shot_count 之和，Σ <= 本集预算（DRAMAPLAN P3）。
     """
     by_event = {e.event_id: e for e in book.events}
+    # R4：char_id → 角色名映射，避免分镜中出现 C001 等原始 ID
+    char_id_to_name = {c.char_id: c.name for c in book.characters}
+    known_names = {c.name for c in book.characters}
     target_duration = outline_ep.target_duration_s if outline_ep else script.total_duration()
     shot_budget = outline_ep.shot_budget if outline_ep else script.total_shots()
 
@@ -1144,15 +1147,25 @@ def script_to_storyboard(
             if scene.dialogue:
                 if j < len(scene.dialogue):
                     line = scene.dialogue[j]
-                    speaker = line.speaker
+                    # R4：把 char_id 映射成角色名
+                    sp = line.speaker
+                    if sp in char_id_to_name and sp not in known_names:
+                        sp = char_id_to_name[sp]
+                    speaker = sp
                     tts_text = f"{speaker}：{line.text}" if speaker else line.text
-                elif j == 0 and scene.narration:
-                    speaker = "旁白"
-                    tts_text = scene.narration
                 else:
-                    line = scene.dialogue[j % len(scene.dialogue)]
-                    speaker = line.speaker
-                    tts_text = f"{speaker}：{line.text}" if speaker else line.text
+                    # R4：台词不足时补旁白/场景描述，避免循环复用相同台词。
+                    # 多个额外镜头按序号推导镜头动作，保证相邻镜头台词不同
+                    speaker = "旁白"
+                    filler_notes = ["镜头拉开", "人物近景", "动作特写", "环境细节"]
+                    fill = filler_notes[(j - len(scene.dialogue)) % len(filler_notes)]
+                    if scene.narration and j == len(scene.dialogue):
+                        tts_text = scene.narration
+                    elif scene.summary:
+                        tts_text = f"{fill}：{scene.summary}。"
+                    elif ev and ev.summary:
+                        tts_text = f"{fill}：{ev.summary}。"
+                    # else: 无额外内容 → 空 tts
             elif scene.narration:
                 speaker = "旁白"
                 tts_text = scene.narration

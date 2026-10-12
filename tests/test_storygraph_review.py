@@ -572,3 +572,74 @@ async def test_revision_round_can_be_rejected_by_llm_error():
     # 末轮带 error 问题（score 因 LLM error 下降，不一定 < 80）
     assert log.rounds[-1].issues
     assert any(i.severity == "error" for i in log.rounds[-1].issues)
+
+
+def test_script_to_storyboard_no_duplicate_dialogue():
+    """R4: 分镜台词不得循环复用已有台词（shot_count > dialogue 时）。"""
+    book = _book()
+    outline = _outline()
+    # 2 场戏各 4 镜，但每场只有 2 句台词 → 后两镜必须走旁白/summary，不能重复台词
+    script = EpisodeScript(
+        ep_number=1,
+        title="第1集",
+        characters_present=["C001", "C002"],
+        scenes=[
+            ScriptScene(
+                scene_no=1,
+                location="老宅",
+                event_ids=["CH01E001"],
+                summary="张三归乡",
+                narration="张三归乡，内心复杂。",
+                dialogue=[
+                    ScriptLine(speaker="张三", text="我回来了。"),
+                    ScriptLine(speaker="李四", text="你终于回来了。"),
+                ],
+                shot_count=4,
+                duration_s=20.0,
+            ),
+        ],
+    )
+    sb = script_to_storyboard(script, book, outline_ep=outline.episodes[0])
+    assert sb.total_shots() == 4
+    # 收集每镜 tts_text
+    tts_by_shot = {s.shot_id: s.tts_text for s in sb.shots}
+    # 后两镜不得与前两镜台词相同
+    distinct = set(tts_by_shot.values())
+    # 4 镜应该至少 3 种不同台词（2 句台词 + 旁白/summary）
+    assert len(distinct) >= 3, f"重复台词: {tts_by_shot}"
+    # 没有任意两句台词完全相同（排除空串）
+    non_empty = [t for t in tts_by_shot.values() if t.strip()]
+    assert len(non_empty) == len(set(non_empty)), (
+        f"R4 复用了台词: {tts_by_shot}"
+    )
+
+
+def test_script_to_storyboard_no_char_id_in_dialogue():
+    """R4: 分镜台词中 speaker 不能是 char_id（如 C001），必须映射成角色名。"""
+    book = _book()
+    outline = _outline()
+    script = EpisodeScript(
+        ep_number=1,
+        title="第1集",
+        characters_present=["C001", "C002"],
+        scenes=[
+            ScriptScene(
+                scene_no=1,
+                location="老宅",
+                event_ids=["CH01E001"],
+                summary="张三归乡",
+                narration="张三归乡。",
+                dialogue=[
+                    ScriptLine(speaker="C001", text="我回来了。"),  # char_id
+                    ScriptLine(speaker="张三", text="你终于回来了。"),
+                ],
+                shot_count=2,
+                duration_s=10.0,
+            ),
+        ],
+    )
+    sb = script_to_storyboard(script, book, outline_ep=outline.episodes[0])
+    for shot in sb.shots:
+        assert not shot.speaker.startswith("C"), (
+            f"R4 分镜 speaker 仍是 char_id: {shot.speaker}"
+        )
