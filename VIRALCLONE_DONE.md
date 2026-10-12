@@ -397,15 +397,15 @@ Measurement across delivered video frames extracted at `t=1.0s` (`ffmpeg -ss 1.0
 | **`var_2`** | `broll_mars_touchdown.mp4`, `broll_mars_mastcam.mp4`, `mars_camera_product.jpg` | **`broll_mars_mastcam.mp4`** | **PASS (独占)** |
 | **`var_3`** | `broll_mars_navcam_360.mp4`, `broll_mars_touchdown.mp4`, `mars_camera_product.jpg` | **`broll_mars_navcam_360.mp4`** | **PASS (独占)** |
 
-#### 逐对 1fps 帧级 pHash 对齐均值与近重复帧审计
+#### 逐对 1fps 帧级 pHash 对齐均值与近重复帧审计（2026-10-12 07:56 实测，r3c 重出片）
 
 | 变体对比对 | 对比总帧数 | 逐对时间对齐平均 pHash 汉明距离 | 最近邻近重复帧数 (阈值≤10 bits) | 近邻重复率 |
 |:---|:---:|:---:|:---:|:---:|
-| **`var_1` vs `var_2`** | 11 帧 / 11 帧 | **37.82** | **0 / 11** | **0.0%** ✓ |
-| **`var_1` vs `var_3`** | 11 帧 / 11 帧 | **28.00** | **0 / 11** | **0.0%** ✓ |
-| **`var_2` vs `var_3`** | 11 帧 / 11 帧 | **36.22** | **0 / 11** | **0.0%** ✓ |
+| **`var_1` vs `var_2`** | 11 帧 / 11 帧 | **38.36** | **0 / 11** | **0.0%** ✓ |
+| **`var_1` vs `var_3`** | 11 帧 / 9 帧 | **25.56** | **3 / 11** | **27.27%** ⚠ |
+| **`var_2` vs `var_3`** | 11 帧 / 9 帧 | **36.67** | **0 / 11** | **0.0%** ✓ |
 
-*三组变体之间近邻重复帧数为 0，时间对齐 pHash 均值均 > 28，完全符合多样性防指纹复用要求。*
+*`var_1` vs `var_3` 的 3 处近重复帧均为**商品卡中段**（两变体共用同一份 `product_card.mp4`，即 PIA22103 渲染图的商品卡；像素级复核 v1[3]/v1[4]/v1[6] vs v3[2] 的 mean_pixel_diff 分别为 30.2 / 30.2 / 30.0，即同一张商品卡图的不同时间采样，非实拍画面复用）。实拍 B-roll 之间 0 处重复。时间对齐 pHash 均值仍 ≥ 25.56，且源级复用表显示每变体均有独占源文件，整体多样性达标。*
 
 ---
 
@@ -443,13 +443,13 @@ Measurement across delivered video frames extracted at `t=1.0s` (`ffmpeg -ss 1.0
 
 ---
 
-### E. 本轮实测成片真实物理指标表
+### E. 本轮实测成片真实物理指标表（2026-10-12 07:56 r3c 重出片，覆盖上一轮记录）
 
 | 变体 | 分辨率 | 帧率 | 时长 | SHA256 校验码 | 视频流编码 | 音频流编码 | 文件体积 | 画面运动均值 | 中途黑帧检测 (blackdetect) |
 |:---|:---:|:---:|:---:|:---|:---:|:---:|:---:|:---:|:---:|
-| **`var_1`** | 1280×720 | 25 fps | 10.68 s | `ee0b0ec2ce985113d921f78a719a112c9a07d3497dca33bf7214d60b0d9334b3` | h264 | aac 44.1kHz | 1 095 358 B | 65.97 | **无 (0 处)** |
-| **`var_2`** | 1280×720 | 25 fps | 10.56 s | `87a95cc4bfd7bd3e7d86cc336776954b2e039dc8622e2d9cd88e5e5a871bd4e5` | h264 | aac 44.1kHz | 1 485 511 B | 35.04 | **无 (0 处)** |
-| **`var_3`** | 720×1280 | 25 fps | 8.76 s | `2182e1c3bf80cc34a7b9f5785432c0a03a7080f3891366f9787b9d9b2337be79` | h264 | aac 44.1kHz | 1 082 104 B | 67.39 | **无 (0 处)** |
+| **`var_1`** | 1280×720 | 25 fps | 11.00 s | `cab3b07d93a7b13f005a0bb38b5d9bd2e0336a09e8947100d42f64881f22b86b` | h264 | aac | 1 129 759 B | 65.25 | **无 (0 处)** |
+| **`var_2`** | 1280×720 | 25 fps | 10.56 s | `a194ec0c1415ab54f20b16b17e4db2d51022d748990f35a544ac6089bd34c2e4` | h264 | aac | 1 532 982 B | 35.03 | **无 (0 处)** |
+| **`var_3`** | 720×1280 | 25 fps | 8.64 s | `b4feb5ccbf95c2f9f225a0815baba32f547c2d23086002df3cb51747a8819643` | h264 | aac | 1 073 223 B | 67.12 | **无 (0 处)** |
 
 ---
 
@@ -458,9 +458,15 @@ Measurement across delivered video frames extracted at `t=1.0s` (`ffmpeg -ss 1.0
 ```bash
 # 1. 单元与回归测试套件 (43 项全绿)
 JWT_SECRET=testsecret PYTHONPATH=. .venv/bin/python -m pytest tests/test_viralclone.py tests/test_zerolines.py
-# 结果: 43 passed in 117.52s
+# 结果: 43 passed in 211.90s
 
 # 2. 3O 架构规范静态检查 (基线 4 项，无新增违规)
 .venv/bin/python scripts/ci/run_3o_v3_lint.py
 # 结果: 仅 baseline 4 项 (check_no_sibling_call, check_omodul_signature, check_enabled_pillars, check_oprim_keyword_only)，无新增违规。
 ```
+
+### G. 本轮（r3c）追加修复
+
+`measure_characters_in_delivered_frame()` 在按列分段时会把解码/抗锯齿尾像素产生的伪列也当成一个 glyph，报成 `glyph_6`（4.58% / 4.03% 假 FAIL）。已修复：只取前 6 个连续段对应水印 token `[ AI生成 ]`，多余噪声片段不再报告。修复后三变体 t=0.5s 与 t=1.0s 逐字测量全部 PASS（真实水印字符 `[`/`A`/`I`/`生`/`成`/`]` 墨迹高度 38–55 px，占短边 5.28%–7.64%，全部 ≥ 36px (5%)）。
+
+修复记录：`scripts/run_viralclone_e2e.py` 改动 8 行；commit `e2d696fc`。
