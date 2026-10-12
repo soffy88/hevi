@@ -25,10 +25,20 @@ from hevi.studio import cmumocap
 
 logger = logging.getLogger(__name__)
 
+def _find_bin(name: str, fallback: str) -> str:
+    found = shutil.which(name)
+    if found:
+        return found
+    cand = Path("/home/soffy/.local/bin") / name
+    if cand.is_file():
+        return str(cand)
+    return fallback
+
+
 PIPER = "/data/soffy/projects/hevi-zero/.venv/bin/piper"
 PIPER_VOICE = "/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx"
-FFMPEG = "/home/soffy/.local/bin/ffmpeg"
-FFPROBE = "/home/soffy/.local/bin/ffprobe"
+FFMPEG = _find_bin("ffmpeg", "/home/soffy/.local/bin/ffmpeg")
+FFPROBE = _find_bin("ffprobe", "/home/soffy/.local/bin/ffprobe")
 
 #: the bones drawn between kept joints
 BONES: tuple[tuple[str, str], ...] = (

@@ -225,11 +225,11 @@ def _forward_kinematics(nodes: list[_Node], frame: list[float]) -> np.ndarray:
             elif kind == "Z" and axis == "p":
                 translation = translation + np.array([0, 0, value])
             elif kind == "X" and axis == "r":
-                rotation = _rot("X", value) @ rotation
+                rotation = rotation @ _rot("X", value)
             elif kind == "Y" and axis == "r":
-                rotation = _rot("Y", value) @ rotation
+                rotation = rotation @ _rot("Y", value)
             elif kind == "Z" and axis == "r":
-                rotation = _rot("Z", value) @ rotation
+                rotation = rotation @ _rot("Z", value)
         parent_pos = positions[node.parent] if node.parent >= 0 else np.zeros(3)
         parent_rot = world_rot[node.parent] if node.parent >= 0 else np.eye(3)
         positions[idx] = parent_pos + parent_rot @ translation

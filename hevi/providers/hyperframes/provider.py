@@ -66,9 +66,12 @@ def detect_hyperframes_bin() -> str | None:
         if path.exists():
             return configured
     for name in ("hyperframes", "hf"):
-        found = shutil.which(name)
+        found = shutil.which(name) or shutil.which(name, path=f"/home/soffy/.nvm/versions/node/v26.4.0/bin:{os.environ.get('PATH','')}")
         if found:
             return found
+    cand = Path("/home/soffy/.nvm/versions/node/v26.4.0/bin/hyperframes")
+    if cand.is_file():
+        return str(cand)
     return None
 
 
@@ -177,6 +180,32 @@ async def hyperframes_generate(
     payload.setdefault("width", width or 1920)
     payload.setdefault("height", height or 1080)
     payload.setdefault("fps", fps)
+
+    kind = payload.get("kind") or kwargs.get("kind")
+    if kind == "kinetic_typography":
+        from hevi.providers.hyperframes.kinetic import render_kinetic_typography
+        return await asyncio.to_thread(
+            render_kinetic_typography,
+            output_path=outp,
+            title=str(payload.get("title") or payload.get("topic") or "动态字效"),
+            lines=payload.get("lines"),
+            aspect_ratio=str(payload.get("aspect_ratio") or "16:9"),
+            width=width,
+            height=height,
+            fps=fps,
+            with_audio=payload.get("with_audio", True),
+        )
+    if kind == "product_promo":
+        from hevi.providers.hyperframes.kinetic import render_product_promo
+        return await asyncio.to_thread(
+            render_product_promo,
+            output_path=outp,
+            product_name=str(payload.get("product_name") or payload.get("title") or "新品宣传"),
+            slogan=str(payload.get("slogan") or ""),
+            highlights=payload.get("highlights"),
+            cta=str(payload.get("cta") or "立即购买"),
+            fps=fps,
+        )
     try:
         comp = compile_composition(payload)
     except Exception as exc:

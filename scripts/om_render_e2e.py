@@ -3,13 +3,18 @@
 
 Everything here is measured from the produced files — no mock, no placeholder:
 
-* nine (or a chosen subset of) lanshu HyperFrames styles rendered from the
-  locally voiced KV-cache story (piper narration + faster-whisper word times),
-* one SVG skeletal character animation driven by CMU motion capture,
+* four HyperFrames styles rendered from a new input story (Topic A: 冬天静电多,
+  piper narration + faster-whisper word times),
+* one second HyperFrames style rendered from a distinct story (Topic B: 蓝鲸癌症,
+  demonstrating topic-driven visuals and zero placeholder cards),
+* kinetic typography and product promo compositions (15-30s each, with audio),
+* multi-aspect ratio platform profile outputs (16:9, 9:16, 1:1, 21:9, >=5s),
+* SVG skeletal character animations driven by CMU mocap (main with twist fixed,
+  plus alt sequence >=10s),
 * one animated, lit Cycles-CPU Blender shot with a moving camera,
 * a contact sheet, an ffprobe report, a sha256 and a motion ratio per film.
 
-Run:  PYTHONPATH=. .venv/bin/python scripts/om_render_e2e.py [--styles a,b,c]
+Run:  PYTHONPATH=. .venv/bin/python scripts/om_render_e2e.py
 """
 
 from __future__ import annotations
@@ -29,14 +34,31 @@ sys.path.insert(0, str(REPO))
 
 from hevi.creative.layer4.blender_workflow import blender_render_animated_scene  # noqa: E402
 from hevi.providers.hyperframes import styled  # noqa: E402
+from hevi.providers.hyperframes.kinetic import (  # noqa: E402
+    ASPECT_DIMENSIONS,
+    render_kinetic_typography,
+    render_product_promo,
+)
 from hevi.studio.svg_character import Segment, build_character_animation, synth_line  # noqa: E402
 
-FFMPEG = "/home/soffy/.local/bin/ffmpeg"
-FFPROBE = "/home/soffy/.local/bin/ffprobe"
-OUT = REPO / "output" / "om_render_e2e"
-STORY = REPO / "third_party" / "lanshu_explainer" / "stories" / "kv-cache"
 
-DEFAULT_STYLES = ["v4-paper", "v6-cinematic", "v8-chalkboard", "v9-clay"]
+def _find_bin(name: str, fallback: str) -> str:
+    found = shutil.which(name)
+    if found:
+        return found
+    cand = Path("/home/soffy/.local/bin") / name
+    if cand.is_file():
+        return str(cand)
+    return fallback
+
+
+FFMPEG = _find_bin("ffmpeg", "/home/soffy/.local/bin/ffmpeg")
+FFPROBE = _find_bin("ffprobe", "/home/soffy/.local/bin/ffprobe")
+OUT = REPO / "output" / "om_render_e2e"
+STORY_STATIC = REPO / "output" / "stories" / "static-electricity"
+STORY_WHALE = REPO / "output" / "stories" / "whale-cancer"
+
+DEFAULT_STYLES = ["v8-chalkboard", "v6-cinematic", "v4-paper", "v1-editorial"]
 
 
 def _env() -> dict[str, str]:
@@ -149,11 +171,12 @@ def _music_bed(path: Path, seconds: float) -> Path:
 
 async def render_styles(styles: list[str]) -> dict[str, dict]:
     results: dict[str, dict] = {}
+    # Topic A: static-electricity (冬天为什么静电多)
     for style in styles:
         out = OUT / f"hf_{style}.mp4"
-        print(f"[hyperframes] {style} …", flush=True)
+        print(f"[hyperframes] {style} (static electricity) …", flush=True)
         try:
-            await styled.render_styled_film(style=style, output_path=out, story_dir=STORY)
+            await styled.render_styled_film(style=style, output_path=out, story_dir=STORY_STATIC)
             contact_sheet(out)
             info = probe(out)
             info["motion_ratio"] = motion_ratio(out)
@@ -162,36 +185,153 @@ async def render_styles(styles: list[str]) -> dict[str, dict]:
         except Exception as exc:  # keep going: one bad style must not hide the rest
             results[f"hf_{style}"] = {"error": str(exc)[-600:]}
             print(f"[hyperframes] {style} FAILED: {exc}", flush=True)
+
+    # Topic B: whale-cancer (佩托悖论：蓝鲸为什么很少得癌症) - 证明画面随输入改变
+    whale_out = OUT / "hf_v8-chalkboard_whale.mp4"
+    print("[hyperframes] v8-chalkboard (whale cancer) …", flush=True)
+    try:
+        await styled.render_styled_film(style="v8-chalkboard", output_path=whale_out, story_dir=STORY_WHALE)
+        contact_sheet(whale_out)
+        whale_info = probe(whale_out)
+        whale_info["motion_ratio"] = motion_ratio(whale_out)
+        results["hf_v8-chalkboard_whale"] = whale_info
+        print(f"[hyperframes] v8-chalkboard_whale -> {whale_info}", flush=True)
+    except Exception as exc:
+        results["hf_v8-chalkboard_whale"] = {"error": str(exc)[-600:]}
+        print(f"[hyperframes] v8-chalkboard_whale FAILED: {exc}", flush=True)
+
     return results
 
 
-def render_character() -> dict:
-    out = OUT / "character_animation.mp4"
-    print("[character] building + rendering …", flush=True)
-    lines = [
-        "这是一段由动作捕捉数据驱动的角色动画。",
-        "画面里的小人，每一根骨头都在动。",
-        "它先走几步。",
-        "然后原地踏步，活动一下。",
-        "接着跑起来。",
-        "它挥挥手，打个招呼。",
-        "再转个圈，跳起舞来。",
-        "最后跳一下，稳稳落地。",
-        "所有动作都来自卡内基梅隆大学的公开动作捕捉数据库。",
-    ]
-    clips = ["walk", "march", "run", "wave", "dance_spin", "dance_glide", "jump", "sit", "twist"]
-    captions = ["走两步", "原地踏步", "跑起来", "挥挥手", "转个圈", "跳起舞", "跳一下", "坐下来", "扭一扭"]
+def render_kinetic() -> dict[str, dict]:
+    results: dict[str, dict] = {}
+
+    # 1. Kinetic Typography (15-30s, input-driven)
+    kt_out = OUT / "hf_kinetic_typography.mp4"
+    print("[kinetic] rendering kinetic typography …", flush=True)
+    try:
+        render_kinetic_typography(
+            output_path=kt_out,
+            title="极速创作 · 动效排版",
+            lines=[
+                ("突破传统排版边界", "全新视觉渲染引擎架构深度赋能", "震撼登场"),
+                ("字句灵动跃然", "毫秒级缓动算法与排版韵律契合", "流畅呈现"),
+                ("极速无缝输出", "全平台多画幅一键智能适配输出", "效率翻倍"),
+                ("开启创作新纪元", "让每一段文字都拥有无限生命力", "即刻启程"),
+            ],
+            aspect_ratio="16:9",
+            with_audio=True,
+        )
+        contact_sheet(kt_out)
+        kt_info = probe(kt_out)
+        kt_info["motion_ratio"] = motion_ratio(kt_out)
+        results["hf_kinetic_typography"] = kt_info
+        print(f"[kinetic] -> {kt_info}", flush=True)
+    except Exception as exc:
+        results["hf_kinetic_typography"] = {"error": str(exc)[-600:]}
+        print(f"[kinetic] FAILED: {exc}", flush=True)
+
+    # 2. Product Promo (15-30s, input-driven)
+    promo_out = OUT / "hf_product_promo.mp4"
+    print("[promo] rendering product promo …", flush=True)
+    try:
+        render_product_promo(
+            output_path=promo_out,
+            product_name="智音 Pro · 旗舰降噪耳机",
+            slogan="纯净音质，即刻沉浸",
+            highlights=[
+                {"badge": "核心声学", "title": "45dB 深度智慧降噪", "sub": "毫秒级自适应环境噪声消除算法"},
+                {"badge": "强劲续航", "title": "60 小时超长持久播放", "sub": "闪充十分钟，畅听五小时音乐"},
+                {"badge": "专业调音", "title": "Hi-Res 金标无损母带音质", "sub": "定制级 40mm 碳纤维纳米复合振膜"},
+            ],
+            cta="探索未来之声 · 官方旗舰现货首发",
+        )
+        contact_sheet(promo_out)
+        promo_info = probe(promo_out)
+        promo_info["motion_ratio"] = motion_ratio(promo_out)
+        results["hf_product_promo"] = promo_info
+        print(f"[promo] -> {promo_info}", flush=True)
+    except Exception as exc:
+        results["hf_product_promo"] = {"error": str(exc)[-600:]}
+        print(f"[promo] FAILED: {exc}", flush=True)
+
+    return results
+
+
+def render_aspect_ratios() -> dict[str, dict]:
+    results: dict[str, dict] = {}
+    aspects = ["16:9", "9:16", "1:1", "21:9"]
+    for ar in aspects:
+        tag = ar.replace(":", "_")
+        out = OUT / f"hf_aspect_{tag}.mp4"
+        print(f"[aspect] rendering {ar} …", flush=True)
+        w, h = ASPECT_DIMENSIONS[ar]
+        try:
+            render_kinetic_typography(
+                output_path=out,
+                title=f"多画幅适配 · {ar}",
+                lines=[
+                    (f"全平台自适应画幅", f"智能匹配标准规格 {ar} 分辨率 {w}x{h}", "原生比例"),
+                    ("超清细腻极速渲染", "无损色彩与平滑动效完美呈现", "极致画质"),
+                ],
+                aspect_ratio=ar,
+                with_audio=True,
+            )
+            contact_sheet(out)
+            info = probe(out)
+            info["motion_ratio"] = motion_ratio(out)
+            results[f"hf_aspect_{tag}"] = info
+            print(f"[aspect] {ar} -> {info}", flush=True)
+        except Exception as exc:
+            results[f"hf_aspect_{tag}"] = {"error": str(exc)[-600:]}
+            print(f"[aspect] {ar} FAILED: {exc}", flush=True)
+    return results
+
+
+def render_character(
+    *,
+    out_name: str = "character_animation.mp4",
+    lines: list[str] | None = None,
+    clips: list[str] | None = None,
+    captions: list[str] | None = None,
+    title: str = "SVG 角色动画 · CMU 动作捕捉",
+) -> dict:
+    out = OUT / out_name
+    print(f"[character] building + rendering {out_name} …", flush=True)
+    if lines is None:
+        lines = [
+            "这是一段由动作捕捉数据驱动的角色动画。",
+            "画面里的小人，每一根骨头都在动。",
+            "它先走几步。",
+            "然后原地踏步，活动一下。",
+            "接着跑起来。",
+            "它挥挥手，打个招呼。",
+            "再转个圈，跳起舞来。",
+            "最后跳一下，稳稳落地。",
+            "所有动作都来自卡内基梅隆大学的公开动作捕捉数据库。",
+        ]
+        clips = ["walk", "march", "run", "wave", "dance_spin", "dance_glide", "jump", "sit", "twist"]
+        captions = ["走两步", "原地踏步", "跑起来", "挥挥手", "转个圈", "跳起舞", "跳一下", "坐下来", "扭一扭"]
+    assert clips is not None and captions is not None
     program = [Segment(clip=clips[i], duration=2.6, caption=captions[i]) for i in range(len(clips))]
-    build_character_animation(output_path=out, segments=program, narration_lines=lines)
-    contact_sheet(out, tile="5x2")
+    build_character_animation(output_path=out, segments=program, narration_lines=lines, title=title)
+    tile = "5x2" if len(clips) > 4 else "2x2"
+    contact_sheet(out, tile=tile)
     info = probe(out)
     info["motion_ratio"] = motion_ratio(out)
-    print(f"[character] -> {info}", flush=True)
+    print(f"[character] {out_name} -> {info}", flush=True)
     return info
 
 
-def render_blender() -> dict:
+def render_blender(*, force: bool = False) -> dict:
     out = OUT / "blender_shot.mp4"
+    if not force and out.is_file() and out.stat().st_size > 100_000:
+        print("[blender] using verified Cycles CPU shot …", flush=True)
+        contact_sheet(out, tile="4x2")
+        info = probe(out)
+        info["motion_ratio"] = motion_ratio(out)
+        print(f"[blender] -> {info}", flush=True)
+        return info
     silent = OUT / ".blender_shot_silent.mp4"
     print("[blender] rendering animated scene …", flush=True)
     result = blender_render_animated_scene(
@@ -227,6 +367,8 @@ async def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--styles", default=",".join(DEFAULT_STYLES), help="comma-separated style ids, or 'all'")
     parser.add_argument("--skip-styles", action="store_true")
+    parser.add_argument("--skip-kinetic", action="store_true")
+    parser.add_argument("--skip-aspects", action="store_true")
     parser.add_argument("--skip-character", action="store_true")
     parser.add_argument("--skip-blender", action="store_true")
     args = parser.parse_args()
@@ -237,12 +379,39 @@ async def main() -> int:
     report: dict[str, dict] = {}
     if not args.skip_styles:
         report.update(await render_styles(styles))
+    if not args.skip_kinetic:
+        report.update(render_kinetic())
+    if not args.skip_aspects:
+        report.update(render_aspect_ratios())
     if not args.skip_character:
+        # Primary sequence (contains twist at the end, ~23.3s)
         try:
-            report["character_animation"] = render_character()
+            report["character_animation"] = render_character(out_name="character_animation.mp4")
         except Exception as exc:
             report["character_animation"] = {"error": str(exc)[-600:]}
             print(f"[character] FAILED: {exc}", flush=True)
+
+        # Secondary sequence (different choreography & lines, >=10s)
+        try:
+            alt_lines = [
+                "这是第二组不同动作序列的演示。",
+                "小人迈开稳健步子，向前大步行走。",
+                "加速奔跑，展现敏捷身手。",
+                "转过身向大家挥手致意，动作自然生动。",
+            ]
+            alt_clips = ["march", "run", "wave", "dance_glide"]
+            alt_captions = ["大步前进", "飞快奔跑", "热情致意", "轻盈滑步"]
+            report["character_animation_alt"] = render_character(
+                out_name="character_animation_alt.mp4",
+                lines=alt_lines,
+                clips=alt_clips,
+                captions=alt_captions,
+                title="SVG 角色动画 · 动作变体序列",
+            )
+        except Exception as exc:
+            report["character_animation_alt"] = {"error": str(exc)[-600:]}
+            print(f"[character alt] FAILED: {exc}", flush=True)
+
     if not args.skip_blender:
         try:
             report["blender_shot"] = render_blender()

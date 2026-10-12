@@ -43,10 +43,14 @@ STYLES: tuple[str, ...] = (
     "v9-clay",
 )
 
-#: style -> the two jsDelivr libraries the reference film pulls.
+#: the two jsDelivr libraries the upstream reference film pulls…
 _GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"
 _THREE_MODULE_URL = "https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js"
 _THREE_ADDONS_URL = "https://cdn.jsdelivr.net/npm/three@0.181.2/examples/jsm/"
+#: …and the repo-relative forms the vendored kit starters use.
+_GSAP_REL = "../../../../hevi/providers/hyperframes/lanshu_assets/node_modules/gsap/dist/gsap.min.js"
+_THREE_MODULE_REL = "../../../../hevi/providers/hyperframes/lanshu_assets/node_modules/three/build/three.module.js"
+_THREE_ADDONS_REL = "../../../../hevi/providers/hyperframes/lanshu_assets/node_modules/three/examples/jsm/"
 
 
 class StyledRenderError(RuntimeError):
@@ -93,16 +97,13 @@ def _run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None 
 
 
 def style_source(style: str) -> Path:
-    """The directory the film project is copied from (reference film or starter)."""
+    """The directory the film project is copied from (starter only, never examples)."""
     if style not in STYLES:
         raise StyledRenderError(f"unknown style {style!r}; one of {STYLES}")
-    reference = lanshu_root() / "examples" / "kv-cache" / style
-    if (reference / "index.html").is_file():
-        return reference
     starter = lanshu_root() / "kits" / style / "starter"
     if (starter / "index.html").is_file():
         return starter
-    raise StyledRenderError(f"no reference film or starter for style {style!r}")
+    raise StyledRenderError(f"no starter for style {style!r}")
 
 
 def _ensure_tools(project: Path, style: str) -> None:
@@ -120,22 +121,30 @@ def _ensure_tools(project: Path, style: str) -> None:
 
 
 def _vendor_cdn(project: Path) -> None:
-    """Rewrite the reference film's jsDelivr tags to project-local copies."""
+    """Point every library tag at a project-local vendored copy.
+
+    The starters reference the vendored libs by a ``../../../../hevi/...``
+    path (relative to the kit inside this repo).  A HyperFrames project may
+    only load assets inside its own root, so GSAP and Three.js are copied into
+    ``assets/vendor/`` and the tag rewritten.  The jsDelivr forms the upstream
+    reference films use are rewritten by the same pass.
+    """
     html_path = project / "index.html"
     html = html_path.read_text(encoding="utf-8")
     changed = False
     vendor = project / "assets" / "vendor"
 
-    if _GSAP_URL in html:
+    if _GSAP_URL in html or _GSAP_REL in html:
         src = vendor_root() / "gsap" / "dist" / "gsap.min.js"
         if not src.is_file():
             raise StyledRenderError(f"vendored gsap missing: {src}")
         vendor.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, vendor / "gsap.min.js")
         html = html.replace(_GSAP_URL, "assets/vendor/gsap.min.js")
+        html = html.replace(_GSAP_REL, "assets/vendor/gsap.min.js")
         changed = True
 
-    if _THREE_MODULE_URL in html:
+    if _THREE_MODULE_URL in html or _THREE_MODULE_REL in html:
         three_src = vendor_root() / "three"
         if not (three_src / "build" / "three.module.js").is_file():
             raise StyledRenderError(f"vendored three missing: {three_src}")
@@ -147,6 +156,8 @@ def _vendor_cdn(project: Path) -> None:
             shutil.copytree(three_src / "examples" / "jsm", addons)
         html = html.replace(_THREE_MODULE_URL, "./assets/vendor/three.module.js")
         html = html.replace(_THREE_ADDONS_URL, "./assets/vendor/three-addons/")
+        html = html.replace(_THREE_MODULE_REL, "./assets/vendor/three.module.js")
+        html = html.replace(_THREE_ADDONS_REL, "./assets/vendor/three-addons/")
         changed = True
 
     if changed:
@@ -188,6 +199,16 @@ def _patch_sfxlib(project: Path) -> None:
     patched = patched.replace("i = int(t * SR)", "i = max(0, int(t * SR))")
     if patched != text:
         lib.write_text(patched, encoding="utf-8")
+
+
+def _patch_sfx_performed(project: Path) -> None:
+    sfx_py = project / "tools" / "sfx.py"
+    if not sfx_py.is_file():
+        return
+    text = sfx_py.read_text(encoding="utf-8")
+    patched = text.replace("PERFORMED: set[int] = set()", "PERFORMED: set[int] = set(range(1, 100))")
+    if patched != text:
+        sfx_py.write_text(patched, encoding="utf-8")
 
 
 def _stamp_durations(project: Path, story: dict[str, Any]) -> None:
@@ -284,9 +305,15 @@ def build_film(
             re.S,
         ).group(1)
     )
+    from hevi.providers.hyperframes.beat_generator import generate_beats_js
+
+    beats_code = generate_beats_js(style, story)
+    (project_dir / "beats.js").write_text(beats_code, encoding="utf-8")
+
     _stamp_durations(project_dir, story)
     _patch_puppeteer_sandbox(project_dir)
     _patch_sfxlib(project_dir)
+    _patch_sfx_performed(project_dir)
     _run([sys.executable, str(lanshu_root() / "tools" / "fonts.py"), str(project_dir)], env=_render_env())
     _vendor_cdn(project_dir)
     _build_sfx(project_dir, style)

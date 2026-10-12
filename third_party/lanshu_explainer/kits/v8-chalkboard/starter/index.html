@@ -129,10 +129,10 @@
           for (k = 0; k < n; k++) w.push(unitW(words, k));
           var total = w.reduce(function (a, b) { return a + b; }, 0);
           if (total <= maxEm || n < 2) return [0];
-          var after = function (j) { return /[，。：；、！？,.!?;:]$/.test(words[j - 1][0]); };
-          var latinPair = function (j) { return /[A-Za-z0-9]$/.test(words[j - 1][0]) && /^[A-Za-z0-9]/.test(words[j][0]); };
+          var after = function (j) { return j > 0 && words[j - 1] && /[，。：；、！？,.!?;:]$/.test(words[j - 1][0]); };
+          var latinPair = function (j) { return j < n && words[j - 1] && words[j] && /[A-Za-z0-9]$/.test(words[j - 1][0]) && /^[A-Za-z0-9]/.test(words[j][0]); };
           // between two CJK units a break may split a word (word times can be per character); next to a Latin term it cannot
-          var cjkPair = function (j) { return /[\u3400-\u9fff]$/.test(words[j - 1][0]) && /^[\u3400-\u9fff]/.test(words[j][0]); };
+          var cjkPair = function (j) { return j < n && words[j - 1] && words[j] && /[\u3400-\u9fff]$/.test(words[j - 1][0]) && /^[\u3400-\u9fff]/.test(words[j][0]); };
           // rows run (nearly) to the edge the way a teacher writes; a clause end near the edge is the best break,
           // a very short last row is avoided
           for (var rows = Math.max(2, Math.ceil(total / maxEm)); rows <= Math.min(n, 6); rows++) {

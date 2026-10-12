@@ -62,14 +62,14 @@ def get_ltx2_pricing_key(name: str = DEFAULT_QUALITY) -> str:
 
 # 画幅:档位定清晰度(短边像素),画幅定朝向。此前分辨率全 portrait → 成片锁死 9:16;
 # 有了它,横屏/方屏内容才做得了。
-ASPECT_RATIOS = ("9:16", "16:9", "1:1")
+ASPECT_RATIOS = ("9:16", "16:9", "1:1", "21:9")
 DEFAULT_ASPECT_RATIO = "9:16"
 
 
 def resolve_resolution(
     name: str = DEFAULT_QUALITY, aspect_ratio: str = DEFAULT_ASPECT_RATIO
 ) -> tuple[int, int]:
-    """按画幅把质量档分辨率重排成 (w, h)。9:16 竖 / 16:9 横 / 1:1 方;未知画幅回退 9:16。"""
+    """按画幅把质量档分辨率重排成 (w, h)。9:16 竖 / 16:9 横 / 1:1 方 / 21:9 宽;未知画幅回退 9:16。"""
     try:
         w, h = get_quality_profile(name).resolution
     except ValueError:
@@ -79,4 +79,9 @@ def resolve_resolution(
         return (long, short)
     if aspect_ratio == "1:1":
         return (short, short)
+    if aspect_ratio == "21:9":
+        w21 = int(round(short * 21 / 9))
+        if w21 % 2 != 0:
+            w21 += 1
+        return (w21, short)
     return (short, long)  # 9:16 默认(含未知值)

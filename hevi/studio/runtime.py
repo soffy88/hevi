@@ -13,9 +13,12 @@ _STYLED_HINTS = ("style", "explainer", "风格", "讲解")
 _HYPER_HINTS = (
     "kinetic",
     "typography",
+    "kinetic typography",
     "片头",
     "标题卡",
     "promo",
+    "产品宣传",
+    "产品展示",
     "motion graphic",
     "动效",
     "music-to-video",
