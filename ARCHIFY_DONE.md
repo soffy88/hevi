@@ -64,6 +64,16 @@ archify deliver receipt：所有镜头 `ok=true`、`checksPassed=9`。
 - shot6.wav: d1fe8a1ffdf9a6981bcd9057c841c867b774df4ed61dc246e089abc0a33fc645
 - shot7.wav: a1e1665298a471a3d1b738ca9698cf48a1e4f90d7a449815734ee92a5f0584dd
 
+### mp4 合成（ffmpeg 实测）
+
+- **路径**：`output/archify_e2e/final.mp4`
+- **分辨率**：720x1280, 25fps, h264+aac 128kbps
+- **时长**：54.8340s（7 镜头，TTS 时长累加）
+- **大小**：1,003,910 B（~1004 KB）
+- **码率**：146,465 bps
+- **sha256**：`23608a8bc20ad83c745786df16a3ff7cd8fe1313646d37d28187470a42a655db`
+- **合成方法**：ffmpeg concat demuxer（video_only.mp4 + audio_concat.txt），`-c:v copy -c:a aac -b:a 128k -shortest`
+
 ### 输出路径
 - 记录：`output/archify_e2e/record.json`（sha256 6308db1bdd2eec55529cb2ff30d225af5cba75838f1d1b919d891b0a961c8da0）
 - 截图：`output/archify_e2e/shots/`
