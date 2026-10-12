@@ -141,7 +141,7 @@ Web：`npx tsc --noEmit` exit 0。
 
 ## 返工续做核验记录（2026-10-12 续做）
 
-**结论：OMQUALITY_FIX.md 的全部要求在 HEAD 89b80c40 上已逐条实测满足，工作区干净（git status 仅有未跟踪产物目录，均在 .gitignore 覆盖范围内）。****
+**结论：OMQUALITY_FIX.md 的全部要求在 HEAD 0356d6dd 上已逐条实测满足，工作区干净（git status 仅有未跟踪产物目录，均在 .gitignore 覆盖范围内）。**
 
 逐条核验结果（实测，非推断）：
 
@@ -162,7 +162,7 @@ Web：`npx tsc --noEmit` exit 0。
 - `.venv/bin/python scripts/ci/run_3o_v3_lint.py` → 基线 4 项失败，无新增
 - r4 复核重跑（/tmp/vfy_omq/*.mp4 原始坏片）：11 bad + 1 good，全部通过
 
-**git 状态**：分支 `feat/omquality-3o`，工作区干净；HEAD 链：`b3f2a101`（黑屏静音 fixture）← `d7f67db0`（噪点/块效应/频谱平坦度/cut-anomaly 修复）← `46872ae6`（wip）← `176b6a73`（初始 DONE+manifest）。无需新增 commit —— OMQUALITY_FIX.md 要求的全部改动已在上述两个 fix commit 中完成并实测验证。
+**git 状态**：分支 `feat/omquality-3o`，工作区干净；HEAD 链：`0356d6dd`（E2E fixture 修正）← `89b80c40`（11 坏片回归测试）← `7ae21cc9`（cut-anomaly 误报修复）← `0465250c`（cut-anomaly 接入 verdict + BLOCKY_RATIO_FLOOR 提升）← `233d2cc7`（r4 复核 6 项修复）← `ef78a80d`（r4 复核记录）← `862f8e5a`（b3f2a101 续做记录）← `b3f2a101`（黑屏静音 fixture）← `d7f67db0`（噪点/块效应/频谱平坦度/cut-anomaly 修复）← `46872ae6`（wip）← `176b6a73`（初始 DONE+manifest）。
 
 ### 审片门禁测试补全（2026-10-12 续做）
 
@@ -220,7 +220,7 @@ Web：`npx tsc --noEmit` exit 0。
 | bad_half_gray | 缺音轨 + 静帧 | **4/4 帧 is_region_flat=True**，局部坏段 ≥10 连续帧（含 is_region_flat 标志），blockiness=7.5 |
 | bad_black_silent | 黑帧 + 静音 | 未变 |
 
-**全量验收**（HEAD 89b80c40 + 本补丁）：
+**全量验收**（HEAD 0356d6dd）：
 - `.venv/bin/python scripts/om_quality_e2e.py` → **17/17 gates PASS**，elapsed 109.2s
 - `.venv/bin/python -m pytest tests/test_omq_review.py -v` → **13 passed**
 - `.venv/bin/python -m pytest tests/test_omq_*.py tests/test_backlot_approval_*.py tests/test_craft_knowledge.py -q` → **69 passed**
