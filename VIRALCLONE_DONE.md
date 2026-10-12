@@ -328,3 +328,36 @@ averaged motion check structurally could not detect it.
 **Final state:** `tests/test_viralclone.py` + `tests/test_zerolines.py` = **43 passed**;
 `tests/video_intelligence` = 72 passed, 1 skipped; 3O lint unchanged at the 4 pre-existing failures.
 No mock artifacts, no fabricated gates, no placeholder outputs.
+
+---
+
+## 10. Independent Re-Verification & Delivery Confirmation (2026-10-12 00:58 UTC)
+
+Conducted independent verification on clean HEAD `645bff0e` per `VIRALCLONE_FIX.md` r2 requirements:
+
+### A. GB 45438 Watermark Measured at t=1.0s Frame (Decoded Video & Ink Fill)
+
+Measurement across delivered video frames extracted at `t=1.0s` (`ffmpeg -ss 1.0 -i final.mp4 -vframes 1`):
+
+| Variant | Resolution | Short Edge | Total Ink Box | Glyph 「生」 Ink | Glyph 「成」 Ink | Requirement (≥5% / 36px) | Status |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `var_1` | 1280×720 | 720 px | **43 px (5.97%)** | **38 px (5.28%)** | **40 px (5.56%)** | ≥ 36 px / 5.0% | **PASS** |
+| `var_2` | 1280×720 | 720 px | **43 px (5.97%)** | **38 px (5.28%)** | **40 px (5.56%)** | ≥ 36 px / 5.0% | **PASS** |
+| `var_3` | 720×1280 | 720 px | **43 px (5.97%)** | **38 px (5.28%)** | **40 px (5.56%)** | ≥ 36 px / 5.0% | **PASS** |
+
+*Note: All values measured without ASS outline stroke. Chinese character glyph ink heights for both 「生」 (38px, 5.28%) and 「成」 (40px, 5.56%) strictly exceed the 36px / 5% short-edge compliance threshold.*
+
+### B. Visual Inspection of Contact Sheets (6 Frames Each)
+
+1. **`var_1`**: Clean layout, product card with badges 「渲染示意图」 / 「NASA/JPL」 / 「公共领域」 without overlap, copy factual without invented specs.
+2. **`var_2`**: Sub-stripped interview footage confirmed clean (no burned-in original English subtitles).
+3. **`var_3`**: Vertical 9:16 layout filled with blurred background (no 70% letterbox black bars, top/bottom band mean luma 167.7/161.5), English karaoke words spaced properly.
+
+### C. Test Suites & Architecture Lint
+
+1. `JWT_SECRET=testsecret .venv/bin/python -m pytest tests/test_viralclone.py tests/test_zerolines.py`:
+   - **43 passed** in 219.03s.
+2. `JWT_SECRET=testsecret .venv/bin/python -m pytest tests/video_intelligence -q`:
+   - **72 passed, 1 skipped** in 0.17s.
+3. `JWT_SECRET=testsecret .venv/bin/python scripts/ci/run_3o_v3_lint.py`:
+   - 4 baseline pre-existing failures (`check_no_sibling_call.py`, `check_omodul_signature.py`, `check_enabled_pillars.py`, `check_oprim_keyword_only.py`), exactly matching baseline, 0 new violations.
