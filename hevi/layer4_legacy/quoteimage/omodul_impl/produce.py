@@ -11,11 +11,19 @@ from hevi.layer4_legacy.quoteimage.omodul_impl.quality_gates import (
     run_quality_gates,
 )
 from hevi.layer4_legacy.quoteimage.oprim_impl.detect_band import detect_subtitle_band
+from hevi.layer4_legacy.quoteimage.oprim_impl.subtitle_text import (
+    band_edge_cuts_text,
+    band_text_mass,
+    pick_clean_hero_time,
+    refine_band,
+    sentence_single_card,
+)
 from hevi.layer4_legacy.quoteimage.oprim_impl.vendor_stitch import (
     command_render,
     command_render_script,
     crop_band,
     grab_frame,
+    video_metadata,
 )
 from hevi.layer4_legacy.quoteimage.oprim_impl.whisper import WhisperAligner
 from hevi.layer4_legacy.quoteimage.oskill_impl.sentence_picker import pick_sentences
@@ -48,7 +56,8 @@ def _load_script_from_source(video_path: Path) -> list[dict[str, Any]] | None:
                             center_s = round(start_s + dur_s * 0.5, 2)
                             text = clip.get("props", {}).get("text", "").strip()
                             if text:
-                                lines.append({"t": center_s, "text": text})
+                                lines.append({"t": center_s, "text": text,
+                                              "start": round(start_s, 2), "end": round(start_s + dur_s, 2)})
                 if lines:
                     return lines
             # timestamps format
@@ -60,7 +69,8 @@ def _load_script_from_source(video_path: Path) -> list[dict[str, Any]] | None:
                     center_s = round(start_s + (end_s - start_s) * 0.5, 2)
                     text = t.get("text", "").strip()
                     if text:
-                        lines.append({"t": center_s, "text": text})
+                        lines.append({"t": center_s, "text": text,
+                                      "start": round(start_s, 2), "end": round(end_s, 2)})
                 if lines:
                     return lines
         except Exception:
@@ -318,11 +328,51 @@ def produce_quote_image(
             times=[s["t"] for s in picked],
         )
 
+    extra_record: dict[str, Any] = {}
+    gate_extra: list[dict[str, Any]] = []
+    try:
+        _, _, duration = video_metadata(video_path)
+    except BaseException:  # unreadable source (e.g. unit tests with a stub render) → skip frame analysis
+        duration = None
+
+    def _grab(t: float):
+        tt = max(0.0, float(t))
+        if duration:
+            tt = min(tt, duration - 0.05)
+        return grab_frame(str(video_path), tt)
+
     if mode == "native":
-        # Deduplicate sentences based on actual on-screen subtitle bands
+        # r4 FIX#1：字幕带覆盖多行字幕的完整外接框（按各采样时刻的文字行取并集）
+        band0 = (band_top, band_bottom)
+
         candidates_to_use = all_source_sentences if all_source_sentences else picked
+        # r4 FIX#2：同一句话被滚动字幕拆成多段时，单帧只会显示半句 → 剔除；
+        # 一句话在整段时长内只显示一张字幕卡时才收录，并取字幕最完整的时刻。
+        complete: list[dict[str, Any]] = []
+        excluded: list[dict[str, Any]] = []
+        for s_ in candidates_to_use:
+            if duration and "start" in s_ and "end" in s_:
+                ok, best_t = sentence_single_card(_grab, float(s_["start"]), float(s_["end"]),
+                                                  band_top, band_bottom)
+                if ok and best_t is not None:
+                    complete.append({**s_, "t": best_t, "_verified": True})
+                else:
+                    excluded.append({"text": s_.get("text", ""), "t": s_.get("t"),
+                                     "reason": "no subtitle on screen" if best_t is None
+                                     else "sentence split across several subtitle cards"})
+            else:
+                complete.append(s_)
+        extra_record["excluded_sentences"] = excluded
+        # Deduplicate sentences based on actual on-screen subtitle bands
+        if not complete:
+            res_f = {"status": "failed", "mode": mode,
+                     "error": "no sentence is shown as one complete subtitle card (rolling captions); "
+                              "refusing to render half sentences",
+                     "records": [extra_record]}
+            record_json_path.write_text(json.dumps(res_f, ensure_ascii=False, indent=2), encoding="utf-8")
+            return res_f
         distinct_sentences = _deduplicate_sentences_by_subtitle(
-            video_path, candidates_to_use, band_top, band_bottom
+            video_path, complete, band_top, band_bottom
         )
 
         if strategy == "auto":
@@ -333,8 +383,27 @@ def produce_quote_image(
             else:
                 picked = distinct_sentences
 
-        # Ensure times land on active subtitles
-        times = _adjust_timestamps_for_native(video_path, [s["t"] for s in picked], band_top, band_bottom)
+        if len(picked) < 2:
+            res_f = {"status": "failed", "mode": mode,
+                     "error": f"only {len(picked)} sentence(s) shown as one complete subtitle card; "
+                              "a native quote image needs >= 2 (others are split across rolling captions)",
+                     "records": [extra_record]}
+            record_json_path.write_text(json.dumps(res_f, ensure_ascii=False, indent=2), encoding="utf-8")
+            return res_f
+        # Ensure times land on active subtitles（已按整句校验过的时刻不再挪动，避免挪进下一张字幕卡）
+        if picked and all(s_.get("_verified") for s_ in picked):
+            times = [round(float(s_["t"]), 2) for s_ in picked]
+        else:
+            times = _adjust_timestamps_for_native(video_path, [s["t"] for s in picked], band_top, band_bottom)
+        # r4 FIX#1：按最终采样帧把字幕带扩到完整多行字幕（增长上限约一行），再检查裁切线
+        if duration and times:
+            band_top, band_bottom = refine_band([_grab(t) for t in times], band0[0], band0[1])
+        for t in times if duration else []:
+            cut, val = band_edge_cuts_text(_grab(t), band_top, band_bottom)
+            gate_extra.append({"name": "band_edge_clear", "threshold": f"edge_ink<=0.006",
+                               "passed": not cut, "value": val, "time": t})
+        extra_record["rendered_times"] = times
+        extra_record["band"] = [band_top, band_bottom]
 
         manifest_path = output_dir / "manifest.json"
         manifest_path.write_text(
@@ -362,7 +431,10 @@ def produce_quote_image(
         try:
             command_render(args)
         except BaseException as e:
-            return {"status": "failed", "error": str(e)}
+            res_f = {"status": "failed", "error": str(e) or type(e).__name__, "mode": mode,
+                     "records": [{"times": times, **extra_record}]}
+            record_json_path.write_text(json.dumps(res_f, ensure_ascii=False, indent=2), encoding="utf-8")
+            return res_f
 
     elif mode == "script":
         script_path = output_dir / "script.json"
@@ -372,6 +444,46 @@ def produce_quote_image(
         )
 
         out_img = output_dir / "quote_script.jpg"
+
+        # r4 FIX#3：hero 取字幕带为空的帧；整片字幕不断时把 hero 裁到字幕带之上
+        hero_time = None
+        hero_bottom = None
+        if duration:
+            spans = [
+                (float(s_.get("start", s_["t"] - 1.0)), float(s_.get("end", s_["t"] + 1.0)))
+                for s_ in picked
+            ]
+
+            def _in_picked(t: float) -> bool:
+                return any(a - 0.15 <= t <= b + 0.15 for a, b in spans)
+
+            # 1) 优先：字幕带为空、且不在任何入选句时间段内的帧
+            hero_time = None
+            cand = pick_clean_hero_time(_grab, float(picked[0]["t"]), duration, band_top, band_bottom)
+            if cand is not None and not _in_picked(cand):
+                hero_time = cand
+            # 2) 其次：入选句之外的相邻句（画面里的大字/板书是另一句，不与字幕条重复）
+            if hero_time is None:
+                others = [s_ for s_ in all_source_sentences if not _in_picked(float(s_["t"]))]
+                if others:
+                    first_t = float(picked[0]["t"])
+                    hero_time = round(float(min(others, key=lambda s_: abs(float(s_["t"]) - first_t))["t"]), 2)
+            if hero_time is not None:
+                hero_mass = band_text_mass(_grab(hero_time), band_top, band_bottom)
+                if hero_mass >= 0.0015:
+                    hero_bottom = float(band_top)  # 裁掉该帧自己的字幕带
+            else:
+                hero_bottom = float(band_top)
+                hero_mass = 0.0
+            hero_ok = (hero_time is None or not _in_picked(hero_time))
+            gate_extra.append({"name": "hero_not_duplicating_strips",
+                               "threshold": "hero time outside picked sentences; own subtitle band cropped",
+                               "passed": hero_ok, "value": round(hero_mass, 5),
+                               "hero_time": hero_time, "hero_cropped_above_band": hero_bottom})
+        extra_record["hero_time"] = hero_time
+        extra_record["hero_bottom"] = hero_bottom
+        # times = 各字幕条所用时间点；hero 实际取帧时刻单独记录在 hero_time
+        extra_record["rendered_times"] = [float(s_["t"]) for s_ in picked]
 
         # In script mode, all lines are drawn in clean independent strips below hero,
         # so hero frame remains intact without cropping.
@@ -395,6 +507,8 @@ def produce_quote_image(
             speaker_prefix="none",
             allow_duplicate_frames=True,
             six_line_card=False,
+            hero_time=hero_time,
+            hero_bottom=hero_bottom,
         )
         try:
             command_render_script(args)
@@ -403,7 +517,7 @@ def produce_quote_image(
 
     # Evaluate Quality Gates
     images = list(output_dir.glob("*.jpg")) + list(output_dir.glob("*.png"))
-    gates = run_quality_gates(images)
+    gates = run_quality_gates(images) + gate_extra
     all_passed = bool(gates and all(g["passed"] for g in gates))
 
     status = "succeeded" if all_passed else "failed"
@@ -415,12 +529,21 @@ def produce_quote_image(
         "records": [
             {
                 "gates": gates,
-                "times": [s["t"] for s in picked],
+                # r4 FIX#5：记录实际渲染所用的时间点
+                "times": extra_record.get("rendered_times") or [s["t"] for s in picked],
+                "picked_sentences": [{"t": s_.get("t"), "text": s_.get("text", "")} for s_ in picked],
+                **{k: v for k, v in extra_record.items() if k != "rendered_times"},
             }
+        ],
+        "asr_sentences": [
+            {k: s_.get(k) for k in ("t", "start", "end", "text") if k in s_} for s_ in all_source_sentences
         ],
     }
     if len(picked) < 4:
-        res["note"] = f"Source video contains {len(picked)} available spoken subtitle sentences due to silence or short duration."
+        res["note"] = (
+            f"only {len(picked)} usable sentences: {len(all_source_sentences)} ASR/script sentences, "
+            f"{len(extra_record.get('excluded_sentences', []))} excluded (see excluded_sentences)"
+        )
 
     record_json_path.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
 

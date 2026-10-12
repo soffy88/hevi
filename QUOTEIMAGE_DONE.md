@@ -268,3 +268,24 @@ if __name__ == "__main__":
 ## 已知问题与限制
 - `shorts_clip_02.mp4` 视频时长较短且存在长时间静音段落，全片经 Whisper 与分句解析仅包含 3 句有效台词；系统如实按 3 句完成渲染，并在 `record.json` 和本报告中完整附注说明，无硬凑占位行为。
 - 无其他未解决问题。所有 6 项返工要求均已彻底修复并亲眼验图核实。
+
+---
+## 第四轮返工（主审亲自修复，2026-10-12 20:00）
+新增 `hevi/layer4_legacy/quoteimage/oprim_impl/subtitle_text.py`（字幕字形掩码工具），改 produce.py / vendor_stitch.py / whisper.py，新增 tests/test_quoteimage_r4.py（4 例，用真实源视频帧做 fixture）。
+1. **多行字幕截断**：native 先按最终采样帧把字幕带扩到完整多行外接框（`refine_band`，增长上限约一行，避免吞进幻灯片标题）；新门禁 `band_edge_clear` 同时检查"裁切线穿过字形"与"相邻字幕行落在带外一个行距内"。fixture：shorts_clip_01 @4.21s 两行字幕，只含第一行的带 → FAIL；扩展后的带 → PASS。
+2. **半句**：whisper/脚本句子带 start/end；整句时长内字幕带字形布局变化（IoU<0.5，滚动字幕）即判定被拆成多张卡并剔除，只收整句单卡的句子，取字幕最完整时刻且不再挪动。剔除列表写入 record.json `excluded_sentences`。fixture：shorts_clip_02 "I was a second class midshipman…" → 判为拆分。
+3. **script 模式 hero 重复**：hero 取不在任何入选句时间段内的帧（优先字幕带为空的帧，其次相邻的未入选句）；该帧自带字幕时裁到字幕带之上。门禁 `hero_not_duplicating_strips`。
+4. **strip 硬边色块**：字幕外区域按行延续安全边界处的底色（`feathered_side_fill`），无矩形色块/竖向接缝；单测验证列间跳变 <40 级。
+5. **record**：`times` = 实际渲染所用时间点（native 为最终时刻，script 为各字幕条时刻），另记 `hero_time`、`band`、`picked_sentences`、`asr_sentences`（全部 ASR/脚本句及 start/end），不足 4 句时 note 写明依据。
+### E2E（scripts/quoteimage_e2e.py，8 组）
+- 7 组 succeeded，所有门禁通过；**vid_3_native 如实 failed**：源视频为逐段滚动字幕，只有 1 句以完整单卡出现，原生拼图至少要 2 句，拒绝用半句凑图。
+- 主审逐张看图：vid_2_native 两行字幕完整、无截字、条带底色统一无硬边；script 模式 hero 均不与字幕条同句。
+- 测试：tests/test_quoteimage.py + test_quoteimage_r4.py 13 passed。
+- 成图 sha256：
+  - bca59e7c8633afc37b0b317c4b82419cdd1662291ad5756eca351e656bbbef0a  vid_0_native/01_quote_image.jpg
+  - 9ea0af264aa4b85d84a9a126c5c4bc754bacce9e6d14f441b069f08861c812e0  vid_0_script/quote_script.jpg
+  - b2223ee4a52dd50283d174408ab527d2ea65c23c428f2771213f8d1ebe2265cc  vid_1_native/01_quote_image.jpg
+  - 32bbebe40efad22244da221fd981e576aabeba2a835e2623d3f32f89ead960d5  vid_1_script/quote_script.jpg
+  - cb6e0936f768776c592aa6f6eccda75de87def558f48d884713576ff3b0a4782  vid_2_native/01_quote_image.jpg
+  - 3f5a519f28ab07ac204551e72c30e52be18d281948dc406d06d6b18a42000e84  vid_2_script/quote_script.jpg
+  - 1c7d3ef491f32aeded5275560aaab17643c3fa1337dc8de8f8ac38792bc5ffb3  vid_3_script/quote_script.jpg

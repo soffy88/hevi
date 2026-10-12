@@ -608,16 +608,10 @@ def clean_strip_non_subtitle(band):
     if left_safe <= 0 and right_safe >= w:
         return band
 
-    bg_color = _sample_background_color(band, ext)
-    if bg_color is None:
-        return band
+    # 逐行延续安全边界处的底色（无硬边矩形色块，r4 FIX#4）
+    from hevi.layer4_legacy.quoteimage.oprim_impl.subtitle_text import feathered_side_fill
 
-    arr = np.array(band).copy()
-    if left_safe > 0:
-        arr[:, :left_safe] = bg_color
-    if right_safe < w:
-        arr[:, right_safe:] = bg_color
-    return Image.fromarray(arr)
+    return feathered_side_fill(band, left_safe, right_safe)
 
 
 def render_one(
@@ -671,6 +665,8 @@ def scripted_render_one(
     frame_bottom=1.0,
     check_duplicates=False,
     six_line_card=False,
+    hero_time=None,
+    hero_bottom=None,
 ):
     frames = [
         crop_band(grab_frame(video, line["t"]), frame_top, frame_bottom)[0]
@@ -679,6 +675,12 @@ def scripted_render_one(
     if check_duplicates:
         ensure_distinct_frames(frames, [line["t"] for line in lines])
     first_frame = frames[0]
+    # r4 FIX#3：hero 不得与字幕条重复同一句。调用方给出无字幕的 hero 时刻；
+    # 找不到无字幕帧时给出 hero_bottom，把 hero 裁到字幕带之上。
+    if hero_time is not None:
+        first_frame = crop_band(grab_frame(video, hero_time), frame_top, frame_bottom)[0]
+    if hero_bottom is not None and 0.2 < hero_bottom < 1.0:
+        first_frame = first_frame.crop((0, 0, first_frame.width, int(first_frame.height * hero_bottom)))
     out_width = out_width or (first_frame.width if layout == "natural" else 1440)
 
     # Base font size: strictly unified across all lines, never shrunk.
@@ -1128,6 +1130,8 @@ def command_render_script(args):
         args.frame_bottom,
         check_duplicates=not args.allow_duplicate_frames,
         six_line_card=args.six_line_card,
+        hero_time=getattr(args, "hero_time", None),
+        hero_bottom=getattr(args, "hero_bottom", None),
     )
 
 

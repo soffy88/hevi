@@ -38,17 +38,22 @@ class WhisperAligner:
                         t_sample = round(t_start + min(1.0, (cur_words[-1].end - t_start) * 0.4), 2)
                         txt = "".join(x.word for x in cur_words).strip()
                         if txt:
-                            results.append({"t": t_sample, "text": txt})
+                            results.append({"t": t_sample, "text": txt,
+                                            "start": round(float(t_start), 2),
+                                            "end": round(float(cur_words[-1].end), 2)})
                         cur_words = []
                 if cur_words:
                     t_start = cur_words[0].start
                     t_sample = round(t_start + min(1.0, (cur_words[-1].end - t_start) * 0.4), 2)
                     txt = "".join(x.word for x in cur_words).strip()
                     if txt:
-                        results.append({"t": t_sample, "text": txt})
+                        results.append({"t": t_sample, "text": txt,
+                                        "start": round(float(t_start), 2),
+                                        "end": round(float(cur_words[-1].end), 2)})
             else:
                 txt = seg.text.strip()
                 if txt:
                     t_sample = round(float(seg.start) + 0.5, 2)
-                    results.append({"t": t_sample, "text": txt})
+                    results.append({"t": t_sample, "text": txt,
+                                    "start": round(float(seg.start), 2), "end": round(float(seg.end), 2)})
         return results
