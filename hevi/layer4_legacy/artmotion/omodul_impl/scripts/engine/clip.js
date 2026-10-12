@@ -106,7 +106,7 @@ async function boot() {
   // ---- 镜头动作表：动在事件上（停住 → 快推 / 横移 / 砸入 → 停住）----
   // 事件点 = cue 的落点（at）；口播节点之间空太久就在空档补一个，事件之间至少留 1.15 秒「停住」。
   // 每一步都是绝对机位（不是相对增量），所以镜头不会一路推到底；快推用 quintOut——速度前置，
-  // 0.26 秒里前两帧就走完大半段位移，这是「猛动作」而不是匀速慢推（film_gate 的快动门禁量的是前者）。
+  // 0.5 秒里前两帧就走完大半段位移，这是「猛动作」而不是匀速慢推（film_gate 的快动门禁量的是前者）。
   const CAM_EVENTS = (() => {
     const dur = spec.duration || 10, u = ctx.u, out = [];
     const KINDS = ['punch', 'punch', 'pan', 'punch', 'slam', 'punch', 'pan'];
@@ -114,20 +114,22 @@ async function boot() {
       if (!(at > 0.30) || at > dur - 0.40) return;
       if (out.length && at - out[out.length - 1].at < 1.15) return;
       const i = out.length, k = KINDS[i % KINDS.length], dir = i % 2 ? 1 : -1;
-      if (k === 'slam') out.push({ at, kind: 'slam', dur: 0.2, from: 1.42 });
-      else if (k === 'pan') out.push({ at, kind: 'to', x: W / 2 + dir * 150 * u, y: H / 2 - dir * 40 * u, z: 1.24, dur: 0.3, ease: MO.quintOut });
-      else out.push({ at, kind: 'to', x: W / 2 + dir * 55 * u, y: H / 2 + dir * 30 * u, z: 1.46, dur: 0.26, ease: MO.quintOut });
+      if (k === 'slam') out.push({ at, kind: 'slam', dur: 0.5, from: 1.42 });
+      else if (k === 'pan') out.push({ at, kind: 'to', x: W / 2 + dir * 350 * u, y: H / 2 - dir * 100 * u, z: 1.35, dur: 0.5, ease: MO.quintOut });
+      else out.push({ at, kind: 'to', x: W / 2 + dir * 140 * u, y: H / 2 + dir * 80 * u, z: 1.85, dur: 0.5, ease: MO.quintOut });
     };
     (spec.cues || []).forEach(q => push(+q.at || 0));
-    for (let at = 2.6, k = 0; at < dur - 0.6; at += 2.6, k++) {         // 空档补刀
-      if (out.some(e => Math.abs(e.at - at) < 1.5)) continue;
-      out.push({ at, kind: 'to', x: W / 2 + Math.sin(k * 2.1) * 130 * u, y: H / 2 + Math.cos(k * 1.7) * 55 * u, z: 1.28, dur: 0.28, ease: MO.quintOut });
+    // 空档补刀：每 1.8 秒一个镜头动作，保证整片都有足够的快动帧
+    for (let at = 1.8, k = 0; at < dur - 0.6; at += 1.8, k++) {
+      if (out.some(e => Math.abs(e.at - at) < 1.3)) continue;
+      const dir = k % 2 ? 1 : -1;
+      out.push({ at, kind: 'to', x: W / 2 + dir * (140 + (k % 3) * 90) * u, y: H / 2 - dir * (60 + (k % 2) * 60) * u, z: 1.5 + (k % 3) * 0.15, dur: 0.5, ease: MO.quintOut });
     }
     return out.sort((a, b) => a.at - b.at);
   })();
   const camFn = t => CAM.track({ x: W / 2, y: H / 2, z: 1 }, CAM_EVENTS, t);
-  // 风格画面按 cover 铺满并留 15% 余量：镜头推到 1.46 也不会露出画面边界
-  const SCENE_W = 1920, SCENE_H = 1080, SCENE_SCALE = Math.max(W / SCENE_W, H / SCENE_H) * 1.15;
+  // 风格画面按 cover 铺满并留 30% 余量：镜头推到 1.85 也不会露出画面边界
+  const SCENE_W = 1920, SCENE_H = 1080, SCENE_SCALE = Math.max(W / SCENE_W, H / SCENE_H) * 1.30;
 
   window.renderFrame = t => {
     c.setTransform(1, 0, 0, 1, 0, 0);
