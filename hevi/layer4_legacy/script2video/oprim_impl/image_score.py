@@ -84,3 +84,25 @@ def _jpeg_size(data: bytes) -> tuple[int, int] | None:
         block = struct.unpack(">H", data[idx + 2 : idx + 4])[0]
         idx += 2 + block
     return None
+
+
+# Pixel-level scoring upgraded for DRAMAKEY / ViMax
+from hevi.layer4_legacy.keyframe.oprim_impl.image_score import (
+    compute_clip_similarity,
+    compute_exposure_score,
+    compute_laplacian_sharpness,
+    detect_bad_image,
+    score_keyframe,
+)
+
+__all__ = [
+    "score_image_file_size",
+    "score_image_dimensions",
+    "score_image_basic",
+    "detect_bad_image",
+    "compute_laplacian_sharpness",
+    "compute_exposure_score",
+    "compute_clip_similarity",
+    "score_keyframe",
+]
+

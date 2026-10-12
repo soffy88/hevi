@@ -22,6 +22,19 @@ logger = logging.getLogger(__name__)
 class Novel2VideoConfig:
     max_events: int = 50
     max_scenes_per_event: int = 5
+    render: bool = False
+    engine: str = "sdturbo_cpu"
+    target_width: int = 1080
+    target_height: int = 1920
+    fps: int = 25
+    kf_width: int = 512
+    kf_height: int = 512
+    target_duration_s: float = 60.0
+    face_threshold: float = 0.35
+    enable_tts: bool = True
+    enable_subtitles: bool = True
+    base_seed: int = 42
+    style: str = "anime_guofeng"
 
 
 @dataclass
@@ -81,6 +94,87 @@ async def novel2video_workflow(
             ),
             encoding="utf-8",
         )
+
+        if config.render:
+            _step("render", 50.0)
+            from hevi.layer4_legacy.keyframe.omodul_impl.video_render import (
+                RenderConfig,
+                render_dramakey_pipeline,
+            )
+            from hevi.layer4_legacy.script2video.oprim_impl.character_fuse import (
+                fuse_characters_to_cards,
+            )
+            from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import (
+                shot_budget_for_duration,
+            )
+
+            # Convert planned scenes into shots
+            max_shots = shot_budget_for_duration(config.target_duration_s)
+            raw_shots: list[dict[str, Any]] = []
+            all_characters = []
+            for s_idx, scene in enumerate(plan.scenes):
+                char_names = [c.name for c in scene.characters]
+                all_characters.extend([{"name": c.name, "description": c.description} for c in scene.characters])
+                raw_shots.append(
+                    {
+                        "idx": s_idx,
+                        "text": scene.script,
+                        "visual_desc": scene.script,
+                        "environment": scene.slugline,
+                        "visible_chars": char_names,
+                    }
+                )
+
+            effective_shots = raw_shots[:max_shots] if max_shots > 0 else raw_shots
+            char_cards = fuse_characters_to_cards(all_characters)
+
+            render_cfg = RenderConfig(
+                engine=config.engine,
+                target_width=config.target_width,
+                target_height=config.target_height,
+                fps=config.fps,
+                kf_width=config.kf_width,
+                kf_height=config.kf_height,
+                face_threshold=config.face_threshold,
+                enable_tts=config.enable_tts,
+                enable_subtitles=config.enable_subtitles,
+                base_seed=config.base_seed,
+                style=config.style,
+            )
+
+            render_res = render_dramakey_pipeline(
+                shots=effective_shots,
+                output_dir=output_dir,
+                character_cards=char_cards,
+                config=render_cfg,
+                on_progress=on_step,
+            )
+
+            decision_trail.append(
+                {
+                    "stage": "render",
+                    "rendered_shots": len(effective_shots),
+                    "final_mp4": render_res["final_mp4"],
+                    "qa_passed": render_res["qa_report"]["passed"],
+                }
+            )
+            _step("completed", 100.0)
+            return {
+                "status": render_res["status"],
+                "report_path": str(report_path),
+                "final_mp4": render_res["final_mp4"],
+                "qa_path": render_res["qa_path"],
+                "record_path": render_res["record_path"],
+                "characters_path": render_res["characters_path"],
+                "contact_sheet": render_res["contact_sheet"],
+                "qa_report": render_res["qa_report"],
+                "record_report": render_res["record_report"],
+                "decision_trail": decision_trail,
+                "event_count": len(plan.events),
+                "scene_count": len(plan.scenes),
+                "rendered_shots": len(effective_shots),
+            }
+
         _step("completed", 100.0)
         return {
             "status": "completed",
