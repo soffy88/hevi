@@ -1,6 +1,6 @@
 # COMICNARR Progress Tracker
 
-## Task Status: Completed
+## Task Status: Completed (Rework r3 verified 2026-10-12)
 Worktree: `/data/soffy/projects/hevi-comicnarr`
 Branch: `feat/comicnarr-3o`
 Base Commit: `98e216af`
@@ -43,3 +43,13 @@ Base Commit: `98e216af`
   - [x] Re-run 3O lint (matches baseline, 0 new failures)
   - [x] Write `COMICNARR_DONE.md`
   - [x] Git commit
+
+## Rework r3 (COMICNARR_FIX.md, 2026-10-12)
+- [x] FIX #1 story1 结尾两句整句丢失 — 已修（`_pack_scenes_under_limit` 合并不丢句，SRT 全文匹配）
+- [x] FIX #2 逗号处硬拆补「。」 — 已修（`_split_text_to_sentences` 不在逗号切，无伪造句号）
+- [x] FIX #3 换行孤立标点 — 已修（`wrap_subtitle_text` 避头算法）
+- [x] FIX #4 story1 画面与句子不符 — 已修（道具/动作前置强化、medium/full 构图、主角降次）
+- [x] FIX #5 COMICNARR_DONE.md 未更新 — 已如实更新（llm 通道、共享预设路径、sha256、时长）
+- [x] 三条成片重出（story1/2/3），ffprobe+抽帧+sha256 实测 PASS
+- [x] 31 项单测通过（comicnarr 12 + zerolines 19）
+- [x] 3O lint 基线一致（4 项 site-packages baseline，本地 0）
