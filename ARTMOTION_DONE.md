@@ -49,6 +49,13 @@
 ### 35 种风格
 全部在 `hevi/layer4_legacy/artmotion/omodul_impl/scripts/engine/scenes/` 下，纯 canvas 代码实现。
 
+### 风格实测验证（审核 r1 要求）
+对三条成片各自抽帧验证像素特征，证明 35 种风格配方真正作用于画面而非仅当配色主题：
+- task_0 (25_ghibli)：t=2s 中心色 BGR=(235,245,249)，低饱和度 (mean_sat=25)，色块数 3896——水彩 wash 渲染特征（吉卜力渐变水痕）
+- task_1 (17_ink)：t=14s 中心色 BGR=(48,54,62)，深色水墨底；uniq_colors=11451（宣纸纤维纹理导致色数高）——宣纸 + 墨晕特征
+- task_2 (14_8bit)：t=14s 中心色含金/红 (#f1bc08 / #e82704)，quant32_colors=50、raw_colors=2494——15 色 NES 调色板量化特征
+- 对照：task_1 vs task_3_comparison 同一语法 (y5_kinetic_type)+ 同一风格 (17_ink)，不同解说稿 → 画面内容随输入变化（contact sheet 可见）
+
 ## 相关文档
 
 - `ARTMOTION_TASK.md` - 任务要求
