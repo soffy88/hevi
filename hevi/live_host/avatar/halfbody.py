@@ -177,38 +177,46 @@ class HalfBodyAvatar:
 
     # ---- lip-sync -------------------------------------------------------
     def _lipsync(self, clip: BaseClip, idxs: list[int], wav: np.ndarray) -> list[np.ndarray]:
+        out: list[np.ndarray] = []
+        for part in self.lipsync_iter(clip, idxs, wav, chunk=64):
+            out.extend(part)
+        return out
+
+    def lipsync_iter(self, clip: BaseClip, idxs: list[int], wav: np.ndarray, chunk: int = 20, first: int | None = None) -> Iterator[list[np.ndarray]]:
+        """分块口型合成：mel 按整句算一次，每 chunk 帧产出一批，便于边算边播。"""
         n = len(idxs)
-        mels = mel_chunks(mel=melspectrogram(wav=wav), fps=FPS, n_frames=n)
-        crops, boxes = [], []
-        for i in idxs:
-            x1, y1, x2, y2 = clip.boxes[i]
-            hh = y2 - y1
-            b = (int(max(0, x1)), int(max(0, y1)), int(min(W, x2)), int(min(H, y2 + 0.10 * hh)))
-            boxes.append(b)
-            crop = Image.fromarray(clip.frames[i][b[1] : b[3], b[0] : b[2]]).resize((FACE, FACE), Image.BILINEAR)
-            crops.append(np.asarray(crop, dtype=np.float32)[..., ::-1] / 255.0)
-        ref = np.stack(crops)
-        masked = ref.copy()
-        masked[:, FACE // 2 :] = 0
-        target = np.concatenate([masked, ref], axis=3).transpose(0, 3, 1, 2).astype(np.float32)
-        preds = np.empty((n, FACE, FACE, 3), dtype=np.float32)
-        for a in range(0, n, 64):
-            b = min(n, a + 64)
-            out = self.w2l.run(None, {"source": mels[a:b, None].astype(np.float32), "target": target[a:b]})[0]
-            preds[a:b] = out.transpose(0, 2, 3, 1)[..., ::-1]
-        frames = []
-        for k, i in enumerate(idxs):
-            fr = clip.frames[i].astype(np.float32)
-            bx = boxes[k]
-            fw, fh = bx[2] - bx[0], bx[3] - bx[1]
-            gen = np.asarray(Image.fromarray(np.clip(preds[k] * 255, 0, 255).astype(np.uint8)).resize((fw, fh), Image.BICUBIC), dtype=np.float32)
-            m = mouth_mask(w=fw, h=fh)[..., None]
-            orig = fr[bx[1] : bx[3], bx[0] : bx[2]].copy()
-            blend = orig * (1 - m) + gen * m
-            fr[bx[1] : bx[3], bx[0] : bx[2]] = blend
-            self.stats["mouth"].append(float(np.mean(np.abs(blend[fh // 2 :] - orig[fh // 2 :]))))
-            frames.append(fr.astype(np.uint8))
-        return frames
+        mels = mel_chunks(mel=melspectrogram(wav=wav), fps=FPS, n_frames=n).astype(np.float32)
+        a = 0
+        while a < n:
+            b = min(n, a + (first if (a == 0 and first) else chunk))
+            sub = idxs[a:b]
+            crops, boxes = [], []
+            for i in sub:
+                x1, y1, x2, y2 = clip.boxes[i]
+                hh = y2 - y1
+                bx = (int(max(0, x1)), int(max(0, y1)), int(min(W, x2)), int(min(H, y2 + 0.10 * hh)))
+                boxes.append(bx)
+                crop = Image.fromarray(clip.frames[i][bx[1] : bx[3], bx[0] : bx[2]]).resize((FACE, FACE), Image.BILINEAR)
+                crops.append(np.asarray(crop, dtype=np.float32)[..., ::-1] / 255.0)
+            ref = np.stack(crops)
+            masked = ref.copy()
+            masked[:, FACE // 2 :] = 0
+            target = np.ascontiguousarray(np.concatenate([masked, ref], axis=3).transpose(0, 3, 1, 2), dtype=np.float32)
+            preds = self.w2l.run(None, {"source": mels[a:b, None], "target": target})[0].transpose(0, 2, 3, 1)[..., ::-1]
+            frames = []
+            for k, i in enumerate(sub):
+                fr = clip.frames[i].copy()  # 只把嘴部框转 float，整帧保持 uint8
+                bx = boxes[k]
+                fw, fh = bx[2] - bx[0], bx[3] - bx[1]
+                gen = np.asarray(Image.fromarray(np.clip(preds[k] * 255, 0, 255).astype(np.uint8)).resize((fw, fh), Image.BICUBIC), dtype=np.float32)
+                m = mouth_mask(w=fw, h=fh)[..., None]
+                orig = fr[bx[1] : bx[3], bx[0] : bx[2]].astype(np.float32)
+                blend = orig * (1 - m) + gen * m
+                fr[bx[1] : bx[3], bx[0] : bx[2]] = np.clip(blend, 0, 255).astype(np.uint8)
+                self.stats["mouth"].append(float(np.mean(np.abs(blend[fh // 2 :] - orig[fh // 2 :]))))
+                frames.append(fr)
+            yield frames
+            a = b
 
     # ---- segments -------------------------------------------------------
     def frames(self, seg: Segment) -> Iterator[np.ndarray]:

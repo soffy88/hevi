@@ -37,7 +37,7 @@ from hevi.live_host.oprim.tts_piper import PiperTTS  # noqa: E402
 
 STAGE = re.compile(r"[（(【\[][^）)】\]]*[）)】\]]")
 EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F\u200D]")
-ASK = re.compile(r"[?？吗呢么]|小雅|怎么|什么|推荐|为什么")
+ASK = re.compile(r"[?？吗呢么吧哪谁几]|小雅|主播|怎么|什么|推荐|为什么|多少|是不是|能不能|会不会|有没有|讲讲|说说")
 SPF = SR // FPS  # audio samples per video frame
 
 
@@ -49,12 +49,13 @@ class LiveStreamer:
         self.tts = PiperTTS()
         self.questions: deque[tuple[str, str, float]] = deque(maxlen=max_queue)  # (user, text, t_recv)
         self.qlock = threading.Lock()
-        self.ready: queue.Queue = queue.Queue(maxsize=6)  # (frames, wav, caption, meta)
+        self.ready: queue.Queue = queue.Queue(maxsize=40)  # (frames, wav, caption, meta)
         self.stop = threading.Event()
         self.caption = ""
         self.events: list[dict] = []
         self.log = log
         self.tmp = Path(tempfile.mkdtemp(prefix="hevi_live_"))
+        self.speaking = False
         self.stats = {"frames_out": 0, "late_frames": 0, "danmaku": 0, "answered": 0, "dropped": 0}
 
     # ---------------- ingest ----------------
@@ -115,7 +116,7 @@ class LiveStreamer:
                     if pick is not None:
                         self.questions.remove(pick)
                         item = pick
-                    elif time.time() - self.questions[0][2] > 8:
+                    elif time.time() - self.questions[0][2] > 2.5:
                         item = self.questions.pop()  # nobody asked anything: answer the newest line
             if item is None:
                 time.sleep(0.1)
@@ -125,28 +126,43 @@ class LiveStreamer:
             self.caption = f"{user}：{q}"
             t0 = time.time()
             reply, first = "", True
+            t_mark = time.time()
             for chunk in self.llm.stream_reply(q):
+                t_llm = time.time() - t_mark
                 s = EMOJI.sub("", STAGE.sub("", chunk)).strip()
                 if not s or self.stop.is_set():
                     continue
                 n += 1
                 wav_p = self.tmp / f"s{n}.wav"
+                t1 = time.time()
                 self.tts.synthesize(s, wav_p)
+                t_tts = time.time() - t1
                 wav = load_wav16k(wav_p)
                 wav_p.unlink(missing_ok=True)
                 nf = max(1, round(len(wav) / SR * FPS))
                 clip = self.av.talk
                 idxs = [clip.pingpong(t_talk + j) for j in range(nf)]
                 t_talk += nf
-                frames = self.av._lipsync(clip, idxs, wav)
+                t2 = time.time()
                 reply += s
-                meta = {"q": q, "sentence": s, "audio_s": round(len(wav) / SR, 2)}
-                if first:
-                    meta["first_ready_s"] = round(time.time() - t_recv, 2)
-                    first = False
-                self.ready.put((frames, wav, f"小雅：{reply}", meta))
+                spf = SR // FPS
+                a = 0
+                self.speaking = True
+                for part in self.av.lipsync_iter(clip, idxs, wav, chunk=20, first=24):
+                    b = a + len(part)
+                    seg = wav[a * spf : (b * spf if b < nf else len(wav))]
+                    meta = {"q": q, "sentence": s, "chunk_from": a}
+                    if a == 0:
+                        meta.update({"audio_s": round(len(wav) / SR, 2), "llm_s": round(t_llm, 2), "tts_s": round(t_tts, 2), "lip_first_s": round(time.time() - t2, 2), "wait_s": round(t0 - t_recv, 2), "qsize": self.ready.qsize()})
+                        if first:
+                            meta["first_ready_s"] = round(time.time() - t_recv, 2)
+                            first = False
+                    self.ready.put((part, seg, f"小雅：{reply}", meta))
+                    a = b
+                self.speaking = False
+                t_mark = time.time()
             self.stats["answered"] += 1
-            self._event("answer", q=q, reply=reply, total_s=round(time.time() - t0, 2))
+            self._event("answer", q=q, reply=reply, total_s=round(time.time() - t0, 2), hold_frames=self.stats.get("hold_frames", 0), late_frames=self.stats["late_frames"])
 
     # ---------------- output ----------------
     def _ffmpeg(self, audio_fifo: Path) -> subprocess.Popen:
@@ -263,9 +279,15 @@ class LiveStreamer:
                     pcm = (np.clip(wav, -1, 1) * 32767).astype(np.int16)
                     pcm = np.pad(pcm, (0, max(0, len(frames) * SPF - len(pcm))))
                     self.caption = caption
-                    self._event("play", lag_frames=0, **meta)
+                    if meta.get("chunk_from", 0) == 0:
+                        self._event("play", lag_frames=0, **meta)
                     for k, fr in enumerate(frames):
                         emit(fr, pcm[k * SPF:(k + 1) * SPF].tobytes(), caption)
+                    continue
+                if mode == "talk" and self.speaking and last is not None:
+                    # 句子还在分块合成中：定格最后一帧等下一块，不切回待机
+                    self.stats["hold_frames"] = self.stats.get("hold_frames", 0) + 1
+                    emit(last, silence[:SPF * 2] if len(silence) >= SPF * 2 else silence, self.caption)
                     continue
                 # idle: one second chunks keep latency low
                 batch = [idle.frames[idle.pingpong(t_idle + j)] for j in range(FPS // 4)]

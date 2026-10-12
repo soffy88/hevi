@@ -14,14 +14,14 @@ from hevi.live_host.schemas import Engine
 logger = logging.getLogger(__name__)
 
 # 微调模型偶尔吐出的特殊标记（<tool_call>/<think> 等）与夹杂的英文碎片，播报前剔除
-_TAG = re.compile(r"</?\s*(tool_call|tool_response|think)\s*>|<\|[^|>]*\|>")
+_TAG = re.compile(r"</?\s*[A-Za-z_]*\s*/?>|<\|[^|>]*\|>|[-=_]{3,}")
 _LATIN = re.compile(r"(?<![A-Za-z])(?!AI(?![A-Za-z]))[A-Za-z_][A-Za-z_]*")
 
 
 def clean_text(t: str) -> str:
     t = _TAG.sub("", t)
     t = _LATIN.sub("", t)
-    t = re.sub(r"[\u3040-\u30ff]+", "", t)  # 偶发日文假名
+    t = re.sub(r"[\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff]+", "", t)  # 偶发日文假名/韩文
     return t
 
 SYSTEM_PROMPT = (
@@ -69,7 +69,17 @@ class OllamaLLM(Engine):
         return "".join(chunks)
 
     def stream_reply(self, question: str) -> Iterator[str]:
-        """按句子流式产出文本片段（标点触发分句）。"""
+        """按句子流式产出文本片段；微调模型偶尔只吐标记残渣，空回复就重采样，最多 3 次。"""
+        for attempt in range(3):
+            got = False
+            for sentence in self._stream_once(question, attempt):
+                got = True
+                yield sentence
+            if got:
+                return
+            logger.warning("空回复，重采样第 %d 次: %s", attempt + 1, question)
+
+    def _stream_once(self, question: str, attempt: int = 0) -> Iterator[str]:
         payload = {
             "model": self.model,
             "messages": [
@@ -77,9 +87,12 @@ class OllamaLLM(Engine):
                 {"role": "user", "content": question},
             ],
             "stream": True,
+            "options": {"seed": int(time.time() * 1000) % 100000 + attempt},
         }
         buffer = ""
-        punct = "。！？!?；;\n"
+        punct = "。！？!?；;\n～~"
+        soft = "，,、"
+        first_pending = True
         with httpx.Client(timeout=120) as client:
             with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as resp:
                 for line in resp.iter_lines():
@@ -100,14 +113,20 @@ class OllamaLLM(Engine):
                     buffer = clean_text(buffer).lstrip()
                     while True:
                         idx = next((i for i, c in enumerate(buffer) if c in punct), None)
+                        if idx is None and first_pending:
+                            # 首句提前切：遇到逗号/波浪号且已有 6 字以上就先播，降低首音延迟
+                            idx = next((i for i, c in enumerate(buffer) if c in soft and i >= 5), None)
                         if idx is None:
                             break
                         sentence = buffer[: idx + 1].strip()
                         buffer = buffer[idx + 1 :]
+                        if sentence and not re.search(r"[\u4e00-\u9fff]", sentence):
+                            sentence = ""  # 没有汉字的碎片（标记残渣、符号）不播
                         if sentence:
+                            first_pending = False
                             yield sentence
         tail = clean_text(buffer).strip()
-        if tail:
+        if tail and re.search(r"[\u4e00-\u9fff]", tail):
             yield tail
 
 
