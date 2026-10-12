@@ -1,48 +1,74 @@
-# Artmotion Internalization Report
+# ARTMOTION 项目总结
 
-## 1. File List
-- `hevi/layer4_legacy/artmotion/oprim_impl/`
-- `hevi/layer4_legacy/artmotion/oskill_impl/`
-- `hevi/layer4_legacy/artmotion/omodul_impl/`
-- `hevi/layer4_legacy/artmotion/omodul_impl/scripts/` (copied from upstream scripts)
-- `hevi/layer4_legacy/artmotion/omodul_impl/produce.py` (TTS mapping and rendering logic)
-- `hevi/artmotion/adapter.py` (Facade)
-- `hevi/production/capabilities.py` (Registered capability)
-- `hevi/api/routers/explainer.py` (Wired)
-- `hevi/explainer/production.py` (Wired)
-- `tests/test_artmotion.py` (Unit tests)
-- `scripts/artmotion_e2e.py` (End-to-End Test script)
+## 任务状态
 
-## 2. End-to-End Verification
-The script `scripts/artmotion_e2e.py` generated 3 videos successfully and output contact sheets. We verified they pass `deliver.py` gate metrics using real `cv2` (no mocks). We also confirmed `record.json` now includes correct `style_id` and `grammar_id`.
+| Task | 规格 | 语法 | 风格 | 时长 | 画质门 | 快动比例 | 状态 |
+|------|------|------|------|------|--------|----------|------|
+| task_0 | 16:9 1920x1080 | 3b1b_math (自注意力机制) | 25_ghibli | 29.75s | ✅ green | 20.06% | ✅ 通过 |
+| task_1 | 9:16 1080x1920 | kinetic_type (水墨写意) | 17_ink | 26.90s | ✅ green | 65.35% | ✅ 通过 |
+| task_2 | 16:9 1920x1080 | finance_chart (光伏装机) | 14_8bit | 32.37s | ❌ red | 0.0% | ⚠️ 待修复 |
 
-1. **16:9 3b1b snow**
-   - Path: `output/artmotion_e2e/task_0/artmotion_landscape.mp4`
-   - IDs: `style_id: snow`, `grammar_id: t1_3b1b`
-   - Stats: 1920x1080, 16.43s, 30.0 fps
-   - SHA256: `a8dbfbfdce0a2e80fcb8fce25789b91d02af71d13cc37be42a4232d435fbe527`
-2. **9:16 kinetic_type 17_ink**
-   - Path: `output/artmotion_e2e/task_1/artmotion_portrait.mp4`
-   - IDs: `style_id: ink`, `grammar_id: y5_kinetic_type`
-   - Stats: 1080x1920, 17.03s, 30.0 fps
-   - SHA256: `8d305aa43ad1f5260bf425943f178f642d60ca60482864184b3f199f6df9e358`
-3. **16:9 finance_chart navy**
-   - Path: `output/artmotion_e2e/task_2/artmotion_landscape.mp4`
-   - IDs: `style_id: navy`, `grammar_id: t3_finance_chart`
-   - Stats: 1920x1080, 16.83s, 30.0 fps
-   - SHA256: `024ac5806c89e9d0bbe7895c245e0662d6f8c0522750275a0374251f59ec4084`
+## 输出文件
 
-All 3 outputs passed real `artmotion_deliver` gate checks. Corresponding contact sheets (`.sheet.jpg`) were generated.
+- `output/artmotion_e2e/task_0/artmotion_landscape.mp4` (16.8 MB)
+- `output/artmotion_e2e/task_1/artmotion_portrait.mp4` (28.5 MB)
+- `output/artmotion_e2e/task_2/artmotion_landscape.mp4` (9.6 MB)
 
-## 3. Lint Comparison
-The lint script `scripts/ci/run_3o_v3_lint.py` was executed. The failures match the baseline exactly, and no new violations were introduced in our new code under `hevi/layer4_legacy/artmotion`.
-Baseline Failures Maintained:
-- `check_no_sibling_call.py`
-- `check_omodul_signature.py`
-- `check_enabled_pillars.py`
-- `check_oprim_keyword_only.py`
+## 关键发现
 
-## 4. Known Issues
-- All mocked testing hacks have been successfully removed. `opencv-python-headless` was successfully installed, meaning gating works natively.
-- Unit testing environment parsing failures (`.env` file absence) were addressed appropriately using pytest `monkeypatch` and `os.environ` overwrites in `conftest.py`.
-- Previous empty renders and missing ID faults were resolved by ensuring accurate visual grammar triggers inside `artmotion_e2e.py`'s simulated cues and updating the prop parsing logic in `produce.py`.
+1. **task_0, task_1** 通过 film_gate 所有门禁：
+   - gate_light: green
+   - fast_ratio > 0 (足够快的镜头动作)
+   - duration ≥ 15s
+
+2. **task_2 (finance_chart)** 失败原因：
+   - 35种风格场景（CLIPs）中，finance_chart 没有内部相机动画
+   - 其他 clip 有 CAM.with() 或相机运动
+   - finance_chart 是静态图表渲染，缺乏镜头漂移
+
+3. **已实施改进**：
+   - clip.js 全局默认相机漂移和呼吸缩放（DRIFT_SEED=7）
+   - 增加脉冲幅度以产生更多快动帧
+   - finance_chart.js 需要添加 CAM.with() 包裹绘图逻辑
+
+## 后续行动
+
+### 立即修复 task_2
+```bash
+# 修改 t3_finance_chart.js 添加相机微动
+sed -i '93a\    const {W,H}=ctx; const dx=Math.sin(t*0.5)*3, dy=Math.cos(t*0.7)*3;' \
+  hevi/layer4_legacy/artmotion/omodul_impl/scripts/engine/clips/t3_finance_chart.js
+```
+
+### 补充单元测试
+当前 tests/test_artmotion.py 只有 1 个用例。建议添加：
+- test_finance_chart_camera_motion
+- test_style_variety_covers
+- test_film_gate_compliance
+
+### 完成 E2E 对照实验
+- task_3_comparison: 同一 story 用不同风格渲染对比
+- 验证 ARTMOTION_STYLE_VARIETY 机制
+
+## 技术细节
+
+### CLIP.md 风格覆盖
+- 覆盖 35 种艺术风格（CSS 滤镜 + canvas 绘图）
+- 使用 CLIP.md 定义：style_id, css_filters, canvas_filter_func, label
+- 支持：水粉、赛璐珞、铅笔画、复古胶片、色粉画等
+
+### film_gate.py 门禁逻辑
+- gate_light: red/green 基于相邻帧差异率
+- fast_ratio: 100ms 内像素差异均值 ≥ 9 的帧占比
+- duration 检查：≥ 15 秒，< 220 秒
+
+### render.py 生成管道
+- HTML: 渲染脚本 → styleScene.draw() → canvas API
+- MP4: FFmpeg HLS 段拼接 (1080p, 30fps)
+
+## 相关文档
+
+- `HEVI_ARCH.md` - HeVi 架构设计
+- `TASK_SUMMARY.md` - 任务完成情况
+- `ARTMOTION_FIX.md` - 问题列表与修复方案
+- `skills/hyperframes-artmotion/SKILL.md` - SKILL.md 完整版
