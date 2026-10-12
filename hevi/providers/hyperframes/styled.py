@@ -8,10 +8,11 @@ render is offline-capable, and renders through the HyperFrames CLI.
 
 Design notes
 ------------
-* The nine ``examples/kv-cache/<style>/index.html`` files are the finished
-  reference films (real performed beats, not starter placeholders).  When a
-  style has one it is the source of the film; otherwise the style's ``starter``
-  is used.
+* Every style is sourced only from ``kits/<style>/starter`` — never from
+  ``examples/`` (the ``examples/kv-cache`` directory holds the upstream
+  reference films and must stay off the render path).  ``beats.js`` is then
+  generated from the input ``story.json`` so the picture is driven by the
+  narration, not by the vendored demo.
 * Nothing here copies OpenMontage code; the only upstream is lanshu (MIT) plus
   the CMU motion data used elsewhere.
 * Rendering is delegated to the ``hyperframes`` binary.  If it is missing the
