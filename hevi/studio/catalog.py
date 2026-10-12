@@ -416,6 +416,14 @@ CATALOG: list[Row] = [
         ("prompt",),
         "craft_shot_prompt",
     ),
+    _row(
+        "craft.knowledge",
+        "craft",
+        "制作手艺知识库(按阶段)",
+        ("stage",),
+        ("title", "files", "text"),
+        "craft_knowledge",
+    ),
     _row("daily.tick", "daily", "日更排产一拍", (), ("jobs",), "daily_tick"),
     _row("veya.produce", "veya", "Veya 调成品", ("line_id",), ("job",), "veya_produce"),
 ]

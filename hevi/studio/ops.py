@@ -952,6 +952,30 @@ def craft_shot_prompt(p: dict[str, Any]) -> dict[str, Any]:
     return _ok(prompt=prompt)
 
 
+def craft_knowledge(p: dict[str, Any]) -> dict[str, Any]:
+    """按阶段取中文制作手艺知识库(stage id / 中文别名都认)。
+
+    不传 stage 时返回全阶段目录(stage/title/files/chars),便于先看有哪些阶段再取。
+    取不到阶段由 load_stage 抛 ValueError —— 这里不吞,让工具调用方拿到明确的失败原因。
+    """
+    from hevi.production.craft_knowledge import list_stages, load_stage, resolve_stage
+
+    stage = str(p.get("stage") or "").strip()
+    rows_all = list_stages()
+    if not stage:
+        return _ok(stages=rows_all, count=len(rows_all))
+    key = resolve_stage(stage)
+    if key is None:
+        return _fail(f"未知制作阶段:{stage!r}")
+    max_chars = p.get("max_chars")
+    limit = int(max_chars) if isinstance(max_chars, int) and max_chars > 0 else None
+    text = load_stage(key, max_chars=limit)
+    rows = [row for row in rows_all if row["stage"] == key]
+    title = rows[0]["title"] if rows else key
+    files = rows[0]["files"] if rows else []
+    return _ok(stage=key, title=title, files=files, text=text, chars=len(text))
+
+
 def delivery_promise(p: dict[str, Any]) -> dict[str, Any]:
     from hevi.production.delivery_promise import classify_from_brief
 
@@ -1193,20 +1217,21 @@ def _enhance_op(op_name: str) -> Any:
             return _fail("input_path required")
         config = dict(p.get("config") or {})
         config.setdefault("op", op_name)
+        _ENHANCE_PASSTHROUGH = (
+            "scale",
+            "tile",
+            "look",
+            "intensity",
+            "model",
+            "weight",
+            "upscale",
+            "post_process",
+            "allow_noncommercial",
+            "process_video",
+            "max_frames",
+        )
         for key, val in p.items():
-            if key in (
-                "scale",
-                "tile",
-                "look",
-                "intensity",
-                "model",
-                "weight",
-                "upscale",
-                "post_process",
-                "allow_noncommercial",
-                "process_video",
-                "max_frames",
-            ) and val is not None:
+            if key in _ENHANCE_PASSTHROUGH and val is not None:
                 config.setdefault(key, val)
         out = _om_workdir(p, f"enhance/{op_name}/{Path(str(src)).stem}")
         report = enhance_media_workflow(config, {"input_path": str(src)}, out)
@@ -1355,6 +1380,7 @@ OPS: dict[str, Any] = {
     "craft_grade": craft_grade,
     "craft_site": craft_site,
     "craft_shot_prompt": craft_shot_prompt,
+    "craft_knowledge": craft_knowledge,
     "delivery_promise": delivery_promise,
     "delivery_validate": delivery_validate,
     "verdict_scene_pacing": verdict_scene_pacing,

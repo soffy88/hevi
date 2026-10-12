@@ -14,6 +14,21 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+def _craft_knowledge() -> str:
+    """分镜阶段的中文手艺手册(含镜头提示词手艺),截到 4000 字拼进提示词。
+
+    fail-open 但 loud:知识库目录缺失/文件读不动时只打 warning 并退化成空串,
+    **绝不因为知识库问题让自动分镜出不来**(兜底占位分镜照旧)。
+    """
+    from hevi.production.craft_knowledge import load_stage
+
+    try:
+        return load_stage("storyboard", max_chars=4000)
+    except Exception as e:
+        logger.warning("分镜手艺知识库加载失败,本次不注入(不影响分镜产出): %s", e)
+        return ""
+
+
 def _safe_json_list(content: str | None) -> list[Any]:
     """从 LLM 输出抽分镜列表。兼容两种形态:JSON 数组,或对象(键如"镜头1画面")→ 取其值。
     小模型(llama3.2/qwen2.5)常返回对象而非数组,故都接。"""
@@ -69,9 +84,11 @@ async def plan_shots(
             pool_size=image_pool_size,
         )
 
+    craft_knowledge = _craft_knowledge()
     prompt = (
         f"为主题《{topic}》(风格:{style})写 {num_shots} 个分镜的画面描述。"
         f'只输出 JSON 数组 ["镜头1画面","镜头2画面",...],每条一句具体的视觉描述。'
+        f"{craft_knowledge}"
     )
     shots: list[str] = []
     try:
@@ -130,9 +147,11 @@ async def _plan_with_pool(
 
         llm = ProviderRegistry.get().llm("default")
     total = num_shots * pool_size
+    craft_knowledge = _craft_knowledge()
     prompt = (
         f"为主题《{topic}》(风格:{style})写 {total} 个分镜画面候选(每镜 {pool_size} 个变体)。"
         f"只输出 JSON 数组,每条一句具体的视觉描述,尽量互不相同。"
+        f"{craft_knowledge}"
     )
     try:
         resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)

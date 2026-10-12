@@ -67,6 +67,7 @@ target_name 就是 B 的名字(必须是已锁定人物名)。对众/独白/自�
 已锁定的出场人物(只能引用这些名字):{character_names}
 已锁定的场景:{scene_name}
 
+{craft_knowledge}
 只输出 JSON:
 {{"shots": [
   {{"shot_size": "远/全/中/近/特写", "camera": "机位/摄法(如 平视/仰拍/推镜/手持跟拍)",
@@ -82,6 +83,22 @@ target_name 就是 B 的名字(必须是已锁定人物名)。对众/独白/自�
 
 这一场剧本:
 {scene_text}"""
+
+
+def _craft_knowledge() -> str:
+    """分镜阶段的中文手艺手册,截到 6000 字拼进 prompt。
+
+    fail-open 但 loud:知识库目录缺失/文件读不动时,只打 warning 并退化成空串,
+    **绝不因为知识库问题让分镜出不来**;但 warning 会把"没注入手艺"这件事留在日志里,
+    不会像静默空串那样无人察觉。
+    """
+    from hevi.production.craft_knowledge import load_stage
+
+    try:
+        return load_stage("storyboard", max_chars=6000)
+    except Exception as e:
+        logger.warning("分镜阶段手艺知识库加载失败,本次不注入(不影响分镜产出): %s", e)
+        return ""
 
 
 def _resolve_llm(llm: Any) -> Any:
@@ -190,6 +207,7 @@ async def _shots_for_scene(
         character_names="、".join(scene.characters_present) or "(无)",
         scene_name=scene.location or "(未定)",
         scene_text=scene_text,
+        craft_knowledge=_craft_knowledge(),
     )
     try:
         data = await _call_llm_json(resolved_llm, prompt)
