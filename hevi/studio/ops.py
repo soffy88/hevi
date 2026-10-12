@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -1043,6 +1044,183 @@ async def veya_produce(p: dict[str, Any]) -> dict[str, Any]:
     return _ok(job=job.to_dict())
 
 
+# ---------------------------------------------------------------------------
+# OMQUALITY — 审片 + 后期增强 ops(全部走 hevi.layer4_legacy.{review,enhance})
+# ---------------------------------------------------------------------------
+
+
+def _om_workdir(p: dict[str, Any], suffix: str) -> str:
+    explicit = p.get("output_dir") or p.get("workdir")
+    if explicit:
+        return str(explicit)
+    base = "/tmp/hevi_omq" if os.access("/tmp", os.W_OK) else "."
+    os.makedirs(base, exist_ok=True)
+    return os.path.join(base, suffix)
+
+
+def review_finished_video(p: dict[str, Any]) -> dict[str, Any]:
+    """Real post-render self-check; returns the workflow's status dict verbatim."""
+    from hevi.layer4_legacy.review import review_finished_video_workflow
+
+    src = p.get("input_path") or p.get("video_path")
+    if not src:
+        return _fail("input_path required")
+    config = dict(p.get("config") or {})
+    if p.get("subtitle_path"):
+        config.setdefault("subtitle_path", p["subtitle_path"])
+    for key in (
+        "frame_count",
+        "min_lufs",
+        "max_lufs",
+        "max_silence_ratio",
+        "min_duration_s",
+        "require_audio",
+        "expected_resolution",
+        "slideshow",
+    ):
+        if key in p and key not in config:
+            config[key] = p[key]
+    out = _om_workdir(p, f"review/{Path(str(src)).stem}")
+    report = review_finished_video_workflow(config, {"input_path": str(src)}, out)
+    verdict = report.get("verdict") or report.get("status")
+    if report.get("status") == "failed":
+        return _fail(report.get("error", "review failed"), report=report)
+    return _ok(verdict=verdict, allows_compose=bool(report.get("allows_compose")), report=report)
+
+
+def qc_slideshow_risk(p: dict[str, Any]) -> dict[str, Any]:
+    """Pure algorithm: dense_frames dir + optional subtitle coverage → risk."""
+    from hevi.layer4_legacy.review.oskill_impl.slideshow_risk import score_slideshow_risk
+
+    frames_dir = p.get("dense_frames") or p.get("frames_dir")
+    if frames_dir and Path(str(frames_dir)).is_dir():
+        from hevi.layer4_legacy.review.oprim_impl.frames import (
+            frame_phash,
+            interframe_delta,
+        )
+
+        frames = sorted(Path(str(frames_dir)).glob("*.png"))
+        if frames:
+            hashes = [frame_phash(path=f) for f in frames]
+            deltas = interframe_delta(frames=frames)
+            motion_floor = float(p.get("motion_delta_floor", 1.0))
+            segments = []
+            start = 0
+            for i, d in enumerate(deltas, start=1):
+                if d >= motion_floor:
+                    segments.append((start, i))
+                    start = i
+            segments.append((start, len(deltas) + 1))
+            still_frames = sum((b - a) for a, b in segments if (b - a) >= 2)
+            total = max(len(hashes), 1)
+            repeat = max(0.0, min(1.0, still_frames / total))
+            mean_delta = sum(deltas) / len(deltas) if deltas else 0.0
+            static = max(0.0, min(1.0, 1.0 - mean_delta / 2.0))
+            weak = repeat
+            kwargs = dict(repeat=repeat, static=static, weak_motion=weak)
+        else:
+            kwargs = {}
+    else:
+        kwargs = {}
+    cov = p.get("subtitle_coverage")
+    if cov is not None:
+        kwargs["text_dependent"] = min(1.0, float(cov) / max(float(p.get("text_cue_coverage", 0.8)), 1e-6))
+    risk = score_slideshow_risk(**kwargs)
+    return _ok(risk=risk.to_dict())
+
+
+def qc_frame_check(p: dict[str, Any]) -> dict[str, Any]:
+    """One frame → black/flat/broken verdict."""
+    from hevi.layer4_legacy.review.oprim_impl.frames import frame_stats
+
+    fp = p.get("frame_path") or p.get("path")
+    if not fp:
+        return _fail("frame_path required")
+    check = frame_stats(
+        path=fp,
+        index=int(p.get("index", 0)),
+        timestamp_s=float(p.get("timestamp_s", 0.0)),
+    )
+    return _ok(check=check.to_dict())
+
+
+def _enhance_op(op_name: str) -> Any:
+    def _handler(p: dict[str, Any]) -> dict[str, Any]:
+        from hevi.layer4_legacy.enhance import enhance_media_workflow
+
+        src = p.get("input_path") or p.get("path")
+        if not src:
+            return _fail("input_path required")
+        config = dict(p.get("config") or {})
+        config.setdefault("op", op_name)
+        for key, val in p.items():
+            if key in (
+                "scale",
+                "tile",
+                "look",
+                "intensity",
+                "model",
+                "weight",
+                "upscale",
+                "post_process",
+                "allow_noncommercial",
+                "process_video",
+                "max_frames",
+            ) and val is not None:
+                config.setdefault(key, val)
+        out = _om_workdir(p, f"enhance/{op_name}/{Path(str(src)).stem}")
+        report = enhance_media_workflow(config, {"input_path": str(src)}, out)
+        if report.get("status") == "failed":
+            return _fail(report.get("error", "enhance failed"), report=report)
+        first = (report.get("results") or [{}])[0]
+        return _ok(
+            output_path=first.get("output_path"),
+            backend=first.get("backend"),
+            license=first.get("license"),
+            commercial_ok=first.get("commercial_ok"),
+            metrics=first.get("metrics"),
+            report=report,
+        )
+
+    return _handler
+
+
+def enhance_matte(p: dict[str, Any]) -> dict[str, Any]:
+    return _enhance_op("matte")(p)
+
+
+def enhance_upscale(p: dict[str, Any]) -> dict[str, Any]:
+    return _enhance_op("upscale")(p)
+
+
+def enhance_face_restore(p: dict[str, Any]) -> dict[str, Any]:
+    # Face restore requires opt-in via config; surface the requirement in the
+    # tool description so the catalog summary stays honest.
+    return _enhance_op("face_restore")(p)
+
+
+def enhance_lut(p: dict[str, Any]) -> dict[str, Any]:
+    return _enhance_op("lut")(p)
+
+
+def enhance_compare_sheet(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.layer4_legacy.enhance.omodul_impl.compare import build_comparison_sheet
+
+    before = p.get("before") or p.get("input_path")
+    after = p.get("after") or p.get("output_path")
+    if not before or not after:
+        return _fail("before and after required")
+    out = _om_workdir(p, f"enhance/compare/{Path(str(before)).stem}_vs_{Path(str(after)).stem}.png")
+    sheet = build_comparison_sheet(
+        before,
+        after,
+        out,
+        title=str(p.get("title") or "BEFORE vs AFTER"),
+        labels=tuple(p.get("labels") or ("BEFORE", "AFTER")),
+    )
+    return _ok(sheet_path=sheet.get("path"), sheet=sheet)
+
+
 OPS: dict[str, Any] = {
     "ingest_fetch": ingest_fetch,
     "ingest_frames": ingest_frames,
@@ -1143,4 +1321,13 @@ OPS: dict[str, Any] = {
     "verdict_source_review": verdict_source_review,
     "daily_tick": daily_tick,
     "veya_produce": veya_produce,
+    # OMQUALITY — 审片 + 后期增强
+    "review_finished_video": review_finished_video,
+    "qc_slideshow_risk": qc_slideshow_risk,
+    "qc_frame_check": qc_frame_check,
+    "enhance_matte": enhance_matte,
+    "enhance_upscale": enhance_upscale,
+    "enhance_face_restore": enhance_face_restore,
+    "enhance_lut": enhance_lut,
+    "enhance_compare_sheet": enhance_compare_sheet,
 }
