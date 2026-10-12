@@ -1,22 +1,25 @@
-# VIRALCLONE 返工 r2（Hark 独立核验 2026-10-12 08:20 CST，HEAD b72abdff + 未提交改动）
+# VIRALCLONE 返工 r3（Hark 独立核验 2026-10-12 10:05 CST，HEAD 287dbb37，工作树干净）
 
 ## 本轮已确认修好（不要回退）
-- #1 商品卡排版：标题/标签/出处/按钮分区，三变体均无叠字；#2 var_2 无原素材英文字幕叠压；#3 var_3 英文词间空格正确；
-- #6 测试：tests/test_viralclone.py + tests/test_zerolines.py 36 passed；#8 diversity 闸门有 test_diversity_gate_rejects_zero_phash；
-- #9 中文字幕为填槽原文（“你见过能耐受零下两百度极寒的航天级相机吗？”等），无 ASR 错字；#10 出处 URL 已补；
-- 元数据 AIGC 标签三片均有；三片音轨正常；时间对齐 pHash 均值 var1-var2=40、var1-var3=22、var2-var3=31（64bit）。
+- 测试：tests/test_viralclone.py + tests/test_zerolines.py **43 passed**（289s）；3O lint 仅基线 4 项（check_no_sibling_call / check_omodul_signature / check_enabled_pillars / check_oprim_keyword_only），无新增。
+- 成片 sha256/ffprobe 与 DONE 一致：var_1 46618d8c… 9.24s 1280x720；var_2 684955c1… 11.04s 1280x720；var_3 bda28316… 8.84s 720x1280；h264/aac，mean_volume -19~-20dB。
+- AI 标识（真实成片帧实测，t=0.5/1.0s，白色填充、不含描边）：“生”38px(5.28%)、“成”39px(5.42%)、方括号 41px，≥36px ✓。
+- 商品卡标签已改“渲染示意图”；无“零下两百度/钛合金/反射率”等编造参数；var_3 竖版已是模糊背景填充，无大黑边；中途黑帧已消除（blackdetect 仅片头 0.04/0.08s 淡入）；无双字幕、无错字；无 mock/云 API。
+- 帧级复用：1fps pHash 逐对时间对齐均值 34.7 / 23.3 / 32.2，最近邻近重复帧 0。
 
 ## 必须修复（阻断）
-1. **AI 显式标识仍未达 ≥ 短边 5%（FIX #7 未完成）**：output/viralclone_e2e 现有成片（ASS Watermark Fontsize=49）在 t=1s 实测（var_3 纯黑底，阈值 128）：“AI” 墨迹高 25px、“生” 30px、“成” 32px，含方括号 33px；短边 720 → 3.5%–4.4%，低于 36px。你未提交的 watermark.py（0.085 em + 像素复测）方向正确，完成后：
-   - 用新参数**重新跑 e2e 重出全部 3 个变体**（现有 final.mp4 仍是 10-11 14:24 UTC 的旧片）；
-   - 在 DONE 写每个变体 t=1s 帧的实测墨迹 bbox 高度（px 与 % ，按汉字“生/成”墨迹，不含描边），须 ≥36px；
-   - commit 代码 + 新产物证据。
+1. **画面与旁白语义不匹配（核心问题，三片全中）**：旁白/字幕全是“火星车/避障相机/桅杆相机”，但画面是 ISS 俯瞰地球+联盟号飞船、以及 Apollo 宇航员 Michael Collins 走廊采访：
+   - var_1 0–3s “火星车靠什么看清脚下的路？”配 ISS 地球画面；6–9s “想看火星车影像…”配走廊采访。
+   - var_2 0–4s “在火星表面移动，避障相机就是眼睛”配走廊两人行走；7–11s “更多火星车影像…”配 ISS 画面。
+   - var_3 0–2.4s “How does a rover see the path ahead on Mars?”配走廊；6–9s 配 ISS。
+   修法：下载 **NASA/JPL 公有领域的火星车相关视频**（例如 images.nasa.gov / science.nasa.gov 上 Perseverance 着陆/行驶/相机工作的视频或 NASA/JPL 动画，或 Perseverance Navcam/Hazcam 原始图序列做 Ken Burns），记录标题/URL/许可/sha256；B-roll 必须与对应旁白句语义一致（说火星车就出火星车/火星地表/相机画面）。不得用 AI 生成画面冒充，不得用付费 API。在 DONE 里给出每个变体“每句旁白 ↔ 画面来源片段（文件+in/out）”对照表。
+2. **素材来源复用 100%**：三变体用的是完全相同的 3 个来源（ISS 片、走廊采访、PIA22103），仅换 in 点/顺序/调色。换素材时请保证每个变体至少有 1 段其他变体未用的来源片段，并在 DONE 给出“来源级复用表”（每个变体用了哪些源文件）+ 逐对 1fps pHash 对齐均值与近重复帧数。
 
 ## 应修复（本轮一并处理）
-2. **商品卡标签“实拍商品图”不实**：PIA22103 是 NASA/JPL 示意渲染图，不是实拍。改为“示意图”/“NASA/JPL 渲染图”之类，或删除该标签。
-3. **口播/字幕编造参数**：“反射率低于百分之零点一”“钛合金耐高压密封镜身”“零下两百度”等无出处的硬参数不要写进文案；改为不含具体数值的描述，或只用能在素材出处页找到的事实。
-4. **变体素材复用**：三变体全部只用同两段 B-roll（ISS 地球画面 + 走廊采访）+ 同一商品图，仅换顺序/配色/画幅。逐帧最近邻 pHash：var_1 有 6/12 帧在 var_2 中有近似重复（≤10）。至少让每个变体有一段别的变体未用的公域素材或不同片段区间（in/out 点不同），并在 DONE 里给出逐对“时间对齐 pHash 均值”和“最近邻近重复帧数”。
-5. var_3（720x1280）竖版里横版素材上下黑边约占 70% 画面：改为裁切填充（center-crop/模糊背景填充），不要大黑边。
+3. **“AI”两个拉丁字母只有 31px（4.31%）**：GB 45438 要求提示文字高度≥短边 5%，字母也是提示文字的一部分。把字号提到使 “A”“I” 墨迹也 ≥36px（约 Fontsize 72），并在真实成片帧（非重渲染）上按字逐个测量写入 DONE（方法：解码 t=0.5/1.0s 帧，取 min(RGB)>215 且低饱和像素，按列分段量高度）。
+4. **商品卡 CTA“Explore Specs”名不副实**：卡上没有任何参数，改成“了解更多 / Learn more（NASA/JPL）”之类；标题“Mars 2020 Rover Camera”配整车渲染图，建议改 “Mars 2020 Rover · Cameras”。
+5. var_1 第二句“前后避障相机，一路记录着陆和行驶”：着陆过程主要由 EDL 相机记录，避障相机用于行驶避障，改为有出处的表述（参考 https://mars.nasa.gov/mars2020/mission/rover/cameras/ ）。
 
 ## 验收
-重出 ≥3 变体 → 每个抽 6 帧 contact sheet 亲眼看 → 跑 `JWT_SECRET=testsecret .venv/bin/python -m pytest tests/test_viralclone.py tests/test_zerolines.py` 全绿 + scripts/ci/run_3o_v3_lint.py 不多于基线 4 项 → 更新 VIRALCLONE_DONE.md（数字全部来自本轮实测）→ git commit。不要合并、不要 push。
+重跑 e2e 重出 ≥3 变体 → 每片抽 6 帧 contact sheet 亲眼看（画面必须是火星车/火星相关）→ `JWT_SECRET=testsecret PYTHONPATH=. .venv/bin/python -m pytest tests/test_viralclone.py tests/test_zerolines.py` 全绿 + scripts/ci/run_3o_v3_lint.py 不多于基线 4 项 → 更新 VIRALCLONE_DONE.md（数字全部来自本轮实测，含上面三张表）→ git commit。不要合并、不要 push。
+**长任务（e2e 渲染、pytest）必须用 nohup setsid 独立启动，轮询到产物/结果文件完成后再结束会话，不得中途退出。**
