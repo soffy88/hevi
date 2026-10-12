@@ -103,7 +103,10 @@ def render_cover(video: Path, dest: Path, *, title: str, ratio: str, subtitle: s
         raise CoverError(f"UNKNOWN_RATIO: {ratio}")
     width, height = exact_size(ratio)
     info = _probe_frame(video)
-    at_s = at_s if at_s is not None else max(info["duration"] * 0.25, 0.5)
+    at_s = at_s if at_s is not None else max(info["duration"] * 0.80, 0.5)
+    # N4 修复：封面取帧避开字幕密集区。默认从 25% 改为 80% 处取帧，
+    # 因为口播字幕通常在视频前 70% 出现，80%+ 处字幕已结束，
+    # 避免封面标题与成片烧录字幕重叠（双层字问题）。
 
     frame_png = dest.parent / f".{dest.stem}_frame.png"
     _grab_frame(video, frame_png, at_s=at_s, width=width, height=height)
