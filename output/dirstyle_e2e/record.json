@@ -43,7 +43,9 @@
       "subbed_width": 1080,
       "subbed_height": 1920,
       "subbed_duration": 11.797007,
-      "subbed_codec": "h264"
+      "subbed_codec": "h264",
+      "prompt_keyframe_anime": "step-printed motion drag with slow-shutter streaks; teal-green shadows against warm amber / magenta highlights dual tone; frame-within-frame voyeur peek (door/umbrella/glass/smoke), 18mm ultra-wide, intimate body distance, 2.35:1 frame, foreground...",
+      "prompt_keyframe_anime_negative": "crushed black, pure black shadows, clean digital, sharp clinical look, static tripod, symmetrical centered composition, bright daylight"
     },
     {
       "style_id": "wes_anderson",
@@ -88,7 +90,9 @@
       "subbed_width": 1080,
       "subbed_height": 1920,
       "subbed_duration": 11.797007,
-      "subbed_codec": "h264"
+      "subbed_codec": "h264",
+      "prompt_keyframe_anime": "absolute left-right symmetry with centered subject; pastel pink/mustard/mint/sky-blue palette, high lightness low contrast; mechanical horizontal track and 90-degree whip pan transition, 40-50mm symmetric, 1.37:1 (Academy) or 2.39:1 frame, absolut...",
+      "prompt_keyframe_anime_negative": "handheld, asymmetry, off-center subject, high contrast dramatic shadow, desaturated muted palette"
     },
     {
       "style_id": "fincher",
@@ -133,7 +137,9 @@
       "subbed_width": 1080,
       "subbed_height": 1920,
       "subbed_duration": 11.797007,
-      "subbed_codec": "h264"
+      "subbed_codec": "h264",
+      "prompt_keyframe_anime": "architectural symmetry with shallow depth of field; cool desaturated teal with amber practical light; mechanical precise locked-off moves only, 40-50mm prime, shallow DoF, 2.39:1 frame, architectural symmetry; shooting through doorways/hallways; e...",
+      "prompt_keyframe_anime_negative": "handheld, bright daylight, warm saturated palette, shallow focus with bokeh, film grain"
     },
     {
       "style_id": "zhang_yimou",
@@ -178,7 +184,9 @@
       "subbed_width": 1080,
       "subbed_height": 1920,
       "subbed_duration": 11.797007,
-      "subbed_codec": "h264"
+      "subbed_codec": "h264",
+      "prompt_keyframe_anime": "central-axis symmetric composition with subject on the vertical centerline; single dominant hue filling the entire frame (vermillion / imperial yellow / cyan-blue); repetitive background array (crowd ranks, lantern wall, soldier formation), 50-135...",
+      "prompt_keyframe_anime_negative": "handheld sway, off-center composition, muted desaturated palette, rainy night neon, close-up face close to lens"
     }
   ]
 }
