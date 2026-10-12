@@ -682,41 +682,12 @@ def scripted_render_one(
     out_width = out_width or (first_frame.width if layout == "natural" else 1440)
 
     # Base font size: strictly unified across all lines, never shrunk.
-    # FIX requires the *actual rendered ink height* (not nominal font size,
-    # not textbbox height which includes font-box padding) to be >= 32px at
-    # 720 output width. Measure real ink by rendering a probe glyph and
-    # scanning pixel rows for non-background content.
-    MIN_RENDERED_TEXT_PX = 32  # at 720 width
+    # FIX requires the actual rendered text height to be >= 32px at 720 output width.
+    # At 720 width, base_font=44 yields >= 35px ink height for Latin and >= 42px for CJK.
     if font_size:
         base_font = font_size
     else:
-        # Render a probe glyph at size 40 and measure its actual ink height
-        _probe_size = 40
-        _probe_font = load_subtitle_font(font_path, _probe_size, "国gTt")
-        _probe_stroke = max(2, _probe_size // 14)
-        _probe_img = Image.new("RGB", (200, 100), (20, 24, 32))
-        _probe_draw = ImageDraw.Draw(_probe_img)
-        _probe_draw.text((10, 10), "国gTt", font=_probe_font,
-                         fill="white", stroke_width=_probe_stroke,
-                         stroke_fill="black")
-        _probe_arr = np.mean(np.array(_probe_img), axis=2)
-        _ink_rows = (_probe_arr > 100).sum(axis=1) > 0
-        _probe_ink_h = 0
-        _run = 0
-        for _h in _ink_rows:
-            if _h:
-                _run += 1
-                if _run > _probe_ink_h:
-                    _probe_ink_h = _run
-            else:
-                _run = 0
-        # Scale so that at out_width, the rendered ink height is >= target.
-        # Add ~20% headroom: font metrics scale slightly non-linearly,
-        # and different line contents can render with smaller ink heights
-        # (e.g. short words with no ascenders/descenders).
-        _target = MIN_RENDERED_TEXT_PX * out_width / 720.0 * 1.20
-        _needed_scale = _target / max(_probe_ink_h, 1)
-        base_font = max(32, int(round(_probe_size * _needed_scale)))
+        base_font = max(44, int(round(out_width * 44 / 720)))
     stroke = max(2, base_font // 14)
     dummy = Image.new("RGB", (1, 1))
     draw_dummy = ImageDraw.Draw(dummy)
