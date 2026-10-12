@@ -396,8 +396,43 @@ def reference_adapt(req: ZeroLineRequest, d: Path) -> Result:
             "notes": "reference re-structured: chosen segments, new narration, grade, moves, transitions, captions"}
 
 
+def comic_narration(req: ZeroLineRequest, d: Path) -> Result:
+    from hevi.layer4_legacy.comicnarr.omodul_impl.comicnarr_pipeline import (
+        comic_narration_workflow,
+    )
+
+    sp = spec_for(req.line_id)
+    input_data = {
+        "topic": req.topic or (req.texts[0] if req.texts else ""),
+        "texts": list(req.texts),
+        "style": req.extras.get("style", "guofeng_anime"),
+        "subtitle_style": req.extras.get("subtitle_style", "bottom"),
+        "keyframe_engine": req.extras.get("keyframe_engine", "sdturbo_cpu"),
+        "base_seed": int(req.extras.get("base_seed", 42)),
+        "width": sp.width,
+        "height": sp.height,
+    }
+    workflow_out = comic_narration_workflow({}, input_data, d)
+    final_mp4 = Path(workflow_out["final_mp4"])
+    return {
+        "finals": [final_mp4],
+        "provenance": [
+            {"source": "SD-Turbo CPU keyframe engine (TAESD decoder)"},
+            PIPER_PROV,
+            BGM_PROV,
+        ],
+        "notes": "comic narration: sentence-by-sentence keyframes + TTS + BGM + Ken Burns + subtitles",
+        "artifacts": {
+            "qa": workflow_out.get("qa_path"),
+            "record": workflow_out.get("record_path"),
+            "script": workflow_out.get("script_path"),
+            "contact_sheet": workflow_out.get("contact_sheet"),
+        },
+    }
+
+
 PRODUCERS: dict[str, Callable[[ZeroLineRequest, Path], Result]] = {
     f.__name__: f
     for f in (kinetic_promo, explainer, cinematic, director_pipeline, history_scene, character_animation,
-              talking_head, avatar_spokesperson, shorts_clip, podcast_repurpose, reference_adapt)
+              talking_head, avatar_spokesperson, shorts_clip, podcast_repurpose, reference_adapt, comic_narration)
 }

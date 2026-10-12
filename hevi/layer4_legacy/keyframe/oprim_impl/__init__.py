@@ -27,8 +27,17 @@ from hevi.layer4_legacy.keyframe.oprim_impl.sdturbo_engine import (
     SDTurboCPUEngine,
     SDXLTurboCPUEngine,
 )
+from hevi.layer4_legacy.keyframe.oprim_impl.style_presets import (
+    DEFAULT_STYLE,
+    STYLE_PRESETS,
+    StylePreset,
+    get_style_preset,
+    list_style_presets,
+)
 
 __all__ = [
+    "DEFAULT_STYLE",
+    "STYLE_PRESETS",
     "CharacterCard",
     "CloudStubKeyframeEngine",
     "FakeKeyframeEngine",
@@ -36,6 +45,7 @@ __all__ = [
     "KeyframeResult",
     "SDTurboCPUEngine",
     "SDXLTurboCPUEngine",
+    "StylePreset",
     "compute_clip_similarity",
     "compute_exposure_score",
     "compute_face_cosine",
@@ -45,6 +55,8 @@ __all__ = [
     "detect_faces",
     "extract_face_embedding",
     "get_engine",
+    "get_style_preset",
+    "list_style_presets",
     "register_engine",
     "resolve_keyframe_engine",
     "score_keyframe",

@@ -98,7 +98,61 @@ To prevent CPU overload and OOM errors when concurrent agents (e.g. DRAMAKEY and
 
 ---
 
-## 5. Licensing Notice
+## 5. Shared Style Presets (DRAMAKEY + COMICNARR)
+
+Non-photoreal illustration styles live in **one shared module** so that the
+`dramakey` drama pipeline and the `comicnarr` comic-narration line render the
+same look.  Do not hard-code style tokens in a product package.
+
+```
+hevi/layer4_legacy/keyframe/oprim_impl/style_presets.py
+```
+
+Exports:
+
+| Symbol | Meaning |
+|---|---|
+| `StylePreset` | frozen dataclass (see fields below) |
+| `STYLE_PRESETS` | `dict[str, StylePreset]` |
+| `DEFAULT_STYLE` | `"guofeng_anime"` (comic-narration default) |
+| `get_style_preset(name)` | tolerant lookup with fallback to `DEFAULT_STYLE` |
+| `list_style_presets()` | sorted preset names |
+
+Required `StylePreset` fields: `style_tokens`, `negative_prompt`,
+`subtitle_style`, `bgm_mood`, `transition`, `postprocess`.  Optional subtitle
+rendering hints (`font_size`, `subtitle_primary`, `subtitle_outline`, ...) and
+`bubble_*` colours are also carried here so every consumer renders readable
+captions.
+
+Built-in presets:
+
+| Name | Look | Postprocess | Notes |
+|---|---|---|---|
+| `guofeng_anime` | 国风动漫 / donghua, cel-shaded, ink-wash accents | `none` | **default** for `comic_narration` |
+| `comic_color` | colourful flat comic / graphic novel | `none` | |
+| `manga_bw` | black & white manga, screentone | `manga_bw` (grayscale + halftone) | guarantees a monochrome frame |
+
+Usage:
+
+```python
+from hevi.layer4_legacy.keyframe.oprim_impl.style_presets import (
+    DEFAULT_STYLE, get_style_preset,
+)
+
+preset = get_style_preset("manga_bw")
+prompt = f"{scene_tokens}, {preset.style_tokens}"
+negative = preset.negative_prompt
+# postprocess pass for the generated keyframe:
+from hevi.layer4_legacy.comicnarr.oprim_impl.postprocess import apply_style_postprocess
+apply_style_postprocess(image_path, preset.postprocess)
+```
+
+The `comicnarr` package keeps the historical names `COMIC_STYLES` /
+`get_style_template` as thin aliases over the shared presets.
+
+---
+
+## 6. Licensing Notice
 
 `SD-Turbo` is released under the Stability AI Non-Commercial Research Community License. It is free for non-commercial research and commercial use under $1M/year revenue. All deliverables using this engine must acknowledge this community license.
 
