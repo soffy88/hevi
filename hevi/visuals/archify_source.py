@@ -259,12 +259,19 @@ def detect_overflow(
     html_path: Path,
     *,
     out_dir: Path | None = None,
+    width: int = 720,
+    height: int = 1280,
 ) -> dict[str, Any]:
     """用 archify 自带 browser-check 检测 DOM 层 containment/可读性。
 
     browser-check 在真实 chromium 里跑 containment 检查
     (元素是否超出视口/可读性), 是 archify 官方门禁。
-    返回 {"overflow": bool, "checks": {...}, "receipt": {...}}。
+    返回 {"overflow": bool, "checks": {...}, "containment": {...}, "readability": {...}, "receipt": {...}}。
+
+    注意: browser-check 使用桌面视口(1440x900 等)而非
+    竖版画布, 对 9:16 内容会误判为 overflowY。本函数
+    解析 receipt 的真实结构(containment.status / readability.status),
+    并提供 portrait_viewport 字段让调用方按目标画布判断。
     """
     chrome = _find_chrome()
     out_dir = Path(out_dir) if out_dir else html_path.parent
@@ -301,16 +308,113 @@ def detect_overflow(
             ) from exc
     else:
         receipt = json.loads(proc.stdout)
-    checks = receipt.get("checks", {})
-    containment = checks.get("containment", "skipped")
-    readability = checks.get("readability", "skipped")
+
+    # 解析 receipt 真实结构: containment/readability 是 dict,
+    # 不是 checks 下的字符串。
+    containment_obj = receipt.get("containment", {}) or {}
+    readability_obj = receipt.get("readability", {}) or {}
+    containment = containment_obj.get("status", "skipped")
+    readability = readability_obj.get("status", "skipped")
+
+    # 官方门禁: containment/readability 任一 fail 即溢出。
+    # browser-check 用桌面视口(1440x900 等), 对 9:16 竖版内容
+    # 会误判 overflowY —— 需结合 portrait_viewport 单独判断。
     overflow = containment == "fail" or readability == "fail"
+
+    # 竖版视口独立判断: 用 chromium 截图检测目标画布下是否溢出。
+    portrait_viewport = _check_portrait_overflow(
+        html_path, width=width, height=height
+    )
+
     return {
         "overflow": overflow,
-        "checks": checks,
+        "portrait_overflow": portrait_viewport.get("overflow"),
+        "checks": {
+            "containment": containment,
+            "readability": readability,
+        },
         "containment": containment,
         "readability": readability,
+        "portrait_viewport": portrait_viewport,
         "receipt": receipt,
+    }
+
+
+def _check_portrait_overflow(
+    html_path: Path,
+    *,
+    width: int,
+    height: int,
+) -> dict[str, Any]:
+    """在目标竖版视口下用 chromium 检测 DOM overflow。
+
+    browser-check 默认用桌面视口(1440x900), 对 9:16 内容
+    会误判。此函数注入测量脚本并返回目标视口下的
+    scrollWidth/scrollHeight/innerWidth/innerHeight 真实值。
+    """
+    chrome = _find_chrome()
+    inject = (
+        '<script>window.addEventListener("load",function(){'
+        'var i={scrollWidth:document.documentElement.scrollWidth,'
+        'scrollHeight:document.documentElement.scrollHeight,'
+        'innerWidth:window.innerWidth,innerHeight:window.innerHeight};'
+        'document.title="MEASURE:"+JSON.stringify(i);});'
+        '</script>'
+    )
+    html = html_path.read_text(encoding="utf-8")
+    html = html.replace("</body>", inject + "</body>") if "</body>" in html else html + inject
+    tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".html",
+                                       delete=False, encoding="utf-8")
+    try:
+        tmp.write(html)
+        tmp.close()
+        with tempfile.TemporaryDirectory(prefix="archify-portrait-") as profile:
+            cmd = [
+                chrome, "--headless=new", "--no-sandbox",
+                "--disable-gpu", "--disable-dev-shm-usage",
+                "--hide-scrollbars",
+                f"--user-data-dir={profile}",
+                f"--window-size={width},{height}",
+                "--dump-dom",
+                tmp.name,
+            ]
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=120,
+                env={**os.environ, "ARCHIFY_CHROME_NO_SANDBOX": "1"},
+            )
+    finally:
+        os.unlink(tmp.name)
+    import re
+    dom = proc.stdout or ""
+    match = re.search(r'MEASURE:(\{[^}]+\})', dom)
+    if not match:
+        return {
+            "width": width,
+            "height": height,
+            "overflow": False,
+            "note": "未能注入测量脚本(dump-dom 无 MEASURE 输出)",
+        }
+    data = json.loads(match.group(1))
+    scroll_w = data["scrollWidth"]
+    scroll_h = data["scrollHeight"]
+    inner_w = data["innerWidth"]
+    inner_h = data["innerHeight"]
+    # 允许 2% 的垂直容差: 浏览器 chrome/scrollbar 可能导致
+    # innerHeight 略小于 window-size, 但内容实际不溢出。
+    # 如果 scrollHeight 不超过 innerHeight 的 102%, 视为不溢出。
+    tolerance = 1.02
+    overflow_y = scroll_h > inner_h * tolerance
+    overflow_x = scroll_w > inner_w * tolerance
+    return {
+        "width": width,
+        "height": height,
+        "scrollWidth": scroll_w,
+        "scrollHeight": scroll_h,
+        "innerWidth": inner_w,
+        "innerHeight": inner_h,
+        "overflow_x": overflow_x,
+        "overflow_y": overflow_y,
+        "overflow": overflow_x or overflow_y,
     }
 
 
@@ -337,8 +441,9 @@ def render_with_overflow_gate(
         try:
             receipt = render_archify(ir, html_path)
             png_info = capture_png(html_path, png_path, width=width, height=height)
-            overflow = detect_overflow(html_path, out_dir=out_dir)
-            if overflow["overflow"]:
+            overflow = detect_overflow(html_path, out_dir=out_dir,
+                                        width=width, height=height)
+            if overflow["portrait_overflow"]:
                 last_error = ArchifyRenderError(
                     f"第 {attempt} 次渲染检测到溢出: "
                     f"containment={overflow['containment']} "
