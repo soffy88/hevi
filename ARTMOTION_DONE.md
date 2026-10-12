@@ -90,6 +90,30 @@
 | still_ratio | 0.009 | 0.0 | 0.006 | 0.0 |
 | sha256 | d6d37746... | 9a3b9513... | 3c68c842... | 93d8f7b4... |
 
+
+## Texture Mode E2E (Round 2 Fixes)
+
+4 个 v2 任务均开启 `texture_mode=True`，加载 `scenes_style/` 纹理背景，LaTeX 已清理。
+
+| Task | 规格 | 语法 | 风格(mode) | 时长 | gate_light | fast_ratio | 状态 |
+|------|------|------|-----------|------|-----------|------------|------|
+| task_0_v2 | 16:9 1920x1080 | y1_teaching | 25_ghibli(texture) | 29.98s | ✅ green | 9.39% | ✅ 通过 |
+| task_1_v2 | 9:16 1080x1920 | y5_kinetic_type | 17_ink(texture) | 27.26s | ✅ green | 21.40% | ✅ 通过 |
+| task_2_v2 | 16:9 1920x1080 | t3_finance_chart | 14_8bit(texture) | 31.83s | ✅ green | 8.38% | ✅ 通过 |
+| task_3_v2 | 9:16 1080x1920 | y5_kinetic_type | 17_ink(texture) | 27.26s | ✅ green | 21.59% | ✅ 通过 |
+
+### 修复内容
+1. **LaTeX 清理**：`sanitize_latex()` 去除所有 LaTeX 标记，符号映射为 Unicode（√·×≠≈）
+2. **纹理背景**：4 种风格切换至 `scenes_style/*_texture.js`，移除人物/动物等叙事元素
+3. **纹理模式生效**：spec.json 中 `texture_mode: true`，clip.js 加载对应纹理场景
+4. **MIT 许可**：`third_party/huashu-art-motion/LICENSE` + `NOTICE.md` 已添加
+
+### 验收
+- 全部 4 个任务 6 项门禁全绿
+- spec.json 中无任何 LaTeX 字符残留
+- 4 个单元测试全部通过
+
+
 ## 相关文档
 
 - `ARTMOTION_TASK.md` - 任务要求
