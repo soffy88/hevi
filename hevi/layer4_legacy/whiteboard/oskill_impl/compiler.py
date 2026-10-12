@@ -219,7 +219,16 @@ def generate_portrait_scene_js(
     *,
     topic: str,
 ) -> list[str]:
-    """Generate DSL lines for a portrait (1080x1920) scene filling the vertical screen."""
+    """Generate DSL lines for a portrait (1080x1920) scene.
+
+    F2 返工布局规则（实测可复现）：
+    * 标题区 y 120–240；卡片区 y 260–1560（1300px，占可用高度 70.7%）；
+      字幕 baselineY=1780，卡片底边 ≤1600，不压字幕。
+    * 每 beat 一张卡片，高度均分卡片区，beat 间留 40px 箭头。
+    * 图标（robot/laptop）固定左栏（x 140–360），文字固定右栏
+      （x 400–940），两栏不相交。
+    * 要点按 12 字折行，长句不出卡片右边框。
+    """
     lines: list[str] = []
     narration_dsl = " | ".join(b.narration for b in segment.beats)
     lines.append(f"{{ const s = new Scene('{segment.scene_id}', `{narration_dsl}`);")
@@ -228,85 +237,106 @@ def generate_portrait_scene_js(
     colors = ["C.brand", "C.blue", "C.purple", "C.orange", "C.green"]
     fill_colors = ["C.fGreen", "C.fBlue", "C.fPurple", "C.fYellow", "C.fGray"]
 
+    # ---- 竖版排版常量（1080 x 1920） ----
     card_x = 100
     card_w = 880
+    title_y = 120
+    title_size = 64
+    divider_y = 230
+    card_top = 260
+    card_bottom = 1560
+    # 图标列：x [140, 360]，宽 220；文字列：x [400, 940]，宽 540
+    icon_w = 220
+    icon_h = 260
+    icon_x = card_x + 40
+    text_x = icon_x + icon_w + 40
+    text_w = card_x + card_w - 40 - text_x
 
-    if num_beats == 1:
+    # 每 beat 卡片高度：均分卡片区，beat 间留 40px 箭头
+    arrow_gap = 40
+    n = min(num_beats, 5)
+    card_h = (card_bottom - card_top - (n - 1) * arrow_gap) // n
+    y_starts = [card_top + i * (card_h + arrow_gap) for i in range(n)]
+
+    def wrap_points(pts: tuple[str, ...], max_chars: int = 12) -> list[str]:
+        """长句按 max_chars 折行，保证不超出卡片宽度。"""
+        wrapped: list[str] = []
+        for p in pts:
+            if len(p) <= max_chars:
+                wrapped.append(p)
+            else:
+                buf = ""
+                for ch in p:
+                    buf += ch
+                    if len(buf) >= max_chars:
+                        wrapped.append(buf)
+                        buf = ""
+                if buf:
+                    wrapped.append(buf)
+        return wrapped
+
+    def draw_card(b_idx: int, beat: WhiteboardBeat, y: int, col: str, fill: str) -> None:
+        """在 y 处画一张卡片：图标左栏，标题+要点右栏。"""
+        lines.append(f"s.rect({card_x}, {y}, {card_w}, {card_h}, {{ round: true, stroke: {col}, strokeWidth: 3, fill: {fill} }});")
+        # 标题：右栏顶部居中
+        title_center_x = text_x + text_w // 2
+        lines.append(f"s.text({title_center_x}, {y + 30}, `{beat.title}`, {{ size: 54, align: 'center', color: {col} }});")
+        # 图标：左栏垂直居中
+        icon_y = y + (card_h - icon_h) // 2
+        motif = beat.motif or ("robot" if b_idx % 2 == 0 else "laptop")
+        if motif == "laptop":
+            lines.append(f"s.laptop({icon_x}, {icon_y}, 0.85);")
+        else:
+            lines.append(f"s.robot({icon_x}, {icon_y}, 0.85);")
+        # 要点：右栏，自动换行
+        wrapped = wrap_points(beat.points)
+        pt_lines = "\\n· ".join(wrapped)
+        pt_y = y + 130
+        lines.append(f"s.text({text_x}, {pt_y}, `· {pt_lines}`, {{ size: 40, color: C.ink }});")
+
+    # ---- 按 beat 数生成 ----
+    if n == 1:
         b0 = segment.beats[0]
-        pts_str = "\\n\\n· ".join(b0.points)
         lines.append("s.nextBeat();")
-        lines.append(f"s.text(CX_P, 160, `{topic}`, {{ size: 68, align: 'center', color: C.brand }});")
-        lines.append("s.squiggle(CX_P - 240, CX_P + 240, 240, { color: C.brand });")
-        lines.append("s.rect(100, 360, 880, 1100, { round: true, stroke: C.brand, strokeWidth: 4, fill: C.fGreen });")
-        lines.append("s.robot(CX_P - 60, 520, 1.4);")
-        lines.append(f"s.text(CX_P, 720, `{b0.title}`, {{ size: 60, align: 'center', color: C.brand }});")
-        lines.append(f"s.text(180, 880, `· {pts_str}`, {{ size: 44, color: C.ink }});")
+        lines.append(f"s.text(CX_P, {title_y}, `{topic}`, {{ size: {title_size}, align: 'center', color: C.brand }});")
+        lines.append(f"s.line([[180, {divider_y}], [900, {divider_y}]], {{ stroke: C.brand, strokeWidth: 4, roughness: 1.2 }});")
+        draw_card(0, b0, y_starts[0], "C.brand", "C.fGreen")
 
-    elif num_beats == 2:
+    elif n == 2:
         b0, b1 = segment.beats[0], segment.beats[1]
         lines.append("s.nextBeat();")
-        lines.append(f"s.text(CX_P, 150, `{topic}`, {{ size: 66, align: 'center', color: C.brand }});")
-        lines.append(f"s.rect({card_x}, 280, {card_w}, 600, {{ round: true, stroke: C.blue, strokeWidth: 3, fill: C.fBlue }});")
-        lines.append(f"s.text(CX_P, 340, `{b0.title}`, {{ size: 54, align: 'center', color: C.blue }});")
-        lines.append("s.laptop(CX_P - 80, 470, 1.1);")
-        pts0_str = "\\n· ".join(b0.points)
-        lines.append(f"s.text(180, 680, `· {pts0_str}`, {{ size: 40, color: C.ink }});")
-
+        lines.append(f"s.text(CX_P, {title_y}, `{topic}`, {{ size: {title_size}, align: 'center', color: C.brand }});")
+        lines.append(f"s.line([[180, {divider_y}], [900, {divider_y}]], {{ stroke: C.brand, strokeWidth: 4, roughness: 1.2 }});")
+        draw_card(0, b0, y_starts[0], "C.blue", "C.fBlue")
         lines.append("s.nextBeat();")
-        lines.append("s.arrow([[CX_P, 895], [CX_P, 945]], { stroke: C.gray, strokeWidth: 4 });")
-        lines.append(f"s.rect({card_x}, 960, {card_w}, 600, {{ round: true, stroke: C.purple, strokeWidth: 3, fill: C.fPurple }});")
-        lines.append(f"s.text(CX_P, 1020, `{b1.title}`, {{ size: 54, align: 'center', color: C.purple }});")
-        lines.append("s.robot(CX_P - 60, 1150, 1.1);")
-        pts1_str = "\\n· ".join(b1.points)
-        lines.append(f"s.text(180, 1360, `· {pts1_str}`, {{ size: 40, color: C.ink }});")
+        lines.append(f"s.arrow([[CX_P, {y_starts[0] + card_h + 5}], [CX_P, {y_starts[1] - 5}]], {{ stroke: C.gray, strokeWidth: 3 }});")
+        draw_card(1, b1, y_starts[1], "C.purple", "C.fPurple")
 
-    elif num_beats == 3:
+    elif n == 3:
         b0, b1, b2 = segment.beats[0], segment.beats[1], segment.beats[2]
         lines.append("s.nextBeat();")
-        lines.append(f"s.text(CX_P, 140, `{topic}`, {{ size: 64, align: 'center', color: C.brand }});")
-        lines.append("s.line([[180, 230], [900, 230]], { stroke: C.brand, strokeWidth: 4, roughness: 1.2 });")
-        lines.append(f"s.rect({card_x}, 270, {card_w}, 410, {{ round: true, stroke: C.brand, strokeWidth: 3, fill: C.fGreen }});")
-        lines.append(f"s.text(CX_P, 310, `{b0.title}`, {{ size: 50, align: 'center', color: C.brand }});")
-        lines.append("s.robot(180, 420, 1.0);")
-        pts0_str = "\\n· ".join(b0.points)
-        lines.append(f"s.text(320, 440, `· {pts0_str}`, {{ size: 38, color: C.ink }});")
-
+        lines.append(f"s.text(CX_P, {title_y}, `{topic}`, {{ size: {title_size}, align: 'center', color: C.brand }});")
+        lines.append(f"s.line([[180, {divider_y}], [900, {divider_y}]], {{ stroke: C.brand, strokeWidth: 4, roughness: 1.2 }});")
+        draw_card(0, b0, y_starts[0], "C.brand", "C.fGreen")
         lines.append("s.nextBeat();")
-        lines.append("s.arrow([[CX_P, 690], [CX_P, 725]], { stroke: C.gray, strokeWidth: 3 });")
-        lines.append(f"s.rect({card_x}, 735, {card_w}, 410, {{ round: true, stroke: C.blue, strokeWidth: 3, fill: C.fBlue }});")
-        lines.append(f"s.text(CX_P, 775, `{b1.title}`, {{ size: 50, align: 'center', color: C.blue }});")
-        lines.append("s.laptop(180, 885, 0.95);")
-        pts1_str = "\\n· ".join(b1.points)
-        lines.append(f"s.text(320, 905, `· {pts1_str}`, {{ size: 38, color: C.ink }});")
-
+        lines.append(f"s.arrow([[CX_P, {y_starts[0] + card_h + 5}], [CX_P, {y_starts[1] - 5}]], {{ stroke: C.gray, strokeWidth: 3 }});")
+        draw_card(1, b1, y_starts[1], "C.blue", "C.fBlue")
         lines.append("s.nextBeat();")
-        lines.append("s.arrow([[CX_P, 1155], [CX_P, 1190]], { stroke: C.gray, strokeWidth: 3 });")
-        lines.append(f"s.rect({card_x}, 1200, {card_w}, 410, {{ round: true, stroke: C.orange, strokeWidth: 3, fill: C.fYellow, fillStyle: 'solid' }});")
-        lines.append(f"s.text(CX_P, 1240, `{b2.title}`, {{ size: 50, align: 'center', color: C.orange }});")
-        lines.append("s.ellipse(CX_P, 1370, 460, 90, { fill: C.fGreen, fillStyle: 'solid' });")
-        badge = b2.points[0] if b2.points else "核心总结"
-        lines.append(f"s.text(CX_P, 1355, `{badge}`, {{ size: 38, align: 'center', color: C.ink }});")
-        pts2_str = b2.points[1] if len(b2.points) > 1 else "深入拆解，一目了然"
-        lines.append(f"s.text(CX_P, 1470, `{pts2_str}`, {{ size: 38, align: 'center', color: C.ink }});")
+        lines.append(f"s.arrow([[CX_P, {y_starts[1] + card_h + 5}], [CX_P, {y_starts[2] - 5}]], {{ stroke: C.gray, strokeWidth: 3 }});")
+        draw_card(2, b2, y_starts[2], "C.orange", "C.fYellow")
 
     else:
-        # 4 beats
-        card_h = 310
-        y_starts = [260, 600, 940, 1280]
+        # 4–5 beats
         lines.append("s.nextBeat();")
-        lines.append(f"s.text(CX_P, 130, `{topic}`, {{ size: 60, align: 'center', color: C.brand }});")
-        for idx, beat in enumerate(segment.beats[:4]):
+        lines.append(f"s.text(CX_P, {title_y}, `{topic}`, {{ size: {title_size}, align: 'center', color: C.brand }});")
+        lines.append(f"s.line([[180, {divider_y}], [900, {divider_y}]], {{ stroke: C.brand, strokeWidth: 4, roughness: 1.2 }});")
+        for idx, beat in enumerate(segment.beats[:5]):
             if idx > 0:
                 lines.append("s.nextBeat();")
-                prev_y = y_starts[idx - 1] + card_h
-                lines.append(f"s.arrow([[CX_P, {prev_y + 5}], [CX_P, {y_starts[idx] - 5}]], {{ stroke: C.gray, strokeWidth: 3 }});")
+                lines.append(f"s.arrow([[CX_P, {y_starts[idx - 1] + card_h + 5}], [CX_P, {y_starts[idx] - 5}]], {{ stroke: C.gray, strokeWidth: 3 }});")
             col = colors[idx % len(colors)]
             fill = fill_colors[idx % len(fill_colors)]
-            cy = y_starts[idx]
-            lines.append(f"s.rect({card_x}, {cy}, {card_w}, {card_h}, {{ round: true, stroke: {col}, strokeWidth: 3, fill: {fill} }});")
-            lines.append(f"s.text(CX_P, {cy + 25}, `{beat.title}`, {{ size: 46, align: 'center', color: {col} }});")
-            pts_str = "\\n· ".join(beat.points)
-            lines.append(f"s.text(160, {cy + 105}, `· {pts_str}`, {{ size: 36, color: C.ink }});")
+            draw_card(idx, beat, y_starts[idx], col, fill)
 
     lines.append("scenes.push(s); }")
     return lines
