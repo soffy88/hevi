@@ -303,6 +303,63 @@ def _srt_ts(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
+def make_noise_fixture(out_dir: Path) -> Path:
+    """Generate a random-noise video with white-noise audio (the bug repro)."""
+    dest = out_dir / "bad_noise.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-y", "-f", "lavfi",
+            "-i", "nullsrc=s=640x360:r=24:d=5",
+            "-f", "lavfi",
+            "-i", "anoisesrc=d=5:c=white:r=44100:a=0.5",
+            "-vf", "geq=random(1)*255:128:128",
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-shortest",
+            str(dest),
+        ],
+        check=True, capture_output=True,
+    )
+    return dest
+
+
+def make_macroblock_fixture(out_dir: Path) -> Path:
+    """Generate a macroblock-pattern video with white-noise audio."""
+    dest = out_dir / "bad_macroblock.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-y", "-f", "lavfi",
+            "-i", "nullsrc=s=640x360:r=24:d=5",
+            "-f", "lavfi",
+            "-i", "anoisesrc=d=5:c=white:r=44100:a=0.5",
+            "-vf",
+            "geq=lum='48+mod(floor(X/16)+floor(Y/16),2)*208':cb=128:cr=128",
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-shortest",
+            str(dest),
+        ],
+        check=True, capture_output=True,
+    )
+    return dest
+
+
+def make_half_gray_fixture(out_dir: Path) -> Path:
+    """Generate a half-white/half-gray split-screen video."""
+    dest = out_dir / "bad_half_gray.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-y",
+            "-f", "lavfi", "-i", "color=c=white:s=320x360:r=24:d=5",
+            "-f", "lavfi", "-i", "color=c=gray:s=320x360:r=24:d=5",
+            "-filter_complex", "[0:v][1:v]hstack",
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-an",
+            str(dest),
+        ],
+        check=True, capture_output=True,
+    )
+    return dest
+
+
 # ---------------------------------------------------------------------------
 # A 后期增强
 # ---------------------------------------------------------------------------
@@ -663,6 +720,43 @@ def section_review(out: Path) -> dict[str, Any]:
     results["red_demo_via_stress_case"] = (results["slideshow_stress"]["slideshow"] or {}).get(
         "verdict"
     ) == "red"
+
+    # --- 破图/花屏负面样本：证明空间质量检测会判红 ---
+    log("  构造破图负面样本(随机噪点 / 宏块花屏 / 半屏灰块)")
+    bad_cases: dict[str, Any] = {}
+    for name, maker in (
+        ("noise", make_noise_fixture),
+        ("macroblock", make_macroblock_fixture),
+        ("half_gray", make_half_gray_fixture),
+    ):
+        clip = maker(step_dir)
+        rep = review_finished_video(
+            input_path=str(clip),
+            output_dir=step_dir / f"bad_{name}",
+            config={"promise": promise, "require_audio": True, "frame_count": 4},
+        )
+        bad_cases[name] = {
+            "constructed_by": "scripts/om_quality_e2e.py",
+            "ffprobe": ffprobe(clip),
+            "sha256": sha256(clip),
+            "verdict": rep.get("verdict"),
+            "allows_compose": rep.get("allows_compose"),
+            "violations": rep.get("violations"),
+            "frames": {
+                k: rep.get("metrics", {}).get("frames", {}).get(k)
+                for k in ("count", "noise", "blocky", "flat")
+            },
+            "report_json": str(step_dir / f"bad_{name}" / "review_report.json"),
+        }
+        log(
+            f"  bad_{name}: verdict={rep.get('verdict')} "
+            f"allows_compose={rep.get('allows_compose')} "
+            f"violations={len(rep.get('violations') or [])}"
+        )
+    results["bad_cases"] = bad_cases
+    results["red_demo_via_bad_cases"] = all(
+        (v.get("verdict") == "red") for v in bad_cases.values()
+    )
     return results
 
 
@@ -942,6 +1036,14 @@ def evaluate(report: dict[str, Any]) -> list[dict[str, Any]]:
         bool(rev["existing_films_flagged_red"]) or rev["red_demo_via_stress_case"],
         f"已有成片判红={rev['existing_films_flagged_red']}, "
         f"压力样本判红={rev['red_demo_via_stress_case']}",
+    )
+    bad = rev.get("bad_cases", {})
+    gate(
+        "review.bad_cases_red",
+        bool(bad)
+        and all(v.get("verdict") == "red" for v in bad.values())
+        and all(not v.get("allows_compose") for v in bad.values()),
+        f"破图样本判红: {[(k, v.get('verdict')) for k, v in bad.items()]}",
     )
     promise_ok = [
         k

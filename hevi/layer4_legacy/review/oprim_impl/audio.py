@@ -129,4 +129,62 @@ def audio_duration_s(*, path: str | Path) -> float | None:
         return None
 
 
-__all__ = ["audio_duration_s", "loudness_lufs", "silence_ratio", "silence_windows"]
+
+def spectral_flatness(
+    *,
+    path: str | Path,
+    fft_size: int = 4096,
+) -> float | None:
+    """Spectral flatness (0..1) via FFT of a real audio window.
+
+    Computes geometric_mean / arithmetic_mean of the FFT power spectrum —
+    the standard spectral flatness measure.  White noise has a flat
+    spectrum (flatness near 0.5+); tones and speech have highly peaked
+    spectra (flatness near 0).  Returns None when not measurable.
+    """
+    import numpy as np
+
+    dest = Path(path)
+    info = probe_media(dest)
+    if not info.has_audio or info.duration_s <= 0:
+        return None
+    # Extract PCM samples as float32 mono via ffmpeg.
+    proc = subprocess.run(
+        [
+            FFMPEG,
+            "-nostats",
+            "-hide_banner",
+            "-i",
+            str(dest),
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "-ac",
+            "1",
+            "-",
+        ],
+        capture_output=True,
+        text=False,
+        timeout=1800,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    raw = proc.stdout
+    if not raw:
+        return None
+    samples = np.frombuffer(raw, dtype=np.float32)
+    n = min(fft_size, len(samples))
+    if n < 128:
+        return None
+    window = np.hanning(n)
+    fft = np.fft.rfft(samples[:n] * window)
+    power = np.abs(fft) ** 2 + 1e-20  # epsilon to avoid log(0)
+    geomean = float(np.exp(np.mean(np.log(power))))
+    arithmean = float(np.mean(power))
+    return round(geomean / arithmean, 4)
+
+
+
+__all__ = ["audio_duration_s", "loudness_lufs", "silence_ratio", "spectral_flatness", "silence_windows"]

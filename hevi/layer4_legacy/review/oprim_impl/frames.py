@@ -23,6 +23,12 @@ from hevi.layer4_legacy.review.oprim_impl.media import FFPROBE, MediaError, prob
 BLACK_MEAN_LUMA = 16.0
 FLAT_STDEV_LUMA = 3.0
 
+#: Spatial quality thresholds for 破图/花屏 detection.
+NOISE_LOCAL_DIFF_FLOOR = 30.0  # local_diff above this suggests noise
+BLOCKINESS_FLOOR = 40.0        # periodic 16px discontinuity threshold
+EDGE_DENSITY_FLOOR = 0.50      # fraction of strong edges (noise has ~1.0)
+MIN_SPATIAL_VARIATION = 5.0    # minimum stdev for non-flat frame
+
 #: Hash geometry for average-hash.
 HASH_SIZE = 8
 
@@ -136,6 +142,56 @@ def frame_stats(
     is_flat = stdev < flat_stdev_luma
     if is_flat:
         notes.append(f"flat frame (luma stdev {stdev:.2f} < {flat_stdev_luma:.2f})")
+
+    # --- spatial quality: detect noise / macroblock / screen corruption ---
+    import numpy as np
+
+    arr = np.asarray(grey, dtype=np.float64)
+    h, w = arr.shape
+    # Gradient magnitudes (mean absolute first difference along each axis)
+    gx = np.abs(arr[:, 1:] - arr[:, :-1])          # (h, w-1)
+    gy = np.abs(arr[1:, :] - arr[:-1, :])          # (h-1, w)
+    gx_mean = float(gx.mean())
+    gy_mean = float(gy.mean())
+    # Edge density: fraction of pixels with strong local gradient (>15/255)
+    edge_h = float((gx > 15.0).mean())
+    edge_v = float((gy > 15.0).mean())
+    # Local 8-neighbour difference (high-frequency energy proxy)
+    padded = np.pad(arr, 1, mode="edge")
+    local_diffs: list[float] = []
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            if dx == 0 and dy == 0:
+                continue
+            local_diffs.append(
+                float(
+                    np.abs(
+                        padded[1 + dy : h + 1 + dy, 1 + dx : w + 1 + dx] - arr
+                    ).mean()
+                )
+            )
+    local_diff = sum(local_diffs) / float(len(local_diffs))
+    # Blockiness: periodic discontinuity at 16-pixel boundaries (macroblock artefact)
+    blk = 0.0
+    if w > 17:
+        left = arr[:, 15 : w : 16]
+        right = arr[:, 16 : w + 1 : 16]
+        n = min(left.shape[1], right.shape[1])
+        if n:
+            blk += float(np.abs(left[:, :n] - right[:, :n]).mean()) / 2.0
+    if h > 17:
+        top = arr[15 : h : 16, :]
+        bot = arr[16 : h + 1 : 16, :]
+        n = min(top.shape[0], bot.shape[0])
+        if n:
+            blk += float(np.abs(top[:n, :] - bot[:n, :]).mean()) / 2.0
+
+    is_noise = bool(local_diff > NOISE_LOCAL_DIFF_FLOOR and (edge_h + edge_v) / 2.0 > EDGE_DENSITY_FLOOR)
+    is_blocky = bool(blk > BLOCKINESS_FLOOR)
+    if is_noise:
+        notes.append(f"noise-like frame (local_diff {local_diff:.1f} > {NOISE_LOCAL_DIFF_FLOOR:.0f}, edge_density {(edge_h + edge_v) / 2.0:.2f})")
+    if is_blocky:
+        notes.append(f"blocky frame (periodic 16px discontinuity {blk:.1f} > {BLOCKINESS_FLOOR:.0f})")
     return FrameCheck(
         index=index,
         timestamp_s=round(float(timestamp_s), 3),
@@ -145,6 +201,14 @@ def frame_stats(
         is_black=is_black,
         is_flat=is_flat,
         is_broken=False,
+        gradient_x=round(gx_mean, 3),
+        gradient_y=round(gy_mean, 3),
+        edge_density_h=round(edge_h, 4),
+        edge_density_v=round(edge_v, 4),
+        local_diff=round(local_diff, 3),
+        blockiness=round(blk, 3),
+        is_noise=is_noise,
+        is_blocky=is_blocky,
         notes=tuple(notes),
     )
 
@@ -263,6 +327,10 @@ def probe_frame_count(*, path: str | Path) -> int:
 
 __all__ = [
     "BLACK_MEAN_LUMA",
+    "NOISE_LOCAL_DIFF_FLOOR",
+    "BLOCKINESS_FLOOR",
+    "EDGE_DENSITY_FLOOR",
+    "MIN_SPATIAL_VARIATION",
     "FLAT_STDEV_LUMA",
     "HASH_SIZE",
     "build_contact_sheet",

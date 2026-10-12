@@ -73,7 +73,7 @@ Backlot HTTP（FastAPI 路由）：
 
 ## E2E 产物路径与实测（ffprobe/sha256）
 
-`output/om_quality_e2e/`，manifest `om_quality_e2e_manifest.json`，**16/16 gates 全绿**，elapsed 167.5s。
+`output/om_quality_e2e/`，manifest `om_quality_e2e_manifest.json`，**17/17 gates 全绿**，elapsed 99.5s。
 
 A 增强（源：`artifacts/real_video/20261005T160434Z/final/FINAL.mp4`，36.693s 1280x720 h264+aac，915 帧）：
 - 抠像：rembg:u2net，RGBA，透明占比 0.8313 → `A_enhance/matte/matte_source_frame.png`（640x360）
@@ -119,3 +119,22 @@ Web：`npx tsc --noEmit` exit 0。
 2. 3O lint 的 4 项失败为仓库预存（.venv 内第三方包缺 `_enabled_pillars`/keyword-only 签名），非本任务范围。
 3. 幻灯片红路在三条真实成片上均为绿（它们真有运动），故 E2E 用真实静帧构造压测案例证明红路；这是诚实的压力测试，不是 mock。
 4. 全量回归中的 42 failed / 17 errors 全部预存（缺 optional 依赖/环境 fixture），与本次改动无关；改动文件的定向测试全绿。
+5. **rembg u2net 抠像局限**：对含多人画面的帧（如 FINAL.mp4），u2net 只选最显著主体（白衣老人+蓝衣人头部），蓝衣人身体丢失（透明占比 0.83）。可选用 `isnet-general-use` 模型获取更完整的主体掩码（透明占比 0.80，覆盖面积略大），但仍是单主体模型，多主体场景需后处理合并。已在 config 层暴露 `model` 参数，调用方可按需切换。
+
+## 后续修复记录
+
+### 空间质量检测：随机噪点 / 宏块花屏 / 半屏灰块
+
+**问题**：`review.finished_video` 对 `nullsrc + geq=random(1)*255:128:128` 随机噪点视频返回 `verdict=warn, allows_compose=True`，原因是逐帧检测只看黑帧 / 平帧 / 运动连续性，不看空间质量；音频频谱平坦度也未纳入；幻灯片风险对噪点视频给 0.0 绿（全 20 帧判 cut）。
+
+**修复（4 个文件）**：
+
+1. **`oprim_impl/contracts.py`** — `FrameCheck` 新增 `gradient_x` / `gradient_y` / `edge_density_h` / `edge_density_v` / `local_diff` / `blockiness` / `is_noise` / `is_blocky`
+2. **`oprim_impl/frames.py`** — `frame_stats()` 计算 Sobel 梯度、边缘密度、16px 周期不连续度（块效应）；阈值：`NOISE_LOCAL_DIFF_FLOOR=30`、`BLOCKINESS_FLOOR=40`、`EDGE_DENSITY_FLOOR=0.50`
+3. **`oprim_impl/audio.py`** — 新增 `spectral_flatness()`，基于 FFT 的几何均值/算术均值频谱平坦度（白色噪声≈0.55，纯音≈0.0）
+4. **`oskill_impl/slideshow_risk.py`** — 新增 `CUT_RATIO_ANOMALY_FLOOR=0.90`：当 `cut_count/total ≥ 0.90` 时标记 `is_cut_anomaly`，不折叠为 0 分
+5. **`omodul_impl/review_workflow.py`** — 集成噪点/花屏帧计数、频谱平坦度阈值（0.3）、cut-ratio 异常检测
+
+**E2E 验证**：新增 3 个负面样本 fixture（`make_noise_fixture` / `make_macroblock_fixture` / `make_half_gray_fixture`），新增 gate `review.bad_cases_red`，三条均判 `verdict=red, allows_compose=False`。正常成片（FINAL.mp4）无误报（noise=0, blocky=0, flatness=0.005）。
+
+**E2E 结果**：17/17 gates 全绿，elapsed 99.5s（2026-10-12）。

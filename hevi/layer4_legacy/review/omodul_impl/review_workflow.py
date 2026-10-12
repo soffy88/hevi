@@ -37,7 +37,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from hevi.layer4_legacy.review.oprim_impl.audio import loudness_lufs, silence_ratio
+from hevi.layer4_legacy.review.oprim_impl.audio import loudness_lufs, silence_ratio, spectral_flatness
 from hevi.layer4_legacy.review.oprim_impl.contracts import (
     VERDICT_BLOCKED,
     VERDICT_OK,
@@ -76,6 +76,7 @@ _DEFAULTS: dict[str, Any] = {
     "motion_delta_floor": 1.0,
     "repeat_hash_floor": 4.0,
     "text_cue_coverage": 0.80,
+    "spectral_flatness_threshold": 0.1,  # white noise flag
 }
 
 
@@ -234,6 +235,13 @@ def _measure_slideshow(
         text_dep = None  # type: ignore[assignment]
         missing.append("text_dependent")
 
+    # 5) cut-anomaly: flag when every dense frame is a cut (extreme high-frequency
+    #    noise — no motion continuity at all, classic screen corruption).
+    cut_ratio = max(0.0, min(1.0, cut_count / max(total, 1)))
+    measured["cut_ratio"] = round(cut_ratio, 4)
+    from hevi.layer4_legacy.review.oskill_impl.slideshow_risk import CUT_RATIO_ANOMALY_FLOOR
+    is_cut_anomaly = bool(cut_ratio >= CUT_RATIO_ANOMALY_FLOOR)
+
     risk = score_slideshow_risk(
         repeat=repeat,
         static=static,
@@ -241,6 +249,10 @@ def _measure_slideshow(
         text_dependent=text_dep,
         thresholds=cfg.get("slideshow") or None,
     )
+    import dataclasses as _dc
+    risk = _dc.replace(risk, is_cut_anomaly=is_cut_anomaly)
+    if is_cut_anomaly:
+        risk = _dc.replace(risk, reasons=risk.reasons + ("切片比例异常高(≈100%切点)",))
     cuts = cuts_from_segments(segments=segments, deltas=deltas, motion_floor=motion_floor)
     return risk.to_dict(), measured, tuple(missing), cuts
 
@@ -367,12 +379,16 @@ def review_finished_video_workflow(
     black = [c for c in checks if c.get("is_black")]
     broken = [c for c in checks if c.get("is_broken")]
     flat = [c for c in checks if c.get("is_flat")]
+    noise = [c for c in checks if c.get("is_noise")]
+    blocky = [c for c in checks if c.get("is_blocky")]
     metrics["frames"] = {
         "count": len(checks),
         "checks": checks,
         "black": len(black),
         "broken": len(broken),
         "flat": len(flat),
+        "noise": len(noise),
+        "blocky": len(blocky),
     }
     if broken:
         violations.append(f"{len(broken)}/{len(checks)} 帧不可解码(破图)")
@@ -382,6 +398,17 @@ def review_finished_video_workflow(
         violations.append("全部抽帧为平帧(疑似冻结画面)")
     elif flat:
         warnings.append(f"{len(flat)}/{len(checks)} 帧为平帧")
+    if noise:
+        violations.append(
+            f"{len(noise)}/{len(checks)} 帧为全帧随机噪点(破图/花屏, "
+            f"local_diff={noise[0].get('local_diff', 0):.1f} > "
+            f"{noise[0].get('edge_density_h', 0) + noise[0].get('edge_density_v', 0):.1f} 阈值)"
+        )
+    if blocky:
+        violations.append(
+            f"{len(blocky)}/{len(checks)} 帧为宏块花屏(blockiness="
+            f"{blocky[0].get('blockiness', 0):.1f})"
+        )
 
     # ---- audio -----------------------------------------------------------
     audio_metrics: dict[str, Any] = {"has_audio": info.has_audio}
@@ -398,6 +425,18 @@ def review_finished_video_workflow(
             warnings.append(f"静音量测失败: {exc}")
         audio_metrics["loudness_lufs"] = lufs
         audio_metrics["silence_ratio"] = sil
+        try:
+            flatness = spectral_flatness(path=src)
+        except MediaError:
+            flatness = None
+        audio_metrics["spectral_flatness"] = flatness
+        if flatness is None:
+            unmeasured.append("spectral_flatness")
+        elif flatness > float(cfg["spectral_flatness_threshold"]):
+            violations.append(
+                f"音频频谱平坦度 {flatness:.3f} 超过上限 {cfg['spectral_flatness_threshold']} "
+                "(疑似持续宽带白噪声)"
+            )
         if lufs is None:
             unmeasured.append("loudness")
         else:

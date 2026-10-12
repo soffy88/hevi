@@ -48,6 +48,15 @@ class FrameCheck:
     is_black: bool = False
     is_flat: bool = False
     is_broken: bool = False
+    # --- spatial quality (破图/花屏) ---
+    gradient_x: float = 0.0
+    gradient_y: float = 0.0
+    edge_density_h: float = 0.0
+    edge_density_v: float = 0.0
+    local_diff: float = 0.0
+    blockiness: float = 0.0
+    is_noise: bool = False       # high-frequency noise dominates
+    is_blocky: bool = False      # macroblock artefacts
     notes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:

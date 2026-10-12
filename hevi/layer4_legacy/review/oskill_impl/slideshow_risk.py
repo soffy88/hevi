@@ -38,6 +38,9 @@ DEFAULT_THRESHOLDS: dict[str, float] = {
 #: 各分量判"这一维就够糟"的阈值, 用于写人话理由。
 _COMPONENT_BAD = 0.60
 
+#: 切片比例过高（接近100%）视为异常 —— 正常内容不应每帧都是切点。
+CUT_RATIO_ANOMALY_FLOOR = 0.90
+
 _COMPONENT_LABELS = {
     "repeat": "重复度",
     "static": "静态占比",
@@ -57,6 +60,8 @@ class SlideshowRisk:
     missing: tuple[str, ...] = ()
     reasons: tuple[str, ...] = ()
     weights: dict[str, float] = field(default_factory=dict)
+    # Extra anomaly flags
+    is_cut_anomaly: bool = False
 
     @property
     def is_red(self) -> bool:
