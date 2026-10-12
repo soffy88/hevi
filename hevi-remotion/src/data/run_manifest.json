@@ -2,13 +2,15 @@
   {
     "id": "cue-1",
     "sceneType": "hook",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-1.wav",
-    "durationSec": 6.0,
+    "text": "在人类探索浩瀚宇宙的漫长历史长河中，每一次火箭升空都承载着全人类的科学梦想与非凡勇气。",
+    "audioFile": "runs/piper/audio/cue-1.wav",
+    "durationSec": 9.276372,
     "startSec": 0.0,
-    "keywords": [],
+    "keywords": [
+      "在人类探索浩瀚宇宙的漫长历史长河中，每一次火箭升空都承载着全人类的科学梦想与非凡勇气。"
+    ],
     "props": {
-      "title": " ",
+      "title": "在人类探索浩瀚宇宙的漫长",
       "subtitle": "深度解说",
       "items": [
         {
@@ -17,15 +19,21 @@
         }
       ]
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "在人类探索浩瀚宇宙的漫长历史长河中，每一次火箭升空都承载着全人类的科学梦想与非凡勇气",
+        "start": 0.0,
+        "end": 9.276372
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/pexels_34049858.mp4",
-      "clip_id": "pexels_34049858",
-      "clip_score": 0.4169,
+      "assetUrl": "stock/pexels_854268.mp4",
+      "clip_id": "pexels_854268",
+      "clip_score": 0.3776,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "forest landscape aerial view",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "rocket launch space exploration",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -37,13 +45,15 @@
   {
     "id": "cue-2",
     "sceneType": "definition",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-2.wav",
-    "durationSec": 6.0,
-    "startSec": 6.0,
-    "keywords": [],
+    "text": "巨大的土星五号火箭在轰鸣声中拔地而起，炽热的烈焰与翻滚的浓烟瞬间震撼了整个世界。",
+    "audioFile": "runs/piper/audio/cue-2.wav",
+    "durationSec": 8.126984,
+    "startSec": 9.276372,
+    "keywords": [
+      "巨大的土星五号火箭在轰鸣声中拔地而起，炽热的烈焰与翻滚的浓烟瞬间震撼了整个世界。"
+    ],
     "props": {
-      "question": " ",
+      "question": "巨大的土星五号火箭在轰鸣声中拔地而起，炽热的烈焰与翻滚的浓烟",
       "formulaHead": "核心概念",
       "formulaLines": [
         "= 事实与证据",
@@ -64,15 +74,21 @@
         "sub": "行动方向"
       }
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "巨大的土星五号火箭在轰鸣声中拔地而起，炽热的烈焰与翻滚的浓烟瞬间震撼了整个世界",
+        "start": 0.0,
+        "end": 8.126984
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/pexels_5214219.mp4",
-      "clip_id": "pexels_5214219",
-      "clip_score": 0.3818,
+      "assetUrl": "stock/wiki_157591368.mp4",
+      "clip_id": "wiki_157591368",
+      "clip_score": 0.397,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "wild animals in nature savanna",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "saturn v rocket blastoff",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -84,30 +100,38 @@
   {
     "id": "cue-3",
     "sceneType": "cards",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-3.wav",
-    "durationSec": 6.0,
-    "startSec": 12.0,
-    "keywords": [],
+    "text": "阿波罗登月计划更是人类现代航天史上的一座不可逾越的丰碑，彻底开启了行星际探索的新纪元。",
+    "audioFile": "runs/piper/audio/cue-3.wav",
+    "durationSec": 7.999274,
+    "startSec": 17.403356000000002,
+    "keywords": [
+      "阿波罗登月计划更是人类现代航天史上的一座不可逾越的丰碑，彻底开启了行星际探索的新纪元。"
+    ],
     "props": {
       "header": "关键画面",
       "cards": [
         {
           "emoji": "📰",
           "title": "证据",
-          "desc": " "
+          "desc": "阿波罗登月计划更是人类现代航天史上的一座不可逾越的丰碑，彻底开启了行星际探索的新"
         }
       ]
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "阿波罗登月计划更是人类现代航天史上的一座不可逾越的丰碑，彻底开启了行星际探索的新纪元",
+        "start": 0.0,
+        "end": 7.999274
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/pexels_32842997.mp4",
-      "clip_id": "pexels_32842997",
-      "clip_score": 0.4242,
+      "assetUrl": "stock/wiki_179904046.mp4",
+      "clip_id": "wiki_179904046",
+      "clip_score": 0.3482,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "ocean waves crashing on the beach",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "apollo space mission spacecraft",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -119,14 +143,16 @@
   {
     "id": "cue-4",
     "sceneType": "reason",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-4.wav",
-    "durationSec": 6.0,
-    "startSec": 18.0,
-    "keywords": [],
+    "text": "宇航员们穿戴着厚重的白色宇航服，神情坚定地迈向发射架，踏上了未知的深空星际旅程。",
+    "audioFile": "runs/piper/audio/cue-4.wav",
+    "durationSec": 7.302676,
+    "startSec": 25.402630000000002,
+    "keywords": [
+      "宇航员们穿戴着厚重的白色宇航服，神情坚定地迈向发射架，踏上了未知的深空星际旅程。"
+    ],
     "props": {
       "question": "为什么重要？",
-      "brainLine": " ",
+      "brainLine": "宇航员们穿戴着厚重的白色宇航服，神情坚定地迈向发射架，踏上了未知的深空星际旅程。",
       "bubbleText": "把证据放回上下文。",
       "leftLabel": {
         "title": "只看表面",
@@ -137,15 +163,21 @@
         "sub": "做出判断"
       }
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "宇航员们穿戴着厚重的白色宇航服，神情坚定地迈向发射架，踏上了未知的深空星际旅程",
+        "start": 0.0,
+        "end": 7.302676
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/pexels_18284722.mp4",
-      "clip_id": "pexels_18284722",
-      "clip_score": 0.4151,
+      "assetUrl": "stock/nasa_jsc2026m000932_Spacewalk_101_AVAIL1080p.mp4",
+      "clip_id": "nasa_jsc2026m000932_Spacewalk_101_AVAIL1080p",
+      "clip_score": 0.4072,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "sunset over the snow mountains",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "astronaut spacewalk space helmet",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -157,30 +189,38 @@
   {
     "id": "cue-5",
     "sceneType": "method",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-5.wav",
-    "durationSec": 6.0,
-    "startSec": 24.0,
-    "keywords": [],
+    "text": "当阿姆斯特朗在月球静海基地留下了第一个脚印时，这象征着人类文明跨越时代的巨大飞跃。",
+    "audioFile": "runs/piper/audio/cue-5.wav",
+    "durationSec": 7.430385,
+    "startSec": 32.705306,
+    "keywords": [
+      "当阿姆斯特朗在月球静海基地留下了第一个脚印时，这象征着人类文明跨越时代的巨大飞跃。"
+    ],
     "props": {
       "header": "三个检查动作",
       "points": [
         {
           "num": "1",
-          "title": " ",
+          "title": "当阿姆斯特朗在月球静海基地留下了第一个脚印时，这",
           "sub": "核对来源与时间"
         }
       ]
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "当阿姆斯特朗在月球静海基地留下了第一个脚印时，这象征着人类文明跨越时代的巨大飞跃",
+        "start": 0.0,
+        "end": 7.430385
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/nasa_GSFC_20150924_Landsat_m12013_BirdReturns.mp4",
-      "clip_id": "nasa_GSFC_20150924_Landsat_m12013_BirdReturns",
-      "clip_score": 0.2872,
+      "assetUrl": "stock/wiki_106081328.mp4",
+      "clip_id": "wiki_106081328",
+      "clip_score": 0.417,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "birds flying in the blue sky",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "lunar surface moon landing footstep",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -192,15 +232,17 @@
   {
     "id": "cue-6",
     "sceneType": "outro",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-6.wav",
-    "durationSec": 6.0,
-    "startSec": 30.0,
-    "keywords": [],
+    "text": "从几十万公里外的深邃太空中回望故乡，我们的地球看起来就像一颗脆弱而瑰丽的蓝色弹珠。",
+    "audioFile": "runs/piper/audio/cue-6.wav",
+    "durationSec": 8.080544,
+    "startSec": 40.135691,
+    "keywords": [
+      "从几十万公里外的深邃太空中回望故乡，我们的地球看起来就像一颗脆弱而瑰丽的蓝色弹珠。"
+    ],
     "props": {
       "setupLine1": "把复杂问题讲清楚。",
       "setupLine2": "下一次做决定前，记住这句话。",
-      "quoteLine1": " ",
+      "quoteLine1": "从几十万公里外的深邃太空中回望故乡，我们",
       "quoteLine2": "证据决定判断。",
       "ctaEmojis": [
         "👍",
@@ -210,15 +252,21 @@
       "ctaText": "点赞 · 收藏 · 关注",
       "byline": "我们下期见"
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "从几十万公里外的深邃太空中回望故乡，我们的地球看起来就像一颗脆弱而瑰丽的蓝色弹珠",
+        "start": 0.0,
+        "end": 8.080544
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/nasa_GSFC_20161212_Tidal_m12450_Magnetic.mp4",
-      "clip_id": "nasa_GSFC_20161212_Tidal_m12450_Magnetic",
-      "clip_score": 0.164,
+      "assetUrl": "stock/pexels_854225.mp4",
+      "clip_id": "pexels_854225",
+      "clip_score": 0.4202,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "macro photography of a flower",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "earth from space blue marble",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -230,13 +278,15 @@
   {
     "id": "cue-7",
     "sceneType": "hook",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-7.wav",
-    "durationSec": 6.0,
-    "startSec": 36.0,
-    "keywords": [],
+    "text": "地面控制中心的科学家与工程师们夜以继日，用无与伦比的严谨与智慧确保每一次任务的万无一失。",
+    "audioFile": "runs/piper/audio/cue-7.wav",
+    "durationSec": 9.055782,
+    "startSec": 48.216235,
+    "keywords": [
+      "地面控制中心的科学家与工程师们夜以继日，用无与伦比的严谨与智慧确保每一次任务的万无一失。"
+    ],
     "props": {
-      "title": " ",
+      "title": "地面控制中心的科学家与工",
       "subtitle": "深度解说",
       "items": [
         {
@@ -245,15 +295,21 @@
         }
       ]
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "地面控制中心的科学家与工程师们夜以继日，用无与伦比的严谨与智慧确保每一次任务的万无一失",
+        "start": 0.0,
+        "end": 9.055782
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/wiki_119126075.mp4",
-      "clip_id": "wiki_119126075",
-      "clip_score": 0.3659,
+      "assetUrl": "stock/wiki_200071304.mp4",
+      "clip_id": "wiki_200071304",
+      "clip_score": 0.3793,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "river flowing through a green valley",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "nasa mission control center engineers",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -265,13 +321,15 @@
   {
     "id": "cue-8",
     "sceneType": "definition",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-8.wav",
-    "durationSec": 6.0,
-    "startSec": 42.0,
-    "keywords": [],
+    "text": "那些泛黄而珍贵的胶片档案影像，永远定格了那个时代探索者们无畏险阻、开拓进取的崇高精神。",
+    "audioFile": "runs/piper/audio/cue-8.wav",
+    "durationSec": 8.068934,
+    "startSec": 57.272017,
+    "keywords": [
+      "那些泛黄而珍贵的胶片档案影像，永远定格了那个时代探索者们无畏险阻、开拓进取的崇高精神。"
+    ],
     "props": {
-      "question": " ",
+      "question": "那些泛黄而珍贵的胶片档案影像，永远定格了那个时代探索者们无畏",
       "formulaHead": "核心概念",
       "formulaLines": [
         "= 事实与证据",
@@ -292,15 +350,21 @@
         "sub": "行动方向"
       }
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "那些泛黄而珍贵的胶片档案影像，永远定格了那个时代探索者们无畏险阻、开拓进取的崇高精神",
+        "start": 0.0,
+        "end": 8.068934
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/wiki_162047340.mp4",
-      "clip_id": "wiki_162047340",
-      "clip_score": 0.3614,
+      "assetUrl": "stock/nasa_jsc2023m000111_Earth_in_4K_Space_Station.mp4",
+      "clip_id": "nasa_jsc2023m000111_Earth_in_4K_Space_Station",
+      "clip_score": 0.3656,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "stars moving in the night sky time lapse",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "vintage space exploration archive footage",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -312,30 +376,38 @@
   {
     "id": "cue-9",
     "sceneType": "cards",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-9.wav",
-    "durationSec": 6.0,
-    "startSec": 48.0,
-    "keywords": [],
+    "text": "今天，我们依然在仰望璀璨星空，向着更深远的火星与外太阳系深空探测任务不断奋勇前行。",
+    "audioFile": "runs/piper/audio/cue-9.wav",
+    "durationSec": 8.626213,
+    "startSec": 65.340951,
+    "keywords": [
+      "今天，我们依然在仰望璀璨星空，向着更深远的火星与外太阳系深空探测任务不断奋勇前行。"
+    ],
     "props": {
       "header": "关键画面",
       "cards": [
         {
           "emoji": "📰",
           "title": "证据",
-          "desc": " "
+          "desc": "今天，我们依然在仰望璀璨星空，向着更深远的火星与外太阳系深空探测任务不断奋勇前行"
         }
       ]
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "今天，我们依然在仰望璀璨星空，向着更深远的火星与外太阳系深空探测任务不断奋勇前行",
+        "start": 0.0,
+        "end": 8.626213
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/wiki_183807114.mp4",
-      "clip_id": "wiki_183807114",
-      "clip_score": 0.3518,
+      "assetUrl": "stock/pexels_6156511.mp4",
+      "clip_id": "pexels_6156511",
+      "clip_score": 0.4143,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "desert dunes blown by wind",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "mars rover surface deep space",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
@@ -347,14 +419,16 @@
   {
     "id": "cue-10",
     "sceneType": "reason",
-    "text": " ",
-    "audioFile": "runs/music/audio/cue-10.wav",
-    "durationSec": 6.0,
-    "startSec": 54.0,
-    "keywords": [],
+    "text": "因为对于宇宙终极未知的无尽渴望与追寻，正是人类文明历经万难依然不断前行的永恒精神动力。",
+    "audioFile": "runs/piper/audio/cue-10.wav",
+    "durationSec": 8.753923,
+    "startSec": 73.967164,
+    "keywords": [
+      "因为对于宇宙终极未知的无尽渴望与追寻，正是人类文明历经万难依然不断前行的永恒精神动力。"
+    ],
     "props": {
       "question": "为什么重要？",
-      "brainLine": " ",
+      "brainLine": "因为对于宇宙终极未知的无尽渴望与追寻，正是人类文明历经万难依然不断前行的永恒精神",
       "bubbleText": "把证据放回上下文。",
       "leftLabel": {
         "title": "只看表面",
@@ -365,15 +439,21 @@
         "sub": "做出判断"
       }
     },
-    "captions": [],
+    "captions": [
+      {
+        "text": "因为对于宇宙终极未知的无尽渴望与追寻，正是人类文明历经万难依然不断前行的永恒精神动力",
+        "start": 0.0,
+        "end": 8.753923
+      }
+    ],
     "visualType": "stock_broll",
     "visualConfig": {
-      "assetUrl": "stock/wiki_96028844.mp4",
-      "clip_id": "wiki_96028844",
-      "clip_score": 0.165,
+      "assetUrl": "stock/nasa_JPL-20231222-SOLSYSf-0001-NASA Telescope.mp4",
+      "clip_id": "nasa_JPL-20231222-SOLSYSf-0001-NASA Telescope",
+      "clip_score": 0.2611,
       "clip_mode": "open_clip_vit_b_32_cpu",
-      "time_range": "00:00-06.0s",
-      "visual_search_query": "beautiful sunrise landscape",
+      "time_range": "00:00-08.0s",
+      "visual_search_query": "galaxy stars nebula universe",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },
