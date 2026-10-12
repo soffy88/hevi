@@ -252,6 +252,12 @@ async def _main_async(args: argparse.Namespace) -> int:
             set(outline_ep.event_ids).issubset(set(ep.script.covered_event_ids()))
             for outline_ep, ep in zip(outline.episodes, log.episodes, strict=False)
         ),
+        "storyboard_no_char_id_speaker": all(
+            not s.speaker.startswith("C") for sb in storyboards for s in sb.shots
+        ),
+        "storyboard_no_char_id_in_prompt": all(
+            "出场角色：C" not in s.image_prompt for sb in storyboards for s in sb.shots
+        ),
         "memory_db_created": memory_db_path.exists(),
         "llm_calls": llm.calls,
     }

@@ -125,7 +125,7 @@ def test_deterministic_checks_pass_on_clean_script():
                 event_ids=["CH01E001"],
                 summary="张三归乡",
                 narration="张三归乡",
-                dialogue=[ScriptLine(speaker="C001", text="我回来了。")],
+                dialogue=[ScriptLine(speaker="张三", text="我回来了。")],
                 shot_count=2,
                 duration_s=10.0,
             ),
@@ -134,13 +134,38 @@ def test_deterministic_checks_pass_on_clean_script():
                 event_ids=["CH01E002"],
                 summary="李四迎接",
                 narration="李四迎接",
-                dialogue=[ScriptLine(speaker="C002", text="你终于回来了。")],
+                dialogue=[ScriptLine(speaker="李四", text="你终于回来了。")],
                 shot_count=2,
                 duration_s=10.0,
             ),
         ],
     )
     assert deterministic_checks(script, book, decision) == []
+
+
+def test_deterministic_checks_rejects_char_id_as_speaker():
+    """R4: 规则层把 char_id 作说话人必须视为 error。"""
+    book = _book()
+    decision = _decision()
+    script = EpisodeScript(
+        ep_number=1,
+        characters_present=["C001", "C002"],
+        scenes=[
+            ScriptScene(
+                scene_no=1,
+                event_ids=["CH01E001"],
+                summary="张三归乡",
+                narration="张三归乡",
+                dialogue=[ScriptLine(speaker="C001", text="我回来了。")],
+                shot_count=2,
+                duration_s=10.0,
+            ),
+        ],
+    )
+    issues = deterministic_checks(script, book, decision)
+    char_id_issues = [i for i in issues if i.code == "char_id_as_speaker"]
+    assert char_id_issues, "必须将 char_id 作说话人报为 issue"
+    assert char_id_issues[0].severity == "error", "char_id 作说话人必须定为 error"
 
 
 def test_revise_only_touches_flagged_scenes():
@@ -642,4 +667,7 @@ def test_script_to_storyboard_no_char_id_in_dialogue():
     for shot in sb.shots:
         assert not shot.speaker.startswith("C"), (
             f"R4 分镜 speaker 仍是 char_id: {shot.speaker}"
+        )
+        assert "C001" not in shot.image_prompt and "C002" not in shot.image_prompt, (
+            f"R4 分镜 image_prompt 仍含 char_id: {shot.image_prompt}"
         )

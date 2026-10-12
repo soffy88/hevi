@@ -223,7 +223,7 @@ async def execution_layer(
 
 
 def _character_lines(book: StoryGraph) -> str:
-    return "\n".join(f"- {c.char_id} {c.name}（{c.description or '无描写'}）" for c in book.characters)
+    return "\n".join(f"- {c.name}（ID: {c.char_id}，{c.description or '无描写'}）" for c in book.characters)
 
 
 def _event_lines(book: StoryGraph, event_ids: list[str]) -> str:
@@ -264,6 +264,7 @@ async def _execution_via_llm(
         resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=2048)
         content = resp.get("content") if hasattr(resp, "get") else str(resp)
         data = _extract_json(content)
+        char_id_to_name = {c.char_id: c.name for c in book.characters}
         scenes = [
             ScriptScene(
                 scene_no=int(s.get("scene_no") or i),
@@ -273,7 +274,7 @@ async def _execution_via_llm(
                 narration=str(s.get("narration") or ""),
                 dialogue=[
                     ScriptLine(
-                        speaker=str(d.get("speaker") or ""),
+                        speaker=char_id_to_name.get(str(d.get("speaker") or ""), str(d.get("speaker") or "")),
                         text=str(d.get("text") or ""),
                         emotion=str(d.get("emotion") or ""),
                     )
@@ -300,6 +301,7 @@ async def _execution_via_llm(
 def _execution_template(decision: AdaptationDecision, book: StoryGraph) -> EpisodeScript:
     """确定性模板：每个事件一场戏（旁白=事件摘要，台词=该事件原文对白）。"""
     by_id = {e.event_id: e for e in book.events}
+    char_id_to_name = {c.char_id: c.name for c in book.characters}
     quotes_by_event: dict[str, list[Any]] = {}
     for q in book.quotes:
         if q.event_id:
@@ -313,7 +315,11 @@ def _execution_template(decision: AdaptationDecision, book: StoryGraph) -> Episo
         if ev is None:
             continue
         dialogue = [
-            ScriptLine(speaker=q.speaker, text=q.original, emotion=q.emotion)
+            ScriptLine(
+                speaker=char_id_to_name.get(q.speaker, q.speaker),
+                text=q.original,
+                emotion=q.emotion,
+            )
             for q in quotes_by_event.get(eid, [])[:2]
         ]
         scenes.append(
@@ -726,22 +732,22 @@ def deterministic_checks(
     known_events = {e.event_id for e in book.events}
     present = set(script.characters_present) or known_ids
 
-    # R1 人物一致性：speaker 必须是角色名（允许 char_id 但需映射成名字）；直接用 char_id 当说话人是 bug（R4）。
+    # R1/R4 人物一致性：speaker 必须是角色名；char_id 作说话人视为 error（R4 要求）。
     for scene in script.scenes:
         for line in scene.dialogue:
             sp = line.speaker
             if sp in known_names:
                 continue
             if sp in known_ids:
-                # char_id 必须映射成角色名再使用（R4 修复）
+                # R4：char_id 作说话人视为 error
                 char_obj = next((c for c in book.characters if c.char_id == sp), None)
-                if char_obj and char_obj.name:
-                    continue  # 有名字映射，合法但会被下游规范化
+                mapped_name = char_obj.name if (char_obj and char_obj.name) else sp
                 issues.append(
                     ReviewIssue(
-                        code="unknown_speaker",
-                        message=f"台词人物 {sp!r} 是 char_id 未映射到角色名",
+                        code="char_id_as_speaker",
+                        message=f"台词人物 {sp!r} 是角色ID而非角色名（应使用 {mapped_name!r}）",
                         scope=f"scene:{scene.scene_no}",
+                        severity="error",
                         scene_no=scene.scene_no,
                     )
                 )
@@ -751,6 +757,7 @@ def deterministic_checks(
                         code="unknown_speaker",
                         message=f"台词人物 {line.speaker!r} 不在角色表",
                         scope=f"scene:{scene.scene_no}",
+                        severity="error",
                         scene_no=scene.scene_no,
                     )
                 )
@@ -1144,6 +1151,11 @@ def script_to_storyboard(
 
             speaker = ""
             tts_text = ""
+
+            def _clean_tts(text: str) -> str:
+                t = str(text or "").strip().rstrip("。，,；;！!？?")
+                return f"{t}。" if t else ""
+
             if scene.dialogue:
                 if j < len(scene.dialogue):
                     line = scene.dialogue[j]
@@ -1152,7 +1164,8 @@ def script_to_storyboard(
                     if sp in char_id_to_name and sp not in known_names:
                         sp = char_id_to_name[sp]
                     speaker = sp
-                    tts_text = f"{speaker}：{line.text}" if speaker else line.text
+                    clean_txt = str(line.text or "").strip().rstrip("。，,；;！!？?")
+                    tts_text = f"{speaker}：{clean_txt}。" if speaker else f"{clean_txt}。"
                 else:
                     # R4：台词不足时补旁白/场景描述，避免循环复用相同台词。
                     # 多个额外镜头按序号推导镜头动作，保证相邻镜头台词不同
@@ -1161,24 +1174,35 @@ def script_to_storyboard(
                     extra_idx = j - len(scene.dialogue)
                     fill = filler_notes[extra_idx % len(filler_notes)]
                     if scene.narration and extra_idx == 0:
-                        tts_text = scene.narration
+                        tts_text = _clean_tts(scene.narration)
                     elif scene.summary and extra_idx == 0:
-                        tts_text = f"{fill}：{scene.summary}。"
-                    elif ev and ev.summary:
-                        tts_text = f"{fill}：{ev.summary}。"
+                        tts_text = f"{fill}：{_clean_tts(scene.summary)}"
                     elif scene.summary:
-                        tts_text = f"{fill}：{scene.summary}。"
-                    # else: 无额外内容 → 空 tts
+                        tts_text = f"{fill}：{_clean_tts(scene.summary)}"
+                    elif ev and ev.summary:
+                        tts_text = f"{fill}：{_clean_tts(ev.summary)}"
+                    elif scene.narration:
+                        tts_text = f"{fill}：{_clean_tts(scene.narration)}"
+                    tts_text = _clean_tts(tts_text)
             else:
-                # 无对白：旁白只放第一镜，其余镜用差异化镜头描述，避免重复
+                # 无对白：分句分配或差异化镜头描述，避免重复
                 speaker = "旁白"
                 filler_notes = ["镜头拉开", "人物近景", "动作特写", "环境细节"]
-                if j == 0 and scene.narration:
-                    tts_text = scene.narration
-                elif scene.narration:
-                    tts_text = f"{filler_notes[j % len(filler_notes)]}：{scene.narration}。"
+                fill = filler_notes[j % len(filler_notes)]
+                narr_clauses = [
+                    c for c in re.split(r"(?<=[。！？!?\n])", scene.narration or "") if c.strip()
+                ]
+                if narr_clauses and j < len(narr_clauses):
+                    tts_text = _clean_tts(narr_clauses[j])
+                elif j == 0 and scene.narration:
+                    tts_text = _clean_tts(scene.narration)
                 elif scene.summary:
-                    tts_text = f"{filler_notes[j % len(filler_notes)]}：{scene.summary}。"
+                    tts_text = f"{fill}：{_clean_tts(scene.summary)}"
+                elif ev and ev.summary:
+                    tts_text = f"{fill}：{_clean_tts(ev.summary)}"
+                elif scene.narration:
+                    tts_text = f"{fill}：{_clean_tts(scene.narration)}"
+                tts_text = _clean_tts(tts_text)
 
             prompt_parts = []
             if scene.location:
@@ -1187,9 +1211,11 @@ def script_to_storyboard(
                 prompt_parts.append(f"场景：{ev.location}")
 
             if speaker and speaker != "旁白":
-                prompt_parts.append(f"出场角色：{speaker}")
+                sp_name = char_id_to_name.get(speaker, speaker)
+                prompt_parts.append(f"出场角色：{sp_name}")
             elif ev and ev.actors:
-                prompt_parts.append(f"出场角色：{'、'.join(ev.actors)}")
+                actor_names = [char_id_to_name.get(a, a) for a in ev.actors]
+                prompt_parts.append(f"出场角色：{'、'.join(actor_names)}")
 
             action_desc = scene.summary or (ev.summary if ev else "") or "人物特写与情境展开"
             prompt_parts.append(f"画面：{action_desc}")
