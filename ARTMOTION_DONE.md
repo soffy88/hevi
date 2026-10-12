@@ -56,6 +56,40 @@
 - task_2 (14_8bit)：t=14s 中心色含金/红 (#f1bc08 / #e82704)，quant32_colors=50、raw_colors=2494——15 色 NES 调色板量化特征
 - 对照：task_1 vs task_3_comparison 同一语法 (y5_kinetic_type)+ 同一风格 (17_ink)，不同解说稿 → 画面内容随输入变化（contact sheet 可见）
 
+## Lint 基线对比
+
+`scripts/ci/run_3o_v3_lint.py` 在 artmotion 改动前后均报 4 项失败：
+- `check_no_sibling_call.py`
+- `check_omodul_signature.py`
+- `check_enabled_pillars.py`
+- `check_oprim_keyword_only.py`
+
+4 项均为基线已存在的问题（在 merge-base `09558199` 上同样失败），artmotion 未引入新失败。
+
+## 单元测试覆盖
+
+`tests/test_artmotion.py` 4 个用例：
+1. **test_artmotion_adapter_basic**：mock 验证 `render_narrated_storyboard(renderer="artmotion")` 契约
+2. **test_style_id_resolution**：验证 `resolve_style_id` 解析 17_ink / 25_ghibli / 14_8bit / 12_bauhaus 及别名
+3. **test_artmotion_adapter_contract**：验证 adapter 输入（script/audio + 风格 + 语法 + 画幅）→ MP4 + record.json，含失败分支
+4. **test_film_gate_missing_cv2**：验证 cv2 缺失时 film_gate.measure 抛 RuntimeError（红灯，不兜底）
+
+全部 4 个用例通过。
+
+## 验收数据（ffprobe + film_gate 实测）
+
+| 指标 | task_0 | task_1 | task_2 | task_3_comparison |
+|------|--------|--------|--------|-------------------|
+| 时长 (s) | 29.755 | 26.900 | 31.998 | 27.067 |
+| 分辨率 | 1920x1080 | 1080x1920 | 1920x1080 | 1080x1920 |
+| 音轨 | aac | aac | aac | aac |
+| gate_light | green | green | green | green |
+| fast_ratio | 0.0954 | 0.3502 | 0.0727 | 0.3322 |
+| blank_run_s | 0.0 | 0.0 | 0.0 | 0.0 |
+| blue_purple_share | 0.0 | 0.0 | 0.0 | 0.0 |
+| still_ratio | 0.009 | 0.0 | 0.006 | 0.0 |
+| sha256 | d6d37746... | 9a3b9513... | 3c68c842... | 93d8f7b4... |
+
 ## 相关文档
 
 - `ARTMOTION_TASK.md` - 任务要求
