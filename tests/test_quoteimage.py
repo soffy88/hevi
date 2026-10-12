@@ -142,6 +142,68 @@ def test_quality_gates_black_bar_detection(tmp_path: Path):
     assert not bar_gate["passed"], "Fixture with black bar must fail black_bar gate"
 
 
+def _create_fixture_duplicate_subtitle_image(path: Path) -> Path:
+    """Generate an image with identical subtitle text on consecutive strips."""
+    width, height = 1080, 1440
+    img = Image.new("RGB", (width, height), (35, 40, 50))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([0, 0, width, 900], fill=(50, 55, 65))
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 48)
+    except Exception:
+        font = ImageFont.load_default()
+
+    # Two identical subtitle strips
+    for i in range(4):
+        y0 = 900 + i * 135
+        y1 = y0 + 135
+        draw.rectangle([0, y0, width, y1], fill=(35, 40, 50))
+        draw.text((120, y0 + 35), "相同的重复字幕测试句子", fill=(255, 255, 255), font=font)
+        draw.line([0, y0, width, y0], fill=(60, 68, 80), width=2)
+    img.save(path, quality=95)
+    return path
+
+
+def test_quality_gates_duplicate_detection(tmp_path: Path):
+    dup_path = tmp_path / "duplicate.jpg"
+    _create_fixture_duplicate_subtitle_image(dup_path)
+
+    gates = run_quality_gates([dup_path])
+    dup_gate = next(g for g in gates if g["name"] == "subtitle_duplicate")
+    assert not dup_gate["passed"], "Fixture with duplicate subtitles must fail subtitle_duplicate gate"
+    assert dup_gate["value"] <= 4.0, f"Expected duplicate gate value <= 4.0, got {dup_gate['value']}"
+
+
+def _create_fixture_tiny_font_image(path: Path) -> Path:
+    """Generate an image with unreadable tiny font (<18px glyph height)."""
+    width, height = 720, 960
+    img = Image.new("RGB", (width, height), (35, 40, 50))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([0, 0, width, 500], fill=(50, 55, 65))
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", 12)
+    except Exception:
+        font = ImageFont.load_default()
+
+    for i in range(4):
+        y0 = 500 + i * 100
+        y1 = y0 + 100
+        draw.rectangle([0, y0, width, y1], fill=(35, 40, 50))
+        draw.text((60, y0 + 30), "微小字号测试不可读台词", fill=(255, 255, 255), font=font)
+    img.save(path, quality=95)
+    return path
+
+
+def test_quality_gates_font_size_detection(tmp_path: Path):
+    tiny_path = tmp_path / "tiny_font.jpg"
+    _create_fixture_tiny_font_image(tiny_path)
+
+    gates = run_quality_gates([tiny_path])
+    font_gate = next(g for g in gates if g["name"] == "font_size")
+    assert not font_gate["passed"], "Fixture with tiny font must fail font_size gate"
+    assert font_gate["value"] < 18.0, f"Expected font_size value < 18.0, got {font_gate['value']}"
+
+
 def test_detect_subtitle_band_fallback():
     # Less than 2 times should fall back cleanly
     top, bottom = detect_subtitle_band(video_path="nonexistent.mp4", times=[1.0])

@@ -54,8 +54,8 @@ def detect_subtitle_band(
                 h = f1.height
                 summed_rows = np.zeros(h)
 
-            # Only analyze lower half of the frame
-            row_sums[: int(h * 0.5)] = 0
+            # Only analyze lower portion of the frame
+            row_sums[: int(h * 0.45)] = 0
             summed_rows += row_sums
         except Exception:
             pass
@@ -75,7 +75,7 @@ def detect_subtitle_band(
 
     if len(text_rows) > 0:
         pad = max(4, int(h * 0.012))
-        y_top = max(int(h * 0.5), text_rows[0] - pad)
+        y_top = max(int(h * 0.45), text_rows[0] - pad)
         y_bottom = min(h, text_rows[-1] + pad)
         return float(round(y_top / h, 4)), float(round(y_bottom / h, 4))
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 程意 (upstream native-subtitle-quote-image)
+# Adapted and modified for Hevi 3O pipeline under MIT License (see third_party/native-subtitle-quote-image/LICENSE)
 """把视频精确取帧并拼成字幕长图，支持烧录字幕与台词脚本两种模式。"""
 
 import argparse
@@ -247,40 +249,40 @@ def speaker_label(speaker, text):
 
 
 
-def calculate_unified_font_size(lines, base_font, font_path, max_width):
-    minimum_allowed = max(12, round(base_font * 0.55))
-    unified_size = base_font
-    for line in lines:
-        text = line["text"]
-        speaker = line.get("prefix")
-        label = speaker_label(speaker, text) if speaker else ""
-        
-        # We need to simulate the size finding for this line
-        line_fit_size = minimum_allowed
-        for size in range(base_font, minimum_allowed - 1, -2):
-            label_width = 0
-            if label:
-                label_size = max(12, round(size * SPEAKER_PREFIX_SCALE))
-                label_font = load_subtitle_font(font_path, label_size, label)
-                label_stroke = max(2, label_size // 14)
-                # use temp image to get draw
-                dummy = Image.new("RGB", (1, 1))
-                draw = ImageDraw.Draw(dummy)
-                label_box = draw.textbbox((0, 0), label, font=label_font, stroke_width=label_stroke)
-                label_width = label_box[2] - label_box[0]
-            
-            font = load_subtitle_font(font_path, size, text)
-            stroke = max(2, size // 14)
-            dummy = Image.new("RGB", (1, 1))
-            draw = ImageDraw.Draw(dummy)
-            candidate_box = draw.textbbox((0, 0), text, font=font, stroke_width=stroke)
-            
-            if label_width + candidate_box[2] - candidate_box[0] <= max_width:
-                line_fit_size = size
-                break
-        if line_fit_size < unified_size:
-            unified_size = line_fit_size
-    return unified_size
+def wrap_text_to_width(text, font, max_width, draw, stroke_width=2):
+    box = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
+    if box[2] - box[0] <= max_width:
+        return [text]
+    if " " in text:
+        words = text.split(" ")
+        wrapped = []
+        cur = []
+        for w in words:
+            cand = " ".join(cur + [w])
+            b = draw.textbbox((0, 0), cand, font=font, stroke_width=stroke_width)
+            if b[2] - b[0] <= max_width or not cur:
+                cur.append(w)
+            else:
+                wrapped.append(" ".join(cur))
+                cur = [w]
+        if cur:
+            wrapped.append(" ".join(cur))
+        return wrapped
+    else:
+        wrapped = []
+        cur = ""
+        for c in text:
+            cand = cur + c
+            b = draw.textbbox((0, 0), cand, font=font, stroke_width=stroke_width)
+            if b[2] - b[0] <= max_width or not cur:
+                cur = cand
+            else:
+                wrapped.append(cur)
+                cur = c
+        if cur:
+            wrapped.append(cur)
+        return wrapped
+
 
 def draw_scripted_subtitle(
     image, text, y_center, font_path, font_size, max_width, speaker=None
@@ -564,33 +566,41 @@ def fit_fixed_canvas(stack, extents, size, fit="crop", crop_center=0.5):
     return canvas, note
 
 
-def clean_strip_avatar(band):
-    """Clean avatar or isolated peripheral clutter on the right margin of non-hero strips."""
+def clean_strip_non_subtitle(band):
+    """Clean avatar, host body/clothing, and peripheral clutter outside subtitle text band in non-hero strips."""
     ext = subtitle_extent(band)
     if ext is None:
         return band
     w, _h = band.size
-    center = (ext[0] + ext[1]) / (2.0 * w)
-    if not (0.35 <= center <= 0.65):
-        return band
-
-    arr = np.array(band).copy()
     left_x, right_x = ext
-    margin = 50
-    _left_safe = max(0, left_x - margin)
+    margin = max(40, int(w * 0.03))
+    left_safe = max(0, left_x - margin)
     right_safe = min(w, right_x + margin)
 
-    near_text_right = arr[:, right_safe:min(w, right_safe + 80)]
-    far_right = arr[:, int(w * 0.78):]
+    arr = np.array(band).copy()
 
-    if near_text_right.size > 0 and far_right.size > 0:
-        near_std = float(np.std(near_text_right))
-        far_std = float(np.std(far_right))
-        if near_std < 18 and far_std > 35:
-            bg_color = np.median(near_text_right, axis=(0, 1)).astype(np.uint8)
-            arr[:, right_safe:] = bg_color
-            return Image.fromarray(arr)
-    return band
+    # Sample clean background color immediately adjacent to the text
+    sample_left = arr[:, max(0, left_x - 30):left_x]
+    sample_right = arr[:, right_x:min(w, right_x + 30)]
+    samples = []
+    if sample_left.size > 0:
+        samples.append(sample_left)
+    if sample_right.size > 0:
+        samples.append(sample_right)
+    if not samples:
+        return band
+
+    bg_color = np.median(np.concatenate(samples, axis=1), axis=(0, 1)).astype(np.uint8)
+
+    # Clean left peripheral clutter (e.g. host body, neckline, orange arrows, graphics)
+    if left_safe > 0:
+        arr[:, :left_safe] = bg_color
+
+    # Clean right peripheral clutter (e.g. avatar badge, icons, graphics)
+    if right_safe < w:
+        arr[:, right_safe:] = bg_color
+
+    return Image.fromarray(arr)
 
 
 def render_one(
@@ -601,7 +611,7 @@ def render_one(
     frames = [grab_frame(video, seconds) for seconds in times]
     first = frames[0]
     first_band, _, subtitle_bottom = crop_band(first, top, bottom)
-    bands = [clean_strip_avatar(crop_band(frame, top, bottom)[0]) for frame in frames[1:]]
+    bands = [clean_strip_non_subtitle(crop_band(frame, top, bottom)[0]) for frame in frames[1:]]
     if check_duplicates:
         ensure_distinct_frames(frames, times, [first_band, *bands])
     hero_source_height = subtitle_bottom
@@ -653,112 +663,74 @@ def scripted_render_one(
         ensure_distinct_frames(frames, [line["t"] for line in lines])
     first_frame = frames[0]
     out_width = out_width or (first_frame.width if layout == "natural" else 1440)
-    if layout == "natural":
-        hero = scale_to_width(first_frame, out_width)
-        # 1280 像素宽的源画面默认采样 72 像素条高，不依赖总画布高度。
-        source_strip_height = min(first_frame.height, max(1, round(first_frame.width * 0.05625)))
-        strip_height = max(1, round(source_strip_height * out_width / first_frame.width))
-        base_font = font_size or max(16, round(strip_height * 0.62))
-        base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.90))
-        draw_scripted_subtitle(
-            hero, lines[0]["text"], hero.height - strip_height // 2,
-            font_path, base_font, round(out_width * 0.90),
-            speaker=lines[0].get("prefix"),
-        )
-        parts = [hero]
-        for line, frame in zip(lines[1:], frames[1:]):
-            height = min(frame.height, max(1, round(frame.width * 0.05625)))
-            center = round(frame.height * band_center)
-            y0 = max(0, min(frame.height - height, center - height // 2))
-            raw_strip = frame.crop((0, y0, frame.width, y0 + height))
-            blurred_strip = raw_strip.filter(ImageFilter.GaussianBlur(25))
-            strip = scale_to_width(blurred_strip, out_width)
-            draw_scripted_subtitle(
-                strip, line["text"], strip.height // 2,
-                font_path, base_font, round(out_width * 0.90),
-                speaker=line.get("prefix"),
-            )
-            parts.append(strip)
-        save_stack(parts, out_path)
-        return
-    aw, ah = aspect
-    out_height = round(out_width * ah / aw)
-    strip_count = len(lines) - 1
-    if six_line_card:
-        # 1080x1440: 870px hero + five contiguous 114px strips.
-        # Keep the strip pitch proportional when --width changes.
-        hero_height, strip_height, hero_fraction = six_line_geometry(out_width, out_height)
-        strip_heights = [strip_height] * strip_count
-        base_font = font_size or max(24, round(out_width * 0.0587))
+
+    # Base font size: strictly unified, proportional to width (>= 32px for 720 width)
+    base_font = font_size or max(32, round(out_width * 36 / 720))
+    stroke = max(2, base_font // 14)
+    dummy = Image.new("RGB", (1, 1))
+    draw_dummy = ImageDraw.Draw(dummy)
+    font = load_subtitle_font(font_path, base_font, "Test")
+
+    # Sample clean, uniform background from hero frame
+    h_arr = np.array(first_frame)
+    bot_slice = h_arr[-max(20, int(first_frame.height * 0.08)):, :]
+    mean_lum = float(np.mean(bot_slice))
+    if mean_lum > 135:
+        bg_col = tuple(np.median(bot_slice, axis=(0, 1)).astype(int))
+        divider_col = tuple(max(0, c - 22) for c in bg_col)
+        text_fill = "black"
+        stroke_fill = "white"
     else:
-        hero_fraction = choose_hero_fraction(strip_count, hero_fraction)
-        hero_height = round(out_height * hero_fraction)
-        remaining = out_height - hero_height
-        base_strip = remaining // strip_count
-        strip_heights = [base_strip] * strip_count
-        strip_heights[-1] += remaining - sum(strip_heights)
-        base_font = font_size or max(24, round(out_width / 18))
-        
-    base_font = calculate_unified_font_size(lines, base_font, font_path, round(out_width * 0.90))
+        bg_col = (20, 24, 32)
+        divider_col = (45, 52, 65)
+        text_fill = "white"
+        stroke_fill = "black"
 
-    hero = ImageOps.fit(
-        first_frame,
-        (out_width, hero_height),
-        method=Image.Resampling.LANCZOS,
-        centering=(0.5, 0.5),
-    )
-    first_strip_height = strip_heights[0]
-    first_line_y = hero.height - first_strip_height // 2
-    if not six_line_card:
-        first_line_y -= max(4, out_height // 150)
-    draw_scripted_subtitle(
-        hero,
-        lines[0]["text"],
-        first_line_y,
-        font_path,
-        base_font,
-        round(out_width * 0.90),
-        speaker=lines[0].get("prefix"),
-    )
+    max_text_w = round(out_width * 0.90)
 
+    # Render each script sentence into an independent strip below hero
     strips = []
-    for line, frame, strip_height in zip(lines[1:], frames[1:], strip_heights):
-        source_height = max(
-            1, round(frame.width * strip_height / out_width)
-        )
-        source_height = min(source_height, frame.height)
-        center_y = round(frame.height * band_center)
-        y0 = max(0, min(frame.height - source_height, center_y - source_height // 2))
-        band = frame.crop((0, y0, frame.width, y0 + source_height)).filter(ImageFilter.GaussianBlur(25))
-        strip = ImageOps.fit(
-            band,
-            (out_width, strip_height),
-            method=Image.Resampling.LANCZOS,
-            centering=(0.5, 0.5),
-        )
-        draw_scripted_subtitle(
-            strip,
-            line["text"],
-            strip.height // 2,
-            font_path,
-            base_font,
-            round(out_width * 0.90),
-            speaker=line.get("prefix"),
-        )
+    for line in lines:
+        txt = line["text"]
+        sublines = wrap_text_to_width(txt, font, max_text_w, draw_dummy, stroke)
+        ref_b = draw_dummy.textbbox((0, 0), "国g", font=font, stroke_width=stroke)
+        ref_h = ref_b[3] - ref_b[1]
+        line_spacing = max(6, int(base_font * 0.25))
+        total_text_h = len(sublines) * ref_h + (len(sublines) - 1) * line_spacing
+        strip_h = max(int(base_font * 2.2), total_text_h + int(base_font * 0.9))
+
+        strip = Image.new("RGB", (out_width, strip_h), bg_col)
+        draw = ImageDraw.Draw(strip)
+        draw.line([(0, 0), (out_width, 0)], fill=divider_col, width=2)
+        start_y = (strip_h - total_text_h) // 2
+        for i, sub in enumerate(sublines):
+            b = draw.textbbox((0, 0), sub, font=font, stroke_width=stroke)
+            w = b[2] - b[0]
+            x = (out_width - w) // 2 - b[0]
+            y = start_y + i * (ref_h + line_spacing)
+            draw.text((x, y), sub, font=font, fill=text_fill, stroke_width=stroke, stroke_fill=stroke_fill)
         strips.append(strip)
 
-    canvas = Image.new("RGB", (out_width, out_height), "black")
+    if layout == "natural":
+        hero = scale_to_width(first_frame, out_width)
+        save_stack([hero, *strips], out_path)
+        return
+
+    aw, ah = aspect
+    out_height = round(out_width * ah / aw)
+    strips_total_h = sum(s.height for s in strips)
+    hero_h = max(int(out_height * 0.3), out_height - strips_total_h)
+    hero = ImageOps.fit(first_frame, (out_width, hero_h), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+
+    canvas = Image.new("RGB", (out_width, hero_h + strips_total_h), "black")
     canvas.paste(hero, (0, 0))
-    y = hero_height
+    y = hero_h
     for strip in strips:
         canvas.paste(strip, (0, y))
         y += strip.height
     canvas.save(out_path, quality=93, subsampling=0)
-    print(f"完成: {out_path} ({out_width}x{out_height})")
-    print(
-        f"脚本模式: 主画面 {hero_fraction:.1%}，"
-        f"字幕条 {strip_count} 个，条间距 0"
-    )
+    print(f"完成: {out_path} ({canvas.width}x{canvas.height})")
+    print(f"脚本模式: 主画面 1 个，独立字幕条 {len(strips)} 个，条间距 0")
 
 
 def contact_sheet(paths, out_path, columns=4):

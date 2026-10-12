@@ -21,8 +21,34 @@ class WhisperAligner:
         segments, _info = self._model.transcribe(
             audio_path,
             language=language,
-            word_timestamps=False,
+            word_timestamps=True,
             beam_size=1,
             vad_filter=False,
         )
-        return [{"t": float(seg.start), "text": seg.text.strip()} for seg in segments]
+        results = []
+        sentence_endings = (".", "?", "!", "。", "！", "？", ";", "；")
+        for seg in segments:
+            words = getattr(seg, "words", None)
+            if words:
+                cur_words = []
+                for w in words:
+                    cur_words.append(w)
+                    if any(w.word.endswith(punct) for punct in sentence_endings):
+                        t_start = cur_words[0].start
+                        t_sample = round(t_start + min(1.0, (cur_words[-1].end - t_start) * 0.4), 2)
+                        txt = "".join(x.word for x in cur_words).strip()
+                        if txt:
+                            results.append({"t": t_sample, "text": txt})
+                        cur_words = []
+                if cur_words:
+                    t_start = cur_words[0].start
+                    t_sample = round(t_start + min(1.0, (cur_words[-1].end - t_start) * 0.4), 2)
+                    txt = "".join(x.word for x in cur_words).strip()
+                    if txt:
+                        results.append({"t": t_sample, "text": txt})
+            else:
+                txt = seg.text.strip()
+                if txt:
+                    t_sample = round(float(seg.start) + 0.5, 2)
+                    results.append({"t": t_sample, "text": txt})
+        return results

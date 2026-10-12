@@ -114,8 +114,68 @@ def _adjust_timestamps_for_native(
                         break
             except Exception:
                 pass
+
+        # Check against previously adjusted timestamp to prevent adjacent duplicate subtitles
+        if adjusted:
+            prev_cand = adjusted[-1]
+            try:
+                f_prev = grab_frame(str(video_path), prev_cand)
+                b_prev, _, _ = crop_band(f_prev, band_top, band_bottom)
+                e_prev = np.array(ImageChops.subtract(b_prev.convert("L"), b_prev.convert("L").filter(ImageFilter.MinFilter(3)))) > 30
+
+                f_cur = grab_frame(str(video_path), best_t)
+                b_cur, _, _ = crop_band(f_cur, band_top, band_bottom)
+                e_cur = np.array(ImageChops.subtract(b_cur.convert("L"), b_cur.convert("L").filter(ImageFilter.MinFilter(3)))) > 30
+
+                iou = float(np.sum(e_prev & e_cur) / max(1, np.sum(e_prev | e_cur)))
+                if iou >= 0.50:
+                    for dt in (1.5, 2.0, 2.5, 3.0):
+                        alt_cand = best_t + dt
+                        f_alt = grab_frame(str(video_path), alt_cand)
+                        b_alt, _, _ = crop_band(f_alt, band_top, band_bottom)
+                        e_alt = np.array(ImageChops.subtract(b_alt.convert("L"), b_alt.convert("L").filter(ImageFilter.MinFilter(3)))) > 30
+                        if np.sum(e_alt) > 40:
+                            alt_iou = float(np.sum(e_prev & e_alt) / max(1, np.sum(e_prev | e_alt)))
+                            if alt_iou < 0.50:
+                                best_t = alt_cand
+                                break
+            except Exception:
+                pass
+
         adjusted.append(round(best_t, 2))
     return adjusted
+
+
+def _deduplicate_sentences_by_subtitle(
+    video_path: Path,
+    sentences: list[dict[str, Any]],
+    band_top: float,
+    band_bottom: float,
+) -> list[dict[str, Any]]:
+    """Filter out sentences that map to identical on-screen burned-in subtitle frames (IoU >= 0.50)."""
+    import numpy as np
+    from PIL import ImageChops, ImageFilter
+
+    kept = []
+    prev_edge = None
+    for s in sentences:
+        t = float(s["t"])
+        try:
+            frame = grab_frame(str(video_path), t)
+            band, _, _ = crop_band(frame, band_top, band_bottom)
+            g = band.convert("L")
+            e = np.array(ImageChops.subtract(g, g.filter(ImageFilter.MinFilter(3)))) > 30
+            if np.sum(e) < 40:
+                continue
+            if prev_edge is not None:
+                iou = float(np.sum(prev_edge & e) / max(1, np.sum(prev_edge | e)))
+                if iou >= 0.50:
+                    continue
+            kept.append(s)
+            prev_edge = e
+        except Exception:
+            kept.append(s)
+    return kept or sentences
 
 
 def _find_coherent_native_window(
@@ -258,13 +318,21 @@ def produce_quote_image(
             times=[s["t"] for s in picked],
         )
 
-    # If auto strategy and candidate sentences are available, pick a window with scene brightness coherence
-    if strategy == "auto" and len(all_source_sentences) >= 4:
-        picked = _find_coherent_native_window(
-            video_path, all_source_sentences, count=4, band_top=band_top, band_bottom=band_bottom
+    if mode == "native":
+        # Deduplicate sentences based on actual on-screen subtitle bands
+        candidates_to_use = all_source_sentences if all_source_sentences else picked
+        distinct_sentences = _deduplicate_sentences_by_subtitle(
+            video_path, candidates_to_use, band_top, band_bottom
         )
 
-    if mode == "native":
+        if strategy == "auto":
+            if len(distinct_sentences) >= 4:
+                picked = _find_coherent_native_window(
+                    video_path, distinct_sentences, count=4, band_top=band_top, band_bottom=band_bottom
+                )
+            else:
+                picked = distinct_sentences
+
         # Ensure times land on active subtitles
         times = _adjust_timestamps_for_native(video_path, [s["t"] for s in picked], band_top, band_bottom)
 
@@ -305,14 +373,10 @@ def produce_quote_image(
 
         out_img = output_dir / "quote_script.jpg"
 
-        # If source has burned-in subtitles, crop above them so they don't overlap with drawn text
-        frame_bottom = kwargs.get("frame_bottom")
-        if frame_bottom is None:
-            frame_bottom = band_top if band_top < 0.98 else 1.0
-
-        band_center = kwargs.get("band_center")
-        if band_center is None:
-            band_center = 0.5 if frame_bottom < 0.98 else 0.6
+        # In script mode, all lines are drawn in clean independent strips below hero,
+        # so hero frame remains intact without cropping.
+        frame_bottom = kwargs.get("frame_bottom", 1.0)
+        band_center = kwargs.get("band_center", 0.6)
 
         args = argparse.Namespace(
             video=str(video_path),
@@ -355,6 +419,9 @@ def produce_quote_image(
             }
         ],
     }
+    if len(picked) < 4:
+        res["note"] = f"Source video contains {len(picked)} available spoken subtitle sentences due to silence or short duration."
+
     record_json_path.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
 
     if not all_passed:
