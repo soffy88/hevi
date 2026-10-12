@@ -1158,20 +1158,27 @@ def script_to_storyboard(
                     # 多个额外镜头按序号推导镜头动作，保证相邻镜头台词不同
                     speaker = "旁白"
                     filler_notes = ["镜头拉开", "人物近景", "动作特写", "环境细节"]
-                    fill = filler_notes[(j - len(scene.dialogue)) % len(filler_notes)]
-                    if scene.narration and j == len(scene.dialogue):
+                    extra_idx = j - len(scene.dialogue)
+                    fill = filler_notes[extra_idx % len(filler_notes)]
+                    if scene.narration and extra_idx == 0:
                         tts_text = scene.narration
-                    elif scene.summary:
+                    elif scene.summary and extra_idx == 0:
                         tts_text = f"{fill}：{scene.summary}。"
                     elif ev and ev.summary:
                         tts_text = f"{fill}：{ev.summary}。"
+                    elif scene.summary:
+                        tts_text = f"{fill}：{scene.summary}。"
                     # else: 无额外内容 → 空 tts
-            elif scene.narration:
+            else:
+                # 无对白：旁白只放第一镜，其余镜用差异化镜头描述，避免重复
                 speaker = "旁白"
-                tts_text = scene.narration
-            elif scene.summary:
-                speaker = "旁白"
-                tts_text = scene.summary
+                filler_notes = ["镜头拉开", "人物近景", "动作特写", "环境细节"]
+                if j == 0 and scene.narration:
+                    tts_text = scene.narration
+                elif scene.narration:
+                    tts_text = f"{filler_notes[j % len(filler_notes)]}：{scene.narration}。"
+                elif scene.summary:
+                    tts_text = f"{filler_notes[j % len(filler_notes)]}：{scene.summary}。"
 
             prompt_parts = []
             if scene.location:

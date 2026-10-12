@@ -1,0 +1,86 @@
+{
+  "ep_number": 3,
+  "title": "第3集",
+  "scenes": [
+    {
+      "scene_no": 1,
+      "location": "沈府大厅",
+      "event_ids": [
+        "CH03E001"
+      ],
+      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横。",
+      "narration": "",
+      "dialogue": [
+        {
+          "speaker": "沈砚之",
+          "text": "父亲，晚儿回来了。",
+          "emotion": "平静"
+        },
+        {
+          "speaker": "沈崇山",
+          "text": "玉玦……是她留下的？",
+          "emotion": "激动"
+        },
+        {
+          "speaker": "苏晚",
+          "text": "娘的东西，我带回来了。",
+          "emotion": "柔和"
+        }
+      ],
+      "shot_count": 3,
+      "duration_s": 12.0
+    },
+    {
+      "scene_no": 2,
+      "location": "沈府书房",
+      "event_ids": [
+        "CH03E002"
+      ],
+      "summary": "沈崇山忏悔对兄妹的亏欠，沈砚之扶起父亲。",
+      "narration": "",
+      "dialogue": [
+        {
+          "speaker": "沈崇山",
+          "text": "是我对不住你们兄妹。",
+          "emotion": "悔恨"
+        },
+        {
+          "speaker": "沈砚之",
+          "text": "父亲请起，儿不怪您。",
+          "emotion": "温和"
+        }
+      ],
+      "shot_count": 2,
+      "duration_s": 10.0
+    },
+    {
+      "scene_no": 3,
+      "location": "沈府祖堂廊下",
+      "event_ids": [
+        "CH03E003"
+      ],
+      "summary": "苏晚跪拜母亲牌位称归来，福伯在廊下抹泪。",
+      "narration": "",
+      "dialogue": [
+        {
+          "speaker": "苏晚",
+          "text": "娘，我回来了。",
+          "emotion": "悲伤"
+        },
+        {
+          "speaker": "福伯",
+          "text": "小姐终于回家了……",
+          "emotion": "感动"
+        }
+      ],
+      "shot_count": 2,
+      "duration_s": 10.0
+    }
+  ],
+  "characters_present": [
+    "C001",
+    "C002",
+    "C003",
+    "C004"
+  ]
+}

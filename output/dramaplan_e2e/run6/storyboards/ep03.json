@@ -1,0 +1,71 @@
+{
+  "ep_number": 3,
+  "title": "第3集",
+  "target_duration_s": 60.0,
+  "shot_budget": 12,
+  "shots": [
+    {
+      "shot_id": "EP03_SC01_SH01",
+      "scene_no": 1,
+      "event_id": "CH03E001",
+      "image_prompt": "场景：沈府大厅，出场角色：沈砚之，画面：沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横。，全景交代环境。写实短剧风格，电影级光影。",
+      "tts_text": "沈砚之：父亲，晚儿回来了。",
+      "duration_s": 4.0,
+      "speaker": "沈砚之"
+    },
+    {
+      "shot_id": "EP03_SC01_SH02",
+      "scene_no": 1,
+      "event_id": "CH03E001",
+      "image_prompt": "场景：沈府大厅，出场角色：沈崇山，画面：沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横。，中景角色对峙与互动。写实短剧风格，电影级光影。",
+      "tts_text": "沈崇山：玉玦……是她留下的？",
+      "duration_s": 4.0,
+      "speaker": "沈崇山"
+    },
+    {
+      "shot_id": "EP03_SC01_SH03",
+      "scene_no": 1,
+      "event_id": "CH03E001",
+      "image_prompt": "场景：沈府大厅，出场角色：苏晚，画面：沈砚之带苏晚回沈府，沈崇山见合璧玉玦老泪纵横。，特写定格情绪。写实短剧风格，电影级光影。",
+      "tts_text": "苏晚：娘的东西，我带回来了。",
+      "duration_s": 4.0,
+      "speaker": "苏晚"
+    },
+    {
+      "shot_id": "EP03_SC02_SH01",
+      "scene_no": 2,
+      "event_id": "CH03E002",
+      "image_prompt": "场景：沈府书房，出场角色：沈崇山，画面：沈崇山忏悔对兄妹的亏欠，沈砚之扶起父亲。，全景交代环境。写实短剧风格，电影级光影。",
+      "tts_text": "沈崇山：是我对不住你们兄妹。",
+      "duration_s": 5.0,
+      "speaker": "沈崇山"
+    },
+    {
+      "shot_id": "EP03_SC02_SH02",
+      "scene_no": 2,
+      "event_id": "CH03E002",
+      "image_prompt": "场景：沈府书房，出场角色：沈砚之，画面：沈崇山忏悔对兄妹的亏欠，沈砚之扶起父亲。，特写定格情绪。写实短剧风格，电影级光影。",
+      "tts_text": "沈砚之：父亲请起，儿不怪您。",
+      "duration_s": 5.0,
+      "speaker": "沈砚之"
+    },
+    {
+      "shot_id": "EP03_SC03_SH01",
+      "scene_no": 3,
+      "event_id": "CH03E003",
+      "image_prompt": "场景：沈府祖堂廊下，出场角色：苏晚，画面：苏晚跪拜母亲牌位称归来，福伯在廊下抹泪。，全景交代环境。写实短剧风格，电影级光影。",
+      "tts_text": "苏晚：娘，我回来了。",
+      "duration_s": 5.0,
+      "speaker": "苏晚"
+    },
+    {
+      "shot_id": "EP03_SC03_SH02",
+      "scene_no": 3,
+      "event_id": "CH03E003",
+      "image_prompt": "场景：沈府祖堂廊下，出场角色：福伯，画面：苏晚跪拜母亲牌位称归来，福伯在廊下抹泪。，特写定格情绪。写实短剧风格，电影级光影。",
+      "tts_text": "福伯：小姐终于回家了……",
+      "duration_s": 5.0,
+      "speaker": "福伯"
+    }
+  ]
+}
