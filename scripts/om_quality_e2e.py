@@ -360,6 +360,30 @@ def make_half_gray_fixture(out_dir: Path) -> Path:
     return dest
 
 
+def make_black_silent_fixture(out_dir: Path) -> Path:
+    """Generate a pure-black video with pure-silent audio (the baseline red case).
+
+    This is the classic "broken/failed render" negative: zero pixel energy and
+    zero audio energy across the entire clip. The review gate must flag black
+    frames on every frame sample AND the missing/silent audio, and refuse to
+    compose.
+    """
+    dest = out_dir / "bad_black_silent.mp4"
+    subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-y",
+            "-f", "lavfi", "-i", "color=c=black:s=640x360:r=24:d=5",
+            "-f", "lavfi", "-i",
+            "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-shortest",
+            str(dest),
+        ],
+        check=True, capture_output=True,
+    )
+    return dest
+
+
 # ---------------------------------------------------------------------------
 # A 后期增强
 # ---------------------------------------------------------------------------
@@ -722,12 +746,13 @@ def section_review(out: Path) -> dict[str, Any]:
     ) == "red"
 
     # --- 破图/花屏负面样本：证明空间质量检测会判红 ---
-    log("  构造破图负面样本(随机噪点 / 宏块花屏 / 半屏灰块)")
+    log("  构造破图/坏片负面样本(噪点 / 宏块花屏 / 半屏灰块 / 黑屏+静音)")
     bad_cases: dict[str, Any] = {}
     for name, maker in (
         ("noise", make_noise_fixture),
         ("macroblock", make_macroblock_fixture),
         ("half_gray", make_half_gray_fixture),
+        ("black_silent", make_black_silent_fixture),
     ):
         clip = maker(step_dir)
         rep = review_finished_video(
