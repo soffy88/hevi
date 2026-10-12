@@ -143,6 +143,61 @@ def frame_stats(
     if is_flat:
         notes.append(f"flat frame (luma stdev {stdev:.2f} < {flat_stdev_luma:.2f})")
 
+    # Chroma / colour anomaly detection (green screen, solid colour flood).
+    # A decoded-failure green screen has Y=0 U=0 V=0 → RGB (0,135,0) i.e.
+    # G≈4×R and G≈4×B with R≈B≈0; we detect via RGB channel stats when
+    # the frame is also flat.
+    is_color_anomaly = False
+    try:
+        from PIL import Image as _Image
+        with _Image.open(dest) as _im:
+            _rgb = _im.convert("RGB")
+            _r, _g, _b = _rgb.split()
+            _r_mean = float(ImageStat.Stat(_r).mean[0])
+            _g_mean = float(ImageStat.Stat(_g).mean[0])
+            _b_mean = float(ImageStat.Stat(_b).mean[0])
+            # Green-screen: G dominates with R/B near zero and frame is flat.
+            if _r_mean < 30 and _b_mean < 30 and _g_mean > 50 and is_flat:
+                is_color_anomaly = True
+                notes.append(f"color anomaly: green screen (R={_r_mean:.0f}, G={_g_mean:.0f}, B={_b_mean:.0f})")
+    except (OSError, ValueError):
+        pass
+
+    # Region-based flatness: split into a 2x2 grid; any quadrant that is
+    # near-zero-stdev while the rest differs by > 20 luma units is a
+    # half-screen / bottom-block artefact (bad5 style corruption).
+    is_region_flat = False
+    if not is_flat:
+        try:
+            from PIL import Image as _Image2
+            with _Image.open(dest) as _im:
+                _grey = _im.convert("L")
+                _w, _h = _grey.size
+                _quad_means: list[float] = []
+                _quad_stdevs: list[float] = []
+                for _ny in range(2):
+                    for _nx in range(2):
+                        _x1 = _nx * _w // 2
+                        _x2 = (_nx + 1) * _w // 2
+                        _y1 = _ny * _h // 2
+                        _y2 = (_ny + 1) * _h // 2
+                        _q = _grey.crop((_x1, _y1, _x2, _y2))
+                        _s = ImageStat.Stat(_q)
+                        _quad_means.append(float(_s.mean[0]))
+                        _quad_stdevs.append(float(_s.stddev[0]))
+                flat_quads = [i for i, s in enumerate(_quad_stdevs) if s < flat_stdev_luma]
+                if flat_quads:
+                    flat_mean = _quad_means[flat_quads[0]]
+                    for i, qm in enumerate(_quad_means):
+                        if i not in flat_quads and abs(qm - flat_mean) > 20.0:
+                            is_region_flat = True
+                            notes.append(
+                                f"region flat: quadrant(s) {flat_quads} stdev<{flat_stdev_luma:.1f} vs rest diff>{20.0:.0f}"
+                            )
+                            break
+        except (OSError, ValueError):
+            pass
+
     # --- spatial quality: detect noise / macroblock / screen corruption ---
     import numpy as np
 
@@ -171,27 +226,49 @@ def frame_stats(
                 )
             )
     local_diff = sum(local_diffs) / float(len(local_diffs))
-    # Blockiness: periodic discontinuity at 16-pixel boundaries (macroblock artefact)
-    blk = 0.0
-    if w > 17:
-        left = arr[:, 15 : w : 16]
-        right = arr[:, 16 : w + 1 : 16]
-        n = min(left.shape[1], right.shape[1])
-        if n:
-            blk += float(np.abs(left[:, :n] - right[:, :n]).mean()) / 2.0
-    if h > 17:
-        top = arr[15 : h : 16, :]
-        bot = arr[16 : h + 1 : 16, :]
-        n = min(top.shape[0], bot.shape[0])
-        if n:
-            blk += float(np.abs(top[:n, :] - bot[:n, :]).mean()) / 2.0
+    # Blockiness: ratio of boundary-pair diff to interior diff at 16px and 8px grids.
+    # A value ≫ 1 indicates periodic quantisation boundaries (real macroblock artefacts);
+    # values near 1 indicate ordinary image content regardless of texture density.
+    def _bnd_interior_ratio(a: "np.ndarray", size: int) -> tuple[float, float]:
+        h_, w_ = a.shape
+        b_sum = 0.0
+        i_sum = 0.0
+        cols_b = np.arange(size - 1, w_ - 1, size)
+        cols_i = cols_b + 1
+        if len(cols_b) and len(cols_i):
+            b_sum += float(np.abs(a[:, cols_b] - a[:, cols_i]).mean())
+        rows_b = np.arange(size - 1, h_ - 1, size)
+        rows_i = rows_b + 1
+        if len(rows_b) and len(rows_i):
+            b_sum += float(np.abs(a[rows_b, :] - a[rows_i, :]).mean())
+        mask_h = np.ones(w_, dtype=bool)
+        mask_h[cols_b] = False
+        mask_h[cols_i] = False
+        mask_v = np.ones(h_, dtype=bool)
+        mask_v[rows_b] = False
+        mask_v[rows_i] = False
+        dh = np.abs(np.diff(a[:, mask_h], axis=1))
+        dv = np.abs(np.diff(a[mask_v, :], axis=0))
+        if dh.size:
+            i_sum += float(dh.mean())
+        if dv.size:
+            i_sum += float(dv.mean())
+        return b_sum, i_sum
 
+    b16, i16 = _bnd_interior_ratio(arr, 16)
+    b8, i8 = _bnd_interior_ratio(arr, 8)
+    ratio16 = b16 / max(i16, 1e-9)
+    ratio8 = b8 / max(i8, 1e-9)
+    blockiness = round(max(ratio16, ratio8), 3)
+    BLOCKY_RATIO_FLOOR = 1.8
+    is_blocky = bool(blockiness >= BLOCKY_RATIO_FLOOR)
+
+    # Noise: high local-diff AND high edge density together.
     is_noise = bool(local_diff > NOISE_LOCAL_DIFF_FLOOR and (edge_h + edge_v) / 2.0 > EDGE_DENSITY_FLOOR)
-    is_blocky = bool(blk > BLOCKINESS_FLOOR)
     if is_noise:
         notes.append(f"noise-like frame (local_diff {local_diff:.1f} > {NOISE_LOCAL_DIFF_FLOOR:.0f}, edge_density {(edge_h + edge_v) / 2.0:.2f})")
     if is_blocky:
-        notes.append(f"blocky frame (periodic 16px discontinuity {blk:.1f} > {BLOCKINESS_FLOOR:.0f})")
+        notes.append(f"blocky frame (boundary/interior ratio {blockiness:.2f} ≥ {BLOCKY_RATIO_FLOOR:.1f})")
     return FrameCheck(
         index=index,
         timestamp_s=round(float(timestamp_s), 3),
@@ -206,9 +283,11 @@ def frame_stats(
         edge_density_h=round(edge_h, 4),
         edge_density_v=round(edge_v, 4),
         local_diff=round(local_diff, 3),
-        blockiness=round(blk, 3),
+        blockiness=blockiness,
         is_noise=is_noise,
         is_blocky=is_blocky,
+        is_color_anomaly=is_color_anomaly,
+        is_region_flat=is_region_flat,
         notes=tuple(notes),
     )
 

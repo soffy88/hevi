@@ -57,6 +57,8 @@ class FrameCheck:
     blockiness: float = 0.0
     is_noise: bool = False       # high-frequency noise dominates
     is_blocky: bool = False      # macroblock artefacts
+    is_color_anomaly: bool = False  # green screen / solid colour flood
+    is_region_flat: bool = False  # half-screen / quadrant flat region
     notes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:

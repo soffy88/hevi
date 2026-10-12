@@ -37,7 +37,14 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from hevi.layer4_legacy.review.oprim_impl.audio import loudness_lufs, silence_ratio, spectral_flatness
+from hevi.layer4_legacy.review.oprim_impl.audio import (
+    loudness_lufs,
+    silence_ratio,
+    silence_windows,
+    spectral_flatness,
+    clipped_sample_ratio,
+    transient_click_count,
+)
 from hevi.layer4_legacy.review.oprim_impl.contracts import (
     VERDICT_BLOCKED,
     VERDICT_OK,
@@ -46,6 +53,7 @@ from hevi.layer4_legacy.review.oprim_impl.contracts import (
     ReviewVerdict,
 )
 from hevi.layer4_legacy.review.oprim_impl.frames import (
+    NOISE_LOCAL_DIFF_FLOOR,
     build_contact_sheet,
     dense_sample_frames,
     frame_phash,
@@ -77,6 +85,9 @@ _DEFAULTS: dict[str, Any] = {
     "repeat_hash_floor": 4.0,
     "text_cue_coverage": 0.80,
     "spectral_flatness_threshold": 0.1,  # white noise flag
+    "max_clipped_sample_ratio": 0.001,   # clipping: fraction of samples at |x|>=0.999
+    "max_transient_clicks": 50,          # max 10ms-window click events
+    "max_silence_gap_s": 2.0,            # longest continuous silence gap before violation
 }
 
 
@@ -402,7 +413,7 @@ def review_finished_video_workflow(
         violations.append(
             f"{len(noise)}/{len(checks)} 帧为全帧随机噪点(破图/花屏, "
             f"local_diff={noise[0].get('local_diff', 0):.1f} > "
-            f"{noise[0].get('edge_density_h', 0) + noise[0].get('edge_density_v', 0):.1f} 阈值)"
+            f"{NOISE_LOCAL_DIFF_FLOOR:.0f} 阈值)"
         )
     if blocky:
         violations.append(
@@ -432,10 +443,45 @@ def review_finished_video_workflow(
         audio_metrics["spectral_flatness"] = flatness
         if flatness is None:
             unmeasured.append("spectral_flatness")
-        elif flatness > float(cfg["spectral_flatness_threshold"]):
+        elif flatness > float(cfg["spectral_flatness_threshold"]) and sil is not None and sil < 0.5:
             violations.append(
                 f"音频频谱平坦度 {flatness:.3f} 超过上限 {cfg['spectral_flatness_threshold']} "
                 "(疑似持续宽带白噪声)"
+            )
+        # Clipping: samples at full-scale (≥0.999 amplitude).
+        try:
+            clip_ratio = clipped_sample_ratio(path=src)
+        except MediaError:
+            clip_ratio = None
+        audio_metrics["clipped_sample_ratio"] = clip_ratio
+        if clip_ratio is None:
+            unmeasured.append("clipped_sample_ratio")
+        elif clip_ratio > float(cfg.get("max_clipped_sample_ratio", 0.001)):
+            violations.append(
+                f"削波样本占比 {clip_ratio:.4%} 超过上限 {cfg['max_clipped_sample_ratio']:.4%}"
+            )
+        # Transient clicks: abrupt amplitude jumps > 0.5 in 10ms windows.
+        try:
+            clicks = transient_click_count(path=src)
+        except MediaError:
+            clicks = None
+        audio_metrics["transient_click_count"] = clicks
+        if clicks is None:
+            unmeasured.append("transient_click_count")
+        elif clicks > int(cfg.get("max_transient_clicks", 50)):
+            violations.append(
+                f"瞬态爆音 {clicks} 次(10ms 窗口样本跳变>0.5) 超过上限 {cfg['max_transient_clicks']}"
+            )
+        # Continuous silence gap: longest single silence window.
+        try:
+            sil_windows = silence_windows(path=src, noise_db=-45.0, min_duration_s=0.5)
+        except MediaError:
+            sil_windows = []
+        longest_gap = max((e - s for s, e in sil_windows), default=0.0)
+        audio_metrics["longest_silence_gap_s"] = round(longest_gap, 3)
+        if longest_gap > float(cfg.get("max_silence_gap_s", 2.0)):
+            violations.append(
+                f"连续静音段 {longest_gap:.1f}s 超过上限 {cfg['max_silence_gap_s']:.1f}s"
             )
         if lufs is None:
             unmeasured.append("loudness")
@@ -504,6 +550,56 @@ def review_finished_video_workflow(
             "幻灯片风险黄灯 (risk=%.2f): %s"
             % (float(risk.get("risk") or 0.0), "; ".join(risk.get("reasons") or []))
         )
+
+    # ---- local defect scan (dense frames) --------------------------------
+    # Sample at 2 fps and run frame_stats on every dense frame.  A defect
+    # lasting >= 0.5s (i.e. >= 2 consecutive dense frames) is a violation.
+    # This catches short local glitches/colour floods that the 4-point spot
+    # check can miss because its sample times are evenly spaced.
+    dense_defect_hits: list[dict[str, Any]] = []
+    if dense:
+        dense_checks: list[dict[str, Any]] = []
+        for i, df in enumerate(dense):
+            try:
+                dc = frame_stats(path=df, index=i, timestamp_s=0.0).to_dict()
+            except Exception:
+                dc = {}
+            dense_checks.append(dc)
+        defect_flags = [(i, c) for i, c in enumerate(dense_checks) if c.get("is_noise") or c.get("is_blocky") or c.get("is_black") or c.get("is_flat") or c.get("is_color_anomaly") or c.get("is_region_flat")]
+        if len(defect_flags) >= 2:
+            # Check for consecutive runs (>= 2 consecutive frames at 2fps = 0.5s)
+            run_start = None
+            run_len = 0
+            max_run = 0
+            max_run_flags: list[str] = []
+            prev_idx = -99
+            for idx, dc in defect_flags:
+                flags = tuple(k for k in ("is_noise", "is_blocky", "is_black", "is_flat", "is_color_anomaly", "is_region_flat") if dc.get(k))
+                if idx - prev_idx <= 1:
+                    run_len += 1
+                    if flags not in max_run_flags:
+                        max_run_flags.append(flags)
+                else:
+                    if run_len > max_run:
+                        max_run = run_len
+                        max_run_flags = [flags]
+                    run_start = idx
+                    run_len = 1
+                prev_idx = idx
+            if run_len > max_run:
+                max_run = run_len
+                max_run_flags = [flags]
+            if max_run >= 2:
+                defect_desc = " + ".join(" + ".join(f) for f in max_run_flags)
+                violations.append(
+                    f"局部坏段 ≥{max_run} 连续帧(≈{max_run * 0.5:.1f}s, {defect_desc})"
+                )
+                dense_defect_hits.append({"run_len": max_run, "flags": max_run_flags})
+        metrics["local_defect_scan"] = {
+            "dense_frame_count": len(dense_checks),
+            "defect_frame_count": len(defect_flags),
+            "defect_hits": dense_defect_hits,
+        }
 
     # ---- promise reconciliation -------------------------------------------
     # 排产前定死的承诺 (hevi.production.delivery_promise) 在这里对账: 实测的

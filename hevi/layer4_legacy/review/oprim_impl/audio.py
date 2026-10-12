@@ -134,13 +134,21 @@ def spectral_flatness(
     *,
     path: str | Path,
     fft_size: int = 4096,
+    energy_floor_db: float = -60.0,
 ) -> float | None:
-    """Spectral flatness (0..1) via FFT of a real audio window.
+    """Spectral flatness (0..1) of the full file via sliding FFT windows.
 
     Computes geometric_mean / arithmetic_mean of the FFT power spectrum —
     the standard spectral flatness measure.  White noise has a flat
     spectrum (flatness near 0.5+); tones and speech have highly peaked
-    spectra (flatness near 0).  Returns None when not measurable.
+    spectra (flatness near 0).
+
+    The whole file is split into windows; silent/low-energy windows
+    are dropped (they have zero power and would bias flatness to 1.0),
+    then the median flatness across windows is returned.  A film whose
+    opening is digital silence (but whose body is real audio) is
+    therefore not flagged as white noise.  Returns None when not
+    measurable.
     """
     import numpy as np
 
@@ -175,16 +183,128 @@ def spectral_flatness(
     if not raw:
         return None
     samples = np.frombuffer(raw, dtype=np.float32)
-    n = min(fft_size, len(samples))
-    if n < 128:
+    if len(samples) < fft_size:
         return None
-    window = np.hanning(n)
-    fft = np.fft.rfft(samples[:n] * window)
-    power = np.abs(fft) ** 2 + 1e-20  # epsilon to avoid log(0)
-    geomean = float(np.exp(np.mean(np.log(power))))
-    arithmean = float(np.mean(power))
-    return round(geomean / arithmean, 4)
+
+    step = fft_size // 2
+    energy_floor = 10.0 ** (energy_floor_db / 10.0)
+    flatness_values: list[float] = []
+    for start in range(0, len(samples) - fft_size + 1, step):
+        window = np.hanning(fft_size)
+        seg = samples[start : start + fft_size]
+        power = np.abs(np.fft.rfft(seg * window)) ** 2
+        if float(power.mean()) < energy_floor:
+            continue  # silent/low-energy window: not evidence of white noise
+        power = power + 1e-20  # epsilon to avoid log(0)
+        geomean = float(np.exp(np.mean(np.log(power))))
+        arithmean = float(np.mean(power))
+        flatness_values.append(geomean / arithmean)
+    if not flatness_values:
+        # Everything silent — report the single full-file flatness so
+        # the caller can still distinguish "truly silent" (≈1.0) from
+        # "broadband white noise" (≈0.5) by combining with silence_ratio.
+        seg = samples[:fft_size]
+        power = np.abs(np.fft.rfft(seg * np.hanning(fft_size))) ** 2 + 1e-20
+        geomean = float(np.exp(np.mean(np.log(power))))
+        arithmean = float(np.mean(power))
+        return round(geomean / arithmean, 4)
+    return round(float(np.median(flatness_values)), 4)
 
 
+def clipped_sample_ratio(
+    *,
+    path: str | Path,
+    threshold: float = 0.999,
+) -> float | None:
+    """Fraction of PCM samples whose absolute value >= ``threshold`` (clipping).
 
-__all__ = ["audio_duration_s", "loudness_lufs", "silence_ratio", "spectral_flatness", "silence_windows"]
+    Returns a ratio in [0, 1]; None when the file has no audio stream.
+    """
+    import numpy as np
+
+    dest = Path(path)
+    info = probe_media(dest)
+    if not info.has_audio:
+        return None
+    proc = subprocess.run(
+        [
+            FFMPEG,
+            "-nostats",
+            "-hide_banner",
+            "-i",
+            str(dest),
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "-ac",
+            "1",
+            "-",
+        ],
+        capture_output=True,
+        text=False,
+        timeout=1800,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    raw = proc.stdout
+    if not raw:
+        return None
+    samples = np.frombuffer(raw, dtype=np.float32)
+    if len(samples) == 0:
+        return None
+    count = int(np.sum(np.abs(samples) >= threshold))
+    return round(count / len(samples), 6)
+
+
+def transient_click_count(
+    *,
+    path: str | Path,
+    jump_threshold: float = 0.5,
+) -> int | None:
+    """Count 10-ms windows with an abrup sample-to-sample jump exceeding ``jump_threshold``.
+
+    Each such window is counted as one transient click/popup event.  Returns None
+    when the file has no audio stream.  A high count indicates rapid amplitude
+    discontinuities typical of digital clicks or pop artifacts.
+    """
+    import numpy as np
+
+    dest = Path(path)
+    info = probe_media(dest)
+    if not info.has_audio:
+        return None
+    proc = subprocess.run(
+        [
+            FFMPEG,
+            "-nostats",
+            "-hide_banner",
+            "-i",
+            str(dest),
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "-ac",
+            "1",
+            "-",
+        ],
+        capture_output=True,
+        text=False,
+        timeout=1800,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    raw = proc.stdout
+    if not raw:
+        return None
+    samples = np.frombuffer(raw, dtype=np.float32)
+    if len(samples) < 2:
+        return 0
+    diffs = np.abs(np.diff(samples))
+    return int(np.sum(diffs > jump_threshold))
+
+
+__all__ = ["audio_duration_s", "loudness_lufs", "silence_ratio", "spectral_flatness", "silence_windows", "clipped_sample_ratio", "transient_click_count"]
