@@ -339,3 +339,42 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 
 ### 结论
 **F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。**
+
+---
+
+## 十、第五轮独立复核（额度中断后接续，2026-10-12）
+
+### 复核范围
+接替因额度中断的 agent，严格读取 `PUBLISHKIT_FIX.md` 与 `PUBLISHKIT_TASK.md`，在已有成果（commit `5f3dd73c`）上继续执行独立复核。所有验收数据均为本次会话实测，无 mock/占位/伪造。
+
+### 独立实测验证
+
+#### F1 文稿↔成片一致性
+- `work/render.log` = 0 bytes（渲染成功，无 TypeError）
+- talkcraft 成片 sha256 `6938634b…` 匹配 DONE 报告，32.8s 复利内容
+- OCR 抽帧确认画面：`复利的力量` / `三分钟讲清楚` / `为什么复利被称作世界第八大奇迹` / `答案藏在三个词里：时间、本金和收益率` / `本金×（1+收益率` / `尽早开始` / `持续投入` / `控制成本`——与 `timestamps.json` 10 句复利文稿完全一致，无「Simon Talk」水印、无预制菜新闻画面
+- `script_audio_consistency` 实测：三条产线 min_similarity 0.884–0.889（≥0.6），tail_violation=false
+
+#### F2 竖版排版
+- 从 `whiteboard_portrait.mp4` 抽帧（t=3/7/11/14/17/20/25/28s）逐帧像素扫描
+- **topic_a**: 内容区占 **91.1–94.5%**（rows 136–1765 / 1766 可用行），远超 ≥75% 要求
+- **topic_b**: 内容区占 **85.6–97.1%**（rows 50–1765 / 1766 可用行），仅场景过渡期（t=38s）短暂降至 19.4%，属正常动画过渡
+- OCR 确认图标与文字无重叠：topic_b t=8s 「预测下一词」(y=778–828) 与 robot icon (y=440–483) 无重叠；「你是否好奇」(y=440–483) 完整识别未被遮挡
+
+#### F3 封面取帧
+- 三条产线 `cover_3_4.jpg` 均 1080×1440、`source_video_kind=portrait`
+- `cover_4_3.jpg` 1080×810、`cover_16_9.jpg` 1088×612 均 `landscape`
+- 全部 `ratio_ok=true`、`passed=true`
+
+#### 测试与 lint
+- pytest: **50 passed**（test_publishkit 27 + test_whiteboard 9 + publishers 14）
+- 3O lint: 输出与 `lint_baseline.txt` 逐行完全一致（`diff` exit=0），失败项集合不变（基线 4 项），无新增
+
+#### 产物完整性
+- `output/publishkit_e2e/e2e_summary.json` → `status: succeeded`，`case_count: 3`，`skipped: []`
+- `output/whiteboard_e2e/e2e_summary.json` → 两主题均 `succeeded`，各 3 项 gate 全绿
+- 白板横竖版 sha256 与 DONE 报告一致（4 个文件均匹配）
+- 无 mock/占位：render.log 空=渲染成功；whisper 真实转写；E2E 真跑
+
+### 结论
+**F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。工作区 clean，无未提交改动。**
