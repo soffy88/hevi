@@ -1,0 +1,125 @@
+{
+  "sample": "audit/live_host/halfbody/sample.mp4",
+  "duration_s": 31.88,
+  "avatar_load_s": 5.75,
+  "render_total_s": 33.36,
+  "talk_render_fps": 21.2,
+  "idle_render_fps": 56.8,
+  "realtime_factor_talk": 0.848,
+  "lipsync_corr": 0.203,
+  "lipsync_lag_frames": -2,
+  "turns": [
+    {
+      "question": "小雅晚上好，今天直播聊点什么？",
+      "sentences": [
+        "晚上好！",
+        "我们今天来聊一下关于中国美食的小窍门，特别是关于海鲜的选择和储存方法。",
+        "想知道更多吗？"
+      ],
+      "llm_first_sentence_s": 2.143,
+      "llm_total_s": 13.743,
+      "tts_s": [
+        1.473,
+        1.848,
+        1.356
+      ],
+      "audio_s": [
+        0.99,
+        6.87,
+        1.4
+      ],
+      "first_video_latency_s": 6.837
+    },
+    {
+      "question": "可以推荐一本适合睡前看的书吗？",
+      "sentences": [
+        "好的！",
+        "我觉得“未完之-work”这部小说很适合睡前读。",
+        "故事讲述了一位年轻作家，他发现自己被drag进了一个不属于自己的世界。",
+        "这本书有一段段的迷人的绘画描述，会让你慢慢沉入梦乡中。"
+      ],
+      "llm_first_sentence_s": 0.622,
+      "llm_total_s": 19.974,
+      "tts_s": [
+        1.544,
+        1.404,
+        1.244,
+        1.241
+      ],
+      "audio_s": [
+        0.66,
+        3.37,
+        5.47,
+        5.06
+      ],
+      "first_video_latency_s": 2.778
+    }
+  ],
+  "segments": [
+    {
+      "kind": "idle",
+      "frames": 50,
+      "render_s": 1.582
+    },
+    {
+      "kind": "idle",
+      "frames": 50,
+      "render_s": 1.165
+    },
+    {
+      "kind": "talk",
+      "frames": 25,
+      "render_s": 3.221
+    },
+    {
+      "kind": "talk",
+      "frames": 172,
+      "render_s": 10.458
+    },
+    {
+      "kind": "talk",
+      "frames": 35,
+      "render_s": 1.292
+    },
+    {
+      "kind": "idle",
+      "frames": 25,
+      "render_s": 0.205
+    },
+    {
+      "kind": "idle",
+      "frames": 50,
+      "render_s": 0.284
+    },
+    {
+      "kind": "talk",
+      "frames": 17,
+      "render_s": 0.612
+    },
+    {
+      "kind": "talk",
+      "frames": 84,
+      "render_s": 3.521
+    },
+    {
+      "kind": "talk",
+      "frames": 137,
+      "render_s": 4.884
+    },
+    {
+      "kind": "talk",
+      "frames": 127,
+      "render_s": 4.172
+    },
+    {
+      "kind": "idle",
+      "frames": 25,
+      "render_s": 0.284
+    }
+  ],
+  "base_videos": {
+    "idle": "https://www.pexels.com/video/woman-is-talking-while-looking-at-camera-8135207/",
+    "talk": "https://www.pexels.com/video/woman-looking-at-camera-and-speaking-8135208/",
+    "license": "Pexels License (free commercial use, no attribution required)"
+  }
+}
