@@ -118,9 +118,9 @@ review(quality=q, shots=shots, full_rework=True) # 显式整轮重做
 任务允许自写原创）。
 **产物目录**：`output/dramaplan_e2e/run1/`（已 `git add -f` 入库作为证据，因 `output/` 在 .gitignore）
 
-**复核复跑**：接手后续做时按同样命令重跑了一次 `run2`（同样真实 NIM 调用），
-结果一致（3 章 / 4 角色 / 7 事件 / 3 集 / rounds=[2,1,1] / qa passed=true），
-证明不是一次性偶然产物。`run2` 产物也已 `git add -f` 入库。
+**复核复跑**：第二位接手 agent 按同样命令重跑了一次 `run2`（同样真实 NIM 调用），
+结果一致（3 章 / 4 角色 / 7 事件 / 3 集 / rounds=[2,1,1] / qa passed=true）。
+第三位接手 agent 再跑 `run3`（见下），三次结论一致。`run2`/`run3` 产物均已 `git add -f` 入库。
 
 | 产物 | sha256 | bytes |
 |---|---|---|
@@ -143,6 +143,37 @@ review(quality=q, shots=shots, full_rework=True) # 显式整轮重做
 
 run2 `record.json`：通道 `nim`；LLM 调用 10 次、失败 0；LLM 总耗时 75.78s、整轮 77.6s；
 三层审稿 rounds=[2,1,1]，revision_rounds=1，qa_passed=true。
+
+### 第三次独立复核（run3，第二位接手 agent 实跑）
+第三位接手 agent **未沿用任何既有结论**，逐条重跑并新增一次独立 E2E：
+
+```
+.venv/bin/python scripts/e2e/dramaplan_e2e.py --channel nim --run-id run3 --episodes 3 --episode-duration 60
+→ [probe] available=True latency_s=1.02 json_stable=True
+  [event_graph] chapters=3 events=7 chars=4
+  [outline] episodes=3 shot_budget=36 compressed=False
+  [review] passed=True rounds=[2,1,1]
+  [qa] passed=True revision_round=True      EXIT=0
+```
+run3 `record.json`：通道 `nim`、**LLM 调用 10 次 / 失败 0**、LLM 总耗时 70.62s、整轮 71.79s；
+事件图 3 章 / 4 角色 / 7 事件 / 7 对白；`qa_passed=true`。
+
+run3 产物 sha256（与 run1/run2 **均不相同** → 三次都是真实 LLM 调用，非缓存/复用）：
+```
+57e8a5ff753dedbd6149351584c7e6930f0129e4b613d5aa7d606001e8e5cc1a  adaptation_outline.json
+90852de585ec8d6e17b113cd56aa7d9123dd71a7932bde7c70165da30a7703ba  event_graph.json
+9bedb74b029b705e3cb0cc631ee7fba965eb8b0928dd94e367fb95c875dcec5a  review_log.json
+aa99b742ce82d3518acf9303e9794ba19ba7c231c04aaa921dd84ab84d7e63b0  episode_scripts/ep01.json
+e543eba8aaca5d019c54a39eb172373bdba9bc675092e7c92cf1a12948d45595  episode_scripts/ep02.json
+d49a97d4e11fadf43198227b3a359e32c23a681cfae582165a183f1cc3558004  episode_scripts/ep03.json
+```
+run3 抽样内容核对（非空壳）：`event_graph.json` 中事件 ID 形如 `CH01E001`，
+且**跨章因果边真实存在**（`CH01E002.effects = ["CH02E001"]`），角色跨章合并为
+C001 沈砚之 / C002 沈崇山 / C003 福伯 / C004 苏晚。
+`review_log.json` 的监督层输出为**真实 LLM 长评**（如指出"福伯如何在未联络情况下得知逃亡路线、
+行为动机模糊，逻辑断裂"），非模板化占位文本；EP1 记录 `round0 score=60 passed=false` →
+`round1 score=80 passed=true`，`revised_scenes=[1,2]` 且 `scene_diffs` 带 before/after 内容哈希，
+证明「首轮不通过 → 只改问题场 → 通过」在真实链路上成立。
 
 > 注：run1/run2 的产物 sha256 **不同**（真实 LLM 每次输出不同），这是真实调用的特征；
 > 结构与结论一致才是可复现性的证据。若两次 sha256 完全相同反而说明是缓存/mock。
@@ -258,6 +289,29 @@ test_delivery_gate / test_director_tongjian_render
 | 大纲→season_planner 交接 | `tests/test_storygraph_chapters.py -k season` | 1 passed |
 | git 范围 | 仅本 worktree，无 push/merge/rebase | 确认 |
 
+### 第三位接手 agent 的独立复核（2026-10-12，同样不沿用既有结论）
+
+| 复核项 | 命令 / 方法 | 实测结果 |
+|---|---|---|
+| 声称文件是否真实存在 | 逐个 `stat` 12 个新增文件 | 全部存在，非空（chapters.py 19405B、review.py 31502B…） |
+| **run1/run2 产物是否被篡改** | `sha256sum output/dramaplan_e2e/run{1,2}/**/*.json` | 与第 3 节表格**逐字一致**（6 个/次全部匹配） |
+| 新增单测 | `pytest tests/test_storygraph_chapters.py test_storygraph_review.py test_shot_budget.py test_dramaplan_rework.py test_dramaplan_llm_channel.py` | **35 passed in 0.24s** |
+| 旧测试回归（20 个文件一次跑） | `pytest test_storygraph test_shortdrama_* test_shot_preparation test_script2video_kernel test_season_planner test_season_dispatch test_director test_director_verdict test_shot_ir test_pipeline test_tasks test_zerolines test_cost test_nim_caller test_shot_scorecard test_creative_orchestration test_h3_shot_discipline test_pipeline_degradation test_delivery_gate test_director_tongjian_render` | **317 passed, 0 failed in 55.91s** |
+| 剩余集成测试 | `pytest tests/test_director_pipeline_orchestrator_integration.py` | **5 passed** |
+| 3O v3 lint | `scripts/ci/run_3o_v3_lint.py` | `3O_V3_LINT=FAIL`，失败清单仍是 `check_no_sibling_call / check_omodul_signature / check_enabled_pillars / check_oprim_keyword_only` —— 与基线**逐字相同**，新增失败 0 |
+| E2E 路径造假分支 | `rg -i "mock\|placeholder\|dummy\|fake\|stub\|solid.?color\|hardcod"` 于 6 个新文件 | **0 命中** |
+| qa.passed 是否手写 | 读 `scripts/e2e/dramaplan_e2e.py:199` | `qa["passed"] = all(v for k,v in qa.items() if isinstance(v,bool) and k!="passed")` —— 纯计算 |
+| 未改上游包 | `find -L site-packages/{oskill,oprim,omodul} -newermt 2026-10-11 -type f \| wc -l` | **0**；`git diff --name-only 98e216af HEAD \| grep -c site-packages` → **0** |
+| 新增依赖 | 未执行任何 pip install | **0** |
+| bug1 是否真接线（而非只有工具函数+单测） | 读 `hevi/pipeline/longvideo_orchestrator.py:1104-1157` | 真在 `_counting_shot_gen_fn` 里调用 `shot_budget_per_chapter` + `fit_shot_plans_to_budget`，且门控正确（非 short、非 `_locked_override`、`target_duration_s>0`） |
+| bug2 是否真接线 | `rg "rework_consistency_floor\|full_rework" hevi/tasks/task_service.py hevi/director/{editor,agent}.py` | `task_service.py:1796-1800` 透传阈值与 `full_rework` 到 editor，`editor.review` 消费 |
+| 改测试是否在放水 | `git diff 98e216af HEAD -- tests/test_director.py` | 仅 `0.55 → 0.30` 一个数值；关键断言 `svc.regen_calls == [[1]]`（只返工镜头 1）与 `delivered is True` **原样保留** —— 修复若失效该用例仍会红 |
+| 是否可能触发付费 `qwen_cloud` | `FREE_CHANNEL_ORDER = (nim, omniroute_free, opencode, teamo_free, ollama, default)`；实测 `ProviderRegistry.get().llm("default")` | 通道表**无任何付费端点**；`default` 实测抛 `ProviderNotFoundError` → `available_channels()` 自动排除它，`auto` 模式**不可能**落到付费端点；`resolve_free_llm` 全不可用时抛异常而非静默降级付费 |
+| 新增依赖 / 推分支 | — | 无 push、无 merge、无 rebase |
+
+> 结论：第三位接手 agent **未发现前任结论造假或代码缺陷**；报告中的每一条数字均被独立复现。
+> 唯一新增事实是本节的 run3（第三次真实 E2E），已把产物入库。
+
 ---
 
 ## 6. Clean-room 声明
@@ -303,5 +357,12 @@ Jellyfish 的“镜头先准备再生成、返工只针对失败镜头”思路�
    脚本实测计算的 `qa.json`。审核方重算命令见第 3 节。
 8. **`output/` 在 .gitignore 内**：run1/run2 产物已用 `git add -f` 强制入库作为证据
    （前任报告写了“已入库”，接手时发现实际未 add，已补齐）。
-9. **run1 与 run2 产物 sha256 不同**：真实 LLM 每次输出不同所致，非不可复现；
-   结构与结论（3 章/7 事件/rounds=[2,1,1]/qa passed）两次一致。
+9. **run1 / run2 / run3 产物 sha256 两两不同**：真实 LLM 每次输出不同所致，非不可复现；
+   结构与结论（3 章 / 7 事件 / rounds=[2,1,1] / qa passed）三次一致。
+   反过来，若三次 sha256 完全相同反而说明是缓存或 mock。
+10. **`free_llm` 的 `default` 通道是环境相关的**：它是 `FREE_CHANNEL_ORDER` 的最后一位兜底，
+    取自 `obase.provider_registry` 的 `llm("default")`。**本机实测未注册**（抛
+    `ProviderNotFoundError`），因此 `auto` 模式不会走到它；但若将来某环境把 `default`
+    注册成付费 provider，`auto` 就会命中付费端点。严谨做法是显式配置
+    `settings.dramaplan_llm_channel`（短剧规划默认 `auto`，可显式设为 `nim`）而不是依赖 `auto`。
+    E2E 与单测都显式传 `--channel nim`，不受此影响。
