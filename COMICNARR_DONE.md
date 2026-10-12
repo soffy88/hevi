@@ -173,11 +173,11 @@ nohup setsid .venv/bin/python scripts/e2e/comicnarr_e2e.py > e2e.log 2>&1 &
 - **字幕文件**：`output/comicnarr_e2e/story1_cat_knock/subtitles.srt`、`subtitles.ass`
 - **脚本数据**：`output/comicnarr_e2e/story1_cat_knock/script.json`
 - **实测 QA**：`output/comicnarr_e2e/story1_cat_knock/qa.json`（mean_volume: -19.0 dB，within-shot motion: 39.25，OCR 相似度 1.0/1.0）
-- **性能记录**：`output/comicnarr_e2e/story1_cat_knock/record.json`（生成总耗时: 254.7s）
+- **性能记录**：`output/comicnarr_e2e/story1_cat_knock/record.json`（生成总耗时: 243.36s）
 
 #### 2. Story 2: `output/comicnarr_e2e/story2_cuozhi_manga/`
-- **成片 MP4**：`output/comicnarr_e2e/story2_cuozhi_manga/final.mp4` (大小: 16,011,879 字节)
-  - SHA256: `89488cc1558d233a6331e40d0d4afe53...`
+- **成片 MP4**：`output/comicnarr_e2e/story2_cuozhi_manga/final.mp4` (大小: 16,022,810 字节)
+  - SHA256: `97d1c32ec9ed173e54b0fc85da375a29...`
   - 编码：H.264 / AAC 立体声 44100Hz
   - 实测时长：60.77 秒（严格在 45–75 秒要求内）
 - **Contact Sheet**：`output/comicnarr_e2e/story2_cuozhi_manga/contact_sheet.jpg`
@@ -185,11 +185,11 @@ nohup setsid .venv/bin/python scripts/e2e/comicnarr_e2e.py > e2e.log 2>&1 &
 - **字幕文件**：`output/comicnarr_e2e/story2_cuozhi_manga/subtitles.srt`、`subtitles.ass`
 - **脚本数据**：`output/comicnarr_e2e/story2_cuozhi_manga/script.json`
 - **实测 QA**：`output/comicnarr_e2e/story2_cuozhi_manga/qa.json`（mean_volume: -19.9 dB，within-shot motion: 62.1，OCR 相似度 0.9804/0.9982）
-- **性能记录**：`output/comicnarr_e2e/story2_cuozhi_manga/record.json`（生成总耗时: 380.94s）
+- **性能记录**：`output/comicnarr_e2e/story2_cuozhi_manga/record.json`（生成总耗时: 246.85s）
 
 #### 3. Story 3: `output/comicnarr_e2e/story3_sanguo_guofeng/`
-- **成片 MP4**：`output/comicnarr_e2e/story3_sanguo_guofeng/final.mp4` (大小: 9,726,308 字节)
-  - SHA256: `6aa1dcb1bfcf25100b871758781627f7...`
+- **成片 MP4**：`output/comicnarr_e2e/story3_sanguo_guofeng/final.mp4` (大小: 9,726,372 字节)
+  - SHA256: `09277c29ecc4b30d793e0d956fe16c76...`
   - 编码：H.264 / AAC 立体声 44100Hz
   - 实测时长：60.42 秒（严格在 45–75 秒要求内）
 - **Contact Sheet**：`output/comicnarr_e2e/story3_sanguo_guofeng/contact_sheet.jpg`
@@ -197,7 +197,7 @@ nohup setsid .venv/bin/python scripts/e2e/comicnarr_e2e.py > e2e.log 2>&1 &
 - **字幕文件**：`output/comicnarr_e2e/story3_sanguo_guofeng/subtitles.srt`、`subtitles.ass`
 - **脚本数据**：`output/comicnarr_e2e/story3_sanguo_guofeng/script.json`
 - **实测 QA**：`output/comicnarr_e2e/story3_sanguo_guofeng/qa.json`（mean_volume: -19.4 dB，within-shot motion: 23.94，OCR 相似度 0.9565/0.9943）
-- **性能记录**：`output/comicnarr_e2e/story3_sanguo_guofeng/record.json`（生成总耗时: 266.86s）
+- **性能记录**：`output/comicnarr_e2e/story3_sanguo_guofeng/record.json`（生成总耗时: 450.01s）
 
 ### 文本完整性验证（实测）
 - SRT 拼接（去掉换行）== 规则兜底脚本全文：Story1/2/3 均逐字匹配。
