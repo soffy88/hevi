@@ -26,18 +26,26 @@ logger = logging.getLogger(__name__)
 # Domain translation dictionary for comic and graphic novel visual elements.
 # Order matters: earlier entries are emitted first in the prompt.
 _COMIC_KEYWORD_MAP: list[tuple[re.Pattern[str], str]] = [
-    # --- Props / actions first (must dominate the prompt) ---
-    (re.compile(r"水杯|杯子"), "clear glass drinking cup on a wooden desk"),
-    (re.compile(r"摔碎|打碎|应声落地|落地"), "shattering glass with splashing water and motion lines"),
-    (re.compile(r"盯着|凝视|注视|看着"), "staring intently at the object in front"),
-    (re.compile(r"书桌|桌沿|桌面|书案|桌案"), "wooden study desk, clean indoor room"),
-    (re.compile(r"爪子|肉垫"), "soft fluffy paws"),
-    (re.compile(r"推倒|推|拨弄"), "paw playfully nudging an object off the table"),
-    (re.compile(r"玩具|纸团|笔筒|铅笔"), "small desk toy and rolling crumpled paper ball"),
-    (re.compile(r"探出|张望|低头"), "peeking head curiously downward over the edge"),
-    (re.compile(r"主人|惊呼|跑进"), "surprised owner standing in the doorway"),
-    (re.compile(r"阳光|客厅|收纳|封闭柜"), "sunlight streaming into a tidy living room"),
-    (re.compile(r"捕食|猎物|本能|扑击"), "focused predatory hunting instinct, dilated pupils"),
+    # --- Props / actions first (concrete props, repeated for reinforcement, framing specified) ---
+    (re.compile(r"水杯|杯子"), "clear glass drinking water cup on desk, transparent drinking glass cup, medium shot showing desk and glass cup"),
+    (re.compile(r"摔碎|打碎|应声落地|落地"), "shattered broken glass cup in pieces on wooden floor, splashing water puddle on ground, high angle shot looking down at broken glass on floor"),
+    (re.compile(r"笔筒"), "stationary pen holder pencil cup on desk, desk organizer with pens and pencils, close-up of pen holder and cat paw"),
+    (re.compile(r"铅笔"), "yellow wooden pencil rolling on wooden desk, rolling pencil falling off desk edge, pencil on desk"),
+    (re.compile(r"纸团"), "crumpled white paper ball on wooden desk, crumpled paper ball toy, cat batting paper ball on desk"),
+    (re.compile(r"木头.*玩具|木头小玩具"), "small wooden block toy sliding on desk, wooden toy block, medium shot on table"),
+    (re.compile(r"抓板|猫抓板"), "sisal cat scratching board on sunny living room floor, cat scratcher mat, small pet toys"),
+    (re.compile(r"封闭柜|收纳|带玻璃门"), "tidy study desk and closed glass-door display cabinet, fragile glass items stored safely inside closed cabinet, clean neat room interior, no pets"),
+    (re.compile(r"主人|惊呼|跑进"), "surprised human person owner entering room with shocked expression, human owner standing in doorway, wide shot of living room"),
+    (re.compile(r"扑击|专注扑击|紧绷"), "cat crouched low in hunting pounce pose, predatory stalking posture, full body on desk"),
+    (re.compile(r"肉垫|爪子"), "fluffy cat paw and soft pink toe beans, detailed paw nudging object on desk"),
+    (re.compile(r"推倒|推|拨弄"), "paw playfully nudging an object off table edge, action shot"),
+    (re.compile(r"盯着|凝视|注视|看着"), "staring intently at the object on desk"),
+    (re.compile(r"探出|张望|低头"), "peeking head curiously downward over desk edge"),
+    (re.compile(r"书桌|桌沿|桌面|书案|桌案"), "wooden study desk surface, clean indoor room"),
+    (re.compile(r"书架|蹲坐"), "cat sitting beside wooden bookshelf, books on shelf, medium shot"),
+    (re.compile(r"阳光|客厅"), "warm sunlight streaming into a cozy living room"),
+    (re.compile(r"玩具"), "small pet toy on desk surface"),
+    (re.compile(r"捕食|猎物|本能"), "focused predatory hunting instinct, wide eyes"),
     # --- Classical Chinese story ---
     (re.compile(r"宫廷|宣德|殿堂|金碧辉煌"), "ancient Ming dynasty imperial palace hall, incense smoke"),
     (re.compile(r"官员|呈送"), "Ming dynasty court officials in ceremonial robes"),
@@ -165,7 +173,15 @@ def build_scene_prompt(
     prompt_parts: list[str] = list(scene_tokens)
 
     if character_desc_en and _scene_features_character(clean_desc, character_tokens):
-        prompt_parts.append(character_desc_en.strip())
+        if any(h in clean_desc for h in ("主人", "老妇", "巫婆", "官员", "周瑜")):
+            if "cat" in character_desc_en.lower():
+                prompt_parts.append("cute cat sitting on desk in background")
+            elif "scholar" in character_desc_en.lower():
+                prompt_parts.append("scholar in background")
+            else:
+                prompt_parts.append(character_desc_en.strip())
+        else:
+            prompt_parts.append(character_desc_en.strip())
 
     if style.style_tokens:
         prompt_parts.append(style.style_tokens.strip())

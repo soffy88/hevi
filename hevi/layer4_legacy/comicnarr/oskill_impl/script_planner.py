@@ -34,17 +34,17 @@ FALLBACK_SCRIPTS: dict[str, dict[str, Any]] = {
     "cat_knock": {
         "title": "为什么猫总爱把东西推下桌？",
         "character_desc_zh": "一只圆脸大眼的金渐层虎斑猫，毛茸茸的白色手套爪子，表情好奇又机智",
-        "character_desc_en": "cute chubby orange tabby cat with white paws and an expressive curious face",
+        "character_desc_en": "cute chubby orange tabby cat with white paws, medium shot on desk",
         "character_tokens": ("橘猫", "猫咪", "虎斑猫"),
         "scenes": [
             ("你一定见过这样的场景：猫咪坐在桌边，盯着杯子，然后伸出一只小爪子。", "一只胖乎乎的橘猫坐在整洁的书桌边缘，眼睛紧紧盯着一只玻璃水杯"),
             ("啪嗒一声，水杯应声落地，而它却一脸无辜地低头观望。", "水杯在木地板上摔碎水花飞溅，橘猫从桌沿探出小脑袋好奇向下张望"),
             ("其实，猫咪推倒东西并不是为了恶作剧，这背后有深层的动物本能。", "橘猫蹲坐在书架旁，耳朵微微竖起，眼神中充满智慧和野性好奇"),
-            ("首先，在野外生存中，猫的肉垫极其敏感，触碰物体是在测试猎物。", "橘猫特写，粉嫩的小肉垫轻轻伸出，试探性地拨弄桌上的小笔筒"),
+            ("首先，在野外生存中，猫的肉垫极其敏感，触碰物体是在测试猎物。", "书桌中景，粉嫩的小肉垫轻轻伸出，试探性地拨弄桌上的笔筒与文具"),
             ("轻轻一推，如果物体会动或者会逃跑，就意味着那可能是活物。", "桌上的木头小玩具向前滑动，橘猫全身紧绷摆出专注扑击姿势"),
-            ("其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈的感官刺激。", "橘猫歪着小脑袋，大眼睛眨巴着，仔细观察铅笔顺着桌沿滚落"),
-            ("这就像人类按动圆珠笔或者捏泡泡纸一样，给猫咪带来了纯粹的探索快感。", "阳光洒在书桌上，橘猫开心地用两只前爪轻快玩弄着纸团"),
-            ("第三个原因更加直接：猫咪发现，只要东西掉地，主人就会立刻冲过来。", "主人慌慌张张跑进房间惊呼，橘猫坐在桌上淡定地摇晃着毛茸茸尾巴"),
+            ("其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈的感官刺激。", "橘猫坐在桌边，仔细观察黄色铅笔顺着桌沿滚落"),
+            ("这就像人类按动圆珠笔或者捏泡泡纸一样，给猫咪带来了纯粹的探索快感。", "阳光洒在书桌上，橘猫开心地用两只前爪轻快玩弄着白色纸团"),
+            ("第三个原因更加直接：猫咪发现，只要东西掉地，主人就会立刻冲过去。", "主人慌慌张张跑进房间惊呼，橘猫坐在桌上淡定地摇晃着毛茸茸尾巴"),
             ("对于一只觉得无聊的猫来说，哪怕是被你责备两句，也是极好的互动。", "橘猫仰着圆圆的脸蛋看着主人，发出软萌的喵喵叫声"),
             ("如果你想保住桌上的水杯，最有效的办法绝不是对它发脾气。", "书桌特写，各种贵重易碎物品被整齐地收纳进了带玻璃门的封闭柜子"),
             ("多给它准备抓板和漏食玩具，把桌面易碎品收起来，才能实现人猫和平共处。", "温暖明亮的客厅里，橘猫惬意地趴在猫抓板上晒太阳，旁边放着小玩具"),
@@ -92,72 +92,57 @@ FALLBACK_SCRIPTS: dict[str, dict[str, Any]] = {
 }
 
 
-def _finalize_sentence(clause: str) -> str:
-    """Trim dangling clause punctuation and guarantee a terminal mark."""
-    c = (clause or "").strip().rstrip(_CLAUSE_BREAK).strip()
-    if not c:
-        return ""
-    if c[-1] not in _TERMINAL_PUNCT:
-        c += "。"
-    return c
+def _split_text_to_sentences(text: str, max_chars: int | None = None) -> list[str]:
+    """Split text into complete sentences based on terminal punctuation.
 
-
-def _split_text_to_sentences(text: str, max_chars: int = 30) -> list[str]:
-    """Split text into complete sentences <= *max_chars* without losing text.
-
-    Splits first on sentence-final punctuation (preserved), then breaks any
-    still-too-long sentence at comma/clause boundaries.  Every returned item
-    ends with sentence-final punctuation; no character is dropped (only a
-    trailing comma may be normalised to a full stop).
+    Does NOT split on commas or clause breaks. Never introduces a terminal
+    period '。' that was not present in the original text.
     """
     if not text:
         return []
-    raw = str(text)
-    # Keep terminal punctuation attached to its sentence.
-    segments = re.findall(rf"[^{_TERMINAL_PUNCT}\n]+[{_TERMINAL_PUNCT}]*", raw)
-    sentences: list[str] = []
-
-    for seg in segments:
-        seg = seg.strip()
-        if not seg:
-            continue
-        if len(seg) <= max_chars:
-            finalized = _finalize_sentence(seg)
-            if len(finalized) >= 2:
-                sentences.append(finalized)
-            continue
-
-        clauses = re.findall(rf"[^{_CLAUSE_BREAK}]+[{_CLAUSE_BREAK}]*", seg)
-        cur = ""
-        for clause in clauses:
-            if not clause.strip():
-                continue
-            if cur and len(cur) + len(clause) > max_chars:
-                finalized = _finalize_sentence(cur)
-                if len(finalized) >= 2:
-                    sentences.append(finalized)
-                cur = clause
-            else:
-                cur += clause
-        if cur.strip():
-            finalized = _finalize_sentence(cur)
-            if len(finalized) >= 2:
-                sentences.append(finalized)
-
-    return sentences
+    raw = str(text).strip()
+    if not raw:
+        return []
+    pattern = rf"[^{_TERMINAL_PUNCT}\n]+(?:[{_TERMINAL_PUNCT}]+|$)"
+    parts = [m.group(0).strip() for m in re.finditer(pattern, raw) if m.group(0).strip()]
+    return parts
 
 
 def _split_long_sentence(narration: str, max_chars: int = 30, max_parts: int = 2) -> list[str]:
-    """Split one narration into at most *max_parts* complete sentences."""
-    parts = _split_text_to_sentences(narration, max_chars=max_chars)
-    if not parts:
-        return []
-    if len(parts) <= max_parts:
-        return parts
-    # Merge overflow back into the last kept part (never drop characters).
-    kept = parts[: max_parts - 1]
-    kept.append("".join(parts[max_parts - 1 :]))
-    return kept
+    """Return complete sentences from a narration text without clause splitting."""
+    parts = _split_text_to_sentences(narration)
+    return parts if parts else ([narration.strip()] if narration.strip() else [])
+
+
+def _pack_scenes_under_limit(scenes: list[ComicScene], max_scenes: int) -> list[ComicScene]:
+    """Pack scenes into at most *max_scenes* without losing any sentence content."""
+    if len(scenes) <= max_scenes:
+        for idx, sc in enumerate(scenes):
+            sc.index = idx
+        return scenes
+
+    packed: list[ComicScene] = []
+    n_total = len(scenes)
+    for k in range(max_scenes):
+        start = k * n_total // max_scenes
+        end = (k + 1) * n_total // max_scenes
+        bucket = scenes[start:end]
+        if not bucket:
+            continue
+        first = bucket[0]
+        merged_narr = "".join(s.narration for s in bucket)
+        merged_vis = "，".join(s.visual_desc for s in bucket)
+        packed.append(
+            ComicScene(
+                index=len(packed),
+                narration=merged_narr,
+                visual_desc=merged_vis,
+                prompt_en="",
+                negative_prompt=first.negative_prompt,
+                seed=first.seed,
+            )
+        )
+    return packed
 
 
 def _derive_character_tokens(character_desc_zh: str) -> tuple[str, ...]:
@@ -280,23 +265,20 @@ def generate_comic_script(
         title = t_clean or provided[0][:20]
         char_zh = "故事主人公，生动鲜明的外貌"
         char_en = "main character with distinctive iconic comic attire"
-        scenes: list[ComicScene] = []
+        raw_scenes: list[ComicScene] = []
         for line in provided:
-            for sentence in _split_text_to_sentences(line, max_chars=max_chars):
-                scenes.append(
+            for sentence in _split_text_to_sentences(line):
+                raw_scenes.append(
                     ComicScene(
-                        index=len(scenes),
+                        index=len(raw_scenes),
                         narration=sentence,
                         visual_desc=sentence,
                         prompt_en="",
                         negative_prompt=style.negative_prompt,
-                        seed=base_seed + len(scenes) * 17,
+                        seed=base_seed + len(raw_scenes) * 17,
                     )
                 )
-                if len(scenes) >= max_scenes:
-                    break
-            if len(scenes) >= max_scenes:
-                break
+        scenes = _pack_scenes_under_limit(raw_scenes, max_scenes)
         return (
             ComicScript(
                 title=title,
@@ -316,27 +298,24 @@ def generate_comic_script(
         title = str(llm_data.get("title") or t_clean)
         char_zh = str(llm_data.get("character_desc_zh") or "故事主角")
         char_en = str(llm_data.get("character_desc_en") or "iconic character in comic style")
-        scenes = []
+        raw_scenes = []
         for item in llm_data.get("scenes", []):
             narr = str(item.get("narration") or "").strip()
             vis = str(item.get("visual_desc") or narr).strip()
             if not narr:
                 continue
-            for sentence in _split_long_sentence(narr, max_chars=max_chars, max_parts=2):
-                if len(scenes) >= max_scenes:
-                    break
-                scenes.append(
+            for sentence in _split_long_sentence(narr):
+                raw_scenes.append(
                     ComicScene(
-                        index=len(scenes),
+                        index=len(raw_scenes),
                         narration=sentence,
                         visual_desc=vis,
                         prompt_en="",
                         negative_prompt=style.negative_prompt,
-                        seed=base_seed + len(scenes) * 17,
+                        seed=base_seed + len(raw_scenes) * 17,
                     )
                 )
-            if len(scenes) >= max_scenes:
-                break
+        scenes = _pack_scenes_under_limit(raw_scenes, max_scenes)
         if len(scenes) >= 6:
             return (
                 ComicScript(
@@ -362,14 +341,14 @@ def generate_comic_script(
     elif any(k in t_clean for k in ("聊斋", "促织", "道士", "故事", "书生", "古代", "古")):
         tmpl = FALLBACK_SCRIPTS["classical_story"]
     else:
-        sentences = _split_text_to_sentences(t_clean, max_chars=max_chars)
+        sentences = _split_text_to_sentences(t_clean)
         if len(sentences) >= 6:
             tmpl = {
                 "title": sentences[0][:20],
                 "character_desc_zh": "核心叙述角色",
                 "character_desc_en": "expressive animated protagonist character",
                 "character_tokens": (),
-                "scenes": [(s, s) for s in sentences[:max_scenes]],
+                "scenes": [(s, s) for s in sentences],
             }
         else:
             tmpl = FALLBACK_SCRIPTS["cat_knock"]
@@ -378,24 +357,20 @@ def generate_comic_script(
     char_zh = tmpl["character_desc_zh"]
     char_en = tmpl["character_desc_en"]
     char_tokens = tuple(tmpl.get("character_tokens") or _derive_character_tokens(char_zh))
-    scenes = []
+    raw_scenes = []
     for narr, vis in tmpl["scenes"]:
-        # Split any over-long curated sentence into complete sentences.
-        for sentence in _split_text_to_sentences(narr, max_chars=max_chars):
-            if len(scenes) >= max_scenes:
-                break
-            scenes.append(
+        for sentence in _split_text_to_sentences(narr):
+            raw_scenes.append(
                 ComicScene(
-                    index=len(scenes),
+                    index=len(raw_scenes),
                     narration=sentence,
                     visual_desc=vis,
                     prompt_en="",
                     negative_prompt=style.negative_prompt,
-                    seed=base_seed + len(scenes) * 17,
+                    seed=base_seed + len(raw_scenes) * 17,
                 )
             )
-        if len(scenes) >= max_scenes:
-            break
+    scenes = _pack_scenes_under_limit(raw_scenes, max_scenes)
 
     return (
         ComicScript(

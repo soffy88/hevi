@@ -161,6 +161,22 @@ def comic_narration_workflow(
         json.dumps(script.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
+    # Clean stale shot files from previous runs with higher scene counts
+    for stale in frames_dir.glob("shot_*_kf.png"):
+        try:
+            s_idx = int(stale.stem.split("_")[1])
+            if s_idx >= len(script.scenes):
+                stale.unlink(missing_ok=True)
+        except Exception:
+            pass
+    for stale in clips_dir.glob("shot_*.mp4"):
+        try:
+            s_idx = int(stale.stem.split("_")[1])
+            if s_idx >= len(script.scenes):
+                stale.unlink(missing_ok=True)
+        except Exception:
+            pass
+
     # 4. Step: Voiceover Audio (Piper TTS) with content-hash cache
     sentence_audio_paths: list[Path] = []
     sentence_durations: list[float] = []
@@ -578,8 +594,9 @@ def comic_narration_workflow(
 
     # Keyframe SHA256 hashes (verify distinctness)
     kf_hashes = {}
-    for p in sorted(frames_dir.glob("*_kf.png")):
-        kf_hashes[p.name] = sha256(p)
+    for scene in script.scenes:
+        if scene.image_path and Path(scene.image_path).is_file():
+            kf_hashes[Path(scene.image_path).name] = sha256(Path(scene.image_path))
 
     unique_kf_hashes = len(set(kf_hashes.values())) == len(kf_hashes) and len(kf_hashes) > 0
     final_sha = sha256(final_mp4)

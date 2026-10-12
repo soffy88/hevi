@@ -83,7 +83,7 @@ def run_story(
     logger.info(
         "Audio Mean Volume: %.1f dB | Motion Diff: %.2f | Distinct Keyframes: %s",
         qa.get("audio", {}).get("mean_volume_db", -99),
-        qa.get("motion", {}).get("mean_frame_difference", 0),
+        qa.get("motion", {}).get("mean_within_shot_difference", 0),
         qa.get("all_keyframes_distinct", False),
     )
 

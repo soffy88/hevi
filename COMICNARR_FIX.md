@@ -1,25 +1,28 @@
-# COMICNARR 返工 r2（独立核验 2026-10-11 21:35 CST，实看成片抽帧）
+# COMICNARR 返工 r3（第 2 轮独立核验 2026-10-12 08:40 CST，实看 3 条成片逐镜头抽帧）
 
-核验对象：feat/comicnarr-3o @ ef2c7691（基线 98e216af）。
-已确认通过：两条成片 1080x1920@25fps、H.264+AAC 立体声、sha256 与 qa.json 一致；engine=sdturbo_cpu（非 fake/cloud）；关键帧确为 SD-Turbo 漫画风插画；Ken Burns 有缓慢推拉；未改 .venv site-packages；未复制 Pixelle 代码；无 mock 实现。
+核验对象：feat/comicnarr-3o @ 5a971e1a（基线 98e216af），E2E 产物 output/comicnarr_e2e/ 于 2026-10-12 00:07–00:31 UTC 重新出片。
 
-## 必须修复（全部做完才算交付）
-1. **旁白/字幕被硬截断丢字（最严重）**：`script_planner.py` 第 173/199/242 行 `narr[:30]` 硬切。实测 22 句里 8 句断在半个词：story1 #0「…伸出一只小」#5「…强烈的感」#6「…纯粹的探索」#7「…立刻冲过」#8「…极好的互动」#10「…人猫和」；story2 #1「…采办之」#4「…奇异的促织」。TTS 也念的是半句。删除所有硬切：超长句按标点/语义拆成两句（或两个镜头），字幕超过一行宽度时自动换行（ASS \N），一个字都不能丢。加单测：所有 narration 必须以句末标点（。！？…）结尾，且拼接后等于原输入文本（texts 模式）。
-2. **manga_bw 字幕完全不可见**：story2 的 ASS ComicSub 为 PrimaryColour=&H00000000（黑字）+ BorderStyle=3 + OutlineColour=&H00000000（黑框）→ 成片底部只有一条黑杠，抽帧 6/6 全部无可读字。改为黑字白框或白字黑框，确保字色与框色反差。
-3. **QA 门禁加字幕可读性检查**：qa.json passed=True 没抓到 #1/#2。新增真实门禁：每个镜头中点抽帧，裁字幕区域跑本地 OCR（如 rapidocr，已在共享 venv；没有就做字幕区亮度对比度检测），OCR 文字与该句 narration 的相似度须 ≥0.6，否则 passed=False。不得新装包到 .venv。
-4. **manga_bw 画面不是黑白**：story2 多个镜头大面积绿色/青色长袍。做真正的黑白漫画后处理（灰度 + 网点/阈值），或在 prompt/CFG 层确保单色；成片抽帧必须是黑白。
-5. **comic_color 字幕太小**：36–40px/1080 宽在手机上几乎看不清，改为 ≥52px，粗体，描边，且不压主体（MarginV 适当）。
-6. **画面与句子相符度**：story1 #0「盯着杯子」画面无杯子无桌子，只有猫脸大特写；绿色宝石/绿色圆球反复出现（SD 把 green eyes 渗到物体）。story2 #0「宫廷殿堂/官员呈送蟋蟀」画面只有一个书生。主体 prompt 里主角 tokens 不要压过场景/动作：按 visual_desc 决定是否出现主角，关键道具（杯子、桌子、蟋蟀、官员）放在 prompt 前部；去掉主角 tokens 里的 "emerald green eyes" 之类易渗色描述或降权。重出片后抽帧亲眼核对每镜头与句子对应。
-7. **风格预设抽成可共用配置（用户 2026-10-11 要求）**：用户要求漫剧类默认用非写实的国风动漫/漫画风，dramakey 将与 comicnarr 共用风格预设。现在预设硬编码在 `hevi/layer4_legacy/comicnarr/oprim_impl/templates.py` 的 `COMIC_STYLES` 里（comicnarr 私有）。请：
-   - 把风格预设迁到共享关键帧层，例如 `hevi/layer4_legacy/keyframe/oprim_impl/style_presets.py`（或 `hevi/layer4_legacy/keyframe/style_presets.yaml` + 加载器），对外导出 `STYLE_PRESETS` / `get_style_preset(name)`，字段至少含 style_tokens、negative_prompt、subtitle_style、bgm_mood、transition、postprocess（如 manga_bw 的灰度网点）。
-   - comicnarr 的 templates.py 改为从共享模块导入（保留向后兼容名 COMIC_STYLES/get_style_template）。
-   - 新增 `guofeng_anime` 预设（国风动漫/国漫插画，非写实，negative 含 photorealistic/photo/3d/realistic），并作为 comic_narration 产线默认风格；comic_color、manga_bw 保留。
-   - 在 docs/KEYFRAME-ENGINE.md 写明共享预设位置与用法，供 dramakey 直接复用。不要改 hevi-dramakey 工作区。
-8. **llm_channel=deterministic_rule_fallback**：先探测本地 Omniroute 免费通道（:20128）是否可用，可用则走它；不可用保留兜底，并在 DONE 里如实写明本次是规则兜底。
-9. qa.json 的 motion 指标（6 个采样点相邻差 ~127）实际是跨镜头差异，不能证明 Ken Burns 运动；改为同一镜头内相隔 1s 两帧的差异（应 >0 且远小于跨镜头差），分别记录。
+## 已确认修好（不要回退）
+- 三条成片 1080x1920@25fps、H.264 + AAC 44.1k 立体声、音量 mean -18.9/-19.6/-19.1 dB；sha256 与 qa.json 一致。
+- `narr[:30]` 硬切已删除；manga_bw 字幕改白字黑框，清晰可读；comic_color/guofeng 字幕 56px 粗体白字黑描边，清晰。
+- manga_bw 真黑白 + 网点；共享预设 `hevi/layer4_legacy/keyframe/oprim_impl/style_presets.py`（guofeng_anime 为默认）、templates.py 兼容层、docs 已写。
+- QA 新增 OCR 字幕可读性 / 同镜头内 1s 运动 / 灰度门禁；story3（草船借箭, guofeng_anime）已出片。
+- tests/test_comicnarr_pipeline.py + tests/test_zerolines.py 30 passed；3O lint 仍只有基线 4 项（无新增）。
+
+## 必须修复
+1. **story1 结尾两句整句丢失（内容丢失）**：规则兜底脚本 story1 共 11 句，结尾「如果你想保住桌上的水杯，最有效的办法绝不是对它发脾气。」「多给它准备抓板和漏食玩具，把桌面易碎品收起来，才能实现人猫和平共处。」在成片/SRT 中完全没有——拆句后镜头数超过 max_scenes=14 被 `break` 截掉，故事收尾（结论/建议）丢了。要求：拆句后若超过镜头上限，**不得丢句**——改为把一个原句的多个分句放进同一个镜头（同镜头内多条字幕/\N 换行），或提高上限/合并镜头，保证成片旁白拼接 == 脚本全文。加单测：长句脚本（≥11 句、多句 >30 字）经 generate_comic_script 后所有原句内容都在，场景数 ≤ max_scenes。
+2. **逗号处硬拆再补「。」造成半句**：`_split_text_to_sentences` 在逗号处切开并由 `_finalize_sentence` 补句号，story1 出现语法上的半句（SRT 序号）、TTS 也按句末语调念：
+   - #7「其次，高处跌落产生的声音和运动轨迹。」（只有主语）+ #8「对猫的神经系统是强烈的感官刺激。」
+   - #11「第三个原因更加直接：猫咪发现，只要东西掉地。」+ #12「主人就会立刻冲过来。」
+   - #13「对于一只觉得无聊的猫来说，哪怕是被你责备两句。」+ #14「也是极好的互动。」
+   - story2 SRT#3「却被里胥摊派了采办之差。」同理。
+   现在字幕已经支持 \N 自动换行，**不需要再为字幕宽度把一句话拆成两句**。要求：一个原句（以 。！？… 结尾）默认保持为一个镜头一条旁白；只有真需要拆镜头时，字幕保留原逗号（不得把「，」改成「。」），TTS 一次合成整句后按分句时间点切字幕，或两个镜头共用整句音频。单测：输出 narration 中不得出现原文没有的「。」（texts 模式与规则兜底模式都测）。
+3. **换行孤立标点**：story1 ASS 第 9 条「这就像人类按动圆珠笔或者捏泡泡纸一样\N。」——句号单独成行。换行算法需避头（。，！？、；：」』）不能落在行首，至少带前一个字一起换行。加单测。
+4. **story1 画面与句子仍大量不符**（story2/3 已明显改善）：14 镜头中约 8 个是橘猫头像/半身像，关键道具/动作缺失（按 SRT 序号）：#1「盯着杯子」无杯子；#3 杯子完好未落地；#5「肉垫拨弄笔筒」无笔筒无爪；#6「木头小玩具滑动、扑击姿势」只有猫脸；#7/#8「铅笔滚落」无铅笔；#9/#10「纸团」无；#11/#12「主人慌张跑进房间」画面无人。要求：对道具/动作类镜头，prompt 把道具和动作放最前并强化（diffusers 原生不解析 (x:1.3) 权重语法，用前置+重复关键词，或已装的 compel），主角 token 降为次要；中景/全景构图词（medium shot, full body, on desk）避免一律特写猫脸；必要时同 seed 多候选，用本地 CLIP（若共享 venv 已有 open_clip/transformers CLIP 则用，不得新装包）按 prompt 选图。重出 story1 后逐镜头核对。
+5. **COMICNARR_DONE.md 未更新/不实**：仍写「每句 ≤30 字，实测 11 句」，未写明本次三条均为 `llm_channel=deterministic_rule_fallback`（Omniroute :20128 探测不可达，curl 返回 000）。请如实更新：llm 通道、共享预设路径、每条成片时长/镜头数/sha256、已知局限。
 
 ## 验收
-- 重新出片：story1（comic_color）、story2（manga_bw）、新增 story3（guofeng_anime，例如聊斋或三国小故事），每条 45–75s、1080x1920、有音轨。
-- 每条抽 6 帧 contact sheet 亲眼看：每帧字幕清晰可读且无截断、风格正确（manga_bw 为黑白）、画面对得上句子。
-- 跑 tests/test_comicnarr_pipeline.py、tests/test_zerolines.py、scripts/ci/run_3o_v3_lint.py（基线 4 项 .venv 既有失败，不得新增）。
-- 更新 qa.json / COMICNARR_DONE.md（如实写 llm 通道、共享预设路径），git commit。禁止 mock，禁止新装包，禁止改 .venv。
+- 重新出 story1（必须）、story2（因 #2 拆句改动需重出）、story3：1080x1920、45–75s、有音轨，qa passed。
+- SRT 拼接（去掉换行）== 规则兜底脚本全文（仅允许标点不变），无原文没有的「。」，无行首孤立标点。
+- 跑 tests/test_comicnarr_pipeline.py、tests/test_zerolines.py、scripts/ci/run_3o_v3_lint.py（基线 4 项不得新增）。
+- 更新 qa.json / COMICNARR_DONE.md，git commit。禁止 mock，禁止新装包，禁止改 .venv，禁止付费/云 API。

@@ -52,12 +52,15 @@ def build_srt_content(*, cues: list[tuple[float, float, str]]) -> str:
     return "\n".join(lines)
 
 
+_NO_LINE_START_PUNCT = set("。，！？、；：」』）”’》〉】]}>,.!?;:…")
+
+
 def wrap_subtitle_text(text: str, max_chars_per_line: int = DEFAULT_MAX_CHARS_PER_LINE) -> str:
     """Wrap a caption into lines no longer than *max_chars_per_line*.
 
-    Breaks preferentially after Chinese punctuation, otherwise hard-wraps so
-    that no character is ever dropped.  Returns ``\\N``-joined lines ready for
-    the ASS ``Dialogue`` text field.
+    Breaks preferentially after Chinese punctuation, otherwise wraps without
+    leaving isolated punctuation at line start (避头: 。，！？、；：」』 cannot
+    start a line; carry at least the preceding character over to the next line).
     """
     clean = re.sub(r"\s+", "", (text or "").strip())
     if not clean:
@@ -67,19 +70,49 @@ def wrap_subtitle_text(text: str, max_chars_per_line: int = DEFAULT_MAX_CHARS_PE
     lines: list[str] = []
     remaining = clean
     while len(remaining) > limit:
-        # Prefer to break just after punctuation within the limit window.
         window = remaining[: limit + 1]
         break_at = -1
-        for i in range(len(window) - 1, 3, -1):
+        # Prefer to break just after punctuation within the limit window.
+        for i in range(len(window), 3, -1):
             if window[i - 1] in "，。！？、；：…,.!?;:":
+                # If breaking here, remaining[i] will be the first character of next line.
+                # It cannot be in _NO_LINE_START_PUNCT!
+                if i < len(remaining) and remaining[i] in _NO_LINE_START_PUNCT:
+                    continue
                 break_at = i
                 break
+
         if break_at <= 0:
             break_at = limit
+
+        # 避头 check: if the next line would start with a forbidden punctuation,
+        # carry back so the punctuation brings at least one non-punctuation character with it.
+        if break_at < len(remaining) and remaining[break_at] in _NO_LINE_START_PUNCT:
+            cand = break_at
+            # Move left past any contiguous forbidden punctuation
+            while cand > 1 and remaining[cand] in _NO_LINE_START_PUNCT:
+                cand -= 1
+            # Move left past at least one non-punctuation character
+            if cand > 1 and remaining[cand] not in _NO_LINE_START_PUNCT:
+                cand -= 1
+            if cand >= 1:
+                break_at = cand
+            else:
+                # If we cannot move left, attach the punctuation to current line
+                while break_at < len(remaining) and remaining[break_at] in _NO_LINE_START_PUNCT:
+                    break_at += 1
+
         lines.append(remaining[:break_at])
         remaining = remaining[break_at:]
+
     if remaining:
-        lines.append(remaining)
+        if lines and all(ch in _NO_LINE_START_PUNCT for ch in remaining):
+            lines[-1] += remaining
+        elif lines and remaining[0] in _NO_LINE_START_PUNCT and len(remaining) <= 2:
+            lines[-1] += remaining
+        else:
+            lines.append(remaining)
+
     return "\\N".join(lines)
 
 

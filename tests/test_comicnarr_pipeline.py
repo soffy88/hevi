@@ -117,31 +117,41 @@ def test_shared_style_presets() -> None:
     assert get_style_preset("").name == DEFAULT_STYLE
 
 
-def test_script_sentence_split_and_char_limits() -> None:
+def test_script_sentence_split_and_preservation() -> None:
     long_text = (
         "这是一段非常非常长的文字，它超过了三十个字符的长度，我们需要把它切分成短句子。"
         "第二句也很长，包含了逗号和各种分词标志。最后一句。"
     )
-    splits = _split_text_to_sentences(long_text, max_chars=30)
-    assert len(splits) >= 3
+    splits = _split_text_to_sentences(long_text)
+    assert len(splits) == 3
     for s in splits:
-        assert len(s) <= 30
         assert s[-1] in _TERMINAL
 
-    # No character is dropped (punctuation normalisation aside).
+    # No character is dropped
     strip_punct = lambda t: re.sub(r"[^\w\u4e00-\u9fff]", "", t)  # noqa: E731
     assert "".join(strip_punct(s) for s in splits) == strip_punct(long_text)
+
+    # 1. Fallback script preserves all original sentences and scenes count <= max_scenes
+    from hevi.layer4_legacy.comicnarr.oskill_impl.script_planner import FALLBACK_SCRIPTS
 
     script, channel = generate_comic_script(topic="为什么猫总爱把东西推下桌？")
     assert channel == "deterministic_rule_fallback"
     assert 6 <= len(script.scenes) <= 14
-    for sc in script.scenes:
-        assert len(sc.narration) <= 30
-        assert sc.narration[-1] in _TERMINAL
-        assert sc.visual_desc
-    assert script.character_desc_zh
-    assert script.character_desc_en
-    assert script.character_tokens
+    assert len(script.scenes) == 11
+
+    expected_sentences = [narr for narr, _ in FALLBACK_SCRIPTS["cat_knock"]["scenes"]]
+    assert len(expected_sentences) >= 11
+    assert any(len(s) > 30 for s in expected_sentences)
+    assert "".join(sc.narration for sc in script.scenes) == "".join(expected_sentences)
+
+    # Verify story1 ending two sentences are preserved
+    assert "如果你想保住桌上的水杯" in script.scenes[-2].narration
+    assert "多给它准备抓板和漏食玩具" in script.scenes[-1].narration
+
+    # Verify no fake period '。' not in original text
+    for sc, orig in zip(script.scenes, expected_sentences, strict=True):
+        assert sc.narration.count("。") == orig.count("。")
+        assert sc.narration == orig
 
     # The third acceptance story (guofeng / Three Kingdoms) is available.
     script3, _ = generate_comic_script(topic="三国演义·草船借箭")
@@ -149,12 +159,12 @@ def test_script_sentence_split_and_char_limits() -> None:
     assert "诸葛" in script3.character_desc_zh
 
 
-def test_texts_mode_roundtrip() -> None:
+def test_texts_mode_roundtrip_and_no_fake_periods() -> None:
     lines = [
-        "第一句测试内容。",
-        "第二句测试内容。",
+        "第一句测试内容，包含逗号但不应拆成半句。",
+        "第二句测试内容，也是包含逗号的长句，长度超过三十个字而且必须保持完整意思。",
         "第三句测试内容。",
-        "第四句测试内容。",
+        "第四句测试内容，带有分句，绝不添加多余句号。",
         "第五句测试内容。",
         "第六句测试内容。",
     ]
@@ -163,8 +173,23 @@ def test_texts_mode_roundtrip() -> None:
     assert len(script.scenes) == 6
     joined = "".join(sc.narration for sc in script.scenes)
     assert joined == "".join(lines)
-    for sc in script.scenes:
-        assert sc.narration[-1] in _TERMINAL
+    for sc, orig in zip(script.scenes, lines, strict=True):
+        assert sc.narration == orig
+        # Output narration contains no '。' that was not in the original text
+        assert sc.narration.count("。") == orig.count("。")
+
+
+def test_long_script_packing_under_max_scenes() -> None:
+    # 16 long sentences (>=11 sentences, multiple >30 chars) with max_scenes=14
+    long_sentences = [
+        f"这是第{i:02d}句非常长的解说旁白内容，包含了丰富生动的上下文描述，长度明确超过三十个字。"
+        for i in range(1, 17)
+    ]
+    script, channel = generate_comic_script(topic="", raw_texts=long_sentences, max_scenes=14)
+    assert len(script.scenes) <= 14
+    # All original content is preserved without dropping characters or sentences
+    joined_narration = "".join(sc.narration for sc in script.scenes)
+    assert joined_narration == "".join(long_sentences)
 
 
 def test_prompt_builder_and_style_templates() -> None:
@@ -250,6 +275,14 @@ def test_subtitle_generation() -> None:
     ass_long = build_comic_ass(cues=[(0.0, 5.0, long_text)], bubble=False)
     assert "\\N" in ass_long
     assert wrap_subtitle_text(long_text).replace("\\N", "") == long_text
+
+    # 避头 punctuation test: no line starts with 避头标点（。，！？、；：」』）, no isolated punctuation
+    wrapped = wrap_subtitle_text("这就像人类按动圆珠笔或者捏泡泡纸一样。", max_chars_per_line=18)
+    assert "\\N。" not in wrapped
+    for part in wrapped.split("\\N"):
+        assert part, "no empty line"
+        assert part[0] not in "。，！？、；：」』）”’"
+    assert wrapped.replace("\\N", "") == "这就像人类按动圆珠笔或者捏泡泡纸一样。"
 
     # manga bubble: white text on a black box (contrasting).
     ass_bubble = build_comic_ass(cues=cues, style_name="manga_bw", bubble=True)
