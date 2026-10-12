@@ -115,3 +115,10 @@ twist 片段修复实测：`assets/mocap-clips/clips/twist.json` 共 143 帧，h
   - 9c8fb55a44639de07e4e62a48ec6f5ff0dc5469ba9a94afa8d676406e4b47feb  hf_v6-cinematic.mp4
   - 8ed17eab845824f12204d82ca753a21356ecc0fd99eb20360ffdacbea9759197  hf_v8-chalkboard.mp4
   - f424bc29e2e7a7474251a676d9952e15e66a4d4c215fd626e79859173534ce9d  hf_v8-chalkboard_whale.mp4
+
+### 补修（复核 r7 阻断，2026-10-12 21:06）
+- v4-paper 结尾展台露出上游 starter 写死的「待演绎 · 结尾」草稿戳：`styled.py` 新增 `_strip_draft_marks`，渲染前剔除 starter 场景中未被 beats.js 接管的草稿戳（保留展台与片名）；新测试 `test_v4_ending_plinth_draft_stamp_is_stripped`（真实 starter 文件）。18 passed。
+- 重渲 v4-paper（36.33s 1920x1080 aac）与 v8 whale（32.23s）；主审抽 26–31s 帧确认结尾只剩片名「为什么冬天静电多」与输入稿关键词，无草稿戳。
+- sha256：
+  - 594a6b09bfb3e7824c0cb92ebecf4922f3857adaf942ab143768e8dbc5907950  hf_v4-paper.mp4
+  - 4e69af70bc2b0732c43cc0d33d060221c00a17769ff062a6f79dc178cf6c9339  hf_v8-chalkboard_whale.mp4

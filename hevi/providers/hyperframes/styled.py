@@ -311,6 +311,7 @@ def build_film(
     beats_code = generate_beats_js(style, story)
     (project_dir / "beats.js").write_text(beats_code, encoding="utf-8")
 
+    _strip_draft_marks(project_dir)
     _stamp_durations(project_dir, story)
     _patch_puppeteer_sandbox(project_dir)
     _patch_sfxlib(project_dir)
@@ -319,6 +320,25 @@ def build_film(
     _vendor_cdn(project_dir)
     _build_sfx(project_dir, style)
     return project_dir
+
+
+
+# upstream starters ship visible draft marks (「待演绎」 stamps) on scenes the generated
+# beats.js does not take over (e.g. V4's ending plinth). They must never reach a film.
+_DRAFT_STAMP_RE = re.compile(r"""\+?\s*'<span class="pl-st"><span>待演绎[^<]*</span></span>'""")
+
+
+def _strip_draft_marks(project_dir: Path) -> int:
+    n = 0
+    for f in [project_dir / "index.html", *sorted((project_dir / "lib").glob("*.js"))]:
+        if not f.is_file():
+            continue
+        text = f.read_text(encoding="utf-8")
+        new, k = _DRAFT_STAMP_RE.subn("", text)
+        if k:
+            f.write_text(new, encoding="utf-8")
+            n += k
+    return n
 
 
 def render_film(

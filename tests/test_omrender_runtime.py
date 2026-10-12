@@ -104,3 +104,18 @@ def test_binary_finder_without_default_path(monkeypatch: pytest.MonkeyPatch) -> 
     # Even if PATH doesn't contain /home/soffy/.local/bin, _find_bin checks /home/soffy/.local/bin
     found = _find_bin("ffmpeg", "/fallback/ffmpeg")
     assert found in ("/home/soffy/.local/bin/ffmpeg", "/usr/bin/ffmpeg")
+
+
+def test_v4_ending_plinth_draft_stamp_is_stripped(tmp_path):
+    """r7 blocker: V4's ending plinth showed the upstream 「待演绎 · 结尾」 stamp."""
+    import shutil
+
+    from hevi.providers.hyperframes.styled import _strip_draft_marks, style_source
+
+    src = style_source("v4-paper")
+    shutil.copy(src / "index.html", tmp_path / "index.html")
+    assert "待演绎 · 结尾" in (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert _strip_draft_marks(tmp_path) >= 1
+    html = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert "待演绎 · 结尾" not in html
+    assert "pl-name" in html  # the plinth itself (with the film title) is kept
