@@ -138,3 +138,27 @@ Web：`npx tsc --noEmit` exit 0。
 **E2E 验证**：新增 3 个负面样本 fixture（`make_noise_fixture` / `make_macroblock_fixture` / `make_half_gray_fixture`），新增 gate `review.bad_cases_red`，三条均判 `verdict=red, allows_compose=False`。正常成片（FINAL.mp4）无误报（noise=0, blocky=0, flatness=0.005）。
 
 **E2E 结果**：17/17 gates 全绿，elapsed 99.5s（2026-10-12）。
+
+## 返工续做核验记录（2026-10-12 续做）
+
+**结论：OMQUALITY_FIX.md 的全部要求在 HEAD b3f2a101 上已逐条实测满足，工作区干净（git status 仅有未跟踪产物目录，均在 .gitignore 覆盖范围内）。**
+
+逐条核验结果（实测，非推断）：
+
+1. **花屏/破图检测** ✅ — `review.finished_video` 对四类坏样本全部判 `verdict=red, allows_compose=False`：
+   - `bad_noise.mp4`（nullsrc+geq=random(1)*255 全帧噪点 + 白噪声）：4/4 帧 noise+blocky（local_diff=91.4 > 30 阈值，edge_density≈0.89 > 0.50），音频频谱平坦度 0.133 > 0.1
+   - `bad_macroblock.mp4`（16px 周期宏块 + 白噪声）：blockiness=91.4 > 40 阈值，频谱平坦度 0.124
+   - `bad_half_gray.mp4`（半屏白半屏灰）：缺音轨 violation + 幻灯片风险判红 0.69 + motion_led 承诺未兑现
+   - `bad_black_silent.mp4`（黑屏+静音）：4/4 黑帧 + 平帧 + 频谱平坦度 1.000 + 响度 -70 LUFS + 静音 100% + 承诺未兑现
+   - 三条真实成片（FINAL / nasa-earth-iss / scene_interview_sub）无误报：noise=0, blocky=0, flatness≈0.005
+2. **cut-ratio 异常** ✅ — 噪点片 dense 抽帧 cut_ratio≈1.00（≥0.90 阈值）被标记为切片异常而非"运动充足"，幻灯片风险给红而非 0.0 绿
+3. **E2E 审片报告与 contact sheet** ✅ — `output/om_quality_e2e/B_review/bad_{noise,macroblock,half_gray,black_silent}/` 下均有 `review_report.json` + `contact_sheet.png` + 抽帧目录；manifest 记录实测 verdict/violations
+4. **matte 局限** ✅ — DONE 已知问题第 5 条如实写明 u2net 单主体局限，并暴露 `model` 参数可切换 isnet-general-use
+
+**本次续做实测命令**（全部真跑）：
+- `.venv/bin/python scripts/om_quality_e2e.py --fast` → 17/17 PASS，elapsed 126.8s，981 件产物
+- `.venv/bin/python -m pytest tests/test_omq_enhance.py tests/test_omq_promise_gate.py tests/test_backlot_approval_gate.py tests/test_backlot_approval_api.py tests/test_craft_knowledge.py -q` → **56 passed**
+- `.venv/bin/python scripts/ci/run_3o_v3_lint.py` → 基线 4 项失败，无新增
+- 单帧实测（独立抽帧验证噪声检测）：`gradient_x=91.878, gradient_y=91.995, edge_density_h=0.887, local_diff=92.208, blockiness=92.321 → is_noise=True, is_blocky=True`
+
+**git 状态**：分支 `feat/omquality-3o`，工作区干净；HEAD 链：`b3f2a101`（黑屏静音 fixture）← `d7f67db0`（噪点/块效应/频谱平坦度/cut-anomaly 修复）← `46872ae6`（wip）← `176b6a73`（初始 DONE+manifest）。无需新增 commit —— OMQUALITY_FIX.md 要求的全部改动已在上述两个 fix commit 中完成并实测验证。
