@@ -27,6 +27,7 @@ slideshow          : 幻灯片阈值覆盖 dict (可选)
 motion_delta_floor : 帧间平均 luma 差低于此值算"静态" (默认 1.0)
 repeat_hash_floor  : 相邻帧平均汉明距离低于此值算"重复" (默认 4.0)
 text_cue_coverage  : 字幕覆盖率高于此值算"文字依赖" (默认 0.80)
+promise           : 排产前定死的 DeliveryPromise.to_dict() (可选; 给了就对账承诺)
 """
 
 from __future__ import annotations
@@ -54,7 +55,8 @@ from hevi.layer4_legacy.review.oprim_impl.frames import (
     sample_frames,
 )
 from hevi.layer4_legacy.review.oprim_impl.media import MediaError, probe_media
-from hevi.layer4_legacy.review.oprim_impl.subtitle import parse_srt, subtitle_bounds_for_video
+from hevi.layer4_legacy.review.oprim_impl.subtitle import subtitle_bounds_for_video
+from hevi.layer4_legacy.review.oskill_impl.promise_gate import cuts_from_segments, motion_evidence
 from hevi.layer4_legacy.review.oskill_impl.slideshow_risk import score_slideshow_risk
 
 logger = logging.getLogger(__name__)
@@ -143,7 +145,7 @@ def _measure_slideshow(
     cfg: dict[str, Any],
     subtitle_coverage: float | None,
     has_subtitle: bool,
-) -> tuple[dict[str, Any], dict[str, float], tuple[str, ...]]:
+) -> tuple[dict[str, Any], dict[str, float], tuple[str, ...], list[dict[str, Any]]]:
     """Measure the four slideshow components from real pixels.
 
     dense_frames is a deterministic dense stream (capped by config), so the
@@ -155,6 +157,10 @@ def _measure_slideshow(
                       i.e. "what fraction of inter-frame motion is missing"
       weak_motion   = share of intra-segment frames (no inter-frame motion)
       text_dependent= coverage of subtitle / cue coverage floor
+
+    The fourth return value is the same measurement expressed as cut
+    descriptors, so the delivery promise can be reconciled against it
+    without re-decoding anything.
     """
     measured: dict[str, float] = {}
     missing: list[str] = []
@@ -171,6 +177,7 @@ def _measure_slideshow(
             ).to_dict(),
             {},
             ("repeat", "static", "weak_motion"),
+            [],
         )
 
     # 1) repeat: fraction of dense frames inside any intra-segment still run.
@@ -182,7 +189,7 @@ def _measure_slideshow(
     cut_count = 0
     for a, b in segments:
         if (b - a) >= 2:
-            still_frames += (b - a)
+            still_frames += b - a
         else:
             cut_count += 1
     measured["segment_count"] = len(segments)
@@ -210,9 +217,9 @@ def _measure_slideshow(
     # rapid but the motion energy between them is small — classic slideshow.
     # Falls back to repeat when no segment is short enough to be confident.
     if segments and total and repeat is not None:
-        short_segment_share = sum(
-            min(b - a, 6) for a, b in segments if 2 <= (b - a) <= 6
-        ) / max(still_frames, 1)
+        short_segment_share = sum(min(b - a, 6) for a, b in segments if 2 <= (b - a) <= 6) / max(
+            still_frames, 1
+        )
         measured["short_segment_share"] = round(short_segment_share, 4)
         weak = repeat * short_segment_share
     else:
@@ -234,7 +241,54 @@ def _measure_slideshow(
         text_dependent=text_dep,
         thresholds=cfg.get("slideshow") or None,
     )
-    return risk.to_dict(), measured, tuple(missing)
+    cuts = cuts_from_segments(segments=segments, deltas=deltas, motion_floor=motion_floor)
+    return risk.to_dict(), measured, tuple(missing), cuts
+
+
+def _reconcile_promise(
+    *,
+    promise_raw: Any,
+    cuts: list[dict[str, Any]],
+    violations: list[str],
+) -> dict[str, Any]:
+    """Reconcile the pre-scheduling delivery promise against measured evidence.
+
+    Uses the production contract verbatim (``DeliveryPromise.validate_cuts``) —
+    the review layer does not restate the rules.  Violations are appended in
+    place because a broken promise is a delivery-gate violation, not a warning.
+    """
+    from hevi.production.delivery_promise import DeliveryPromise, classify_from_brief
+
+    evidence = motion_evidence(cuts)
+    out: dict[str, Any] = {"evidence": evidence}
+    try:
+        if isinstance(promise_raw, str):
+            # A bare string is a pipeline manifest name (or a promise-type alias
+            # that classify_from_brief already knows); the alias table lives in
+            # the season dispatcher, so we only handle what the contract knows.
+            promise = classify_from_brief(promise_raw, {})
+        else:
+            promise = DeliveryPromise.from_dict(dict(promise_raw))
+    except Exception as exc:
+        out["error"] = f"promise 无法解析: {exc}"
+        return out
+
+    out["promise_type"] = promise.promise_type.value
+    out["motion_required"] = promise.motion_required
+    if not cuts:
+        # No dense frames -> no evidence.  Marked unmeasured by the caller via an
+        # empty cut list; say so rather than scoring a promise as broken.
+        out["verdict"] = "unmeasured"
+        return out
+
+    result = promise.validate_cuts(cuts)
+    out["verdict"] = "ok" if result["valid"] else "violation"
+    out["valid"] = bool(result["valid"])
+    out["motion_ratio"] = result["motion_ratio"]
+    out["violations"] = list(result["violations"])
+    for v in result["violations"]:
+        violations.append(f"交付承诺未兑现 [{promise.promise_type.value}]: {v}")
+    return out
 
 
 def review_finished_video_workflow(
@@ -274,7 +328,9 @@ def review_finished_video_workflow(
     if info.duration_s <= 0:
         violations.append("时长为 0 / 无法探测")
     elif info.duration_s < float(cfg["min_duration_s"]):
-        violations.append(f"时长 {info.duration_s:.2f}s 短于下限 {float(cfg['min_duration_s']):.2f}s")
+        violations.append(
+            f"时长 {info.duration_s:.2f}s 短于下限 {float(cfg['min_duration_s']):.2f}s"
+        )
     if info.width <= 0 or info.height <= 0:
         violations.append("视频轨不可解码或分辨率无效")
     if info.fps <= 0:
@@ -370,9 +426,7 @@ def review_finished_video_workflow(
             metrics["subtitle"] = bounds
             bad = int(bounds.get("past_end") or 0) + int(bounds.get("too_short") or 0)
             if bad:
-                violations.append(
-                    f"字幕越界/过短 {bad} 条 (共 {bounds.get('cues')} 条)"
-                )
+                violations.append(f"字幕越界/过短 {bad} 条 (共 {bounds.get('cues')} 条)")
             if int(bounds.get("overlapping") or 0):
                 warnings.append(f"字幕重叠 {bounds['overlapping']} 条")
         except MediaError as exc:
@@ -392,7 +446,7 @@ def review_finished_video_workflow(
     except MediaError as exc:
         warnings.append(f"幻灯片抽帧失败: {exc}")
         dense = []
-    risk, risk_measured, risk_missing = _measure_slideshow(
+    risk, risk_measured, risk_missing, cuts = _measure_slideshow(
         dense_frames=dense,
         cfg=cfg,
         subtitle_coverage=subtitle_coverage,
@@ -410,6 +464,17 @@ def review_finished_video_workflow(
         warnings.append(
             "幻灯片风险黄灯 (risk=%.2f): %s"
             % (float(risk.get("risk") or 0.0), "; ".join(risk.get("reasons") or []))
+        )
+
+    # ---- promise reconciliation -------------------------------------------
+    # 排产前定死的承诺 (hevi.production.delivery_promise) 在这里对账: 实测的
+    # 运动证据若兑现不了承诺, 是**静默降级**, 必须拦在合成之前。
+    promise_raw = cfg.get("promise") or input_data.get("promise")
+    if promise_raw:
+        metrics["promise"] = _reconcile_promise(
+            promise_raw=promise_raw,
+            cuts=cuts,
+            violations=violations,
         )
 
     # ---- verdict ---------------------------------------------------------

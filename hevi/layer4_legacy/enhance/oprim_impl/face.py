@@ -32,9 +32,7 @@ def facexlib_weights_dir() -> Path:
 def _require_facexlib() -> None:
     for mod in ("facexlib", "gfpgan", "basicsr"):
         if not ensure_importable(mod):
-            raise RuntimeError(
-                f"{mod} not importable; run scripts/om_quality_install_enhance.sh"
-            )
+            raise RuntimeError(f"{mod} not importable; run scripts/om_quality_install_enhance.sh")
 
 
 def _build_helper(upscale: int):
@@ -81,9 +79,7 @@ def restore_faces(
         helper.cropped_faces = [cv2.resize(img, (512, 512))]
     else:
         helper.read_image(img)
-        helper.get_face_landmarks_5(
-            only_center_face=only_center_face, eye_dist_threshold=5
-        )
+        helper.get_face_landmarks_5(only_center_face=only_center_face, eye_dist_threshold=5)
         helper.align_warp_face()
 
     n_faces = len(helper.cropped_faces)

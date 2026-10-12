@@ -48,7 +48,19 @@ def apply_lut(
         run_ffmpeg(["-y", "-i", str(src), "-vf", chain, str(dest)], timeout_s=300.0)
     else:
         info = probe_media(src)
-        args = ["-y", "-i", str(src), "-vf", chain, "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p"]
+        args = [
+            "-y",
+            "-i",
+            str(src),
+            "-vf",
+            chain,
+            "-c:v",
+            "libx264",
+            "-crf",
+            "18",
+            "-pix_fmt",
+            "yuv420p",
+        ]
         if info.has_audio:
             args += ["-c:a", "copy"]
         args.append(str(dest))

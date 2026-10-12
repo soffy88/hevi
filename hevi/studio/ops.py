@@ -1058,6 +1058,32 @@ def _om_workdir(p: dict[str, Any], suffix: str) -> str:
     return os.path.join(base, suffix)
 
 
+def _resolve_promise_spec(raw: Any) -> dict[str, Any]:
+    """Normalise a delivery-promise spec into the DeliveryPromise dict shape.
+
+    Accepts an already-structured dict, a promise-type string (same aliases the
+    season dispatcher accepts), or anything ``classify_from_brief`` understands.
+    """
+    if isinstance(raw, dict):
+        return dict(raw)
+    from hevi.production.delivery_promise import DeliveryPromise, PromiseType
+    from hevi.season_planner.dispatch import _PROMISE_STR_TO_TYPE
+
+    text = str(raw)
+    if text in _PROMISE_STR_TO_TYPE:
+        ptype = _PROMISE_STR_TO_TYPE[text]
+        return DeliveryPromise(
+            promise_type=ptype,
+            motion_required=ptype in (PromiseType.MOTION_LED, PromiseType.AVATAR_PRESENTER),
+            source_required=ptype is PromiseType.SOURCE_LED,
+            tone_mode="corporate",
+            quality_floor="presentable",
+        ).to_dict()
+    from hevi.production.delivery_promise import classify_from_brief
+
+    return classify_from_brief(text, {}).to_dict()
+
+
 def review_finished_video(p: dict[str, Any]) -> dict[str, Any]:
     """Real post-render self-check; returns the workflow's status dict verbatim."""
     from hevi.layer4_legacy.review import review_finished_video_workflow
@@ -1068,6 +1094,9 @@ def review_finished_video(p: dict[str, Any]) -> dict[str, Any]:
     config = dict(p.get("config") or {})
     if p.get("subtitle_path"):
         config.setdefault("subtitle_path", p["subtitle_path"])
+    promise = p.get("promise") or p.get("delivery_promise")
+    if promise:
+        config.setdefault("promise", _resolve_promise_spec(promise))
     for key in (
         "frame_count",
         "min_lufs",
@@ -1077,6 +1106,9 @@ def review_finished_video(p: dict[str, Any]) -> dict[str, Any]:
         "require_audio",
         "expected_resolution",
         "slideshow",
+        "motion_delta_floor",
+        "repeat_hash_floor",
+        "text_cue_coverage",
     ):
         if key in p and key not in config:
             config[key] = p[key]
@@ -1092,18 +1124,19 @@ def qc_slideshow_risk(p: dict[str, Any]) -> dict[str, Any]:
     """Pure algorithm: dense_frames dir + optional subtitle coverage → risk."""
     from hevi.layer4_legacy.review.oskill_impl.slideshow_risk import score_slideshow_risk
 
+    kwargs: dict[str, Any] = {}
+    cuts: list[dict[str, Any]] = []
     frames_dir = p.get("dense_frames") or p.get("frames_dir")
     if frames_dir and Path(str(frames_dir)).is_dir():
         from hevi.layer4_legacy.review.oprim_impl.frames import (
-            frame_phash,
             interframe_delta,
         )
+        from hevi.layer4_legacy.review.oskill_impl.promise_gate import cuts_from_segments
 
         frames = sorted(Path(str(frames_dir)).glob("*.png"))
-        if frames:
-            hashes = [frame_phash(path=f) for f in frames]
-            deltas = interframe_delta(frames=frames)
+        if len(frames) >= 2:
             motion_floor = float(p.get("motion_delta_floor", 1.0))
+            deltas = interframe_delta(frames=frames)
             segments = []
             start = 0
             for i, d in enumerate(deltas, start=1):
@@ -1111,22 +1144,29 @@ def qc_slideshow_risk(p: dict[str, Any]) -> dict[str, Any]:
                     segments.append((start, i))
                     start = i
             segments.append((start, len(deltas) + 1))
+            cuts = cuts_from_segments(segments=segments, deltas=deltas, motion_floor=motion_floor)
             still_frames = sum((b - a) for a, b in segments if (b - a) >= 2)
-            total = max(len(hashes), 1)
-            repeat = max(0.0, min(1.0, still_frames / total))
+            total = max(len(frames), 1)
             mean_delta = sum(deltas) / len(deltas) if deltas else 0.0
-            static = max(0.0, min(1.0, 1.0 - mean_delta / 2.0))
-            weak = repeat
-            kwargs = dict(repeat=repeat, static=static, weak_motion=weak)
-        else:
-            kwargs = {}
-    else:
-        kwargs = {}
+            kwargs = {
+                "repeat": max(0.0, min(1.0, still_frames / total)),
+                "static": max(0.0, min(1.0, 1.0 - mean_delta / 2.0)),
+                "weak_motion": max(0.0, min(1.0, still_frames / total)),
+            }
     cov = p.get("subtitle_coverage")
     if cov is not None:
-        kwargs["text_dependent"] = min(1.0, float(cov) / max(float(p.get("text_cue_coverage", 0.8)), 1e-6))
+        kwargs["text_dependent"] = min(
+            1.0, float(cov) / max(float(p.get("text_cue_coverage", 0.8)), 1e-6)
+        )
     risk = score_slideshow_risk(**kwargs)
-    return _ok(risk=risk.to_dict())
+    out: dict[str, Any] = {"risk": risk.to_dict()}
+    promise = p.get("promise") or p.get("delivery_promise")
+    if promise and cuts:
+        from hevi.production.delivery_promise import DeliveryPromise
+
+        verdict = DeliveryPromise.from_dict(_resolve_promise_spec(promise)).validate_cuts(cuts)
+        out["promise_check"] = verdict
+    return _ok(**out)
 
 
 def qc_frame_check(p: dict[str, Any]) -> dict[str, Any]:

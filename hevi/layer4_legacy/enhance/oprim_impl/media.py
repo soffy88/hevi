@@ -84,7 +84,7 @@ def probe_media(path: str | Path) -> MediaInfo:
         num, _, den = video["avg_frame_rate"].partition("/")
         try:
             fps = float(num) / float(den) if float(den) else 0.0
-        except (TypeError, ValueError, ZeroDivisionError):
+        except TypeError, ValueError, ZeroDivisionError:
             fps = 0.0
 
     duration = 0.0
@@ -93,7 +93,7 @@ def probe_media(path: str | Path) -> MediaInfo:
             if source:
                 duration = float(source)
                 break
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
 
     return MediaInfo(
@@ -150,7 +150,9 @@ def extract_frames(
     return frames
 
 
-def video_to_frames(video: str | Path, out_dir: str | Path, *, limit: int = 0) -> tuple[list[Path], float]:
+def video_to_frames(
+    video: str | Path, out_dir: str | Path, *, limit: int = 0
+) -> tuple[list[Path], float]:
     """Decode every frame of a video to PNG. Returns (frames, fps)."""
     src = Path(video)
     info = probe_media(src)
@@ -190,7 +192,19 @@ def frames_to_video(
     pattern = str(stage / "img_%06d.png")
     args = ["-y", "-framerate", f"{fps:.4f}", "-i", pattern]
     if audio_from is not None:
-        args += ["-i", str(audio_from), "-map", "0:v:0", "-map", "1:a:0?", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+        args += [
+            "-i",
+            str(audio_from),
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0?",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-shortest",
+        ]
     args += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", str(out)]
     run_ffmpeg(args)
     shutil.rmtree(stage, ignore_errors=True)

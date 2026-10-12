@@ -94,8 +94,12 @@ def out_of_bounds(
     for cue in cues:
         if measured_bounds and cue.end_s > duration_s + 0.001:
             past_end += 1
-            violations.append({"index": cue.index, "kind": "past_end", "end_s": round(cue.end_s, 3)})
-        if cue.start_s < -0.001 or (measured_bounds and safe_margin_s and cue.start_s < safe_margin_s - 0.001):
+            violations.append(
+                {"index": cue.index, "kind": "past_end", "end_s": round(cue.end_s, 3)}
+            )
+        if cue.start_s < -0.001 or (
+            measured_bounds and safe_margin_s and cue.start_s < safe_margin_s - 0.001
+        ):
             before_start += 1
             violations.append(
                 {"index": cue.index, "kind": "before_safe_start", "start_s": round(cue.start_s, 3)}

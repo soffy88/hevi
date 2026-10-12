@@ -32,7 +32,11 @@ def matte_image(
     img = Image.open(src).convert("RGB")
     session = _session(model)
     cutout = remove(img, session=session, post_process_mask=post_process)
-    out_img = cutout.convert("RGBA") if isinstance(cutout, Image.Image) else Image.open(cutout).convert("RGBA")
+    out_img = (
+        cutout.convert("RGBA")
+        if isinstance(cutout, Image.Image)
+        else Image.open(cutout).convert("RGBA")
+    )
     dest = Path(output_path)
     dest.parent.mkdir(parents=True, exist_ok=True)
     out_img.save(dest)

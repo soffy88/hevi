@@ -98,7 +98,7 @@ def probe_media(path: str | Path, *, with_sha256: bool = False) -> ProbeReport:
                 num, _, den = raw.partition("/")
                 try:
                     fps = float(num) / float(den) if float(den) else 0.0
-                except (TypeError, ValueError, ZeroDivisionError):
+                except TypeError, ValueError, ZeroDivisionError:
                     continue
                 if fps > 0:
                     break
@@ -109,14 +109,14 @@ def probe_media(path: str | Path, *, with_sha256: bool = False) -> ProbeReport:
             if source:
                 duration = float(source)
                 break
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             continue
 
     nb_frames = 0
     if video:
         try:
             nb_frames = int(video.get("nb_read_frames") or 0)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             nb_frames = 0
 
     return ProbeReport(

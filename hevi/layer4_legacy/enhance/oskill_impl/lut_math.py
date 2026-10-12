@@ -67,7 +67,11 @@ def _cool_night(rgb: RGB) -> RGB:
 
 def _warm_key(rgb: RGB) -> RGB:
     r, g, b = rgb
-    return (_gamma(_clamp(r * 1.06), 1.02), _gamma(_clamp(g * 1.01), 1.0), _gamma(_clamp(b * 0.94), 0.98))
+    return (
+        _gamma(_clamp(r * 1.06), 1.02),
+        _gamma(_clamp(g * 1.01), 1.0),
+        _gamma(_clamp(b * 0.94), 0.98),
+    )
 
 
 LOOKS: dict[str, Callable[[RGB], RGB]] = {
