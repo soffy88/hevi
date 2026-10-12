@@ -1,0 +1,43 @@
+{
+  "id": "jia_zhangke",
+  "display_zh": "贾樟柯",
+  "display_en": "Jia Zhangke",
+  "source": {"origin": "article", "upstream_commit": "", "license": "article"},
+  "lens_aspect": {"focal": "DV wide-angle, 29.97i", "aspect": "1.33:1 (4:3)", "notes": "手持 DV 粗粝纪实"},
+  "composition": {"rules": ["arbitrary framing, subject half-cut at the edge", "documentary accidental framing", "no compositional discipline"], "zh": "构图随意，偶切半头"},
+  "lighting": {"rules": ["fluorescent dust-scattered light", "no lighting design", "harsh mixed practicals"], "zh": "荧光灯 + 尘土散射"},
+  "color": {"palette": ["#7a7f70", "#b5a97a", "#5a6359", "#8b7a4a"], "rules": ["low saturation green-grey-yellow grime", "dusty warm-yellow cast"], "zh": "低饱和灰绿黄脏旧"},
+  "motion": {"rules": ["random handheld following", "sudden stop mid-move", "no smooth glide"], "zh": "随机跟随 + 突然停住"},
+  "rhythm": {"avg_shot_s": 7.0, "cut_rule": "cut on subject pause or on new ambient sound", "zh": "随主体停顿或新声源切"},
+  "signature": [
+    {"en": "DV hand-held documentary framing with half-cut subjects", "zh": "手持 DV 构图随意偶切半头", "required": true},
+    {"en": "fluorescent dust-scattered harsh practical light", "zh": "荧光灯尘土散射", "required": true},
+    {"en": "low-saturation grime green-yellow palette", "zh": "低饱和灰绿黄脏旧", "required": true}
+  ],
+  "negative": ["clean digital sharp", "balanced professional grade", "smooth stabilized gimbal", "high saturation", "centered portrait"],
+  "fits": ["rural documentary", "working-class life", "social realist"],
+  "avoid": ["brand commercial", "glamorous drama", "product beauty"],
+  "anime_safe": {
+    "conflict_words": ["photograph", "dslr"],
+    "rewrites": {"DV grain": "sketchy pen-line grain"},
+    "notes": "粗糙笔触 + 半切构图 + 荧光灯脏色"
+  },
+  "vertical_9x16": {
+    "mode": "recompose",
+    "rules": [
+      "4:3 to 9:16: crop top/bottom, keep the half-cut subject at the vertical center",
+      "subject still cut at the frame edge, no rescue to center",
+      "keep the fluorescent practical in the upper corner"
+    ],
+    "note": "4:3 直接裁切为 9:16，保留偶切半头的粗糙感"
+  },
+  "grade": {
+    "description": "dirty yellow-green cast, high noise floor, slight flicker",
+    "ffmpeg_steps": [
+      {"filter": "hue", "args": "h=5:s=0.70"},
+      {"filter": "eq", "args": "contrast=1.05:saturation=0.75:gamma=1.02:brightness=-0.03"},
+      {"filter": "colorbalance", "args": "rs=0.05:gs=0.10:bs=-0.10:rm=0.10:gm=0.12:bm=-0.08"},
+      {"filter": "noise", "args": "alls=25:allf=t+u"}
+    ]
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DirectorStyle",
+  "description": "One director visual style entry consumed by the dirstyle compiler and the CPU ffmpeg grade.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "display_zh", "display_en", "source",
+    "lens_aspect", "composition", "lighting", "color", "motion", "rhythm",
+    "signature", "negative", "fits", "avoid", "vertical_9x16", "grade"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+    "kind": {"type": "string", "enum": ["director", "genre"], "default": "director"},
+    "display_zh": {"type": "string", "minLength": 1},
+    "display_en": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin"],
+      "properties": {
+        "origin": {"enum": ["article", "mikefluff", "nolanx", "awesome_seedance", "ai_shortfilm_prompts"]},
+        "upstream_commit": {"type": "string", "minLength": 0},
+        "license": {"type": "string", "minLength": 1},
+        "absorbed_from": {"type": "string"}
+      }
+    },
+    "lens_aspect": {"type": "object", "additionalProperties": false, "required": ["focal", "aspect"], "properties": {
+      "focal": {"type": "string", "minLength": 1},
+      "aspect": {"type": "string", "minLength": 1},
+      "notes": {"type": "string"}
+    }},
+    "composition": {"type": "object", "additionalProperties": false, "required": ["rules", "zh"], "properties": {
+      "rules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+      "zh": {"type": "string", "minLength": 1}
+    }},
+    "lighting": {"type": "object", "additionalProperties": false, "required": ["rules", "zh"], "properties": {
+      "rules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+      "zh": {"type": "string", "minLength": 1}
+    }},
+    "color": {"type": "object", "additionalProperties": false, "required": ["palette", "rules", "zh"], "properties": {
+      "palette": {"type": "array", "minItems": 2, "items": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"}},
+      "rules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+      "zh": {"type": "string", "minLength": 1}
+    }},
+    "motion": {"type": "object", "additionalProperties": false, "required": ["rules", "zh"], "properties": {
+      "rules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+      "zh": {"type": "string", "minLength": 1}
+    }},
+    "rhythm": {"type": "object", "additionalProperties": false, "required": ["avg_shot_s", "cut_rule", "zh"], "properties": {
+      "avg_shot_s": {"type": "number", "exclusiveMinimum": 0},
+      "cut_rule": {"type": "string", "minLength": 1},
+      "zh": {"type": "string", "minLength": 1}
+    }},
+    "signature": {
+      "type": "array", "minItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["en", "zh", "required"],
+        "properties": {
+          "en": {"type": "string", "minLength": 1},
+          "zh": {"type": "string", "minLength": 1},
+          "required": {"type": "boolean"}
+        }
+      }
+    },
+    "negative": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "fits": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "avoid": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "anime_safe": {"type": "object", "additionalProperties": false, "required": ["conflict_words"], "properties": {
+      "conflict_words": {"type": "array", "items": {"type": "string"}},
+      "rewrites": {"type": "object", "additionalProperties": {"type": "string"}},
+      "notes": {"type": "string"}
+    }},
+    "vertical_9x16": {"type": "object", "additionalProperties": false, "required": ["mode", "rules"], "properties": {
+      "mode": {"enum": ["letterbox", "recompose", "letterbox_and_recompose", "native"]},
+      "rules": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+      "note": {"type": "string"}
+    }},
+    "grade": {"type": "object", "additionalProperties": false, "required": ["ffmpeg_steps"], "properties": {
+      "ffmpeg_steps": {"type": "array", "minItems": 1, "items": {
+        "anyOf": [
+          {"type": "string", "minLength": 1},
+          {"type": "object", "additionalProperties": false, "required": ["filter", "args"], "properties": {
+            "filter": {"type": "string", "minLength": 1},
+            "args": {"type": "string"}
+          }}
+        ]
+      }},
+      "description": {"type": "string"},
+      "lut": {"type": "object", "additionalProperties": false, "required": ["sha256"], "properties": {
+        "path": {"type": "string"},
+        "sha256": {"type": "string", "minLength": 64},
+        "note": {"type": "string"}
+      }}
+    }}
+  }
+}

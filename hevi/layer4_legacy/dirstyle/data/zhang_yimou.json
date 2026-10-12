@@ -1,0 +1,43 @@
+{
+  "id": "zhang_yimou",
+  "display_zh": "张艺谋",
+  "display_en": "Zhang Yimou",
+  "source": {"origin": "article", "upstream_commit": "", "license": "article"},
+  "lens_aspect": {"focal": "50-135mm medium to extreme wide", "aspect": "2.35:1", "notes": "中焦到大全景"},
+  "composition": {"rules": ["strict central-axis symmetry, subject dead-center", "repetitive background arrays: human crowds / lantern walls / soldier ranks", "horizon line low, sky dominant"], "zh": "严格中轴对称 + 背景阵列重复 + 低地平线"},
+  "lighting": {"rules": ["hard key with warm rim", "even exposure, deep shadows under subjects"], "zh": "硬主光 + 暖边光 + 均匀曝光"},
+  "color": {"palette": ["#c0392b", "#e74c3c", "#f39c12", "#1e5a78", "#f5d76e"], "rules": ["single dominant hue flooding the frame", "complementary accent only", "saturated, high chroma"], "zh": "单一主色爆满（正红/明黄/青蓝）"},
+  "motion": {"rules": ["slow push-in on the centered subject", "ceremonial horizontal tracking across an array", "no handheld"], "zh": "缓慢推进 + 仪式化横移，不用手持"},
+  "rhythm": {"avg_shot_s": 5.5, "cut_rule": "ritual tempo, cut on ensemble unison", "zh": "仪式节奏"},
+  "signature": [
+    {"en": "central-axis symmetric composition with subject on the vertical centerline", "zh": "严格中轴对称", "required": true},
+    {"en": "single dominant hue filling the entire frame (vermillion / imperial yellow / cyan-blue)", "zh": "单一主色爆满", "required": true},
+    {"en": "repetitive background array (crowd ranks, lantern wall, soldier formation)", "zh": "背景阵列重复", "required": true}
+  ],
+  "negative": ["handheld sway", "off-center composition", "muted desaturated palette", "rainy night neon", "close-up face close to lens"],
+  "fits": ["court ceremony", "martial formation", "imperial banquet"],
+  "avoid": ["intimate romance", "handheld documentary", "night street scene"],
+  "anime_safe": {
+    "conflict_words": ["film stock photo", "live-action crowd"],
+    "rewrites": {"lantern wall": "stylized flat-color lantern array"},
+    "notes": "单色爆满在动画里同样有效，阵列改为平涂人物群像"
+  },
+  "vertical_9x16": {
+    "mode": "letterbox",
+    "rules": [
+      "2.35:1 band centered in 9:16, black bars top and bottom",
+      "subtitle in the bottom black bar, safe area respected",
+      "subject stays on the 2.35 centerline, background arrays scale down but keep symmetry"
+    ],
+    "note": "2.35 严禁硬裁，用信箱"
+  },
+  "grade": {
+    "description": "crush the chroma to one dominant hue, raise saturation, hard contrast",
+    "ffmpeg_steps": [
+      {"filter": "hue", "args": "h=-15:s=1.55"},
+      {"filter": "eq", "args": "contrast=1.20:saturation=1.60:gamma=0.96"},
+      {"filter": "colorbalance", "args": "rs=0.30:gs=-0.08:bs=-0.20:rm=0.18:gm=0.02:bm=-0.10"},
+      {"filter": "noise", "args": "alls=3:allf=t"}
+    ]
+  }
+}

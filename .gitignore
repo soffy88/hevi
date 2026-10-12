@@ -54,7 +54,7 @@ Thumbs.db
 *.wav
 # cosy-ref-v1: 仓库内置 CosyVoice 默认参考音(Apache-2.0, 见 services/gen_engine/assets/voice_refs/README.md)
 !services/gen_engine/assets/voice_refs/*.wav
-output/
+output/*
 
 # Docker
 *.pid
@@ -99,3 +99,7 @@ artifacts/real_video/*/work/
 artifacts/real_video/*/artifacts/*_finecut.mp4
 artifacts/real_video/*/artifacts/scene_*.mp4
 artifacts/real_video/*/final/concat.txt
+
+# dirstyle E2E outputs — tracked explicitly (task requirement)
+!output/dirstyle_e2e/
+!output/dirstyle_e2e/*

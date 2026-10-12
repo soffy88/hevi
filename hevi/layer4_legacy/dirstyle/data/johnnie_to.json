@@ -1,0 +1,43 @@
+{
+  "id": "johnnie_to",
+  "display_zh": "杜琪峰",
+  "display_en": "Johnnie To",
+  "source": {"origin": "article", "upstream_commit": "", "license": "article"},
+  "lens_aspect": {"focal": "50-100mm medium-long", "aspect": "2.39:1", "notes": "中远景冷蓝夜色"},
+  "composition": {"rules": ["geometric stage blocking, figures on strict grid", "symmetry with hard geometry", "negative space large, subjects small"], "zh": "舞台式几何站位"},
+  "lighting": {"rules": ["top light and side light dominate", "large deep shadow mass, single warm practical (street lamp) as only warm source"], "zh": "顶光侧光 + 暗部大 + 路灯唯一暖源"},
+  "color": {"palette": ["#1e293b", "#0f172a", "#f59e0b", "#7f8c8d"], "rules": ["cool blue night grade", "isolated warm amber practical"], "zh": "冷蓝夜色 + 孤暖路灯"},
+  "motion": {"rules": ["hold still for long then explode into fast movement", "slow track to stillness"], "zh": "长时间静止后极快爆发"},
+  "rhythm": {"avg_shot_s": 6.5, "cut_rule": "silence holds, then burst cuts on gunshot / footstep", "zh": "静止—爆发"},
+  "signature": [
+    {"en": "geometric stage-like blocking with grid-aligned figures", "zh": "舞台式几何站位", "required": true},
+    {"en": "deep shadow mass with single warm practical as only warm source", "zh": "暗部大 + 路灯唯一暖源", "required": true},
+    {"en": "stillness then sudden burst", "zh": "长时间静止后极快爆发", "required": true}
+  ],
+  "negative": ["warm floodlight", "handheld drift", "soft pastel palette", "centered portrait", "bright daylight"],
+  "fits": ["crime thriller", "gang confrontation", "noir standoff"],
+  "avoid": ["comedy", "family warmth", "daytime travel vlog"],
+  "anime_safe": {
+    "conflict_words": ["live-action night footage"],
+    "rewrites": {"street lamp": "paper lantern glow"},
+    "notes": "几何站位+冷蓝夜色+单暖源在动画里成立"
+  },
+  "vertical_9x16": {
+    "mode": "recompose",
+    "rules": [
+      "2.39:1 wide frame is recomposed to 9:16: keep the geometric grid, shift figures to thirds",
+      "street lamp practical moved to upper corner",
+      "shadow mass expands to fill the vertical negative space"
+    ],
+    "note": "几何站位适合竖版重构，不用信箱"
+  },
+  "grade": {
+    "description": "desaturate to blue night, carve out a warm pool with colorbalance",
+    "ffmpeg_steps": [
+      {"filter": "hue", "args": "h=-8:s=0.70"},
+      {"filter": "eq", "args": "contrast=1.25:saturation=0.75:gamma=0.88"},
+      {"filter": "colorbalance", "args": "bs=0.25:rm=0.10:rs=-0.08:rm=0.35:rh=0.30"},
+      {"filter": "noise", "args": "alls=5:allf=t"}
+    ]
+  }
+}
