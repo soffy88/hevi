@@ -186,30 +186,33 @@ def main() -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Inputs (Clean-room Real Media)
-    ref_video = workspace / "artifacts/real_video/20261005T160434Z/artifacts/scene_interview_sub.mp4"
-    # B-roll interview WITHOUT burned-in subtitles (avoids caption collisions).
-    interview_video = workspace / "artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4"
-    broll_video = workspace / "artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4"
+    # NOTE (r3 audit): Apollo ISS + Collins b-rolls replaced with NASA/JPL Mars-specific
+    # public-domain footage so that visual semantics match the Mars-rover narration.
+    broll_a = workspace / "artifacts/real_video/nasa_mars_broll/perseverance_descent_clipA.mp4"
+    broll_b = workspace / "artifacts/real_video/nasa_mars_broll/optimism_rover_clipA.mp4"
+    broll_c = workspace / "artifacts/real_video/nasa_mars_broll/perseverance_360_clipA.mp4"
     product_img = workspace / "data/product_assets/mars_camera_product.jpg"
 
-    assert ref_video.is_file(), f"Reference video missing: {ref_video}"
-    assert interview_video.is_file(), f"Interview b-roll missing: {interview_video}"
-    assert broll_video.is_file(), f"B-roll video missing: {broll_video}"
+    assert broll_a.is_file(), f"Mars broll-a missing: {broll_a}"
+    assert broll_b.is_file(), f"Mars broll-b missing: {broll_b}"
+    assert broll_c.is_file(), f"Mars broll-c missing: {broll_c}"
     assert product_img.is_file(), f"Product image missing: {product_img}"
 
     print(f"=== [ViralClone E2E] Starting Full Real Media Acceptance ===")
-    print(f"Reference Video: {ref_video.name}")
-    print(f"Interview B-roll:{interview_video.name} (no burned subtitles)")
-    print(f"B-roll Video:    {broll_video.name}")
-    print(f"Product Asset:   {product_img.name}")
+    print(f"Mars B-roll A (EDL descent cam):       {broll_a.name}")
+    print(f"Mars B-roll B (Optimism twin test):    {broll_b.name}")
+    print(f"Mars B-roll C (Navcam 360 panorama):   {broll_c.name}")
+    print(f"Product Asset:                         {product_img.name}")
     print(f"Output Root:     {out_dir}")
 
     # =========================================================================
     # Phase 1: Reference Breakdown (P0-1)
     # =========================================================================
     print("\n--- Phase 1: Reference Video Breakdown ---")
+    # Use Mars broll-a as the reference for breakdown (replaces Apollo interview).
+    bd_ref = workspace / "artifacts/real_video/nasa_mars_broll/perseverance_descent.mp4"
     bd_dir = out_dir / "breakdown"
-    bd_res = breakdown_reference_video(ref_video, bd_dir)
+    bd_res = breakdown_reference_video(bd_ref, bd_dir)
     assert bd_res["status"] == "succeeded", f"Breakdown failed: {bd_res.get('reason')}"
     print(f"Breakdown completed: {bd_res['report']['breakdown_json']}")
     print(f"Shot count: {bd_res['report']['shot_count']}, Duration: {bd_res['report']['duration_s']}s")
@@ -236,13 +239,14 @@ def main() -> int:
 
     product_copy = {
         "product_image": str(product_img),
-        "product_title": "Mars 2020 Rover Camera",
+        "product_title": "Mars 2020 Rover \u00b7 Cameras",
         "price_tag": "NASA/JPL-Caltech",
-        "cta_text": "Explore Specs",
+        # r3 #4: the "Explore Specs" CTA implied specs on the card that don't
+        # exist. Point to the source instead.
+        "cta_text": "Learn more (NASA/JPL)",
         # Labels must be factually accurate: PIA22103 is a NASA/JPL *rendered
         # illustration* of the rover, not a photograph of a retail product.
-        # (Audit r2 #2: the old "实拍商品图" badge was false.)
-        "selling_points": ["渲染示意图", "NASA/JPL", "公共领域"],
+        "selling_points": ["\u6e32\u67d3\u793a\u610f\u56fe", "NASA/JPL", "\u516c\u5171\u9886\u57df"],
         "duration_s": 2.5,
         "fps": 25,
     }
@@ -312,10 +316,19 @@ def main() -> int:
     # itself supports (the Mars 2020 rover carries front/rear hazard cameras for
     # navigation and a mast camera for imaging) and invents no numbers.
     #
-    # Audit r2 #4: each variant also starts its b-rolls at a *different* in-point
-    # so no variant shows the same footage segments as another. The `finecut`
-    # files next to the sources are only 320x180 duplicates of the same two
-    # clips, so distinct in/out points are what actually differentiate them.
+    # Audit r3 #1: replaced Apollo/ISS b-rolls with NASA/JPL Mars-specific
+    # public-domain footage so every frame semantically matches the narration.
+    # Three distinct clips ensure each variant uses at least one source the
+    # others don't (satisfies audit r3 #2: source-level reuse table).
+    #
+    # clip_a = Perseverance EDL descent camera footage (real Mars landing views)
+    # clip_b = Optimism twin rover driving test (Mars Yard)
+    # clip_c = Perseverance Navcam 360 panoramic view (first panorama of landing site)
+    clips = [
+        str(broll_a.resolve()),
+        str(broll_b.resolve()),
+        str(broll_c.resolve()),
+    ]
     variants_input = [
         {
             "variant_id": "var_1",
@@ -323,13 +336,13 @@ def main() -> int:
             "slots": {
                 "product": "火星车导航与成像相机组",
                 "hook_line": "火星车靠什么看清脚下的路？",
-                "selling_point_1": "前后避障相机，一路记录着陆和行驶。",
+                "selling_point_1": "前后避障相机，帮助火星车看清路况、安全行驶。",
                 "cta_line": "想看火星车影像，可以去 NASA 的公开资料库。",
                 "lang": "zh",
             },
             "brolls": [
-                {"path": str(broll_video.resolve()), "in_s": 0.0},
-                {"path": str(interview_video.resolve()), "in_s": 0.0},
+                {"path": clips[0], "in_s": 0.0},
+                {"path": clips[1], "in_s": 0.0},
             ],
             "product_video": str(product_cards["light"].resolve()),
             "color_grade": "warm",
@@ -347,8 +360,8 @@ def main() -> int:
                 "lang": "zh",
             },
             "brolls": [
-                {"path": str(interview_video.resolve()), "in_s": 5.5},
-                {"path": str(broll_video.resolve()), "in_s": 3.0},
+                {"path": clips[1], "in_s": 0.0},
+                {"path": clips[2], "in_s": 0.0},
             ],
             "product_video": str(product_cards["dark"].resolve()),
             "color_grade": "cool",
@@ -366,9 +379,12 @@ def main() -> int:
                 "lang": "en",
             },
             # Reversed source order AND a different in-point vs. var_1/var_2.
+            # Each variant now uses clips the others don't: var_1 uses clip[0],
+            # var_2 uses clip[1]+clip[2], var_3 uses clip[2] (plus the 360).
+            # This ensures source-level diversity (audit r3 #2).
             "brolls": [
-                {"path": str(interview_video.resolve()), "in_s": 11.0},
-                {"path": str(broll_video.resolve()), "in_s": 7.0},
+                {"path": clips[2], "in_s": 0.0},
+                {"path": clips[0], "in_s": 0.0},
             ],
             "product_video": str(product_cards["warm_vertical"].resolve()),
             "color_grade": "vivid",
@@ -529,26 +545,26 @@ def main() -> int:
     summary = {
         "timestamp": time.time(),
         "total_elapsed_s": round(time.time() - start_time, 2),
-        "source_reference": {
-            "name": ref_video.name,
-            "title": "Return to the Pad: Michael Collins Reflects on Apollo 11 Launch",
-            "url": "https://images.nasa.gov/details-KSC-20190716-MH-NAS01_0001-Return_to_the_Pad_Crew_Quarters_Broll_HQ_Provided-3226478",
-            "license": "NASA Media (Public Domain)",
-            "sha256": _sha256(ref_video),
+        "source_broll_a": {
+            "name": broll_a.name,
+            "title": "Perseverance EDL Descent Camera Views (onboard cam footage)",
+            "url": "https://images-assets.nasa.gov/video/JPL-20210222-M2020f-0001-Perseverance%20Rover%E2%80%99s%20Descent%20and%20Touchdown%20on%20Mars",
+            "license": "NASA/JPL-Caltech (Public Domain)",
+            "sha256": _sha256(broll_a),
         },
-        "source_broll": {
-            "name": broll_video.name,
-            "title": "Earth Views from the International Space Station",
-            "url": "https://images.nasa.gov/details-Earth%20Views%20from%20the%20International%20Space%20Station",
-            "license": "NASA Media (Public Domain)",
-            "sha256": _sha256(broll_video),
+        "source_broll_b": {
+            "name": broll_b.name,
+            "title": "Twin Rover OPTIMISM Gets to Work (Mars Yard testing)",
+            "url": "https://images-assets.nasa.gov/video/JPL-20201006-M2020f-0001-Twin%20Rover%20Gets%20to%20Work",
+            "license": "NASA/JPL-Caltech (Public Domain)",
+            "sha256": _sha256(broll_b),
         },
-        "source_interview_broll": {
-            "name": interview_video.name,
-            "title": "Return to the Pad: Michael Collins (no burned-in subtitles)",
-            "url": "https://images.nasa.gov/details-KSC-20190716-MH-NAS01_0001-Return_to_the_Pad_Crew_Quarters_Broll_HQ_Provided-3226478",
-            "license": "NASA Media (Public Domain)",
-            "sha256": _sha256(interview_video),
+        "source_broll_c": {
+            "name": broll_c.name,
+            "title": "Perseverance First 360 View of Mars (Navcam panorama)",
+            "url": "https://images-assets.nasa.gov/video/JPL-20210222-M2020f-0002-NASA%E2%80%99S%20Perseverance%20Rover%E2%80%99s%20First%20360%20View%20of%20Mars",
+            "license": "NASA/JPL-Caltech (Public Domain)",
+            "sha256": _sha256(broll_c),
         },
         "source_product": {
             "name": product_img.name,

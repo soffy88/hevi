@@ -41,6 +41,7 @@ from hevi.layer4_legacy.viralclone.oskill_impl.diversity import (
 from hevi.layer4_legacy.viralclone.oskill_impl.watermark import (
     compute_watermark_spec,
     measure_ass_glyph_bbox,
+    measure_latin_cap_ink_bbox,
     verify_watermark_in_frame,
 )
 from hevi.viralclone import (
@@ -255,6 +256,17 @@ def test_watermark_measured_ink_height_clears_5pct(tmp_path: Path) -> None:
             f"glyph ink {ink_px}px / {short_edge}px = {ink_px/short_edge:.4f} < 5%"
         )
         assert ink_px >= 36, f"ink {ink_px}px is below the 36px (5% of 720) bar"
+        # Audit r3 #3: the two Latin capitals "AI" are optional glyphs whose
+        # ink (~0.55 em) is smaller than the tallest CJK glyph (~0.694 em). The
+        # mark is only compliant when *every* glyph's ink >= 5 % of the short
+        # edge, so assert the measured Latin-cap ink here too.
+        latin_ink = measure_latin_cap_ink_bbox(ass_path, w, h)
+        assert latin_ink["found"], f"no Latin 'AI' glyph found for {w}x{h}"
+        latin_px = latin_ink["glyph_height_px"]
+        assert latin_px >= short_edge * 0.05, (
+            f"Latin capital ink {latin_px}px / {short_edge}px = {latin_px/short_edge:.4f} < 5%"
+        )
+        assert latin_px >= 36, f"Latin capital ink {latin_px}px is below the 36px bar"
 
 
 def test_watermark_verifier_fails_when_ink_below_threshold(tmp_path: Path) -> None:

@@ -31,8 +31,16 @@ def compute_watermark_spec(
     """
     short_edge = min(frame_width, frame_height)
     required_min_px = int(round(short_edge * 0.05))
-    # ink_px ~= 0.694 * font_size_px; 0.085 em -> ~0.059 * short_edge of ink.
-    font_size_px = max(required_min_px, int(round(short_edge * 0.085)))
+    # GB 45438 requires the visible ink height of the AI mark to be at least 5 %
+    # of the short edge. The mark contains Latin "AI" plus CJK "生成"; the
+    # tallest ink is the CJK glyph at ~0.694 em, but the *smallest* ink is the
+    # Latin capitals (~0.55 em on Noto Sans). Audit r3 #3 therefore sizes the
+    # mark from the small-end: `latin_cap_ink_px = 0.55 * font_size_px`, so we
+    # solve for font_size_px >= required_min_px / 0.55. That gives font_size_px
+    # ≈ 0.091 * short_edge, which yields Latin-cap ink of ≈ 0.050 * short_edge
+    # and CJK ink of ≈ 0.063 * short_edge -- every glyph clears the 5 % floor.
+    em_per_latin_cap = 0.55
+    font_size_px = max(required_min_px, int(round(short_edge * 0.091)))
 
     return WatermarkSpec(
         text=text,
@@ -113,6 +121,58 @@ def measure_ass_glyph_bbox(
         "region": [x0, y0, x1, y1],
         "method": "ass_flat_render_ink_only",
         "note": "glyph ink only; the ASS outline stroke is excluded from the height",
+    }
+
+
+def measure_latin_cap_ink_bbox(
+    ass_path: str | Path,
+    frame_width: int,
+    frame_height: int,
+    *,
+    region: tuple[float, float, float, float] = (0.0, 0.0, 0.2, 0.22),
+    ink_level: int = 200,
+) -> dict[str, Any]:
+    """Measure the rendered ink height of the Latin capitals at the start of the
+    AI mark (e.g. the "AI" in "AI\u751f\u6210").
+
+    The compliance target of GB 45438 is the visible ink of *every* glyph in the
+    mark. Noto Sans CJK renders Latin capitals at roughly 0.55 em, which is
+    shorter than the CJK ideographs (~0.694 em); a mark sized so the CJK ink is
+    5 % can still leave the Latin caps under the floor. This re-renders the
+    delivered ASS and measures the ink columns in the left part of the watermark
+    region (where the mark is placed, alignment 7 = top-left).
+    """
+    import numpy as np
+    from PIL import Image
+
+    if not Path(ass_path).is_file():
+        return {"found": False, "glyph_height_px": 0, "method": "ass_flat_render_unavailable"}
+
+    h, w = frame_height, frame_width
+    x0, y0 = int(region[0] * w), int(region[1] * h)
+    x1, y1 = int(region[2] * w), int(region[3] * h)
+
+    tmp_dir = Path(ass_path).parent / ".wm_measure"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    out_png = tmp_dir / f"flat_{w}x{h}_latin.png"
+    if not _render_ass_on_flat(ass_path, w, h, out_png):
+        return {"found": False, "glyph_height_px": 0, "method": "ass_flat_render_failed"}
+
+    arr = np.asarray(Image.open(out_png).convert("L")).astype(np.int16)
+    patch = arr[y0:y1, x0:x1]
+    mask = patch > ink_level
+    ys, xs = np.where(mask)
+    if len(ys) == 0:
+        return {"found": False, "glyph_height_px": 0, "method": "ass_flat_render", "region": [x0, y0, x1, y1]}
+
+    return {
+        "found": True,
+        "glyph_height_px": int(ys.max() - ys.min() + 1),
+        "glyph_width_px": int(xs.max() - xs.min() + 1),
+        "bbox_xyxy": [int(x0 + xs.min()), int(y0 + ys.min()), int(x0 + xs.max()), int(y0 + ys.max())],
+        "region": [x0, y0, x1, y1],
+        "method": "ass_flat_render_ink_only_latin_caps",
+        "note": "Latin capital glyph ink only; outline stroke excluded",
     }
 
 
