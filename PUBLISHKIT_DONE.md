@@ -308,3 +308,34 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 - pytest：`tests/test_publishkit.py` **27 passed**（新增 3 个 F1/F3 单测）。
 - lint：`ruff check hevi/layer4_legacy/publishkit/ scripts/publishkit_e2e.py` → All checks passed。
 - 提交：`d91a1760`（F1/F2/F3 实现）、`60718bfa`（新增单测），作者 `hevi-publishkit agent`。
+---
+
+## 九、第四轮独立复核（额度中断后接续，2026-10-12）
+
+### 复核范围
+- 严格读取 `PUBLISHKIT_FIX.md`，对照 `PUBLISHKIT_TASK.md` 通用规则
+- 检查已有成果完整性，确认无 mock/占位/伪造
+- 独立验证实测数据与 DONE 报告一致
+
+### 复核结果
+
+| 项目 | 状态 | 备注 |
+|---|---|---|
+| talkcraft 成片正确性 | ✅ | `render.log`=0字节，sha256 `6938634b...` 匹配，32.8s 复利内容 |
+| 白板横竖版 SHA256 | ✅ | 4 个文件均匹配 DONE 报告 |
+| F1 script_audio_consistency | ✅ | 三条产线 min_sim 0.884–0.889，tail_violation=false |
+| F2 竖版内容区占比 | ✅ | 像素扫描确认 ≥97%，远超 ≥75% 要求 |
+| F3 封面 3:4 竖版取帧 | ✅ | 三条产线 `source_video_kind=portrait`，1080×1440 精确 |
+| pytest | ✅ | **50 passed**（test_publishkit 27 + test_whiteboard 9 + publishers 14） |
+| lint 基线 | ✅ | 4 项失败与 `lint_baseline.txt` 逐行一致，无新增 |
+| E2E 产物完整性 | ✅ | 3 条产线各 11 个文件，`e2e_summary.json` status=succeeded |
+| 无 mock/占位 | ✅ | render.log 空=渲染成功，非 mock；whisper 真实转写 |
+| git 作者 | ✅ | `hevi-publishkit agent <publishkit@hevi.local>` |
+
+### 工作区状态
+- `git status`: clean，无未提交改动
+- 分支: `feat/publishkit-3o`
+- 最新提交: `32c37aa4`（第 3 轮闭环记录）
+
+### 结论
+**F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。**
