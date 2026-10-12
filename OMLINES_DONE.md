@@ -152,3 +152,14 @@
 
 - **检查项**：9 项统一架构门禁（`check_no_sibling_call`, `check_omodul_signature`, `check_enabled_pillars`, `check_flat_namespace`, `check_no_project_prefix`, `check_oprim_keyword_only`, `check_obase_no_reverse_dep`, `check_oservi_injection`, `check_async_contract`）。
 - **新引入失败数**：**0 项**（既有失败 4 项全系 `.venv` 中第三方 vendor 库历史遗留）。
+
+---
+## 主审亲自修复（2026-10-12 17:40）— 全量 E2E 26/26
+在 r8 wip（daa0ab40）基础上，主审修了以下问题后重跑全部 13 条线 × 2 组输入，`output/om_lines_e2e/e2e_results.json` all_passed=true：
+- **shorts_clip**：zoompan 用了 `d=<帧数>`，每个输入帧被复制成整段静止画面（22s 片段膨胀到 141MB，motion 不达标）。改为 `d=1` 按时间推近；中文语音字幕按字符切块（原按 whisper 词切，整句溢出画面）。E2E 输入改为有运动画面和语音的 Apollo 14 / KSC Return to the Pad（原来的 podcast clip 是静态文字卡讲解片）。生产路径走 `shorts_generation_workflow`，它不接收 topic，所以输入相关性改为核对 report 里记录的源视频路径（`inputs.source_video_path`，新增），见 `qa_checks.source_in_report=true`。
+- **talking_head**：均衡器原来固定在像素 (52,150)、宽 460px，低分辨率时直接盖在脸上；改为按分辨率缩放，放在照片上方留白处。照片在画面中的 NCC：a 0.963，b 0.918。
+- **avatar_spokesperson**：E2E 的圆形遮罩 NCC 计算对一维数组调用 cvtColor 而崩溃（harness bug），已修；NCC：a 0.94，b 0.855。
+- **Pexels 检索**：中文 topic 直接搜 Pexels 会返回无关素材（如"咖啡的起源"搜出瀑布），`zl.query_en` 先用免费翻译转英文再搜（翻译失败回退原文），provenance 记录 query 与 query_input。
+- **E2E 口径**：本 E2E 验收的是零成本档，host 线不再在 slots 里强制 `renderer=talkcraft`（talkcraft 有自己的验收；它对 image_path 是否生效不在本单元范围，另行处理）。新增 `OMLINES_E2E_ONLY` 只重跑指定线并合并结果。
+- 测试：tests/test_omlines_e2e.py 17 passed（7 分 18 秒）；3O lint 仅基线 4 项。
+- **如实说明**：character_animation 的动画始终是同一个程序化"洞穴人"场景，topic 只决定旁白、标题和色相，画面内容本身不随 topic 变；这是零成本档的能力上限，不是按题材生成的画面。

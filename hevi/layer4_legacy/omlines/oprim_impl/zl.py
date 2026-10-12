@@ -130,8 +130,41 @@ def _pexels_key() -> str:
     raise RuntimeError('PEXELS_API_KEY missing')
 
 
+_QUERY_EN_CACHE: dict[str, str] = {}
+
+
+def query_en(query: str) -> str:
+    """Pexels indexes English tags: translate a CJK search phrase with a free translator.
+
+    Falls back to the original phrase when no translator answers (the search then
+    simply runs on the Chinese text, as before).
+    """
+    if not any('\u4e00' <= c <= '\u9fff' for c in query):
+        return query
+    if query in _QUERY_EN_CACHE:
+        return _QUERY_EN_CACHE[query]
+    out = query
+    try:
+        import deep_translator as dt
+        for tr in (lambda: dt.GoogleTranslator(source='zh-CN', target='en').translate(query),
+                   lambda: dt.MyMemoryTranslator(source='zh-CN', target='en-US').translate(query)):
+            try:
+                r = (tr() or '').strip()
+                if r and not any('\u4e00' <= c <= '\u9fff' for c in r):
+                    out = r
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    _QUERY_EN_CACHE[query] = out
+    return out
+
+
 def pexels(query: str, orientation: str = 'landscape', min_d: float = 5, pick: int = 0) -> dict:
     """Download one Pexels clip (free licence). Returns provenance dict incl. local path."""
+    query_cn = query
+    query = query_en(query)
     q = urllib.parse.quote(query)
     req = urllib.request.Request(
         f'https://api.pexels.com/videos/search?query={q}&per_page=15&orientation={orientation}',
@@ -151,7 +184,7 @@ def pexels(query: str, orientation: str = 'landscape', min_d: float = 5, pick: i
         with urllib.request.urlopen(req, timeout=120) as r, open(path + '.part', 'wb') as o:
             o.write(r.read())
         os.rename(path + '.part', path)
-    return {'source': 'pexels', 'query': query, 'pexels_id': v['id'], 'page': v['url'],
+    return {'source': 'pexels', 'query': query, 'query_input': query_cn, 'pexels_id': v['id'], 'page': v['url'],
             'author': v.get('user', {}).get('name'), 'licence': 'Pexels License (free)', 'path': path,
             'duration': v['duration']}
 

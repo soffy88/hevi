@@ -461,26 +461,43 @@ def _shorts_clip(slots=None, output_dir=OUT):
     for k, (i, j) in enumerate(_pick_windows(segs)):
         a, b = segs[i]['start'] - 0.2, segs[j]['end'] + 0.3
         ev = []
+        fs = max(28, min(54, W // 14))
+        cap_tag = r'{\an5\pos(%d,%d)\fs%d\bord5\fad(60,60)}' % (W // 2, int(H * 0.72), fs)
+        max_cjk = max(6, int(W * 0.85 / fs))  # CJK glyphs that fit on one caption line
         for s in segs[i:j + 1]:
+            if _has_cjk(s['text']):
+                # CJK speech: whisper "words" are often whole clauses -> chunk by characters,
+                # timing proportional to character position inside the segment
+                txt = re.sub(r'\s+', '', s['text'])
+                n = max(1, len(txt))
+                for c in range(0, n, max_cjk):
+                    piece = txt[c:c + max_cjk]
+                    t0 = s['start'] + (s['end'] - s['start']) * c / n
+                    t1 = s['start'] + (s['end'] - s['start']) * min(n, c + max_cjk) / n
+                    ev.append((t0 - a, t1 - a, 'Cap', cap_tag + piece))
+                continue
             ws = s['words']
             for c in range(0, len(ws), 4):
                 chunk = ws[c:c + 4]
                 ev.append((chunk[0][0] - a, chunk[-1][1] - a, 'Cap',
-                           r'{\an5\pos(%d,%d)\fs54\bord5\fad(60,60)}' % (W // 2, int(H * 0.72)) + ''.join(w[2] for w in chunk).strip().upper()))
+                           cap_tag + ''.join(w[2] for w in chunk).strip().upper()))
         ev.append((0, b - a, 'Kicker', r'{\an8\pos(%d,140)\fs38}' % (W // 2) + topic))
         ass = zl.write_ass(f'{d}/tmp/c{k}.ass', W, H, ev)
         out = f'{d}/{line}_{k + 1:02d}.mp4'
         # Zoompan on the whole source for guaranteed motion (Ken Burns effect)
         # plus animated crop pan on a blurred copy as background
         clip_dur = max(0.1, float(b - a))
-        frames = int(clip_dur * 30)
-        zoomstep = 0.0005
+        # Vertical reframe: blurred cover background + the source scaled to the frame
+        # width with a slow, time-based push-in (d=1: one output frame per input frame,
+        # so the clip keeps its real duration).  Previous zoompan used d=<frames>, which
+        # multiplied every input frame into a static run and produced huge files.
+        fg_h = int(W * 9 / 16) // 2 * 2
         fc = (
-            f"[0:v]split[bg][fg];"
-            f"[bg]scale={W + 120}:{H + 120}:force_original_aspect_ratio=increase,"
-            f"crop={W}:{H}:x='(iw-{W})*t/{clip_dur:.3f}':y='(ih-{H})*0.5*(1+sin(t/3))',"
+            f"[0:v]fps=30,split[bg][fg];"
+            f"[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
             f"boxblur=30:3,eq=brightness=-0.15[b];"
-            f"[fg]zoompan=z='zoom+{zoomstep}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s={W}x{H}:fps=30[x];"
+            f"[fg]scale={int(W * 1.25) // 2 * 2}:-2,"
+            f"zoompan=z='min(1.0+0.0012*on,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{fg_h}:fps=30[x];"
             f"[b][x]overlay=0:(H-h)/2-80,"
             f"subtitles='{d}/tmp/c{k}.ass':fontsdir=/usr/share/fonts/opentype/noto[v]"
         )

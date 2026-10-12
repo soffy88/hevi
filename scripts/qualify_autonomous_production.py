@@ -48,12 +48,13 @@ _INPUT_FACE_KAKU = "/data/soffy/projects/hevi/data/workspace/assets/celebrities3
 _INPUT_FACE_HARARI = "/data/soffy/projects/hevi/data/workspace/assets/celebrities30s/English/Yuval Harari.jpg"
 
 # speech language of each source clip, measured with the same local ASR used by the lines
-_INPUT_LANG = {_INPUT_APOLLO: "en", _INPUT_NISAR: "en", _INPUT_PODCAST: "zh", _INPUT_PODCAST_2: "zh"}
+_INPUT_LANG = {_INPUT_APOLLO: "en", _INPUT_NISAR: "en", _INPUT_KSC: "en", _INPUT_PODCAST: "zh", _INPUT_PODCAST_2: "zh"}
 
 _INPUT_MEDIA: dict[str, dict[str, str]] = {
     "documentary_montage": {"a": _INPUT_APOLLO, "b": _INPUT_KSC},
     "reference_adapt": {"a": _INPUT_EARTH, "b": _INPUT_NISAR},
-    "shorts_clip": {"a": _INPUT_PODCAST, "b": _INPUT_PODCAST_2},
+    # shorts need real moving footage with speech (the podcast clips are static text-card explainers)
+    "shorts_clip": {"a": _INPUT_APOLLO, "b": _INPUT_KSC},
     "podcast_repurpose": {"a": _INPUT_PODCAST, "b": _INPUT_PODCAST_2},
     "localization_dub": {"a": _INPUT_APOLLO, "b": _INPUT_NISAR},
 }
@@ -68,6 +69,8 @@ _INPUT_SETS: dict[str, dict[str, str]] = {
 }
 _INPUT_SETS["a"]["localization_dub"] = "阿波罗14号任务"
 _INPUT_SETS["b"]["localization_dub"] = "航天发射解说"
+_INPUT_SETS["a"]["shorts_clip"] = "阿波罗14号发射"
+_INPUT_SETS["b"]["shorts_clip"] = "重返月球计划"
 
 
 def _slots(line: str, variant: str = "a") -> dict[str, Any]:

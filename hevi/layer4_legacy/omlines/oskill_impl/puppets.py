@@ -50,13 +50,18 @@ def photo_frames(image_path, W, H, fps, mouth, darken=0.5, rect_out=None):
         f.paste(s2, (px, py))
         rects.append([px, py, s2.size[0], s2.size[1]])
         d = ImageDraw.Draw(f, 'RGBA')
-        # equaliser lives at the TOP of the frame so the burned-in lower third
-        # (topic) and the caption band at the bottom stay legible
-        bw, x0, y0 = 16, 52, 150
-        for k in range(20):
+        # equaliser: small, resolution-scaled, centred in the top margin ABOVE the
+        # presenter photo so it never covers the face; lower third / captions stay legible
+        nb = 16
+        bw = max(3, int(W * 0.010))
+        gap = max(2, int(W * 0.005))
+        x0 = (W - nb * (bw + gap)) // 2
+        y0 = max(int(H * 0.075), py - 4)
+        hmax = max(6, min(int(H * 0.06), y0 - 4))
+        for k in range(nb):
             env = max(0.0, min(1.0, float(mo) * (0.55 + 0.45 * abs(math.sin(t * 3.1 + k * 0.7)))))
-            hgt = int(6 + 48 * env)
-            d.rectangle([x0 + k * (bw + 7), y0 - hgt, x0 + k * (bw + 7) + bw, y0], fill=(0, 200, 255, 210))
+            hgt = int(2 + (hmax - 2) * env)
+            d.rectangle([x0 + k * (bw + gap), y0 - hgt, x0 + k * (bw + gap) + bw, y0], fill=(0, 200, 255, 200))
         yield np.asarray(f)
     _dump_rect(rect_out, fps, W, H, rects, 'full')
 

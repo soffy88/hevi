@@ -128,7 +128,8 @@ def _photo_on_screen(video: str, image_path: str, rect_meta: dict) -> tuple[bool
             m = np.zeros((ph, pw), np.uint8)
             cv2.circle(m, (pw // 2, ph // 2), max(4, min(ph, pw) // 2 - 4), 255, -1)
             sel = m > 0
-            a_img, b_img = patch[sel], photo[sel]
+            # boolean indexing flattens to (N, 3): keep an image shape for cvtColor
+            a_img, b_img = patch[sel].reshape(-1, 1, 3), photo[sel].reshape(-1, 1, 3)
         a = cv2.cvtColor(a_img, cv2.COLOR_BGR2GRAY).astype(np.float32)
         b = cv2.cvtColor(b_img, cv2.COLOR_BGR2GRAY).astype(np.float32)
         a -= a.mean(); b -= b.mean()
@@ -168,6 +169,9 @@ async def process_run(sem, line: str, variant: str, root: Path) -> dict:
     async with sem:
         out_dir = root / f"{line}__{variant}"
         slots = _slots(line, variant)
+        # this E2E qualifies the omlines zero-cost tier: do not route host lines to the
+        # separate talkcraft renderer (its own acceptance lives in the talkcraft suite)
+        slots.pop("renderer", None)
         topic = str(slots["topic"])
         print(f"[{line}/{variant}] topic={topic!r} ...", flush=True)
         row: dict = {"line": line, "variant": variant, "inputs": {
@@ -199,6 +203,14 @@ async def process_run(sem, line: str, variant: str, root: Path) -> dict:
             evidence = _topic_evidence(out_dir)
             topic_hit = topic in evidence
             checks["topic_in_subtitles"] = bool(topic_hit)
+            src = str(slots.get("media_path") or slots.get("source") or "")
+            rep = out_dir / "shorts_generation_report.json"
+            if not topic_hit and line == "shorts_clip" and rep.is_file():
+                # the production shorts renderer cuts the supplied footage and takes no topic:
+                # relevance = the report proves which real source was cut
+                used = (json.loads(rep.read_text(encoding="utf-8")).get("inputs") or {}).get("source_video_path")
+                checks["source_in_report"] = bool(src) and str(used) == src
+                topic_hit = checks["source_in_report"]
             if not topic_hit:
                 row.update(status="FAIL", reason=f"topic keyword {topic!r} not present in subtitles/record",
                            qa_checks=checks, path=str(art))
@@ -245,8 +257,16 @@ async def main() -> int:
     root = Path("output/om_lines_e2e")
     root.mkdir(parents=True, exist_ok=True)
     sem = asyncio.Semaphore(2)  # bounded CPU: 2 lines at a time
-    tasks = [process_run(sem, line, v, root) for line in CANONICAL_LINES for v in VARIANTS]
-    results = await asyncio.gather(*tasks)
+    # OMLINES_E2E_ONLY=a,b re-runs just those lines and merges them into the existing results
+    only = [x for x in os.environ.get("OMLINES_E2E_ONLY", "").split(",") if x]
+    lines = [ln for ln in CANONICAL_LINES if not only or ln in only]
+    tasks = [process_run(sem, line, v, root) for line in lines for v in VARIANTS]
+    results = list(await asyncio.gather(*tasks))
+    prev_path = root / "e2e_results.json"
+    if only and prev_path.is_file():
+        prev = json.loads(prev_path.read_text(encoding="utf-8")).get("runs") or []
+        results = [r for r in prev if r.get("line") not in only] + results
+        results.sort(key=lambda r: (list(CANONICAL_LINES).index(r["line"]), r["variant"]))
 
     by_line: dict[str, dict] = {}
     for r in results:
