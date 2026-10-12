@@ -13,9 +13,95 @@ from typing import Any
 
 
 def generate_beats_js(style: str, story: dict[str, Any]) -> str:
-    """Generate the complete `beats.js` content for the given style and story."""
-    generator = _GENERATORS.get(style, _generate_chalkboard_beats)
+    """Generate the complete `beats.js` content for the given style and story.
+
+    Styles without a real generator raise (no silent fallback to another style).
+    On-screen keywords come from the input script (``_line_keywords``), never from ASR.
+    """
+    generator = _GENERATORS.get(style)
+    if generator is None:
+        raise NotImplementedError(f"no beats generator implemented for style {style!r}")
+    story = dict(story)
+    story["lines"] = [
+        {**L, "keywords": _line_keywords(str(L.get("text", "")), story),
+         "diagram": _diagram_kind(str(L.get("text", ""))),
+         "numbers": _numbers(str(L.get("text", "")))}
+        for L in story.get("lines", [])
+    ]
     return generator(story)
+
+
+_PUNCT = set("，。！？；：、,.!?;:“”\"'（）()《》 ·-—")
+_STOPWORDS = {
+    "其实", "就是", "这就", "的人", "一下", "我们", "你们", "他们", "这个", "那个", "因为", "所以",
+    "但是", "然后", "如果", "一个", "这样", "还是", "已经", "可以", "没有", "什么", "为什么", "非常",
+    "很多", "到了", "当你", "一旦", "就会", "却远", "反而", "越来", "自然", "简单",
+}
+
+
+def _keyword_pool(story: dict[str, Any]) -> str:
+    parts: list[str] = [str(story.get("title", "")), str(story.get("subtitle", ""))]
+    parts += [str(c.get("title", "")) for c in story.get("chapters", [])]
+    recap = story.get("recap") or {}
+    parts += [str(recap.get("center", "")), str(recap.get("tagline", ""))]
+    for pnt in recap.get("points", []) or []:
+        parts += [str(pnt.get("title", "")), str(pnt.get("text", ""))]
+    parts += [str(x) for x in (story.get("end") or {}).get("emphasis", []) or []]
+    for v in (story.get("notes") or {}).values():
+        parts += [str(x) for x in (v if isinstance(v, list) else [v])]
+    parts += [str(v) for v in (story.get("facts") or {}).values()]
+    return "\n".join(parts)
+
+
+def _line_keywords(text: str, story: dict[str, Any], limit: int = 3) -> list[str]:
+    """Content keywords for one script line, taken from the line's own text.
+
+    A substring of the line counts when it also appears in the story's own
+    title/chapters/notes/facts/recap (i.e. the author marked it as a topic term).
+    Longest terms first, no overlaps, function words removed.  Falls back to the
+    longest clause fragment (never to an ASR token).
+    """
+    pool = _keyword_pool(story)
+    clean = "".join(ch if ch not in _PUNCT else "|" for ch in text)
+    found: list[tuple[int, str]] = []
+    used = [False] * len(clean)
+    for n in (6, 5, 4, 3, 2):
+        for i in range(0, len(clean) - n + 1):
+            sub = clean[i:i + n]
+            if "|" in sub or any(used[i:i + n]) or sub in _STOPWORDS:
+                continue
+            if sub in pool and not sub.isdigit():
+                found.append((i, sub))
+                for k in range(i, i + n):
+                    used[k] = True
+    found.sort(key=lambda x: (-len(x[1]), x[0]))
+    kws = [w for _, w in found][:limit]
+    if not kws:
+        frags = [f for f in clean.split("|") if len(f) >= 2]
+        frags = [f[2:] if f[:2] in _STOPWORDS else f for f in frags]
+        frags = [f for f in frags if len(f) >= 2]
+        if frags:
+            kws = [max(frags, key=len)[:6]]
+    return kws
+
+
+def _numbers(text: str) -> list[str]:
+    import re
+
+    return re.findall(r"\d+(?:\.\d+)?\s*[%％]?|[一二三四五六七八九十百千万亿]+(?:倍|伏|个|小时|年|分)", text)[:2]
+
+
+def _diagram_kind(text: str) -> str:
+    """Pick the diagram by what the line says, not by its index."""
+    if _numbers(text) or any(k in text for k in ("倍", "千", "万", "亿", "%", "百分")):
+        return "metric"
+    if any(k in text for k in ("但", "却", "反而", "低于", "高于", "相比", "而是", "不是")):
+        return "contrast"
+    if any(k in text for k in ("因为", "所以", "导致", "原因", "一旦", "就会", "于是", "当")):
+        return "cause"
+    if any(k in text for k in ("办法", "首先", "然后", "步骤", "第一", "第二", "：")):
+        return "steps"
+    return "burst"
 
 
 # =============================================================================
@@ -39,7 +125,7 @@ def _generate_chalkboard_beats(story: dict[str, Any]) -> str:
         end = float(L.get("end", start + 3.0))
         words = L.get("words", [])
         # Extract keywords (words with >= 2 chars, or Latin/numbers)
-        keywords = [w[0] for w in words if len(w[0]) >= 2 and w[0] not in "，。！？；：、"]
+        keywords = list(L.get("keywords") or [])
         chap_key = L.get("chapter", "")
         chap_notes = notes.get(chap_key, [])
         note_text = chap_notes[li - 1] if li <= len(chap_notes) else (keywords[0] if keywords else text[:6])
@@ -51,6 +137,8 @@ def _generate_chalkboard_beats(story: dict[str, Any]) -> str:
             "end": end,
             "keywords": keywords[:3],
             "note": note_text,
+            "diagram": L.get("diagram", "burst"),
+            "numbers": L.get("numbers", []),
         })
 
     lines_json = json.dumps(lines_data, ensure_ascii=False)
@@ -93,20 +181,32 @@ window.Beats = function (api) {{
     var diagX = x + Math.round(w * 0.45);
     var diagY = y + Math.round(h * 0.45);
 
-    if (idx % 3 === 0) {{
-      // Particle / charge interaction diagram: nucleus circle + orbiting dots + arrows
-      S(P, G.circ(diagX, diagY, 32, 32, 1.0), "w", 2.8, t0 + 0.2, 0.25, {{ sprite: false }});
-      S(P, G.circ(diagX, diagY, 12, 12, 1.0), tone, 3.2, t0 + 0.25, 0.2, {{ sprite: false }});
-      S(P, G.arrow(diagX + 44, diagY, diagX + 77, diagY, diagX + 110, diagY, 12), tone, 3.0, t0 + 0.35, 0.2, {{ sprite: false }});
-      S(P, G.circ(diagX + 130, diagY, 20, 20, 1.0), "g", 2.5, t0 + 0.42, 0.2, {{ sprite: false }});
-    }} else if (idx % 3 === 1) {{
-      // Comparison bars / balance scale
-      S(P, G.line(diagX - 30, diagY + 40, diagX + 130, diagY + 40, 3), "m", 2.8, t0 + 0.2, 0.2, {{ sprite: false }});
-      S(P, G.rect(diagX - 10, diagY - 20, 40, 60), tone, 3.0, t0 + 0.28, 0.25, {{ sprite: false }});
-      S(P, G.rect(diagX + 60, diagY + 10, 40, 30), "w", 2.5, t0 + 0.36, 0.25, {{ sprite: false }});
-      S(P, G.arrow(diagX + 10, diagY - 30, diagX + 10, diagY - 40, diagX + 10, diagY - 50, 8), "y", 2.5, t0 + 0.45, 0.2, {{ sprite: false }});
+    var kind = item.diagram || "burst";
+    var num = (item.numbers && item.numbers.length) ? item.numbers[0] : "";
+    if (kind === "metric") {{
+      // 数字对比：两根高低不同的柱 + 原文中的数字标注
+      S(P, G.line(diagX - 30, diagY + 50, diagX + 150, diagY + 50, 3), "m", 2.8, t0 + 0.2, 0.2, {{ sprite: false }});
+      S(P, G.rect(diagX - 10, diagY - 40, 44, 90), tone, 3.0, t0 + 0.28, 0.3, {{ sprite: false }});
+      S(P, G.rect(diagX + 70, diagY + 20, 44, 30), "w", 2.5, t0 + 0.38, 0.25, {{ sprite: false }});
+      if (num) T(P, diagX - 14, diagY - 80, 34, [[num, t0 + 0.45, t0 + 0.7, "c" + tone]], {{ sprite: false }});
+    }} else if (kind === "contrast") {{
+      // 对比：天平两端
+      S(P, G.line(diagX + 60, diagY - 40, diagX + 60, diagY + 50, 3), "m", 2.6, t0 + 0.2, 0.2, {{ sprite: false }});
+      S(P, G.line(diagX - 20, diagY - 10, diagX + 140, diagY - 30, 3), tone, 3.0, t0 + 0.28, 0.2, {{ sprite: false }});
+      S(P, G.circ(diagX - 20, diagY + 10, 22, 22, 1.0), "w", 2.6, t0 + 0.36, 0.2, {{ sprite: false }});
+      S(P, G.circ(diagX + 140, diagY - 10, 14, 14, 1.0), tone, 2.6, t0 + 0.42, 0.2, {{ sprite: false }});
+    }} else if (kind === "cause") {{
+      // 因果链：原因 → 结果
+      S(P, G.rect(diagX - 30, diagY - 22, 60, 44), "w", 2.6, t0 + 0.2, 0.22, {{ sprite: false }});
+      S(P, G.arrow(diagX + 36, diagY, diagX + 70, diagY, diagX + 104, diagY, 12), tone, 3.0, t0 + 0.32, 0.2, {{ sprite: false }});
+      S(P, G.burst(diagX + 140, diagY, 14, 34, 8, 0), "y", 3.2, t0 + 0.42, 0.25, {{ sprite: false }});
+    }} else if (kind === "steps") {{
+      // 步骤：三级台阶
+      S(P, G.rect(diagX - 30, diagY + 20, 50, 30), "w", 2.5, t0 + 0.2, 0.2, {{ sprite: false }});
+      S(P, G.rect(diagX + 24, diagY - 10, 50, 60), tone, 2.8, t0 + 0.28, 0.2, {{ sprite: false }});
+      S(P, G.rect(diagX + 78, diagY - 40, 50, 90), "g", 3.0, t0 + 0.36, 0.2, {{ sprite: false }});
     }} else {{
-      // Pulse spark / energy burst
+      // 强调：能量爆发
       S(P, G.burst(diagX + 40, diagY, 18, 48, 8, 0), tone, 3.5, t0 + 0.25, 0.25, {{ sprite: false }});
       S(P, G.circ(diagX + 40, diagY, 16, 16, 1.0), "y", 3.0, t0 + 0.32, 0.2, {{ sprite: false }});
     }}
@@ -143,7 +243,7 @@ def _generate_cinematic_beats(story: dict[str, Any]) -> str:
     for L in lines:
         if L.get("i") == end_line:
             continue
-        words = [w[0] for w in L.get("words", []) if len(w[0]) >= 2 and w[0] not in "，。！？；：、"]
+        words = list(L.get("keywords") or [])
         beats_meta.append({
             "i": L.get("i", 1),
             "text": L.get("text", ""),
@@ -248,7 +348,7 @@ window.Beats = function (api) {{
     // 3. Add chapter note under chip
     if (chapItems.length && chapItems[0].keywords.length) {{
       var mainKw = chapItems[0].keywords[0];
-      api.note("核心要点：<b>" + mainKw + "</b> 机制原理解析", chap.start, chap.end);
+      api.note("核心要点：" + mainKw + " · 机制原理解析", chap.start, chap.end);
     }}
 
     sceneObjects.push({{
@@ -290,7 +390,7 @@ def _generate_paper_beats(story: dict[str, Any]) -> str:
     for L in lines:
         if L.get("i") == end_line:
             continue
-        words = [w[0] for w in L.get("words", []) if len(w[0]) >= 2 and w[0] not in "，。！？；：、"]
+        words = list(L.get("keywords") or [])
         beats_meta.append({
             "i": L.get("i", 1),
             "text": L.get("text", ""),
@@ -356,7 +456,7 @@ def _generate_editorial_beats(story: dict[str, Any]) -> str:
     for L in lines:
         if L.get("i") == end_line:
             continue
-        words = [w[0] for w in L.get("words", []) if len(w[0]) >= 2 and w[0] not in "，。！？；：、"]
+        words = list(L.get("keywords") or [])
         beats_meta.append({
             "i": L.get("i", 1),
             "text": L.get("text", ""),
@@ -388,7 +488,7 @@ window.Beats = function (api) {{
     chapItems.forEach(function (it, idx) {{
       var col = document.createElement("div");
       col.style.cssText = "flex:1; background:#ffffff; border:1px solid #e8e4dc; border-radius:8px; padding:36px; box-shadow:0 8px 30px rgba(0,0,0,0.04);";
-      var kw = it.keywords.length ? it.keywords[0] : "要点";
+      var kw = it.keywords.length ? it.keywords[0] : it.text.replace(/[，。！？；：、]/g, "").slice(0, 6);
       col.innerHTML = "<div style='font-size:16px; font-weight:700; color:#8c8273; letter-spacing:3px;'>SECTION " + (k + 1) + "." + (idx + 1) + "</div>" +
                       "<div style='font-size:48px; font-weight:800; color:#181614; margin:16px 0;'>" + kw + "</div>" +
                       "<div style='font-size:24px; color:#5c5448; line-height:1.5;'>" + it.text + "</div>";
@@ -398,7 +498,7 @@ window.Beats = function (api) {{
     st.el.appendChild(container);
 
     if (chapItems.length && chapItems[0].keywords.length) {{
-      api.note("核心专题：<b>" + chapItems[0].keywords[0] + "</b> · 深度论证", chap.start, chap.end);
+      api.note("核心专题：" + chapItems[0].keywords[0] + " · 深度论证", chap.start, chap.end);
     }}
   }});
 
@@ -421,7 +521,7 @@ def _generate_signal_beats(story: dict[str, Any]) -> str:
     for L in lines:
         if L.get("i") == end_line:
             continue
-        words = [w[0] for w in L.get("words", []) if len(w[0]) >= 2 and w[0] not in "，。！？；：、"]
+        words = list(L.get("keywords") or [])
         beats_meta.append({
             "i": L.get("i", 1),
             "text": L.get("text", ""),
@@ -451,7 +551,7 @@ window.Beats = function (api) {{
     monitor.style.cssText = "position:absolute; left:160px; top:240px; width:1600px; height:600px; background:rgba(12,20,16,0.92); border:2px solid #22c55e; border-radius:6px; padding:32px; font-family:monospace; box-shadow:0 0 40px rgba(34,197,94,0.15);";
 
     var linesHtml = chapItems.map(function (it, idx) {{
-      var kw = it.keywords.length ? it.keywords[0] : "SIGNAL";
+      var kw = it.keywords.length ? it.keywords[0] : it.text.replace(/[，。！？；：、]/g, "").slice(0, 6);
       return "<div style='margin-bottom:24px; padding-bottom:16px; border-bottom:1px dashed rgba(34,197,94,0.3);'>" +
              "<span style='color:#86efac; font-size:18px;'>[CH " + (k + 1) + " // NODE " + (idx + 1) + "]</span> " +
              "<span style='color:#ffffff; font-size:38px; font-weight:bold; margin-left:16px;'>" + kw + "</span>" +
@@ -486,7 +586,7 @@ def _generate_comic_beats(story: dict[str, Any]) -> str:
     for L in lines:
         if L.get("i") == end_line:
             continue
-        words = [w[0] for w in L.get("words", []) if len(w[0]) >= 2 and w[0] not in "，。！？；：、"]
+        words = list(L.get("keywords") or [])
         beats_meta.append({
             "i": L.get("i", 1),
             "text": L.get("text", ""),
@@ -505,7 +605,7 @@ window.Beats = function (api) {{
 
   // Build comic panels
   items.forEach(function (it, idx) {{
-    var kw = it.keywords.length ? it.keywords[0] : "BAM!";
+    var kw = it.keywords.length ? it.keywords[0] : it.text.replace(/[，。！？；：、]/g, "").slice(0, 6);
     // If api provides custom slots or stage placement:
     if (api.placeholder) {{
       // In comic starter, custom panels can be added or placeholder replaced

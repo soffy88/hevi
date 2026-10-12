@@ -203,58 +203,65 @@ async def render_styles(styles: list[str]) -> dict[str, dict]:
     return results
 
 
+INPUTS = OUT / "inputs"  # real product photos fetched from Pexels (provenance in *.jpg.json)
+
+
+def _run_one(results: dict, key: str, out: Path, fn, **kw) -> None:
+    print(f"[{key}] rendering …", flush=True)
+    try:
+        fn(output_path=out, **kw)
+        contact_sheet(out)
+        info = probe(out)
+        info["motion_ratio"] = motion_ratio(out)
+        results[key] = info
+        print(f"[{key}] -> {info}", flush=True)
+    except Exception as exc:
+        results[key] = {"error": str(exc)[-600:]}
+        print(f"[{key}] FAILED: {exc}", flush=True)
+
+
 def render_kinetic() -> dict[str, dict]:
     results: dict[str, dict] = {}
-
-    # 1. Kinetic Typography (15-30s, input-driven)
-    kt_out = OUT / "hf_kinetic_typography.mp4"
-    print("[kinetic] rendering kinetic typography …", flush=True)
-    try:
-        render_kinetic_typography(
-            output_path=kt_out,
-            title="极速创作 · 动效排版",
-            lines=[
-                ("突破传统排版边界", "全新视觉渲染引擎架构深度赋能", "震撼登场"),
-                ("字句灵动跃然", "毫秒级缓动算法与排版韵律契合", "流畅呈现"),
-                ("极速无缝输出", "全平台多画幅一键智能适配输出", "效率翻倍"),
-                ("开启创作新纪元", "让每一段文字都拥有无限生命力", "即刻启程"),
-            ],
-            aspect_ratio="16:9",
-            with_audio=True,
-        )
-        contact_sheet(kt_out)
-        kt_info = probe(kt_out)
-        kt_info["motion_ratio"] = motion_ratio(kt_out)
-        results["hf_kinetic_typography"] = kt_info
-        print(f"[kinetic] -> {kt_info}", flush=True)
-    except Exception as exc:
-        results["hf_kinetic_typography"] = {"error": str(exc)[-600:]}
-        print(f"[kinetic] FAILED: {exc}", flush=True)
-
-    # 2. Product Promo (15-30s, input-driven)
-    promo_out = OUT / "hf_product_promo.mp4"
-    print("[promo] rendering product promo …", flush=True)
-    try:
-        render_product_promo(
-            output_path=promo_out,
-            product_name="智音 Pro · 旗舰降噪耳机",
-            slogan="纯净音质，即刻沉浸",
-            highlights=[
-                {"badge": "核心声学", "title": "45dB 深度智慧降噪", "sub": "毫秒级自适应环境噪声消除算法"},
-                {"badge": "强劲续航", "title": "60 小时超长持久播放", "sub": "闪充十分钟，畅听五小时音乐"},
-                {"badge": "专业调音", "title": "Hi-Res 金标无损母带音质", "sub": "定制级 40mm 碳纤维纳米复合振膜"},
-            ],
-            cta="探索未来之声 · 官方旗舰现货首发",
-        )
-        contact_sheet(promo_out)
-        promo_info = probe(promo_out)
-        promo_info["motion_ratio"] = motion_ratio(promo_out)
-        results["hf_product_promo"] = promo_info
-        print(f"[promo] -> {promo_info}", flush=True)
-    except Exception as exc:
-        results["hf_product_promo"] = {"error": str(exc)[-600:]}
-        print(f"[promo] FAILED: {exc}", flush=True)
-
+    # 1. Kinetic typography: lines come from the caller's own copy (a real topic)
+    _run_one(
+        results, "hf_kinetic_typography", OUT / "hf_kinetic_typography.mp4", render_kinetic_typography,
+        title="冬天为什么静电多",
+        lines=[
+            ("冬天静电多", "脱毛衣噼里啪啦，摸门把手被电一下", "为什么"),
+            ("摩擦让电子转移", "电荷在绝缘体表面越积越多", "起电"),
+            ("空气太干燥", "缺少水汽，电荷无处释放", "关键"),
+            ("加湿到百分之五十", "穿纯棉衣物，电荷自然溜走", "化解"),
+        ],
+        aspect_ratio="16:9",
+        with_audio=True,
+    )
+    # 2. Product promo A (16:9): headphones photo + the caller's selling points
+    _run_one(
+        results, "hf_product_promo", OUT / "hf_product_promo.mp4", render_product_promo,
+        product_name="Studio 头戴式耳机",
+        slogan="一戴上，世界就安静了",
+        highlights=[
+            {"badge": "降噪", "title": "主动降噪", "sub": "地铁和飞机上也能专心听"},
+            {"badge": "续航", "title": "长续航", "sub": "一周通勤只充一次"},
+            {"badge": "佩戴", "title": "软垫耳罩", "sub": "久戴不压耳"},
+        ],
+        cta="到店试听",
+        product_image=INPUTS / "headphones.jpg",
+        aspect_ratio="16:9",
+    )
+    # 3. Product promo B (21:9): a different product + photo, ultra-wide layout
+    _run_one(
+        results, "hf_product_promo_21_9", OUT / "hf_product_promo_21_9.mp4", render_product_promo,
+        product_name="细口手冲壶",
+        slogan="水流稳，咖啡才稳",
+        highlights=[
+            {"badge": "壶嘴", "title": "鹅颈细嘴", "sub": "水柱细而稳，好控流速"},
+            {"badge": "材质", "title": "不锈钢壶身", "sub": "保温均匀，易清洗"},
+        ],
+        cta="开始你的第一杯手冲",
+        product_image=INPUTS / "kettle.jpg",
+        aspect_ratio="21:9",
+    )
     return results
 
 
@@ -378,6 +385,15 @@ async def main() -> int:
 
     report: dict[str, dict] = {}
     if not args.skip_styles:
+        # 每次从输入稿重建故事包：屏幕文字 = 输入稿，whisper 只给时间（不复用旧的 ASR 文本）
+        from hevi.providers.hyperframes.story_builder import (
+            TOPIC_STATIC_ELECTRICITY,
+            TOPIC_WHALE_CANCER,
+            build_story_package,
+        )
+
+        build_story_package(spec=TOPIC_STATIC_ELECTRICITY, dest_dir=STORY_STATIC)
+        build_story_package(spec=TOPIC_WHALE_CANCER, dest_dir=STORY_WHALE)
         report.update(await render_styles(styles))
     if not args.skip_kinetic:
         report.update(render_kinetic())

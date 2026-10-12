@@ -184,26 +184,48 @@ async def hyperframes_generate(
     kind = payload.get("kind") or kwargs.get("kind")
     if kind == "kinetic_typography":
         from hevi.providers.hyperframes.kinetic import render_kinetic_typography
+
+        lines = payload.get("lines")
+        if not lines:
+            # 没给 lines 时从 prompt/topic 文本切句生成（不使用任何内置文案）
+            import re as _re
+
+            src = str(payload.get("script") or payload.get("text") or payload.get("topic") or "").strip()
+            clauses = [c.strip() for c in _re.split(r"[。！？!?\n]+", src) if c.strip()]
+            lines = []
+            for c in clauses[:8]:
+                head, _, tail = c.partition("，")
+                lines.append((head, tail, ""))
+        if not lines:
+            raise HyperframesRenderError("kinetic_typography 需要 lines 或 prompt 文本")
         return await asyncio.to_thread(
             render_kinetic_typography,
             output_path=outp,
-            title=str(payload.get("title") or payload.get("topic") or "动态字效"),
-            lines=payload.get("lines"),
+            title=str(payload.get("title") or payload.get("topic") or ""),
+            lines=[tuple(x) if not isinstance(x, str) else (x, "", "") for x in lines],
             aspect_ratio=str(payload.get("aspect_ratio") or "16:9"),
             width=width,
             height=height,
             fps=fps,
             with_audio=payload.get("with_audio", True),
+            product_image=payload.get("image_path") or payload.get("product_image"),
         )
     if kind == "product_promo":
         from hevi.providers.hyperframes.kinetic import render_product_promo
+
+        name = str(payload.get("product_name") or "").strip()
+        highlights = payload.get("highlights") or []
+        if not name or not highlights:
+            raise HyperframesRenderError("product_promo 需要 product_name 与 highlights（不提供默认卖点）")
         return await asyncio.to_thread(
             render_product_promo,
             output_path=outp,
-            product_name=str(payload.get("product_name") or payload.get("title") or "新品宣传"),
+            product_name=name,
             slogan=str(payload.get("slogan") or ""),
-            highlights=payload.get("highlights"),
-            cta=str(payload.get("cta") or "立即购买"),
+            highlights=highlights,
+            cta=str(payload.get("cta") or ""),
+            product_image=payload.get("product_image") or payload.get("image_path"),
+            aspect_ratio=str(payload.get("aspect_ratio") or "16:9"),
             fps=fps,
         )
     try:

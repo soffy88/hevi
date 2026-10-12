@@ -58,6 +58,42 @@ def synth_narration_line(text: str, out_wav: Path, *, speed: float = 1.05) -> fl
     return float(out)
 
 
+_PUNCT_CHARS = set(" ，。！？；：、,.!?;:“”\"'（）()《》·—-")
+
+
+def _script_tokens_with_times(
+    text: str, w_times: list[float], start_t: float, end_t: float
+) -> list[list[Any]]:
+    """Script characters (punctuation attached to the preceding char) with times.
+
+    Character j of the script takes the time of whisper character
+    round(j * (M-1)/(N-1)) — a monotonic index alignment — so the timing follows
+    the real speech while every glyph shown is the author's own text.  Without
+    usable whisper times the line's audio cue is split evenly.
+    """
+    tokens: list[str] = []
+    for ch in text:
+        if ch in _PUNCT_CHARS and tokens:
+            tokens[-1] += ch
+        elif ch.strip():
+            tokens.append(ch)
+    n = len(tokens)
+    if n == 0:
+        return []
+    m = len(w_times)
+    out: list[list[Any]] = []
+    for j, tok in enumerate(tokens):
+        if m >= 2:
+            t = w_times[round(j * (m - 1) / max(1, n - 1))]
+        else:
+            t = start_t + (end_t - start_t) * j / n
+        t = min(max(t, start_t), end_t)
+        if out and t < out[-1][1]:
+            t = out[-1][1]
+        out.append([tok, round(t, 2)])
+    return out
+
+
 def build_story_package(
     *,
     spec: dict[str, Any],
@@ -132,26 +168,22 @@ def build_story_package(
             for w in seg.words:
                 all_whisper_words.append((w.word.strip(), round(w.start, 2), round(w.end, 2)))
 
-    # Distribute words to each line based on cues
+    # Distribute timing to each line.  On-screen text ALWAYS comes from the input
+    # script; whisper only provides *timing* (ASR text such as「洞天脱毛衣」is never shown).
     built_lines = []
     for i, line_def in enumerate(lines_spec):
         li = line_def.get("i", i + 1)
         text = line_def["text"]
         start_t, end_t = line_cues[i]
-        matched_words = [
-            [w[0], w[1]]
-            for w in all_whisper_words
-            if w[1] >= start_t - 0.25 and w[1] <= end_t + 0.35
-        ]
-        # Fallback if whisper segmented differently: generate character-level times
-        if not matched_words or len(matched_words) < 2:
-            chars = [c for c in text if c not in " ，。！？；：、"]
-            char_dur = (end_t - start_t) / max(1, len(chars))
-            matched_words = [
-                [c, round(start_t + j * char_dur, 2)]
-                for j, c in enumerate(chars)
-            ]
-
+        # whisper character times strictly inside this line's own audio cue (no cross-line leakage)
+        w_times: list[float] = []
+        for wtxt, ws, we in all_whisper_words:
+            if ws < start_t - 0.15 or ws >= end_t:
+                continue
+            chars = [c for c in wtxt if c not in _PUNCT_CHARS] or [wtxt]
+            for k in range(len(chars)):
+                w_times.append(round(ws + (we - ws) * k / max(1, len(chars)), 2))
+        matched_words = _script_tokens_with_times(text, w_times, start_t, end_t)
         built_lines.append({
             "i": li,
             "text": text,
@@ -202,7 +234,7 @@ def build_story_package(
         "duration": total_duration,
         "narration": "audio/narration.wav",
         "voice": "piper huayan · zh_CN-huayan-medium",
-        "timing": "faster-whisper-large-v3-turbo",
+        "timing": "faster-whisper-large-v3-turbo (timing only; on-screen text = input script)",
         "lines": built_lines,
         "chapters": built_chapters,
         "end": end_spec,

@@ -158,6 +158,7 @@ class KineticBeat:
     accent: str = ""
     duration_s: float = 3.0
     theme: str = "bold"  # "bold" | "accent" | "highlight" | "metric" | "outro"
+    badge: str = ""
 
 
 def _build_kinetic_html(
@@ -169,6 +170,7 @@ def _build_kinetic_html(
     fps: int,
     total_duration: float,
     has_audio: bool,
+    product_src: str = "",
 ) -> str:
     # CSS & layout
     is_vertical = height > width
@@ -182,16 +184,38 @@ def _build_kinetic_html(
         start = cursor
         cursor += dur
 
-        accent_span = f'<span class="accent-word">{escape(beat.accent)}</span>' if beat.accent else ""
-        sub_p = f'<p class="sub-text">{escape(beat.sub)}</p>' if beat.sub else ""
-        badge = f'<div class="badge">STEP {idx + 1:02d}</div>'
+        # 逐字错峰入场：标题字符在本拍前 45% 时长内依次弹入；副标题按词随后淡入
+        chars = list(beat.text)
+        stagger = min(0.09, (dur * 0.45) / max(1, len(chars)))
+        title_spans = "".join(
+            f'<span class="ch" style="animation-delay:{k * stagger:.3f}s">{escape(c) if c.strip() else "&nbsp;"}</span>'
+            for k, c in enumerate(chars)
+        )
+        accent_delay = len(chars) * stagger + 0.1
+        accent_span = (
+            f'<span class="accent-word" style="animation-delay:{accent_delay:.2f}s, {accent_delay + 0.4:.2f}s; '
+            f'animation-duration:0.4s, {max(0.6, dur - accent_delay - 0.8):.2f}s">'
+            f'{escape(beat.accent)}</span>' if beat.accent else ""
+        )
+        sub_words = [w for w in beat.sub.replace("，", "， ").split(" ") if w] if beat.sub else []
+        sub_html = "".join(
+            f'<span class="sw" style="animation-delay:{accent_delay + 0.25 + k * 0.12:.2f}s">{escape(w)}</span>'
+            for k, w in enumerate(sub_words)
+        )
+        sub_p = f'<p class="sub-text">{sub_html}</p>' if sub_html else ""
+        badge = f'<div class="badge">{escape(beat.badge or f"{idx + 1:02d}")}</div>'
+        img = (
+            f'<div class="product-wrap"><img class="product" src="{escape(product_src)}" '
+            f'style="animation-duration:{dur:.2f}s"/></div>' if product_src else ""
+        )
 
         cards_html.append(
             f"""
-        <section class="clip beat-card theme-{beat.theme}" data-start="{start:.2f}" data-duration="{dur:.2f}" data-track-index="{idx + 1}">
-          <div class="card-inner">
+        <section class="clip beat-card theme-{beat.theme}{' with-product' if product_src else ''}" style="animation-delay:{max(0.0, dur - 0.4):.2f}s" data-start="{start:.2f}" data-duration="{dur:.2f}" data-track-index="{idx + 1}">
+          {img}
+          <div class="card-inner" style="animation-duration: 0.45s, {dur:.2f}s">
             {badge}
-            <h1 class="main-title">{escape(beat.text)} {accent_span}</h1>
+            <h1 class="main-title">{title_spans} {accent_span}</h1>
             {sub_p}
             <div class="progress-bar"><div class="fill" style="animation-duration: {dur:.2f}s"></div></div>
           </div>
@@ -232,8 +256,8 @@ def _build_kinetic_html(
       position: absolute; inset: 0;
       background-size: 60px 60px;
       background-image:
-        linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+        linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px);
       pointer-events: none;
     }}
     .bg-glow {{
@@ -265,8 +289,39 @@ def _build_kinetic_html(
     .card-inner {{
       position: relative; max-width: {'85%' if not is_vertical else '92%'}; text-align: center;
       display: flex; flex-direction: column; align-items: center; gap: 24px;
-      animation: cardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation-name: cardIn, slowPush;
+      animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), linear;
+      animation-fill-mode: forwards, forwards;
     }}
+    @keyframes slowPush {{ from {{ transform: scale(1.0) translateY(0); }} to {{ transform: scale(1.14) translateY(-18px); }} }}
+    .ch {{ display: inline-block; opacity: 0; transform: translateY(60px) scale(1.6) rotate(-8deg);
+          animation: charIn 0.42s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }}
+    @keyframes charIn {{ to {{ opacity: 1; transform: translateY(0) scale(1) rotate(0); }} }}
+    .sw {{ display: inline-block; opacity: 0; transform: translateX(-24px); margin: 0 4px;
+          animation: swIn 0.35s ease-out forwards; }}
+    @keyframes swIn {{ to {{ opacity: 1; transform: translateX(0); }} }}
+    .accent-word {{ opacity: 0; }}
+    @keyframes accentIn {{ from {{ opacity: 0; transform: scale(2.2); }} to {{ opacity: 1; transform: scale(1); }} }}
+    @keyframes accentPulse {{ 0% {{ transform: scale(1); }} 25% {{ transform: scale(1.18) rotate(-3deg); }} 50% {{ transform: scale(1); }} 75% {{ transform: scale(1.18) rotate(3deg); }} 100% {{ transform: scale(1.05); }} }}
+    /* 背景运动：有限时长 = 全片时长（确定性逐帧渲染下可精确定位） */
+    .bg-grid {{ animation: gridPan {total_duration:.2f}s linear forwards; }}
+    @keyframes gridPan {{ from {{ background-position: 0 0; }} to {{ background-position: {int(total_duration * 40)}px {int(total_duration * 20)}px; }} }}
+    .bg-glow {{ width: 900px; height: 900px; animation: glowDrift {total_duration:.2f}s ease-in-out forwards; }}
+    @keyframes glowDrift {{
+      0% {{ transform: translate(-110%, -70%) scale(0.8); }}
+      33% {{ transform: translate(10%, -30%) scale(1.3); }}
+      66% {{ transform: translate(-60%, -10%) scale(1.0); }}
+      100% {{ transform: translate(0%, -60%) scale(1.4); }}
+    }}
+    .beat-card {{ animation-name: cardOut; animation-timing-function: ease-in; animation-fill-mode: forwards; animation-duration: 0.4s; }}
+    @keyframes cardOut {{ from {{ opacity: 1; transform: translateX(0) scale(1); }} to {{ opacity: 0; transform: translateX(-160px) scale(0.9); }} }}
+    .product-wrap {{ position: absolute; display: flex; align-items: center; justify-content: center; overflow: hidden;
+      {'left: 6%; top: 50%; width: ' + ('30%' if is_ultra else '38%') + '; height: 70%; transform: translateY(-50%);' if not is_vertical else 'left: 10%; top: 8%; width: 80%; height: 38%;'}
+      border-radius: 28px; box-shadow: 0 30px 80px rgba(0,0,0,0.55); background: #111; }}
+    .product {{ width: 100%; height: 100%; object-fit: cover; animation-name: kenburns; animation-timing-function: linear; animation-fill-mode: forwards; }}
+    @keyframes kenburns {{ from {{ transform: scale(1.0) translate(0, 0); }} to {{ transform: scale(1.35) translate(-6%, -4%); }} }}
+    .with-product {{ {'justify-content: flex-end; padding-right: ' + ('8%' if is_ultra else '5%') + ';' if not is_vertical else 'align-items: flex-end; padding-bottom: 12%;'} }}
+    .with-product .card-inner {{ max-width: {'50%' if not is_vertical else '90%'}; }}
     @keyframes cardIn {{
       0% {{ opacity: 0; transform: translateY(30px) scale(0.95); }}
       100% {{ opacity: 1; transform: translateY(0) scale(1); }}
@@ -282,11 +337,14 @@ def _build_kinetic_html(
       text-shadow: 0 4px 20px rgba(0,0,0,0.6);
     }}
     .accent-word {{
-      color: #38bdf8;
+      color: #38bdf8; opacity: 0;
       background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       display: inline-block;
+      animation-name: accentIn, accentPulse;
+      animation-timing-function: ease-out, ease-in-out;
+      animation-fill-mode: forwards, forwards;
     }}
     .sub-text {{
       font-size: {'28px' if not is_vertical else '24px'};
@@ -337,29 +395,34 @@ def _build_kinetic_html(
 def render_kinetic_typography(
     *,
     output_path: Path | str,
-    title: str = "动态字效 · Kinetic Typography",
-    lines: list[tuple[str, str, str]] | None = None,  # (text, sub, accent)
+    lines: list[tuple[str, str, str]],  # (text, sub, accent) — required, no built-in copy
+    title: str = "",
     aspect_ratio: str = "16:9",
     width: int | None = None,
     height: int | None = None,
     fps: int = 30,
     with_audio: bool = True,
+    product_image: str | Path | None = None,
+    badges: list[str] | None = None,
 ) -> Path:
-    """Render a clean-room kinetic typography video driven by input text lines."""
+    """Render kinetic typography driven entirely by the caller's lines.
+
+    Each beat: title characters fly in one by one (staggered), the accent word
+    pops and pulses, sub-text words slide in, while the card slowly pushes in and
+    the background grid/glow keep moving — the frame is never static.
+    Raises ValueError when no lines are supplied (no placeholder copy).
+    """
+    if not lines or not any(str(x[0]).strip() for x in lines):
+        raise ValueError("kinetic typography needs input lines (text, sub, accent); none were given")
     out = Path(output_path).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
+    if aspect_ratio not in ASPECT_DIMENSIONS and (width is None or height is None):
+        raise ValueError(f"unsupported aspect_ratio {aspect_ratio!r}; one of {sorted(ASPECT_DIMENSIONS)}")
+    title = title or str(lines[0][0])
 
     w, h = ASPECT_DIMENSIONS.get(aspect_ratio, (1920, 1080))
     if width is not None and height is not None:
         w, h = width, height
-
-    if lines is None:
-        lines = [
-            ("突破传统边界", "全新视觉渲染引擎架构", "震撼登场"),
-            ("字句之间", "毫秒级动效与排版设计", "灵动跃然"),
-            ("极速无缝输出", "全平台多画幅一键适配", "效率翻倍"),
-            ("自由创作未来", "让每一个灵感被世界看见", "立即启程"),
-        ]
 
     work_dir = out.parent / f".{out.stem}_kinetic_work"
     if work_dir.exists():
@@ -372,6 +435,16 @@ def render_kinetic_typography(
     vo_files: list[Path] = []
     total_vo_dur = 0.0
 
+    product_src = ""
+    if product_image:
+        pimg = Path(product_image)
+        if not pimg.is_file():
+            raise ValueError(f"product_image not found: {pimg}")
+        (work_dir / "assets").mkdir(parents=True, exist_ok=True)
+        dst = work_dir / "assets" / f"product{pimg.suffix.lower() or '.jpg'}"
+        shutil.copy2(pimg, dst)
+        product_src = f"assets/{dst.name}"
+
     themes = ["bold", "highlight", "metric", "bold", "highlight"]
     for i, (main_text, sub_text, accent) in enumerate(lines):
         spoken = f"{main_text}，{accent}。{sub_text}" if accent else f"{main_text}。{sub_text}"
@@ -383,7 +456,9 @@ def render_kinetic_typography(
             dur = max(2.5, len(main_text) * 0.28)
         dur = max(dur + 0.35, 2.2)
         total_vo_dur += dur
-        beats.append(KineticBeat(text=main_text, sub=sub_text, accent=accent, duration_s=dur, theme=themes[i % len(themes)]))
+        beats.append(KineticBeat(text=main_text, sub=sub_text, accent=accent, duration_s=dur,
+                                 theme=themes[i % len(themes)],
+                                 badge=(badges[i] if badges and i < len(badges) else "")))
 
     total_duration = max(total_vo_dur + 0.6, 6.0)
 
@@ -408,6 +483,7 @@ def render_kinetic_typography(
         fps=fps,
         total_duration=total_duration,
         has_audio=with_audio,
+        product_src=product_src,
     )
     (work_dir / "index.html").write_text(html_content, encoding="utf-8")
     (work_dir / "hyperframes.json").write_text(json.dumps({"media": {"autoProxy": True}}, indent=2), encoding="utf-8")
@@ -458,32 +534,41 @@ def render_kinetic_typography(
 def render_product_promo(
     *,
     output_path: Path | str,
-    product_name: str = "智音 Pro · 旗舰降噪耳机",
-    slogan: str = "纯净音质，即刻沉浸",
-    highlights: list[dict[str, str]] | None = None,
-    cta: str = "探索未来之声 · 立即拥有",
+    product_name: str,
+    highlights: list[dict[str, str]],
+    slogan: str = "",
+    cta: str = "",
+    product_image: str | Path | None = None,
+    aspect_ratio: str = "16:9",
     fps: int = 30,
 ) -> Path:
-    """Render a dynamic product promotional film (15-30s) driven by product info."""
-    if highlights is None:
-        highlights = [
-            {"badge": "核心声学", "title": "45dB 深度智慧降噪", "sub": "毫秒级自适应环境噪声消除"},
-            {"badge": "强劲续航", "title": "60 小时超长播放", "sub": "闪充十分钟，畅听五小时"},
-            {"badge": "专业调音", "title": "Hi-Res 金标无损音质", "sub": "定制级 40mm 碳纤维振膜"},
-        ]
+    """Product promo (15–30s) built only from the caller's product info.
 
-    lines = [(product_name, slogan, "新品首发")]
+    ``highlights`` = [{"title", "sub", "badge"}, ...] is required; the product
+    photo (``product_image``) is shown on every beat with a slow push-in, laid
+    out per aspect ratio.  No built-in product copy exists.
+    """
+    if not str(product_name or "").strip():
+        raise ValueError("product promo needs product_name")
+    if not highlights or not all(str(h.get("title", "")).strip() for h in highlights):
+        raise ValueError("product promo needs at least one highlight with a title (no default selling points)")
+    lines = [(product_name, slogan, "")]
+    badges = ["NEW"]
     for h in highlights:
-        lines.append((h["title"], h["sub"], h["badge"]))
-    lines.append((cta, product_name, "官方旗舰"))
-
+        lines.append((h["title"], h.get("sub", ""), ""))
+        badges.append(h.get("badge", ""))
+    if cta:
+        lines.append((cta, product_name, ""))
+        badges.append("")
     return render_kinetic_typography(
         output_path=output_path,
         title=product_name,
         lines=lines,
-        aspect_ratio="16:9",
+        aspect_ratio=aspect_ratio,
         fps=fps,
         with_audio=True,
+        product_image=product_image,
+        badges=badges,
     )
 
 

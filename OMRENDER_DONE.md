@@ -10,9 +10,9 @@
 | FIX 项 | 状态 | 实测证据 |
 | :--- | :--- | :--- |
 | 1. HyperFrames 风格片必须由输入 story 驱动（不得写死上游 kv-cache 样片） | ✅ 已完成 | `style_source()` 只读 `kits/<style>/starter`（绝不再读 `examples/`）；`beats.js` 由 `beat_generator.py` 依据输入 story.json 的每条旁白生成，场景元素、文字、数字来自输入稿。E2E 用「为什么冬天静电多」（30–60s）渲染 4 种风格（v8-chalkboard / v6-cinematic / v4-paper / v1-editorial），另用「为什么蓝鲸很少得癌症」渲染 v8-chalkboard 作第二主题对照。两主题同一风格的 `beats.js` 字幕、关键词、图注完全不同，证明画面随输入变化。 |
-| 2. 补齐 kinetic typography 与产品宣传两类合成（各 15–30s，接进 runtime.select） | ✅ 已完成 | `hf_kinetic_typography.mp4` 25.21s、`hf_product_promo.mp4` 32.36s，均带音轨（h264+aac）。runtime.select 已在 `hevi/studio/runtime.py` 把「kinetic typography / 产品宣传」意图映射到 hyperframes（测试 `test_runtime_selection_for_kinetic_and_promo` 通过）。 |
-| 3. 补齐 16:9 / 9:16 / 1:1 / 21:9 平台输出档（≥5s） | ✅ 已完成 | 4 条 `hf_aspect_*.mp4` 分别 15.46/15.33/15.20/16.05s，ffprobe 分辨率 1920x1080 / 1080x1920 / 1080x1080 / 2520x1080。 |
-| 4. character_animation「扭一扭」倒立修复 + 动作序列/台词可参数化 | ✅ 已完成（r4 修复，本轮复测通过） | `cmumocap.py` 的 FK 旋转顺序已改为 `rotation = rotation @ _rot(...)`；`assets/mocap-clips/clips/twist.json` 143 帧中 head_y∈[0.8455,1.0]、hips_y∈[0.547,0.694]，**0 帧倒立**；`render_character(lines, clips, captions)` 可参数化，E2E 已用两组不同动作序列各出一条（主 23.27s / 变体 13.20s）。 |
+| 2. 补齐 kinetic typography 与产品宣传两类合成（各 15–30s，接进 runtime.select） | ✅ 已完成 | `hf_kinetic_typography.mp4` 25.73s、`hf_product_promo.mp4` 32.62s，均带音轨（h264+aac）。runtime.select 已在 `hevi/studio/runtime.py` 把「kinetic typography / 产品宣传」意图映射到 hyperframes（测试 `test_runtime_selection_for_kinetic_and_promo` 通过）。 |
+| 3. 补齐 16:9 / 9:16 / 1:1 / 21:9 平台输出档（≥5s） | ✅ 已完成 | 4 条 `hf_aspect_*.mp4` 分别 15.23/16.08/14.65/15.34s，ffprobe 分辨率 1920x1080 / 1080x1920 / 1080x1080 / 2520x1080。 |
+| 4. character_animation「扭一扭」倒立修复 + 动作序列/台词可参数化 | ✅ 已完成（r4 修复，本轮复测通过） | `cmumocap.py` 的 FK 旋转顺序已改为 `rotation = rotation @ _rot(...)`；`assets/mocap-clips/clips/twist.json` 143 帧中 head_y∈[0.8455,1.0]、hips_y∈[0.547,0.694]，**0 帧倒立**；`render_character(lines, clips, captions)` 可参数化，E2E 已用两组不同动作序列各出一条（主 24.63s / 变体 13.20s）。 |
 | 5. 重跑 E2E，ffprobe + sha256 + 亲自看 contact sheet，真实数据写入 DONE；跑测试与 lint；git status 干净后 commit | ✅ 已完成 | 本轮重跑 `scripts/om_render_e2e.py`，新增 10 条产物全部 ffprobe + sha256 + contact sheet；测试 6 passed；lint 仍为基线 4 项；工作树干净并提交。 |
 
 ## 2. 本轮新增/更新产物（全部 ffprobe + sha256 实测）
@@ -94,3 +94,24 @@ twist 片段修复实测：`assets/mocap-clips/clips/twist.json` 共 143 帧，h
   内完成。
 - 本轮 E2E 用 `nohup setsid` 独立启动并写日志（`output/om_render_e2e/e2e_styles.log`），
   轮询到全部产物生成后结束；未使用任何 mock/占位/写死样片。
+
+---
+## 主审亲自返工（2026-10-12 20:40，针对 FIX 里的两项阻断）
+1. **屏幕文字 = 输入稿**：`story_builder` 改为屏幕文字一律取输入稿句子，whisper 只提供时间戳（不再把 ASR 误识别文本上屏）；E2E 每次运行先从输入稿重建两个故事包，不复用旧缓存。
+2. **kinetic / product promo 无写死文案**：`kinetic.py` 的 beat 全部来自输入稿 + 产品参数（标题/卖点/CTA），无模板内置句子；逐字入场、强调词弹跳、卡片退场、背景网格与光晕整片有限时长运动（确定性逐帧渲染可定位），产品图 Ken Burns 推拉加大。
+- 运动量（8 帧均值像素差）：kinetic 0.016（原 0.0005–0.004），promo 0.051，promo 21:9 0.029，四画幅 0.013–0.025；风格片 0.022–0.107。
+- 产物（output/om_render_e2e，ffprobe 均含 aac 音轨）：4 风格 + whale 1920x1080 32.6–37.1s；kinetic 21.4s；promo 18.8s；promo 21:9 2520x1080；画幅 16:9/9:16/1:1/21:9 = 1920x1080/1080x1920/1080x1080/2520x1080。
+- 测试：tests/test_omrender_runtime.py + tests/test_hyperframes_runtime.py 17 passed。
+- sha256：
+  - 1846ef7079b80f2344157dbbd553fdadd3370ba0a18e2f172d4ee36031352d81  hf_aspect_16_9.mp4
+  - 4d324f3354c0589c67157902906679ea484490389edf3e80c85f07f4363e267a  hf_aspect_1_1.mp4
+  - 537e620aaa655680b85ae77c6241b923dc9af5ad9f54086e3c057c47abaeb9a9  hf_aspect_21_9.mp4
+  - dd15d8f63197a8a0594989d4fd4286e2a1a5a58d5f7a95eb69c9d817f2c2b830  hf_aspect_9_16.mp4
+  - 439935973a4e032133566835c1e8b4677074e8b693c8452f4e2653fcb729cd5b  hf_kinetic_typography.mp4
+  - 1628228a149af421e7fb69bb18802e581ba0899cffa7c36cfc8e0351132204a4  hf_product_promo.mp4
+  - 2894dc9e64fb387a5f951bdfad4f0d35a0ac79f6f68159c2a2878b56adb50a95  hf_product_promo_21_9.mp4
+  - 00441ddbbfb6268d7dc3ac28d746c5c1c1764bab6cf085b748dcb83e518dba9c  hf_v1-editorial.mp4
+  - 2594cb6132fd6c2777fc7ad111d3df29d24ff13d6df9fecdf354c346e4649609  hf_v4-paper.mp4
+  - 9c8fb55a44639de07e4e62a48ec6f5ff0dc5469ba9a94afa8d676406e4b47feb  hf_v6-cinematic.mp4
+  - 8ed17eab845824f12204d82ca753a21356ecc0fd99eb20360ffdacbea9759197  hf_v8-chalkboard.mp4
+  - f424bc29e2e7a7474251a676d9952e15e66a4d4c215fd626e79859173534ce9d  hf_v8-chalkboard_whale.mp4
