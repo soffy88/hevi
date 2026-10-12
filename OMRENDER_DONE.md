@@ -10,9 +10,9 @@
 | FIX 项 | 状态 | 实测证据 |
 | :--- | :--- | :--- |
 | 1. HyperFrames 风格片必须由输入 story 驱动（不得写死上游 kv-cache 样片） | ✅ 已完成 | `style_source()` 只读 `kits/<style>/starter`（绝不再读 `examples/`）；`beats.js` 由 `beat_generator.py` 依据输入 story.json 的每条旁白生成，场景元素、文字、数字来自输入稿。E2E 用「为什么冬天静电多」（30–60s）渲染 4 种风格（v8-chalkboard / v6-cinematic / v4-paper / v1-editorial），另用「为什么蓝鲸很少得癌症」渲染 v8-chalkboard 作第二主题对照。两主题同一风格的 `beats.js` 字幕、关键词、图注完全不同，证明画面随输入变化。 |
-| 2. 补齐 kinetic typography 与产品宣传两类合成（各 15–30s，接进 runtime.select） | ✅ 已完成 | `hf_kinetic_typography.mp4` 25.83s、`hf_product_promo.mp4` 32.57s，均带音轨（h264+aac）。runtime.select 已在 `hevi/studio/runtime.py` 把「kinetic typography / 产品宣传」意图映射到 hyperframes（测试 `test_runtime_selection_for_kinetic_and_promo` 通过）。 |
-| 3. 补齐 16:9 / 9:16 / 1:1 / 21:9 平台输出档（≥5s） | ✅ 已完成 | 4 条 `hf_aspect_*.mp4` 分别 15.59/15.69/15.32/15.70s，ffprobe 分辨率 1920x1080 / 1080x1920 / 1080x1080 / 2520x1080。 |
-| 4. character_animation「扭一扭」倒立修复 + 动作序列/台词可参数化 | ✅ 已完成（r4 修复，本轮复测通过） | `cmumocap.py` 的 FK 旋转顺序已改为 `rotation = rotation @ _rot(...)`；`assets/mocap-clips/clips/twist.json` 143 帧中 head_y∈[0.8455,1.0]、hips_y∈[0.547,0.694]，**0 帧倒立**；`render_character(lines, clips, captions)` 可参数化，E2E 已用两组不同动作序列各出一条（主 23.37s / 变体 13.37s）。 |
+| 2. 补齐 kinetic typography 与产品宣传两类合成（各 15–30s，接进 runtime.select） | ✅ 已完成 | `hf_kinetic_typography.mp4` 25.21s、`hf_product_promo.mp4` 32.36s，均带音轨（h264+aac）。runtime.select 已在 `hevi/studio/runtime.py` 把「kinetic typography / 产品宣传」意图映射到 hyperframes（测试 `test_runtime_selection_for_kinetic_and_promo` 通过）。 |
+| 3. 补齐 16:9 / 9:16 / 1:1 / 21:9 平台输出档（≥5s） | ✅ 已完成 | 4 条 `hf_aspect_*.mp4` 分别 15.46/15.33/15.20/16.05s，ffprobe 分辨率 1920x1080 / 1080x1920 / 1080x1080 / 2520x1080。 |
+| 4. character_animation「扭一扭」倒立修复 + 动作序列/台词可参数化 | ✅ 已完成（r4 修复，本轮复测通过） | `cmumocap.py` 的 FK 旋转顺序已改为 `rotation = rotation @ _rot(...)`；`assets/mocap-clips/clips/twist.json` 143 帧中 head_y∈[0.8455,1.0]、hips_y∈[0.547,0.694]，**0 帧倒立**；`render_character(lines, clips, captions)` 可参数化，E2E 已用两组不同动作序列各出一条（主 23.27s / 变体 13.20s）。 |
 | 5. 重跑 E2E，ffprobe + sha256 + 亲自看 contact sheet，真实数据写入 DONE；跑测试与 lint；git status 干净后 commit | ✅ 已完成 | 本轮重跑 `scripts/om_render_e2e.py`，新增 10 条产物全部 ffprobe + sha256 + contact sheet；测试 6 passed；lint 仍为基线 4 项；工作树干净并提交。 |
 
 ## 2. 本轮新增/更新产物（全部 ffprobe + sha256 实测）
@@ -35,24 +35,24 @@
 
 | 产物 | 时长 | 分辨率 | 帧数 | 编码 | 文件大小 | motion_ratio | SHA-256 |
 | :--- | ---: | :---: | ---: | :---: | ---: | ---: | :--- |
-| `hf_kinetic_typography.mp4` | 25.833s | 1920x1080 | 775 | h264/aac | 1,765,743 | 0.00174 | `64b715a40b4c8bfbef8ad3b91d7582fd3a1dc2938838dd7d3d46ef8549870965` |
-| `hf_product_promo.mp4` | 32.572s | 1920x1080 | 977 | h264/aac | 2,252,260 | 0.00435 | `0e77578976610f1fef54f97efd3e7b8af0ffe0d8f7e820b18bb30eabf28f9261` |
+| `hf_kinetic_typography.mp4` | 25.207s | 1920x1080 | 756 | h264/aac | 1,717,972 | 0.00174 | `79eb7e1f6733060fe3c70599418edd88bd1fc5593ede839afeb2e74bfac716f7` |
+| `hf_product_promo.mp4` | 32.363s | 1920x1080 | 970 | h264/aac | 2,259,180 | 0.00433 | `96d91282c68580449585812e149780031812d3d68ccaea2b408654f9a89304f8` |
 
 ### 2.3 平台输出档（kinetic typography 合成，≥5s）
 
 | 产物 | 时长 | 分辨率 | 帧数 | 编码 | 文件大小 | motion_ratio | SHA-256 |
 | :--- | ---: | :---: | ---: | :---: | ---: | ---: | :--- |
-| `hf_aspect_16_9.mp4` | 15.585s | 1920x1080 | 467 | h264/aac | 957,347 | 0.00066 | `3a53d9e32691ae1b9facd02641f0ad41f584e4582606b3e8184f88f07cc95f7c` |
-| `hf_aspect_9_16.mp4` | 15.690s | 1080x1920 | 470 | h264/aac | 885,632 | 0.00052 | `bbfc1f452b0f9d1091e075e06f45f0b02f2ebd0372caa72e157a3313289815f8` |
-| `hf_aspect_1_1.mp4` | 15.318s | 1080x1080 | 459 | h264/aac | 881,704 | 0.00142 | `5b73e637c66f92114a8770599e6f4d2c8e3cb736603fc4a35e26b11e750f2c84` |
-| `hf_aspect_21_9.mp4` | 15.700s | 2520x1080 | 471 | h264/aac | 997,309 | 0.00053 | `d00e1a86d2531e3ad74eaea8a65825b61e7f7d9d91634ddc437424c88793c8a2` |
+| `hf_aspect_16_9.mp4` | 15.458s | 1920x1080 | 463 | h264/aac | 935,785 | 0.00066 | `8c68ad984c9059285cb91847a880fadc3ba7c51da19913b42f9d424bd0be8733` |
+| `hf_aspect_9_16.mp4` | 15.330s | 1080x1920 | 459 | h264/aac | 874,162 | 0.00057 | `d7adfca01a60585f4798d07685761cafc08a6d1010c4a84880cb7d9b4f6a1176` |
+| `hf_aspect_1_1.mp4` | 15.200s | 1080x1080 | 456 | h264/aac | 877,893 | 0.00144 | `5910e8723fb4231d1d56f1db31f8457b1aa1ebd94cad438279d758b882c80524` |
+| `hf_aspect_21_9.mp4` | 16.050s | 2520x1080 | 481 | h264/aac | 1,012,291 | 0.00047 | `ccf43e6eb5685b4078bf3d78132c09709d4715a96b5f00b4d1b546035a901957` |
 
 ### 2.4 character_animation（r4 修复，本轮复测）
 
 | 产物 | 时长 | 分辨率 | 帧数 | 编码 | 文件大小 | motion_ratio | SHA-256 |
 | :--- | ---: | :---: | ---: | :---: | ---: | ---: | :--- |
-| `character_animation.mp4` | 23.367s | 1920x1080 | 701 | h264/aac | 4,783,400 | 0.01313 | `3def069277aa75822157341250f83934a07da5be7ad9c1d1f74e6e67c31ef12f` |
-| `character_animation_alt.mp4` | 13.367s | 1920x1080 | 401 | h264/aac | 2,840,849 | 0.01215 | `37e4b35cda162d5a278a7774ab4882f1290a9293992a0906f52371f3461a75c5` |
+| `character_animation.mp4` | 23.267s | 1920x1080 | 698 | h264/aac | 4,765,370 | 0.01409 | `fe5679e6ddeebf3cb73dcec92d34ec849da96d2a5376b4510b3224e2636bac6a` |
+| `character_animation_alt.mp4` | 13.200s | 1920x1080 | 396 | h264/aac | 2,783,802 | 0.0128 | `5434d873d58be187409dba3d36216bf2a33f5bb4911592aa5badf7c38e8dfb52` |
 
 twist 片段修复实测：`assets/mocap-clips/clips/twist.json` 共 143 帧，head_y 范围
 [0.8455, 1.0]，hips_y 范围 [0.547, 0.694]，**head 始终高于 hips，倒立帧数 = 0**
