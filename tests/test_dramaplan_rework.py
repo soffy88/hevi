@@ -127,10 +127,17 @@ async def test_regenerate_shots_calls_provider_only_for_failed(tmp_path: Path):
         },
     )
 
-    # provider 只为这 3 个失败镜头被调用（每个镜头 2 个变体 → 6 次底层调用，
-    # 但**涉及的镜头集合**恰好是 3 个；非目标镜头一次都没被碰）。
-    assert set(provider_calls) == failed
+    # provider 只为这 3 个失败镜头被调用：
+    # 底层生成器为每个返工镜头并发生成 2 个候选变体（v0, v1）供 consistency_fn 挑选，
+    # 因此 3 个镜头对应 6 次底层 video_fn 调用。
+    assert len(provider_calls) == 6
+    # 严格断言：被调用的镜头数=3 且镜头集合恰好为 failed
     assert len(set(provider_calls)) == 3
+    assert set(provider_calls) == failed
+    # 严格断言：非目标镜头调用次数=0
+    non_target_calls = [idx for idx in provider_calls if idx not in failed]
+    assert len(non_target_calls) == 0
+
     # 其余 7 镜产物字节不变
     for i in range(10):
         if i in failed:

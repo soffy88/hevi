@@ -124,11 +124,74 @@ def fit_shot_plans_to_budget(plans: list[Any], budget: int) -> list[Any]:
     return [merge_shot_plans(group) for group in groups if group]
 
 
+def split_single_shot_plan(plan: Any, count: int) -> list[Any]:
+    """把单个镜头按时长等分拆分为 count 个子镜头。"""
+    if count <= 1:
+        return [plan]
+    total_dur = float(_get(plan, "duration_s", 0) or 0)
+    base_dur = round(total_dur / count, 2)
+    original_id = str(_get(plan, "shot_id", "shot") or "shot")
+    original_prompt = str(_get(plan, "image_prompt", "") or "").strip()
+    original_tts = str(_get(plan, "tts_text", "") or "").strip()
+
+    import re
+
+    clauses = [c.strip() for c in re.split(r"[，,。！？!?；;\n]+", original_tts) if c.strip()]
+
+    parts: list[Any] = []
+    accum_dur = 0.0
+    for j in range(count):
+        dur = round(total_dur - accum_dur, 2) if j == count - 1 else base_dur
+        accum_dur += dur
+        sid = f"{original_id}_{j+1}"
+        clause_text = clauses[j] if j < len(clauses) else ""
+        prompt = f"{original_prompt}（分镜{j+1}/{count}）" if original_prompt else ""
+        sub = _set(plan, "shot_id", sid)
+        sub = _set(sub, "duration_s", dur)
+        sub = _set(sub, "image_prompt", prompt)
+        sub = _set(sub, "tts_text", clause_text)
+        parts.append(sub)
+    return parts
+
+
+def expand_shot_plans_to_budget(plans: list[Any], budget: int) -> list[Any]:
+    """把镜头计划列表扩展到 `budget` 个：不足则将长镜头均匀拆分为多镜。
+
+    - `budget <= 0` 或空列表 → 空列表；
+    - 已 >= budget → 原样返回；
+    - 不足 → 按容量均摊拆分子镜头，返回列表长度严格 == budget。
+    """
+    if not plans or budget <= 0:
+        return []
+    if len(plans) >= budget:
+        return list(plans)
+    n = len(plans)
+    sub_counts = [budget // n + (1 if i < (budget % n) else 0) for i in range(n)]
+    expanded: list[Any] = []
+    for plan, count in zip(plans, sub_counts, strict=True):
+        expanded.extend(split_single_shot_plan(plan, count))
+    return expanded
+
+
+def adjust_shot_plans_to_budget(plans: list[Any], budget: int) -> list[Any]:
+    """镜头预算适配：多则均匀合并，少则均匀拆分，严格适配到 budget 镜。"""
+    if not plans or budget <= 0:
+        return []
+    if len(plans) > budget:
+        return fit_shot_plans_to_budget(plans, budget)
+    if len(plans) < budget:
+        return expand_shot_plans_to_budget(plans, budget)
+    return list(plans)
+
+
 __all__ = [
     "DEFAULT_SECONDS_PER_SHOT",
+    "adjust_shot_plans_to_budget",
     "expected_chapters_for_duration",
+    "expand_shot_plans_to_budget",
     "fit_shot_plans_to_budget",
     "merge_shot_plans",
     "shot_budget_for_duration",
     "shot_budget_per_chapter",
+    "split_single_shot_plan",
 ]

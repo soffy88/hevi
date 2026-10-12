@@ -1,0 +1,57 @@
+{
+  "chapters_ge_3": true,
+  "event_graph_nonempty": true,
+  "characters_merged": true,
+  "stitched_edge_marked": true,
+  "outline_episodes_match": true,
+  "outline_budget_sum_equals_total": true,
+  "all_episodes_have_scripts": true,
+  "review_has_revision_round": true,
+  "review_all_passed": true,
+  "all_storyboards_exist": true,
+  "storyboard_events_in_graph": true,
+  "storyboard_shot_count_matches_scenes": true,
+  "storyboard_shot_count_within_budget": true,
+  "outline_events_covered": true,
+  "memory_db_created": true,
+  "llm_calls": 15,
+  "passed": true,
+  "artifacts": {
+    "event_graph.json": {
+      "sha256": "78e533aa99d2f06c1f529d6d9e5b50b3726e2eb737e87eeb71d4021c28933a9b",
+      "bytes": 11495
+    },
+    "adaptation_outline.json": {
+      "sha256": "cae90116df669f9f78ea23aa1b4608b6ff2274aebf18b686bf723c7bd105ebf7",
+      "bytes": 1480
+    },
+    "review_log.json": {
+      "sha256": "014faf1b2607cb3661bd3120506f1365760f13e30bd69ec68024e099def5f983",
+      "bytes": 15960
+    },
+    "episode_scripts/ep01.json": {
+      "sha256": "651f15954c467858c9414beec77ca50683f7327d1068330aba2387cffc3507d9",
+      "bytes": 1833
+    },
+    "episode_scripts/ep02.json": {
+      "sha256": "d552305311aaeaa413353ef4ccde2d3771656d48a9947ddfed467c5929b6015b",
+      "bytes": 2255
+    },
+    "episode_scripts/ep03.json": {
+      "sha256": "f7445de2463dfafe5eab26898c759b4cc8531c67fcb4158600a3c99a1eef6e98",
+      "bytes": 2816
+    },
+    "storyboards/ep01.json": {
+      "sha256": "5d5e488a2b0f03a9aa87fea1e31cdba94bb8c294850b0191576d880ef8b3829d",
+      "bytes": 3350
+    },
+    "storyboards/ep02.json": {
+      "sha256": "607eaafd818c33aec65a09ecbcd3d33b1350852027d42764be442001b47d243e",
+      "bytes": 4350
+    },
+    "storyboards/ep03.json": {
+      "sha256": "e89140725e037363243eba6484c0d85aa74df2b39546f49623be7b66900a8489",
+      "bytes": 5333
+    }
+  }
+}

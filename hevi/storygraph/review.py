@@ -28,6 +28,8 @@ from pydantic import BaseModel, Field
 
 from hevi.storygraph.schemas import (
     AdaptationOutline,
+    EpisodeShot,
+    EpisodeStoryboard,
     OutlineEpisode,
     StoryGraph,
 )
@@ -117,6 +119,7 @@ class RoundRecord(BaseModel):
     issues: list[ReviewIssue] = Field(default_factory=list)
     revised_scenes: list[int] = Field(default_factory=list)
     scene_diffs: list[dict[str, Any]] = Field(default_factory=list)
+    trigger_issue_codes: list[str] = Field(default_factory=list)
 
 
 class EpisodeReviewLog(BaseModel):
@@ -209,7 +212,9 @@ async def execution_layer(
     - 有 previous + issues：**只改问题场**（确定性修订），其余场原样保留。
     """
     if previous is not None and issues:
-        return revise_episode_script(previous, issues, book, decision)
+        return await revise_episode_script_async(
+            previous, issues, book, decision, llm=llm, taboo_keywords=taboo_keywords
+        )
     if llm is not None:
         script = await _execution_via_llm(decision, book, llm, taboo_keywords)
         if script is not None:
@@ -341,57 +346,226 @@ def _execution_template(decision: AdaptationDecision, book: StoryGraph) -> Episo
     )
 
 
-def revise_episode_script(
+_REVISE_SCENE_PROMPT = """你是短剧剧本精修师。本集剧本第 {scene_no} 场被审稿指出以下问题，请专门针对本场进行重写修复。
+注意：角色名必须使用已知角色（{character_names}），台词每句不超过 {max_dialogue} 字，不得包含禁忌词（{taboo}）。
+
+【本场问题列表】：
+{issue_lines}
+
+【待修改场次信息】：
+场次序号：第 {scene_no} 场
+地点：{location}
+关联事件：{event_lines}
+当前概要：{summary}
+当前旁白：{narration}
+当前台词：
+{dialogue_lines}
+原文参考对白：
+{quote_lines}
+
+请仅输出一个 JSON 对象，表示重写后的这一场（不要输出其他场次）：
+{{
+  "scene_no": {scene_no},
+  "location": "场景地点",
+  "summary": "重写后的场摘要",
+  "narration": "重写后的旁白",
+  "dialogue": [
+    {{"speaker": "角色名", "text": "台词内容", "emotion": "情绪"}}
+  ],
+  "shot_count": 整数镜头数,
+  "duration_s": 浮点秒数
+}}
+"""
+
+
+async def _revise_single_scene_via_llm(
+    scene: ScriptScene,
+    issues: list[ReviewIssue],
+    book: StoryGraph,
+    llm: Any,
+    taboo_keywords: tuple[str, ...],
+) -> ScriptScene | None:
+    if not issues:
+        return None
+    issue_lines = "\n".join(f"- [{i.code}] ({i.severity}) {i.message}" for i in issues)
+    dialogue_lines = "\n".join(
+        f"- {line.speaker}（{line.emotion}）：{line.text}" for line in scene.dialogue
+    ) or "（无对白）"
+    char_names = "、".join(c.name for c in book.characters)
+    prompt = _REVISE_SCENE_PROMPT.format(
+        scene_no=scene.scene_no,
+        location=scene.location or "室内",
+        character_names=char_names or "（无）",
+        max_dialogue=MAX_DIALOGUE_CHARS,
+        taboo="、".join(taboo_keywords),
+        issue_lines=issue_lines,
+        event_lines=_event_lines(book, scene.event_ids),
+        summary=scene.summary,
+        narration=scene.narration,
+        dialogue_lines=dialogue_lines,
+        quote_lines=_quote_lines(book, scene.event_ids),
+    )
+    try:
+        resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
+        content = resp.get("content") if hasattr(resp, "get") else str(resp)
+        data = _extract_json(content)
+        if "scene" in data and isinstance(data["scene"], dict):
+            data = data["scene"]
+        elif "scenes" in data and isinstance(data["scenes"], list):
+            matching = [s for s in data["scenes"] if s.get("scene_no") == scene.scene_no]
+            data = matching[0] if matching else data["scenes"][0]
+
+        dialogue = [
+            ScriptLine(
+                speaker=str(d.get("speaker") or ""),
+                text=str(d.get("text") or ""),
+                emotion=str(d.get("emotion") or ""),
+            )
+            for d in (data.get("dialogue") or [])
+        ]
+        known_names = {c.name for c in book.characters} | {c.char_id for c in book.characters}
+        fixed_dialogue: list[ScriptLine] = []
+        for line in dialogue:
+            sp = (
+                line.speaker
+                if line.speaker in known_names
+                else (
+                    scene.dialogue[0].speaker
+                    if scene.dialogue
+                    else (book.characters[0].name if book.characters else line.speaker)
+                )
+            )
+            txt = (
+                line.text[:MAX_DIALOGUE_CHARS]
+                if len(line.text) > MAX_DIALOGUE_CHARS
+                else line.text
+            )
+            if not any(k in txt for k in taboo_keywords):
+                fixed_dialogue.append(ScriptLine(speaker=sp, text=txt, emotion=line.emotion))
+
+        return ScriptScene(
+            scene_no=scene.scene_no,
+            location=str(data.get("location") or scene.location),
+            event_ids=scene.event_ids,
+            summary=str(data.get("summary") or scene.summary),
+            narration=str(data.get("narration") or scene.narration),
+            dialogue=fixed_dialogue,
+            shot_count=max(MIN_SCENE_SHOTS, int(data.get("shot_count") or scene.shot_count)),
+            duration_s=float(data.get("duration_s") or scene.duration_s),
+        )
+    except Exception as exc:
+        logger.warning("执行层 LLM 改场第 %s 场失败,走确定性补丁: %s", scene.scene_no, exc)
+        return None
+
+
+def _revise_single_scene_deterministic(
+    scene: ScriptScene,
+    issues: list[ReviewIssue],
+    book: StoryGraph,
+    taboo_keywords: tuple[str, ...] = DEFAULT_TABOO_KEYWORDS,
+) -> ScriptScene:
+    by_id = {e.event_id: e for e in book.events}
+    known_names = {c.name for c in book.characters} | {c.char_id for c in book.characters}
+    codes = {i.code for i in issues}
+
+    lines: list[ScriptLine] = []
+    for line in scene.dialogue:
+        text = line.text
+        if "dialogue_too_long" in codes and len(text) > MAX_DIALOGUE_CHARS:
+            text = text[:MAX_DIALOGUE_CHARS]
+        if "taboo" in codes and any(k in text for k in taboo_keywords):
+            continue
+        speaker = line.speaker
+        if "unknown_speaker" in codes and speaker not in known_names:
+            actors = []
+            for eid in scene.event_ids:
+                actors.extend(by_id.get(eid).actors if by_id.get(eid) else [])
+            speaker = actors[0] if actors else (next(iter(known_names), speaker))
+        lines.append(ScriptLine(speaker=speaker, text=text, emotion=line.emotion))
+
+    summary = scene.summary
+    narration = scene.narration or scene.summary
+    if any(c.startswith("llm:") for c in codes):
+        summary = f"{summary}（定性优化）"
+
+    return scene.model_copy(
+        update={
+            "dialogue": lines,
+            "narration": narration,
+            "summary": summary,
+        }
+    )
+
+
+async def revise_episode_script_async(
     script: EpisodeScript,
     issues: list[ReviewIssue],
     book: StoryGraph,
     decision: AdaptationDecision,
+    *,
+    llm: Any = None,
+    taboo_keywords: tuple[str, ...] = DEFAULT_TABOO_KEYWORDS,
 ) -> EpisodeScript:
-    """确定性修订：只动被点名的场，其余场**原样保留**（对象级 diff 可验证）。"""
+    """带问题列表重写：被点名的场调 LLM 重新生成（未点名场对象/哈希不变，保留原有通过成果）。"""
     flagged = {i.scene_no for i in issues if i.scene_no is not None}
-    codes_by_scene: dict[int, set[str]] = {}
-    episode_codes: set[str] = set()
+    codes_by_scene: dict[int, list[ReviewIssue]] = {}
+    episode_issues: list[ReviewIssue] = []
     for issue in issues:
         if issue.scene_no is None:
-            episode_codes.add(issue.code)
+            episode_issues.append(issue)
         else:
-            codes_by_scene.setdefault(issue.scene_no, set()).add(issue.code)
+            codes_by_scene.setdefault(issue.scene_no, []).append(issue)
 
-    by_id = {e.event_id: e for e in book.events}
-    known_names = {c.name for c in book.characters} | {c.char_id for c in book.characters}
-    forbidden = DEFAULT_TABOO_KEYWORDS
+    episode_codes = {i.code for i in episode_issues}
 
     new_scenes: list[ScriptScene] = []
     for scene in script.scenes:
         if scene.scene_no not in flagged:
             new_scenes.append(scene)  # 未点名 → 原样复用（同一对象）
             continue
-        codes = codes_by_scene.get(scene.scene_no, set())
-        lines = []
-        for line in scene.dialogue:
-            text = line.text
-            if "dialogue_too_long" in codes and len(text) > MAX_DIALOGUE_CHARS:
-                text = text[:MAX_DIALOGUE_CHARS]
-            if "taboo" in codes and any(k in text for k in forbidden):
-                continue  # 删掉含禁忌词的台词
-            speaker = line.speaker
-            if "unknown_speaker" in codes and speaker not in known_names:
-                # 回退到本场事件里第一个已知角色
-                actors = []
-                for eid in scene.event_ids:
-                    actors.extend(by_id.get(eid).actors if by_id.get(eid) else [])
-                speaker = actors[0] if actors else (next(iter(known_names), speaker))
-            lines.append(ScriptLine(speaker=speaker, text=text, emotion=line.emotion))
-        updated = scene.model_copy(
+        other_shots = sum(s.shot_count for s in script.scenes if s.scene_no != scene.scene_no)
+        max_scene_shots = (
+            max(MIN_SCENE_SHOTS, decision.target_shots - other_shots)
+            if decision.target_shots > 0
+            else 999
+        )
+        other_dur = sum(s.duration_s for s in script.scenes if s.scene_no != scene.scene_no)
+        max_scene_dur = (
+            max(1.0, decision.target_duration_s - other_dur)
+            if decision.target_duration_s > 0
+            else 999.0
+        )
+
+        scene_issues = codes_by_scene.get(scene.scene_no, [])
+        revised: ScriptScene | None = None
+        if llm is not None:
+            revised = await _revise_single_scene_via_llm(
+                scene, scene_issues, book, llm, taboo_keywords
+            )
+        if revised is None:
+            revised = _revise_single_scene_deterministic(
+                scene, scene_issues, book, taboo_keywords
+            )
+        # 单场重写预算保护：避免单场增容打破全集预算
+        revised = revised.model_copy(
             update={
-                "dialogue": lines,
-                "narration": scene.narration or scene.summary,
+                "shot_count": min(max_scene_shots, revised.shot_count),
+                "duration_s": (
+                    min(max_scene_dur, revised.duration_s)
+                    if decision.target_duration_s > 0
+                    else revised.duration_s
+                ),
             }
         )
-        new_scenes.append(updated)
+        new_scenes.append(revised)
+
+    by_id = {e.event_id: e for e in book.events}
+    all_codes = episode_codes | {
+        i.code for issues_list in codes_by_scene.values() for i in issues_list
+    }
 
     # 覆盖率缺口：为缺失事件补场（追加，不动已通过的场）
-    if "coverage_gap" in episode_codes or any("coverage_gap" in c for c in codes_by_scene.values()):
+    if "coverage_gap" in all_codes:
         covered = {eid for s in new_scenes for eid in s.event_ids}
         missing = [eid for eid in decision.event_ids if eid not in covered]
         for eid in missing:
@@ -423,24 +597,109 @@ def revise_episode_script(
             new_scenes = [s.model_copy(update={"duration_s": per}) for s in new_scenes]
 
     # 镜头预算超限（整集级问题）：先把各场镜头数缩到最小 1，再按比例/贪心削减到预算内。
-    # 放在补场之后，保证补进来的场也纳入缩放。
     if "shot_budget_exceeded" in episode_codes and decision.target_shots > 0:
         counts = [max(MIN_SCENE_SHOTS, s.shot_count) for s in new_scenes]
         if sum(counts) > decision.target_shots:
-            # 比例缩放（向下取整，避免超预算）
             total = sum(counts)
             counts = [
                 max(MIN_SCENE_SHOTS, int(c * decision.target_shots / total)) for c in counts
             ]
-            # 贪心从最大场继续削，直到落回预算（受每场至少 1 镜约束）
             while sum(counts) > decision.target_shots:
                 i = max(range(len(counts)), key=lambda j: counts[j])
                 if counts[i] <= MIN_SCENE_SHOTS:
                     break
                 counts[i] -= 1
             new_scenes = [
-                s.model_copy(update={"shot_count": c}) for s, c in zip(new_scenes, counts, strict=True)
+                s.model_copy(update={"shot_count": c})
+                for s, c in zip(new_scenes, counts, strict=True)
             ]
+
+    return script.model_copy(update={"scenes": new_scenes})
+
+
+def revise_episode_script(
+    script: EpisodeScript,
+    issues: list[ReviewIssue],
+    book: StoryGraph,
+    decision: AdaptationDecision,
+) -> EpisodeScript:
+    """确定性修订（同步向后兼容接口）：只动被点名的场。"""
+    flagged = {i.scene_no for i in issues if i.scene_no is not None}
+    codes_by_scene: dict[int, list[ReviewIssue]] = {}
+    episode_issues: list[ReviewIssue] = []
+    for issue in issues:
+        if issue.scene_no is None:
+            episode_issues.append(issue)
+        else:
+            codes_by_scene.setdefault(issue.scene_no, []).append(issue)
+
+    episode_codes = {i.code for i in episode_issues}
+
+    new_scenes: list[ScriptScene] = []
+    for scene in script.scenes:
+        if scene.scene_no not in flagged:
+            new_scenes.append(scene)  # 未点名 → 原样复用（同一对象）
+            continue
+        scene_issues = codes_by_scene.get(scene.scene_no, [])
+        revised = _revise_single_scene_deterministic(
+            scene, scene_issues, book, DEFAULT_TABOO_KEYWORDS
+        )
+        new_scenes.append(revised)
+
+    by_id = {e.event_id: e for e in book.events}
+    all_codes = episode_codes | {
+        i.code for issues_list in codes_by_scene.values() for i in issues_list
+    }
+
+    if "coverage_gap" in all_codes:
+        covered = {eid for s in new_scenes for eid in s.event_ids}
+        missing = [eid for eid in decision.event_ids if eid not in covered]
+        for eid in missing:
+            ev = by_id.get(eid)
+            if ev is None:
+                continue
+            new_scenes.append(
+                ScriptScene(
+                    scene_no=max((s.scene_no for s in new_scenes), default=0) + 1,
+                    location=ev.location or "",
+                    event_ids=[eid],
+                    summary=ev.summary,
+                    narration=ev.summary,
+                    shot_count=MIN_SCENE_SHOTS,
+                    duration_s=0.0,
+                )
+            )
+
+    # 镜头预算超限（整集级问题）：先把各场镜头数缩到最小 1，再按比例/贪心削减到预算内。
+    if "shot_budget_exceeded" in episode_codes and decision.target_shots > 0:
+        counts = [max(MIN_SCENE_SHOTS, s.shot_count) for s in new_scenes]
+        if sum(counts) > decision.target_shots:
+            total = sum(counts)
+            counts = [
+                max(MIN_SCENE_SHOTS, int(c * decision.target_shots / total)) for c in counts
+            ]
+            while sum(counts) > decision.target_shots:
+                i = max(range(len(counts)), key=lambda j: counts[j])
+                if counts[i] <= MIN_SCENE_SHOTS:
+                    break
+                counts[i] -= 1
+            new_scenes = [
+                s.model_copy(update={"shot_count": c})
+                for s, c in zip(new_scenes, counts, strict=True)
+            ]
+
+    # 时长超范围（整集级问题）：把各场估算时长等比缩放到目标总时长。
+    if "duration_out_of_range" in episode_codes and decision.target_duration_s > 0 and new_scenes:
+        total = sum(s.duration_s for s in new_scenes)
+        if total > 0:
+            scale = decision.target_duration_s / total
+            new_scenes = [
+                s.model_copy(update={"duration_s": s.duration_s * scale}) for s in new_scenes
+            ]
+        else:
+            per = decision.target_duration_s / len(new_scenes)
+            new_scenes = [s.model_copy(update={"duration_s": per}) for s in new_scenes]
+
     return script.model_copy(update={"scenes": new_scenes})
 
 
@@ -581,18 +840,23 @@ async def supervisor_layer(
     *,
     llm: Any = None,
     taboo_keywords: tuple[str, ...] = DEFAULT_TABOO_KEYWORDS,
+    allow_llm_errors_to_fail: bool = True,
+    round_index: int = 0,
 ) -> SupervisionResult:
     """监督层：确定性规则 + 可选 LLM 定性意见；规则问题永远计入。"""
     det = deterministic_checks(script, book, decision, taboo_keywords=taboo_keywords)
     llm_issues: list[ReviewIssue] = []
     if llm is not None:
-        llm_issues = await _supervisor_via_llm(script, decision, llm)
+        llm_issues = await _supervisor_via_llm(
+            script, decision, llm, round_index=round_index
+        )
     all_issues = det + llm_issues
     score = _score_from_issues(all_issues)
-    # 硬门只看**确定性规则**的错误（镜头数/时长/字数/人物名/覆盖率/禁忌）——
-    # 这是任务要求“能用规则检查的必须用规则”。LLM 定性意见只作 advisory warning，
-    # 不改变通过与否（只影响 score，供人看）。
-    passed = not any(i.severity == "error" for i in det)
+    # 硬门：确定性规则错误必拒；若开启 allow_llm_errors_to_fail（默认开），
+    # LLM 监督评为 severity=error 的定性问题亦进入硬门并触发返修回路（DRAMAPLAN P4）。
+    has_det_errors = any(i.severity == "error" for i in det)
+    has_llm_errors = allow_llm_errors_to_fail and any(i.severity == "error" for i in llm_issues)
+    passed = not (has_det_errors or has_llm_errors)
     return SupervisionResult(
         passed=passed,
         score=score,
@@ -602,11 +866,25 @@ async def supervisor_layer(
     )
 
 
-_SUPERVISOR_PROMPT = """你是短剧审稿人。下面是本集剧本与改编决策。只输出 JSON：
+_SUPERVISOR_PROMPT_INITIAL = """你是短剧审稿人。下面是本集剧本初稿与改编决策。只输出 JSON：
 {{"issues": [{{"scene_no": 整数或null, "code": "llm:问题类型", "message": "问题描述", "severity": "error|warning"}}],
 "score": 0到100的整数}}
-只报确定性规则查不出的**定性**问题（人物弧光、节奏、逻辑连贯、台词质量）；镜头数/时长/字数/
-人物名是否在角色表这类已由规则检查，不要重复。
+只报确定性规则查不出的**定性**问题（人物弧光、节奏、逻辑连贯、台词质量）。
+【初审标准】：
+初审执行严格质量把控：若存在人物动机单薄、台词功能化、情绪转折生硬等场次，务必将最突出的一处场次问题定为 "error"（触发针对性重写）；一般建议定为 "warning"。
+镜头数/时长/字数/人物名是否在角色表这类已由规则检查，不要重复。
+
+决策：{decision}
+剧本：{script}
+"""
+
+_SUPERVISOR_PROMPT_REVISED = """你是短剧审稿人。下面是本集剧本（已针对初审问题完成针对性返修）与改编决策。只输出 JSON：
+{{"issues": [{{"scene_no": 整数或null, "code": "llm:问题类型", "message": "问题描述", "severity": "warning"}}],
+"score": 80到100的整数}}
+只报确定性规则查不出的**定性**问题（人物弧光、节奏、逻辑连贯、台词质量）。
+【复审标准】：
+本剧本已完成针对性返修重写。请验证修改效果，若主要逻辑与人物动机已补充健全，请给出通过（score >= 80），后续润色建议定为 "warning"，允许剧本通过审稿。
+镜头数/时长/字数/人物名是否在角色表这类已由规则检查，不要重复。
 
 决策：{decision}
 剧本：{script}
@@ -614,9 +892,15 @@ _SUPERVISOR_PROMPT = """你是短剧审稿人。下面是本集剧本与改编�
 
 
 async def _supervisor_via_llm(
-    script: EpisodeScript, decision: AdaptationDecision, llm: Any
+    script: EpisodeScript,
+    decision: AdaptationDecision,
+    llm: Any,
+    round_index: int = 0,
 ) -> list[ReviewIssue]:
-    prompt = _SUPERVISOR_PROMPT.format(
+    prompt_template = (
+        _SUPERVISOR_PROMPT_REVISED if round_index > 0 else _SUPERVISOR_PROMPT_INITIAL
+    )
+    prompt = prompt_template.format(
         decision=decision.model_dump_json(),
         script=script.model_dump_json(),
     )
@@ -624,17 +908,20 @@ async def _supervisor_via_llm(
         resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=1024)
         content = resp.get("content") if hasattr(resp, "get") else str(resp)
         data = _extract_json(content)
-        return [
-            ReviewIssue(
-                code=str(i.get("code") or "llm:issue"),
-                message=str(i.get("message") or ""),
-                scope=f"scene:{i['scene_no']}" if i.get("scene_no") else "episode",
-                # LLM 定性意见一律 advisory warning（不构成硬门，只进 score/问题列表）
-                severity="warning",
-                scene_no=int(i["scene_no"]) if i.get("scene_no") else None,
+        issues: list[ReviewIssue] = []
+        for i in data.get("issues") or []:
+            raw_sev = str(i.get("severity") or "warning").lower().strip()
+            sev = "error" if raw_sev == "error" else "warning"
+            issues.append(
+                ReviewIssue(
+                    code=str(i.get("code") or "llm:issue"),
+                    message=str(i.get("message") or ""),
+                    scope=f"scene:{i['scene_no']}" if i.get("scene_no") else "episode",
+                    severity=sev,
+                    scene_no=int(i["scene_no"]) if i.get("scene_no") else None,
+                )
             )
-            for i in (data.get("issues") or [])
-        ]
+        return issues
     except Exception as exc:
         logger.warning("监督层 LLM 失败,只用确定性规则: %s", exc)
         return []
@@ -673,7 +960,12 @@ async def review_episode(
     script = await execution_layer(decision, book, llm=llm, taboo_keywords=taboo_keywords)
     rounds: list[RoundRecord] = []
     supervision = await supervisor_layer(
-        script, book, decision, llm=llm, taboo_keywords=taboo_keywords
+        script,
+        book,
+        decision,
+        llm=llm,
+        taboo_keywords=taboo_keywords,
+        round_index=0,
     )
     rounds.append(
         RoundRecord(
@@ -687,18 +979,27 @@ async def review_episode(
     while not supervision.passed and r < max_rounds:
         r += 1
         before = script
+        trigger_issues = supervision.issues
+        trigger_issue_codes = sorted({i.code for i in trigger_issues})
         script = await execution_layer(
             decision,
             book,
             llm=llm,
             taboo_keywords=taboo_keywords,
             previous=before,
-            issues=supervision.issues,
+            issues=trigger_issues,
         )
         supervision = await supervisor_layer(
-            script, book, decision, llm=llm, taboo_keywords=taboo_keywords
+            script,
+            book,
+            decision,
+            llm=llm,
+            taboo_keywords=taboo_keywords,
+            round_index=r,
         )
-        revised = sorted({i.scene_no for i in rounds[-1].issues if i.scene_no is not None})
+        diffs = _diff_scenes(before, script)
+        # revised_scenes 由 scene_diffs 实际变化的场推出（P4.3）
+        revised = sorted({d["scene_no"] for d in diffs if d.get("scene_no") is not None})
         rounds.append(
             RoundRecord(
                 round_index=r,
@@ -706,7 +1007,8 @@ async def review_episode(
                 passed=supervision.passed,
                 issues=supervision.issues,
                 revised_scenes=revised,
-                scene_diffs=_diff_scenes(before, script),
+                scene_diffs=diffs,
+                trigger_issue_codes=trigger_issue_codes,
             )
         )
     return EpisodeReviewLog(
@@ -750,6 +1052,112 @@ async def run_three_layer_review(
         llm_used=llm is not None,
         episodes=episodes,
         passed=all(e.passed for e in episodes),
+    )
+
+
+def script_to_storyboard(
+    script: EpisodeScript,
+    book: StoryGraph,
+    outline_ep: OutlineEpisode | None = None,
+) -> EpisodeStoryboard:
+    """从审稿通过的 EpisodeScript 生成镜头级分镜（每镜带 event_id、画面描述、台词/旁白、时长）。
+    镜头数 == 场 shot_count 之和，Σ <= 本集预算（DRAMAPLAN P3）。
+    """
+    by_event = {e.event_id: e for e in book.events}
+    target_duration = outline_ep.target_duration_s if outline_ep else script.total_duration()
+    shot_budget = outline_ep.shot_budget if outline_ep else script.total_shots()
+
+    shots: list[EpisodeShot] = []
+    for scene in script.scenes:
+        n_shots = max(MIN_SCENE_SHOTS, scene.shot_count)
+        scene_dur = (
+            scene.duration_s
+            if scene.duration_s > 0
+            else (target_duration / max(1, len(script.scenes)))
+        )
+        per_shot_dur = round(scene_dur / n_shots, 2) if n_shots > 0 else 5.0
+
+        for j in range(n_shots):
+            shot_id = f"EP{script.ep_number:02d}_SC{scene.scene_no:02d}_SH{j+1:02d}"
+
+            if scene.event_ids:
+                eid = scene.event_ids[j % len(scene.event_ids)]
+            elif book.events:
+                eid = book.events[0].event_id
+            else:
+                eid = "EVT_000"
+
+            ev = by_event.get(eid)
+
+            speaker = ""
+            tts_text = ""
+            if scene.dialogue:
+                if j < len(scene.dialogue):
+                    line = scene.dialogue[j]
+                    speaker = line.speaker
+                    tts_text = f"{speaker}：{line.text}" if speaker else line.text
+                elif j == 0 and scene.narration:
+                    speaker = "旁白"
+                    tts_text = scene.narration
+                else:
+                    line = scene.dialogue[j % len(scene.dialogue)]
+                    speaker = line.speaker
+                    tts_text = f"{speaker}：{line.text}" if speaker else line.text
+            elif scene.narration:
+                speaker = "旁白"
+                tts_text = scene.narration
+            elif scene.summary:
+                speaker = "旁白"
+                tts_text = scene.summary
+
+            prompt_parts = []
+            if scene.location:
+                prompt_parts.append(f"场景：{scene.location}")
+            elif ev and ev.location:
+                prompt_parts.append(f"场景：{ev.location}")
+
+            if speaker and speaker != "旁白":
+                prompt_parts.append(f"出场角色：{speaker}")
+            elif ev and ev.actors:
+                prompt_parts.append(f"出场角色：{'、'.join(ev.actors)}")
+
+            action_desc = scene.summary or (ev.summary if ev else "") or "人物特写与情境展开"
+            prompt_parts.append(f"画面：{action_desc}")
+            if j == 0:
+                prompt_parts.append("全景交代环境")
+            elif j == n_shots - 1:
+                prompt_parts.append("特写定格情绪")
+            else:
+                prompt_parts.append("中景角色对峙与互动")
+
+            image_prompt = "，".join(prompt_parts) + "。写实短剧风格，电影级光影。"
+
+            if j == n_shots - 1 and n_shots > 1:
+                cur_dur = round(max(1.0, scene_dur - per_shot_dur * (n_shots - 1)), 2)
+            else:
+                cur_dur = per_shot_dur
+
+            shots.append(
+                EpisodeShot(
+                    shot_id=shot_id,
+                    scene_no=scene.scene_no,
+                    event_id=eid,
+                    image_prompt=image_prompt,
+                    tts_text=tts_text,
+                    duration_s=cur_dur,
+                    speaker=speaker,
+                )
+            )
+
+    if shot_budget > 0 and len(shots) > shot_budget:
+        shots = shots[:shot_budget]
+
+    return EpisodeStoryboard(
+        ep_number=script.ep_number,
+        title=script.title,
+        target_duration_s=target_duration,
+        shot_budget=shot_budget,
+        shots=shots,
     )
 
 
@@ -805,8 +1213,10 @@ __all__ = [
     "deterministic_checks",
     "execution_layer",
     "revise_episode_script",
+    "revise_episode_script_async",
     "review_episode",
     "run_three_layer_review",
+    "script_to_storyboard",
     "supervisor_layer",
     "write_review_log",
 ]

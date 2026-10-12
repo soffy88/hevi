@@ -1,0 +1,47 @@
+{
+  "story_source": "沈砚之与苏晚（原创）",
+  "target_episodes": 3,
+  "episode_duration_s": 60.0,
+  "total_shot_budget": 36,
+  "episodes": [
+    {
+      "ep_number": 1,
+      "title": "第1集",
+      "event_ids": [
+        "CH01E001",
+        "CH01E002"
+      ],
+      "shot_budget": 12,
+      "target_duration_s": 60.0,
+      "emotion_arc": "冲突→过场",
+      "summary": "沈砚之深夜翻墙出逃，怀中藏玉玦，父亲怒喝不许返回;福伯在巷口等候，交付盘缠布包及夫人遗留密信"
+    },
+    {
+      "ep_number": 2,
+      "title": "第2集",
+      "event_ids": [
+        "CH02E001",
+        "CH02E002"
+      ],
+      "shot_budget": 12,
+      "target_duration_s": 60.0,
+      "emotion_arc": "转折→高潮",
+      "summary": "沈砚之在青州城西绣坊找到苏晚，苏晚承认自己是他三年前救命的女子;沈砚之出示半块玉玦，苏晚取出另一块玉玦配合，二人确认身份关系"
+    },
+    {
+      "ep_number": 3,
+      "title": "第3集",
+      "event_ids": [
+        "CH03E001",
+        "CH03E002",
+        "CH03E003"
+      ],
+      "shot_budget": 12,
+      "target_duration_s": 60.0,
+      "emotion_arc": "转折→冲突→收束",
+      "summary": "沈砚之带苏晚回沈府，沈崇山见合璧玉玦痛悔流泪;沈崇山忏悔对兄妹的亏欠，沈砚之扶起父亲;苏晚跪拜母亲牌位称归来，福伯在廊下抹泪"
+    }
+  ],
+  "dropped_event_ids": [],
+  "compressed": false
+}

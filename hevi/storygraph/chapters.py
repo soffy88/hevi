@@ -104,10 +104,34 @@ async def extract_chapter_graphs(
         summary = _chapter_summary(body)
         if on_chapter is not None:
             on_chapter(i, total, title)
+
+        prior_context = None
+        if memory_store is not None and i > 1:
+            try:
+                prior_lines = []
+                for prev_i in range(1, i):
+                    prev_key = f"CH{prev_i:02d}"
+                    hits = memory_store.by_key(prev_key)
+                    for h in hits:
+                        p = h.payload
+                        chars = "、".join(p.get("characters", []))
+                        char_str = f"（出场角色：{chars}）" if chars else ""
+                        prior_lines.append(
+                            f"- {prev_key}《{p.get('title', '')}》: {p.get('summary', '')}{char_str}"
+                        )
+                        break
+                if prior_lines:
+                    prior_context = "【前文章节摘要与已知角色】\n" + "\n".join(prior_lines)
+            except Exception as exc:
+                logger.debug("memory_store 检索前文摘要异常: %s", exc)
+
         graph: StoryGraph
         try:
             graph = await extract_story_graph(
-                source_name=f"{source_name}·{title}", raw_text=body, llm=llm
+                source_name=f"{source_name}·{title}",
+                raw_text=body,
+                llm=llm,
+                prior_context=prior_context,
             )
         except Exception as exc:  # pragma: no cover - extract already degrades
             logger.warning("章节 %s 抽取异常,走确定性兜底: %s", chapter_id, exc)
@@ -133,7 +157,12 @@ async def extract_chapter_graphs(
                 memory_store.remember(
                     "summary",
                     chapter_id,
-                    {"title": title, "summary": summary, "chars": len(body)},
+                    {
+                        "title": title,
+                        "summary": summary,
+                        "chars": len(body),
+                        "characters": [c.name for c in graph.characters],
+                    },
                 )
             except Exception as exc:  # pragma: no cover - memory is best-effort
                 logger.debug("memory_store 写章节摘要失败: %s", exc)
@@ -243,6 +272,7 @@ def merge_chapter_graphs(
             prev_last = last_event_by_chapter.get(prev_chapter_id)
             if first is not None and prev_last is not None and not first.causes:
                 first.causes = [prev_last.event_id]
+                first.causal_source = "stitched"
                 if first.event_id not in prev_last.effects:
                     prev_last.effects.append(first.event_id)
         prev_chapter_id = cid
@@ -365,8 +395,8 @@ def build_adaptation_outline(
     - 事件按时间顺序**均分**到各集（不重排因果）。
     """
     target_episodes = max(1, int(target_episodes))
-    total_budget = target_episodes * shot_budget_for_duration(episode_duration_s)
-    per_ep_budget = shot_budget_per_chapter(episode_duration_s)
+    per_ep_budget = shot_budget_for_duration(episode_duration_s)
+    total_budget = target_episodes * per_ep_budget
 
     events = list(book.events)
     capacity_total = max(

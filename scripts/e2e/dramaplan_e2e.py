@@ -90,13 +90,14 @@ async def _main_async(args: argparse.Namespace) -> int:
     if args.nim_model:
         os.environ["HEVI_NIM_MODEL"] = args.nim_model
 
+    from hevi.memory.store import MemoryStore
     from hevi.providers.free_llm import probe_channel, resolve_free_llm
     from hevi.storygraph.chapters import (
         build_adaptation_outline,
         build_book_event_graph,
         outline_to_story,
     )
-    from hevi.storygraph.review import run_three_layer_review
+    from hevi.storygraph.review import run_three_layer_review, script_to_storyboard, write_review_log
 
     run_id = args.run_id or time.strftime("%Y%m%d-%H%M%S")
     out_dir = Path(args.out_root) / run_id
@@ -120,9 +121,16 @@ async def _main_async(args: argparse.Namespace) -> int:
     record["channel"] = channel_name
     llm = _CountingLLM(caller)
 
-    # 1) 章节事件图（真实 LLM 逐章抽取）
+    # 1) 章节事件图（真实 LLM 逐章抽取 + 长记忆跨章摘要召回与写入）
     t0 = time.monotonic()
-    book = await build_book_event_graph(source_name="沈砚之与苏晚（原创）", raw_text=SOURCE_TEXT, llm=llm)
+    memory_db_path = out_dir / "memory.db"
+    memory_store = MemoryStore(memory_db_path)
+    book = await build_book_event_graph(
+        source_name="沈砚之与苏晚（原创）",
+        raw_text=SOURCE_TEXT,
+        llm=llm,
+        memory_store=memory_store,
+    )
     record["steps"]["event_graph"] = {
         "elapsed_s": round(time.monotonic() - t0, 2),
         "chapters": len(book.chapters),
@@ -133,9 +141,11 @@ async def _main_async(args: argparse.Namespace) -> int:
     (out_dir / "event_graph.json").write_text(
         book.model_dump_json(indent=2), encoding="utf-8"
     )
-    print(f"[event_graph] chapters={len(book.chapters)} events={len(book.events)} chars={len(book.characters)}")
+    print(
+        f"[event_graph] chapters={len(book.chapters)} events={len(book.events)} chars={len(book.characters)}"
+    )
 
-    # 2) 改编大纲（按集数 × 时长挑选/压缩事件）
+    # 2) 改编大纲（按集数 × 时长挑选/压缩事件；每集预算对齐总预算）
     t0 = time.monotonic()
     outline = build_adaptation_outline(
         book, target_episodes=args.episodes, episode_duration_s=args.episode_duration
@@ -151,9 +161,11 @@ async def _main_async(args: argparse.Namespace) -> int:
     (out_dir / "adaptation_outline.json").write_text(
         outline.model_dump_json(indent=2), encoding="utf-8"
     )
-    print(f"[outline] episodes={len(outline.episodes)} shot_budget={outline.total_shot_budget} compressed={outline.compressed}")
+    print(
+        f"[outline] episodes={len(outline.episodes)} shot_budget={outline.total_shot_budget} compressed={outline.compressed}"
+    )
 
-    # 3) 三层审稿（真实 LLM 执行 + 监督；至少一轮监督→返修）
+    # 3) 三层审稿（真实 LLM 执行 + 监督；严格硬门定性问题 → LLM 改场 → 再审）
     t0 = time.monotonic()
     log = await run_three_layer_review(
         trimmed, outline, llm=llm, max_rounds=args.max_rounds
@@ -165,7 +177,6 @@ async def _main_async(args: argparse.Namespace) -> int:
         "rounds": [len(e.rounds) for e in log.episodes],
         "revision_rounds": sum(1 for e in log.episodes for r in e.rounds if r.round_index > 0),
     }
-    from hevi.storygraph.review import write_review_log
 
     write_review_log(log, out_dir / "review_log.json")
     scripts_dir = out_dir / "episode_scripts"
@@ -175,6 +186,24 @@ async def _main_async(args: argparse.Namespace) -> int:
             (scripts_dir / f"ep{ep.ep_number:02d}.json").write_text(
                 ep.script.model_dump_json(indent=2), encoding="utf-8"
             )
+
+    # 4) 镜头级分镜生成（每镜带 event_id、画面描述、台词/旁白、时长）
+    storyboards_dir = out_dir / "storyboards"
+    storyboards_dir.mkdir(exist_ok=True)
+    storyboards = []
+    outline_by_ep = {ep.ep_number: ep for ep in outline.episodes}
+    for ep in log.episodes:
+        if ep.script is not None:
+            outline_ep = outline_by_ep.get(ep.ep_number)
+            sb = script_to_storyboard(ep.script, book, outline_ep=outline_ep)
+            storyboards.append(sb)
+            (storyboards_dir / f"ep{sb.ep_number:02d}.json").write_text(
+                sb.model_dump_json(indent=2), encoding="utf-8"
+            )
+    print(
+        f"[storyboards] generated {len(storyboards)} storyboards, total_shots={sum(sb.total_shots() for sb in storyboards)}"
+    )
+
     print(f"[review] passed={log.passed} rounds={record['steps']['review']['rounds']}")
 
     record["llm_calls"] = llm.calls
@@ -182,18 +211,41 @@ async def _main_async(args: argparse.Namespace) -> int:
     record["llm_total_s"] = round(llm.total_s, 2)
     record["elapsed_s"] = round(time.monotonic() - started, 2)
 
-    # 4) QA：全部由脚本实测计算，不手写 passed
+    # 5) QA：全部由脚本实测计算，不手写 passed
     review_has_revision = any(
         r.round_index > 0 for e in log.episodes for r in e.rounds
     )
+    book_event_ids = {e.event_id for e in book.events}
     qa = {
         "chapters_ge_3": len(book.chapters) >= 3,
         "event_graph_nonempty": len(book.events) > 0,
         "characters_merged": len(book.characters) > 0,
+        "stitched_edge_marked": any(
+            getattr(e, "causal_source", "") == "stitched" for e in book.events
+        ),
         "outline_episodes_match": len(outline.episodes) == args.episodes,
+        "outline_budget_sum_equals_total": sum(ep.shot_budget for ep in outline.episodes)
+        == outline.total_shot_budget,
         "all_episodes_have_scripts": all(e.script is not None for e in log.episodes),
         "review_has_revision_round": review_has_revision,
         "review_all_passed": log.passed,
+        "all_storyboards_exist": len(storyboards) == args.episodes,
+        "storyboard_events_in_graph": all(
+            s.event_id in book_event_ids for sb in storyboards for s in sb.shots
+        ),
+        "storyboard_shot_count_matches_scenes": all(
+            sb.total_shots() == ep.script.total_shots()
+            for ep, sb in zip(log.episodes, storyboards, strict=False)
+        ),
+        "storyboard_shot_count_within_budget": all(
+            sb.total_shots() <= outline_ep.shot_budget
+            for outline_ep, sb in zip(outline.episodes, storyboards, strict=False)
+        ),
+        "outline_events_covered": all(
+            set(outline_ep.event_ids).issubset(set(ep.script.covered_event_ids()))
+            for outline_ep, ep in zip(outline.episodes, log.episodes, strict=False)
+        ),
+        "memory_db_created": memory_db_path.exists(),
         "llm_calls": llm.calls,
     }
     qa["passed"] = all(
@@ -209,7 +261,14 @@ async def _main_async(args: argparse.Namespace) -> int:
             "sha256": _sha256(p),
             "bytes": p.stat().st_size,
         }
-    (out_dir / "qa.json").write_text(json.dumps(qa, ensure_ascii=False, indent=2), encoding="utf-8")
+    for p in sorted(storyboards_dir.glob("*.json")):
+        qa["artifacts"][f"storyboards/{p.name}"] = {
+            "sha256": _sha256(p),
+            "bytes": p.stat().st_size,
+        }
+    (out_dir / "qa.json").write_text(
+        json.dumps(qa, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     record["qa_passed"] = qa["passed"]
     (out_dir / "record.json").write_text(
         json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"

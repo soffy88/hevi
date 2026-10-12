@@ -62,6 +62,8 @@ class StoryEvent(BaseModel):
     chapter_ref: str = ""
     # 跨章合并后保留的原始逐章 event_id(便于回溯/调试);单章时为空。
     merged_from: list[str] = Field(default_factory=list)
+    # 因果边来源："extracted" (LLM/手稿真实抽取) 或 "stitched" (跨章边界机械缝合)
+    causal_source: str = "extracted"
 
 
 class StoryQuote(BaseModel):
@@ -148,3 +150,45 @@ class StoryGraph(BaseModel):
     chapters: list[StoryChapter] = Field(default_factory=list)
     # 改编大纲(可选;由 chapters.build_adaptation_outline 生成后回填)。
     adaptation_outline: AdaptationOutline | None = None
+
+
+class EpisodeShot(BaseModel):
+    """分镜镜头：每镜带 event_id、画面描述、台词/旁白、时长（DRAMAPLAN P3）。"""
+
+    shot_id: str
+    scene_no: int
+    event_id: str
+    image_prompt: str
+    tts_text: str = ""
+    duration_s: float = 5.0
+    speaker: str = ""
+
+
+class EpisodeStoryboard(BaseModel):
+    """单集镜头级分镜脚本（由审稿通过的 EpisodeScript 派生）。"""
+
+    ep_number: int
+    title: str = ""
+    target_duration_s: float = 0.0
+    shot_budget: int = 0
+    shots: list[EpisodeShot] = Field(default_factory=list)
+
+    def total_shots(self) -> int:
+        return len(self.shots)
+
+    def total_duration(self) -> float:
+        return sum(s.duration_s for s in self.shots)
+
+    def to_shot_plans(self) -> list[Any]:
+        """直接转成上游 oskill._schemas.ShotPlan 列表。"""
+        from oskill._schemas import ShotPlan
+
+        return [
+            ShotPlan(
+                shot_id=s.shot_id,
+                image_prompt=s.image_prompt,
+                tts_text=s.tts_text,
+                duration_s=s.duration_s,
+            )
+            for s in self.shots
+        ]
