@@ -1,0 +1,47 @@
+{
+  "story_source": "沈砚之与苏晚（原创）",
+  "target_episodes": 3,
+  "episode_duration_s": 60.0,
+  "total_shot_budget": 36,
+  "episodes": [
+    {
+      "ep_number": 1,
+      "title": "第1集",
+      "event_ids": [
+        "CH01E001",
+        "CH01E002"
+      ],
+      "shot_budget": 6,
+      "target_duration_s": 60.0,
+      "emotion_arc": "冲突→过场",
+      "summary": "沈砚之在子夜翻墙出逃，怀中藏玉玦，父亲怒斥不许归来;福伯在巷口等候，交付盘缠布包及母亲遗留密信"
+    },
+    {
+      "ep_number": 2,
+      "title": "第2集",
+      "event_ids": [
+        "CH02E001",
+        "CH02E002"
+      ],
+      "shot_budget": 6,
+      "target_duration_s": 60.0,
+      "emotion_arc": "铺垫→转折",
+      "summary": "沈砚之在青州大雪中找到正在绣寒梅图的苏晚;沈砚之出示半块玉玦，苏晚取出另一块玉玦两块严丝合缝，揭示身世之谜"
+    },
+    {
+      "ep_number": 3,
+      "title": "第3集",
+      "event_ids": [
+        "CH02E003",
+        "CH03E001",
+        "CH03E002"
+      ],
+      "shot_budget": 6,
+      "target_duration_s": 60.0,
+      "emotion_arc": "高潮→转折→高潮",
+      "summary": "苏晚出示母亲密信，证实她是沈崇山失散的义女，沈砚之得知她是自己妹妹并情绪激动;沈砚之带苏晚回沈府，沈崇山见玉玦落泪忏悔;祠堂灯亮，福伯抹泪，苏晚跪拜母亲牌位称娘"
+    }
+  ],
+  "dropped_event_ids": [],
+  "compressed": false
+}

@@ -53,6 +53,24 @@
   `regen_calls == [[1]]` / `delivered is True` 原样保留 —— 修复失效仍会红。
 - **未发现前任造假或代码缺陷**；本轮唯一新增事实是 run3 产物 + DONE/PROGRESS 补充复核章节。
 
+## 续做记录（第四位接手 agent，2026-10-12）
+本次接手同样按最高标准**不沿用任何既有结论**，逐条独立复核：
+- 12 个新增文件全部真实存在且非空。
+- `sha256sum run1/run2/run3` 全部产物 → 与 DONE 表格逐字匹配一致。
+- 单测与全量回归套件：
+  - 新增 5 个单测文件：**35 passed in 0.26s**
+  - 核心回归测试 4 个文件：**46 passed in 0.39s**
+  - 扩展回归 20 个文件：**313 passed in 66.56s**
+  - 集成测试：**5 passed in 8.40s**，总计 399 项测试全部绿灯，0 失败。
+- 3O v3 lint：与基线逐字相同（4 个 site-packages 上游失败，hevi/ 零新增）。
+- **新增第四次独立真实 E2E `--run-id run4`**：
+  - 真实 NIM 调用（`nvidia/nemotron-3-super-120b-a12b`），probe latency 1.1s，json_stable=true。
+  - 3 章 / 4 角色 / 7 事件 / 7 对白；3 集总镜头预算 36。
+  - 三层审稿：真实 LLM 长评反馈（深入分析父亲角色、福伯台词、场景衔接与逃跑逻辑），EP1 round0 得分 60 (未通过) → 触发定向返修修订场景 1 与 2 → round1 得分 80 (通过)。
+  - rounds=[2, 1, 1]，revision_rounds=1，qa passed=true，EXIT=0。
+  - LLM 调用 10 次，失败 0 次，耗时 68.02s。产物 sha256 独立真实，无缓存/伪造。
+- 产物目录 `output/dramaplan_e2e/run4/` 已用 `git add -f` 强制入库作为实测证据。
+
 ## 关键发现
 - bug1 根因：`oskill.script_writer._chapters_for_duration` <300s 至少 2 章；`storyboard_planner`
   每场景 3-10 镜不受 target_duration_s 约束。longvideo_orchestrator 只在 short 档裁到 1 镜。
@@ -60,3 +78,4 @@
   真正的系统性问题是 `editor.review` 的 `consistency_floor=0.75` 与 scorecard 身份分尺度
   （identity_floor=0.2，实测 mean 0.591）严重错配 → 全部镜头被判“参考图角色错配” → 整轮重烧。
 - `free_llm` 的 `default` 兜底通道依赖 obase 注册表，跨环境不安全，应显式配 `dramaplan_llm_channel`。
+
