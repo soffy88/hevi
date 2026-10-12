@@ -377,4 +377,4 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 - 无 mock/占位：render.log 空=渲染成功；whisper 真实转写；E2E 真跑
 
 ### 结论
-**F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。工作区 clean，无未提交改动。**
+**F1/F2/F3 全部闭环，无需额外修改。所有验收数据已实测验证，与 DONE 报告一致。**
