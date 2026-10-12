@@ -197,7 +197,21 @@ return {
       const cap = q.text ?? q.sub; if (cap) { c.font = `400 ${30 * u * fs}px ${CN}`; c.fillStyle = SUB; c.textAlign = 'right'; c.fillText(cap, W - m - nw - 24 * u, by - 10 * u); }
       c.restore();
     }
-    if (ctx.alpha) { c0.save(); c0.shadowColor = P.bg; for (const b of [8, 3, 1.5]) { c0.shadowBlur = b * ctx.u; c0.drawImage(BUF, 0, 0); } c0.restore(); }   // 三遍由宽到窄：外圈柔光＋贴字的实边
+    if (ctx.alpha) {
+      // 风格画面上先铺一张纸卡，图表和它的字才有底
+      if (ctx.hasStyle) {
+        c0.save();
+        c0.fillStyle = 'rgba(250, 246, 236, 0.93)';
+        c0.beginPath();
+        c0.roundRect(m - 34 * u, ctx.safe.top + 16 * u, W - 2 * m + 68 * u, H - ctx.safe.top - ctx.safe.bottom - 32 * u, 18 * u);
+        c0.fill();
+        c0.strokeStyle = 'rgba(60, 45, 30, 0.22)';
+        c0.lineWidth = 3 * u;
+        c0.stroke();
+        c0.restore();
+      }
+      c0.save(); c0.shadowColor = P.bg; for (const b of [8, 3, 1.5]) { c0.shadowBlur = b * ctx.u; c0.drawImage(BUF, 0, 0); } c0.restore();
+    }
   },
 };
 function C(...a) { return a.find(v => v != null && v !== ''); }

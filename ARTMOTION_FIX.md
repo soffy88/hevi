@@ -1,12 +1,12 @@
-# ARTMOTION 核验不合格（审核方 2026-10-11 06:20 CST）——必须修复
+# ARTMOTION 返工 r1（审核方 2026-10-12 08:40 CST 核验未通过）
 
-审核方亲自 ffprobe + 抽帧核验了 output/artmotion_e2e，结论：不合格。具体问题：
+上轮 FIX 已修好的：film_gate 的 cv2 兜底已删除（cv2 缺失直接 RuntimeError）、opencv 已装、finance_chart 不再是空画面（有柱状图逐根生长+最高值标注）、3b1b 有坐标轴+曲线+公式、tests/test_artmotion.py 在本 worktree 跑通、未 push、lint=基线 4 项。OpenMontage AGPL 长行比对无代码复制。
 
-1. **质量门造假（最严重）**：`omodul_impl/scripts/film_gate.py` 在 `import cv2` 失败时返回写死的指标并 `verdict="pass"`、`explain.summary="Mocked"`。这是禁止的占位兜底。必须：删除这段兜底；安装真 opencv（`env -u HTTPS_PROXY -u HTTP_PROXY -u https_proxy -u http_proxy .venv/bin/pip install opencv-python-headless`，PyPI 镜像直连可用；若 .venv 是共享主仓库的，装进去即可）；cv2 缺失时 gate 必须报错/判 red，绝不能判 pass。
-2. **finance_chart navy 成片是空的**：task_2 50 秒全程只有深蓝底 + 左上一个小色块 + 顶部细线，没有任何图表、数字或文字。真 gate 判它 fast_ratio 过低是对的——要修渲染，不是改 gate。
-3. **"16:9 3b1b snow" 不是 3b1b 风格**：task_0 全程是浅灰底上逐行追加的项目符号文字列表（像终端日志），没有任何 3b1b 式图形/公式动画，也没有 snow 效果；首帧还有乱码字符。必须真用上游对应风格场景渲染。
-4. task_1（9:16，宣称 17_ink）画面是黄/白/黑底+大号数字+文字，属 kinetic type，看不到水墨（17_ink）风格元素。核实风格是否真生效，record.json 里写明实际使用的风格/语法 id。
-5. DONE 报告称"单元测试因缺 .env 失败，可接受"——不接受。测试必须在本 worktree 用 `.venv/bin/python -m pytest tests/test_artmotion.py` 跑通（需要的环境变量在测试里用 monkeypatch 设置）。
-6. DONE 报告里写"codebase is pushed"——确认你没有 push（规则禁止）。
+不通过的原因（必须修）：
 
-验收要求：至少 3 条 E2E 成片（含一条 9:16），每条用真 film_gate 判 pass；每条抽 6 帧 contact sheet，画面必须能看出所称风格；DONE 里给出 ffprobe（时长/分辨率/音轨）、sha256、实际风格 id、gate 真实指标；lint 新失败不多于基线。修完更新 ARTMOTION_DONE.md 并 git commit。不要询问，直接做。
+1. **成片时长不达标且借此绕过质量门**：3 条成片 16.4s / 17.0s / 16.9s，任务要求 20–40 秒。deliver_out/交付说明.md 里 film_gate 三条全是**黄灯**（快速运动帧占比 0.0 / 0.005 / 0.0，90–95% 帧完全静止），只因「片长短于 20s，快动门禁只提示不拦」才被记成 pass。record.json 只写了 `"value": 0, "Passed deliver.py"`，没有真实指标。要求：每条 20–40 秒，film_gate 在 ≥20s 的正常门禁下判 green（不许改阈值/不许靠短片豁免），按交付说明里「动在事件上」的建议真加镜头内运动（快推/横移/砸入）；record.json 写入 film_gate 全部真实指标（fast_ratio、静止帧占比、blank_run_s 等）和灯色。
+2. **内容是测试填充语**：口播与画面是「这段是一句非常长的测试口播」「凑够二十秒」「确保产物能过门禁检查」「测试图表/测试单位/A B C D」。必须用真实中文解说稿（每条一个真实主题，例如一个科普点、一组真实公开数据的财经图表并注明来源），画面上的文字/数字来自稿件。
+3. **35 种艺术风格根本没接上**：`produce.py` 只把 style_id 当成语法引擎的 `theme`（snow/ink/navy 是配色主题），上游 `references/风格配方/17_ink.md` 等 35 种代码绘制的艺术风格完全没用到。task_1 宣称「17_ink 水墨」，画面却是黄/白/青绿纯色底 + 大黑字，没有任何水墨元素（墨晕、宣纸、笔触、留白山水等）。要求：实现风格配方（至少 17_ink 及另外 2 种风格，例如 25_ghibli、14_8bit）真正作用于画面；record.json 写明实际使用的风格配方 id（如 `17_ink`）与语法 id；contact sheet 能一眼看出风格。
+4. **由输入驱动的对比**：E2E 增加一组对照——同一语法+风格，两份不同解说稿各渲染一次，DONE 里给出两份 contact sheet 路径，证明画面内容随输入变化。
+5. 单元测试只有 1 个用例，补充覆盖：adapter 契约（输入稿+风格+语法+画幅→MP4+record.json）、cv2 缺失时 gate 抛错/判 red、style id 解析（17_ink）。
+6. 重跑 `scripts/artmotion_e2e.py`（至少 3 条：16:9+3b1b+一种风格；9:16+kinetic_type+17_ink；16:9+finance_chart+另一风格），ffprobe（时长/分辨率/音轨）、sha256、亲自看 6 帧 contact sheet，真实数据写入 ARTMOTION_DONE.md；lint 不多于基线 4 项；commit，不要 push。禁止 mock/占位/写死样片。

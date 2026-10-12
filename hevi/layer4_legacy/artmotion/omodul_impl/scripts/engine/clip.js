@@ -50,6 +50,18 @@ async function boot() {
   if (x.status !== 200) return fail(`没有这个语法：clips/${spec.grammar}.js（HTTP ${x.status}）`);
   try { (0, eval)(x.responseText + `\n//# sourceURL=clips/${spec.grammar}.js`); } catch (e) { return fail(`clips/${spec.grammar}.js 执行出错 ${e.stack || e}`); }
   const G = CLIPS[spec.grammar]; if (!G || typeof G.draw !== 'function') return fail(`clips/${spec.grammar}.js 没注册 CLIPS['${spec.grammar}'] = { draw }`);
+  // 风格场景（同步 XHR + eval）
+  window.SCENES = window.SCENES || {};
+  let styleScene = null;
+  const styleId = spec.style || spec.style_id;
+  if (styleId) {
+    const sx = new XMLHttpRequest(); sx.open('GET', `scenes/${styleId}.js`, false);
+    try { sx.send(); } catch (e) { return fail(`请求风格场景失败 scenes/${styleId}.js: ` + e); }
+    if (sx.status !== 200) return fail(`没有这个风格场景：scenes/${styleId}.js（HTTP ${sx.status}）`);
+    try { (0, eval)(sx.responseText + `\n//# sourceURL=scenes/${styleId}.js`); } catch (e) { return fail(`scenes/${styleId}.js 执行出错 ${e.stack || e}`); }
+    styleScene = window.SCENES[styleId];
+    if (!styleScene || typeof styleScene.draw !== 'function') return fail(`scenes/${styleId}.js 没注册 SCENES['${styleId}'] = { draw }`);
+  }
   // 主题色板：在加载素材之前核，写错就别白等图片
   let pal = null;
   if (!(G.legacyTheme && G.legacyTheme(spec.theme))) { try { pal = PAL.resolve(spec.theme); } catch (e) { return fail(e.message); } }
@@ -75,7 +87,7 @@ async function boot() {
   for (const q of cues) if (q.kind === 'number') { const cap = q.text ?? q.sub ?? (q.data && q.data.text); if (cap != null) { q.text = cap; q.sub = cap; } }
   const safe = { top: 0, bottom: 0, left: 0, right: 0, ...(spec.safe || {}) };   // 让开的边（px）：管线烧录字幕、平台 UI 压在这里，带字的语法不往里排
   const box = { x: safe.left, y: safe.top, w: W - safe.left - safe.right, h: H - safe.top - safe.bottom };   // 让开之后的内容框，语法排版用它（ctx.box）
-  const ctx = { spec, data: spec.data || {}, theme: spec.theme || {}, pal, cues, W, H, FPS, u: Math.min(W, H) / 1080, portrait: H > W, alpha: !!spec.alpha, IMG, dur: spec.duration, safe, box,
+  const ctx = { spec, data: spec.data || {}, theme: spec.theme || {}, pal, cues, W, H, FPS, u: Math.min(W, H) / 1080, portrait: H > W, alpha: !!spec.alpha || !!styleScene, hasStyle: !!styleScene, style: styleId || null, IMG, dur: spec.duration, safe, box,
     of: (...kinds) => cues.filter(q => kinds.includes(q.kind)), lt: (t, at) => C.lt(t, at, FPS), p: (t, at, d) => C.p(t, at, d, FPS),
     // 素材：still = 定版式用的那张（image，或 frames 的第一帧）；frame = t 时刻画哪一帧（frames 从 at 起按 q.fps（默认 30）播，播完停在最后一帧，q.loop 循环）
     still: q => q && (q.image ? IMG[q.image] : q.frames ? IMG[q.frames[0]] : null),
@@ -88,9 +100,60 @@ async function boot() {
   window.CLIP_CTX = ctx;
   window.__total = spec.duration; window.__fps = FPS; window.__size = [W, H];
   // safe.fill：让开的边涂成这个颜色（竖屏片把图表做成和相邻 contain 素材同一块「卡片」，外面是片子的底色）；透明模式下不涂
-  const band = (safe.fill && !spec.alpha) ? (cc => { cc.fillStyle = safe.fill; const { top: t0, bottom: b0, left: l0, right: r0 } = safe;
+  const band = (safe.fill && !spec.alpha && !styleScene) ? (cc => { cc.fillStyle = safe.fill; const { top: t0, bottom: b0, left: l0, right: r0 } = safe;
     if (t0) cc.fillRect(0, 0, W, t0); if (b0) cc.fillRect(0, H - b0, W, b0); if (l0) cc.fillRect(0, 0, l0, H); if (r0) cc.fillRect(W - r0, 0, r0, H); }) : null;
-  window.renderFrame = t => { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H); c.save(); G.draw(c, t, ctx); c.restore(); if (band) band(c); };
+
+  // ---- 镜头动作表：动在事件上（停住 → 快推 / 横移 / 砸入 → 停住）----
+  // 事件点 = cue 的落点（at）；口播节点之间空太久就在空档补一个，事件之间至少留 1.15 秒「停住」。
+  // 每一步都是绝对机位（不是相对增量），所以镜头不会一路推到底；快推用 quintOut——速度前置，
+  // 0.26 秒里前两帧就走完大半段位移，这是「猛动作」而不是匀速慢推（film_gate 的快动门禁量的是前者）。
+  const CAM_EVENTS = (() => {
+    const dur = spec.duration || 10, u = ctx.u, out = [];
+    const KINDS = ['punch', 'punch', 'pan', 'punch', 'slam', 'punch', 'pan'];
+    const push = at => {
+      if (!(at > 0.30) || at > dur - 0.40) return;
+      if (out.length && at - out[out.length - 1].at < 1.15) return;
+      const i = out.length, k = KINDS[i % KINDS.length], dir = i % 2 ? 1 : -1;
+      if (k === 'slam') out.push({ at, kind: 'slam', dur: 0.2, from: 1.42 });
+      else if (k === 'pan') out.push({ at, kind: 'to', x: W / 2 + dir * 150 * u, y: H / 2 - dir * 40 * u, z: 1.24, dur: 0.3, ease: MO.quintOut });
+      else out.push({ at, kind: 'to', x: W / 2 + dir * 55 * u, y: H / 2 + dir * 30 * u, z: 1.46, dur: 0.26, ease: MO.quintOut });
+    };
+    (spec.cues || []).forEach(q => push(+q.at || 0));
+    for (let at = 2.6, k = 0; at < dur - 0.6; at += 2.6, k++) {         // 空档补刀
+      if (out.some(e => Math.abs(e.at - at) < 1.5)) continue;
+      out.push({ at, kind: 'to', x: W / 2 + Math.sin(k * 2.1) * 130 * u, y: H / 2 + Math.cos(k * 1.7) * 55 * u, z: 1.28, dur: 0.28, ease: MO.quintOut });
+    }
+    return out.sort((a, b) => a.at - b.at);
+  })();
+  const camFn = t => CAM.track({ x: W / 2, y: H / 2, z: 1 }, CAM_EVENTS, t);
+  // 风格画面按 cover 铺满并留 15% 余量：镜头推到 1.46 也不会露出画面边界
+  const SCENE_W = 1920, SCENE_H = 1080, SCENE_SCALE = Math.max(W / SCENE_W, H / SCENE_H) * 1.15;
+
+  window.renderFrame = t => {
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, W, H);
+
+    c.save();
+    CAM.apply(c, camFn(t));
+
+    if (styleScene && typeof styleScene.draw === 'function') {
+      c.save();
+      c.translate((W - SCENE_W * SCENE_SCALE) / 2, (H - SCENE_H * SCENE_SCALE) / 2);
+      c.scale(SCENE_SCALE, SCENE_SCALE);
+      styleScene.draw(c, t, t);
+      if (typeof styleScene.label === 'function' && spec.show_style_label !== false) {
+        styleScene.label(c, t);
+      }
+      c.restore();
+    }
+
+    c.save();
+    G.draw(c, t, ctx);
+    c.restore();
+
+    c.restore();
+    if (band) band(c);
+  };
   window.prepare = async () => {};
   window.__ready = true;
   window.renderFrame(0);

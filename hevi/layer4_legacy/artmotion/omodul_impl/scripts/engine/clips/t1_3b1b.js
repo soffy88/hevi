@@ -187,7 +187,25 @@ return {
     });
     const he = [...hl].reverse().find(z => target(z) === -2 && t >= z.at);
     if (he && eqBox && !hl.some(z => t >= z.at && z.at > he.at)) box(c, eqBox.x, eqBox.y, eqBox.w, eqBox.h, ctx.lt(t, he.at), u);
-    if (ctx.alpha) { c0.save(); c0.shadowColor = 'rgba(0,0,0,0.9)'; c0.shadowBlur = 10 * u; c0.drawImage(BUF, 0, 0); c0.shadowBlur = 3 * u; c0.drawImage(BUF, 0, 0); c0.restore(); }
+    if (ctx.alpha) {
+      if (ctx.hasStyle) {
+        // 风格画面上先铺一张纸卡，公式和要点才有底（不是黑板：黑底压在暖色画面上像贴了块胶）
+        const bx = L.plot ? Math.min(L.text.x, L.plot.x) - 40 * u : L.text.x - 40 * u;
+        const by = L.titleY - (L.titles.length ? 78 * u : 20 * u);
+        const bw = (L.plot ? Math.max(L.text.x + L.text.w, L.plot.x + L.plot.w) : L.text.x + L.text.w) - bx;
+        const bh = (L.text.y1 + (L.plot ? Math.max(L.plot.y + L.plot.h, L.text.y1) : L.text.y1)) - by;
+        c0.save();
+        c0.fillStyle = 'rgba(250, 246, 236, 0.92)';
+        c0.beginPath();
+        c0.roundRect(bx, by, bw, bh, 18 * u);
+        c0.fill();
+        c0.strokeStyle = 'rgba(60, 45, 30, 0.22)';
+        c0.lineWidth = 3 * u;
+        c0.stroke();
+        c0.restore();
+      }
+      c0.save(); c0.shadowColor = 'rgba(20,16,12,0.9)'; c0.shadowBlur = 10 * u; c0.drawImage(BUF, 0, 0); c0.shadowBlur = 3 * u; c0.drawImage(BUF, 0, 0); c0.restore();
+    }
   },
 };
 // 曲线标签：放在曲线末端上方
