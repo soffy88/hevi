@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import logging
-import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -99,11 +98,12 @@ def _sample_timestamps(duration: float, count: int = 4) -> list[float]:
 
 def _detect_scenes(path: Path) -> list[dict[str, Any]]:
     try:
-        from scenedetect import detect, ContentDetector
+        from scenedetect import ContentDetector, detect
+
         scene_list = detect(str(path), ContentDetector())
-        return [{"start_time": s[0].get_seconds(), "end_time": s[1].get_seconds()} for s in scene_list]
+        return [{"start_time": s[0].seconds, "end_time": s[1].seconds} for s in scene_list]
     except Exception as exc:
-        logger.warning(f"scene detect failed: {exc}")
+        logger.warning("scene detect failed: %s", exc)
         return []
 
 def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) -> dict[str, Any]:

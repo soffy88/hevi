@@ -184,11 +184,34 @@ async def _fulfill_stock_visuals(
     *,
     user_id: str = "explainer_session",
 ) -> None:
+    import json
     import os
+    import shutil
+    from collections import Counter
+
     from hevi.sourcing.corpus import Corpus
+
     corpus_dir = Path(os.environ.get("HEVI_CORPUS_DIR", "data/corpus"))
     corpus = Corpus.load(corpus_dir)
     api_key = os.environ.get("PEXELS_API_KEY", "")
+    if not api_key:
+        for env_path in [Path(".env"), Path("/data/soffy/projects/hevi/.env")]:
+            if env_path.exists():
+                for line in env_path.read_text().splitlines():
+                    if line.startswith("PEXELS_API_KEY="):
+                        api_key = line.split("=", 1)[1].strip()
+                        os.environ["PEXELS_API_KEY"] = api_key
+                        break
+            if api_key:
+                break
+
+    # 跟踪素材使用次数，严格去重 (每素材至多使用 1-2 次)
+    usage_counts: Counter[str] = Counter()
+    # 限制单素材最多重复次数
+    MAX_REUSE = 1
+    prov = output_dir / "provenance.jsonl"
+    if prov.exists():
+        prov.unlink()
 
     for idx, cue in enumerate(cues):
         if cue.visual_type != "stock_broll":
@@ -199,33 +222,53 @@ async def _fulfill_stock_visuals(
         if not query.strip():
             cue.visual_type = "voiceover"
             continue
-            
+
         import asyncio
+
         tasks = [
-            corpus.add_archive_org(query=query, count=2),
             corpus.add_nasa_api(query=query, count=2),
             corpus.add_wikimedia_commons(query=query, count=2),
+            corpus.add_archive_org(query=query, count=2),
         ]
         if api_key:
             tasks.append(corpus.add_pexels(query=query, count=2, api_key=api_key))
-        
+
         await asyncio.gather(*tasks, return_exceptions=True)
         corpus.save()
 
-        hit = corpus.best_for_slot(query)
+        # 排除达到复用上限的素材并使用相似度阈值过滤
+        excluded = {cid for cid, count in usage_counts.items() if count >= MAX_REUSE}
+        hit = corpus.best_for_slot(query, min_score=0.16, exclude_clip_ids=excluded)
+
         if hit and "local_abs_path" in hit:
-            import shutil
+            clip_id = hit.get("clip_id", "")
+            usage_counts[clip_id] += 1
+
             remotion_public = Path(__file__).resolve().parent.parent.parent / "hevi-remotion" / "public"
             dest = remotion_public / "stock" / Path(hit["local_abs_path"]).name
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(hit["local_abs_path"], dest)
             cue.visual_config["assetUrl"] = f"stock/{dest.name}"
-            
-            # Write provenance
+            cue.visual_config["clip_id"] = hit.get("clip_id")
+            cue.visual_config["clip_score"] = hit.get("score")
+            cue.visual_config["clip_mode"] = "degraded" if hit.get("degraded") else "open_clip_vit_b_32_cpu"
+
+            # Write provenance log with clip score, source, and query
             prov = output_dir / "provenance.jsonl"
             with open(prov, "a") as f:
-                import json
-                f.write(json.dumps(hit, ensure_ascii=False) + "\n")
+                prov_record = {
+                    "cue_index": idx,
+                    "slot_query": query,
+                    "clip_id": hit.get("clip_id"),
+                    "source": hit.get("source"),
+                    "score": hit.get("score"),
+                    "title": hit.get("title"),
+                    "asset_url": f"stock/{dest.name}",
+                    "license": hit.get("license"),
+                    "degraded": hit.get("degraded", False),
+                    "clip_mode": "degraded" if hit.get("degraded") else "open_clip_vit_b_32_cpu",
+                }
+                f.write(json.dumps(prov_record, ensure_ascii=False) + "\n")
         else:
             cue.visual_type = "voiceover"
 

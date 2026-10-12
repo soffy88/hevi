@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from hevi.production.artifacts import (
     Artifact,
@@ -18,6 +19,8 @@ from hevi.production.artifacts import (
 from hevi.studio.kit import explainer_cues_from_text, storygraph_extract, tongjian_l0
 
 TARGETS = ("explainer", "tongjian", "shortdrama")
+
+logger = logging.getLogger(__name__)
 
 
 def _texts_from_order(order: dict[str, Any]) -> list[str]:
@@ -337,6 +340,21 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
         visual_type = "heygen_avatar"
     else:
         visual_type = "voiceover"
+    # 若指定 research 或 order.get("do_research")，执行真实 Wikipedia + Ollama 事实核验
+    if order.get("research") or order.get("do_research"):
+        try:
+            from hevi.research.brief import ResearchBrief, run_real_research
+            brief = ResearchBrief(
+                topic=topic or "Documentary topic",
+                angles=["fact", "worldview", "technique"],
+                max_questions=3,
+            )
+            report = await run_real_research(brief)
+            report_path = output_dir / "research_report.json"
+            report_path.write_text(json.dumps(report.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as exc:
+            logger.warning("Research stage error: %s", exc)
+
     cues = [
         ExplainerCue(
             text=text,
@@ -345,7 +363,7 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
             if isinstance(item, dict)
             else 5.0,
             visual_config={},
-            visual_search_query=item.get("visual_search_query") if isinstance(item, dict) else None
+            visual_search_query=str(item.get("visual_search_query") or "") if isinstance(item, dict) else "",
         )
         for item, text in (
             (item, str(item.get("text") or item.get("line") or ""))

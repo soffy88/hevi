@@ -234,10 +234,10 @@ export const ExplainerVideo: React.FC = () => {
 
         return (
           <Sequence key={seg.id} from={from} durationInFrames={durationInFrames} layout="none">
-            <div style={{ position: "relative", zIndex: 5 }}>
+            <AbsoluteFill style={{ zIndex: 5, overflow: "hidden" }}>
               {!manimOwnsFrame && <Scene durationInFrames={durationInFrames} props={seg.props} />}
               <VisualOverlay visualType={seg.visualType} visualConfig={vCfg} />
-            </div>
+            </AbsoluteFill>
             <Audio src={staticFile(seg.audioFile)} />
           </Sequence>
         );
