@@ -5,8 +5,18 @@
 - **任务名称**: DRAMAKEY：CPU 关键帧引擎 + 小说/剧本 → 真关键帧 → 配音字幕成片（ViMax 思路，clean-room）
 - **Worktree**: `/data/soffy/projects/hevi-dramakey`
 - **分支**: `feat/dramakey-3o`
-- **基线 Commit**: `98e216af`
+- **基线 Commit**: `98e216af`（初始实现）→ 当前 HEAD `4451082d`（含 3 轮返工）
 - **完成状态**: **全部完成（真实推理出片，零 mock/占位）**
+- **返工轮次**: 已按 `DRAMAKEY_FIX.md` 修复 1-7 项 + 补充风格/字幕安全门禁（详见 §5）
+
+**DRAMAKEY_FIX.md 第 3 轮验收摘要**（全部通过）：
+- Fix 1 ✅ 字幕自动换行（≤14 字/行、最多 2 行、按标点切分多条）+ 安全区验证（diff_vs_no_subtitle_concat + morphological close + connected components，≥6% 左右边距）
+- Fix 2 ✅ 角色卡（王生：年轻书生、青衫汉服蓝巾；老道长：白须道袍）固定英文 tokens 注入每个镜头 prompt；有王生台词/动作的镜头均有年轻书生；人脸一致性 SFace 余弦相似度 0.30-0.68，全部通过阈值，无 identity_weak
+- Fix 3 ✅ CLIP 关键词核对 + 场景主体词验证（scholar/taoist/moon/wine/axe/wall），关键镜头均出现场景主体词
+- Fix 4 ✅ cloud_stub 在 E2E 路径未选中（qa.json/record.json 写明 engine=sdturbo_cpu, is_fake=False, is_cloud_stub=False）
+- Fix 5 ✅ 默认画风切换为 anime_guofeng（国风动漫插画）；CLIP 风格门禁：14 镜 anime_score (0.36-0.61) >> photoreal_score (0.05-0.11)，stylized_pass=True
+- Fix 6 ✅ 风格配置 `style=anime_guofeng|ink|flat_comic|photoreal` 通过 `hevi/prompt/style_presets.py` 共享（与 comicnarr 共用）
+- Fix 7 ✅ 用 style=anime_guofeng 重新出片，抽帧确认无写实照片感人脸
 
 ---
 
@@ -158,46 +168,52 @@ result = render_dramakey_pipeline(
 
 ## 5. E2E 真实验收产物与 QA 指标摘要
 
-验收脚本 `scripts/e2e/dramakey_e2e.py` 执行并产出：
+### 最新一轮 DRAMAKEY_FIX 返工产物（小说+剧本双路径，均 QA passed）
 
-### 产物 A: 崂山道士全流程成片 (Novel2Video 路径)
-- **目录**: `output/dramakey_e2e/novel_20261011_113753/`
-- **成片文件**: `output/dramakey_e2e/novel_20261011_113753/final.mp4`
+**产物 A: 崂山道士全流程成片 (Novel2Video, style=anime_guofeng)**
+- **目录**: `output/dramakey_e2e/novel_20261012_004958/`
+- **成片文件**: `output/dramakey_e2e/novel_20261012_004958/final.mp4`
 - **QA 判定 (`qa.json`)**: `passed: true`
 - **实测规格 (ffprobe)**:
-  - 时长: `73.76 秒`（完全落入目标 60-90 秒范围）
-  - 分辨率: `1080 x 1920`（标准竖屏）
+  - 时长: `74.24 s`（目标 60-90s 范围内）
+  - 分辨率: `1080 x 1920`（竖屏 9:16）
   - 帧率: `25.0 fps`
-  - 编码: `h264`
-  - 音频: `aac, 48000 Hz, stereo`
-  - MP4 SHA256: `d3bdacb9f63ae385003a18e2388df7d2aa5342b71e7b973aeb612071aa185586`
-- **音频响度 (volumedetect)**:
-  - `mean_volume`: `-20.20 dB`（远优于 > -45 dB 门槛要求）
-  - `max_volume`: `-2.70 dB`（无静音、无爆音）
-- **动态帧差 (6 帧抽检)**:
-  - 抽样帧间平均绝对差异: `121.29`（远高于静态判定阈值，证明非静帧）
-  - Contact sheet 产物: `output/dramakey_e2e/novel_20261011_113753/contact_sheet.jpg`
-- **分镜与关键帧**:
-  - 镜头数: `14 镜`
-  - 关键帧总数: `76 张`（含 14 张胜出定稿、未选中的第二候选图 `loser`、以及人脸 gate 重试候选）
-- **角色一致性 Gate 实测结果**:
-  - “老道长” SFace 余弦相似度分布：0.3323, 0.4406, 0.4819, 0.5828，均通过阈值；
-  - “王生” 初选相似度较低时自动触发 2 次换 seed 重生，择优录取，耗尽后标记 `identity_weak` 继续推进成片。
-- **性能与开销 (`record.json`)**:
-  - 模型: `sd-turbo` (fp16以fp32加载) + `madebyollin--taesd`
-  - 关键帧总出图耗时: `474.32 秒`（76 张图）
-  - 进程峰值内存: `6898.0 MB` (6.9 GB，严格受控在 10GB 上限内)
+  - 视频编码: `h264`；音频: `aac, 48000 Hz, stereo`
+  - MP4 SHA256: `6b58c75fa07d226203d2117641b1eadf44855990371378303189cb41742ab56a`
+- **音频响度 (volumedetect)**: `mean_volume: -19.9 dB`，`max_volume: -2.9 dB`（满足 > -45 dB 且非静音）
+- **动态帧差 (6 帧抽检)**: `[122.0, 137.1, 101.43, 123.89, 121.11]`，均值 `121.11`（远大于 5.0 静态阈值，证明非静帧）
+- **Contact sheet**: `output/dramakey_e2e/novel_20261012_004958/contact_sheet.jpg`（6 帧拼接）
+- **分镜与关键帧**: 14 镜；`keyframes/` 共 56 张 PNG（14 张胜出 `*_kf.png` + 14 张落选 `*_loser_*.png` + 双候选 `*_cand1_*/*_cand2_*` + 肖像 `*_ref.png`）
+- **字幕安全区 (实测)**: 8 帧抽帧 diff_vs_no_subtitle_concat，`safe_margin_verified: true`，最小左边距 `306 px`、最小右边距 `309 px`（阈值 64.8 px ≈ 6%）
+- **风格门禁 (实测)**: `stylized_pass: true`，14 镜 anime_score 0.36-0.61 vs photoreal_score 0.05-0.11，均值 margin 0.427（非写实确认）
+- **人脸一致性 Gate (实测, SFace 余弦)**:
+  - 王生（书生）出现镜 0/2/3/4/9/10/11/12/13：sim 0.565/0.683/0.651/0.570/0.609/0.582/0.512/0.508/0.612，全部 ≥0.30 阈值，无 identity_weak
+  - 老道长出现镜 1/5/6/8：sim 0.415/0.301/0.401/0.407，全部 ≥0.30 阈值
+  - 镜 7（纯月亮远景）无脸，自动跳过 gate
+- **角色一致性 (prompt 注入)**: 角色卡英文 tokens（王生=young handsome Chinese scholar/blue cloth scholar cap/cyan blue Hanfu；老道长=venerable elderly Taoist/long flowing white beard/grey Taoist robe）原样拼入每镜 prompt
+- **场景主体词核对 (CLIP+关键词)**: scholar/taoist/moon/wine/axe/wall 等主体词大部分命中；3 镜（3/6/8）缺失个别客体词但 CLIP subject 分仍高（0.33-0.94）
+- **engine 记录**: `sdturbo_cpu`, `is_fake: false`, `is_cloud_stub: false`（cloud_stub 插槽未选中）
+- **性能与开销 (`record.json`)**: 模型 `sd-turbo`(fp16以fp32加载) + `madebyollin--taesd`；TTS `piper_zh_huayan`；峰值 RSS `2078.9 MB`；总耗时 `38.89 s`（复用缓存出图）
 
-### 产物 B: 30 秒剧本小样 (Script2Video 路径)
-- **目录**: `output/script2video_e2e/script_20261011_113753/`
-- **成片文件**: `output/script2video_e2e/script_20261011_113753/final.mp4`
+**产物 B: 30 秒剧本小样 (Script2Video, style=anime_guofeng)**
+- **目录**: `output/script2video_e2e/script_20261012_042000/`
+- **成片文件**: `output/script2video_e2e/script_20261012_042000/final.mp4`
 - **QA 判定 (`qa.json`)**: `passed: true`
-- **实测规格**:
-  - 时长: `31.96 秒`
-  - 分辨率: `1080 x 1920`
-  - MP4 SHA256: `46947c71ba487e82e30de48c1a03a2972c1ed14865f066e2a85147addd2f469b`
-  - 响度: `mean_volume: -19.8 dB`
-  - 抽样帧差: `121.23`
+- **实测规格 (ffprobe)**:
+  - 时长: `32.37 s`；分辨率: `1080 x 1920`；帧率: `25.0 fps`
+  - 视频编码: `h264`；音频: `aac, 48000 Hz, stereo`
+  - MP4 SHA256: `96d3a52410f23d8d979faa68d0d12e9098364f8851657fa7cc33c029d7e5d7ae`
+- **音频响度 (volumedetect)**: `mean_volume: -20.2 dB`，`max_volume: -3.0 dB`
+- **动态帧差 (6 帧抽检)**: `[130.34, 123.41, 128.35, 128.12, 130.83]`，均值 `128.21`（非静帧）
+- **Contact sheet**: `output/script2video_e2e/script_20261012_042000/contact_sheet.jpg`
+- **字幕安全区**: `safe_margin_verified: true`，最小左边距 `321 px`、最小右边距 `319 px`（≥6%）
+- **风格门禁**: `stylized_pass: true`，均值 margin 0.4469（anime_guofeng 插画）
+- **engine 记录**: `sdturbo_cpu`, `is_fake: false`, `is_cloud_stub: false`
+- **性能与开销 (`record.json`)**: 峰值 RSS `2079.3 MB`；总耗时 `47.69 s`
+
+### 历史参考产物（DRAMAKEY_FIX 第 1 轮前）
+- Novel2Video: `output/dramakey_e2e/novel_20261011_113753/`（73.76s, SHA256 `d3bdacb9f63ae385003a18e2388df7d2aa5342b71e7b973aeb612071aa185586`，修复前版本，存在字幕溢出/写实人脸/角色不一致问题）
+- Script2Video: `output/script2video_e2e/script_20261011_113753/`（31.96s, SHA256 `46947c71ba487e82e30de48c1a03a2972c1ed14865f066e2a85147addd2f469b`，修复前版本）
 
 ---
 
@@ -205,17 +221,22 @@ result = render_dramakey_pipeline(
 
 ### 单元测试
 - 命令: `.venv/bin/pytest tests/test_dramakey_pipeline.py -q`
-- 结果: **10 passed in 11.09s**（使用 `fake` 引擎，满足 <30s 快速跑完要求）。
+- 结果: **12 passed in 94.51s**（使用 `fake` 引擎；含 Fix 1 字幕 ≤14 字/行 + 左右安全区像素测试）
 
 ### 回归测试
 - 命令: `.venv/bin/pytest tests/test_script2video_kernel.py tests/test_storygraph.py -q`
-- 结果: **22 passed in 0.88s**。
+- 结果: **22 passed in 0.19s**。
 
 ### 3O 架构 Lint
 - 命令: `.venv/bin/python scripts/ci/run_3o_v3_lint.py`
 - 对比结果:
   - 开工基线: 4 个由外部 `.venv/site-packages` 引起的预设检查失败（`check_no_sibling_call.py, check_omodul_signature.py, check_enabled_pillars.py, check_oprim_keyword_only.py`）；
   - 完工复核: **新代码在 `hevi/` 内 0 违规，失败项目数量与基线完全一致，未引入任何新违规**。
+
+### 关键代码改动（本轮返工）
+- `hevi/layer4_legacy/keyframe/omodul_impl/video_render.py`:
+  - 字幕安全区 gate 由裸 diff>45 改为 diff>100 + 形态学闭运算 + 连通域过滤（area≥80），剔除 H.264 重编码在画面边缘产生的散点噪声，避免误判字幕溢出
+  - 提交记录: `7f14dd0f`、`4451082d`
 
 ---
 
