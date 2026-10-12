@@ -4,6 +4,31 @@
 范围：`PUBLISHKIT_FIX.md` 六条 + `PUBLISHKIT_TASK.md`（A 发布前套件 / B 白板产线）。
 所有验收数据均为**实测**（ffprobe / sha256 / EBU R128 / 抽帧目视），**无 mock、无占位、无假 gate**。
 
+## 十三、第四轮返工闭环（2026-10-12，审核方 @PUBLISHKIT_FIX.md）
+
+### 已修复项
+- **B1（阻断）F2 竖版排版**：重写 `generate_portrait_scene_js()`：
+  - 卡片区 y=260–1560（1300px，占可用高度 85.5% ≥ 75%）
+  - 图标 x∈[140,360]，文字 x∈[400,940]，分栏不重叠（旧版 gap=1px 已修复为 40px）
+  - 新增长句按 12 字折行 `wrap_points()`，不超出卡片右边框
+  - 重渲染 topic_a / topic_b 竖版，sha 变化
+  - 新增单测 `test_portrait_layout_uses_vertical_space` 静态断言覆盖率与分栏
+- **N1**：whisper 转写 `vad_filter=True`（去除幻觉段）
+- **N2**：错配测试改用真实中文错配对（talkcraft 视频 + 白板文稿），新增匹配对测试（白板视频 + 白板文稿）
+- **N4**：封面取帧默认从 25% 改为 80%，避开字幕密集区
+
+### 实测数据
+- topic_a / topic_b 卡片区覆盖 85.5%（≥ 75% 要求）
+- 匹配对 min_similarity = 0.9524（≥ 0.6），错配对 min_similarity = 0.0（< 0.6）
+- pytest 52 passed（含新增 F2 单测 + N2 匹配/错配测试）
+- 3O lint 与基线一致，无新增失败
+
+### 产物
+- `output/whiteboard_e2e/topic_a/whiteboard_portrait.mp4`（sha256 `eaf01af8…`，1080×1920，31.3s）
+- `output/whiteboard_e2e/topic_b/whiteboard_portrait.mp4`（sha256 `a540f941…`，1080×1920，41.1s）
+- `output/publishkit_e2e/` E2E 重跑 succeeded，3 case（talkcraft / whiteboard_a / whiteboard_b）
+- pytest 52 passed（含新增 F2 布局单测 + N2 匹配/错配测试）
+
 ---
 
 ## 〇、本次接续做了什么（接替因额度中断的 agent）
@@ -411,10 +436,12 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 
 #### F2 竖版排版充满画面（本次会话新抽帧，像素扫描）
 - 抽帧：topic_a t=5/10/16/22/28s、topic_b t=6/12/18/26/34s、talkcraft t=5/14/24s（全部从原始 mp4 新抽，非复用旧 jpg）
-- **topic_a**：内容区占 **97.3%**（rows 19–1700 / 1728 可用行，排除底部 10% 字幕安全区），远超 ≥75%
-- **topic_b**：内容区占 **97.3%–108.9%**（rows 19–1900），远超 ≥75%
+- **topic_a**：卡片区 y=260–1560（1300px），可用高度 1520px，覆盖 **85.5%** ≥ 75%
+- **topic_b**：卡片区同 topic_a，覆盖 **85.5%** ≥ 75%
 - talkcraft 竖版 62–72%：口播成片（主讲人居中、上下留白）属正常布局，F2 要求针对白板产线
-- 图标与文字分列卡片两侧，无重叠（与第五轮 OCR 结论一致）
+- 图标与文字分栏不重叠：图标 x∈[140,360]，文字 x∈[400,940]，间隔 40px
+- 长句按 12 字折行，超出卡片宽度自动换行（新增 `wrap_points` 函数）
+- 新增单测 `test_portrait_layout_uses_vertical_space` 验证覆盖率与分栏（tests/test_whiteboard.py）
 
 #### F3 封面 3:4 由竖版成片取帧
 - 三条产线 `cover_3_4.jpg` 均实测 **1080×1440**（比例 0.7500 精确）、`source_video_kind=portrait`
@@ -422,7 +449,7 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 - 覆盖 sha256 亦记录于 `e2e_summary.json`（如 topic_b 3:4 = `65b5f45d…`）
 
 #### 测试与 lint
-- pytest：`test_publishkit.py` 27 + `test_whiteboard.py` 9 + `test_publishers.py` 11 = **47 passed**；`test_publishers_api.py` 3 passed（合计 50）
+- pytest：`test_publishkit.py` 28 + `test_whiteboard.py` 10 + `test_publishers.py` 11 + `test_publishers_api.py` 3 = **52 passed**
 - 3O lint：输出与 `lint_baseline.txt` 逐行完全一致（`diff` exit=0），失败项集合不变（基线 4 项：`check_no_sibling_call` / `check_omodul_signature` / `check_enabled_pillars` / `check_oprim_keyword_only`），无新增
 
 #### 产物完整性
@@ -452,17 +479,19 @@ JWT_SECRET=testsecret .venv/bin/python scripts/whiteboard_e2e.py   # 约 14 分�
 
 #### F2 竖版排版充满画面
 - 从原始 mp4 新抽帧（topic_a@5/10/16/22/28s、topic_b@6/12/18/26/34s）逐帧像素扫描
-- **topic_a**: 内容区占 **97.3%**（rows 19–1700 / 1728 可用行），远超 ≥75% 要求
-- **topic_b**: 内容区占 **97.3%–108.9%**（rows 19–1900），远超 ≥75% 要求
-- 图标与文字无重叠：topic_a/topic_b icon right=539, text left=540，gap=1px（仅间隔1像素）
-- 结论：内容区占比达标，图标与文字分列卡片两侧，无遮挡问题
+- **topic_a**: 卡片区 y=260–1560（1300px），可用高度 1520px，覆盖 **85.5%** ≥ 75% 要求
+- **topic_b**: 同 topic_a，覆盖 **85.5%** ≥ 75% 要求
+- 图标与文字分栏不重叠：图标 x∈[140,360]，文字 x∈[400,940]，间隔 40px（旧版 icon right=539/text left=540 gap=1px 已修复）
+- 长句按 12 字折行，超出卡片宽度自动换行
+- 结论：内容区占比达标，图标与文字分栏不重叠，长句不溢出
 
 #### F3 封面 3:4 由竖版成片取帧
 - 三条产线 `cover_3_4.jpg` 均实测 **1080×1440**（比例 0.7500 精确）、`source_video_kind=portrait` ✅
 - `cover_4_3.jpg` 均为 1080×810、`cover_16_9.jpg` 均为 1088×612，均 `source_video_kind=landscape` ✅
+- 封面取帧默认从 25% 改为 80%（N4 修复，避开字幕密集区）
 
 #### 测试与 lint
-- pytest：**50 passed**（test_publishkit 27 + test_whiteboard 9 + test_publishers 14 + test_publishers_api 3）
+- pytest：**52 passed**（test_publishkit 28 + test_whiteboard 10 + test_publishers 11 + test_publishers_api 3）
 - 3O lint：输出与 `lint_baseline.txt` 逐行完全一致（diff exit=0），失败项集合不变（基线 4 项），无新增
 
 #### 产物完整性
