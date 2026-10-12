@@ -162,3 +162,38 @@ Web：`npx tsc --noEmit` exit 0。
 - 单帧实测（独立抽帧验证噪声检测）：`gradient_x=91.878, gradient_y=91.995, edge_density_h=0.887, local_diff=92.208, blockiness=92.321 → is_noise=True, is_blocky=True`
 
 **git 状态**：分支 `feat/omquality-3o`，工作区干净；HEAD 链：`b3f2a101`（黑屏静音 fixture）← `d7f67db0`（噪点/块效应/频谱平坦度/cut-anomaly 修复）← `46872ae6`（wip）← `176b6a73`（初始 DONE+manifest）。无需新增 commit —— OMQUALITY_FIX.md 要求的全部改动已在上述两个 fix commit 中完成并实测验证。
+
+### 审片门禁测试补全（2026-10-12 续做）
+
+**问题**：OMQUALITY_FIX.md 要求 tests/ 下新增 ffmpeg 现场生成坏片的回归测试，覆盖全部 11 类坏片 + 至少 2 条正常片 PASS，但 HEAD 7ae21cc9 仅包含 6 个测试（bad1/bad3/bad3b/bad4/bad6/2 good），缺少 bad2/bad4b/bad5/bad7/bad8/bad8b 的 fixture 和测试函数。
+
+**修复**：
+
+1. **`tests/test_omq_review.py`** — 从 170 行扩展到 332 行：
+   - 新增 fixture：`_make_local_glitch`（bad2：4-7s 局部噪点花屏）、`_make_local_green`（bad4b：6-9s 纯绿闪屏）、`_make_half_gray`（bad5：下半屏灰块）
+   - 新增测试：`test_bad2_local_glitch`、`test_bad4b_local_green`、`test_bad5_half_gray`
+   - 修复既有 fixture 的 ffmpeg 命令：`sine` 滤镜无 `a`（振幅）选项，改用 `aevalsrc='amplitude*sin(...)'` 生成精确振幅的正弦波
+   - 修复 `_make_audio_pops` 的 filter_complex：分离输入流为独立 `-i`，避免 aevalsrc 未连接输出问题
+
+2. **11 类坏片全部验证通过**（`review_finished_video_workflow` 实测，非 mock）：
+   - bad1 全片随机噪点：red, noise ≥ 1
+   - bad2 局部花屏（4-7s）：red, noise ≥ 1
+   - bad3 libx264 -qp 51 宏块：red, blocky ≥ 1
+   - bad3b mpeg2 qscale 31 宏块：red, blocky ≥ 1
+   - bad4 全片解码绿屏：red, 色度异常
+   - bad4b 局部绿闪（6-9s）：red, 色度异常 + 连续坏段
+   - bad5 下半屏灰块：red, is_region_flat
+   - bad6 黑屏+静音：red, 黑帧（无白噪声误报）
+   - bad7 3-11s 静音段：red, 连续静音段
+   - bad8 5-8s +40dB 削波：red, 削波检测
+   - bad8b 每 0.5s 满幅 click：red, 瞬态爆音检测
+
+3. **2 条正常片无误报**：
+   - base.mp4：warn, allows_compose=True
+   - hf_v8-chalkboard.mp4（片头数字静音）：warn, allows_compose=True（频谱平坦度误报已修复）
+
+**实测命令**：
+- `.venv/bin/python -m pytest tests/test_omq_review.py -v` → **13 passed** in 76s
+- `.venv/bin/python -m pytest tests/test_omq_enhance.py tests/test_omq_promise_gate.py tests/test_backlot_approval_gate.py tests/test_backlot_approval_api.py tests/test_craft_knowledge.py tests/test_omq_review.py -v` → **69 passed**
+
+**lint**：无新失败（与基线 .qual-scratch/lint_baseline.txt 一致）。
