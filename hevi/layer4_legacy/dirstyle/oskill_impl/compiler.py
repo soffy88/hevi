@@ -6,6 +6,7 @@ Director names NEVER appear in the prompt output.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from hevi.layer4_legacy.dirstyle.oprim_impl.models import DirectorStyle
@@ -48,7 +49,9 @@ def _strip_vague(text: str) -> str:
     out = text
     for w in _VAGUE_WORDS:
         out = out.replace(w, "")
-    # clean up double commas and trailing commas/spaces
+    # clean up empty comma tokens ("broken line weight, , 3D humanoid") and
+    # trailing/leading separators left behind by the removals above.
+    out = re.sub(r"\s*,\s*(?=,)", "", out)
     while ",," in out:
         out = out.replace(",,", ",")
     out = out.strip(" ,")
@@ -233,11 +236,15 @@ def compile_prompt(
         positive = _re.sub(r"\s+", " ", positive).strip()
         negative = _re.sub(r",\s*", ", ", negative).strip()
         negative = _re.sub(r"\s+", " ", negative).strip()
+        # F3: the aspect note is the concrete target aspect, never the style's
+        # combined "9:16 or 16:9" label (which would leak "16:9" into a 9:16
+        # pack).  The composition rules above already pin the vertical axis.
+        aspect_note = aspect if aspect in ("9:16", "16:9") else style.lens_aspect["aspect"]
         return {
             "positive": positive,
             "negative": negative,
             "camera": camera_move or "; ".join(style.motion["rules"]),
-            "aspect_note": style.lens_aspect["aspect"],
+            "aspect_note": aspect_note,
             "style_id": style_id,
             "provenance": provenance,
             "keyframe_style": keyframe_style,

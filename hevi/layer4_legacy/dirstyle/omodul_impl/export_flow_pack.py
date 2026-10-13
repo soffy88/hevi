@@ -78,12 +78,41 @@ def _aspect_rules(aspect: str, art_style_id: str) -> str:
     return "; ".join(comp_rules)
 
 
+def _strip_voice_prefix(value: str) -> str:
+    """Drop a leading "Voice profile:" so md rendering never doubles it (F5)."""
+    if value.startswith("Voice profile:"):
+        return value[len("Voice profile:") :].strip()
+    return value
+
+
+def _clean_token_list(text: str) -> str:
+    """Split a comma list, drop empty tokens, rejoin with ", " (F3).
+
+    Guards against the ``"broken line weight, , 3D humanoid"`` empty-token
+    artefact that appears when a filtered word leaves a dangling comma.
+    """
+    parts = [p.strip() for p in text.split(",")]
+    parts = [p for p in parts if p]
+    return ", ".join(parts)
+
+
+def _camera_from_beats(beats: dict[str, str]) -> str:
+    """Derive a vertical-only camera description from a clip's beats (F3).
+
+    The camera line is a shot list built from this clip's own beats (which
+    already carry vertical framing + pose transitions), so it is specific to
+    the clip and never contains lateral / pan / arc wording.
+    """
+    return f"{beats['0-3s']}; {beats['3-7s']}; {beats['7-10s']}"
+
+
 def _compile_clip_prompt(
     art_style_id: str,
     director_style_id: str | None,
     scene: str,
     aspect: str,
     palette_override: list[str] | None = None,
+    beats: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Compile one standalone clip prompt via the dirstyle compiler.
 
@@ -93,6 +122,8 @@ def _compile_clip_prompt(
       CJK-free; prompt_zh must not echo the narration).
     - ``palette_override`` pins the compiled prompt's colour words to the
       lock block's Palette so the two colour-word sets match exactly (<=3).
+    - ``camera`` is replaced with a vertical-only shot list derived from the
+      clip's beats (never the style's unrelated lateral motion rules).
     """
     prompt = compile_prompt(
         director_style_id or art_style_id,
@@ -122,11 +153,12 @@ def _compile_clip_prompt(
         prompt["positive"] = prompt["positive"].replace(word, "")
         prompt["negative"] = prompt["negative"].replace(word, "")
 
-    # Clean up double commas and spaces.
-    prompt["positive"] = re.sub(r",\s*", ", ", prompt["positive"]).strip()
-    prompt["positive"] = re.sub(r"\s+", " ", prompt["positive"]).strip()
-    prompt["negative"] = re.sub(r",\s*", ", ", prompt["negative"]).strip()
-    prompt["negative"] = re.sub(r"\s+", " ", prompt["negative"]).strip()
+    # F3: normalise the comma lists (drop the empty-token artefact) and pin
+    # the camera to a vertical shot list derived from this clip's beats.
+    prompt["positive"] = _clean_token_list(prompt["positive"])
+    prompt["negative"] = _clean_token_list(prompt["negative"])
+    if beats:
+        prompt["camera"] = _camera_from_beats(beats)
     return prompt
 
 
@@ -306,7 +338,7 @@ def _format_clip_prompt_md(
         f"- Palette: {global_block['palette_words']}",
         f"- Composition ({global_block['aspect']}): {global_block['composition_aspect']}",
         f"- Rhythm: {global_block['rhythm']}",
-        f"- Voice profile: {global_block['voice_profile']}",
+        f"- Voice profile: {_strip_voice_prefix(global_block['voice_profile'])}",
         f"- Negative: {', '.join(global_block['negative_constraints'])}",
         "",
         f"**First frame:** {first_frame}",
@@ -396,6 +428,7 @@ def export_flow_pack(
             scene=seg.narration,
             aspect=aspect,
             palette_override=global_block["palette_words"].split(", "),
+            beats=beats,
         )
         clip_prompts.append(
             {
@@ -485,7 +518,12 @@ def _render_pack_md(
     lines.append(f"- Target duration: {plan.duration_s:.0f}s ({plan.clip_count} clips)")
     lines.append(f"- Narration language: {narration_lang}")
     if voice:
-        lines.append(f"- Voice profile: {voice}")
+        # F5: avoid "Voice profile: Voice profile: ..." when the caller already
+        # passed a value that carries the prefix.
+        voice_line = voice
+        if voice_line.startswith("Voice profile:"):
+            voice_line = voice_line[len("Voice profile:") :].strip()
+        lines.append(f"- Voice profile: {voice_line}")
     lines.append(f"- Hook window: {plan.hook_window[0]:.0f}-{plan.hook_window[1]:.0f}s")
     lines.append("")
 
@@ -520,7 +558,12 @@ def _render_pack_md(
     lines.append(f"- **Palette**: {global_block['palette_words']}")
     lines.append(f"- **Composition ({aspect})**: {global_block['composition_aspect']}")
     lines.append(f"- **Rhythm**: {global_block['rhythm']}")
-    lines.append(f"- **Voice profile**: {global_block['voice_profile']}")
+    # F5: the lock-block value already carries the "Voice profile:" prefix, so
+    # strip it here to avoid "Voice profile: Voice profile: ...".
+    vp = global_block["voice_profile"]
+    if vp.startswith("Voice profile:"):
+        vp = vp[len("Voice profile:") :].strip()
+    lines.append(f"- **Voice profile**: {vp}")
     lines.append(f"- **Negative constraints**: {', '.join(global_block['negative_constraints'])}")
     lines.append("")
 

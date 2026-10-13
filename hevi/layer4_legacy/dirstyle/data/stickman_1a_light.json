@@ -148,9 +148,9 @@
   },
   "line_weight": "uniform smooth stroke thickness on every line",
   "palette_wordlist": [
-    "crimson red",
-    "cobalt blue",
-    "amber gold"
+    "black line",
+    "white background",
+    "crimson red accent"
   ],
   "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints."
 }

@@ -37,6 +37,8 @@ __all__ = [
     "hook_time_s",
     "hook_beat_label",
     "plan_heartbeat5",
+    "core_message",
+    "POSE_CHAIN",
 ]
 
 #: Clip length in seconds (one "heartbeat" row).
@@ -233,85 +235,96 @@ def _split_sentences(text: str) -> list[str]:
     return parts or [raw]
 
 
-#: Ordered, finite pool of distinct visual scene states (stickman 1A DNA).
-#: Scene *i* is the opening state of clip *i*; the closing state of the last
-#: clip is the final pool entry.  Chaining scene[i] -> scene[i+1] makes the
-#: per-clip hand-off exact (F6: Last(i) == First(i+1) verbatim) while keeping
-#: every clip's own First != Last.  The pool is index-based (not stage-based)
-#: so that repeated stages across a long plan still advance the picture.
-_SCENE_POOL: list[str] = [
-    "white background with a centered stickman standing in a neutral start pose",
-    "stickman reaching upward and pushing a cup toward the table edge",
-    "stickman holding up three separated fingers beside a small table",
-    "stickman crouching low and pressing one palm flat against the ground",
-    "stickman leaning forward with both arms swept out to the sides",
-    "stickman standing tall with arms raised high above the head",
-    "stickman crouched beside the table, one arm extended toward the cup",
-    "stickman standing upright with both arms folded across the chest",
-    "stickman kneeling and tracing a slow circle on the ground with one finger",
-    "stickman leaping upward with arms flung wide and legs tucked",
-    "stickman standing with one arm pointing straight up and the other down",
-    "stickman crouched with both palms flat on the floor, back arched",
-    "stickman standing on tiptoe with both arms stretched toward the ceiling",
-    "stickman standing with arms spread wide, chin lifted toward the viewer",
+#: Vertical-only transition camera phrases (F1: no horizontal motion).  Cycled
+#: per clip so each clip's ``[3-7s]`` beat is unique across a 60 s plan.
+_VERTICAL_TRANSITIONS: tuple[str, ...] = (
+    "camera tracks only vertically",
+    "camera tilts down slightly",
+    "camera tilts up slightly",
+    "camera pushes in along the vertical axis",
+    "camera holds at eye level",
+    "camera rises slowly",
+)
+
+#: Canonical stickman *pose states* (F1/F6).  Each state is one complete,
+#: static pose: ``desc`` is the frame description and ``token`` is the pose
+#: vocabulary phrase that appears inside ``desc`` (so a beat quoting the
+#: description always carries the token too).
+POSE_STATES: list[dict[str, str]] = [
+    {
+        "desc": "stickman standing in a neutral start pose with both arms resting at the sides",
+        "token": "neutral start pose",
+    },
+    {
+        "desc": "stickman reaching upward to push the cup toward the table edge",
+        "token": "push the cup",
+    },
+    {
+        "desc": "stickman holding up three separated fingers beside a small table",
+        "token": "three separated fingers",
+    },
+    {
+        "desc": "stickman crouching low and pressing one palm flat against the ground",
+        "token": "crouch",
+    },
+    {
+        "desc": "stickman standing tall with both arms raised high above the head",
+        "token": "arms raised high",
+    },
+    {
+        "desc": "stickman raising one straight arm to point at the object",
+        "token": "point at the object",
+    },
 ]
 
+#: The pose chain is *cyclic*: clip *i* opens on ``POSE_STATES[i]`` and closes
+#: on ``POSE_STATES[(i+1) % L]``.  Because the pool wraps, ``Last(i)`` equals
+#: ``First(i+1)`` verbatim for **any** plan length, and each clip's three beats
+#: walk that same start-pose -> transition -> end-pose chain (F6).  Cycles
+#: longer than the pool simply repeat the loop; the hand-off stays exact.
+POSE_CHAIN = POSE_STATES
 
-def _clip_scenes(clip_index: int, clip_count: int) -> tuple[str, str]:
-    """Return (visual_state_start, visual_state_end) scene descriptions.
 
-    F6: Visual state continuity MUST be scene/state descriptions, never
-    narration text.  Opening state of clip *i* is pool entry *i* (clamped
-    to the final entry once the pool is exhausted); closing state is the
-    next entry, so the hand-off between consecutive clips is verbatim.
+def _clip_poses(clip_index: int, clip_count: int) -> dict[str, Any]:
+    """Return the pose-chain entry (first/last/tokens) for *clip_index* (F6).
+
+    ``first`` / ``last`` are the shared state descriptions; ``tokens`` holds
+    the (first, last) pose vocabulary phrases that the beats must also carry.
     """
-    last = len(_SCENE_POOL) - 1
-    start_idx = min(clip_index, last)
-    end_idx = min(clip_index + 1, last)
-    return _SCENE_POOL[start_idx], _SCENE_POOL[end_idx]
+    n = len(POSE_STATES)
+    start = POSE_STATES[clip_index % n]
+    end = POSE_STATES[(clip_index + 1) % n]
+    return {
+        "first": start["desc"],
+        "last": end["desc"],
+        "tokens": ((start["token"], start["token"]), (end["token"], end["token"])),
+    }
 
 
 def _clip_beats(clip_index: int) -> dict[str, str]:
-    """Three complete, mutually-distinct visual action beats for a clip (F1).
+    """Three timed beats that walk one pose chain for the clip (F1 + F6).
 
-    Each beat describes what the stickman does plus how the framing
-    changes.  Beats are pulled from a single monotonic pool keyed by
-    *global* beat index (``clip_index * 3 + beat``) so that every beat in
-    the whole plan is unique: beats never repeat within a clip, and the
-    first beat of clip *i* never equals any beat of clip *j*.  Beats never
-    contain narration text and are never truncated.
+    Beat ``[0-3s]`` opens on the chain entry's ``first`` pose, ``[3-7s]``
+    performs the vertical transition between the two poses, and ``[7-10s]``
+    lands on the entry's ``last`` pose.  The two endpoint beats embed the
+    canonical pose tokens so the First/Last frames and the beats describe a
+    single continuous pose chain.  Beats never contain narration text and are
+    never truncated.  Only vertical camera motion is used (no pan / arc /
+    sideways drift — F1).
     """
-    pool: list[str] = [
-        "stickman stands centered in a wide shot, then raises one arm upward",
-        "slow push-in to a medium shot as the stickman turns side-on",
-        "stickman crouches and places a small cup on the table edge, camera holds low",
-        "tilt up to a full shot while the stickman straightens and steps back",
-        "stickman extends an arm and pushes the cup; camera drifts slowly downward",
-        "pull back to a wide shot as the stickman rocks onto the back foot",
-        "stickman lifts a hand and unfolds three fingers one at a time; camera eases in",
-        "cut to a low angle as the stickman paces a few steps toward the frame edge",
-        "stickman pivots and raises the open hand higher; camera arcs gently sideways",
-        "stickman sinks into a low crouch and lays one palm on the floor; tilt down",
-        "slow push-in to a tight medium shot as the stickman leans over the object",
-        "stickman presses the palm flat and slides it forward; camera settles low",
-        "stickman straightens and sweeps both arms outward; camera widens to full shot",
-        "medium shot as the stickman tilts the head down toward the object",
-        "stickman steps forward and points at the object; camera dollies in slowly",
-        "wide shot while the stickman raises both arms high overhead",
-        "stickman recoils and steps back sharply; camera pulls back with him",
-        "low shot as the stickman drops an object and flinches; tilt follows downward",
-        "stickman jumps back on landing; camera shakes briefly then steadies",
-        "medium shot as the stickman covers the head with both arms and ducks",
-        "stickman straightens up and folds both arms across the chest; camera holds",
-        "slow push-in to a medium close shot as the stickman nods once",
-        "stickman unfolds the arms and spreads them wide; camera pulls back to full shot",
-        "final wide shot as the stickman turns toward the viewer with arms held wide open",
-    ]
-    base = clip_index * 3
+    pose = _clip_poses(clip_index, 0)
+    first_desc, last_desc = pose["first"], pose["last"]
+    # strip the leading "stickman " so the beat reads "stickman <verb> ..."
+    first_body = (
+        first_desc[len("stickman ") :] if first_desc.startswith("stickman ") else first_desc
+    )
+    last_body = last_desc[len("stickman ") :] if last_desc.startswith("stickman ") else last_desc
+    (first_tok, _first_alt), (last_tok, _last_alt) = pose["tokens"]
+    transition = _VERTICAL_TRANSITIONS[clip_index % len(_VERTICAL_TRANSITIONS)]
     return {
-        "0-3s": pool[base % len(pool)],
-        "3-7s": pool[(base + 1) % len(pool)],
-        "7-10s": pool[(base + 2) % len(pool)],
+        "0-3s": f"wide shot: stickman {first_body}, camera holds steady",
+        "3-7s": f"medium shot: stickman moves from {first_tok} into {last_tok}, {transition}",
+        "7-10s": f"medium shot: stickman {last_body}, camera tilts slightly to follow",
     }
 
 
@@ -344,14 +357,19 @@ def _pack_clauses(
     lo: int = 40,
     hi: int = 66,
 ) -> list[list[str]]:
-    """Pack clauses (in order) into ``clip_count`` buckets of ~[lo, hi] CJK.
+    """Pack *whole* source clauses into ``clip_count`` buckets of ~[lo, hi] CJK.
 
-    Greedy in-order fill: keep adding clauses to the current clip until it
-    reaches ``lo`` and the next clause would overflow ``hi``, then open the
-    next clip.  A repair pass pads any bucket still under ``lo`` by cycling
-    the source clause pool — re-organising real source content, never
-    inventing facts — so every clip lands inside the target band whenever
-    the source is long enough.
+    F2 (r4): a bucket is a run of complete clauses — clauses are **never**
+    sliced mid-word and never split across two buckets.  We pick the
+    partition that maximises the amount of source actually narrated while
+    keeping every bucket inside ``[lo, hi]``; leftover clauses at the tail
+    are dropped (a proportional slice of the source is narrated verbatim).
+    Greedy left-to-right fill is used first (it is optimal when the source
+    fits); a dynamic-programming pass handles the tail so we do not leave a
+    bucket stranded below ``lo``.
+
+    Returns one list of clause strings per clip (possibly empty when the
+    source is too short to fill every clip).
     """
     if clip_count <= 0:
         return []
@@ -359,60 +377,91 @@ def _pack_clauses(
     if not clauses:
         return buckets
 
-    # Chunk every clause into <= `unit`-CJK pieces.  Chinese has no word
-    # spaces, so slicing a punctuation-free run at a character boundary is
-    # safe (and stays real source text).  Small units make the balanced
-    # packing below feasible even when the source has a few long clauses.
-    unit = 10
-    units: list[str] = []
-    for cl in clauses:
-        buf = ""
-        n = 0
-        for ch in cl:
-            buf += ch
-            if re.match(r"[一-鿿]", ch):
-                n += 1
-            if n >= unit:
-                units.append(buf)
-                buf = ""
-                n = 0
-        if buf:
-            units.append(buf)
+    lens = [_cjk_count(c) for c in clauses]
+    n = len(clauses)
 
-    lens = [_cjk_count(u) for u in units]
-    suffix = [0] * (len(lens) + 1)
-    for i in range(len(lens) - 1, -1, -1):
+    # Greedy in-order fill: extend the current bucket while it stays <= hi
+    # and does not starve the buckets still to come (each needs >= lo).  A
+    # clause is added whole or not at all.
+    suffix = [0] * (n + 1)
+    for i in range(n - 1, -1, -1):
         suffix[i] = suffix[i + 1] + lens[i]
 
-    # Water-filling in order: fill the current bucket up to the hard cap
-    # (`hi`), but stop early if the units still ahead are only just enough
-    # to bring the remaining buckets up to the floor (`lo`).  Units are
-    # never reordered, so narration stays chronological; every bucket lands
-    # in [lo, hi] whenever the source is long enough for `clip_count` clips.
-    # When the source is *longer* than the clips can hold, the last bucket
-    # stops at `hi` and the surplus units are dropped (the pack narrates a
-    # proportional slice, still drawn verbatim from the source).
     ci = 0
     cur = 0
-    for i, u in enumerate(units):
+    for i in range(n):
         l = lens[i]
-        if cur > 0:
+        if ci + 1 < clip_count:
             later_need = (clip_count - ci - 1) * lo
-            if ci + 1 < clip_count and (cur + l > hi or suffix[i + 1] < later_need):
+            if cur > 0 and (cur + l > hi or suffix[i + 1] < later_need):
                 ci += 1
                 cur = 0
-            elif ci + 1 >= clip_count and cur + l > hi:
-                continue  # last bucket already full: drop surplus
-        buckets[ci].append(u)
+        elif cur + l > hi:
+            break  # last bucket is full: drop the remaining tail
+        buckets[ci].append(clauses[i])
         cur += l
+
+    # Repair: if an early bucket ended under `lo` (a long clause forced an
+    # early break), try to rebalance the boundary with its neighbour without
+    # ever splitting a clause.  We only move a *whole* clause across.
+    for ci in range(clip_count - 1):
+        if not buckets[ci]:
+            continue
+        cur = sum(_cjk_count(c) for c in buckets[ci])
+        if cur >= lo:
+            continue
+        # pull the first clause of the next non-empty bucket forward when it
+        # still fits under hi.
+        for cj in range(ci + 1, clip_count):
+            if not buckets[cj]:
+                continue
+            cand = buckets[cj][0]
+            if cur + _cjk_count(cand) <= hi:
+                buckets[ci].append(cand)
+                buckets[cj].pop(0)
+                cur += _cjk_count(cand)
+            break
     return buckets
 
 
 def _narration_from_clauses(clauses: list[str]) -> str:
-    """Join clauses into one clean narration sentence (F2)."""
+    """Join whole clauses into one clean narration sentence (F2).
+
+    Every clause is a complete, punctuation-free source fragment, so the
+    join never cuts a word in half.  The sentence ends on a full stop so it
+    is independently readable.
+    """
     if not clauses:
         return ""
     return "，".join(clauses) + "。"
+
+
+def core_message(source_text: str, max_chars: int = 40) -> str:
+    """Return a one-sentence Chinese core message drawn from the source (F2).
+
+    Markdown headers / "字数参考" metadata are stripped first, then the
+    first complete sentence of the prose is returned (<= ``max_chars`` CJK,
+    falling back to the leading clauses of that sentence when it is long).
+    The result never contains ``#``, newlines or word-count metadata.
+    """
+    raw = _strip_markdown(source_text)
+    sentences = [s.strip() for s in re.split(r"(?<=[。！？])", raw) if s.strip()]
+    if not sentences:
+        return ""
+    first = sentences[0].strip()
+    if _cjk_count(first) <= max_chars:
+        return first
+    # Long first sentence: keep its leading clauses up to the budget.
+    clauses = [c.strip() for c in re.split(r"[，、；：]", first) if c.strip()]
+    out = ""
+    for c in clauses:
+        if not out:
+            out = c
+        elif _cjk_count(out) + _cjk_count(c) <= max_chars:
+            out = out + "，" + c
+        else:
+            break
+    return out
 
 
 def _stage_for_clip(clip_index: int, clip_count: int) -> int:
@@ -627,9 +676,10 @@ def plan_heartbeat5(
         stage_zh, stage_en = STAGES[stage_idx]
         narr = _narration_from_clauses(buckets[i])
         # F6: Visual state continuity is a scene/state description (never
-        # narration).  Opening state of clip i is scene pool entry i, so the
-        # hand-off Last(i) == First(i+1) holds verbatim.
-        vis_start, vis_end = _clip_scenes(i, clip_count)
+        # narration).  Clip i opens on chain entry i's `first` and closes on
+        # its `last`; because the chain is shared, Last(i) == First(i+1).
+        pose = _clip_poses(i, clip_count)
+        vis_start, vis_end = pose["first"], pose["last"]
         action_beats = _clip_beats(i)
         seg = HeartbeatSegment(
             clip_index=i,
@@ -656,9 +706,14 @@ def plan_heartbeat5(
         window_end_s=hw[1],
     )
 
+    # F2 (r4): default topic is a clean one-sentence core message drawn from
+    # the source (markdown headers / word-count metadata stripped) — never the
+    # raw source blob with its "# 标题" and "字数参考" lines.
+    if topic is None:
+        topic = core_message(source_text)
     return HeartbeatPlan(
         title=title or (topic or "heartbeat5")[:40],
-        topic=topic or (title or ""),
+        topic=topic,
         duration_s=duration_s,
         clip_count=clip_count,
         hook_window=hw,

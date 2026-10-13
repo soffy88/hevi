@@ -10,6 +10,7 @@ Contract under test (DIRSTYLE_TASK_ADD1):
 - Visual continuity: segment i's ending frame == segment i+1's
   opening frame (named explicitly, not "same as before").
 """
+
 from __future__ import annotations
 
 import re
@@ -122,9 +123,7 @@ class TestFactPreservation:
     def test_source_digits_preserved(self):
         plan = plan_heartbeat5(source_text=SOURCE_WITH_DIGITS, duration_s=30)
         # All narration must only contain digits present in source
-        assert validate_no_invented_numbers(
-            source_text=SOURCE_WITH_DIGITS, plan=plan
-        ) is True
+        assert validate_no_invented_numbers(source_text=SOURCE_WITH_DIGITS, plan=plan) is True
         # The digits themselves appear somewhere in the narration
         all_narr = "".join(seg.narration for seg in plan.segments)
         assert "365" in all_narr
@@ -135,18 +134,14 @@ class TestFactPreservation:
         # Source has no digits -> narration must have no digits either
         for seg in plan.segments:
             digits = re.findall(r"\d+(?:\.\d+)?%?", seg.narration)
-            assert digits == [], (
-                f"segment {seg.clip_index} invented digits {digits}"
-            )
+            assert digits == [], f"segment {seg.clip_index} invented digits {digits}"
 
     def test_validator_raises_on_invented_number(self):
         plan = plan_heartbeat5(source_text=SOURCE_TEXT, duration_s=30)
         # Mutate a narration to inject a fake number
         plan.segments[1].narration = "这个现象有42个原因。"
         with pytest.raises(FactualError):
-            validate_no_invented_numbers(
-                source_text=SOURCE_TEXT, plan=plan
-            )
+            validate_no_invented_numbers(source_text=SOURCE_TEXT, plan=plan)
 
     def test_no_invented_quotes_or_names(self):
         plan = plan_heartbeat5(source_text=SOURCE_TEXT, duration_s=30)
@@ -168,7 +163,7 @@ class TestContinuityHandoff:
             prev = plan.segments[i - 1]
             cur = plan.segments[i]
             assert cur.visual_state_start == prev.visual_state_end, (
-                f"Continuity broken between clip {i-1} and clip {i}: "
+                f"Continuity broken between clip {i - 1} and clip {i}: "
                 f"{prev.visual_state_end!r} != {cur.visual_state_start!r}"
             )
 
@@ -177,8 +172,9 @@ class TestContinuityHandoff:
         for seg in plan.segments:
             assert seg.visual_state_start.strip()
             assert seg.visual_state_end.strip()
-        # The first clip must state its opening frame explicitly
-        assert "white background" in plan.segments[0].visual_state_start
+        # The first clip must state its opening frame explicitly (F6: a pose
+        # state from the canonical chain, not narration).
+        assert "neutral start pose" in plan.segments[0].visual_state_start
 
 
 class TestPlanSerialization:
@@ -209,9 +205,7 @@ class TestEdgeCases:
         assert len(plan.segments) == 1
 
     def test_single_sentence_source(self):
-        plan = plan_heartbeat5(
-            source_text="猫推杯子是因为好奇。", duration_s=30
-        )
+        plan = plan_heartbeat5(source_text="猫推杯子是因为好奇。", duration_s=30)
         assert plan.clip_count == 3
         # Hook clip gets the only sentence
         assert plan.segments[0].narration == "猫推杯子是因为好奇。"
