@@ -491,6 +491,27 @@ def _has_burned_text(top_run: int, bottom_run: int) -> bool:
     return top_run >= _BURNED_RUN_MIN or bottom_run >= _BURNED_RUN_MIN
 
 
+def beat_has_horizontal_motion(beat: str) -> bool:
+    """True when *beat* contains a forbidden lateral / facial direction (F1)."""
+    low = beat.lower()
+    return any(w.lower() in low for w in STICKMAN_BEAT_FORBIDDEN)
+
+
+def pose_token_matches_beat(frame_desc: str, beat: str) -> bool:
+    """True when *frame_desc* carries a pose token that also appears in *beat*.
+
+    Used by the F6 pose-chain check: the First/Last frame's pose must be the
+    same pose named in the matching endpoint beat.
+    """
+    tok = next((t for t in POSE_VOCAB if t in frame_desc), None)
+    return tok is not None and tok in beat
+
+
+def has_empty_token(text: str) -> bool:
+    """True when a comma list carries an empty token (",," / ", ,") (F3)."""
+    return ",," in text.replace(" ", "") or ", ," in text
+
+
 class TestF1Beats:
     """F1: three complete, distinct, narration-free beats per clip."""
 
@@ -523,9 +544,15 @@ class TestF1Beats:
         pack = _pack60(tmp_path)
         for cp in pack.clip_prompts:
             for b in cp["beats"].values():
-                low = b.lower()
-                for w in STICKMAN_BEAT_FORBIDDEN:
-                    assert w.lower() not in low, f"beat contains {w!r}: {b}"
+                assert not beat_has_horizontal_motion(b), f"lateral beat: {b}"
+
+    def test_horizontal_beat_detector_counterexample(self):
+        """Counterexample: the r3 lateral beats must be flagged (F1 r4)."""
+        assert beat_has_horizontal_motion("camera arcs gently sideways") is True
+        assert beat_has_horizontal_motion("paces a few steps toward the frame edge") is True
+        assert beat_has_horizontal_motion("pan left across the room") is True
+        assert beat_has_horizontal_motion("camera tracks only vertically") is False
+        assert beat_has_horizontal_motion("stickman crouches and presses one palm flat") is False
 
 
 class TestF2Narration:
@@ -600,8 +627,13 @@ class TestF2Narration:
                 assert "16:9" not in str(value), (
                     f"clip {cp['clip_index']} field {field!r} leaks 16:9: {value!r}"
                 )
-            assert ", ," not in prompt["negative"], "empty token in negative"
-            assert ",," not in prompt["negative"], "empty token in negative"
+            assert not has_empty_token(prompt["negative"]), "empty token in negative"
+
+    def test_empty_token_detector_counterexample(self):
+        """Counterexample: the r3 negative empty token must be flagged (F3 r4)."""
+        assert has_empty_token("broken line weight, , 3D humanoid rendering") is True
+        assert has_empty_token("broken line weight,, 3D humanoid") is True
+        assert has_empty_token("broken line weight, 3D humanoid rendering") is False
 
     def test_narration_cjk_in_range(self, tmp_path):
         pack = _pack60(tmp_path)
@@ -792,6 +824,16 @@ class TestF6Transitions:
             assert last_tok in cp["beats"]["7-10s"], (
                 f"clip {cp['clip_index']} Last pose {last_tok!r} not in [7-10s] beat"
             )
+
+    def test_pose_chain_detector_counterexample(self):
+        """Counterexample: the r3 contradictory frame/beat pairs fail (F6 r4)."""
+        # r3: Last frame said "reaching upward and pushing a cup" while the
+        # [7-10s] beat said "crouches and places a small cup" — no shared pose.
+        last_frame = "stickman reaching upward to push the cup toward the table edge"
+        beat = "low shot as the stickman drops an object and flinches"
+        assert pose_token_matches_beat(last_frame, beat) is False
+        good_beat = "medium shot: stickman reaching upward to push the cup, camera tilts"
+        assert pose_token_matches_beat(last_frame, good_beat) is True
 
 
 class TestB3CleanSource:
