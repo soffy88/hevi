@@ -187,6 +187,47 @@
       "subbed_codec": "h264",
       "prompt_keyframe_anime": "central-axis symmetric composition with subject on the vertical centerline; single dominant hue filling the entire frame (vermillion / imperial yellow / cyan-blue); repetitive background array (crowd ranks, lantern wall, soldier formation), 50-135...",
       "prompt_keyframe_anime_negative": "handheld sway, off-center composition, muted desaturated palette, rainy night neon, close-up face close to lens"
+    },
+    {
+      "style_id": "stickman_9x16",
+      "display_zh": "火柴人 9:16 样片",
+      "display_en": "Stickman 9:16 Sample",
+      "input_path": "/data/soffy/projects/hevi-dirstyle/output/dirstyle_e2e/stickman_9x16.mp4",
+      "output_path": "output/dirstyle_e2e/stickman_9x16.mp4",
+      "ffmpeg_cmd": [],
+      "filter_chain": "PIL-rendered stickman frames -> ffmpeg libx264",
+      "duration_s": 20.0,
+      "width": 1080,
+      "height": 1920,
+      "fps": "30/1",
+      "codec": "h264",
+      "prompt_zh": "白底黑线火柴人，5段心跳结构（黄金钩子+升华互动），竖屏纵深构图，CJK字幕在安全区内",
+      "prompt_en": "black line stickman on white, heartbeat5 structure, vertical recompose, CJK subtitles in safe band",
+      "negative": [
+        "gray tint",
+        "paper texture",
+        "gradients",
+        "shadows",
+        "lighting",
+        "bloom",
+        "fog",
+        "3D depth",
+        "filled head",
+        "facial marks",
+        "body silhouette",
+        "outlined limbs",
+        "detached joints",
+        "separate hand or foot shapes",
+        "changed proportions",
+        "broken line weight",
+        "photorealism",
+        "3D humanoid rendering",
+        "detailed pupils or realistic eyes",
+        "extra limbs",
+        "malformed anatomy"
+      ],
+      "sha256": "d1e967bc70bae68ffa241558e8dd02a2d4d3df4a8743302554cf371d43b02600",
+      "source": "PIL CPU render"
     }
   ]
 }

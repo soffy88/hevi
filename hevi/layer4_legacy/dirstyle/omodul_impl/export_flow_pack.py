@@ -25,6 +25,7 @@ from hevi.layer4_legacy.dirstyle.oskill_impl.compiler import compile_prompt
 from hevi.layer4_legacy.dirstyle.oskill_impl.heartbeat5 import (
     HeartbeatPlan,
     plan_heartbeat5,
+    _build_beats,
 )
 
 __all__ = ["FlowPack", "export_flow_pack"]
@@ -99,15 +100,101 @@ def _compile_clip_prompt(
     )
 
 
+def _get_director_palette(director_style_id: str | None) -> list[str]:
+    """Get top-3 accent colors from director style palette as words."""
+    from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
+    if not director_style_id:
+        return []
+    try:
+        style = get_style(director_style_id)
+        palette = style.color.get("palette", [])
+        # Take first 3 colors, convert hex to descriptive words
+        color_words = []
+        word_map = {
+            "#f7c5d4": "pastel pink",
+            "#e8b87b": "mustard yellow",
+            "#a8d8c0": "mint green",
+            "#92c5e8": "sky blue",
+            "#f4e4c1": "cream",
+            "#2f6f5e": "teal green",
+            "#4fb08a": "seafoam",
+            "#e75480": "magenta",
+            "#f2c94c": "warm gold",
+        }
+        for hex_color in palette[:3]:
+            word = word_map.get(hex_color, hex_color)
+            color_words.append(word)
+        return color_words
+    except ValueError:
+        return []
+
+
+def _resolve_palette(art_style: str, director_style_id: str | None) -> list[str]:
+    """Resolve final palette: director accents take priority, art style as fallback.
+    
+    Rule: Art style defines base (background/line color), director style provides
+    up to 3 accent colors. When director is specified, use its top-3 palette.
+    When no director, use art style's default palette.
+    """
+    from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
+    
+    if director_style_id:
+        director_accents = _get_director_palette(director_style_id)
+        if director_accents:
+            return director_accents
+    
+    # Fallback: use art style's palette
+    art_style_obj = get_style(art_style)
+    return art_style_obj.palette_wordlist[:3]
+
+
+def _strip_hex_rgb(text: str) -> str:
+    """Remove hex colors and RGB notation from text."""
+    import re
+    # Remove hex colors like #f7c5d4
+    text = re.sub(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', '', text)
+    # Remove RGB notation like rgb(123, 45, 67)
+    text = re.sub(r'rgb\s*\([^)]+\)', '', text)
+    # Clean up
+    text = text.replace(',,', ',').strip(', ')
+    return text
+
+
 def _global_continuity_block(
     art_style_id: str,
     director_style_id: str | None,
     aspect: str,
     duration_s: float,
     narration_lang: str,
+    voice: str | None = None,
 ) -> dict[str, Any]:
-    """Global continuity block repeated in every clip prompt."""
+    """Global continuity block repeated verbatim in every clip prompt.
+
+    Contains the full frozen character DNA, line weight, palette,
+    aspect-specific composition, rhythm, narrator voice profile and
+    negative constraints.  No "same character" shortcuts.
+    """
     style = get_style(art_style_id)
+    voice_profile = style.voice_profile or (
+        voice
+        or (
+            "One frozen narrator voice profile for the whole video: warm "
+            "adult female, Mandarin Chinese, neutral accent, mid-low "
+            "register, clear and slightly playful timbre, gentle resonance, "
+            "soft breathy texture, conversational delivery, 160-180 words per "
+            "minute, light studio treatment with close-mic presence."
+        )
+        if narration_lang == "zh"
+        else (
+            "One frozen narrator voice profile for the whole video: warm "
+            "adult female, English, neutral accent, mid-low register, clear "
+            "and slightly playful timbre, gentle resonance, soft breathy "
+            "texture, conversational delivery, 150-170 words per minute, "
+            "light studio treatment with close-mic presence."
+        )
+    )
+    # Resolve palette: art style base + director accents (max 3)
+    palette_words = _resolve_palette(art_style_id, director_style_id)
     return {
         "art_style_id": art_style_id,
         "director_style_id": director_style_id,
@@ -116,24 +203,21 @@ def _global_continuity_block(
         "clip_count": max(1, round(duration_s / 10.0)),
         "character_dna": style.character_dna,
         "line_weight": style.line_weight,
-        "palette_words": ", ".join(style.palette_wordlist),
+        "palette_words": ", ".join(palette_words),
         "composition_aspect": _aspect_rules(aspect, art_style_id),
         "rhythm": f"avg {style.rhythm['avg_shot_s']}s/clip, {style.rhythm['cut_rule']}",
+        "voice_profile": voice_profile,
         "narration_lang": narration_lang,
         "negative_constraints": list(style.negative),
     }
 
 
-def _build_clip_beats(narration: str) -> dict[str, str]:
-    """Three timed beats [0-3s][3-7s][7-10s] for a clip."""
-    sentences = [s.strip() for s in re.split(r"(?<=[。！？…!?.])\s+", narration) if s.strip()]
-    if len(sentences) >= 3:
-        return {"0-3s": sentences[0], "3-7s": sentences[1], "7-10s": sentences[2]}
-    if len(sentences) == 2:
-        return {"0-3s": sentences[0], "3-7s": sentences[1], "7-10s": sentences[1]}
-    if len(sentences) == 1:
-        return {"0-3s": sentences[0], "3-7s": sentences[0], "7-10s": sentences[0]}
-    return {"0-3s": narration, "3-7s": narration, "7-10s": narration}
+def _build_clip_beats(narration: str, stage_idx: int = 0) -> dict[str, str]:
+    """Three timed beats [0-3s][3-7s][7-10s] for a clip.
+    
+    Delegates to heartbeat5._build_beats to ensure consistency.
+    """
+    return _build_beats(narration, stage_idx)
 
 
 def _stitching_guide(clip_count: int) -> list[str]:
@@ -256,7 +340,14 @@ def export_flow_pack(
         source_text=source_text,
         duration_s=duration_s,
         narration_lang=narration_lang,
+        min_chars_per_clip=45,
     )
+
+    # F7: Ensure core message is not empty
+    if not plan.topic or not plan.topic.strip():
+        # Extract a core message from the source text (first sentence or summary)
+        sentences = [s.strip() for s in re.split(r'[。！？]', source_text) if s.strip()]
+        plan.topic = sentences[0] if sentences else "Narrative about the source topic"
 
     global_block = _global_continuity_block(
         art_style_id=art_style,
@@ -264,11 +355,12 @@ def export_flow_pack(
         aspect=aspect,
         duration_s=duration_s,
         narration_lang=narration_lang,
+        voice=voice,
     )
 
     clip_prompts: list[dict[str, Any]] = []
     for seg in plan.segments:
-        beats = _build_clip_beats(seg.narration)
+        beats = _build_clip_beats(seg.narration, seg.stage_index)
         prompt = _compile_clip_prompt(
             art_style_id=art_style,
             director_style_id=director_style,
@@ -369,6 +461,13 @@ def _render_pack_md(
     lines.append(f"**Title**: {plan.title}")
     lines.append(f"**Core message**: {plan.topic}")
     lines.append("**Narrative arc**: 5-stage heartbeat (黄金钩子 → 打破常识 → 拉出内幕 → 真相揭秘 → 升华互动)")
+    lines.append("")
+    lines.append("## Segment Transitions (Continuity Handoff)")
+    lines.append("")
+    lines.append("| Clip | Opening Frame | Closing Frame |")
+    lines.append("|------|---------------|---------------|")
+    for seg in plan.segments:
+        lines.append(f"| Clip {seg.clip_index:02d} | {seg.visual_state_start[:50]} | {seg.visual_state_end[:50]} |")
     lines.append("")
 
     lines.append("## Global Continuity Block")

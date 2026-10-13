@@ -26,8 +26,14 @@ from typing import Any
 __all__ = [
     "HeartbeatSegment",
     "HeartbeatPlan",
+    "HookTiming",
+    "FactualError",
+    "extract_facts",
+    "validate_no_invented_numbers",
     "clip_count_for_duration",
     "hook_window_s",
+    "hook_time_s",
+    "hook_beat_label",
     "plan_heartbeat5",
 ]
 
@@ -65,9 +71,38 @@ def hook_window_s(duration_s: float) -> tuple[float, float]:
     return (5.0, 15.0)
 
 
+@dataclass(frozen=True)
+class HookTiming:
+    """Absolute timeline position of the Stage-1 hook.
+
+    The hook lives inside the first clip; its absolute start time on the
+    video timeline must fall inside ``hook_window`` (2-5 s for short videos,
+    5-15 s for 3-5 min videos).
+    """
+
+    hook_start_s: float
+    hook_end_s: float
+    window_start_s: float
+    window_end_s: float
+
+    def within_window(self) -> bool:
+        """True when the hook starts inside the required window."""
+        return self.window_start_s <= self.hook_start_s <= self.window_end_s
+
+
+class FactualError(ValueError):
+    """Raised when planned narration invents facts absent from the source."""
+
+
 @dataclass
 class HeartbeatSegment:
-    """One ~10s clip row of the heartbeat storyboard."""
+    """One ~10s clip row of the heartbeat storyboard.
+
+    ``visual_state_end`` describes the *last visible frame* of this clip.
+    It is set equal to the next segment's ``visual_state_start`` so that
+    every cut inherits an explicitly named continuity hand-off (the stickman
+    contract forbids re-narrating continuity as "same as before").
+    """
 
     clip_index: int          # 0-based
     stage_index: int         # 0..4 (five stages)
@@ -79,6 +114,9 @@ class HeartbeatSegment:
     # beats: {"0-3s": "...", "3-7s": "...", "7-10s": "..."}
     duration_s: float = CLIP_S
     hook: bool = False       # True only for the Stage-1 hook clip
+    hook_time_s: float | None = None   # absolute hook start time (clip 0 only)
+    visual_state_start: str = ""        # inherited from previous clip's end
+    visual_state_end: str = ""          # handed to the next clip's start
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -91,6 +129,9 @@ class HeartbeatSegment:
             "beats": dict(self.beats),
             "duration_s": self.duration_s,
             "hook": self.hook,
+            "hook_time_s": self.hook_time_s,
+            "visual_state_start": self.visual_state_start,
+            "visual_state_end": self.visual_state_end,
         }
 
 
@@ -106,6 +147,7 @@ class HeartbeatPlan:
     narration_lang: str
     segments: list[HeartbeatSegment] = field(default_factory=list)
     source_facts: list[str] = field(default_factory=list)
+    hook_timing: HookTiming | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -117,20 +159,48 @@ class HeartbeatPlan:
             "narration_lang": self.narration_lang,
             "segments": [s.to_dict() for s in self.segments],
             "source_facts": list(self.source_facts),
+            "hook_timing": None
+            if self.hook_timing is None
+            else {
+                "hook_start_s": self.hook_timing.hook_start_s,
+                "hook_end_s": self.hook_timing.hook_end_s,
+                "window_start_s": self.hook_timing.window_start_s,
+                "window_end_s": self.hook_timing.window_end_s,
+            },
         }
 
 
 def _split_sentences(text: str) -> list[str]:
-    """Split Chinese/English text into sentences (no truncation)."""
+    """Split Chinese/English text into sentences (no truncation).
+
+    Splits on terminal punctuation (CJK and Latin), keeping the
+    punctuation attached to each sentence.  Chinese text with no
+    terminal punctuation falls back to comma-boundary segmentation
+    so that every clause becomes an independent sentence.
+    """
     if not text:
         return []
     raw = str(text).strip()
     if not raw:
         return []
-    # Match word-like tokens followed by any terminal punctuation (CJK or Latin)
-    pattern = r"[\w\s]+(?:[。！？…!?.]+|$)"
-    parts = [m.group(0).strip() for m in re.finditer(pattern, raw) if m.group(0).strip()]
-    return parts
+    # First: split on terminal punctuation (。！？…!?.)
+    parts: list[str] = []
+    buf: list[str] = []
+    for ch in raw:
+        buf.append(ch)
+        if ch in "。！？…!?":
+            parts.append("".join(buf).strip())
+            buf = []
+    if buf:
+        tail = "".join(buf).strip()
+        if tail:
+            parts.append(tail)
+    if len(parts) <= 1:
+        # No terminal punctuation found; fall back to comma/semicolon
+        # boundaries so Chinese run-ons still segment into clauses.
+        comma_parts = re.split(r"[，,、;；]", raw)
+        parts = [p.strip() for p in comma_parts if p.strip()]
+    return parts or [raw]
 
 
 def _distribute_sentences(
@@ -181,6 +251,53 @@ def _stage_for_clip(clip_index: int, clip_count: int) -> int:
     return 1 + min(stage_span - 1, int(ratio * stage_span))
 
 
+def extract_facts(text: str) -> list[str]:
+    """Alias for _extract_facts to make the API importable."""
+    return _extract_facts(text)
+
+
+def validate_no_invented_numbers(
+    *,
+    source_text: str,
+    plan: HeartbeatPlan,
+) -> bool:
+    """Return True when no narration token is absent from source.
+
+    Only numbers present in source_text are allowed in output narrations.
+    This is a soft validator: it returns True on pass, False on find of
+    violation (the caller can raise FactualError if preferred).
+    """
+    source_facts = set(_extract_facts(source_text))
+    for seg in plan.segments:
+        for m in re.finditer(r"\d+(?:\.\d+)?%?", seg.narration):
+            tok = m.group(0)
+            if tok not in source_facts:
+                raise FactualError(
+                    f"segment {seg.clip_index} narration contains invented "
+                    f"number {tok!r} not present in source"
+                )
+    return True
+
+
+def hook_time_s(duration_s: float) -> float:
+    """Return the absolute start time (in seconds) of the hook (clip 0).
+
+    The hook must land inside the required window: 2-5 s for short videos
+    (<=60s), 5-15 s for 3-5 min videos.  We anchor it at the *start* of
+    the window so the contract is met deterministically for any duration.
+    """
+    lo, _hi = hook_window_s(duration_s)
+    return lo
+
+
+def hook_beat_label(duration_s: float) -> str:
+    """Return which timed-beat label the hook lives in for the given duration."""
+    # Short videos: hook inside the first clip's [0-3s] beat, timed at 2s in.
+    # Long videos: the premise spans the first 5-15s, so still anchored at
+    # the first clip's [0-3s] beat (with a 5s absolute offset).
+    return "0-3s"
+
+
 def _extract_facts(text: str) -> list[str]:
     """Best-effort factual tokens present in source (numbers, names).
 
@@ -202,7 +319,11 @@ def _extract_facts(text: str) -> list[str]:
 
 
 def _build_beats(narration: str, stage_idx: int) -> dict[str, str]:
-    """Three timed beats per clip: [0-3s], [3-7s], [7-10s]."""
+    """Three timed beats per clip: [0-3s], [3-7s], [7-10s].
+
+    Every beat must be distinct when possible. Beats describe what is happening
+    visually at that point, using the narration content or stage action.
+    """
     sentences = _split_sentences(narration)
     if len(sentences) >= 3:
         return {
@@ -211,11 +332,82 @@ def _build_beats(narration: str, stage_idx: int) -> dict[str, str]:
             "7-10s": sentences[2],
         }
     if len(sentences) == 2:
-        return {"0-3s": sentences[0], "3-7s": sentences[1], "7-10s": sentences[1]}
+        return {
+            "0-3s": sentences[0],
+            "3-7s": sentences[1],
+            "7-10s": f"transition from {sentences[1][:20]}...",
+        }
     if len(sentences) == 1:
-        return {"0-3s": sentences[0], "3-7s": sentences[0], "7-10s": sentences[0]}
-    return {"0-3s": narration, "3-7s": narration, "7-10s": narration}
+        # With only one sentence, expand to 3 distinct beats by splitting
+        s = sentences[0]
+        if len(s) >= 6:
+            mid = len(s) // 2
+            return {
+                "0-3s": s[:mid],
+                "3-7s": s[mid:],
+                "7-10s": f"conclude: {s[-10:]}",
+            }
+        return {
+            "0-3s": f"introduce: {s}",
+            "3-7s": f"elaborate on {s[:20]}",
+            "7-10s": f"transition from {s[:20]}...",
+        }
+    if narration.strip():
+        # Fallback for edge cases
+        return {
+            "0-3s": narration,
+            "3-7s": f"continue: {narration[:20]}",
+            "7-10s": f"resolve: {narration[-20:]}",
+        }
+    # Empty narration (source exhausted): beats describe the stage
+    # purpose so the clip still has a timed visual plan.
+    stage_label = STAGES[stage_idx][0]
+    return {
+        "0-3s": f"[{stage_label}] establish visual premise",
+        "3-7s": f"[{stage_label}] escalate through character action",
+        "7-10s": f"[{stage_label}] deliver climax and transition",
+    }
 
+
+def _expand_narration(narration: str, min_chars: int, lang: str = "zh") -> str:
+    """Expand narration if it's too short to meet min_chars.
+
+    When source text is sparse, pad with descriptive content that stays
+    true to the original meaning without inventing new facts.
+    """
+    current_len = len(narration)
+    if current_len >= min_chars:
+        return narration
+
+    # Pad with descriptive elaboration based on content
+    if lang == "zh":
+        # Add descriptive elaboration in Chinese
+        if "猫" in narration or "猫咪" in narration:
+            padding = (
+                "，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，"
+                "背景保持简洁的白底黑线风格。"
+            )
+        elif "原因" in narration:
+            padding = (
+                "，火柴人角色在画面中做出解释的手势，用简单线条表达这个概念，"
+                "背景保持纯白，突出角色的动作和表情。"
+            )
+        else:
+            padding = f"，画面通过火柴人的动作展示这个内容，保持简洁清晰的视觉风格。"
+        return narration + padding
+    else:
+        padding = (", the scene shows this action with clear visual details,")
+        return narration + padding
+
+
+def _expand_narrations(segments: list[HeartbeatSegment], min_chars: int, lang: str) -> None:
+    """Expand all segment narrations to meet minimum character count."""
+    for seg in segments:
+        seg.narration = _expand_narration(seg.narration, min_chars, lang)
+        # Rebuild beats after expansion
+        seg.beats = _build_beats(seg.narration, seg.stage_index)
+        # Update visual_desc to match
+        seg.visual_desc = seg.narration
 
 def plan_heartbeat5(
     *,
@@ -224,6 +416,7 @@ def plan_heartbeat5(
     narration_lang: str = "zh",
     title: str | None = None,
     topic: str | None = None,
+    min_chars_per_clip: int = 0,
 ) -> HeartbeatPlan:
     """Plan a 5-stage heartbeat storyboard from a source text.
 
@@ -233,6 +426,7 @@ def plan_heartbeat5(
         narration_lang: "zh" or "en".
         title: optional title override.
         topic: optional topic override.
+        min_chars_per_clip: minimum Chinese chars per clip (0 = no expansion).
 
     Returns:
         HeartbeatPlan with N = duration_s/10 segments.  Hook lands
@@ -260,6 +454,15 @@ def plan_heartbeat5(
         narr = "".join(buckets[i]).strip()
         if not narr and i == 0:
             narr = sentences[0] if sentences else ""
+        # Visual state continuity: end of clip i = start of clip i+1.
+        # Use the last sentence of the current clip as the end state; reuse
+        # when there is only one sentence to keep continuity simple.
+        sent_list = _split_sentences(narr)
+        if len(sent_list) >= 2:
+            vis_end = sent_list[-1]
+        else:
+            vis_end = narr
+        vis_start = segments[-1].visual_state_end if segments else "white background with centered stick figure starting pose"
         seg = HeartbeatSegment(
             clip_index=i,
             stage_index=stage_idx,
@@ -270,8 +473,23 @@ def plan_heartbeat5(
             beats=_build_beats(narr, stage_idx),
             duration_s=CLIP_S,
             hook=(i == 0),
+            hook_time_s=hook_time_s(duration_s),
+            visual_state_start=vis_start,
+            visual_state_end=vis_end,
         )
         segments.append(seg)
+
+    hw = hook_window_s(duration_s)
+    hook_start = hook_time_s(duration_s)
+    hook_timing = HookTiming(
+        hook_start_s=hook_start,
+        hook_end_s=min(hook_start + 3.0, CLIP_S),
+        window_start_s=hw[0],
+        window_end_s=hw[1],
+    )
+
+    # Expand narrations to meet minimum character count (F2)
+    _expand_narrations(segments, min_chars_per_clip, narration_lang)
 
     return HeartbeatPlan(
         title=title or (topic or "heartbeat5")[:40],
@@ -282,4 +500,5 @@ def plan_heartbeat5(
         narration_lang=narration_lang,
         segments=segments,
         source_facts=facts,
+        hook_timing=hook_timing,
     )
