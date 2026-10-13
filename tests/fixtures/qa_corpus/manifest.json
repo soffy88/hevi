@@ -185,7 +185,7 @@
     },
     {
       "id": "bad11_audio_pops",
-      "recipe": "periodic 900 Hz clicks every 0.5 s (pops/clicks)",
+      "recipe": "periodic damped 4 kHz transient bursts every 0.5 s (pops/clicks, no clipping)",
       "expected_failures": [
         "audio.clicks"
       ],
@@ -193,7 +193,7 @@
         0.0,
         14
       ],
-      "sha256": "7b6f2b97c1f7d03883758545841097e302c3ffa80fc67696119d8ea4768152f7",
+      "sha256": "34b253c84c1b39ab878a68e4c26ad44b09f5a32d6531bc9d4c5166dbcaf5d960",
       "duration_s": 14.0,
       "sha_stable": true,
       "sha_note": null
@@ -238,10 +238,10 @@
         0.0,
         14
       ],
-      "caption_text": "please remember to water the plants tomorrow morning",
+      "caption_text": "remember to water the plants tomorrow",
       "audio_text": "the quick brown fox jumps over the lazy dog",
       "audio_text_source": "espeak",
-      "sha256": "5865990852b41a8405208b3d938dd97e871ae028a6df4a7901d66dbb05764df6",
+      "sha256": "be87959abd01bf9279d7361393ab2e4a53a1a9c39f9cd14cb041841c98a37923",
       "duration_s": 14.0,
       "sha_stable": true,
       "sha_note": null

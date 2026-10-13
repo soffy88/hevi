@@ -369,6 +369,12 @@ def build_clips(base: Path, out: Path) -> list[dict]:
         [5.0, 8.0],
     )
 
+    # Periodic transient impulses (pops/clicks).  Each burst is a short damped
+    # 4 kHz tone at 0.40 amplitude: a sharp attack followed by a fast decay
+    # gives a large sample-to-sample jump (the pops detector), yet the peak
+    # stays well under full scale - it is a pops clip, not a clipping clip.
+    # The previous 0.99*sgn() square burst pinned the waveform at full scale,
+    # so bad11 also carried an unlabelled audio.clipping defect.
     _enc(
         base,
         out / "bad11_audio_pops.mp4",
@@ -380,13 +386,14 @@ def build_clips(base: Path, out: Path) -> list[dict]:
             "-t",
             str(DUR),
             "-i",
-            "aevalsrc='if(lt(mod(t,0.5),0.004),0.99*sgn(sin(2*PI*900*t)),0)':s=44100:c=stereo",
+            "aevalsrc='if(lt(mod(t,0.5),0.006),0.40*exp(-mod(t,0.5)/0.0015)*sin(2*PI*4000*t),0)':"
+            "s=44100:c=stereo",
         ],
         maps=["0:v", "[a]"],
     )
     add(
         "bad11_audio_pops",
-        "periodic 900 Hz clicks every 0.5 s (pops/clicks)",
+        "periodic damped 4 kHz transient bursts every 0.5 s (pops/clicks, no clipping)",
         ["audio.clicks"],
         [0.0, DUR],
     )
@@ -488,13 +495,16 @@ def _build_subtitle_clips(base: Path, out: Path, add) -> None:
         [0.0, DUR],
     )
 
-    # ASR mismatch: the spoken audio and the burned caption disagree.
+    # ASR mismatch: the spoken audio and the burned caption disagree.  The
+    # caption must sit fully inside the frame - the earlier 40 px font at
+    # x=80 ran the last glyphs past the right edge, so bad14 silently carried
+    # a second, unlabelled subtitle.out_of_frame defect.
     spoken = "the quick brown fox jumps over the lazy dog"
-    caption = "please remember to water the plants tomorrow morning"
+    caption = "remember to water the plants tomorrow"
     tts = out / "_sub14_tts.wav"
     _run(["espeak", "-w", str(tts), spoken])
     png = out / "_sub14.png"
-    _text_png(caption, 40, 80, 620, png)
+    _text_png(caption, 32, 80, 620, png)
     ffmpeg(
         "-i",
         str(sub_base),
