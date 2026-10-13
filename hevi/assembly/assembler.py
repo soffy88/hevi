@@ -287,7 +287,7 @@ def _probe_sync(path: Path) -> float:
 
 def build_xfade_chain(
     durations: list[float],
-    transition: str,
+    transition: str | list[str],
     xfade_d: float | list[float],
 ) -> tuple[str, str, float]:
     """构造 N 段 xfade 链 filter_complex。
@@ -296,10 +296,21 @@ def build_xfade_chain(
     offset_i = (已合并总时长) - xfade_d_i。每次 xfade 重叠 xfade_d_i,故总时长
     = sum(durations) - sum(xfade_d_i)。
 
+    `transition` 可以是单个转场 id(str, 所有接缝同一种)或逐接缝的 id 列表
+    (长度 n-1, 每个元素为 xfade_transitions 注册表中的 id, 未知 id 抛 ValueError)。
     `xfade_d` 可以是单一值(所有转场同一重叠时长,原有行为)或逐转场的列表——
     BGM 节拍对齐(HEVI 路线图 Phase2 #37)按节拍点微调每处转场的重叠时长,不是
     整条链统一一个数,故需要这个泛化。
+
+    逐接缝列表里的元素还可以是特殊值 `"cut"`(硬切):该接缝用 concat 直接拼接
+    (d 记为 0),其余接缝仍走 xfade,总时长公式随之正确
+    (总时长 = sum(durations) - sum(非 cut 接缝的 d))。str 形式传 `"cut"` 等价于
+    全部接缝硬切。空列表抛 ValueError(无法对应任何接缝)。
     """
+    from hevi.assembly.xfade_transitions import resolve
+
+    if isinstance(transition, list) and not transition:
+        raise ValueError("transition list must not be empty")
     n = len(durations)
     if n == 1:
         return "", "0:v", durations[0]
@@ -308,17 +319,51 @@ def build_xfade_chain(
         raise ValueError(
             f"xfade_d list must have {n - 1} entries for {n} shots, got {len(xfade_ds)}"
         )
-    parts: list[str] = []
-    prev = "[0:v]"
+    # 归一化 transition 为逐接缝的 token 列表(str → 同一种铺满所有接缝)
+    if isinstance(transition, str):
+        seam_tokens = [transition] * (n - 1)
+    else:
+        if len(transition) != n - 1:
+            raise ValueError(
+                f"transition list must have {n - 1} entries for {n} shots, got {len(transition)}"
+            )
+        seam_tokens = list(transition)
+
+    # 无 cut 接缝 → 保持原路径(filter_complex 逐字不变,向后兼容 golden)。
+    if "cut" not in seam_tokens:
+        transition_values = [resolve(t) for t in seam_tokens]
+        parts: list[str] = []
+        prev = "[0:v]"
+        merged = durations[0]
+        for i in range(1, n):
+            d = xfade_ds[i - 1]
+            offset = merged - d
+            out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
+            parts.append(
+                f"{prev}[{i}:v]xfade=transition={transition_values[i - 1]}:duration={d}:offset={offset:.3f}{out_label}"
+            )
+            merged = merged + durations[i] - d
+            prev = out_label
+        return ";".join(parts), "[vout]", merged
+
+    # 含 cut 接缝:cut 用 concat 直拼,其余走 xfade。concat 与 xfade 混用时各输入
+    # 时基不一致会 "Error reinitializing filters",故先给每个输入统一 settb=AVTB。
+    parts = [f"[{i}:v]settb=AVTB[vs{i}]" for i in range(n)]
+    prev = "[vs0]"
     merged = durations[0]
     for i in range(1, n):
-        d = xfade_ds[i - 1]
-        offset = merged - d
-        out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
-        parts.append(
-            f"{prev}[{i}:v]xfade=transition={transition}:duration={d}:offset={offset:.3f}{out_label}"
-        )
-        merged = merged + durations[i] - d
+        token = seam_tokens[i - 1]
+        out_label = f"[vc{i}]" if i < n - 1 else "[vout]"
+        if token == "cut":
+            parts.append(f"{prev}[vs{i}]concat=n=2:v=1:a=0{out_label}")
+            merged = merged + durations[i]
+        else:
+            d = xfade_ds[i - 1]
+            offset = merged - d
+            parts.append(
+                f"{prev}[vs{i}]xfade=transition={resolve(token)}:duration={d}:offset={offset:.3f}{out_label}"
+            )
+            merged = merged + durations[i] - d
         prev = out_label
     return ";".join(parts), "[vout]", merged
 
@@ -464,7 +509,7 @@ async def assemble_longvideo(
     width: int = 832,
     height: int = 480,
     fps: int = 24,
-    transition: str = "fade",
+    transition: str | list[str] = "fade",
     transition_duration: float = 0.5,
     loudness_lufs: float = -14.0,
     bgm_gain_db: float = -18.0,
@@ -524,7 +569,13 @@ async def assemble_longvideo(
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
         xfade_d: float = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
-        use_xfade = transition != "cut" and len(durations) > 1 and xfade_d > 0.05
+        # 逐接缝转场列表里可能混有 "cut";只要有任一接缝不是 cut 就必须走 xfade 链
+        # (cut 接缝由 build_xfade_chain 用 concat 直拼)。空列表是非法输入,直接报错,
+        # 不要让它走到 transition[0] 触发 IndexError。
+        if isinstance(transition, list) and not transition:
+            raise ValueError("assemble_longvideo: transition list must not be empty")
+        seam_tokens = [transition] if isinstance(transition, str) else list(transition)
+        use_xfade = any(t != "cut" for t in seam_tokens) and len(durations) > 1 and xfade_d > 0.05
 
         if use_xfade and bgm_beat_align and bgm_path is not None and bgm_path.exists():
             import asyncio
