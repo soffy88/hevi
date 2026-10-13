@@ -30,7 +30,6 @@ def build_studio_skills() -> list[SkillDef]:
             slots=slots,
             render_runtime=args.get("render_runtime"),
             execute=bool(args.get("execute")),
-            publish=bool(args.get("publish")),
             platforms=args.get("platforms"),
         )
         body = job.to_dict()
@@ -82,7 +81,6 @@ def build_studio_skills() -> list[SkillDef]:
         jobs = await tick(
             now=args.get("now"),
             calendar_id=args.get("calendar_id"),
-            publish=bool(args.get("publish", True)),
         )
         return {"jobs": [j.to_dict() for j in jobs], "count": len(jobs)}
 

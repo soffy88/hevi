@@ -127,9 +127,6 @@ class AIShortJob(BaseModel):
     talking_head_path: str = ""
     b_roll_paths: list[str] = Field(default_factory=list)
     composite_path: str = ""
-    # 分发
-    publish_platforms: list[str] = Field(default_factory=list)
-    publish_status: str = ""
     # 状态
     status: str = "pending"
     error: str = ""
@@ -185,9 +182,6 @@ class YouTubeStudioJob(BaseModel):
     selected_title: str = ""
     thumbnail: YouTubeThumbnail = Field(default_factory=YouTubeThumbnail)
     description: YouTubeDescription = Field(default_factory=YouTubeDescription)
-    # 发布
-    publish_to_youtube: bool = False
-    publish_status: str = ""
     # 状态
     status: str = "pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -232,18 +226,6 @@ class ViralMoment(BaseModel):
     end_s: float = 0.0
     viral_score: float = 0.0
     reasoning: str = ""
-
-
-class PublishTicket(BaseModel):
-    """社交分发交接单。"""
-
-    platform: str
-    media_path: str
-    title: str = ""
-    description: str = ""
-    tags: list[str] = Field(default_factory=list)
-    scheduled_date: str | None = None
-    status: str = "pending"
 
 
 # ─── 工厂函数 ───────────────────────────────────────

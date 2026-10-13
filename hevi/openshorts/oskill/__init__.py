@@ -6,14 +6,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from hevi.openshorts.layer4_oskill import (
-        create_publish_tickets,
         generate_ai_short,
         generate_clips,
         generate_youtube_package,
     )
 
 __all__ = [
-    "create_publish_tickets",
     "generate_ai_short",
     "generate_clips",
     "generate_youtube_package",

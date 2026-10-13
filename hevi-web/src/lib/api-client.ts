@@ -184,7 +184,6 @@ export const studioApi = {
     slots?: Record<string, unknown>;
     render_runtime?: string;
     execute?: boolean;
-    publish?: boolean;
     platforms?: string[];
   }) => authedReq<Record<string, unknown>>('/api/studio/veya/produce', {
     method: 'POST',
@@ -197,7 +196,7 @@ export const studioApi = {
       method: 'POST',
       body: JSON.stringify({ topics }),
     }),
-  tickDaily: (body?: { calendar_id?: string; now?: string; publish?: boolean }) =>
+  tickDaily: (body?: { calendar_id?: string; now?: string }) =>
     authedReq<{ jobs: Record<string, unknown>[]; count: number }>('/api/studio/daily/tick', {
       method: 'POST',
       body: JSON.stringify(body ?? {}),
@@ -914,12 +913,6 @@ export const proStudioApi = {
 };
 
 export const publishStudioApi = {
-  listPlatforms: () => authedReq<{ platforms: Array<{ id: string; name: string; enabled: boolean }> }>('/api/studio/publish/platforms'),
-  publish: (body: { platform: string; video_path: string; title: string; description?: string; tags?: string[] }) => authedReq<{ task_id: string; status: string }>('/api/studio/publish', { method: 'POST', body: JSON.stringify(body) }),
-  confirmPublish: (body: { task_id: string }) => authedReq<{ status: string; url?: string }>('/api/studio/publish/confirm', { method: 'POST', body: JSON.stringify(body) }),
-  distributionProbe: () => authedReq<Record<string, unknown>>('/api/distribution/probe'),
-  distributionAccounts: () => authedReq<{ accounts: Array<Record<string, unknown>> }>('/api/distribution/accounts'),
-  distributionHistory: () => authedReq<{ history: Array<Record<string, unknown>> }>('/api/distribution/history'),
   motionTemplates: (category?: string, search?: string) => { const q = new URLSearchParams(); if (category) q.set('category', category); if (search) q.set('search', search); return authedReq<{ templates: Array<Record<string, unknown>> }>(`/api/studio/motion/templates${q.toString() ? `?${q}` : ''}`); },
   motionRender: (body: { template_id: string; params: Record<string, unknown> }) => authedReq<{ task_id: string; status: string }>('/api/studio/motion/render', { method: 'POST', body: JSON.stringify(body) }),
   htmlVideoTemplates: () => authedReq<{ templates: Array<Record<string, unknown>> }>('/api/studio/html-video/templates'),

@@ -43,7 +43,6 @@ from hevi.openshorts.omodul import (
 
 # ── Oskill ──
 from hevi.openshorts.oskill import (
-    create_publish_tickets,
     generate_ai_short,
     generate_clips,
     generate_youtube_package,
@@ -58,7 +57,6 @@ from hevi.openshorts.schemas import (
     AIShortJob,
     ClipGeneratorJob,
     ClipSpec,
-    PublishTicket,
     ReframingMode,
     SceneDetection,
     ViralMoment,
@@ -84,7 +82,6 @@ __all__ = [
     "AIShortJob",
     "ClipGeneratorJob",
     "ClipSpec",
-    "PublishTicket",
     # Schemas
     "ReframingMode",
     "SceneDetection",
@@ -98,7 +95,6 @@ __all__ = [
     "build_transcript_windows",
     # Oprim
     "clip_reframing_params",
-    "create_publish_tickets",
     "detect_scenes_gemini",
     "execute_ai_short",
     "execute_clip_generator",

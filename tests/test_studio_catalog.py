@@ -14,7 +14,7 @@ def test_catalog_has_over_one_hundred_tools() -> None:
     assert len(ALL_CATALOG) >= 70
     assert "timeline.create" in ids
     assert "timeline.split" in ids
-    assert "publish.douyin" in ids
+    assert not any(tool_id.startswith("publish.") for tool_id in ids)
     assert "explainer.card.hook" in ids
     assert "director.camera.wide" in ids
     assert "runtime.hyperframes.compile" in ids

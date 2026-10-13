@@ -49,18 +49,6 @@ class AccountProfile(BaseModel):
     def is_available(self) -> bool:
         return self.status == "active" and self.risk_level in ("normal",)
 
-    def can_publish(self) -> bool:
-        """是否具备发布所需的登录态(读取态 + 创作者态)。"""
-        if not self.is_available():
-            return False
-        if self.platform in (
-            PlatformName.DOUYIN.value,
-            PlatformName.KUAISHOU.value,
-            PlatformName.SHIPINHAO.value,
-        ):
-            return self.has_creator_state or self.has_read_state
-        return self.has_creator_state or self.has_read_state
-
 
 # ─── 监控 ───
 
@@ -181,58 +169,6 @@ class CommentTask(BaseModel):
     scheduled_at: datetime | None = None
     done_at: datetime | None = None
     created_at: datetime | None = None
-
-
-# ─── 发布任务 ───
-
-
-class PublishTask(BaseModel):
-    """跨平台发布任务。"""
-
-    id: int | None = None
-    platform: str
-    account_id: int
-    media_type: str = "images"  # images | video
-    title: str = ""
-    desc: str = ""
-    topics: str = ""
-    location: str = ""
-    visibility: str = "public"
-    allow_save: bool = True
-    media_paths: list[str] = Field(default_factory=list)
-    status: str = "pending"  # pending | doing | done | failed | canceled
-    result_url: str = ""
-    error: str = ""
-    source_platform: str = ""
-    source_content_id: str = ""
-    scheduled_at: datetime | None = None
-    created_at: datetime | None = None
-    done_at: datetime | None = None
-
-    def is_available(self) -> bool:
-        """检查发布任务是否可用(有媒体文件)。"""
-        return bool(self.media_paths)
-
-
-class PublishResult(BaseModel):
-    """一次发布尝试的结果。"""
-
-    status: str
-    platform: str
-    external_id: str | None = None
-    url: str | None = None
-    reason: str = ""
-    trail: list[dict[str, Any]] = Field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "status": self.status,
-            "platform": self.platform,
-            "external_id": self.external_id,
-            "url": self.url,
-            "reason": self.reason,
-            "trail": self.trail,
-        }
 
 
 # ─── 风控 ───

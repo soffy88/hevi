@@ -29,7 +29,6 @@ class AIShortRunRequest(BaseModel):
     talking_head_path: str | None = None
     actor_image: str | None = None
     b_roll_paths: list[str] = Field(default_factory=list)
-    publish_to: list[str] = Field(default_factory=list)
     estimated_cost_usd: float = Field(default=0.65, ge=0)
 
 
@@ -44,7 +43,6 @@ async def run_ai_short(
         description=body.description,
         url=body.url,
         cost_mode=body.cost_mode,
-        publish_to=body.publish_to,
         input_data={
             "with_voiceover": body.with_voiceover,
             "language": body.language,

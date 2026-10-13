@@ -101,7 +101,6 @@ def plan_ai_short(
     url: str = "",
     user_id: str = "",
     cost_mode: str = "low_cost",
-    publish_to: list[str] | None = None,
 ) -> dict[str, Any]:
     """规划 AI Shorts pipeline。
 
@@ -116,7 +115,6 @@ def plan_ai_short(
         "url": url,
         "user_id": user_id,
         "cost_mode": cost_mode,
-        "publish_to": publish_to or [],
         "stages": [
             {"stage": "analyze", "tool": "gemini", "description": "网页抓取 + Gemini 研究"},
             {
@@ -142,7 +140,6 @@ def plan_ai_short(
                 "description": "ASS subtitles + hook overlays",
             },
             {"stage": "gallery", "tool": "s3", "description": "上传到 public S3 + SEO pages"},
-            {"stage": "publish", "tool": "upload_post", "description": "TikTok/Instagram/YouTube"},
         ],
         "estimated_cost_usd": cost_info.get("estimated_cost_usd", 0.65),
         "checkpoint_policy": "guided",
@@ -178,7 +175,6 @@ def plan_youtube_studio(
                 "tool": "gemini",
                 "description": "SEO 描述 + 章节时间戳 + hashtags",
             },
-            {"stage": "publish", "tool": "upload_post", "description": "一键发布到 YouTube"},
         ],
         "estimated_cost_usd": 0.0,  # Gemini free tier
         "checkpoint_policy": "guided",
@@ -215,7 +211,6 @@ async def execute_ai_short(
     url: str = "",
     user_id: str = "",
     cost_mode: str = "low_cost",
-    publish_to: list[str] | None = None,
     config: dict[str, Any] | None = None,
     input_data: dict[str, Any] | None = None,
     output_dir: str | Path | None = None,
@@ -234,7 +229,6 @@ async def execute_ai_short(
         "url": url or (input_data or {}).get("url", ""),
         "user_id": user_id,
         "cost_mode": cm.value,
-        "publish_to": publish_to or (input_data or {}).get("publish_to") or [],
     }
     result = await ai_shorts_generation_workflow(
         {**(config or {}), "cost_mode": cm.value},
@@ -246,7 +240,6 @@ async def execute_ai_short(
     )
     job = make_ai_short_job(description=data["description"], url=data["url"], user_id=user_id)
     job.cost_plan.mode = cm
-    job.publish_platforms = list(data["publish_to"])
     findings = result.get("findings") or {}
     if findings.get("script"):
         from hevi.openshorts.schemas import AIActor, AIScript
@@ -261,12 +254,6 @@ async def execute_ai_short(
     job.status = str(result.get("status") or "failed")
     error = result.get("error")
     job.error = str(error.get("message") if isinstance(error, dict) else error or "")
-    publish_results = findings.get("publish_results") or []
-    if publish_results:
-        statuses = {
-            str(item.get("status") or "") for item in publish_results if isinstance(item, dict)
-        }
-        job.publish_status = "published" if "published" in statuses else "handoff"
     return job
 
 

@@ -449,41 +449,6 @@ def nle_drop(p: dict[str, Any]) -> dict[str, Any]:
     return _ok(cuts=cuts)
 
 
-async def pub_named(p: dict[str, Any], platform: str) -> dict[str, Any]:
-    from hevi.studio.tools import invoke_tool
-
-    body = dict(p)
-    body["platform"] = platform
-    res = await invoke_tool("publish.matrix", body)
-    return {"status": res.status, **res.payload, "reason": res.reason}
-
-
-async def pub_douyin(p: dict[str, Any]) -> dict[str, Any]:
-    return await pub_named(p, "douyin")
-
-
-async def pub_kuaishou(p: dict[str, Any]) -> dict[str, Any]:
-    return await pub_named(p, "kuaishou")
-
-
-async def pub_xhs(p: dict[str, Any]) -> dict[str, Any]:
-    return await pub_named(p, "xiaohongshu")
-
-
-async def pub_sph(p: dict[str, Any]) -> dict[str, Any]:
-    return await pub_named(p, "shipinhao")
-
-
-async def pub_bili(p: dict[str, Any]) -> dict[str, Any]:
-    return await pub_named(p, "bilibili")
-
-
-def pub_list(_p: dict[str, Any]) -> dict[str, Any]:
-    from hevi.publishers import list_publishers
-
-    return _ok(publishers=list_publishers())
-
-
 def qc_probe(p: dict[str, Any]) -> dict[str, Any]:
     return audio_probe(p)
 
@@ -1022,7 +987,6 @@ async def daily_tick(p: dict[str, Any]) -> dict[str, Any]:
     jobs = await tick(
         now=p.get("now"),
         calendar_id=p.get("calendar_id"),
-        publish=bool(p.get("publish", True)),
     )
     return _ok(jobs=[j.to_dict() for j in jobs], count=len(jobs))
 
@@ -1035,7 +999,6 @@ async def veya_produce(p: dict[str, Any]) -> dict[str, Any]:
         slots=dict(p.get("slots") or {}),
         render_runtime=p.get("render_runtime"),
         execute=bool(p.get("execute")),
-        publish=bool(p.get("publish")),
         platforms=p.get("platforms"),
         output_dir=p.get("output_dir"),
         production_mode=p.get("production_mode"),
@@ -1096,12 +1059,6 @@ OPS: dict[str, Any] = {
     "tl_bgm": tl_bgm,
     "nle_transition": nle_transition,
     "camera_plan": camera_plan,
-    "pub_douyin": pub_douyin,
-    "pub_kuaishou": pub_kuaishou,
-    "pub_xhs": pub_xhs,
-    "pub_sph": pub_sph,
-    "pub_bili": pub_bili,
-    "pub_list": pub_list,
     "qc_probe": qc_probe,
     "qc_production": qc_production,
     "qc_layout": qc_layout,

@@ -45,7 +45,7 @@ cd "$HEVI_ROOT" && uv run python -m hevi.skills.studio_cli run kinetic_promo --e
 
 `research.plan` `research.brief` `watch.concepts` `script.quick` `material.rank`
 `score.provider` `memory.remember` `memory.recall` `nle.edit_plan`
-`publish.matrix` `delivery.preview` `asset.bind`
+`delivery.preview` `asset.bind`
 
 VideoAgent:`video.agent.plan` `video.agent.run` `video.evidence.index`
 `video.evidence.search` `video.script.from_transcript` `video.summary` `video.qa`
@@ -86,5 +86,5 @@ uv run python -m hevi.skills.explainer_cli "盐税" --source-text "智伯请地�
 
 - 角色/成片用 `asset.bind` / `shot.export` 登记后再跨线引用,不要复制 Subject。
 - 试播时长必须过 `delivery.preview`(60–90s)。
-- 国内分发走 `publish.matrix`(抖音/视频号/小红书/快手/B 站),写交接单,不假装已上传。
+- 平台发布/分发不在 Hevi:成片交给 Easel(video-publisher 等)发布。
 - `render_runtime` 在配方里锁定,禁止静默换 Remotion/ffmpeg。

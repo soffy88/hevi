@@ -23,7 +23,6 @@ tools:
   - nle.edit_plan
   - timeline.create
   - timeline.ripple
-  - publish.matrix
 pipeline:
   name: podcast_repurpose
   stages:

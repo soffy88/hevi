@@ -40,13 +40,13 @@ async def test_tick_fires_one_topic_per_calendar() -> None:
             }
         ],
     )
-    jobs = await tick(now="2026-08-18", publish=True)
+    jobs = await tick(now="2026-08-18")
     assert len(jobs) == 2
     lines = {j.line_id for j in jobs}
     assert lines == {"explainer", "history_scene"}
     expl = next(j for j in jobs if j.line_id == "explainer")
     assert expl.status == "scheduled"
-    assert expl.publish and expl.publish[0]["status"] == "queued"
+    assert "publish" not in expl.to_dict()
 
     again = await tick(now="2026-08-18")
     assert again == []

@@ -26,7 +26,6 @@ def test_catalog_covers_composition_primitives() -> None:
         "script.quick",
         "score.provider",
         "nle.edit_plan",
-        "publish.matrix",
         "asset.bind",
         "delivery.preview",
     } <= ids

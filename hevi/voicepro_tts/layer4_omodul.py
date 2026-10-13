@@ -53,7 +53,6 @@ def plan_ai_short(
     url: str = "",
     user_id: str = "",
     cost_mode: str = "low_cost",
-    publish_to: list[str] | None = None,
 ) -> dict[str, Any]:
     """规划 AI Shorts pipeline。"""
     return {
@@ -62,7 +61,6 @@ def plan_ai_short(
         "url": url,
         "user_id": user_id,
         "cost_mode": cost_mode,
-        "publish_to": publish_to or ["tiktok", "instagram", "youtube"],
         "stages": [
             {"stage": "analyze", "tool": "gemini", "description": "网页抓取 + Gemini 研究"},
             {
@@ -80,7 +78,6 @@ def plan_ai_short(
                 "description": "ASS subtitles + hook overlays",
             },
             {"stage": "gallery", "tool": "s3", "description": "上传到 public S3"},
-            {"stage": "publish", "tool": "upload_post", "description": "TikTok/Ins/YouTube"},
         ],
         "estimated_cost_usd": 0.65 if cost_mode == "low_cost" else 2.0,
         "checkpoint_policy": "guided",
@@ -110,7 +107,6 @@ def plan_youtube_studio(
                 "tool": "gemini",
                 "description": "SEO 描述 + 章节时间戳 + hashtags",
             },
-            {"stage": "publish", "tool": "upload_post", "description": "一键发布到 YouTube"},
         ],
         "estimated_cost_usd": 0.0,
         "checkpoint_policy": "guided",

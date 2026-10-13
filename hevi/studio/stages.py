@@ -229,28 +229,3 @@ async def stage_dispatch(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
             render=True,
         )
     return {"production_order": order, "fulfill": fulfill}
-
-
-async def stage_publish(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
-    raw_fulfill = data.get("fulfill")
-    fulfill: dict[str, Any] = raw_fulfill if isinstance(raw_fulfill, dict) else {}
-    raw_media = (
-        data.get("media_path") or data.get("result_video_path") or fulfill.get("result_video_path")
-    )
-    media = raw_media if isinstance(raw_media, str) else None
-    platforms = data.get("platforms") or []
-    if not media or not platforms:
-        return {"publish_results": [], "publish_skipped": True}
-    results = []
-    for platform in platforms:
-        res = await invoke_tool(
-            "publish.matrix",
-            {
-                "platform": platform,
-                "media_path": media,
-                "title": data.get("title") or data.get("topic") or "",
-                "tags": data.get("tags") or [],
-            },
-        )
-        results.append(res.to_dict())
-    return {"publish_results": results}

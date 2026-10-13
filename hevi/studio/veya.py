@@ -31,7 +31,7 @@ class ProduceJob:
     production_order: dict[str, Any] = field(default_factory=dict)
     fulfill: dict[str, Any] = field(default_factory=dict)
     slate: dict[str, Any] = field(default_factory=dict)
-    publish: list[dict[str, Any]] = field(default_factory=list)
+    pack: list[dict[str, Any]] = field(default_factory=list)
     reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -45,7 +45,7 @@ class ProduceJob:
             "production_order": self.production_order,
             "fulfill": self.fulfill,
             "slate": self.slate,
-            "publish": self.publish,
+            "pack": self.pack,
             "reason": self.reason,
         }
 
@@ -105,7 +105,6 @@ async def produce(
     slots: dict[str, Any] | None = None,
     render_runtime: str | None = None,
     execute: bool = False,
-    publish: bool = False,
     platforms: list[str] | None = None,
     output_dir: str | Path | None = None,
     production_mode: str | None = None,
@@ -213,30 +212,16 @@ async def produce(
         slate=slate.to_dict(),
         reason=slate.reason,
     )
-    if publish and (platforms or []):
+    if platforms:
+        # 只做分平台打包(标题/封面/标签交接单);平台发布已迁至 Easel。
         from hevi.studio.packaging import pack_queue, write_pack_tickets
-        from hevi.studio.tools import invoke_tool
 
-        media = artifact or ""
         queue = pack_queue(
             str(filled.get("topic") or rec.product),
-            list(platforms or []),
-            media_path=media,
+            list(platforms),
+            media_path=artifact or "",
         )
         write_pack_tickets(queue, dest_root / "pack")
-        for variant in queue.variants:
-            res = await invoke_tool(
-                "publish.matrix",
-                {
-                    "platform": variant.platform,
-                    "media_path": media or "pending",
-                    "title": variant.title,
-                    "description": variant.description,
-                    "tags": variant.tags,
-                    "account": variant.account,
-                    "cover_hint": variant.cover_hint,
-                },
-            )
-            job.publish.append(res.to_dict())
+        job.pack = [variant.to_dict() for variant in queue.variants]
     _JOBS[job.job_id] = job
     return job

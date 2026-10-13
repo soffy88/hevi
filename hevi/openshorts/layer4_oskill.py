@@ -26,7 +26,6 @@ from hevi.openshorts.schemas import (
     AICostMode,
     AIShortJob,
     ClipGeneratorJob,
-    PublishTicket,
     ReframingMode,
     WordTimestamp,
     YouTubeStudioJob,
@@ -199,7 +198,6 @@ def generate_ai_short(
     user_id: str = "",
     cost_mode: AICostMode = AICostMode.LOW_COST,
     with_voiceover: bool = True,
-    publish_platforms: list[str] | None = None,
 ) -> AIShortJob:
     """AI Shorts 同步兼容入口：只做可审查的计划，不伪造成品。
 
@@ -210,11 +208,9 @@ def generate_ai_short(
     5. Video (Hailuo 2.3 Fast + VEED Lipsync)
     6. B-roll (Flux 2 Pro + Ken Burns)
     7. Composite (FFmpeg)
-    8. Publish (Upload-Post)
     """
     job = make_ai_short_job(description=description, url=url, user_id=user_id)
     job.cost_plan.mode = cost_mode
-    job.publish_platforms = publish_platforms or []
     if description.strip():
         job.script = generate_script_from_description(description, cost_mode)
         job.actor = plan_ai_short_actor(description, cost_mode)
@@ -224,31 +220,6 @@ def generate_ai_short(
         "并提供 talking_head/video provider 或已存在的 talking_head_path。"
     )
     return job
-
-
-def create_publish_tickets(
-    job: AIShortJob | YouTubeStudioJob,
-    platforms: list[str],
-) -> list[PublishTicket]:
-    """创建社交分发交接单。"""
-    if isinstance(job, AIShortJob):
-        media_path = job.composite_path
-        title = job.script.hook
-        desc = job.script.problem + " " + job.script.solution
-    else:  # YouTubeStudioJob
-        media_path = job.video_path
-        title = job.selected_title
-        desc = job.description.text
-
-    return [
-        PublishTicket(
-            platform=platform,
-            media_path=media_path,
-            title=title,
-            description=desc,
-        )
-        for platform in platforms
-    ]
 
 
 # ── YouTube Studio 技能 ────────────────────────────────
@@ -290,7 +261,6 @@ def generate_youtube_package(
 # ── 导出 ───────────────────────────────────────────────
 
 __all__ = [
-    "create_publish_tickets",
     # AI Shorts
     "generate_ai_short",
     # Clip Generator

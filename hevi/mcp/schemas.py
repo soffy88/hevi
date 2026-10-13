@@ -366,8 +366,11 @@ PRODUCE_FINISHED_INPUT = _obj(
             "default": False,
             "description": "true 才回退出片;默认只签发工单",
         },
-        "publish": {"type": "boolean", "default": False},
-        "platforms": {"type": "array", "items": {"type": "string"}},
+        "platforms": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "分平台打包(标题/封面/标签);发布已迁至 Easel",
+        },
     },
     required=["line_id"],
 )
@@ -398,7 +401,6 @@ TICK_DAILY_INPUT = _obj(
     {
         "calendar_id": {"type": "string"},
         "now": {"type": "string", "description": "YYYY-MM-DD,默认今天"},
-        "publish": {"type": "boolean", "default": True},
     }
 )
 TICK_DAILY_OUTPUT = _obj(

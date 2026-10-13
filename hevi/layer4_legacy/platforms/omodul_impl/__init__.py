@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from hevi.layer4_legacy.platforms.omodul_impl.plan_comment import build_comment_plan
 from hevi.layer4_legacy.platforms.omodul_impl.plan_monitor import build_monitor_plan
-from hevi.layer4_legacy.platforms.omodul_impl.plan_publish import build_publish_plan
 
 __all__ = [
     "build_comment_plan",
     "build_monitor_plan",
-    "build_publish_plan",
 ]

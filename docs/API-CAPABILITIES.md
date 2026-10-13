@@ -166,17 +166,6 @@
 | GET | `/api/director-pipeline/works/{work_id}/shots/{shot_id}/preparation-state` | Get Shot Preparation State |
 | PATCH | `/api/director-pipeline/works/{work_id}/shots/{shot_id}/readiness` | Patch Shot Readiness |
 
-## distribution
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/distribution/accounts` | Accounts |
-| POST | `/api/distribution/draft` | Draft |
-| GET | `/api/distribution/history` | History |
-| GET | `/api/distribution/probe` | Probe |
-| POST | `/api/distribution/publish` | Publish |
-| POST | `/api/distribution/schedule` | Schedule |
-
 ## embrace
 
 | 方法 | 路径 | 说明 |
@@ -407,13 +396,6 @@
 | GET | `/api/providers/presets` | List Provider Presets |
 | GET | `/api/providers/presets/{name}` | Get Provider Preset |
 | GET | `/api/providers/status` | Provider Status |
-
-## publishers
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/publishers` | Get Publishers |
-| POST | `/api/publishers/{platform}/publish` | Trigger Publish |
 
 ## screenshot-studio
 

@@ -435,21 +435,6 @@ async def _nle_edit_plan(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _publish_matrix(payload: dict[str, Any]) -> dict[str, Any]:
-    from hevi.publishers import publish_to_platform
-
-    platform = str(payload.get("platform") or "douyin")
-    media = Path(str(payload.get("media_path") or ""))
-    result = await publish_to_platform(
-        platform,
-        media,
-        title=str(payload.get("title") or ""),
-        description=str(payload.get("description") or ""),
-        tags=list(payload.get("tags") or []),
-    )
-    return {"status": result.status, **result.to_dict()}
-
-
 async def _delivery_preview(payload: dict[str, Any]) -> dict[str, Any]:
     estimate = float(payload.get("estimate_s") or 0.0)
     in_band = PREVIEW_MIN_SECONDS <= estimate <= PREVIEW_MAX_SECONDS if estimate else True
@@ -650,16 +635,6 @@ def _register_defaults() -> None:
             ("edit_plan",),
         ),
         _nle_edit_plan,
-    )
-    register_tool(
-        ToolSpec(
-            "publish.matrix",
-            "publish",
-            "国内矩阵交接(抖音/视频号/小红书…)",
-            ("platform", "media_path"),
-            ("status",),
-        ),
-        _publish_matrix,
     )
     register_tool(
         ToolSpec(
