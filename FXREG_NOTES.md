@@ -74,3 +74,43 @@
 - Preview: 2s MP4 (540x960 or 720x1280), 30fps, thumbnail JPG
 - Batch render with `nohup setsid`, concurrency ≤2
 - Contact sheet: `output/fx_previews/contact_sheet.png`, ≥4 per category
+
+## 10. R2 motion metric (replaces the old 0-255 mean-diff)
+
+The R1 "non-static" check used `tblend=difference` + `signalstats.YAVG` on the
+0-255 luma scale and required `> 0.01` — which is only "not bit-identical"
+(146/166 ok rows normalised below 0.01, so it checked essentially nothing).
+
+R2 records, per preview, measured on the **foreground region** (talkcraft: the
+centred 540x486 stage; xfade/sfx: the whole frame):
+
+- `motion_frame_ratio` — fraction of frames with any pixel whose luma delta
+  (``signalstats.YMAX`` after ``tblend=difference``) exceeds
+  ``MOTION_PIXEL_THRESHOLD`` = 24/255 (~9.4% of full range). A static clip
+  scores 0.0; a real animation scores well above 0.1. **Acceptance: ≥ 0.10.**
+- `motion_peak_area` — largest single-frame fraction of the region whose luma
+  moved by more than ``CHANGE_AREA_THRESHOLD`` = 16/255.
+- `motion_mean_norm` — mean absolute luma delta / 255.
+- `max_pixel_delta` — largest single-pixel luma delta seen (0-255).
+
+Measured floors/ceilings on real files (this worktree):
+
+| clip | motion_frame_ratio |
+|---|---|
+| synthetic pure-colour static (`color=0x223344`, 2s) | 0.000 |
+| `tc:ink-underline` (short draw-on stroke) | 0.26 |
+| `tc:strike-and-replace` | 0.11 |
+| `tc:focus-dim-spotlight` | 0.20 |
+| xfade previews | 0.41–0.49 |
+| sfx previews (sweeping playhead) | 1.00 |
+
+## 11. R2 talkcraft preview = full native duration, best 2s window
+
+R1 rendered only the **first 60 frames** of each card, which mis-failed 5
+"draw-on" cards whose stroke happens after 2s (native durations 2.97–3.63s).
+R2 renders each card at its **full native duration**, measures the per-frame
+changed-pixel area, and picks the 60-frame window with the most motion
+(``_best_window_start``). Short cards (<2s) are looped as before. The stage is
+scaled to *cover* 540x486 (foreground ≥50% of the 540x960 area, up from 540x304
+= 31.6%) and cropped at a content-aware horizontal offset
+(``_content_crop_x``) so the enlarged foreground does not clip the card's ink.
