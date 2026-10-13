@@ -287,7 +287,7 @@ def _probe_sync(path: Path) -> float:
 
 def build_xfade_chain(
     durations: list[float],
-    transition: str,
+    transition: str | list[str],
     xfade_d: float | list[float],
 ) -> tuple[str, str, float]:
     """构造 N 段 xfade 链 filter_complex。
@@ -296,10 +296,14 @@ def build_xfade_chain(
     offset_i = (已合并总时长) - xfade_d_i。每次 xfade 重叠 xfade_d_i,故总时长
     = sum(durations) - sum(xfade_d_i)。
 
+    `transition` 可以是单个转场 id(str, 所有接缝同一种)或逐接缝的 id 列表
+    (长度 n-1, 每个元素为 xfade_transitions 注册表中的 id, 未知 id 抛 ValueError)。
     `xfade_d` 可以是单一值(所有转场同一重叠时长,原有行为)或逐转场的列表——
     BGM 节拍对齐(HEVI 路线图 Phase2 #37)按节拍点微调每处转场的重叠时长,不是
     整条链统一一个数,故需要这个泛化。
     """
+    from hevi.assembly.xfade_transitions import resolve
+
     n = len(durations)
     if n == 1:
         return "", "0:v", durations[0]
@@ -308,6 +312,15 @@ def build_xfade_chain(
         raise ValueError(
             f"xfade_d list must have {n - 1} entries for {n} shots, got {len(xfade_ds)}"
         )
+    # 解析 transition: str → 单一 ffmpeg 片段; list[str] → 逐接缝解析
+    if isinstance(transition, str):
+        transition_values = [resolve(transition)] * (n - 1)
+    else:
+        if len(transition) != n - 1:
+            raise ValueError(
+                f"transition list must have {n - 1} entries for {n} shots, got {len(transition)}"
+            )
+        transition_values = [resolve(t) for t in transition]
     parts: list[str] = []
     prev = "[0:v]"
     merged = durations[0]
@@ -316,7 +329,7 @@ def build_xfade_chain(
         offset = merged - d
         out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
         parts.append(
-            f"{prev}[{i}:v]xfade=transition={transition}:duration={d}:offset={offset:.3f}{out_label}"
+            f"{prev}[{i}:v]xfade=transition={transition_values[i - 1]}:duration={d}:offset={offset:.3f}{out_label}"
         )
         merged = merged + durations[i] - d
         prev = out_label
@@ -464,7 +477,7 @@ async def assemble_longvideo(
     width: int = 832,
     height: int = 480,
     fps: int = 24,
-    transition: str = "fade",
+    transition: str | list[str] = "fade",
     transition_duration: float = 0.5,
     loudness_lufs: float = -14.0,
     bgm_gain_db: float = -18.0,
@@ -524,7 +537,11 @@ async def assemble_longvideo(
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
         xfade_d: float = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
-        use_xfade = transition != "cut" and len(durations) > 1 and xfade_d > 0.05
+        use_xfade = (
+            (transition if isinstance(transition, str) else transition[0]) != "cut"
+            and len(durations) > 1
+            and xfade_d > 0.05
+        )
 
         if use_xfade and bgm_beat_align and bgm_path is not None and bgm_path.exists():
             import asyncio
