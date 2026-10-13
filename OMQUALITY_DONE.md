@@ -246,3 +246,103 @@ Web：`npx tsc --noEmit` exit 0。
 - `.venv/bin/python -m pytest tests/test_omq_review.py -v` → **13 passed**
 - `.venv/bin/python -m pytest tests/test_omq_*.py tests/test_backlot_approval_*.py tests/test_craft_knowledge.py -q` → **69 passed**
 - `.venv/bin/python scripts/ci/run_3o_v3_lint.py` → 与基线完全一致（4 项预存失败，**无新增**）
+
+---
+
+## r5 独立复核整改（2026-10-13，HEAD 1ceab1a5 → 本轮）
+
+复核方（`OMQUALITY_FIX.md` 末段，HEAD d8136b4c）判 **不通过**，列出 4 条阻断 + 3 条非阻断。
+本轮逐条修复；关键教训：**旧代码把两件事混成一个 0.5s 门槛** —— 真损坏（噪点/宏块/绿屏/区域块）
+和正常转场（黑场/静帧）用了同一把尺子，且局部扫描只解码了片头 24s。
+
+### 阻断 1：局部坏段扫描只覆盖片头 24s → 覆盖全片
+
+- **根因**：`dense_sample_frames(fps=2.0, max_frames=48)` 传 `-frames:v 48`，只解码前 24s。
+  70s 片里 50–53s 噪点花屏、40–43s 绿闪都漏掉。
+- **修复**：`max_frames=0` 表示不截断 —— 按 `ceil(duration*fps)` 求所需帧数，全片 2fps 解码（`oprim_impl/frames.py`）。
+  长片可降分辨率（默认 `dense_scale_width=128`）但不截断。
+- **另一处 bug**：坏段帧时间戳原从文件名 `d_XXXX.png` 的**帧号**解析（`float(stem.rsplit("_")[-1])`），
+  70s 片报出「101.0s」。改为 `ts = i / dense_fps`（按解码顺序推算真实秒数）。
+- **实测**：`bad9_long_glitch_50s`（70s，50–53s 噪点）→ red，defect_hits 命中 50s 段；
+  `bad10_long_green_40s`（70s，40–43s 绿闪）→ red，命中 40s 段。
+
+### 阻断 2：区域灰块只认 2×2 象限 → 行/列条带检测
+
+- **根因**：旧检测器把帧切成 2×2 象限，各算 stdev；右 1/3 灰条不对齐象限边界就漏判。
+- **修复**：改为**整帧行/列条带**扫描 —— 逐行（沿列求 stdev）和逐列（沿行求 stdev），
+  找最长的「每线 stdev < `REGION_UNIFORM_STDEV`(1.0)」连续游程；游程占该轴 ≥ `REGION_MIN_FRAC`(0.15)
+  且与相邻内容 luma 台阶 ≥ `REGION_MIN_STEP` 则判 `is_region_flat`（`oprim_impl/frames.py`）。
+- **阈值依据（实测 27 条真实/复核片，全分辨率抽帧 + 128px 密集帧）**：
+  - 真灰条：每线 stdev 0.0–0.7，台阶 31–57 luma；
+  - 正常片含 ≥15% 均匀游程者（黑板、阴影下鲸鱼、letterbox）：台阶最大仅 **1.4**；
+  - 取 **1.0 / 0.15 / 8.0** → 下限留 ~5×（1.4 vs 8.0），上限留 ~4×（8.0 vs 31）。
+    门槛刻意远低于最坏真灰条（31），使低对比灰条（灰叠灰）也能触发。
+- **实测**：`bad11_right_third_gray`（右 1/3，非象限）→ red（台阶 27–53）；`bad5_halfgray_bottom` → red；
+  所有 11 条正常片（黑板/鲸鱼/标题卡等）**无** region_flat 误报。
+
+### 阻断 3：黑场/静帧混入 0.5s 坏段门槛 → 单独门槛 + 首尾豁免
+
+- **根因**：`is_black`/`is_flat` 与真损坏同用 0.5s（≥2 帧）门槛，正常片插入 1.5s 黑场（dip-to-black 转场）
+  被判 red。
+- **修复**：把两类拆开 —— `CORRUPTION_KEYS = (is_noise, is_color_anomaly, is_region_flat)` 仍用 0.5s；
+  `BLACKFREEZE_KEYS = (is_black, is_flat)` 单独用 `min_black_freeze_s=3.0`（中段连续黑/静 ≥3s 才判红），
+  并对贴着片头/片尾的 run 豁免 `black_freeze_head_tail_exempt_s=1.5`。
+  豁免只裁掉 run 真正贴住的那一端窗口：片头黑(0–2s)与片尾黑(12–14s)各裁后归零 → 不 red；
+  整片全黑（run 跨越全片）不算标题卡，保留全长 → 仍 red。
+- **4 点抽帧的黑/平帧改为「参考 warning」**：点时间戳分不清片头黑与片中黑（1.75s 抽帧落在 0–2s 黑头内却
+  被判「中段」），判红权交给全片密集扫描的 run 规则。整片全黑由密集扫描覆盖。
+- **实测**：`fp_black_1p5s`（中段 1.5s 黑）→ warn / allows=True；片头片尾黑 fixture → warn / allows=True；
+  `bad6_black_silent`（整片黑）→ red（「片中连续黑场/静帧」）。
+
+### 阻断 4：测试用真 ffmpeg 现场生成、真实片底、禁 mock
+
+- 重写 `tests/test_omq_review.py`：所有 fixture 用仓库内**已入库真实成片**
+  `artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4` 现场转码而来
+  （真实拍摄画面 + 真实音轨，不会误触任何检测器），坏段用真实 ffmpeg 叠加。
+  **不再依赖**复核方临时文件 `/tmp/vfy_omq/base.mp4`；缺文件即 `skipif`（等于没测）的问题消除。
+  不用 `testsrc` 合成图案作正常片底（其规则几何会被 blockiness 检测器误判）。
+- 新增 `TestLongAndNonQuadrantDefects` / `TestNormalClipsNotRed`：≥60s 片 40s 后噪点/绿闪 → red、
+  右 1/3 灰条 → red、中段 1.5s 黑 → 不 red、首尾黑 → 不 red、正常长片 → 不 red。
+  bad3/bad5 fixture 保留真实音轨（`-c:a copy`），避免 red 来自「缺音轨」。
+
+### 非阻断项
+
+- **blockiness 余量加宽**：`BLOCKY_RATIO_FLOOR` 1.8 → **1.70**。实测（全分辨率 4 点抽帧）：
+  正常片最大 1.377（hf_v6-cinematic），最轻坏片 2.107（libx264 -qp 51）→ 下限余量 0.32、上限 0.41
+  （旧 1.8 下限余量仅 0.03）。blockiness 只在全分辨率抽帧判，密集小图不判（缩放伪影会让正常黑板达 4.45）。
+- **削波判定加连续段规则**：新增 `longest_clipped_run_s()`（连续削波样本段秒数）；判据 = 占比 >
+  `max_clipped_sample_ratio`(0.2%) **或** 连续段 > `max_clipped_run_s`(0.05s)。实测：正常片最大占比
+  0.052%（黑板）、连续段 0.0003s；坏片最小占比 0.709%、连续段 0.0011s → 占比下限留 3.8× 余量。
+- **断言 violation 文案**：bad3/bad5/bad7/bad8/bad8b 及新用例均断言具体 violation 子串
+  （`宏块`/`is_region_flat`/`连续静音段`/`削波`/`瞬态爆音`/`黑场`/`噪点`），不再只断 verdict。
+
+### 本轮验收（命令 + 结果）
+
+- `.venv/bin/python -m pytest tests/test_omq_enhance.py tests/test_omq_promise_gate.py tests/test_omq_review.py
+  tests/test_backlot_approval_gate.py tests/test_backlot_approval_api.py tests/test_craft_knowledge.py -q`
+  → **74 passed, 1 warning in 251.36s**（含 r5 新增 6 个用例：长片 40s 后噪点/绿闪、右 1/3 灰条、
+  中段 1.5s 黑、首尾黑、正常长片）
+- `.venv/bin/python scripts/om_quality_e2e.py` → **17/17 gates PASS，0 FAIL，用时 348.1s，产物 1171 件**。
+  新增/相关的负面样本门：
+  `review.bad_cases_red: [('noise','red'),('macroblock','red'),('half_gray','red'),('black_silent','red'),
+  ('long_glitch','red'),('right_third_gray','red')]`；`lint.no_new_failures: 基线 4 项失败, 新增 []`
+- `.venv/bin/python scripts/ci/run_3o_v3_lint.py` → 与基线一致（4 项预存失败：check_no_sibling_call /
+  check_omodul_signature / check_enabled_pillars / check_oprim_keyword_only，**无新增**）
+- 复核方片段复测（`/tmp/vfy_omq_r5`，只读，27 条）：**0 mismatches** ——
+  bad9_long_glitch_50s / bad10_long_green_40s / bad11_right_third_gray → **red**；
+  fp_black_1p5s → **warn**（不 red）；11 条 r4 坏片仍全 **red**；15 条正常片（base、long_base、
+  hf_v8-chalkboard 及 whale、hf_product_promo、hf_v6-cinematic、shorts_clip_01、scene_interview_sub、
+  scene_broll_720p、nasa-collins、nasa-earth-iss 等）全部 **warn / allows=True**。
+
+**门禁阈值实测依据汇总（本轮新增/调整）**：
+
+| 判据 | 阈值 | 正常片实测上界 | 坏片实测下界 | 余量 |
+|---|---|---|---|---|
+| region-flat 台阶 | 8.0 luma | 1.4（鲸鱼阴影下均匀游程） | 31（bad11 右 1/3 灰条） | ~5× / ~4× |
+| region-flat 面积 | 15% 帧 | 22%（hf_v6 单帧、无台阶） | 33%（bad11） | — |
+| blockiness 比 | 1.70 | 1.377（hf_v6-cinematic） | 2.107（libx264 -qp 51） | 0.32 / 0.41 |
+| 削波占比 | 0.2% | 0.052%（chalkboard） | 0.709%（bad8） | 3.8× |
+| 连续削波段 | 0.05s | 0.0003s | 0.0011s | — |
+| 黑/静帧连续 | 3.0s（首尾豁免 1.5s） | 中段 1.5s 黑 → warn | 整片黑 → red | — |
+
+DONE OMQUALITY-R5
