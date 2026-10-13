@@ -8,7 +8,11 @@ Coverage:
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -23,6 +27,11 @@ from hevi.fx.sources import load_sfx, load_talkcraft, load_xfade
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TPL_META_PATH = REPO_ROOT / "hevi-remotion-talkcraft" / "src" / "cards" / "tplMeta.ts"
 SFX_DIR = REPO_ROOT / "assets" / "audio" / "sfx"
+PREVIEW_DIR = REPO_ROOT / "output" / "fx_previews"
+INDEX_PATH = PREVIEW_DIR / "index.json"
+CONTACT_SHEET_PATH = PREVIEW_DIR / "contact_sheet.png"
+
+FFPROBE = shutil.which("ffprobe") or "/home/soffy/.local/bin/ffprobe"
 
 
 def _tpl_meta_ids() -> list[str]:
@@ -62,8 +71,12 @@ class TestFXRegistry:
 
     def test_filter_by_category(self) -> None:
         reg = FXRegistry()
-        reg.add(FXTemplate(id="t1", name_zh="A", category=Category.TRANSITION, source=Source.TALKCRAFT))
-        reg.add(FXTemplate(id="t2", name_zh="B", category=Category.CHARACTER, source=Source.TALKCRAFT))
+        reg.add(
+            FXTemplate(id="t1", name_zh="A", category=Category.TRANSITION, source=Source.TALKCRAFT)
+        )
+        reg.add(
+            FXTemplate(id="t2", name_zh="B", category=Category.CHARACTER, source=Source.TALKCRAFT)
+        )
         reg.add(FXTemplate(id="t3", name_zh="C", category=Category.TRANSITION, source=Source.XFADE))
         results = reg.filter(category="transition")
         assert len(results) == 2
@@ -79,29 +92,66 @@ class TestFXRegistry:
 
     def test_filter_by_query(self) -> None:
         reg = FXRegistry()
-        reg.add(FXTemplate(id="tc:fade", name_zh="淡入淡出", category=Category.TRANSITION,
-                           source=Source.TALKCRAFT, tags=["fade", "transition"]))
-        reg.add(FXTemplate(id="tc:blur", name_zh="模糊", category=Category.STYLE,
-                           source=Source.TALKCRAFT, tags=["blur"]))
+        reg.add(
+            FXTemplate(
+                id="tc:fade",
+                name_zh="淡入淡出",
+                category=Category.TRANSITION,
+                source=Source.TALKCRAFT,
+                tags=["fade", "transition"],
+            )
+        )
+        reg.add(
+            FXTemplate(
+                id="tc:blur",
+                name_zh="模糊",
+                category=Category.STYLE,
+                source=Source.TALKCRAFT,
+                tags=["blur"],
+            )
+        )
         assert [t.id for t in reg.filter(q="FADE")] == ["tc:fade"]
         # query also matches name_zh
         assert [t.id for t in reg.filter(q="模糊")] == ["tc:blur"]
 
     def test_filter_combined(self) -> None:
         reg = FXRegistry()
-        reg.add(FXTemplate(id="t1", name_zh="A", category=Category.TRANSITION,
-                           source=Source.TALKCRAFT, tags=["fade"]))
-        reg.add(FXTemplate(id="t2", name_zh="B", category=Category.TRANSITION,
-                           source=Source.XFADE, tags=["wipe"]))
-        reg.add(FXTemplate(id="t3", name_zh="C", category=Category.STYLE,
-                           source=Source.TALKCRAFT, tags=["fade"]))
+        reg.add(
+            FXTemplate(
+                id="t1",
+                name_zh="A",
+                category=Category.TRANSITION,
+                source=Source.TALKCRAFT,
+                tags=["fade"],
+            )
+        )
+        reg.add(
+            FXTemplate(
+                id="t2",
+                name_zh="B",
+                category=Category.TRANSITION,
+                source=Source.XFADE,
+                tags=["wipe"],
+            )
+        )
+        reg.add(
+            FXTemplate(
+                id="t3",
+                name_zh="C",
+                category=Category.STYLE,
+                source=Source.TALKCRAFT,
+                tags=["fade"],
+            )
+        )
         assert [t.id for t in reg.filter(category="transition", source="talkcraft")] == ["t1"]
         assert [t.id for t in reg.filter(category="transition", q="fade")] == ["t1"]
 
     def test_count_categories_sources(self) -> None:
         reg = FXRegistry()
         assert reg.count() == 0
-        reg.add(FXTemplate(id="t1", name_zh="A", category=Category.TRANSITION, source=Source.TALKCRAFT))
+        reg.add(
+            FXTemplate(id="t1", name_zh="A", category=Category.TRANSITION, source=Source.TALKCRAFT)
+        )
         reg.add(FXTemplate(id="t2", name_zh="B", category=Category.TRANSITION, source=Source.XFADE))
         reg.add(FXTemplate(id="t3", name_zh="C", category=Category.STYLE, source=Source.TALKCRAFT))
         assert reg.count() == 3
@@ -110,14 +160,25 @@ class TestFXRegistry:
 
     def test_to_dict(self) -> None:
         t = FXTemplate(
-            id="test:1", name_zh="测试", category=Category.STYLE, source=Source.CUSTOM,
-            source_ref="ref1", tags=["a", "b"], duration_hint=2.0,
-            preview_mp4="output/fx_previews/test__1.mp4", thumbnail="output/fx_previews/test__1.jpg",
+            id="test:1",
+            name_zh="测试",
+            category=Category.STYLE,
+            source=Source.CUSTOM,
+            source_ref="ref1",
+            tags=["a", "b"],
+            duration_hint=2.0,
+            preview_mp4="output/fx_previews/test__1.mp4",
+            thumbnail="output/fx_previews/test__1.jpg",
         )
         d = t.to_dict()
         assert d == {
-            "id": "test:1", "name_zh": "测试", "category": "style", "source": "custom",
-            "source_ref": "ref1", "tags": ["a", "b"], "duration_hint": 2.0,
+            "id": "test:1",
+            "name_zh": "测试",
+            "category": "style",
+            "source": "custom",
+            "source_ref": "ref1",
+            "tags": ["a", "b"],
+            "duration_hint": 2.0,
             "preview_mp4": "output/fx_previews/test__1.mp4",
             "thumbnail": "output/fx_previews/test__1.jpg",
         }
@@ -171,7 +232,12 @@ class TestTalkcraftSource:
     def test_fields_are_valid(self) -> None:
         for t in load_talkcraft():
             assert t.source == Source.TALKCRAFT
-            assert t.category in (Category.TRANSITION, Category.CHARACTER, Category.STYLE, Category.OVERLAY)
+            assert t.category in (
+                Category.TRANSITION,
+                Category.CHARACTER,
+                Category.STYLE,
+                Category.OVERLAY,
+            )
             assert t.source_ref
             assert t.name_zh
             assert t.tags
@@ -219,7 +285,9 @@ class TestLoadAll:
     def test_category_breakdown(self) -> None:
         cats = load_all().categories()
         assert cats["character"] >= 1, "人物互动 cards must map to character"
-        assert cats["transition"] > len(load_xfade()), "transition must include talkcraft 转场结构 too"
+        assert cats["transition"] > len(load_xfade()), (
+            "transition must include talkcraft 转场结构 too"
+        )
 
     def test_sources_breakdown(self) -> None:
         srcs = load_all().sources()
@@ -266,7 +334,9 @@ class TestFXAPI:
     def test_list_filter_source_xfade_and_sfx(self, client: TestClient) -> None:
         xf = client.get("/api/fx/templates", params={"source": "xfade"}).json()
         assert xf["total"] == len(load_xfade())
-        assert all(t["source"] == "xfade" and t["category"] == "transition" for t in xf["templates"])
+        assert all(
+            t["source"] == "xfade" and t["category"] == "transition" for t in xf["templates"]
+        )
 
         sfx = client.get("/api/fx/templates", params={"source": "sfx"}).json()
         assert sfx["total"] == len(load_sfx())
@@ -286,7 +356,9 @@ class TestFXAPI:
         assert r.status_code == 200
         data = r.json()
         assert data["total"] == len(load_xfade())
-        assert all(t["category"] == "transition" and t["source"] == "xfade" for t in data["templates"])
+        assert all(
+            t["category"] == "transition" and t["source"] == "xfade" for t in data["templates"]
+        )
 
     def test_get_template(self, client: TestClient) -> None:
         tc_id = _tpl_meta_ids()[0]
@@ -314,8 +386,7 @@ class TestFXAPI:
     def test_preview_returns_404_when_not_rendered(self, client: TestClient) -> None:
         """A template with no on-disk preview yields a real 404, never a placeholder."""
         reg = get_registry()
-        missing = [t for t in reg.list_all()
-                   if not preview_mp4_path(t.id).exists()]
+        missing = [t for t in reg.list_all() if not preview_mp4_path(t.id).exists()]
         if not missing:
             pytest.skip("every template already has a preview; nothing left to probe for 404")
         t = missing[0]
@@ -365,6 +436,140 @@ class TestFXAPI:
         for t in reg.list_all():
             if t.preview_mp4:
                 r = client.get(f"/api/fx/templates/{t.id}/preview")
-                assert r.status_code == 200, f"registry claims a preview but API returned {r.status_code}"
+                assert r.status_code == 200, (
+                    f"registry claims a preview but API returned {r.status_code}"
+                )
             else:
                 assert not preview_mp4_path(t.id).exists()
+
+
+# ---------------------------------------------------------------------------
+# Preview acceptance — real index.json + real ffprobe (no mocks)
+# ---------------------------------------------------------------------------
+
+
+def _ffprobe(path: Path) -> dict:
+    """Run the real ffprobe and return {duration_s, width, height, fps}."""
+    r = subprocess.run(
+        [
+            FFPROBE,
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-show_entries",
+            "stream=codec_type,width,height,r_frame_rate",
+            "-of",
+            "json",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    data = json.loads(r.stdout)
+    out = {
+        "duration_s": float(data.get("format", {}).get("duration") or 0.0),
+        "width": None,
+        "height": None,
+        "fps": None,
+    }
+    for s in data.get("streams", []):
+        if s.get("codec_type") == "video" and s.get("width"):
+            out["width"], out["height"] = int(s["width"]), int(s["height"])
+            num, _, den = (s.get("r_frame_rate") or "0/1").partition("/")
+            out["fps"] = float(num) / float(den or 1)
+    return out
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _load_index() -> dict:
+    if not INDEX_PATH.exists():
+        pytest.skip("previews not rendered yet — run scripts/fx_preview.py")
+    return json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+
+
+class TestPreviewAcceptance:
+    """Validate the rendered preview corpus from index.json + fresh ffprobe."""
+
+    def test_index_exists_and_covers_registry(self) -> None:
+        data = _load_index()
+        records = data["templates"]
+        reg = get_registry()
+        assert len(records) == reg.count(), "index.json must cover every registry entry"
+        assert {r["id"] for r in records} == {t.id for t in reg.list_all()}
+
+    def test_at_least_80_successful(self) -> None:
+        data = _load_index()
+        ok = [r for r in data["templates"] if r["status"] == "ok"]
+        assert len(ok) >= 80, f"only {len(ok)} previews rendered successfully"
+        # summary must agree with the per-record data
+        assert data["summary"]["ok"] == len(ok)
+        assert data["summary"]["failed"] == len(data["templates"]) - len(ok)
+
+    def test_every_ok_record_reprobes_to_2s_portrait_30fps(self) -> None:
+        """Re-run ffprobe on disk (not the stored numbers) for a sample of ok rows."""
+        data = _load_index()
+        ok = [r for r in data["templates"] if r["status"] == "ok"]
+        assert ok, "no ok previews to validate"
+        # Sample deterministically: first + last of each source (bounded ffprobe cost)
+        by_src: dict[str, list[dict]] = {}
+        for r in ok:
+            by_src.setdefault(r["source"], []).append(r)
+        sample: list[dict] = []
+        for rows in by_src.values():
+            sample.extend(rows[:2] + rows[-1:])
+        for rec in sample:
+            mp4 = REPO_ROOT / rec["mp4_path"]
+            assert mp4.exists(), f"{rec['id']}: index claims mp4 but file is missing"
+            info = _ffprobe(mp4)
+            assert abs(info["duration_s"] - 2.0) <= 0.1, (
+                f"{rec['id']}: duration {info['duration_s']:.3f}s not 2±0.1s"
+            )
+            assert (info["width"], info["height"]) == (540, 960), (
+                f"{rec['id']}: resolution {info['width']}x{info['height']}"
+            )
+            assert info["fps"] is not None and abs(info["fps"] - 30) <= 0.5
+
+    def test_ok_records_are_non_static(self) -> None:
+        """Every ok preview must have a measured mean adjacent-frame diff > 0.01."""
+        data = _load_index()
+        ok = [r for r in data["templates"] if r["status"] == "ok"]
+        assert ok
+        for rec in ok:
+            diff = rec.get("frame_diff_mean")
+            assert diff is not None, f"{rec['id']}: no frame_diff_mean recorded"
+            assert diff > 0.01, f"{rec['id']}: static-looking preview (diff {diff})"
+
+    def test_ok_mp4_sha256_matches_index(self) -> None:
+        data = _load_index()
+        ok = [r for r in data["templates"] if r["status"] == "ok"]
+        sample = ok[:3] + ok[-3:]
+        for rec in sample:
+            mp4 = REPO_ROOT / rec["mp4_path"]
+            assert _sha256(mp4) == rec["mp4_sha256"], f"{rec['id']}: sha256 drifted"
+
+    def test_every_ok_has_a_thumbnail_on_disk(self) -> None:
+        data = _load_index()
+        for rec in data["templates"]:
+            if rec["status"] != "ok":
+                continue
+            jpg = REPO_ROOT / rec["thumbnail_path"]
+            assert jpg.exists(), f"{rec['id']}: missing thumbnail {jpg}"
+
+    def test_contact_sheet_covers_every_category(self) -> None:
+        data = _load_index()
+        assert CONTACT_SHEET_PATH.exists(), "contact_sheet.png not generated"
+        assert CONTACT_SHEET_PATH.stat().st_size > 1024
+        counts = data["contact_sheet"].get("counts", {})
+        ok_cats = {r["category"] for r in data["templates"] if r["status"] == "ok"}
+        for cat in ok_cats:
+            assert counts.get(cat, 0) >= 4, f"contact sheet has <4 thumbnails for {cat}"

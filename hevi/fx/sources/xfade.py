@@ -8,6 +8,7 @@ may not exist in this branch). Falls back to dynamic enumeration via
 from __future__ import annotations
 
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -25,7 +26,10 @@ try:
 except ImportError:
     _xfade_names_from_assembly = None
 
-_FFMPEG_PATH = "/home/soffy/.local/bin/ffmpeg"
+_FFMPEG_PATH = (
+    shutil.which("ffmpeg")
+    or "/home/soffy/.local/bin/ffmpeg"
+)
 
 
 def _parse_ffmpeg_xfade_help() -> list[str]:
