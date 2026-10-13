@@ -12,6 +12,7 @@ lock block verbatim), and writes two files:
 
 The module is **pure file generation**: it never calls any API.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,7 +26,6 @@ from hevi.layer4_legacy.dirstyle.oskill_impl.compiler import compile_prompt
 from hevi.layer4_legacy.dirstyle.oskill_impl.heartbeat5 import (
     HeartbeatPlan,
     plan_heartbeat5,
-    _build_beats,
 )
 
 __all__ = ["FlowPack", "export_flow_pack"]
@@ -83,65 +83,57 @@ def _compile_clip_prompt(
     director_style_id: str | None,
     scene: str,
     aspect: str,
+    palette_override: list[str] | None = None,
 ) -> dict[str, Any]:
     """Compile one standalone clip prompt via the dirstyle compiler.
-    
-    F3/F5 fix: Filter out wrong aspect references and unrealistic colors
-    from the compiled prompt.
+
+    F3 fixes:
+    - ``scene`` is deliberately NOT forwarded to the compiler, so Chinese
+      narration never leaks into the generation prompt (prompt_en must be
+      CJK-free; prompt_zh must not echo the narration).
+    - ``palette_override`` pins the compiled prompt's colour words to the
+      lock block's Palette so the two colour-word sets match exactly (<=3).
     """
-    prompt = _compile_clip_prompt_original(art_style_id, director_style_id, scene, aspect)
-    
-    # F5: Remove realism words from positive prompt
-    realism_words = ["photorealistic", "photorealism", "realistic", "realism", 
-                     "photo-real", "hyperrealistic", "cgi", "3d render", "photoreal",
-                     "写实", "照片级", "照片般"]
+    prompt = compile_prompt(
+        director_style_id or art_style_id,
+        scene="",
+        aspect=aspect,
+        target="video",
+        art_style=art_style_id if director_style_id else None,
+        palette_override=palette_override,
+    )
+
+    # F5: strip residual realism wording from both prompts.
+    realism_words = [
+        "photorealistic",
+        "photorealism",
+        "realistic",
+        "realism",
+        "photo-real",
+        "hyperrealistic",
+        "cgi",
+        "3d render",
+        "photoreal",
+        "写实",
+        "照片级",
+        "照片般",
+    ]
     for word in realism_words:
         prompt["positive"] = prompt["positive"].replace(word, "")
         prompt["negative"] = prompt["negative"].replace(word, "")
-    
-    # F3: Remove wrong aspect references (keep only the target aspect)
-    if aspect == "9:16":
-        # Remove 16:9 references
-        prompt["positive"] = prompt["positive"].replace("16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; ", "")
-    elif aspect == "16:9":
-        # Remove 9:16 references  
-        prompt["positive"] = prompt["positive"].replace("9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; ", "")
-    
-    # Clean up double commas and spaces
-    import re
-    prompt["positive"] = re.sub(r',\s*', ', ', prompt["positive"]).strip()
-    prompt["positive"] = re.sub(r'\s+', ' ', prompt["positive"]).strip()
-    prompt["negative"] = re.sub(r',\s*', ', ', prompt["negative"]).strip()
-    prompt["negative"] = re.sub(r'\s+', ' ', prompt["negative"]).strip()
-    
-    return prompt
 
-def _compile_clip_prompt_original(
-    art_style_id: str,
-    director_style_id: str | None,
-    scene: str,
-    aspect: str,
-) -> dict[str, Any]:
-    """Original compile prompt function (called internally)."""
-    if director_style_id:
-        return compile_prompt(
-            director_style_id,
-            scene=scene,
-            aspect=aspect,
-            target="video",
-            art_style=art_style_id,
-        )
-    return compile_prompt(
-        art_style_id,
-        scene=scene,
-        aspect=aspect,
-        target="video",
-    )
+    # Clean up double commas and spaces.
+    prompt["positive"] = re.sub(r",\s*", ", ", prompt["positive"]).strip()
+    prompt["positive"] = re.sub(r"\s+", " ", prompt["positive"]).strip()
+    prompt["negative"] = re.sub(r",\s*", ", ", prompt["negative"]).strip()
+    prompt["negative"] = re.sub(r"\s+", " ", prompt["negative"]).strip()
+    return prompt
 
 
 def _get_director_palette(director_style_id: str | None) -> list[str]:
     """Get top-3 accent colors from director style palette as words."""
     from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
+
     if not director_style_id:
         return []
     try:
@@ -170,18 +162,18 @@ def _get_director_palette(director_style_id: str | None) -> list[str]:
 
 def _resolve_palette(art_style: str, director_style_id: str | None) -> list[str]:
     """Resolve final palette: director accents take priority, art style as fallback.
-    
+
     Rule: Art style defines base (background/line color), director style provides
     up to 3 accent colors. When director is specified, use its top-3 palette.
     When no director, use art style's default palette.
     """
     from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
-    
+
     if director_style_id:
         director_accents = _get_director_palette(director_style_id)
         if director_accents:
             return director_accents
-    
+
     # Fallback: use art style's palette
     art_style_obj = get_style(art_style)
     return art_style_obj.palette_wordlist[:3]
@@ -190,12 +182,13 @@ def _resolve_palette(art_style: str, director_style_id: str | None) -> list[str]
 def _strip_hex_rgb(text: str) -> str:
     """Remove hex colors and RGB notation from text."""
     import re
+
     # Remove hex colors like #f7c5d4
-    text = re.sub(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', '', text)
+    text = re.sub(r"#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b", "", text)
     # Remove RGB notation like rgb(123, 45, 67)
-    text = re.sub(r'rgb\s*\([^)]+\)', '', text)
+    text = re.sub(r"rgb\s*\([^)]+\)", "", text)
     # Clean up
-    text = text.replace(',,', ',').strip(', ')
+    text = text.replace(",,", ",").strip(", ")
     return text
 
 
@@ -221,8 +214,7 @@ def _global_continuity_block(
         voice_profile = voice
     elif narration_lang == "zh":
         voice_profile = (
-            "Voice profile: 中文普通话女声，约 30 岁，温和清亮，"
-            "中速约 4 字/秒，近讲干声，无混响。"
+            "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。"
         )
     else:
         voice_profile = (
@@ -245,60 +237,6 @@ def _global_continuity_block(
         "voice_profile": voice_profile,
         "narration_lang": narration_lang,
         "negative_constraints": list(style.negative),
-    }
-
-
-def _build_clip_beats(narration: str, stage_idx: int = 0) -> dict[str, str]:
-    """Three timed beats [0-3s][3-7s][7-10s] for a clip.
-    
-    Each beat is a complete, distinct visual action description
-    (stickman does X + camera/composition changes). Beats never
-    contain the narration text, never truncate with "...".
-    """
-    # Per-stage visual action vocabulary
-    stage_actions = {
-        0: [
-            "stickman reaches up and pushes a cup off the table edge",
-            "stickman leans forward with raised eyebrows, arm extended",
-            "stickman steps back and watches the cup wobble then fall",
-        ],
-        1: [
-            "stickman holds up three fingers while pacing left to right",
-            "stickman draws a diagram in mid-air with sweeping arm gestures",
-            "stickman crouches and traces circles on the ground thoughtfully",
-        ],
-        2: [
-            "stickman taps a paw pad repeatedly, testing sensitivity",
-            "stickman crouches low and touches an object with one finger",
-            "stickman presses a paw against different textures in sequence",
-        ],
-        3: [
-            "stickman pushes a cup and watches it wobble precariously",
-            "stickman recoils backward as the object starts moving",
-            "stickman leans in close to examine the moving object",
-        ],
-        4: [
-            "stickman drops an object from overhead and flinches",
-            "stickman tracks the falling arc with head tilted upward",
-            "stickman jumps back as the object crashes to the floor",
-        ],
-        5: [
-            "stickman faces the viewer with arms wide in welcome",
-            "stickman shrugs knowingly while rocking side to side",
-            "stickman opens arms wide to present the final conclusion",
-        ],
-    }
-    
-    actions = stage_actions.get(stage_idx, [
-        "stickman performs an expressive gesture with both arms",
-        "stickman shifts posture and steps to a new position",
-        "stickman gestures toward the focal point of the scene",
-    ])
-    
-    return {
-        "0-3s": actions[0],
-        "3-7s": actions[1] + ", camera slowly pushes in",
-        "7-10s": actions[2] + ", camera pulls back to wide shot",
     }
 
 
@@ -337,11 +275,13 @@ def _optional_overlays(plan: HeartbeatPlan) -> list[dict[str, str]]:
     overlays: list[dict[str, str]] = []
     for seg in plan.segments:
         if seg.stage_index == 4:
-            overlays.append({
-                "clip": f"clip_{seg.clip_index:02d}",
-                "text": "你的选择是什么？",
-                "placement": "interface-safe lower band",
-            })
+            overlays.append(
+                {
+                    "clip": f"clip_{seg.clip_index:02d}",
+                    "text": "你的选择是什么？",
+                    "placement": "interface-safe lower band",
+                }
+            )
     return overlays
 
 
@@ -351,6 +291,8 @@ def _format_clip_prompt_md(
     beats: dict[str, str],
     narration: str,
     global_block: dict[str, Any],
+    first_frame: str = "",
+    last_frame: str = "",
 ) -> str:
     """Format one standalone clip prompt as markdown."""
     lines = [
@@ -364,14 +306,18 @@ def _format_clip_prompt_md(
         f"- Palette: {global_block['palette_words']}",
         f"- Composition ({global_block['aspect']}): {global_block['composition_aspect']}",
         f"- Rhythm: {global_block['rhythm']}",
+        f"- Voice profile: {global_block['voice_profile']}",
         f"- Negative: {', '.join(global_block['negative_constraints'])}",
+        "",
+        f"**First frame:** {first_frame}",
+        f"**Last frame:** {last_frame}",
         "",
         "**Timed visual beats**:",
         f"- [0-3s]: {beats['0-3s']}",
         f"- [3-7s]: {beats['3-7s']}",
         f"- [7-10s]: {beats['7-10s']}",
         "",
-        f"**Audio voiceover (audio-only, no speech bubbles)**: \"{narration}\"",
+        f'**Audio voiceover (audio-only, no speech bubbles)**: "{narration}"',
         "",
         "**Compiled generation prompt**:",
         "```",
@@ -428,7 +374,7 @@ def export_flow_pack(
     # F7: Ensure core message is not empty
     if not plan.topic or not plan.topic.strip():
         # Extract a core message from the source text (first sentence or summary)
-        sentences = [s.strip() for s in re.split(r'[。！？]', source_text) if s.strip()]
+        sentences = [s.strip() for s in re.split(r"[。！？]", source_text) if s.strip()]
         plan.topic = sentences[0] if sentences else "Narrative about the source topic"
 
     global_block = _global_continuity_block(
@@ -442,22 +388,26 @@ def export_flow_pack(
 
     clip_prompts: list[dict[str, Any]] = []
     for seg in plan.segments:
-        beats = _build_clip_beats(seg.narration, seg.stage_index)
+        # F1: canonical, per-clip distinct visual beats from the heartbeat plan.
+        beats = dict(seg.action_beats)
         prompt = _compile_clip_prompt(
             art_style_id=art_style,
             director_style_id=director_style,
             scene=seg.narration,
             aspect=aspect,
+            palette_override=global_block["palette_words"].split(", "),
         )
-        clip_prompts.append({
-            "clip_index": seg.clip_index,
-            "stage_zh": seg.stage_zh,
-            "stage_en": seg.stage_en,
-            "narration": seg.narration,
-            "beats": beats,
-            "prompt": prompt,
-            "global_continuity_lock": global_block,
-        })
+        clip_prompts.append(
+            {
+                "clip_index": seg.clip_index,
+                "stage_zh": seg.stage_zh,
+                "stage_en": seg.stage_en,
+                "narration": seg.narration,
+                "beats": beats,
+                "prompt": prompt,
+                "global_continuity_lock": global_block,
+            }
+        )
 
     if output_dir is None:
         output_dir = Path("output/dirstyle_e2e") / f"flow_pack_{int(duration_s)}s"
@@ -543,14 +493,24 @@ def _render_pack_md(
     lines.append("")
     lines.append(f"**Title**: {plan.title}")
     lines.append(f"**Core message**: {plan.topic}")
-    lines.append("**Narrative arc**: 5-stage heartbeat (黄金钩子 → 打破常识 → 拉出内幕 → 真相揭秘 → 升华互动)")
+    lines.append(
+        "**Narrative arc**: 5-stage heartbeat (黄金钩子 → 打破常识 → 拉出内幕 → 真相揭秘 → 升华互动)"
+    )
     lines.append("")
     lines.append("## Segment Transitions (Continuity Handoff)")
     lines.append("")
-    lines.append("| Clip | Opening Frame | Closing Frame |")
-    lines.append("|------|---------------|---------------|")
+    lines.append("| Clip | Opening Frame | Closing Frame | Handoff |")
+    lines.append("|------|---------------|---------------|---------|")
     for seg in plan.segments:
-        lines.append(f"| Clip {seg.clip_index:02d} | {seg.visual_state_start[:50]} | {seg.visual_state_end[:50]} |")
+        handoff = (
+            "cut (opens the video)"
+            if seg.clip_index == 0
+            else "match-cut: previous closing frame == this opening frame"
+        )
+        lines.append(
+            f"| Clip {seg.clip_index:02d} | {seg.visual_state_start} "
+            f"| {seg.visual_state_end} | {handoff} |"
+        )
     lines.append("")
 
     lines.append("## Global Continuity Block")
@@ -560,19 +520,25 @@ def _render_pack_md(
     lines.append(f"- **Palette**: {global_block['palette_words']}")
     lines.append(f"- **Composition ({aspect})**: {global_block['composition_aspect']}")
     lines.append(f"- **Rhythm**: {global_block['rhythm']}")
+    lines.append(f"- **Voice profile**: {global_block['voice_profile']}")
     lines.append(f"- **Negative constraints**: {', '.join(global_block['negative_constraints'])}")
     lines.append("")
 
     lines.append("## Clip Prompts")
     lines.append("")
     for cp in clip_prompts:
-        lines.append(_format_clip_prompt_md(
-            clip_index=cp["clip_index"],
-            prompt=cp["prompt"],
-            beats=cp["beats"],
-            narration=cp["narration"],
-            global_block=global_block,
-        ))
+        seg = plan.segments[cp["clip_index"]]
+        lines.append(
+            _format_clip_prompt_md(
+                clip_index=cp["clip_index"],
+                prompt=cp["prompt"],
+                beats=cp["beats"],
+                narration=cp["narration"],
+                global_block=global_block,
+                first_frame=seg.visual_state_start,
+                last_frame=seg.visual_state_end,
+            )
+        )
         lines.append("")
 
     lines.append("## Stitching Guide")
@@ -592,7 +558,7 @@ def _render_pack_md(
     lines.append("(Kept OUT of the generation prompts — add these in post-production only.)")
     lines.append("")
     for ov in _optional_overlays(plan):
-        lines.append(f"- {ov['clip']}: \"{ov['text']}\" — {ov['placement']}")
+        lines.append(f'- {ov["clip"]}: "{ov["text"]}" — {ov["placement"]}')
     lines.append("")
 
     return "\n".join(lines)

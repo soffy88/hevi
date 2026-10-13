@@ -3,6 +3,7 @@
 Formula: [six dimensions] + [scene/action] + [camera_move] + [negative].
 Director names NEVER appear in the prompt output.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -14,12 +15,32 @@ __all__ = ["compile_prompt"]
 # Words that must never appear in the positive prompt — vague hype words
 # replaced by concrete lens/light/motion/color decisions already captured.
 _VAGUE_WORDS: list[str] = [
-    "电影感", "cinematic", "大片感", "epic", "masterpiece", "高级感",
-    "氛围感", "beautiful", "beautifully", "stunning", "gorgeous",
-    "cinematic lighting", "dreamy", "moody", "atmospheric",
-    "photorealistic", "photo", "realistic", "hyperrealistic",
-    "史诗感", "质感", "大片质感", "电影质感", "大片即视感",
-    "8k masterpiece", "masterpiece",
+    "电影感",
+    "cinematic",
+    "大片感",
+    "epic",
+    "masterpiece",
+    "高级感",
+    "氛围感",
+    "beautiful",
+    "beautifully",
+    "stunning",
+    "gorgeous",
+    "cinematic lighting",
+    "dreamy",
+    "moody",
+    "atmospheric",
+    "photorealistic",
+    "photo",
+    "realistic",
+    "hyperrealistic",
+    "史诗感",
+    "质感",
+    "大片质感",
+    "电影质感",
+    "大片即视感",
+    "8k masterpiece",
+    "masterpiece",
 ]
 
 
@@ -48,6 +69,7 @@ def compile_prompt(
     keyframe_style: str | None = None,
     director_style_id: str | None = None,
     art_style: str | None = None,
+    palette_override: list[str] | None = None,
 ) -> dict[str, Any]:
     """Compile a prompt for the given director style + scene.
 
@@ -67,12 +89,17 @@ def compile_prompt(
             when set, this overrides style_id for the art dimension.  Conflict
             resolution: art style wins on character / line / palette; the
             director style only contributes composition / color / motion / rhythm.
+        palette_override: optional explicit accent-color word list (<=3).  When
+            given, it replaces the style's own palette wordlist so the compiled
+            prompt's colour words match an externally-resolved lock block
+            palette (F3: prompt colours == lock-block Palette).
 
     Returns:
         {positive, negative, camera, aspect_note, style_id, provenance}
     """
     if style is None:
         from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
+
         style = get_style(style_id)
 
     # ---- Art-style overlay: switch style to art_style when provided ----
@@ -82,6 +109,7 @@ def compile_prompt(
     director_style_id_eff = director_style_id or style_id
     if art_style and art_style != style_id:
         from hevi.layer4_legacy.dirstyle.oprim_impl import get_style as _gs
+
         style = _gs(art_style)
         director_style_id_eff = style_id  # the outer id becomes the director
 
@@ -92,10 +120,16 @@ def compile_prompt(
     if style.is_stickman():
         dna = style.character_dna.strip()
         lw = style.line_weight.strip()
-        pw = ", ".join(style.palette_wordlist)
+        # F3: use the externally-resolved lock-block palette when supplied so
+        # the compiled prompt's colour words match the lock block exactly.
+        palette_words = (
+            list(palette_override)[:3] if palette_override else list(style.palette_wordlist)
+        )
+        pw = ", ".join(palette_words)
         # F3 fix: Only include composition rules matching the target aspect
         comp_rules = [
-            r for r in style.composition.get("rules", [])
+            r
+            for r in style.composition.get("rules", [])
             if aspect in r or not any(ratio in r for ratio in ["9:16", "16:9"])
         ]
         comp = "; ".join(comp_rules)
@@ -116,12 +150,14 @@ def compile_prompt(
         # optional director overlay (composition / color / motion / rhythm only)
         if director_style_id_eff and director_style_id_eff != style.id:
             from hevi.layer4_legacy.dirstyle.oprim_impl import get_style as _gs
+
             try:
                 d_style = _gs(director_style_id_eff)
                 if d_style.id != style.id:
                     # F3 fix: Only include composition rules matching the target aspect
                     comp_rules_filtered = [
-                        r for r in d_style.composition.get("rules", [])
+                        r
+                        for r in d_style.composition.get("rules", [])
                         if aspect in r or not any(ratio in r for ratio in ["9:16", "16:9"])
                     ]
                     overlay = [
@@ -136,8 +172,11 @@ def compile_prompt(
                     color_rules = d_style.color.get("rules", [])
                     # Remove rules that are just color lists (keep composition/lightness rules)
                     color_rules_filtered = [
-                        r for r in color_rules
-                        if not any(c in r for c in ["pink", "yellow", "green", "blue", "gold", "red"])
+                        r
+                        for r in color_rules
+                        if not any(
+                            c in r for c in ["pink", "yellow", "green", "blue", "gold", "red"]
+                        )
                     ]
                     if color_rules_filtered:
                         overlay[1] = "; ".join(color_rules_filtered)
@@ -153,9 +192,9 @@ def compile_prompt(
                 negative_extra = []
         else:
             negative_extra = []
-        if scene and scene.strip():
-            pos_parts.append(scene.strip())
-            provenance.append(f"scene: {scene.strip()}")
+        # NOTE: For flow pack, scene should NOT be passed to avoid CJK narration
+        # leaking into the compiled prompt. Use 'action' or 'camera_move' instead.
+        # If scene is passed, it will be included here as a plain text note.
         if action and action.strip():
             pos_parts.append(action.strip())
             provenance.append(f"action: {action.strip()}")
@@ -169,10 +208,18 @@ def compile_prompt(
         # F3 forbidden: 16:9 composition, left-center-right staging, lateral/horizontal motion
         # F5 forbidden: hex/RGB notation, director-specific color lists
         _FORBIDDEN_TERMS = [
-            "16:9", "lateral tracking", "mechanical horizontal track",
-            "horizontal track", "left, center, and right", "left, center, right",
-            "vivid red", "electric blue", "warm gold",
-            "#", "rgb(", "pantone",
+            "16:9",
+            "lateral tracking",
+            "mechanical horizontal track",
+            "horizontal track",
+            "left, center, and right",
+            "left, center, right",
+            "vivid red",
+            "electric blue",
+            "warm gold",
+            "#",
+            "rgb(",
+            "pantone",
         ]
         for term in _FORBIDDEN_TERMS:
             positive = positive.replace(term, "")
@@ -181,10 +228,11 @@ def compile_prompt(
         negative = _strip_vague(negative)
         # Clean up multiple commas and spaces
         import re as _re
-        positive = _re.sub(r',\s*', ', ', positive).strip()
-        positive = _re.sub(r'\s+', ' ', positive).strip()
-        negative = _re.sub(r',\s*', ', ', negative).strip()
-        negative = _re.sub(r'\s+', ' ', negative).strip()
+
+        positive = _re.sub(r",\s*", ", ", positive).strip()
+        positive = _re.sub(r"\s+", " ", positive).strip()
+        negative = _re.sub(r",\s*", ", ", negative).strip()
+        negative = _re.sub(r"\s+", " ", negative).strip()
         return {
             "positive": positive,
             "negative": negative,
@@ -208,18 +256,15 @@ def compile_prompt(
             provenance.append(f"{label}: {v}")
 
     # Six dimensions
-    add("lens_aspect",
-        f"{style.lens_aspect['focal']}, {style.lens_aspect['aspect']} frame")
+    add("lens_aspect", f"{style.lens_aspect['focal']}, {style.lens_aspect['aspect']} frame")
     add("composition", "; ".join(style.composition["rules"]))
     add("lighting", "; ".join(style.lighting["rules"]))
     add("color", "; ".join(style.color["rules"]))
     add("motion", "; ".join(style.motion["rules"]))
-    add("rhythm",
-        f"avg {style.rhythm['avg_shot_s']}s/shot, {style.rhythm['cut_rule']}")
+    add("rhythm", f"avg {style.rhythm['avg_shot_s']}s/shot, {style.rhythm['cut_rule']}")
 
     # Required signatures
-    sig_text = "; ".join(
-        s["en"] for s in style.signature if s.get("required"))
+    sig_text = "; ".join(s["en"] for s in style.signature if s.get("required"))
     add("signature", sig_text)
 
     # Scene / action / genre
@@ -241,6 +286,7 @@ def compile_prompt(
     # Filter conflict words from anime_safe when combined with a keyframe style
     if keyframe_style:
         import re
+
         conflict_words = style.anime_safe.get("conflict_words", [])
         for cw in conflict_words:
             if cw.lower() in positive.lower():
