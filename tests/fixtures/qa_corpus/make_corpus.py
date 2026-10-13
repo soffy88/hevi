@@ -195,10 +195,16 @@ def _enc(
 def build_clips(base: Path, out: Path) -> list[dict]:
     clips: list[dict] = []
 
-    def add(cid, recipe, expected, window):
-        clips.append(
-            {"id": cid, "recipe": recipe, "expected_failures": expected, "defect_window_s": window}
-        )
+    def add(cid, recipe, expected, window, extra=None):
+        rec = {
+            "id": cid,
+            "recipe": recipe,
+            "expected_failures": expected,
+            "defect_window_s": window,
+        }
+        if extra:
+            rec.update(extra)
+        clips.append(rec)
 
     # --- r4 originals ---------------------------------------------------
     _enc(base, out / "bad01_noise_full.mp4", vf=NOISE_VF)
@@ -268,7 +274,8 @@ def build_clips(base: Path, out: Path) -> list[dict]:
     _enc(
         base,
         out / "bad04_macroblock_mpeg2.mp4",
-        complex_fc="[0:v]scale=1280:720:flags=neighbor[v]",
+        # input 0 is the base, input 1 is the low-res mpeg2; upscale the *mpeg2*
+        complex_fc="[1:v]scale=1280:720:flags=neighbor[v]",
         extra_in=["-i", str(tmp_m2v)],
     )
     tmp_m2v.unlink(missing_ok=True)
@@ -399,7 +406,7 @@ def _subtitle_base(out: Path, name: str) -> Path:
         "-f",
         "lavfi",
         "-i",
-        f"color=c=0x101820:s={W}x{H}:r={FPS}:d={DUR}",
+        f"color=c=0x606870:s={W}x{H}:r={FPS}:d={DUR}",
         "-f",
         "lavfi",
         "-i",
@@ -514,6 +521,10 @@ def _build_subtitle_clips(base: Path, out: Path, add) -> None:
         "burned caption text differs from the espeak TTS audio track",
         ["subtitle.asr_mismatch"],
         [0.0, DUR],
+        # no ASR engine is assumed present, so the two transcripts are recorded
+        # here: the audio really says ``audio_text`` (espeak TTS) and the burned
+        # caption really reads ``caption_text``.
+        extra={"caption_text": caption, "audio_text": spoken, "audio_text_source": "espeak"},
     )
 
 
@@ -546,10 +557,30 @@ def _build_freeze_clip(base: Path, out: Path, add) -> None:
 
 
 def _build_desync_clip(base: Path, out: Path, add) -> None:
-    _enc(base, out / "bad16_av_desync.mp4", extra_out=["-af", "adelay=200|200"])
+    # A/V desync: shift the audio track 200 ms later than the video with
+    # -itsoffset.  ``adelay`` pads leading silence but ffmpeg then trims it back
+    # to zero, so it does not produce a measurable offset; -itsoffset keeps the
+    # stream start_time after the video's, which ffprobe reports.
+    ffmpeg(
+        "-i",
+        str(base),
+        "-itsoffset",
+        "0.2",
+        "-i",
+        str(base),
+        "-map",
+        "0:v",
+        "-map",
+        "1:a",
+        "-t",
+        str(DUR),
+        *VENC,
+        *AENC,
+        str(out / "bad16_av_desync.mp4"),
+    )
     add(
         "bad16_av_desync",
-        "audio delayed 200 ms relative to video (adelay=200)",
+        "audio track offset 200 ms later than video (-itsoffset 0.2)",
         ["av.desync>120ms"],
         [0.0, DUR],
     )

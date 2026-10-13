@@ -87,7 +87,7 @@
         0.0,
         14
       ],
-      "sha256": "9e7d9b5d6263d919c3cb971c6081ca1afeb678f6c3cfac6cc9466c59d52f06a7",
+      "sha256": "c4eebeb6e8d3241cfdcc2724488853d9643caf89f5b68d367dde84dd0646ee7a",
       "duration_s": 14.0,
       "sha_stable": true,
       "sha_note": null
@@ -208,7 +208,7 @@
         0.0,
         14
       ],
-      "sha256": "6b0846fee64dbb1b92889add31b3504f5c747badba05626640899037094720b0",
+      "sha256": "f7548cc339b64f66c6b5987c851fa9a7e2b1a62e28d4701ab01ddf86c97fbd75",
       "duration_s": 14.0,
       "sha_stable": true,
       "sha_note": null
@@ -223,7 +223,7 @@
         0.0,
         14
       ],
-      "sha256": "25db6e25ee9cb20cb357e15285711b6f6abb67fb6ed6548fab4b4b450cd10b8e",
+      "sha256": "7a657659cc57bfb3a16e50786b8749fc9d3ab3698e4bd22ac5db22644e8008f6",
       "duration_s": 14.0,
       "sha_stable": true,
       "sha_note": null
@@ -238,7 +238,10 @@
         0.0,
         14
       ],
-      "sha256": "e5226da310f75271f622b513f89cf6e08dd79f58687bc18a30bbbbe783df9a91",
+      "caption_text": "please remember to water the plants tomorrow morning",
+      "audio_text": "the quick brown fox jumps over the lazy dog",
+      "audio_text_source": "espeak",
+      "sha256": "5865990852b41a8405208b3d938dd97e871ae028a6df4a7901d66dbb05764df6",
       "duration_s": 14.0,
       "sha_stable": true,
       "sha_note": null
@@ -260,7 +263,7 @@
     },
     {
       "id": "bad16_av_desync",
-      "recipe": "audio delayed 200 ms relative to video (adelay=200)",
+      "recipe": "audio track offset 200 ms later than video (-itsoffset 0.2)",
       "expected_failures": [
         "av.desync>120ms"
       ],
@@ -268,8 +271,8 @@
         0.0,
         14
       ],
-      "sha256": "d4911bb2a00e396371741cf9b9f7b753875f5d9ce06b88027dba16c78e3b0044",
-      "duration_s": 14.0,
+      "sha256": "86b26813c363deaf4fe6acc87ffb6b61dc3f538c0a739571b1c94915db96a958",
+      "duration_s": 14.015,
       "sha_stable": true,
       "sha_note": null
     },
