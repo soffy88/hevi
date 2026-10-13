@@ -36,16 +36,24 @@ function palette(ctx) {
   return { ...base, ...(bg ? { bg } : {}), ...(T || {}) };
 }
 let RED, INK, SUB, GRID, P;
-const CN = '"PuHui-Medium"', CNB = '"PuHui-Bold"', NUM = '"RobotoCondensed", "PuHui-Medium"';
+let CN = '"PuHui-Medium"', CNB = '"PuHui-Bold"', NUM = '"RobotoCondensed", "PuHui-Medium"';
 let L, BUF;
 const fmtv = (d, v) => (d.prefix || '') + TY.fmt(v, d.decimals ?? 1) + (d.suffix || '');
 return {
   fonts: ['PuHui-Medium', 'PuHui-Bold'],
   safe: true,
+  fixed: true,   // 全屏图表：整页不挂相机（文字/柱不随镜头动），运动由柱生长/数字滚动/像素化提供
   legacyTheme: legacy,
   init(ctx) {
     P = palette(ctx); RED = P.red; INK = P.ink; SUB = P.sub; GRID = P.grid;
-    const { W, H, u, data: d } = ctx, m = (ctx.portrait ? 70 : 90) * u, c = document.createElement('canvas').getContext('2d');
+    // 风格化字体（r5 B2）：8bit 的数字/拉丁用像素字体（PressStart2P 无汉字字形，中文仍走普惠体，
+    // 由 clip.js 的整帧像素化统一吃像素风）；中文若也换 PressStart2P 会因缺字撑爆排版
+    const px = ctx.style === '14_8bit';
+    CN = '"PuHui-Medium"';
+    CNB = '"PuHui-Bold"';
+    NUM = px ? '"PressStart2P-400", "PuHui-Medium"' : '"RobotoCondensed", "PuHui-Medium"';
+    const { W, H, u, data: d } = ctx, c = document.createElement('canvas').getContext('2d');
+    const m = Math.max((ctx.portrait ? 70 : 90) * u, Math.max(ctx.safe.left, W * 0.05) + 4);   // 左右留白不低于 5% 安全区（与逐帧越界检查同一条线）
     const kind = (ctx.of('bar', 'line', 'candle')[0] || {}).kind || d.chart || 'bar';
     const S = d.series || [];
     const vals = kind === 'candle' ? S.flatMap(r => [r.h, r.l]) : S.map(r => r.value);
@@ -199,19 +207,11 @@ return {
       c.restore();
     }
     if (ctx.alpha) {
-      // 风格画面上先铺一张纸卡，图表和它的字才有底
-      if (ctx.hasStyle) {
-        c0.save();
-        c0.fillStyle = 'rgba(250, 246, 236, 0.93)';
-        c0.beginPath();
-        c0.roundRect(m - 34 * u, ctx.safe.top + 16 * u, W - 2 * m + 68 * u, H - ctx.safe.top - ctx.safe.bottom - 32 * u, 18 * u);
-        c0.fill();
-        c0.strokeStyle = 'rgba(60, 45, 30, 0.22)';
-        c0.lineWidth = 3 * u;
-        c0.stroke();
-        c0.restore();
-      }
-      c0.save(); c0.shadowColor = P.bg; for (const b of [8, 3, 1.5]) { c0.shadowBlur = b * ctx.u; c0.drawImage(BUF, 0, 0); } c0.restore();
+      // r5 B3：不铺整屏纸卡——纸卡是静止大色块，压在会随镜头动的底纹上，LK 会把「底纹动、纸卡不动」
+      // 读成切点整段排除，film_gate 快动掉到 0（t1 实测：全屏 93% 纸卡 → 0.003 红灯；不盖 → 0.148 绿灯）。
+      // 改给图表/字一层浅色晕（深色内容压在暖底纹上仍有底），大面积留给会动的底纹提供运动。
+      const halo = ctx.hasStyle ? 'rgba(250,246,236,0.92)' : P.bg;
+      c0.save(); c0.shadowColor = halo; for (const b of [9, 3, 1.5]) { c0.shadowBlur = b * ctx.u; c0.drawImage(BUF, 0, 0); } c0.restore();
     }
   },
 };

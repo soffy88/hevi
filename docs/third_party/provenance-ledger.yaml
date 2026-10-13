@@ -32,3 +32,15 @@ entries:
     commercial_restrictions: commercial_review_required
     derived_data: false
     last_verified: 2026-09-13
+  - source: huashu-art-motion (artmotion 讲解动画能力)
+    repository: https://github.com/alchaincyf/huashu-art-motion
+    license: MIT
+    version: vendored_2026-07
+    integration_type: internalized_native_module
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    attribution_location: third_party/huashu-art-motion/NOTICE.md
+    commercial_restrictions: none
+    derived_data: true
+    last_verified: 2026-10-13

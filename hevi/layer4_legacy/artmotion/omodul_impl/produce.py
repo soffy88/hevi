@@ -19,31 +19,158 @@ from hevi.layer4_legacy.talkcraft.omodul_impl._whisper import WhisperAligner
 # LaTeX sanitization: strip all markup, map math symbols to Unicode equivalents.
 # Prevents LaTeX source like "\\text{Softmax}" "\\sqrt{d_k}" from rendering on screen.
 SAFE_MATH_MAP = {
-    '\\text': '', '\\mathrm': '', '\\mathbf': '', '\\mathit': '', '\\mathbb': '',
-    '\\sqrt': '\u221a', '\\cdot': '\u00b7', '\\times': '\u00d7', '\\div': '\u00f7',
-    '\\approx': '\u2248', '\\infty': '\u221e', '\\prime': '\u2032',
-    '\\leq': '\u2264', '\\geq': '\u2265', '\\neq': '\u2260',
-    '\\sum': '\u2211', '\\prod': '\u220f', '\\int': '\u222b',
-    '\\pi': '\u03c0', '\\alpha': '\u03b1', '\\beta': '\u03b2', '\\gamma': '\u03b3',
-    '\\delta': '\u03b4', '\\epsilon': '\u03b5', '\\theta': '\u03b8', '\\lambda': '\u03bb',
-    '\\mu': '\u03bc', '\\sigma': '\u03c3', '\\tau': '\u03c4', '\\phi': '\u03c6',
-    '\\omega': '\u03c9', '\\Omega': '\u03a9', '\\Delta': '\u0394', '\\Sigma': '\u03a3',
+    "\\text": "",
+    "\\mathrm": "",
+    "\\mathbf": "",
+    "\\mathit": "",
+    "\\mathbb": "",
+    "\\sqrt": "\u221a",
+    "\\cdot": "\u00b7",
+    "\\times": "\u00d7",
+    "\\div": "\u00f7",
+    "\\approx": "\u2248",
+    "\\infty": "\u221e",
+    "\\prime": "\u2032",
+    "\\leq": "\u2264",
+    "\\geq": "\u2265",
+    "\\neq": "\u2260",
+    "\\sum": "\u2211",
+    "\\prod": "\u220f",
+    "\\int": "\u222b",
+    "\\pi": "\u03c0",
+    "\\alpha": "\u03b1",
+    "\\beta": "\u03b2",
+    "\\gamma": "\u03b3",
+    "\\delta": "\u03b4",
+    "\\epsilon": "\u03b5",
+    "\\theta": "\u03b8",
+    "\\lambda": "\u03bb",
+    "\\mu": "\u03bc",
+    "\\sigma": "\u03c3",
+    "\\tau": "\u03c4",
+    "\\phi": "\u03c6",
+    "\\omega": "\u03c9",
+    "\\Omega": "\u03a9",
+    "\\Delta": "\u0394",
+    "\\Sigma": "\u03a3",
 }
+
+# Superscript / subscript Unicode maps: ^ and _ must not reach the screen (r5 B4).
+SUP_MAP = {
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+    "+": "⁺",
+    "-": "⁻",
+    "=": "⁼",
+    "(": "⁽",
+    ")": "⁾",
+    "a": "ᵃ",
+    "b": "ᵇ",
+    "c": "ᶜ",
+    "d": "ᵈ",
+    "e": "ᵉ",
+    "f": "ᶠ",
+    "g": "ᵍ",
+    "h": "ʰ",
+    "i": "ⁱ",
+    "j": "ʲ",
+    "k": "ᵏ",
+    "l": "ˡ",
+    "m": "ᵐ",
+    "n": "ⁿ",
+    "o": "ᵒ",
+    "p": "ᵖ",
+    "r": "ʳ",
+    "s": "ˢ",
+    "t": "ᵗ",
+    "u": "ᵘ",
+    "v": "ᵛ",
+    "w": "ʷ",
+    "x": "ˣ",
+    "y": "ʸ",
+    "z": "ᶻ",
+    "T": "ᵀ",  # ᵀ (the one uppercase superscript that exists)
+}
+SUB_MAP = {
+    "0": "₀",
+    "1": "₁",
+    "2": "₂",
+    "3": "₃",
+    "4": "₄",
+    "5": "₅",
+    "6": "₆",
+    "7": "₇",
+    "8": "₈",
+    "9": "₉",
+    "+": "₊",
+    "-": "₋",
+    "=": "₌",
+    "(": "₍",
+    ")": "₎",
+    "a": "ₐ",
+    "e": "ₑ",
+    "h": "ₕ",
+    "i": "ᵢ",
+    "j": "ⱼ",
+    "k": "ₖ",
+    "l": "ₗ",
+    "m": "ₘ",
+    "n": "ₙ",
+    "o": "ₒ",
+    "p": "ₚ",
+    "r": "ᵣ",
+    "s": "ₛ",
+    "t": "ₜ",
+    "u": "ₔ",
+    "v": "ᵥ",
+    "x": "ₓ",
+}
+
+
+def _script(text: str, table: dict[str, str]) -> str:
+    """Map a run of characters to super/subscript; chars with no mapping stay as-is
+    (a plain character is readable; a raw ^/_ marker on screen is not)."""
+    return "".join(table.get(ch, ch) for ch in text)
+
 
 def sanitize_latex(text: str) -> str:
     """Strip LaTeX markup from a token, return plain text with Unicode math symbols.
-    Removes backslashes, curly braces, and unescaped math commands; maps common ones to Unicode."""
+    Removes backslashes, curly braces, ^ and _ (converted to Unicode super/subscripts),
+    and unescaped math commands; maps common ones to Unicode."""
     if not text:
-        return ''
+        return ""
     out = text
     # First apply named-command → Unicode replacements while the braces are intact
     for cmd, replacement in SAFE_MATH_MAP.items():
         out = out.replace(cmd, replacement)
     # Remove remaining backslash-letter sequences (unknown LaTeX commands)
-    out = re.sub(r'\\[a-zA-Z]+', '', out)
-    # Finally strip backslashes and curly braces
-    out = out.replace('\\', '').replace('{', '').replace('}', '')
+    out = re.sub(r"\\[a-zA-Z]+", "", out)
+    # ^{...} / _{...} → Unicode super/subscript (do this while braces are still present)
+    out = re.sub(r"\^\{([^{}]*)\}", lambda m: _script(m.group(1), SUP_MAP), out)
+    out = re.sub(r"_\{([^{}]*)\}", lambda m: _script(m.group(1), SUB_MAP), out)
+    # ^x / _x (single character, unbraced): the common QK^T / d_k case
+    out = re.sub(r"\^([A-Za-z0-9])", lambda m: _script(m.group(1), SUP_MAP), out)
+    out = re.sub(r"_([A-Za-z0-9])", lambda m: _script(m.group(1), SUB_MAP), out)
+    # Finally strip backslashes, curly braces, and any leftover ^ / _ markers
+    out = out.replace("\\", "").replace("{", "").replace("}", "").replace("^", "").replace("_", "")
     return out.strip()
+
+
+LATEX_SOURCE_CHARS = "\\^_{}"
+
+
+def find_latex_source(text: str) -> str:
+    """Return the LaTeX source characters still present in text ('' if clean). Used as a gate:
+    any of \\ ^ _ { } on screen is a failure."""
+    return "".join(ch for ch in LATEX_SOURCE_CHARS if ch in (text or ""))
 
 
 STYLE_SCENE_MODE: dict[str, str] = {
@@ -168,13 +295,27 @@ def get_sha256(p: Path | str) -> str:
     return h.hexdigest()
 
 
-def generate_contact_sheet(video_path: Path, sheet_path: Path, total_dur: float, is_vertical: bool = False) -> None:
+def generate_contact_sheet(
+    video_path: Path, sheet_path: Path, total_dur: float, is_vertical: bool = False
+) -> None:
     fps_val = 6.0 / max(1.0, total_dur)
     scale_filter = "scale=240:-1" if is_vertical else "scale=320:-1"
     vf = f"fps={fps_val:.4f},{scale_filter},tile=3x2"
     try:
         subprocess.run(
-            ["ffmpeg", "-y", "-i", str(video_path), "-vf", vf, "-frames:v", "1", "-update", "1", str(sheet_path)],
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(video_path),
+                "-vf",
+                vf,
+                "-frames:v",
+                "1",
+                "-update",
+                "1",
+                str(sheet_path),
+            ],
             check=True,
             stderr=subprocess.DEVNULL,
         )
@@ -182,7 +323,19 @@ def generate_contact_sheet(video_path: Path, sheet_path: Path, total_dur: float,
         # Fallback to simple tile if fps filter was slightly off
         try:
             subprocess.run(
-                ["ffmpeg", "-y", "-i", str(video_path), "-vf", f"fps=1,{scale_filter},tile=3x2", "-frames:v", "1", "-update", "1", str(sheet_path)],
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(video_path),
+                    "-vf",
+                    f"fps=1,{scale_filter},tile=3x2",
+                    "-frames:v",
+                    "1",
+                    "-update",
+                    "1",
+                    str(sheet_path),
+                ],
                 check=True,
                 stderr=subprocess.DEVNULL,
             )
@@ -211,7 +364,14 @@ def produce_artmotion(
     texts = [s for seg in segments for s in seg.sentences]
     if not texts:
         raise RuntimeError("no narration sentences")
-    key_parts: list[Any] = [lang, GAP_S, LEAD_S, texts, tts_length_scale, str(audio_path) if audio_path else ""]
+    key_parts: list[Any] = [
+        lang,
+        GAP_S,
+        LEAD_S,
+        texts,
+        tts_length_scale,
+        str(audio_path) if audio_path else "",
+    ]
     key = hashlib.sha256(json.dumps(key_parts, ensure_ascii=False).encode()).hexdigest()
     voice = work / "voice.wav"
     ts_file = work / "timestamps.json"
@@ -226,15 +386,23 @@ def produce_artmotion(
         )
         total_s = duration(voice)
         from hevi.layer4_legacy.talkcraft.oprim_impl.sync import Timing, CharTiming
+
         timings = []
         dt = total_s / max(1, len(texts))
         for i, text in enumerate(texts):
             st_s = i * dt
             et_s = (i + 1) * dt
             char_dt = (et_s - st_s) / max(1, len(text))
-            chars = [CharTiming(char=c, start_s=st_s + j * char_dt, end_s=st_s + (j + 1) * char_dt) for j, c in enumerate(text)]
+            chars = [
+                CharTiming(char=c, start_s=st_s + j * char_dt, end_s=st_s + (j + 1) * char_dt)
+                for j, c in enumerate(text)
+            ]
             timings.append(Timing(index=i, start_s=st_s, end_s=et_s, text=text, chars=chars))
-        ts_file.write_text(json.dumps({"key": key, "timings": [asdict(t) for t in timings]}, ensure_ascii=False, indent=1))
+        ts_file.write_text(
+            json.dumps(
+                {"key": key, "timings": [asdict(t) for t in timings]}, ensure_ascii=False, indent=1
+            )
+        )
     else:
         al = WhisperAligner()
         parts = []
@@ -246,8 +414,21 @@ def produce_artmotion(
 
         timings = []
         for i, (text, p, st) in enumerate(zip(texts, parts, starts, strict=True)):
-            timings.append(al.align(index=i, text=text, audio_path=str(p), start_s=st, end_s=st + duration(p), language=lang))
-        ts_file.write_text(json.dumps({"key": key, "timings": [asdict(t) for t in timings]}, ensure_ascii=False, indent=1))
+            timings.append(
+                al.align(
+                    index=i,
+                    text=text,
+                    audio_path=str(p),
+                    start_s=st,
+                    end_s=st + duration(p),
+                    language=lang,
+                )
+            )
+        ts_file.write_text(
+            json.dumps(
+                {"key": key, "timings": [asdict(t) for t in timings]}, ensure_ascii=False, indent=1
+            )
+        )
     total_s = duration(voice)
 
     # 3) Build spec.json
@@ -265,28 +446,44 @@ def produce_artmotion(
         if i < len(props_cues):
             cue = props_cues[i].copy()
             cue["at"] = at_t
-            if "text" not in cue and cue.get("kind") not in ("bar", "highlight", "equation", "number", "card"):
+            if "text" not in cue and cue.get("kind") not in (
+                "bar",
+                "highlight",
+                "equation",
+                "number",
+                "card",
+            ):
                 cue["text"] = text
-            # Sanitize all text fields for equation and text cues
-            if "text" in cue and isinstance(cue["text"], str):
-                cue["text"] = sanitize_latex(cue["text"])
-            if cue.get("kind") == "equation" and "data" in cue and "tokens" in cue["data"]:
-                for token in cue["data"]["tokens"]:
-                    if "s" in token:
-                        token["s"] = sanitize_latex(token["s"])
+            # Sanitize every on-screen text field (r5 B4: no \ ^ _ { } may reach the screen)
+            for field in ("text", "sub"):
+                if isinstance(cue.get(field), str):
+                    cue[field] = sanitize_latex(cue[field])
+            cdata = cue.get("data")
+            if isinstance(cdata, dict):
+                for field in ("text", "label", "key", "word", "prefix", "suffix"):
+                    if isinstance(cdata.get(field), str):
+                        cdata[field] = sanitize_latex(cdata[field])
+                if "tokens" in cdata:
+                    for token in cdata["tokens"]:
+                        if isinstance(token, dict) and isinstance(token.get("s"), str):
+                            token["s"] = sanitize_latex(token["s"])
             cues.append(cue)
         else:
-            cues.append({
-                "at": at_t,
-                "kind": "point",
-                "text": text,
-            })
+            cues.append(
+                {
+                    "at": at_t,
+                    "kind": "point",
+                    "text": text,
+                }
+            )
     fps = 30
     w, h = (1920, 1080) if aspect_ratio == "16:9" else (1080, 1920)
     resolved_style = resolve_style_id(style_id)
     matched_theme = STYLE_THEME_MAP.get(resolved_style, "paper")
     # 纹理模式：仅加载背景纹理，不画人物/动物
-    texture_mode = resolved_style in STYLE_SCENE_MODE and STYLE_SCENE_MODE[resolved_style] == "texture"
+    texture_mode = (
+        resolved_style in STYLE_SCENE_MODE and STYLE_SCENE_MODE[resolved_style] == "texture"
+    )
 
     spec = {
         "grammar": grammar_id,
@@ -297,6 +494,13 @@ def produce_artmotion(
         "fps": fps,
         "width": w,
         "height": h,
+        # 5% 安全区（r5 B3）：语法层按这个内缩排版，文字不贴边、不出框
+        "safe": {
+            "left": round(w * 0.05),
+            "right": round(w * 0.05),
+            "top": round(h * 0.05),
+            "bottom": round(h * 0.05),
+        },
         "cues": cues,
     }
     if props_data:
@@ -309,8 +513,17 @@ def produce_artmotion(
     mp4_out = work / "render_raw.mp4"
     st = time.monotonic()
     subprocess.run(
-        [".venv/bin/python", str(render_script), "--spec", str(spec_path), "--audio", str(voice), "--out", str(mp4_out)],
-        check=True
+        [
+            ".venv/bin/python",
+            str(render_script),
+            "--spec",
+            str(spec_path),
+            "--audio",
+            str(voice),
+            "--out",
+            str(mp4_out),
+        ],
+        check=True,
     )
     render_s = time.monotonic() - st
 
@@ -325,10 +538,43 @@ def produce_artmotion(
 
     gate_res, gate_rows = film_gate.measure(str(out_video), vertical="yes" if h > w else "no")
 
+    # 文字越界检查（r5 B3）：render.py 逐帧（30fps）量出的字框越界记录
+    ts_path = Path(str(mp4_out) + ".textsafe.json")
+    text_safe = json.loads(ts_path.read_text()) if ts_path.is_file() else None
+    # LaTeX 源码上屏检查（r5 B4）：spec 里任何上屏文本含 \ ^ _ { } 即 FAIL
+    latex_offenders = []
+    for cue in cues:
+        for field in ("text", "sub"):
+            bad = find_latex_source(cue.get(field, ""))
+            if bad:
+                latex_offenders.append({"field": field, "value": cue.get(field), "chars": bad})
+        cdata = cue.get("data")
+        if isinstance(cdata, dict):
+            for field in ("text", "label", "key", "word", "prefix", "suffix"):
+                bad = find_latex_source(cdata.get(field, ""))
+                if bad:
+                    latex_offenders.append(
+                        {"field": f"data.{field}", "value": cdata.get(field), "chars": bad}
+                    )
+            for token in cdata.get("tokens", []) or []:
+                bad = find_latex_source(token.get("s", ""))
+                if bad:
+                    latex_offenders.append(
+                        {"field": "token.s", "value": token.get("s"), "chars": bad}
+                    )
+
     deliver_script = scripts_dir / "deliver.py"
     deliver_out_dir = output_dir / "deliver_out"
     deliver_res = subprocess.run(
-        [".venv/bin/python", str(deliver_script), str(out_video), "--spec", str(spec_path), "--out", str(deliver_out_dir)],
+        [
+            ".venv/bin/python",
+            str(deliver_script),
+            str(out_video),
+            "--spec",
+            str(spec_path),
+            "--out",
+            str(deliver_out_dir),
+        ],
         capture_output=True,
         text=True,
     )
@@ -371,7 +617,25 @@ def produce_artmotion(
             "name": "artmotion_deliver",
             "passed": deliver_res.returncode == 0 and gate_res["gate_light"] == "green",
             "value": deliver_res.returncode,
-            "message": deliver_res.stdout[-300:] if deliver_res.returncode != 0 else "Passed deliver.py (green)",
+            "message": deliver_res.stdout[-300:]
+            if deliver_res.returncode != 0
+            else "Passed deliver.py (green)",
+        },
+        {
+            "name": "text_in_safe_area",
+            "passed": bool(text_safe) and text_safe.get("violations", 0) == 0,
+            "value": None if not text_safe else text_safe["violations"],
+            "threshold": "0 frames over 5% safe inset (checked every frame)",
+            "message": "no per-frame text bbox check produced"
+            if not text_safe
+            else f"{text_safe['violations']}/{text_safe['frames']} 帧文字越出安全区",
+        },
+        {
+            "name": "no_latex_source_on_screen",
+            "passed": not latex_offenders,
+            "value": len(latex_offenders),
+            "threshold": "0 occurrences of \\ ^ _ { } in on-screen text",
+            "message": "clean" if not latex_offenders else f"LaTeX 源码上屏：{latex_offenders[:3]}",
         },
     ]
 
@@ -379,36 +643,42 @@ def produce_artmotion(
     sheet_out = out_video.with_suffix(".sheet.jpg")
     generate_contact_sheet(out_video, sheet_out, total_s, is_vertical=(h > w))
 
-    records = [{
-        "video_path": str(out_video),
-        "width": w,
-        "height": h,
-        "duration_s": total_s,
-        "render_seconds": render_s,
-        "style_id": resolved_style,
-        "grammar_id": grammar_id,
-        "gate_light": gate_res["gate_light"],
-        "fast_ratio": gate_res["fast_ratio"],
-        "still_ratio": gate_res["still_ratio"],
-        "blank_run_s": gate_res["blank_run_s"],
-        "blue_purple_share": gate_res["blue_purple_share"],
-        "film_gate": {
+    records = [
+        {
+            "video_path": str(out_video),
+            "width": w,
+            "height": h,
+            "duration_s": total_s,
+            "render_seconds": render_s,
+            "style_id": resolved_style,
+            "grammar_id": grammar_id,
             "gate_light": gate_res["gate_light"],
             "fast_ratio": gate_res["fast_ratio"],
             "still_ratio": gate_res["still_ratio"],
             "blank_run_s": gate_res["blank_run_s"],
             "blue_purple_share": gate_res["blue_purple_share"],
-            "event_rate": gate_res["event_rate"],
-            "longest_still_s": gate_res["longest_still_s"],
-            "lights": gate_res["lights"],
-            "explain": gate_res["explain"]["summary"],
-        },
-        "gates": gates,
-        "sha256": get_sha256(out_video),
-    }]
+            "film_gate": {
+                "gate_light": gate_res["gate_light"],
+                "fast_ratio": gate_res["fast_ratio"],
+                "still_ratio": gate_res["still_ratio"],
+                "blank_run_s": gate_res["blank_run_s"],
+                "blue_purple_share": gate_res["blue_purple_share"],
+                "event_rate": gate_res["event_rate"],
+                "longest_still_s": gate_res["longest_still_s"],
+                "lights": gate_res["lights"],
+                "explain": gate_res["explain"]["summary"],
+            },
+            "text_safe": text_safe,
+            "latex_offenders": latex_offenders,
+            "gates": gates,
+            "sha256": get_sha256(out_video),
+        }
+    ]
 
     result = {
-        "status": "succeeded" if (all(g["passed"] for g in gates) and gate_res["gate_light"] == "green") else "failed",
+        "status": "succeeded"
+        if (all(g["passed"] for g in gates) and gate_res["gate_light"] == "green")
+        else "failed",
         "records": records,
     }
     (output_dir / "record.json").write_text(json.dumps(result, ensure_ascii=False, indent=2))

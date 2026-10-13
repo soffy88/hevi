@@ -21,28 +21,41 @@ async def test_artmotion_adapter_basic(tmp_path: Path, monkeypatch: pytest.Monke
         topic="test",
         segments=[
             StoryboardSegment(
-                id="1",
-                scene_type="hook",
-                narration="测试口播。",
-                keywords=[],
-                props={}
+                id="1", scene_type="hook", narration="测试口播。", keywords=[], props={}
             )
-        ]
+        ],
     )
-    with patch("hevi.explainer.production.execute_standard_operation") as mock_exec, \
-         patch("hevi.explainer.production.SequentialComposerEngine") as mock_engine, \
-         patch("hevi.explainer.cover.cover_extract_and_render") as mock_cover:
-
-        mock_engine.return_value.run = AsyncMock(return_value={
-            "results": [{
-                "status": "succeeded",
-                "artifacts": [
-                    {"kind": "video", "primary": True, "path": str(tmp_path / "portrait.mp4")},
-                    {"kind": "video", "primary": False, "path": str(tmp_path / "landscape.mp4")},
+    with (
+        patch("hevi.explainer.production.execute_standard_operation") as mock_exec,
+        patch("hevi.explainer.production.SequentialComposerEngine") as mock_engine,
+        patch("hevi.explainer.cover.cover_extract_and_render") as mock_cover,
+    ):
+        mock_engine.return_value.run = AsyncMock(
+            return_value={
+                "results": [
+                    {
+                        "status": "succeeded",
+                        "artifacts": [
+                            {
+                                "kind": "video",
+                                "primary": True,
+                                "path": str(tmp_path / "portrait.mp4"),
+                            },
+                            {
+                                "kind": "video",
+                                "primary": False,
+                                "path": str(tmp_path / "landscape.mp4"),
+                            },
+                        ],
+                    }
                 ]
-            }]
-        })
-        mock_cover.return_value = {"status": "succeeded", "path": str(tmp_path / "cover.jpg"), "media_type": "image/jpeg"}
+            }
+        )
+        mock_cover.return_value = {
+            "status": "succeeded",
+            "path": str(tmp_path / "cover.jpg"),
+            "media_type": "image/jpeg",
+        }
 
         (tmp_path / "portrait.mp4").write_text("dummy")
         (tmp_path / "landscape.mp4").write_text("dummy")
@@ -140,10 +153,19 @@ def test_artmotion_adapter_contract(tmp_path: Path):
         # Test failure behavior
         mock_produce.return_value = {
             "status": "failed",
-            "records": [{
-                "video_path": str(dummy_video),
-                "gates": [{"name": "fast_ratio", "passed": False, "value": 0.02, "message": "too slow"}],
-            }],
+            "records": [
+                {
+                    "video_path": str(dummy_video),
+                    "gates": [
+                        {
+                            "name": "fast_ratio",
+                            "passed": False,
+                            "value": 0.02,
+                            "message": "too slow",
+                        }
+                    ],
+                }
+            ],
         }
         with pytest.raises(ArtmotionRenderError, match="artmotion gates failed"):
             render_artmotion(script="失败测试", output_dir=tmp_path)
@@ -155,3 +177,28 @@ def test_film_gate_missing_cv2():
             film_gate.measure("dummy.mp4")
 
 
+def test_sanitize_latex_no_source_on_screen():
+    """上屏文本含 \\ ^ _ { } 即 FAIL：sanitize_latex 必须把它们全消掉（r5 B4）。"""
+    from hevi.layer4_legacy.artmotion.omodul_impl.produce import (
+        sanitize_latex,
+        find_latex_source,
+    )
+
+    # 审核方点名的两个用例（token 级与整串级）
+    for raw in ("QK^T/\\sqrt{d_k}", "\\text{Softmax}(QK^T)V"):
+        clean = sanitize_latex(raw)
+        assert find_latex_source(clean) == "", f"{raw!r} -> {clean!r} 仍残留 LaTeX 源码"
+        for ch in "\\^_{}":
+            assert ch not in clean
+
+    # ^ / _ 必须变成 Unicode 上下标，不是被删掉
+    assert sanitize_latex("QK^T/\\sqrt{d_k}") == "QKᵀ/√dₖ"
+    assert sanitize_latex("\\text{Softmax}(QK^T)V") == "Softmax(QKᵀ)V"
+    # 带花括号的写法同样处理
+    assert sanitize_latex("QK^{T}/\\sqrt{d_{k}}") == "QKᵀ/√dₖ"
+    # 分 token（E2E 里的真实写法：K^T 与 /\sqrt{d_k} 是两条 cue token）
+    assert sanitize_latex("K^T") == "Kᵀ"
+    assert sanitize_latex("/\\sqrt{d_k}") == "/√dₖ"
+    # 纯文本原样
+    assert sanitize_latex("attention 机制") == "attention 机制"
+    assert find_latex_source("attention 机制") == ""

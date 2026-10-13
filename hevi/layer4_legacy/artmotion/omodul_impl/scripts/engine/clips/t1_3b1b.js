@@ -15,7 +15,7 @@
 //   cue 里写的 manim 色名也映射进色板（YELLOW/GOLD/ORANGE/RED/MAROON/PINK → accent，BLUE/TEAL/GREEN/PURPLE → accent2，GREY → sub，WHITE → ink），#hex 照写的用。
 CLIPS.t1_3b1b = (() => {
 const { clamp, lerp } = U;
-let M, L, INK = '#fff';
+let M, L, INK = '#fff', ZHF = 'PuHui-Medium', OUT = null;   // OUT：风格描边（吉卜力赛璐璐的暖褐线）
 const col = v => !v ? null : M[v] || v;
 // 全片色板时 manim 色名 → 色板里的色（只认 DG.MANIM 里有的名字；#hex 原样）
 const palMap = p => { const m = { ...DG.MANIM };
@@ -36,7 +36,7 @@ const widthT = (c, tokens, size) => { const l = layoutT(c, tokens, size); return
 const writeT = (c, tokens, x, y, size, p, { align = 'center', col: cl = '#fff' } = {}) => {
   const Lt = layoutT(c, tokens, size), tot = Lt.length ? Lt[Lt.length - 1].x + Lt[Lt.length - 1].w : 0, x0 = align === 'center' ? x - tot / 2 : align === 'right' ? x - tot : x;
   const n = tokens.length, r = Math.min(4 / (n + 1), 0.2);
-  tokens.forEach((tk, i) => { const q = MO.lagged(i, n, clamp(p), r); if (q > 0) withFont(tk, t2 => DG.math(c, [t2], x0 + Lt[i].x, y, size, { p: q, align: 'left', col: cl })); });
+  tokens.forEach((tk, i) => { const q = MO.lagged(i, n, clamp(p), r); if (q > 0) withFont(tk, t2 => DG.math(c, [t2], x0 + Lt[i].x, y, size, { p: q, align: 'left', col: cl, outline: OUT })); });
   return Lt.map(l => ({ x: x0 + l.x, w: l.w }));
 };
 // 按弧长等分重采样成 n 个点（Transform 前两条曲线要点数相同、起点对齐）
@@ -48,17 +48,23 @@ const balance = (g, text, maxW, font) => { const n = TY.wrap(g, text, maxW, font
 const titleLines = (c, text, maxW, size, maxLines) => {
   let s = size; while (s > size * 0.75 && widthT(c, toks(text), s) > maxW) s *= 0.95;
   if (widthT(c, toks(text), s) <= maxW) return { size: s, lines: [text] };
-  s = size * 0.9; let lines = balance(c, text, maxW, `${s}px "PuHui-Medium"`);
-  while (lines.length > maxLines) { s *= 0.94; lines = balance(c, text, maxW, `${s}px "PuHui-Medium"`); }
+  s = size * 0.9; let lines = balance(c, text, maxW, `${s}px "${ZHF}"`);
+  while (lines.length > maxLines) { s *= 0.94; lines = balance(c, text, maxW, `${s}px "${ZHF}"`); }
   while (s > size * 0.45 && Math.max(...lines.map(l => widthT(c, toks(l), s))) > maxW) s *= 0.95;
   return { size: s, lines };
 };
 let BUF;
 return {
-  fonts: ['PuHui-Medium'],
+  fonts: ['PuHui-Medium', 'LXGWWenKai-500'],
   safe: true,
+  fixed: true,   // r5 B3：公式/曲线/要点按 safe 区排版，不挂相机——镜头推到 1.85 倍会把贴边的文字推出画（越界检查已实测）
   init(ctx) {
-    M = ctx.pal ? palMap(ctx.pal) : DG.MANIM; INK = ctx.pal ? ctx.pal.ink : '#fff'; DG.FONT.zh = 'PuHui-Medium';                         // 任意中文：普惠体（思源宋子集只有示范片用到的字）
+    M = ctx.pal ? palMap(ctx.pal) : DG.MANIM; INK = ctx.pal ? ctx.pal.ink : '#fff';
+    // 风格化字体（r5 B2）：水墨用楷体（霞鹜文楷）＋墨色描边；吉卜力用赛璐璐暖褐描边；默认普惠体
+    ZHF = ctx.style === '17_ink' ? 'LXGWWenKai-500' : 'PuHui-Medium';
+    DG.FONT.zh = ZHF;
+    OUT = ctx.style === '17_ink' ? { col: 'rgba(24,20,16,0.85)', w: 0.028 }
+        : ctx.style === '25_ghibli' ? { col: 'rgba(106,74,56,0.9)', w: 0.03 } : null;
     const { W, H, u, safe } = ctx, g = document.createElement('canvas').getContext('2d');
     const pad = (ctx.portrait ? 70 : 140) * u, yTop = safe.top, yBot = H - safe.bottom - (ctx.portrait ? 90 : 70) * u;
     const hasLine = ctx.of('line').length > 0, hasEq = ctx.of('equation').length > 0;
@@ -82,7 +88,7 @@ return {
     let points, blockH, size = size0; const gapP = 36 * u, room = yBot - y;
     for (let k = 1; ; k *= 0.94) {
       size = size0 * k;
-      points = ctx.of('point').map(q => { const lines = balance(g, q.text || '', text.w - 50 * u, `${size}px "PuHui-Medium"`); return { q, lines, h: lines.length * size * 1.35 }; });
+      points = ctx.of('point').map(q => { const lines = balance(g, q.text || '', text.w - 50 * u, `${size}px "${ZHF}"`); return { q, lines, h: lines.length * size * 1.35 }; });
       blockH = points.reduce((s, p) => s + p.h + gapP, 0) - gapP;
       if (plot && ctx.portrait) { plot.h = Math.max(room * 0.3, Math.min(room * 0.5, room - 110 * u - blockH)); text.y0 = plot.y + plot.h + 70 * u; }
       if (blockH <= text.y1 - text.y0 || k < 0.6) break;
@@ -188,29 +194,17 @@ return {
     const he = [...hl].reverse().find(z => target(z) === -2 && t >= z.at);
     if (he && eqBox && !hl.some(z => t >= z.at && z.at > he.at)) box(c, eqBox.x, eqBox.y, eqBox.w, eqBox.h, ctx.lt(t, he.at), u);
     if (ctx.alpha) {
-      if (ctx.hasStyle) {
-        // 风格画面上先铺一张纸卡，公式和要点才有底（不是黑板：黑底压在暖色画面上像贴了块胶）
-        const bx = L.plot ? Math.min(L.text.x, L.plot.x) - 40 * u : L.text.x - 40 * u;
-        const by = L.titleY - (L.titles.length ? 78 * u : 20 * u);
-        const bw = (L.plot ? Math.max(L.text.x + L.text.w, L.plot.x + L.plot.w) : L.text.x + L.text.w) - bx;
-        const bh = (L.text.y1 + (L.plot ? Math.max(L.plot.y + L.plot.h, L.text.y1) : L.text.y1)) - by;
-        c0.save();
-        c0.fillStyle = 'rgba(250, 246, 236, 0.92)';
-        c0.beginPath();
-        c0.roundRect(bx, by, bw, bh, 18 * u);
-        c0.fill();
-        c0.strokeStyle = 'rgba(60, 45, 30, 0.22)';
-        c0.lineWidth = 3 * u;
-        c0.stroke();
-        c0.restore();
-      }
-      c0.save(); c0.shadowColor = 'rgba(20,16,12,0.9)'; c0.shadowBlur = 10 * u; c0.drawImage(BUF, 0, 0); c0.shadowBlur = 3 * u; c0.drawImage(BUF, 0, 0); c0.restore();
+      // r5 B3：不铺整屏纸卡——纸卡是静止大色块，压在会随镜头动的底纹上，LK 会把「底纹在动、纸卡不动」
+      // 读成切点整段排除，film_gate 快动掉到 0（实测：全屏 92% 纸卡 → 0.003 红灯；不盖纸卡 → 0.148 绿灯）。
+      // 改给语法层一层浅色晕（深色字压在暖底纹上仍有底），大面积留给会动的底纹提供运动。
+      const halo = ctx.hasStyle ? 'rgba(250,246,236,0.92)' : 'rgba(20,16,12,0.9)';
+      c0.save(); c0.shadowColor = halo; c0.shadowBlur = 9 * u; c0.drawImage(BUF, 0, 0); c0.shadowBlur = 3 * u; c0.drawImage(BUF, 0, 0); c0.restore();
     }
   },
 };
 // 曲线标签：放在曲线末端上方
 function label(c, l, a, colr, u) { if (!l.q.text || a <= 0) return; const e = l.scr[l.scr.length - 1];
-  c.save(); c.globalAlpha *= a; c.font = `${40 * u}px "PuHui-Medium"`; c.fillStyle = colr; c.textAlign = 'right'; c.fillText(l.q.text, e[0], e[1] - 30 * u); c.restore(); }
+  c.save(); c.globalAlpha *= a; c.font = `${40 * u}px "${ZHF}"`; c.fillStyle = colr; c.textAlign = 'right'; c.fillText(l.q.text, e[0], e[1] - 30 * u); c.restore(); }
 // 强调框：Circumscribe 先绕一圈（1s），同时 SurroundingRectangle 画出来并留住（末帧有焦点）
 function box(c, x, y, w, h, lt, u) {
   if (lt <= 0) return; DG.circumscribe(c, x - 8 * u, y - 8 * u, w + 16 * u, h + 16 * u, MO.seg(lt, 0, 1.0), { lw: 4 * u, col: M.YELLOW });

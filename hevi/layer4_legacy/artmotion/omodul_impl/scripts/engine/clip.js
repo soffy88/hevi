@@ -10,7 +10,7 @@
 // 语法文件 clips/<grammar>.js 注册 CLIPS[grammar] = { init?(ctx), draw(c, t, ctx), safe?: true（按 ctx.safe / ctx.box 排版了才写，否则 spec.safe 会告警） }。
 // 对齐约定（CLIP.lt）：cue 的「揭开那一帧」= at 所在的那一帧——元素在 t = at 这一帧第一次可见，动画内部时间从 at − 1 帧起算。
 (() => {
-const cv = document.getElementById('c'), c = cv.getContext('2d');
+const cv = document.getElementById('c'); let c = cv.getContext('2d');   // let：8bit 像素化时临时切到低分辨率缓冲
 window.__canvas = cv;
 window.CLIPS = window.CLIPS || {};
 const C = window.CLIP = {};
@@ -139,6 +139,42 @@ async function boot() {
     22 * Math.sin(t * 0.7 + DRIFT_SEED) + 8 * Math.sin(t * 1.9 + DRIFT_SEED * 2.3),
     18 * Math.sin(t * 0.5 + DRIFT_SEED * 1.7) + 6 * Math.sin(t * 2.1 + DRIFT_SEED * 3.1),
   ];
+  // ---- 文字层与相机解耦（r5 B3）：镜头推拉/横移不得把文字推出画面 ----
+  // 风格底（全屏纹理）吃相机运动；语法层（公式、图表、文字）**不随相机运动**，永远按它自己的
+  // safe 区排版，落定后就不动——这样相机再怎么推/移都推不出文字。
+  // 每帧把语法层画出来的所有字框（fillText/strokeText 的屏幕包围盒）记进 ctx.__textBBox，
+  // 供 produce/film_gate 的越界检查读取（≥2fps 逐帧）。低透明度（<0.3，如 y5 背景巨型序号）不算，
+  // 那是装饰字不是正文。
+  let acc = null, dcCanvas = null, dcT = null;
+  // base = 主画布的「舞台变换」：像素化时是 1/8 缩放（语法照常按舞台坐标排版），否则是单位阵。
+  const base = styleId === '14_8bit' ? [1 / 8, 0, 0, 1 / 8, 0, 0] : [1, 0, 0, 1, 0, 0];
+  const pf = styleId === '14_8bit' ? 8 : 1;   // 像素化：低分辨率缓冲最后被 8× 最近邻放大回主画布
+  const fontSize = cc => { const m = /([\d.]+)px/.exec(cc.font || ''); return m ? parseFloat(m[1]) : 32; };
+  const mul = (A, B) => ({ a: A.a * B.a + A.c * B.b, b: A.b * B.a + A.d * B.b, c: A.a * B.c + A.c * B.d, d: A.b * B.c + A.d * B.d, e: A.a * B.e + A.c * B.f + A.e, f: A.b * B.e + A.d * B.f + A.f });
+  // 字框最终落在屏幕的哪里（真实像素坐标）：语法画在语法画布（dc）上就直接用它的变换；画到离屏缓冲
+  // （如 alpha 模式的 BUF）上，BUF 之后会被贴回语法画布，所以先乘语法画布的变换再乘像素化倍率。
+  // 之前的实现只取画布自身的 getTransform（离屏缓冲是单位阵），把相机变换整个漏掉，越界检查因此形同虚设。
+  ctx.__textHit = (s, x, y, align, tbase, cc) => {
+    if (!s) return;
+    const sz = fontSize(cc), w = cc.measureText(String(s)).width;
+    const x0 = align === 'center' ? x - w / 2 : align === 'right' ? x - w : x;
+    const yBase = tbase === 'top' ? y + sz : tbase === 'middle' ? y + sz / 2 : y;   // 基线（默认 alphabetic）
+    const loc = cc.getTransform();
+    const M = (cc.canvas === dcCanvas || !dcT) ? loc : mul(dcT, loc);
+    if (!acc) acc = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    for (const [px, py] of [[x0, yBase - sz * 1.16], [x0 + w, yBase - sz * 1.16], [x0, yBase], [x0 + w, yBase]]) {
+      const sx = pf * (M.a * px + M.c * py + M.e), sy = pf * (M.b * px + M.d * py + M.f);
+      acc.x0 = Math.min(acc.x0, sx); acc.y0 = Math.min(acc.y0, sy); acc.x1 = Math.max(acc.x1, sx); acc.y1 = Math.max(acc.y1, sy);
+    }
+  };
+  ctx.__bboxCommit = () => { ctx.__textBBox = acc ? { x0: acc.x0, y0: acc.y0, x1: acc.x1, y1: acc.y1 } : null; acc = null; };
+  // 量字：临时挂上 CanvasRenderingContext2D.prototype 的 fillText/strokeText（主画布与 alpha 缓冲都覆盖）
+  const trackText = fn => {
+    const proto = CanvasRenderingContext2D.prototype, of = proto.fillText, os = proto.strokeText;
+    proto.fillText = function (s, x, y, ...r) { if (this.globalAlpha >= 0.3) ctx.__textHit(s, x, y, this.textAlign, this.textBaseline, this); return of.call(this, s, x, y, ...r); };
+    proto.strokeText = function (s, x, y, ...r) { if (this.globalAlpha >= 0.3) ctx.__textHit(s, x, y, this.textAlign, this.textBaseline, this); return os.call(this, s, x, y, ...r); };
+    try { fn(); } finally { proto.fillText = of; proto.strokeText = os; }
+  };
   const camFn = t => {
     const base = CAM.track({ x: W / 2, y: H / 2, z: 1 }, CAM_EVENTS, t);
     const [dx, dy] = driftVec(t);
@@ -148,30 +184,53 @@ async function boot() {
   };
   // 风格画面按 cover 铺满并留 30% 余量：镜头推到 1.85 也不会露出画面边界
   const SCENE_W = 1920, SCENE_H = 1080, SCENE_SCALE = Math.max(W / SCENE_W, H / SCENE_H) * 1.30;
-
-  window.renderFrame = t => {
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.clearRect(0, 0, W, H);
-
+  // 语法层相机（r5 B3）：整页文字版式（G.fixed，如 y5）**不挂相机**——文字层不随镜头推拉/横移，
+  // 永远按 safe 区排版，运动由换页色带提供；其余语法（图表/公式，如 t1/t3）跟相机（内容随之移动，
+  // film_gate 才有可测的快动）。两条路都由逐帧越界检查兜底：越界即红灯。
+  const camG = t => (G.fixed ? { x: W / 2, y: H / 2, z: 1, moving: true } : camFn(t));
+  // 8bit 像素化后处理（r5 B2）：整帧（风格底＋语法层）按 8px 量化再放大，柱/线/字一起吃像素风
+  const PIXELATE = styleId === '14_8bit';
+  const drawScene = t => {
+    // 风格底：吃相机运动（全屏纹理推/移，提供片子的运动感）
     c.save();
     CAM.apply(c, camFn(t));
-
     if (styleScene && typeof styleScene.draw === 'function') {
       c.save();
       c.translate((W - SCENE_W * SCENE_SCALE) / 2, (H - SCENE_H * SCENE_SCALE) / 2);
       c.scale(SCENE_SCALE, SCENE_SCALE);
       styleScene.draw(c, t, t);
-      if (typeof styleScene.label === 'function' && spec.show_style_label !== false) {
-        styleScene.label(c, t);
-      }
+      if (typeof styleScene.label === 'function' && spec.show_style_label !== false) styleScene.label(c, t);
       c.restore();
     }
-
-    c.save();
-    G.draw(c, t, ctx);
     c.restore();
+    // 语法层：跟随小幅相机（camG）；回到 base 变换（像素化时保留 1/8 缩放，语法仍按舞台坐标排版），
+    // 画的时候记字框（字框含相机变换）。测出的设备像素字框再按 accInv 换算回舞台像素，越界检查用真实画幅。
+    c.setTransform(...base);
+    acc = null;
+    c.save(); CAM.apply(c, camG(t));
+    dcCanvas = c; dcT = c.getTransform();   // 语法画布此刻的变换（base＋相机）：离屏缓冲贴回时用它换算屏幕坐标
+    trackText(() => G.draw(c, t, ctx));
+    c.restore(); ctx.__bboxCommit();
+    c.setTransform(...base);
+  };
 
-    c.restore();
+  window.renderFrame = t => {
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, W, H);
+    if (PIXELATE) {
+      const L = PAINT.lowres, g = L.getContext('2d');         // 低分辨率缓冲：1 低像素 = 8 屏幕像素
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, L.width, L.height);
+      g.save(); g.scale(1 / 8, 1 / 8);                        // 用主坐标画进低分辨率缓冲
+      const real = c; c = g;                                  // 临时把「当前画布」换成低分辨率缓冲
+      try { drawScene(t); } finally { c = real; }
+      g.restore();
+      c.imageSmoothingEnabled = false;
+      c.drawImage(L, 0, 0, L.width, L.height, 0, 0, W, H);    // 低分辨率缓冲铺满主画布（8× 最近邻放大）
+      c.imageSmoothingEnabled = true;
+    } else {
+      drawScene(t);
+    }
+    c.setTransform(1, 0, 0, 1, 0, 0);
     if (band) band(c);
   };
   window.prepare = async () => {};

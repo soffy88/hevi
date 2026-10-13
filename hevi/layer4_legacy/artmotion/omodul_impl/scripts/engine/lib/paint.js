@@ -10,6 +10,8 @@ P.canvas = (w = W, h = H) => { const c = document.createElement('canvas'); c.wid
 const CACHE = {};
 P.cached = (key, w, h, fn) => { if (!CACHE[key]) { const c = P.canvas(w, h); fn(c.getContext('2d'), c); CACHE[key] = c; } return CACHE[key]; };
 P.scratch = (key) => { if (!CACHE['s_' + key]) CACHE['s_' + key] = P.canvas(); return CACHE['s_' + key]; };
+// 低分辨率缓冲（1 低像素 = 8 屏幕像素）：像素风格整帧量化用（clip.js 的 PIXELATE 后处理）
+P.lowres = P.canvas(Math.ceil(W / 8), Math.ceil(H / 8));
 
 // ---------- 噪声 ----------
 const perm = new Uint8Array(512); { const r = rng(1337); const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = (r() * (i + 1)) | 0; [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }

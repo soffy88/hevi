@@ -21,6 +21,7 @@ const fromPal = p => { const txt = bg => PAL.on(bg, [p.surface, p.ink, p.bg]); r
 return {
   fonts: ['PuHui-Black', 'PuHui-Heavy', 'PuHui-Bold'],
   safe: true,
+  fixed: true,   // 全屏 kinetic 文字版式：整页不挂相机（文字层不随镜头动），运动由换页色带提供
   init(ctx) {
     TP = ctx.data.palette ? null : ctx.pal;
     const { W, u } = ctx, pal = ctx.data.palette || (TP ? fromPal(TP) : PAGES0), g = document.createElement('canvas').getContext('2d');
@@ -99,14 +100,19 @@ function drawPage(c, P, t, ctx) {
     });
   }
   // 主词：每行在 at（+0.08s/行）砸进来；数字页从 0 滚到落定
+  // 主词砸入的过冲不能把字推出安全区：起点倍率按行宽反推上限，与逐帧越界检查同一条 5% 内缩线
+  const insL = Math.max(ctx.safe.left, W * 0.05), insR = Math.max(ctx.safe.right, W * 0.05), safeW = W - insL - insR;
   lines.forEach((ln, i) => {
     let s = ln; if (P.num) { const k = MO.expoOut(clamp(lt / 0.7)); s = (P.nd.prefix || '') + TY.fmt((P.nd.value || 0) * k, P.nd.decimals ?? 0) + (P.nd.suffix || ''); }
     const w = TY.width(c, s, size), x = W / 2 - w / 2, y = y0 + i * lh;
-    TY.slam(c, s, x, y, lt - i * 0.08, { size, color: fg, scale: hiScale, ox: W / 2, oy: y - size * 0.36, ...stroke });
+    const wf = TY.width(c, s, size, mainFont);   // 按实际落笔字体量宽（ink 用 LXGWWenKai）
+    const sc = Math.min(hiScale || 1, safeW / wf);   // 强调放大也要放得下：落定态不越安全区
+    const fromMax = Math.min(1.7, safeW / (wf * sc)), from0 = Math.max(1, fromMax);   // 过冲倍率上限（≥1 保证仍在缩小入场）
+    TY.slam(c, s, x, y, lt - i * 0.08, { size, color: fg, scale: sc, from: from0, ox: W / 2, oy: y - size * 0.36, ...stroke });
     for (const k of (knock || []).filter(k => k.i === i)) {             // 只在荧光笔那块平行四边形里，用底色再砸一遍同一行（和 TY.marker 同一形状）
       const [mx, my, mw, mh, mp] = k.mr, ww = mw * MO.expoOut(clamp(mp)), sk = mh * 0.18;
       c.save(); c.beginPath(); c.moveTo(mx + sk, my); c.lineTo(mx + ww + sk, my); c.lineTo(mx + ww, my + mh); c.lineTo(mx, my + mh); c.closePath(); c.clip();
-      TY.slam(c, s, x, y, lt - i * 0.08, { size, color: P.col[0], scale: hiScale, ox: W / 2, oy: y - size * 0.36 }); c.restore();
+      TY.slam(c, s, x, y, lt - i * 0.08, { size, color: P.col[0], scale: sc, from: from0, ox: W / 2, oy: y - size * 0.36 }); c.restore();
     }
   });
   if (sub) subL.forEach((ln, k) => {                                      // 辅句（可两行）；data.key 那个词用强调色

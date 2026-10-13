@@ -105,7 +105,7 @@ DG.layout = (c, tokens, size) => {
 };
 // manim Write：每个 token 先沿轮廓描边（lineDash 推进），后半程填色、描边淡掉；token 间 lag = min(4/(n+1), 0.2)（3b1b creation.py）。
 // 尊重外层 globalAlpha（FadeOut 时整条公式一起淡）。返回每个 token 的屏幕 {x,w}。
-DG.math = (c, tokens, x, y, size, { p = 1, align = 'center', col = '#fff', lag } = {}) => {
+DG.math = (c, tokens, x, y, size, { p = 1, align = 'center', col = '#fff', lag, outline = null } = {}) => {
   const L = DG.layout(c, tokens, size), total = L.length ? L[L.length - 1].x + L[L.length - 1].w : 0;
   const x0 = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
   const n = tokens.length, r = lag != null ? lag : Math.min(4 / (n + 1), 0.2);
@@ -120,7 +120,9 @@ DG.math = (c, tokens, x, y, size, { p = 1, align = 'center', col = '#fff', lag }
     const parts = [[tk.s, fx, y, main]]; if (tk.sub) parts.push([tk.sub, fx + mw + sz * 0.02, y + sz * 0.22, small]); if (tk.sup) parts.push([tk.sup, fx + mw + sz * 0.02, y - sz * 0.42, small]);
     const qs = MO.doubleSmooth(q);
     if (qs < 1) { c.strokeStyle = colr; c.lineWidth = Math.max(1.2, sz * 0.025); c.setLineDash([sz * 5 * clamp(qs * 2), 1e5]); c.globalAlpha = A0 * (1 - clamp((qs - 0.6) / 0.4)); parts.forEach(pt => draw(pt[0], pt[1], pt[2], pt[3], 's')); c.setLineDash([]); }
-    const fa = clamp((qs - 0.4) / 0.6); if (fa > 0) { c.globalAlpha = A0 * fa; c.fillStyle = colr; parts.forEach(pt => draw(pt[0], pt[1], pt[2], pt[3], 'f')); }
+    const fa = clamp((qs - 0.4) / 0.6); if (fa > 0) { c.globalAlpha = A0 * fa;
+      if (outline) { c.lineJoin = 'round'; c.strokeStyle = outline.col; c.lineWidth = sz * outline.w; parts.forEach(pt => draw(pt[0], pt[1], pt[2], pt[3], 's')); }   // 风格描边（吉卜力赛璐璐/水墨的粗边）
+      c.fillStyle = colr; parts.forEach(pt => draw(pt[0], pt[1], pt[2], pt[3], 'f')); }
     c.globalAlpha = A0;
   });
   c.restore();

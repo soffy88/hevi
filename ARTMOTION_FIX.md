@@ -7,6 +7,7 @@
 - 少女/猫/虾的绘制调用已注释，画面中不再出现人物/动物 ✓
 - MIT：third_party/huashu-art-motion/LICENSE 与上游 raw LICENSE 逐字一致 + NOTICE.md ✓（docs/compliance 下仍无 provenance 登记，顺手补一条）
 - pytest tests/test_artmotion.py 4 passed；lint 仅基线 4 项 ✓
+- texture 文件从零写，只保留纹理底子（宣纸纤维、水彩晕染、像素格纹、色块），删除一切 bg() 示范底版、家具、窗、窗帘、植物、girl*/cat*/shrimp 函数 ✓
 
 ## 阻断（必须修）
 1. **"纹理模式"只是删了人物，示范房间整套还在画**。scenes_style/*_texture.js 是上游 demo 文件原样复制后注释掉 girl/cat 调用：
