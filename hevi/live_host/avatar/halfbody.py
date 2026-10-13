@@ -38,6 +38,8 @@ ASSETS = Path(__file__).resolve().parents[3] / "assets" / "halfbody"
 # HEVI_LIVE_AVATAR picks the host look. xiaoya_d = original AI-generated face (no real
 # person's likeness) animated offline with LivePortrait from the v1 motion clips.
 AVATARS = {
+    # xiaoya_e = AI-generated face (user-supplied, 2026-10-13), Wan2.2 TI2V-5B clips with hand gestures
+    "xiaoya_e": ("xiaoya_e_idle.mp4", "xiaoya_e_talk.mp4"),
     "xiaoya_d": ("xiaoya_d_idle.mp4", "xiaoya_d_talk.mp4"),
     "v1": ("8135207.mp4", "8135208.mp4"),
 }
@@ -176,7 +178,7 @@ class HalfBodyAvatar:
     def __init__(self, idle: Path | None = None, talk: Path | None = None, *, label: str = "AI生成") -> None:
         self.yolo = _session("yoloface_8n.onnx")
         self.w2l = _session("wav2lip_gan_96.onnx")
-        d_idle, d_talk = AVATARS.get(os.environ.get("HEVI_LIVE_AVATAR", "xiaoya_d"), AVATARS["v1"])
+        d_idle, d_talk = AVATARS.get(os.environ.get("HEVI_LIVE_AVATAR", "xiaoya_e"), AVATARS["v1"])
         if not (ASSETS / d_idle).is_file():  # fall back to the original stock host
             d_idle, d_talk = AVATARS["v1"]
         self.idle = BaseClip.load(idle or ASSETS / d_idle, yolo=self.yolo)

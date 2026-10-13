@@ -1,0 +1,117 @@
+{
+  "sample": "audit/live_host/xiaoya_e/sample.mp4",
+  "duration_s": 23.25,
+  "avatar_load_s": 6.9,
+  "render_total_s": 20.01,
+  "talk_render_fps": 20.68,
+  "idle_render_fps": 64.3,
+  "realtime_factor_talk": 1.034,
+  "lipsync_corr": 0.278,
+  "lipsync_lag_frames": -1,
+  "turns": [
+    {
+      "question": "小雅晚上好，今天直播聊点什么？",
+      "sentences": [
+        "晚上好呀！",
+        "今天咱们聊聊生活趣事呗～",
+        "你最近有啥开心的事想和我分享吗？"
+      ],
+      "llm_first_sentence_s": 10.946,
+      "llm_total_s": 15.3,
+      "tts_s": [
+        1.392,
+        0.274,
+        0.111
+      ],
+      "audio_s": [
+        1.27,
+        2.45,
+        3.16
+      ],
+      "first_video_latency_s": 15.384
+    },
+    {
+      "question": "可以推荐一本适合睡前看的书吗？",
+      "sentences": [
+        "《安徒生童话》很适合睡前看哦～",
+        "故事温馨又有趣，能让人放松心情呢！",
+        "你平时喜欢什么类型的书呀？"
+      ],
+      "llm_first_sentence_s": 2.423,
+      "llm_total_s": 5.421,
+      "tts_s": [
+        0.089,
+        0.102,
+        0.08
+      ],
+      "audio_s": [
+        2.74,
+        3.05,
+        2.6
+      ],
+      "first_video_latency_s": 4.976
+    }
+  ],
+  "segments": [
+    {
+      "kind": "idle",
+      "frames": 40,
+      "render_s": 0.849
+    },
+    {
+      "kind": "idle",
+      "frames": 40,
+      "render_s": 0.723
+    },
+    {
+      "kind": "talk",
+      "frames": 25,
+      "render_s": 3.046
+    },
+    {
+      "kind": "talk",
+      "frames": 49,
+      "render_s": 1.815
+    },
+    {
+      "kind": "talk",
+      "frames": 63,
+      "render_s": 2.516
+    },
+    {
+      "kind": "idle",
+      "frames": 20,
+      "render_s": 0.242
+    },
+    {
+      "kind": "idle",
+      "frames": 40,
+      "render_s": 0.364
+    },
+    {
+      "kind": "talk",
+      "frames": 55,
+      "render_s": 2.464
+    },
+    {
+      "kind": "talk",
+      "frames": 61,
+      "render_s": 2.671
+    },
+    {
+      "kind": "talk",
+      "frames": 52,
+      "render_s": 2.237
+    },
+    {
+      "kind": "idle",
+      "frames": 20,
+      "render_s": 0.309
+    }
+  ],
+  "base_videos": {
+    "idle": "https://www.pexels.com/video/woman-is-talking-while-looking-at-camera-8135207/",
+    "talk": "https://www.pexels.com/video/woman-looking-at-camera-and-speaking-8135208/",
+    "license": "Pexels License (free commercial use, no attribution required)"
+  }
+}

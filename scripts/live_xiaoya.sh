@@ -10,7 +10,7 @@ systemctl --user stop hevi-live-xiaoya 2>/dev/null || true; systemctl --user res
 ARGS=(); [ -n "$1" ] && ARGS=(--douyin "$1")
 mkdir -p audit/live_host/stream
 systemd-run --user --unit=hevi-live-xiaoya -p Restart=on-failure -p WorkingDirectory="$PWD" \
-  -E PYTHONPATH="$PWD" -E PATH="$(dirname "$FF"):/usr/local/bin:/usr/bin:/bin" -E FFMPEG="$FF" -E HEVI_LIVE_THREADS="${HEVI_LIVE_THREADS:-8}" -E HEVI_LIVE_FPS="${HEVI_LIVE_FPS:-20}" -E HEVI_LIVE_MOUTH="${HEVI_LIVE_MOUTH:-v2}" -E HEVI_LIVE_AVATAR="${HEVI_LIVE_AVATAR:-xiaoya_d}" \
+  -E PYTHONPATH="$PWD" -E PATH="$(dirname "$FF"):/usr/local/bin:/usr/bin:/bin" -E FFMPEG="$FF" -E HEVI_LIVE_THREADS="${HEVI_LIVE_THREADS:-8}" -E HEVI_LIVE_FPS="${HEVI_LIVE_FPS:-20}" -E HEVI_LIVE_MOUTH="${HEVI_LIVE_MOUTH:-v2}" -E HEVI_LIVE_AVATAR="${HEVI_LIVE_AVATAR:-xiaoya_e}" \
   -p StandardOutput=file:"$PWD/audit/live_host/stream/live.out" -p StandardError=file:"$PWD/audit/live_host/stream/live.err" \
   /data/soffy/projects/hevi/.venv/bin/python -W ignore -m hevi.live_host.live_stream "${ARGS[@]}" --log "$PWD/audit/live_host/stream/live_events.jsonl"
 echo "started. OBS 媒体源输入: rtmp://$(hostname -I | cut -d' ' -f1):1935/xiaoya   停止: systemctl --user stop hevi-live-xiaoya"
