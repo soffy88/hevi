@@ -47,20 +47,31 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Running ``scripts/fx_preview.py`` puts *scripts* on sys.path, which would make
+# ``import hevi`` resolve to whichever checkout the interpreter happens to prefer
+# (another worktree). Pin the repo root that owns this tree before importing.
+_REPO = Path(__file__).resolve().parents[1]
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = _REPO
 OUT_DIR = REPO / "output" / "fx_previews"
 
 FFMPEG = os.environ.get("HEVI_FFMPEG") or shutil.which("ffmpeg") or "/home/soffy/.local/bin/ffmpeg"
-FFPROBE = os.environ.get("HEVI_FFPROBE") or shutil.which("ffprobe") or "/home/soffy/.local/bin/ffprobe"
+FFPROBE = (
+    os.environ.get("HEVI_FFPROBE") or shutil.which("ffprobe") or "/home/soffy/.local/bin/ffprobe"
+)
 
 REMOTION_DIR = REPO / "hevi-remotion-talkcraft"
 REMOTION_CLI = REMOTION_DIR / "node_modules" / ".bin" / "remotion"
 REMOTION_ENTRY = "src/remotion/index.ts"
-NODE_BIN = os.environ.get("HEVI_NODE_BIN") or str(Path.home() / ".nvm" / "versions" / "node" / "v26.4.0" / "bin")
+NODE_BIN = os.environ.get("HEVI_NODE_BIN") or str(
+    Path.home() / ".nvm" / "versions" / "node" / "v26.4.0" / "bin"
+)
 TALKCRAFT_GEN_INDEX = REMOTION_DIR / "scripts" / "gen-index.mjs"
 
 SFX_DIR = REPO / "assets" / "audio" / "sfx"
@@ -74,6 +85,9 @@ TARGET_FRAMES = int(round(DURATION_S * FPS))  # 60
 DIFF_MIN = 0.01
 
 THUMB_WIDTH = 324  # 324x576, 9:16
+
+#: Duration of the xfade cross-over in the 2s xfade previews.
+XFADE_DUR = 1.0
 
 # Colour palettes cycled across xfade previews so the contact sheet is varied.
 XFADE_PALETTES = [
@@ -99,12 +113,18 @@ class RenderError(RuntimeError):
 # ---------------------------------------------------------------------------
 
 
-def _run(cmd: list[str], *, cwd: Path | None = None, timeout: int = RENDER_TIMEOUT_S,
-         check: bool = True) -> subprocess.CompletedProcess:
+def _run(
+    cmd: list[str], *, cwd: Path | None = None, timeout: int = RENDER_TIMEOUT_S, check: bool = True
+) -> subprocess.CompletedProcess:
     """Run a subprocess, capturing output."""
     return subprocess.run(
-        cmd, cwd=str(cwd) if cwd else None, capture_output=True, text=True, timeout=timeout,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=check,
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        text=True,
+        timeout=timeout,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=check,
     )
 
 
@@ -123,10 +143,16 @@ def _slug(template_id: str) -> str:
 def ffprobe(path: Path) -> dict:
     """Return {duration_s, width, height, fps, has_audio} for a media file."""
     cmd = [
-        FFPROBE, "-v", "error",
-        "-show_entries", "format=duration",
-        "-show_entries", "stream=codec_type,width,height,r_frame_rate",
-        "-of", "json", str(path),
+        FFPROBE,
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-show_entries",
+        "stream=codec_type,width,height,r_frame_rate",
+        "-of",
+        "json",
+        str(path),
     ]
     r = _run(cmd, check=True)
     data = json.loads(r.stdout)
@@ -149,9 +175,16 @@ def frame_diff_mean(path: Path) -> float | None:
     Returns None when it cannot be measured.
     """
     cmd = [
-        FFMPEG, "-v", "info", "-i", str(path),
-        "-vf", "tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG",
-        "-f", "null", "-",
+        FFMPEG,
+        "-v",
+        "info",
+        "-i",
+        str(path),
+        "-vf",
+        "tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG",
+        "-f",
+        "null",
+        "-",
     ]
     try:
         r = _run(cmd, timeout=120, check=False)
@@ -175,7 +208,9 @@ def _ensure_talkcraft_generated() -> None:
     own ``scripts/gen-index.mjs`` (both are in hevi-remotion-talkcraft/.gitignore)
     and are required for webpack to bundle. We never touch tracked sources.
     """
-    if (REMOTION_DIR / "src" / "kbMeta.ts").exists() and (REMOTION_DIR / "src" / "mediaManifest.ts").exists():
+    if (REMOTION_DIR / "src" / "kbMeta.ts").exists() and (
+        REMOTION_DIR / "src" / "mediaManifest.ts"
+    ).exists():
         return
     node = shutil.which("node") or str(Path(NODE_BIN) / "node")
     r = _run([node, str(TALKCRAFT_GEN_INDEX)], cwd=REMOTION_DIR, timeout=300, check=False)
@@ -209,7 +244,9 @@ def remotion_durations() -> dict[str, int]:
     env["PATH"] = NODE_BIN + os.pathsep + env.get("PATH", "")
     r = _run(
         [str(REMOTION_CLI), "compositions", REMOTION_ENTRY, "--json"],
-        cwd=REMOTION_DIR, timeout=RENDER_TIMEOUT_S, check=False,
+        cwd=REMOTION_DIR,
+        timeout=RENDER_TIMEOUT_S,
+        check=False,
     )
     table = _parse_composition_table(r.stdout)
     if not table:
@@ -232,12 +269,24 @@ def render_talkcraft(card_id: str, out_mp4: Path) -> dict:
     frames = min(TARGET_FRAMES, dur_frames)
     native = out_mp4.with_suffix(".native.mp4")
     cmd = [
-        str(REMOTION_CLI), "render", REMOTION_ENTRY, card_id, str(native),
-        f"--frames=0-{frames - 1}", "--scale=1", "--log=error", "--concurrency=1",
+        str(REMOTION_CLI),
+        "render",
+        REMOTION_ENTRY,
+        card_id,
+        str(native),
+        f"--frames=0-{frames - 1}",
+        "--scale=1",
+        "--log=error",
+        "--concurrency=1",
     ]
     env = dict(os.environ)
     env["PATH"] = NODE_BIN + os.pathsep + env.get("PATH", "")
-    r = _run(cmd, cwd=REMOTION_DIR, timeout=RENDER_TIMEOUT_S, check=False, )
+    r = _run(
+        cmd,
+        cwd=REMOTION_DIR,
+        timeout=RENDER_TIMEOUT_S,
+        check=False,
+    )
     if r.returncode != 0 or not native.exists():
         raise RenderError(f"remotion render failed ({card_id}): {r.stdout[-400:]}")
 
@@ -249,39 +298,96 @@ def render_talkcraft(card_id: str, out_mp4: Path) -> dict:
         f"[b]scale={WIDTH}:-2[fg];"
         f"[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1[v]"
     )
-    _run([
-        FFMPEG, "-y", "-v", "error", "-stream_loop", "-1", "-i", str(native),
-        "-filter_complex", filter_complex, "-map", "[v]", "-an",
-        "-t", str(DURATION_S), "-r", str(FPS),
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-        str(out_mp4),
-    ])
+    _run(
+        [
+            FFMPEG,
+            "-y",
+            "-v",
+            "error",
+            "-stream_loop",
+            "-1",
+            "-i",
+            str(native),
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[v]",
+            "-an",
+            "-t",
+            str(DURATION_S),
+            "-r",
+            str(FPS),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            str(out_mp4),
+        ]
+    )
     native.unlink(missing_ok=True)
-    native_info = ffprobe(native) if native.exists() else {}
-    return {"native_frames": frames, "native_duration_s": frames / FPS,
-            "looped": frames < TARGET_FRAMES}
+    return {
+        "native_frames": frames,
+        "native_duration_s": frames / FPS,
+        "looped": frames < TARGET_FRAMES,
+    }
 
 
 def render_xfade(transition: str, out_mp4: Path, palette_index: int = 0) -> dict:
-    """Two animated lavfi sources through one ffmpeg xfade transition."""
+    """Two animated lavfi sources through one ffmpeg xfade transition.
+
+    Source A and B each run the full DURATION_S; the transition consumes the
+    final ``XFADE_DUR`` seconds of A overlapping the first ``XFADE_DUR`` of B,
+    so the composited clip is exactly ``DURATION_S`` long. ``fps`` is re-stamped
+    after ``trim`` because xfade requires a constant frame rate on both inputs.
+    """
     c0, c1, c2 = XFADE_PALETTES[palette_index % len(XFADE_PALETTES)]
-    src_a = f"gradients=s={WIDTH}x{HEIGHT}:r={FPS}:c0={c0}:c1={c1}:c2={c2}"
+    src_a = f"gradients=s={WIDTH}x{HEIGHT}:r={FPS}:d={DURATION_S}:c0={c0}:c1={c1}:c2={c2}"
     src_b = f"testsrc2=s={WIDTH}x{HEIGHT}:r={FPS}:d={DURATION_S}"
-    half = DURATION_S / 2
-    xfade_dur = 1.0
+    xfade_dur = XFADE_DUR
+    offset = DURATION_S - xfade_dur
     filter_complex = (
-        f"[0:v]trim=0:{half},setpts=PTS-STARTPTS,format=yuv420p[a];"
-        f"[1:v]trim=0:{half},setpts=PTS-STARTPTS,format=yuv420p[b];"
-        f"[a][b]xfade=transition={transition}:duration={xfade_dur}:offset={half - xfade_dur}[v]"
+        f"[0:v]trim=0:{DURATION_S},setpts=PTS-STARTPTS,fps={FPS},format=yuv420p[a];"
+        f"[1:v]trim=0:{DURATION_S},setpts=PTS-STARTPTS,fps={FPS},format=yuv420p[b];"
+        f"[a][b]xfade=transition={transition}:duration={xfade_dur}:offset={offset}[v]"
     )
-    _run([
-        FFMPEG, "-y", "-v", "error",
-        "-f", "lavfi", "-i", src_a, "-f", "lavfi", "-i", src_b,
-        "-filter_complex", filter_complex, "-map", "[v]", "-an",
-        "-t", str(DURATION_S), "-r", str(FPS),
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-        str(out_mp4),
-    ])
+    _run(
+        [
+            FFMPEG,
+            "-y",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            src_a,
+            "-f",
+            "lavfi",
+            "-i",
+            src_b,
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[v]",
+            "-an",
+            "-t",
+            str(DURATION_S),
+            "-r",
+            str(FPS),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            str(out_mp4),
+        ]
+    )
     return {"palette": [c0, c1, c2]}
 
 
@@ -293,25 +399,64 @@ def render_sfx(wav_path: Path, out_mp4: Path) -> dict:
         f"[awin]showwaves=s={WIDTH}x{HEIGHT}:mode=cline:rate={FPS}:"
         f"colors=0x4DA6FF|0x14181F,setsar=1,format=yuv420p[v]"
     )
-    _run([
-        FFMPEG, "-y", "-v", "error", "-i", str(wav_path),
-        "-filter_complex", filter_complex, "-map", "[v]", "-map", "[aout]",
-        "-t", str(DURATION_S), "-r", str(FPS),
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "128k",
-        str(out_mp4),
-    ])
+    _run(
+        [
+            FFMPEG,
+            "-y",
+            "-v",
+            "error",
+            "-i",
+            str(wav_path),
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[v]",
+            "-map",
+            "[aout]",
+            "-t",
+            str(DURATION_S),
+            "-r",
+            str(FPS),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            str(out_mp4),
+        ]
+    )
     return {}
 
 
 def make_thumbnail(mp4: Path, jpg: Path) -> None:
     """Grab the mid-clip frame as a JPG."""
     thumb_h = int(THUMB_WIDTH * HEIGHT / WIDTH)
-    _run([
-        FFMPEG, "-y", "-v", "error", "-ss", "1.0", "-i", str(mp4),
-        "-frames:v", "1", "-vf", f"scale={THUMB_WIDTH}:{thumb_h}",
-        "-q:v", "3", str(jpg),
-    ])
+    _run(
+        [
+            FFMPEG,
+            "-y",
+            "-v",
+            "error",
+            "-ss",
+            "1.0",
+            "-i",
+            str(mp4),
+            "-frames:v",
+            "1",
+            "-vf",
+            f"scale={THUMB_WIDTH}:{thumb_h}",
+            "-q:v",
+            "3",
+            str(jpg),
+        ]
+    )
     if not jpg.exists():
         raise RenderError("thumbnail extraction produced no file")
 
@@ -340,7 +485,9 @@ def _render_one(template, out_dir: Path) -> dict:
         if template.source.value == "talkcraft":
             extra = render_talkcraft(template.source_ref, mp4)
         elif template.source.value == "xfade":
-            extra = render_xfade(template.source_ref, mp4, palette_index=hash(template.id) % len(XFADE_PALETTES))
+            extra = render_xfade(
+                template.source_ref, mp4, palette_index=hash(template.id) % len(XFADE_PALETTES)
+            )
         elif template.source.value == "sfx":
             wav = SFX_DIR / f"{template.source_ref}.wav"
             if not wav.exists():
@@ -354,23 +501,25 @@ def _render_one(template, out_dir: Path) -> dict:
         info = ffprobe(mp4)
         diff = frame_diff_mean(mp4)
         record.update(extra)
-        record.update({
-            "status": "ok",
-            "duration_s": round(info["duration_s"], 4),
-            "width": info["width"],
-            "height": info["height"],
-            "fps": info["fps"],
-            "has_audio": info["has_audio"],
-            "frame_diff_mean": round(diff, 6) if diff is not None else None,
-            "frame_diff_norm": round(diff / 255.0, 8) if diff is not None else None,
-            "mp4_bytes": mp4.stat().st_size,
-            "mp4_sha256": _sha256(mp4),
-            "thumbnail_bytes": jpg.stat().st_size,
-            "thumbnail_sha256": _sha256(jpg),
-            "mp4_path": f"output/fx_previews/{slug}.mp4",
-            "thumbnail_path": f"output/fx_previews/{slug}.jpg",
-            "elapsed_s": round(time.monotonic() - t0, 2),
-        })
+        record.update(
+            {
+                "status": "ok",
+                "duration_s": round(info["duration_s"], 4),
+                "width": info["width"],
+                "height": info["height"],
+                "fps": info["fps"],
+                "has_audio": info["has_audio"],
+                "frame_diff_mean": round(diff, 6) if diff is not None else None,
+                "frame_diff_norm": round(diff / 255.0, 8) if diff is not None else None,
+                "mp4_bytes": mp4.stat().st_size,
+                "mp4_sha256": _sha256(mp4),
+                "thumbnail_bytes": jpg.stat().st_size,
+                "thumbnail_sha256": _sha256(jpg),
+                "mp4_path": f"output/fx_previews/{slug}.mp4",
+                "thumbnail_path": f"output/fx_previews/{slug}.jpg",
+                "elapsed_s": round(time.monotonic() - t0, 2),
+            }
+        )
         # Hard validation: duration within tolerance, resolution, fps, non-static
         problems = []
         if abs(info["duration_s"] - DURATION_S) > 0.1:
@@ -418,72 +567,87 @@ def build_contact_sheet(records: list[dict], out_path: Path) -> dict:
     """Tile >=4 thumbnails per category into one PNG."""
     from PIL import Image, ImageDraw, ImageFont
 
-    ok = [r for r in records if r["status"] == "ok" and Path(out_path.parent, r["thumbnail_path"]).exists()]
+    ok = [
+        r
+        for r in records
+        if r.get("status") == "ok" and (REPO / r.get("thumbnail_path", "")).exists()
+    ]
     by_cat: dict[str, list[dict]] = {}
     for r in ok:
         by_cat.setdefault(r["category"], []).append(r)
 
     per_cat = 4
-    picked: list[tuple[str, Path]] = []
+    picked: list[dict] = []
     used: set[str] = set()
     for cat in ("transition", "character", "style", "overlay"):
-        rows = by_cat.get(cat, [])
-        for r in rows[:per_cat]:
+        for r in by_cat.get(cat, [])[:per_cat]:
             if r["id"] in used:
                 continue
             used.add(r["id"])
-            picked.append((cat, Path(REPO, r["thumbnail_path"])))
+            picked.append(r)
 
     if not picked:
         return {"error": "no rendered thumbnails available", "counts": {}}
 
     tw, th = THUMB_WIDTH, int(THUMB_WIDTH * HEIGHT / WIDTH)
-    label_h = 40
+    label_h = 44
     pad = 10
-    cols = max(1, len(picked[0:per_cat])) if picked else 1
-    cols = per_cat
-    rows_n = (len(picked) + cols - 1) // cols
-    sheet = Image.new("RGB", (cols * (tw + pad) + pad, rows_n * (th + label_h + pad) + pad), (18, 20, 24))
+    rows_n = (len(picked) + per_cat - 1) // per_cat
+    sheet = Image.new(
+        "RGB",
+        (per_cat * (tw + pad) + pad, rows_n * (th + label_h + pad) + pad),
+        (18, 20, 24),
+    )
     draw = ImageDraw.Draw(sheet)
 
     try:
-        font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 16)
         small = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 13)
     except OSError:
-        font = small = ImageFont.load_default()
+        small = ImageFont.load_default()
 
     counts: dict[str, int] = {}
-    for i, (cat, jpg_path) in enumerate(picked):
-        col, row = i % cols, i // cols
+    for i, rec in enumerate(picked):
+        col, row = i % per_cat, i // per_cat
         x = pad + col * (tw + pad)
         y = pad + row * (th + label_h + pad)
+        jpg_path = REPO / rec["thumbnail_path"]
         try:
             img = Image.open(jpg_path).convert("RGB").resize((tw, th))
             sheet.paste(img, (x, y))
         except OSError as exc:
             draw.rectangle([x, y, x + tw, y + th], fill=(60, 20, 20))
             draw.text((x + 6, y + 6), f"missing: {exc}", fill=(255, 120, 120), font=small)
-        counts[cat] = counts.get(cat, 0) + 1
-        rec = next(r for r in picked_records(records) if r["thumbnail_path"] and Path(REPO, r["thumbnail_path"]) == jpg_path)
+        counts[rec["category"]] = counts.get(rec["category"], 0) + 1
         draw.rectangle([x, y + th, x + tw, y + th + label_h], fill=(10, 12, 16))
-        draw.text((x + 6, y + th + 4), f"[{cat}] {rec['id']}", fill=(235, 235, 235), font=small)
-        draw.text((x + 6, y + th + 20), rec.get("name_zh", "")[:26], fill=(150, 160, 175), font=small)
+        draw.text(
+            (x + 6, y + th + 5),
+            f"[{rec['category']}] {rec['id']}",
+            fill=(235, 235, 235),
+            font=small,
+        )
+        draw.text(
+            (x + 6, y + th + 22), (rec.get("name_zh") or "")[:28], fill=(150, 160, 175), font=small
+        )
 
     sheet.save(out_path)
     return {"counts": counts, "total": len(picked), "width": sheet.width, "height": sheet.height}
 
 
-def picked_records(records: list[dict]) -> list[dict]:
-    return records
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--only", nargs="*", help="specific template ids, e.g. tc:bar-chart-growth xfade:fade")
-    parser.add_argument("--source", choices=["talkcraft", "xfade", "sfx"], help="restrict to one source")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--only", nargs="*", help="specific template ids, e.g. tc:bar-chart-growth xfade:fade"
+    )
+    parser.add_argument(
+        "--source", choices=["talkcraft", "xfade", "sfx"], help="restrict to one source"
+    )
     parser.add_argument("--limit", type=int, help="cap the number of templates")
     parser.add_argument("--workers", type=int, default=2, help="concurrency (keep <= 2)")
-    parser.add_argument("--contact-sheet-only", action="store_true", help="just rebuild contact_sheet.png")
+    parser.add_argument(
+        "--contact-sheet-only", action="store_true", help="just rebuild contact_sheet.png"
+    )
     parser.add_argument("--out", type=Path, default=OUT_DIR, help="output directory")
     args = parser.parse_args()
 
@@ -498,7 +662,7 @@ def main() -> int:
     if index_path.exists():
         try:
             prior = json.loads(index_path.read_text(encoding="utf-8")).get("templates", [])
-        except (ValueError, OSError):
+        except ValueError, OSError:
             prior = []
 
     if args.contact_sheet_only:
@@ -517,9 +681,12 @@ def main() -> int:
             rec = fut.result()
             fresh.append(rec)
             mark = "ok  " if rec["status"] == "ok" else "FAIL"
-            print(f"[{i}/{len(templates)}] {mark} {rec['id']} "
-                  f"{rec.get('duration_s', '')} diff={rec.get('frame_diff_mean', '')} "
-                  f"{rec.get('error', '')}", flush=True)
+            print(
+                f"[{i}/{len(templates)}] {mark} {rec['id']} "
+                f"{rec.get('duration_s', '')} diff={rec.get('frame_diff_mean', '')} "
+                f"{rec.get('error', '')}",
+                flush=True,
+            )
 
     by_id = {r["id"]: r for r in prior}
     by_id.update({r["id"]: r for r in fresh})
@@ -541,9 +708,14 @@ def main() -> int:
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "renderer": "scripts/fx_preview.py",
         "config": {
-            "width": WIDTH, "height": HEIGHT, "fps": FPS, "duration_s": DURATION_S,
-            "frame_diff_min": DIFF_MIN, "workers": workers,
-            "ffmpeg": FFMPEG, "ffprobe": FFPROBE,
+            "width": WIDTH,
+            "height": HEIGHT,
+            "fps": FPS,
+            "duration_s": DURATION_S,
+            "frame_diff_min": DIFF_MIN,
+            "workers": workers,
+            "ffmpeg": FFMPEG,
+            "ffprobe": FFPROBE,
         },
         "summary": {
             "total": len(ordered),
@@ -552,9 +724,7 @@ def main() -> int:
             "ok_by_category": _count(ok, "category"),
             "ok_by_source": _count(ok, "source"),
             "failed_ids": [r["id"] for r in failed],
-            "below_strict_diff_norm": sum(
-                1 for r in ok if (r.get("frame_diff_norm") or 0) < 0.01
-            ),
+            "below_strict_diff_norm": sum(1 for r in ok if (r.get("frame_diff_norm") or 0) < 0.01),
             "mp4_total_bytes": sum(r.get("mp4_bytes", 0) for r in ok),
         },
         "contact_sheet": sheet_info,
