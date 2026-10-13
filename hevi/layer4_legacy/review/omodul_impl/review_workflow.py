@@ -38,11 +38,12 @@ from pathlib import Path
 from typing import Any
 
 from hevi.layer4_legacy.review.oprim_impl.audio import (
+    clipped_sample_ratio,
+    longest_clipped_run_s,
     loudness_lufs,
     silence_ratio,
     silence_windows,
     spectral_flatness,
-    clipped_sample_ratio,
     transient_click_count,
 )
 from hevi.layer4_legacy.review.oprim_impl.contracts import (
@@ -85,9 +86,13 @@ _DEFAULTS: dict[str, Any] = {
     "repeat_hash_floor": 4.0,
     "text_cue_coverage": 0.80,
     "spectral_flatness_threshold": 0.1,  # white noise flag
-    "max_clipped_sample_ratio": 0.001,   # clipping: fraction of samples at |x|>=0.999
-    "max_transient_clicks": 50,          # max 10ms-window click events
-    "max_silence_gap_s": 2.0,            # longest continuous silence gap before violation
+    "max_clipped_sample_ratio": 0.002,  # clipping: fraction of samples at |x|>=0.999
+    "max_clipped_run_s": 0.05,  # longest continuous clipped run (seconds)
+    "max_transient_clicks": 50,  # max 10ms-window click events
+    "max_silence_gap_s": 2.0,  # longest continuous silence gap before violation
+    "dense_scale_width": 128,  # decode width for the whole-clip dense scan
+    "min_black_freeze_s": 3.0,  # mid-clip continuous black/freeze threshold
+    "black_freeze_head_tail_exempt_s": 1.5,  # head/tail black-run exemption
 }
 
 
@@ -252,6 +257,7 @@ def _measure_slideshow(
     cut_ratio = max(0.0, min(1.0, cut_count / max(total, 1)))
     measured["cut_ratio"] = round(cut_ratio, 4)
     from hevi.layer4_legacy.review.oskill_impl.slideshow_risk import CUT_RATIO_ANOMALY_FLOOR
+
     # Only flag as anomaly when high cut ratio coincides with near-zero motion.
     # Normal videos with frequent cuts (high deltas) are NOT anomalous.
     mean_delta = (sum(deltas) / len(deltas)) if deltas else 0.0
@@ -268,6 +274,7 @@ def _measure_slideshow(
         thresholds=cfg.get("slideshow") or None,
     )
     import dataclasses as _dc
+
     risk = _dc.replace(risk, is_cut_anomaly=is_cut_anomaly)
     if is_cut_anomaly:
         # Cut-anomaly (≈100% cuts) means the clip is visually broken — no motion
@@ -419,6 +426,22 @@ def review_finished_video_workflow(
     }
     if broken:
         violations.append(f"{len(broken)}/{len(checks)} 帧不可解码(破图)")
+    # Black / freeze on the spot frames: exempt a leading/trailing black or
+    # title card (a fade-in/out or hold at the head/tail is normal); only a
+    # mid-clip black spot is a defect.
+    _exempt_s = float(cfg.get("black_freeze_head_tail_exempt_s", 1.5))
+    _dur_s = float(info.duration_s or 0.0)
+
+    def _mid_clip(c: dict[str, Any]) -> bool:
+        t = float(c.get("timestamp_s") or 0.0)
+        if t <= _exempt_s:
+            return False
+        if _dur_s and t >= _dur_s - _exempt_s:
+            return False
+        return True
+
+    black = [c for c in black if _mid_clip(c)]
+    flat = [c for c in flat if _mid_clip(c)]
     if black:
         violations.append(f"{len(black)}/{len(checks)} 帧为黑帧")
     if flat and len(flat) == len(checks) and checks:
@@ -437,9 +460,7 @@ def review_finished_video_workflow(
             f"{blocky[0].get('blockiness', 0):.1f})"
         )
     if color_anomaly:
-        violations.append(
-            f"{len(color_anomaly)}/{len(checks)} 帧色度异常(疑似绿屏/纯色/半屏块)"
-        )
+        violations.append(f"{len(color_anomaly)}/{len(checks)} 帧色度异常(疑似绿屏/纯色/半屏块)")
 
     # ---- audio -----------------------------------------------------------
     audio_metrics: dict[str, Any] = {"has_audio": info.has_audio}
@@ -468,7 +489,13 @@ def review_finished_video_workflow(
                 f"音频频谱平坦度 {flatness:.3f} 超过上限 {cfg['spectral_flatness_threshold']} "
                 "(疑似持续宽带白噪声)"
             )
-        # Clipping: samples at full-scale (≥0.999 amplitude).
+        # Clipping: samples at full-scale (≥0.999 amplitude).  The ratio is the
+        # primary signal (a real overdriven passage clips thousands of samples
+        # in a row); the longest continuous clipped run is a secondary rule that
+        # catches sustained clipping even when the ratio is diluted by a long
+        # clip.  Measured basis (OMQUALITY_DONE.md r5): the worst normal clip
+        # (hf_v8-chalkboard) has ratio 0.051% and a 0.3 ms run, the bad clip
+        # 0.769% — so 0.2% / 50 ms sit ~4x / >100x clear of normal.
         try:
             clip_ratio = clipped_sample_ratio(path=src)
         except MediaError:
@@ -476,10 +503,17 @@ def review_finished_video_workflow(
         audio_metrics["clipped_sample_ratio"] = clip_ratio
         if clip_ratio is None:
             unmeasured.append("clipped_sample_ratio")
-        elif clip_ratio > float(cfg.get("max_clipped_sample_ratio", 0.001)):
-            violations.append(
-                f"削波样本占比 {clip_ratio:.4%} 超过上限 {cfg['max_clipped_sample_ratio']:.4%}"
-            )
+        try:
+            clip_run = longest_clipped_run_s(path=src)
+        except MediaError:
+            clip_run = None
+        audio_metrics["longest_clipped_run_s"] = clip_run
+        clip_ratio_floor = float(cfg.get("max_clipped_sample_ratio", 0.002))
+        clip_run_floor = float(cfg.get("max_clipped_run_s", 0.05))
+        if clip_ratio is not None and clip_ratio > clip_ratio_floor:
+            violations.append(f"削波样本占比 {clip_ratio:.4%} 超过上限 {clip_ratio_floor:.4%}")
+        elif clip_run is not None and clip_run > clip_run_floor:
+            violations.append(f"连续削波段 {clip_run:.3f}s 超过上限 {clip_run_floor:.3f}s")
         # Transient clicks: abrupt amplitude jumps > 0.5 in 10ms windows.
         try:
             clicks = transient_click_count(path=src)
@@ -546,7 +580,11 @@ def review_finished_video_workflow(
     dense_dir = out / "dense_frames"
     try:
         dense = dense_sample_frames(
-            path=src, out_dir=dense_dir, fps=2.0, scale_width=128, max_frames=48
+            path=src,
+            out_dir=dense_dir,
+            fps=2.0,
+            scale_width=int(cfg.get("dense_scale_width", 128)),
+            max_frames=0,  # whole clip — never truncate to the first N seconds
         )
     except MediaError as exc:
         warnings.append(f"幻灯片抽帧失败: {exc}")
@@ -571,54 +609,108 @@ def review_finished_video_workflow(
             % (float(risk.get("risk") or 0.0), "; ".join(risk.get("reasons") or []))
         )
 
-    # ---- local defect scan (dense frames) --------------------------------
-    # Sample at 2 fps and run frame_stats on every dense frame.  A defect
-    # lasting >= 0.5s (i.e. >= 2 consecutive dense frames) is a violation.
-    # This catches short local glitches/colour floods that the 4-point spot
-    # check can miss because its sample times are evenly spaced.
+    # ---- local defect scan (dense frames, whole clip) --------------------
+    # Decode the whole runtime at 2 fps and run frame_stats on every frame, so a
+    # local glitch/colour block anywhere (not just the first 24 s) is seen.  A
+    # run of >= 2 consecutive 2 fps frames (>= 0.5 s) is a corruption violation.
+    #
+    # Black / freeze is deliberately NOT part of this 0.5 s rule: a dip-to-black
+    # transition or a title hold is normal, so it uses a separate, longer rule
+    # (mid-clip continuous black/freeze >= min_black_freeze_s, head/tail exempt).
+    #
+    # is_blocky is deliberately excluded here: at the small dense-scan width the
+    # blockiness ratio is dominated by scaling artefacts (a normal chalkboard
+    # clip reaches 4.45), so macroblocks are only judged on the full-resolution
+    # 4-point spot frames above.
+    CORRUPTION_KEYS = ("is_noise", "is_color_anomaly", "is_region_flat")
+    BLACKFREEZE_KEYS = ("is_black", "is_flat")
     dense_defect_hits: list[dict[str, Any]] = []
+    blackfreeze_hits: list[dict[str, Any]] = []
     if dense:
         dense_checks: list[dict[str, Any]] = []
         for i, df in enumerate(dense):
             try:
-                dc = frame_stats(path=df, index=i, timestamp_s=0.0).to_dict()
+                # timestamp is encoded in the filename as "..._<sec>s.png"
+                ts = float(Path(df).stem.rsplit("_", 1)[-1])
+            except ValueError, IndexError:
+                ts = i / 2.0
+            try:
+                dc = frame_stats(path=df, index=i, timestamp_s=ts).to_dict()
             except Exception:
                 dc = {}
             dense_checks.append(dc)
-        defect_flags = [(i, c) for i, c in enumerate(dense_checks) if c.get("is_noise") or c.get("is_blocky") or c.get("is_black") or c.get("is_flat") or c.get("is_color_anomaly") or c.get("is_region_flat")]
-        if len(defect_flags) >= 2:
-            # Check for consecutive runs (>= 2 consecutive frames at 2fps = 0.5s)
-            run_start = None
-            run_len = 0
-            max_run = 0
-            max_run_flags: list[str] = []
-            prev_idx = -99
-            for idx, dc in defect_flags:
-                flags = tuple(k for k in ("is_noise", "is_blocky", "is_black", "is_flat", "is_color_anomaly", "is_region_flat") if dc.get(k))
-                if idx - prev_idx <= 1:
-                    run_len += 1
-                    if flags not in max_run_flags:
-                        max_run_flags.append(flags)
-                else:
-                    if run_len > max_run:
-                        max_run = run_len
-                        max_run_flags = [flags]
-                    run_start = idx
-                    run_len = 1
-                prev_idx = idx
-            if run_len > max_run:
-                max_run = run_len
-                max_run_flags = [flags]
-            if max_run >= 2:
-                defect_desc = " + ".join(" + ".join(f) for f in max_run_flags)
-                violations.append(
-                    f"局部坏段 ≥{max_run} 连续帧(≈{max_run * 0.5:.1f}s, {defect_desc})"
+
+        def _runs(keys: tuple[str, ...]) -> list[tuple[int, int, tuple[str, ...]]]:
+            """Contiguous index runs where any of ``keys`` is set -> (start, len, flags)."""
+            found: list[tuple[int, int, tuple[str, ...]]] = []
+            cur = 0
+            start = 0
+            flags: tuple[str, ...] = ()
+            for i, c in enumerate(dense_checks):
+                on = any(c.get(k) for k in keys)
+                if on:
+                    if cur == 0:
+                        start = i
+                    cur += 1
+                    flags = tuple(k for k in keys if c.get(k))
+                elif cur:
+                    found.append((start, cur, flags))
+                    cur = 0
+            if cur:
+                found.append((start, cur, flags))
+            return found
+
+        corruption_runs = _runs(CORRUPTION_KEYS)
+        corrupt_frames = sum(1 for c in dense_checks if any(c.get(k) for k in CORRUPTION_KEYS))
+        for start, run_len, flags in corruption_runs:
+            if run_len >= 2:
+                t0 = float(dense_checks[start].get("timestamp_s") or 0.0)
+                dense_defect_hits.append(
+                    {"start_s": round(t0, 2), "run_len": run_len, "flags": list(flags)}
                 )
-                dense_defect_hits.append({"run_len": max_run, "flags": max_run_flags})
+        if dense_defect_hits:
+            worst = max(dense_defect_hits, key=lambda h: h["run_len"])
+            desc = " + ".join(worst["flags"])
+            violations.append(
+                f"局部坏段 ≥{worst['run_len']} 连续帧(≈{worst['run_len'] * 0.5:.1f}s @ "
+                f"{worst['start_s']}s, {desc})"
+            )
+
+        # Black / freeze: mid-clip continuous run >= min_black_freeze_s, with
+        # head/tail exemption (a leading/trailing black or title card is normal).
+        min_bf_s = float(cfg.get("min_black_freeze_s", 3.0))
+        min_bf_frames = max(2, int(round(min_bf_s * 2.0)))
+        duration_s = float(info.duration_s or 0.0)
+        exempt_s = float(cfg.get("black_freeze_head_tail_exempt_s", 1.5))
+        for start, run_len, flags in _runs(BLACKFREEZE_KEYS):
+            if run_len < min_bf_frames:
+                continue
+            t0 = float(dense_checks[start].get("timestamp_s") or 0.0)
+            t1 = t0 + run_len * 0.5
+            # exempt when the run hugs the head or the tail of the clip
+            if t0 <= exempt_s or (duration_s and t1 >= duration_s - exempt_s):
+                continue
+            blackfreeze_hits.append(
+                {
+                    "start_s": round(t0, 2),
+                    "end_s": round(t1, 2),
+                    "run_len": run_len,
+                    "flags": list(flags),
+                }
+            )
+        if blackfreeze_hits:
+            worst = max(blackfreeze_hits, key=lambda h: h["run_len"])
+            desc = " + ".join(worst["flags"])
+            violations.append(
+                f"片中连续黑场/静帧 {worst['run_len'] * 0.5:.1f}s @ {worst['start_s']}-"
+                f"{worst['end_s']}s ({desc}, ≥{min_bf_s:.0f}s 门槛)"
+            )
+
         metrics["local_defect_scan"] = {
             "dense_frame_count": len(dense_checks),
-            "defect_frame_count": len(defect_flags),
+            "defect_frame_count": corrupt_frames,
             "defect_hits": dense_defect_hits,
+            "black_freeze_hits": blackfreeze_hits,
         }
 
     # ---- promise reconciliation -------------------------------------------

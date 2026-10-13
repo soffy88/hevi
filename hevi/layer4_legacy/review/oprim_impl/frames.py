@@ -27,12 +27,35 @@ FLAT_STDEV_LUMA = 3.0
 NOISE_LOCAL_DIFF_FLOOR = 30.0  # local_diff above this suggests noise
 #: Blockiness: ratio of 16px/8px grid boundary-pair diff to interior diff.
 #: Real macroblock artefacts produce a ratio ≫ 1; clean frames are near 1.
-BLOCKY_RATIO_FLOOR = 1.8
+#:
+#: Basis (measured, see OMQUALITY_DONE.md r5): on 4-point full-resolution
+#: samples the worst normal clip peaks at 1.449 (hf_v6-cinematic) while the
+#: mildest bad clip (libx264 -qp 51) starts at 1.828 — a 1.70 floor leaves
+#: ~0.25 margin below and ~0.13 above, wider than the previous 1.8 (0.03).
+#: Blockiness is only evaluated on full-resolution spot frames: at the small
+#: dense-scan width it is dominated by scaling artefacts (a normal chalkboard
+#: clip reaches 4.45), so it must not gate the whole-clip scan.
+BLOCKY_RATIO_FLOOR = 1.70
 #: Kept for backwards-compatibility with imports/tests; no longer used by
 #: frame_stats (the ratio-based detector supersedes the absolute threshold).
 BLOCKINESS_FLOOR = 40.0
-EDGE_DENSITY_FLOOR = 0.50      # fraction of strong edges (noise has ~1.0)
-MIN_SPATIAL_VARIATION = 5.0    # minimum stdev for non-flat frame
+EDGE_DENSITY_FLOOR = 0.50  # fraction of strong edges (noise has ~1.0)
+MIN_SPATIAL_VARIATION = 5.0  # minimum stdev for non-flat frame
+
+#: Region-flat detection (fine-grained, non-quadrant-aligned colour blocks).
+#: A solid-colour corruption block makes every *line* (row or column) inside it
+#: near-uniform.  ``REGION_UNIFORM_STDEV`` is the per-line luma stdev below
+#: which a line counts as uniform; ``REGION_MIN_FRAC`` is the minimum share of
+#: the frame the contiguous uniform run must cover; ``REGION_MIN_STEP`` is the
+#: minimum luma difference between the run and its immediate neighbours.
+#:
+#: Basis (measured): a real half-screen / third-screen grey bar has per-line
+#: stdev ≈ 0.02–0.03 and a boundary step of 27–59 luma, while normal "flat"
+#: backgrounds (chalkboard/title cards) keep per-line stdev ≈ 1.8–2.5 and a
+#: step of 0.1–2 — so 1.0 / 0.15 / 20 separates them with >2x margin.
+REGION_UNIFORM_STDEV = 1.0
+REGION_MIN_FRAC = 0.15
+REGION_MIN_STEP = 20.0
 
 #: Hash geometry for average-hash.
 HASH_SIZE = 8
@@ -75,13 +98,21 @@ def dense_sample_frames(
     out_dir: str | Path,
     fps: float = 2.0,
     scale_width: int = 128,
-    max_frames: int = 48,
+    max_frames: int = 0,
+    flags: str = "neighbor",
 ) -> list[Path]:
-    """Decode frames at ``fps`` (capped by ``max_frames``) for slideshow risk.
+    """Decode frames at ``fps`` over the WHOLE clip for dense defect scanning.
 
-    Unlike ``sample_frames`` (a few spot checks for black/broken), this samples
-    densely enough that intra-segment stills and inter-segment cuts both get
-    seen by the slideshow detector.  Returns a deterministic ordered list.
+    Unlike ``sample_frames`` (a few spot checks for black/broken), this decodes
+    the entire runtime so an intra-segment still, a local glitch, or a
+    non-quadrant colour block anywhere in the clip is seen.  ``max_frames`` is a
+    safety cap only; the default ``0`` means "no cap" so the scan never silently
+    truncates a long clip to its first N seconds (the r5 defect: ``-frames:v 48``
+    at 2 fps covered only the first 24 s).
+
+    ``flags`` defaults to ``neighbor``: nearest-neighbour downscaling keeps the
+    per-pixel high-frequency energy that ``bicubic`` averages away, so a noise
+    glitch stays detectable even at a small decode width.
     """
     import math
 
@@ -96,9 +127,10 @@ def dense_sample_frames(
         for old in out.glob("d_*.png"):
             old.unlink()
     out.mkdir(parents=True, exist_ok=True)
-    n = max(2, min(int(max_frames), max(2, int(math.ceil(info.duration_s * fps)))))
+    wanted = max(2, int(math.ceil(info.duration_s * fps)))
+    n = wanted if int(max_frames) <= 0 else min(int(max_frames), wanted)
     pattern = out / f"d_%0{max(4, len(str(n)))}d.png"
-    vf = f"scale={int(scale_width)}:-2,fps={fps}"
+    vf = f"scale={int(scale_width)}:-2:flags={flags},fps={fps}"
     run_ffmpeg(
         ["-y", "-i", str(src), "-vf", vf, "-vsync", "0", "-frames:v", str(n), str(pattern)],
         timeout_s=600.0,
@@ -155,6 +187,7 @@ def frame_stats(
     is_color_anomaly = False
     try:
         from PIL import Image as _Image
+
         with _Image.open(dest) as _im:
             _rgb = _im.convert("RGB")
             _r, _g, _b = _rgb.split()
@@ -164,44 +197,11 @@ def frame_stats(
             # Green-screen: G dominates with R/B near zero and frame is flat.
             if _r_mean < 30 and _b_mean < 30 and _g_mean > 50 and is_flat:
                 is_color_anomaly = True
-                notes.append(f"color anomaly: green screen (R={_r_mean:.0f}, G={_g_mean:.0f}, B={_b_mean:.0f})")
-    except (OSError, ValueError):
+                notes.append(
+                    f"color anomaly: green screen (R={_r_mean:.0f}, G={_g_mean:.0f}, B={_b_mean:.0f})"
+                )
+    except OSError, ValueError:
         pass
-
-    # Region-based flatness: split into a 2x2 grid; any quadrant that is
-    # near-zero-stdev while the rest differs by > 20 luma units is a
-    # half-screen / bottom-block artefact (bad5 style corruption).
-    is_region_flat = False
-    if not is_flat:
-        try:
-            from PIL import Image as _Image2
-            with _Image.open(dest) as _im:
-                _grey = _im.convert("L")
-                _w, _h = _grey.size
-                _quad_means: list[float] = []
-                _quad_stdevs: list[float] = []
-                for _ny in range(2):
-                    for _nx in range(2):
-                        _x1 = _nx * _w // 2
-                        _x2 = (_nx + 1) * _w // 2
-                        _y1 = _ny * _h // 2
-                        _y2 = (_ny + 1) * _h // 2
-                        _q = _grey.crop((_x1, _y1, _x2, _y2))
-                        _s = ImageStat.Stat(_q)
-                        _quad_means.append(float(_s.mean[0]))
-                        _quad_stdevs.append(float(_s.stddev[0]))
-                flat_quads = [i for i, s in enumerate(_quad_stdevs) if s < flat_stdev_luma]
-                if flat_quads:
-                    flat_mean = _quad_means[flat_quads[0]]
-                    for i, qm in enumerate(_quad_means):
-                        if i not in flat_quads and abs(qm - flat_mean) > 20.0:
-                            is_region_flat = True
-                            notes.append(
-                                f"region flat: quadrant(s) {flat_quads} stdev<{flat_stdev_luma:.1f} vs rest diff>{20.0:.0f}"
-                            )
-                            break
-        except (OSError, ValueError):
-            pass
 
     # --- spatial quality: detect noise / macroblock / screen corruption ---
     import numpy as np
@@ -209,8 +209,8 @@ def frame_stats(
     arr = np.asarray(grey, dtype=np.float64)
     h, w = arr.shape
     # Gradient magnitudes (mean absolute first difference along each axis)
-    gx = np.abs(arr[:, 1:] - arr[:, :-1])          # (h, w-1)
-    gy = np.abs(arr[1:, :] - arr[:-1, :])          # (h-1, w)
+    gx = np.abs(arr[:, 1:] - arr[:, :-1])  # (h, w-1)
+    gy = np.abs(arr[1:, :] - arr[:-1, :])  # (h-1, w)
     gx_mean = float(gx.mean())
     gy_mean = float(gy.mean())
     # Edge density: fraction of pixels with strong local gradient (>15/255)
@@ -224,13 +224,10 @@ def frame_stats(
             if dx == 0 and dy == 0:
                 continue
             local_diffs.append(
-                float(
-                    np.abs(
-                        padded[1 + dy : h + 1 + dy, 1 + dx : w + 1 + dx] - arr
-                    ).mean()
-                )
+                float(np.abs(padded[1 + dy : h + 1 + dy, 1 + dx : w + 1 + dx] - arr).mean())
             )
     local_diff = sum(local_diffs) / float(len(local_diffs))
+
     # Blockiness: ratio of boundary-pair diff to interior diff at 16px and 8px grids.
     # A value ≫ 1 indicates periodic quantisation boundaries (real macroblock artefacts);
     # values near 1 indicate ordinary image content regardless of texture density.
@@ -268,11 +265,64 @@ def frame_stats(
     is_blocky = bool(blockiness >= BLOCKY_RATIO_FLOOR)
 
     # Noise: high local-diff AND high edge density together.
-    is_noise = bool(local_diff > NOISE_LOCAL_DIFF_FLOOR and (edge_h + edge_v) / 2.0 > EDGE_DENSITY_FLOOR)
+    is_noise = bool(
+        local_diff > NOISE_LOCAL_DIFF_FLOOR and (edge_h + edge_v) / 2.0 > EDGE_DENSITY_FLOOR
+    )
     if is_noise:
-        notes.append(f"noise-like frame (local_diff {local_diff:.1f} > {NOISE_LOCAL_DIFF_FLOOR:.0f}, edge_density {(edge_h + edge_v) / 2.0:.2f})")
+        notes.append(
+            f"noise-like frame (local_diff {local_diff:.1f} > {NOISE_LOCAL_DIFF_FLOOR:.0f}, edge_density {(edge_h + edge_v) / 2.0:.2f})"
+        )
     if is_blocky:
-        notes.append(f"blocky frame (boundary/interior ratio {blockiness:.2f} ≥ {BLOCKY_RATIO_FLOOR:.1f})")
+        notes.append(
+            f"blocky frame (boundary/interior ratio {blockiness:.2f} ≥ {BLOCKY_RATIO_FLOOR:.1f})"
+        )
+
+    # Region-based flatness: a contiguous solid-colour corruption block (grey
+    # bar, colour flood) makes every *line* (row or column) inside it uniform,
+    # and its luma steps sharply away from the neighbouring content.  Scanning
+    # whole rows/columns — not a 2x2 quadrant grid — catches non-quadrant-aligned
+    # blocks (e.g. a right-third-width bar) while a normal large flat background
+    # (title card, chalkboard) is rejected because its lines keep real texture
+    # (per-line stdev ≫ REGION_UNIFORM_STDEV) and no colour step.
+    is_region_flat = False
+    if not is_flat:
+        for _axis, _name in ((0, "row"), (1, "col")):
+            _red = 1 if _axis == 0 else 0
+            _line_std = arr.std(axis=_red)
+            _line_mean = arr.mean(axis=_red)
+            _n = int(_line_std.size)
+            _flat = _line_std < REGION_UNIFORM_STDEV
+            _best = _cur = _bs = _cs = 0
+            for _i, _f in enumerate(_flat):
+                if _f:
+                    if _cur == 0:
+                        _cs = _i
+                    _cur += 1
+                    if _cur > _best:
+                        _best, _bs = _cur, _cs
+                else:
+                    _cur = 0
+            if _best == 0:
+                continue
+            _frac = _best / _n
+            if _frac < REGION_MIN_FRAC:
+                continue
+            _k = 3
+            _pre = _line_mean[max(0, _bs - _k) : _bs]
+            _post = _line_mean[_bs + _best : _bs + _best + _k]
+            _run_mean = float(_line_mean[_bs : _bs + _best].mean())
+            _step = max(
+                abs(_run_mean - float(_pre.mean())) if _pre.size else 0.0,
+                abs(_run_mean - float(_post.mean())) if _post.size else 0.0,
+            )
+            if _step >= REGION_MIN_STEP:
+                is_region_flat = True
+                notes.append(
+                    f"region flat: {_name} run {_best}/{_n} ({_frac:.0%}) uniform "
+                    f"(per-line stdev<{REGION_UNIFORM_STDEV:.1f}), step {_step:.0f} luma"
+                )
+                break
+
     return FrameCheck(
         index=index,
         timestamp_s=round(float(timestamp_s), 3),
@@ -417,7 +467,11 @@ __all__ = [
     "MIN_SPATIAL_VARIATION",
     "FLAT_STDEV_LUMA",
     "HASH_SIZE",
+    "REGION_UNIFORM_STDEV",
+    "REGION_MIN_FRAC",
+    "REGION_MIN_STEP",
     "build_contact_sheet",
+    "dense_sample_frames",
     "frame_phash",
     "frame_stats",
     "hamming_distance",

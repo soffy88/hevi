@@ -129,7 +129,6 @@ def audio_duration_s(*, path: str | Path) -> float | None:
         return None
 
 
-
 def spectral_flatness(
     *,
     path: str | Path,
@@ -258,6 +257,66 @@ def clipped_sample_ratio(
     return round(count / len(samples), 6)
 
 
+def longest_clipped_run_s(
+    *,
+    path: str | Path,
+    threshold: float = 0.999,
+    sample_rate: int = 44100,
+) -> float | None:
+    """Longest continuous run of clipped samples, in seconds.
+
+    A brief peak that grazes full scale (a loud transient) clips only a
+    handful of samples; a real overdriven/limiter-pumping passage clips
+    thousands in a row.  Measuring the *continuous run* separates the two far
+    better than a raw ratio (which a long clip with sparse peaks can inflate).
+    Returns None when the file has no audio stream.
+    """
+    import numpy as np
+
+    dest = Path(path)
+    info = probe_media(dest)
+    if not info.has_audio:
+        return None
+    proc = subprocess.run(
+        [
+            FFMPEG,
+            "-nostats",
+            "-hide_banner",
+            "-i",
+            str(dest),
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "-ac",
+            "1",
+            "-ar",
+            str(int(sample_rate)),
+            "-",
+        ],
+        capture_output=True,
+        text=False,
+        timeout=1800,
+        check=False,
+    )
+    if proc.returncode != 0 or not proc.stdout:
+        return None
+    samples = np.frombuffer(proc.stdout, dtype=np.float32)
+    if samples.size == 0:
+        return None
+    clipped = np.abs(samples) >= threshold
+    if not clipped.any():
+        return 0.0
+    # Longest run of consecutive True via run-length on the index gaps.
+    idx = np.flatnonzero(clipped)
+    # boundaries where the clipped index jumps by more than 1
+    breaks = np.flatnonzero(np.diff(idx) > 1)
+    starts = np.concatenate(([0], breaks + 1))
+    ends = np.concatenate((breaks, [idx.size - 1]))
+    longest = int((idx[ends] - idx[starts] + 1).max())
+    return round(longest / float(sample_rate), 4)
+
+
 def transient_click_count(
     *,
     path: str | Path,
@@ -307,4 +366,13 @@ def transient_click_count(
     return int(np.sum(diffs > jump_threshold))
 
 
-__all__ = ["audio_duration_s", "loudness_lufs", "silence_ratio", "spectral_flatness", "silence_windows", "clipped_sample_ratio", "transient_click_count"]
+__all__ = [
+    "audio_duration_s",
+    "loudness_lufs",
+    "silence_ratio",
+    "spectral_flatness",
+    "silence_windows",
+    "clipped_sample_ratio",
+    "longest_clipped_run_s",
+    "transient_click_count",
+]
