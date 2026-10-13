@@ -500,26 +500,7 @@ def _render_one(template, out_dir: Path) -> dict:
 
         info = ffprobe(mp4)
         diff = frame_diff_mean(mp4)
-        record.update(extra)
-        record.update(
-            {
-                "status": "ok",
-                "duration_s": round(info["duration_s"], 4),
-                "width": info["width"],
-                "height": info["height"],
-                "fps": info["fps"],
-                "has_audio": info["has_audio"],
-                "frame_diff_mean": round(diff, 6) if diff is not None else None,
-                "frame_diff_norm": round(diff / 255.0, 8) if diff is not None else None,
-                "mp4_bytes": mp4.stat().st_size,
-                "mp4_sha256": _sha256(mp4),
-                "thumbnail_bytes": jpg.stat().st_size,
-                "thumbnail_sha256": _sha256(jpg),
-                "mp4_path": f"output/fx_previews/{slug}.mp4",
-                "thumbnail_path": f"output/fx_previews/{slug}.jpg",
-                "elapsed_s": round(time.monotonic() - t0, 2),
-            }
-        )
+
         # Hard validation: duration within tolerance, resolution, fps, non-static
         problems = []
         if abs(info["duration_s"] - DURATION_S) > 0.1:
@@ -532,9 +513,39 @@ def _render_one(template, out_dir: Path) -> dict:
             problems.append("frame difference unmeasurable")
         elif diff <= DIFF_MIN:
             problems.append(f"static-looking preview (mean diff {diff:.4f} <= {DIFF_MIN})")
+
         if problems:
+            # A preview that fails validation is a failure, not a success: drop
+            # the artifacts so the API 404s instead of serving a bad clip, and
+            # record no path/hash so the index never advertises one. Same policy
+            # as the except branch below.
             record["status"] = "failed"
             record["error"] = "; ".join(problems)
+            record["elapsed_s"] = round(time.monotonic() - t0, 2)
+            for p in (mp4, jpg):
+                if p.exists():
+                    p.unlink()
+        else:
+            record.update(extra)
+            record.update(
+                {
+                    "status": "ok",
+                    "duration_s": round(info["duration_s"], 4),
+                    "width": info["width"],
+                    "height": info["height"],
+                    "fps": info["fps"],
+                    "has_audio": info["has_audio"],
+                    "frame_diff_mean": round(diff, 6) if diff is not None else None,
+                    "frame_diff_norm": round(diff / 255.0, 8) if diff is not None else None,
+                    "mp4_bytes": mp4.stat().st_size,
+                    "mp4_sha256": _sha256(mp4),
+                    "thumbnail_bytes": jpg.stat().st_size,
+                    "thumbnail_sha256": _sha256(jpg),
+                    "mp4_path": f"output/fx_previews/{slug}.mp4",
+                    "thumbnail_path": f"output/fx_previews/{slug}.jpg",
+                    "elapsed_s": round(time.monotonic() - t0, 2),
+                }
+            )
     except Exception as exc:  # noqa: BLE001 — record, never crash the batch
         record["status"] = "failed"
         record["error"] = f"{type(exc).__name__}: {exc}"
