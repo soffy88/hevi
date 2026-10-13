@@ -13,6 +13,7 @@ background color sampled from the frame corners.  Asserts:
 
 Real ffmpeg runs — no mock, real outputs asserted.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,20 +37,31 @@ SAMPLE_H = 1080
 SAMPLE_DUR = 4.0
 
 
-def _make_test_video(path: Path, *, w: int = SAMPLE_W, h: int = SAMPLE_H,
-                     dur: float = SAMPLE_DUR) -> Path:
+def _make_test_video(
+    path: Path, *, w: int = SAMPLE_W, h: int = SAMPLE_H, dur: float = SAMPLE_DUR
+) -> Path:
     """Generate a real test video with testsrc2 + gradient."""
     cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", (f"testsrc2=size={w}x{h}:rate=30:duration={dur}"),
-        "-f", "lavfi",
-        "-i", (f"gradients=s={w}x{h}:c0=0x000000:c1=0xffffff:"
-               f"speed=0.01:duration={dur}"),
+        "ffmpeg",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        (f"testsrc2=size={w}x{h}:rate=30:duration={dur}"),
+        "-f",
+        "lavfi",
+        "-i",
+        (f"gradients=s={w}x{h}:c0=0x000000:c1=0xffffff:speed=0.01:duration={dur}"),
         "-filter_complex",
         "[0:v][1:v]blend=all_mode=screen,format=yuv420p",
-        "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
-        "-t", str(dur),
+        "-c:v",
+        "libx264",
+        "-crf",
+        "18",
+        "-preset",
+        "ultrafast",
+        "-t",
+        str(dur),
         str(path),
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -66,8 +78,14 @@ def test_video(tmp_path_factory) -> Path:
 def _extract_mid_frame(video: Path, out_png: Path) -> Path:
     """Extract a middle frame from a video as PNG."""
     cmd = [
-        "ffmpeg", "-y", "-i", str(video),
-        "-ss", "1.0", "-frames:v", "1",
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(video),
+        "-ss",
+        "1.0",
+        "-frames:v",
+        "1",
         str(out_png),
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -75,43 +93,69 @@ def _extract_mid_frame(video: Path, out_png: Path) -> Path:
     return out_png
 
 
-def _find_foreground_bbox(png_path: Path, diff_threshold: float = 50.0) -> tuple[int, int, int, int]:
-    """Find foreground bounding box by edge detection.
+def _find_foreground_bbox(
+    png_path: Path, diff_threshold: float = 50.0
+) -> tuple[int, int, int, int]:
+    """Find the foreground (16:9 video) bounding box in a 9:16 reframe.
+
+    The reframe lays the full 16:9 source (sharp, detailed, many horizontal
+    edges) over a background that is either a solid colour field or a heavily
+    blurred cover.  So we measure *per-row horizontal-edge energy*: rows that
+    belong to the foreground carry far more left-right pixel-to-pixel change
+    than the smooth background.  This is robust to the tmix smear and the
+    off-centre placement that defeated the earlier vertical-gradient grouping.
 
     Returns (x_left, y_top, x_right, y_bottom).
     """
     img = Image.open(png_path)
-    arr = np.array(img)
+    arr = np.array(img).astype(float)
 
-    # Use edge detection to find video content boundaries
-    # The video content has sharp edges; the background is smooth/solid
     gray = arr.mean(axis=2)
-    grad_y = np.abs(np.diff(gray.astype(float), axis=0))
-    avg_grad = grad_y.mean(axis=1)
-    high_grad = avg_grad > 5
-
-    rows = np.where(high_grad)[0]
-    if len(rows) == 0:
+    # Vertical gradient summed across each row: the foreground's top and
+    # bottom edges are the strongest horizontal boundaries in the frame
+    # (background is blurred/solid above and below the 16:9 band).
+    gy = np.abs(np.diff(gray, axis=0)).sum(axis=1)
+    if gy.max() <= 0:
         raise AssertionError("No foreground edges detected in frame")
 
-    # Group contiguous rows into edge regions
-    groups: list[tuple[int, int]] = []
-    current = [rows[0]]
-    for r in rows[1:]:
-        if r == current[-1] + 1:
-            current.append(r)
-        else:
-            groups.append((current[0], current[-1]))
-            current = [r]
-    groups.append((current[0], current[-1]))
+    # Per-row horizontal detail energy (sharp 16:9 content vs smooth bg).
+    gx = np.abs(np.diff(gray, axis=1)).mean(axis=1)
 
-    # Find the largest group (the main video content region)
-    main = max(groups, key=lambda g: g[1] - g[0])
-    y_top, y_bottom = main
+    # Candidate top edges: rows whose vertical gradient is a strong peak.
+    # Try each peak as the foreground top, take the strongest later peak as
+    # the bottom, and score the band by the interior horizontal detail it
+    # encloses.  The true foreground maximises that interior detail.
+    thr = gy.max() * 0.35
+    peaks = [int(i) for i in np.where(gy >= thr)[0]]
+    if not peaks:
+        peaks = [int(np.argmax(gy))]
 
-    # Find horizontal extent by checking content columns within the region
-    region = arr[y_top:y_bottom + 1, :, :]
-    region_std = np.std(region.astype(float), axis=(0, 2))
+    # The foreground band is at least ~150px tall (a 16:9 frame scaled to
+    # >=270px wide); require a real interior so a lone edge row cannot win.
+    min_h = 150
+    best = None  # (score, y_top, y_bottom)
+    for t in peaks:
+        later = [b for b in peaks if b - t >= min_h]
+        if not later:
+            later = [b for b in peaks if b - t >= 40]
+        if not later:
+            continue
+        for b in later:
+            band = gx[t : b + 1]
+            if band.size == 0:
+                continue
+            score = float(band.mean())
+            if best is None or score > best[0]:
+                best = (score, t, b)
+    if best is None:
+        raise AssertionError("No foreground edges detected in frame")
+    _, y_top, y_bottom = best
+    if y_bottom <= y_top:
+        raise AssertionError("No foreground edges detected in frame")
+
+    # Horizontal extent: columns with real detail inside the foreground band.
+    region = arr[y_top : y_bottom + 1, :, :]
+    region_std = np.std(region, axis=(0, 2))
     content_cols = np.where(region_std > 10)[0]
     if len(content_cols) == 0:
         return 0, int(y_top), arr.shape[1] - 1, int(y_bottom)
@@ -227,7 +271,7 @@ class TestPerStyleCompositionDifference:
         y_tops = [(sid, bboxes[sid][1]) for sid in bboxes]
         # Every pair must differ by at least 80px
         for i, (s1, y1) in enumerate(y_tops):
-            for s2, y2 in y_tops[i + 1:]:
+            for s2, y2 in y_tops[i + 1 :]:
                 diff = abs(y1 - y2)
                 assert diff >= 80, (
                     f"Composition y_top too similar: {s1}({y1}) vs {s2}({y2}), |Δ|={diff}px < 80px"
