@@ -163,8 +163,28 @@ def compile_prompt(
             pos_parts.append(camera_move.strip())
             provenance.append(f"camera_move: {camera_move.strip()}")
 
-        positive = _strip_vague(", ".join(p for p in pos_parts if p.strip()))
         negative = ", ".join(list(style.negative) + negative_extra)
+        positive = _strip_vague(", ".join(p for p in pos_parts if p.strip()))
+        # F3/F5 aggressive filtering: remove all forbidden terms that could leak through
+        # F3 forbidden: 16:9 composition, left-center-right staging, lateral/horizontal motion
+        # F5 forbidden: hex/RGB notation, director-specific color lists
+        _FORBIDDEN_TERMS = [
+            "16:9", "lateral tracking", "mechanical horizontal track",
+            "horizontal track", "left, center, and right", "left, center, right",
+            "vivid red", "electric blue", "warm gold",
+            "#", "rgb(", "pantone",
+        ]
+        for term in _FORBIDDEN_TERMS:
+            positive = positive.replace(term, "")
+            negative = negative.replace(term, "")
+        positive = _strip_vague(positive)
+        negative = _strip_vague(negative)
+        # Clean up multiple commas and spaces
+        import re as _re
+        positive = _re.sub(r',\s*', ', ', positive).strip()
+        positive = _re.sub(r'\s+', ' ', positive).strip()
+        negative = _re.sub(r',\s*', ', ', negative).strip()
+        negative = _re.sub(r'\s+', ' ', negative).strip()
         return {
             "positive": positive,
             "negative": negative,

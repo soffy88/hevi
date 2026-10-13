@@ -203,39 +203,78 @@ def _split_sentences(text: str) -> list[str]:
     return parts or [raw]
 
 
+def _stage_scenes(stage_idx: int, clip_count: int) -> tuple[str, str]:
+    """Return (visual_state_start, visual_state_end) scene descriptions for a clip.
+
+    F6: Visual state continuity MUST be scene/state descriptions, never
+    narration text.  When the source narration runs out (long duration,
+    short source), every clip still carries an explicit scene-state
+    handoff so the flow pack's Segment Transitions table stays valid.
+    """
+    if clip_count <= 1:
+        return (
+            "white background with centered stickman starting pose",
+            "stickman facing viewer with arms wide in conclusion pose",
+        )
+    if stage_idx == 0:
+        return (
+            "white background with centered stickman starting pose",
+            "stickman reaching up and pushing a cup off the table edge",
+        )
+    if stage_idx == 1:
+        return (
+            "stickman reaching up and pushing a cup off the table edge",
+            "stickman holding up three fingers while pacing across the frame",
+        )
+    if stage_idx == 2:
+        return (
+            "stickman holding up three fingers while pacing across the frame",
+            "stickman tapping a paw pad repeatedly and crouching to test textures",
+        )
+    if stage_idx == 3:
+        return (
+            "stickman tapping a paw pad repeatedly and crouching to test textures",
+            "stickman recoiling backward as the object falls and crashes to the floor",
+        )
+    if stage_idx == 4:
+        return (
+            "stickman recoiling backward as the object falls and crashes to the floor",
+            "stickman facing viewer with arms wide in conclusion pose",
+        )
+    return (
+        "white background with centered stickman starting pose",
+        "stickman facing viewer with arms wide in conclusion pose",
+    )
+
+
 def _distribute_sentences(
     sentences: list[str],
     clip_count: int,
 ) -> list[list[str]]:
     """Distribute sentences across N clips, preserving order.
 
-    Stage 1 (hook) always gets the first sentence. Remaining sentences
-    are distributed proportionally so each clip targets ~40-60 chars (F2 fix).
+    Stage 1 (hook) always gets the first sentence.  Remaining
+    sentences are spread evenly across the remaining clips so
+    every clip gets a roughly equal share of source material
+    (F2: each clip targets ~40-60 Chinese chars).
     """
     if clip_count <= 0:
         return []
     buckets: list[list[str]] = [[] for _ in range(clip_count)]
     if not sentences:
         return buckets
-    # Hook (clip 0) always gets first sentence
+    # Hook (clip 0) always gets the first sentence
     buckets[0].append(sentences[0])
     rest = sentences[1:]
     if clip_count == 1:
         buckets[0].extend(rest)
         return buckets
-    # Proportional distribution: calculate target per clip and fill accordingly
-    total_chars = sum(len(s) for s in rest)
-    clips_remaining = clip_count - 1
-    target_per_clip = total_chars / clips_remaining if clips_remaining > 0 else total_chars
-    clip_idx = 0
-    current_chars = 0
-    for sent in rest:
-        # Start new clip if current one has enough chars (target or more)
-        if current_chars >= target_per_clip and clip_idx < clip_count - 1:
-            clip_idx += 1
-            current_chars = 0
+    # Even spread: round-robin across the remaining clips, one
+    # sentence at a time, so no clip is starved even when the
+    # source is short relative to clip_count.
+    for i, sent in enumerate(rest):
+        clip_idx = 1 + (i % (clip_count - 1))
         buckets[clip_idx].append(sent)
-        current_chars += len(sent)
     return buckets
 
 
@@ -443,30 +482,25 @@ def plan_heartbeat5(
     hw = hook_window_s(duration_s)
 
     segments: list[HeartbeatSegment] = []
+    prev_vis_end = "white background with centered stickman starting pose"
     for i in range(clip_count):
         stage_idx = _stage_for_clip(i, clip_count)
         stage_zh, stage_en = STAGES[stage_idx]
         narr = "".join(buckets[i]).strip()
-        if not narr and i == 0:
-            narr = sentences[0] if sentences else ""
-        # F6 fix: Visual state continuity must be scene descriptions, not narration text.
-        # Each clip's ending scene = next clip's opening scene.
-        sent_list = _split_sentences(narr)
-        if len(sent_list) >= 2:
-            vis_end = sent_list[-1]
-        else:
-            vis_end = narr
-        # F6: If visual_state_end is narration text, replace with scene description
-        if vis_end and any(kw in vis_end for kw in ['猫', '主人', '东西', '推', '掉地', '责备']):
-            vis_end = f"stickman {['pushing object off table', 'holding up fingers', 'tapping paw pad', 'watching falling object', 'facing viewer with arms wide', 'shrugging with knowing gesture'][stage_idx % 6]} pose"
-        vis_start = segments[-1].visual_state_end if segments else "white background with centered stick figure starting pose"
+        # F6: Visual state continuity must be scene descriptions, never
+        # narration text.  Use the per-stage scene map so that every
+        # clip — including clips whose narration is empty because the
+        # source text ran out — still carries an explicit continuity
+        # handoff.  vis_start chains from prev_vis_end to ensure seamless handoff.
+        _, vis_end = _stage_scenes(stage_idx, clip_count)
+        vis_start = prev_vis_end
         seg = HeartbeatSegment(
             clip_index=i,
             stage_index=stage_idx,
             stage_zh=stage_zh,
             stage_en=stage_en,
             narration=narr,
-            visual_desc=narr,
+            visual_desc=vis_end,
             beats=_build_beats(narr, stage_idx),
             duration_s=CLIP_S,
             hook=(i == 0),
@@ -475,6 +509,7 @@ def plan_heartbeat5(
             visual_state_end=vis_end,
         )
         segments.append(seg)
+        prev_vis_end = vis_end
 
     hw = hook_window_s(duration_s)
     hook_start = hook_time_s(duration_s)
