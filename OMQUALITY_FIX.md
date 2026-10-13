@@ -34,3 +34,25 @@
 
 ## 交付
 用上面同款方式（正常片叠加坏段、真实低码率编码）重做 fixture，E2E manifest 记录每条 verdict/violations；DONE 如实更新；lint 新失败 0；commit。不得复制 vendor/calesthio__OpenMontage（AGPL）代码。
+
+---
+
+# r5 独立复核（2026-10-13 06:10–06:45 UTC，HEAD d8136b4c）：不通过
+
+复核方用 OMQUALITY_r4_make_bad_clips.sh 原样（目录改 /tmp/vfy_omq_r5）现做 11 坏片，并加做长片/非象限坏片/误报候选（/tmp/vfy_omq_r5/extra、extra2；结果 /tmp/vfy_omq_r5/r5_results.json、r5_extra_results.json、r5_extra2_results.json）。用 PYTHONPATH=worktree 确认 import 的是本 worktree 的 hevi（注意：不设 PYTHONPATH 时 .venv 会 import 到 hevi-publishkit 的 hevi，自测要设）。
+
+## 已修好（确认）
+- 11 条 r4 坏片全部 red / allows_compose=False，原因正确：噪点、qp51/mpeg2 宏块(blockiness 1.83–4.21)、绿屏色度异常、局部绿闪连续坏段、下半屏 is_region_flat、黑屏静音不再报白噪声、静音段 8s、削波、瞬态 click。
+- 11 条正常片无新判据误红（base、hf_v8-chalkboard 及 whale、shorts_clip_01、scene_interview_sub、hf_product_promo、hf_v6-cinematic、nasa-earth-iss、scene_broll_720p、nasa-collins、crf30/crf32 重编码）。hf_v1-editorial 红是既有幻灯片重复度判据，不算本轮新问题。
+- cut-anomaly 已接入 verdict；频谱平坦度分窗+跳静音。
+
+## 必须修复（阻断）
+1. **局部坏段扫描只覆盖片头 24 秒**：`dense_sample_frames(fps=2.0, max_frames=48)` 用 `-frames:v 48` 截断，只解码前 24s。70s 片里 50–53s 噪点花屏（bad9_long_glitch_50s）、40–43s 纯绿闪（bad10_long_green_40s）均 **warn / allows_compose=True**（4 个抽帧点没碰上）。要求：局部缺陷扫描覆盖全片（按时长均匀分布帧或按全片 2fps 单独解码，长片可降分辨率但不能截断），任意位置 ≥0.5s 坏段都要抓到；测试里加 ≥60s 片、坏段在 40s 之后的 fixture。
+2. **区域灰块只认 2×2 象限**：右侧 1/3 宽灰条（bad11_right_third_gray，整片）**warn / True**。要求改为更细网格或列/行条带检测（例如 4×4 或按列/行统计 stdev≈0 的连续区域面积占比 ≥15–20%），象限不对齐的灰块/色块也要判红；同时验证正常片（字幕条、纯色背景标题区）不误报。
+3. **局部坏段把 is_black/is_flat 也计入且门槛 0.5s，正常转场被判红**：正常片中插入 1.5s 黑场（fp_black_1p5s，等同 dip-to-black 转场/章节黑场）→ red「局部坏段 ≥3 连续帧(≈1.5s, is_black + is_flat)」。黑场/静帧应单独门槛（如中段连续黑 ≥3s 或占比判定，片头/片尾黑场豁免），0.5s 门槛只用于噪点/宏块/绿屏/区域块这类真损坏。
+4. 测试补齐上述 3 类（ffmpeg 现场生成，真实片底，禁止 mock）；正常片测试不要依赖复核方临时文件 `/tmp/vfy_omq/base.mp4`（缺了就 skip=没测），改为测试内现做或用仓库内稳定路径。
+
+## 非阻断
+- BLOCKY_RATIO_FLOOR=1.8 与 qp51 坏片最小值 1.83 只差 0.03，正常片最大 1.45，余量偏薄；建议加多种真实素材统计后定阈值并在 DONE 写依据。
+- 削波上限 0.1%，正常片 hf_v8-chalkboard 已有 0.05%，余量 2 倍；建议改为连续削波段/每秒削波数判定。
+- 测试 bad3/bad5 fixture 用 `-an`，red 可能同时来自缺音轨；bad7/8/8b 测试未断言原因文案，应断言对应 violation。
