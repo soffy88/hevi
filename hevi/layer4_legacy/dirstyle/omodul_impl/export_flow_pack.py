@@ -45,7 +45,6 @@ class FlowPack:
     narration_lang: str
     clip_prompts: list[dict[str, Any]] = field(default_factory=list)
     overlays: list[dict[str, str]] = field(default_factory=list)
-    overlays: list[dict[str, str]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {

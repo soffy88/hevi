@@ -4,7 +4,7 @@
       "style_id": "wong_kar_wai",
       "display_zh": "王家卫",
       "display_en": "Wong Kar-wai",
-      "input_path": "/data/soffy/projects/hevi-omlines/output/om_lines_e2e.prev_0859/director_pipeline__a/director_pipeline.mp4",
+      "input_path": "output/dirstyle_e2e/source_clean.mp4",
       "output_path": "output/dirstyle_e2e/wong_kar_wai.mp4",
       "ffmpeg_cmd": [
         "ffmpeg",
@@ -51,7 +51,7 @@
       "style_id": "wes_anderson",
       "display_zh": "韦斯·安德森",
       "display_en": "Wes Anderson",
-      "input_path": "/data/soffy/projects/hevi-omlines/output/om_lines_e2e.prev_0859/director_pipeline__a/director_pipeline.mp4",
+      "input_path": "output/dirstyle_e2e/source_clean.mp4",
       "output_path": "output/dirstyle_e2e/wes_anderson.mp4",
       "ffmpeg_cmd": [
         "ffmpeg",
@@ -98,7 +98,7 @@
       "style_id": "fincher",
       "display_zh": "大卫·芬奇",
       "display_en": "David Fincher",
-      "input_path": "/data/soffy/projects/hevi-omlines/output/om_lines_e2e.prev_0859/director_pipeline__a/director_pipeline.mp4",
+      "input_path": "output/dirstyle_e2e/source_clean.mp4",
       "output_path": "output/dirstyle_e2e/fincher.mp4",
       "ffmpeg_cmd": [
         "ffmpeg",
@@ -145,7 +145,7 @@
       "style_id": "zhang_yimou",
       "display_zh": "张艺谋",
       "display_en": "Zhang Yimou",
-      "input_path": "/data/soffy/projects/hevi-omlines/output/om_lines_e2e.prev_0859/director_pipeline__a/director_pipeline.mp4",
+      "input_path": "output/dirstyle_e2e/source_clean.mp4",
       "output_path": "output/dirstyle_e2e/zhang_yimou.mp4",
       "ffmpeg_cmd": [
         "ffmpeg",
@@ -229,5 +229,16 @@
       "sha256": "d1e967bc70bae68ffa241558e8dd02a2d4d3df4a8743302554cf371d43b02600",
       "source": "PIL CPU render"
     }
-  ]
+  ],
+  "source": {
+    "path": "output/dirstyle_e2e/source_clean.mp4",
+    "kind": "generated",
+    "description": "Clean 1920x1080 12s source generated with ffmpeg testsrc2 pattern",
+    "generation_command": "ffmpeg -y -f lavfi -i \"testsrc2=size=1920x1080:rate=30:duration=12\" -c:v libx264 -crf 18 -preset fast -pix_fmt yuv420p output/dirstyle_e2e/source_clean.mp4",
+    "license": "CC0 (FFmpeg test pattern, no copyrighted content)",
+    "duration_s": 12.0,
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  }
 }
