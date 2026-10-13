@@ -1,0 +1,439 @@
+"""ShotSpec 渲染真实 ffmpeg 验收(GAP_PLAN §2 W1 step 5)。不 mock。
+
+覆盖:
+  1. ``shot_start_times`` 与 ``build_xfade_chain`` 的 offset 公式逐接缝一致;
+  2. 音效位置:成片音轨(底音静音)的 onset = 镜头起点(扣重叠)+ offset,±0.1s;
+  3. 特效:mono 镜中段帧 U/V 相对 128 偏差 < 2;warm 镜 R/B 比相对基线上升;
+  4. 转场:spec 接缝中点帧与硬切基线同刻帧 SSIM < 0.98;spec 指定 cut 的接缝为硬切
+     (与硬切基线近似);不同接缝转场形态不同;
+  5. 成片时长 = Σ时长 − Σd(±1 帧)。
+
+全部走真实 ``assemble_longvideo`` + ffmpeg/ffprobe,素材用 lavfi 合成片。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import shutil
+import subprocess
+from pathlib import Path
+
+import numpy as np
+import pytest
+from skimage.metrics import structural_similarity as compare_ssim
+
+from hevi.assembly.assembler import ShotSegment, assemble_longvideo, build_xfade_chain
+from hevi.production.shot_spec import ShotSpec
+from hevi.production.shot_spec_render import (
+    effect_filter,
+    seam_transitions,
+    shot_start_times,
+    spec_sfx_cues,
+)
+
+_HAS_FFMPEG = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
+ffmpeg_only = pytest.mark.skipif(not _HAS_FFMPEG, reason="needs ffmpeg/ffprobe")
+
+FFMPEG = shutil.which("ffmpeg")
+FFPROBE = shutil.which("ffprobe")
+
+_W, _H, _FPS = 640, 360, 30
+
+
+# ── 素材 / 渲染 / 探测辅助 ────────────────────────────────────────────
+
+
+def _make_clip(tmp_path: Path, name: str, src: str, dur: float) -> Path:
+    p = tmp_path / f"{name}.mp4"
+    subprocess.run(
+        [
+            FFMPEG,
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"{src}=s={_W}x{_H}:d={dur}:rate={_FPS}",
+            "-t",
+            str(dur),
+            "-pix_fmt",
+            "yuv420p",
+            str(p),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return p
+
+
+def _clips(tmp_path: Path, dur: float, n: int = 3) -> list[Path]:
+    # 全部用随帧变化的图案(testsrc2 家族),硬切帧比对才有区分度;
+    # 静态色条(smptehdbars)在中段帧会与硬切基线假性相似。
+    srcs = ["testsrc2", "testsrc", "yuvtestsrc", "testsrc2", "testsrc"]
+    return [_make_clip(tmp_path, f"c{i}", srcs[i % len(srcs)], dur) for i in range(n)]
+
+
+def _render(
+    clips: list[Path],
+    out: Path,
+    specs: list[ShotSpec | None] | None,
+    transition="fade",
+    xfade_d=0.5,
+) -> Path:
+    asyncio.run(
+        assemble_longvideo(
+            shots=[ShotSegment(video_path=c) for c in clips],
+            output_path=out,
+            shot_specs=specs,
+            transition=transition,
+            transition_duration=xfade_d,
+            width=_W,
+            height=_H,
+            fps=_FPS,
+            color_normalize=False,
+        )
+    )
+    return out
+
+
+def _probe_dur(path: Path) -> float:
+    return float(
+        subprocess.run(
+            [
+                FFPROBE,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=nw=1:nk=1",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+
+
+def _frame_rgb(path: Path, t: float) -> np.ndarray:
+    res = subprocess.run(
+        [
+            FFMPEG,
+            "-y",
+            "-ss",
+            f"{t:.4f}",
+            "-i",
+            str(path),
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-",
+        ],
+        capture_output=True,
+    )
+    arr = np.frombuffer(res.stdout, dtype=np.uint8)
+    assert arr.size == _W * _H * 3, f"frame at {t}: got {arr.size} bytes"
+    return arr.reshape(_H, _W, 3)
+
+
+def _frame_yuv(path: Path, t: float) -> tuple[float, float, float]:
+    res = subprocess.run(
+        [
+            FFMPEG,
+            "-y",
+            "-ss",
+            f"{t:.4f}",
+            "-i",
+            str(path),
+            "-frames:v",
+            "1",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "yuv420p",
+            "-",
+        ],
+        capture_output=True,
+    )
+    raw = np.frombuffer(res.stdout, dtype=np.uint8)
+    n = _W * _H
+    y = float(raw[:n].mean())
+    u = float(raw[n : n + n // 4].mean())
+    v = float(raw[n + n // 4 :].mean())
+    return y, u, v
+
+
+def _audio_mono(path: Path, sr: int = 44100) -> np.ndarray:
+    res = subprocess.run(
+        [FFMPEG, "-y", "-i", str(path), "-f", "f32le", "-ac", "1", "-ar", str(sr), "-"],
+        capture_output=True,
+    )
+    return np.frombuffer(res.stdout, dtype=np.float32)
+
+
+def _onsets(x: np.ndarray, sr: int = 44100, hop_s: float = 0.005) -> list[float]:
+    """短时 RMS 包络的起振点(从静音越过阈值的那一刻)。"""
+    hop = max(1, int(sr * hop_s))
+    n = len(x) // hop
+    if n == 0:
+        return []
+    env = np.array([float(np.sqrt((x[i * hop : (i + 1) * hop] ** 2).mean())) for i in range(n)])
+    peak = float(env.max())
+    if peak <= 0:
+        return []
+    thresh = max(1e-5, 0.05 * peak)
+    above = env > thresh
+    out: list[float] = []
+    for i in range(len(above)):
+        if above[i] and (i == 0 or not above[i - 1]):
+            out.append(i * hop / sr)
+    return out
+
+
+# ── 1. 起点公式与 build_xfade_chain 一致(纯函数)────────────────────
+
+
+def test_shot_start_times_matches_build_xfade_chain_offsets() -> None:
+    durations = [3.0, 3.0, 3.0, 3.0]
+    seam = ["dissolve", "cut", "whip"]
+    d = 0.5
+    fc, _, total = build_xfade_chain(durations, seam, d)
+    starts = shot_start_times(durations, d, seam)
+    # 每条非 cut 接缝的 xfade offset 就是下一镜的起点。
+    assert f"offset={starts[1]:.3f}" in fc  # seam0 dissolve
+    assert f"offset={starts[3]:.3f}" in fc  # seam2 whip (seam1 是 cut,无 xfade)
+    assert "concat=n=2:v=1:a=0" in fc  # seam1 硬切
+    # 总时长 = Σd − Σ(非 cut 接缝的 d) = 12 − 1.0
+    assert total == pytest.approx(sum(durations) - 2 * d)
+    assert starts[0] == 0.0
+
+
+def test_seam_transitions_ignores_first_shot() -> None:
+    specs = [
+        ShotSpec(transition_in="whip"),  # 第 1 镜 → 忽略
+        ShotSpec(transition_in="dissolve"),
+        None,
+    ]
+    assert seam_transitions(specs, 3, "fade") == ["dissolve", "fade"]
+    # 全 None / 全等于默认 → 回落成 str(向后兼容路径)
+    assert seam_transitions([None, None, None], 3, "fade") == "fade"
+
+
+def test_effect_filter_maps() -> None:
+    assert effect_filter(ShotSpec(effect="mono")) == "hue=s=0"
+    assert "colortemperature" in effect_filter(ShotSpec(effect="warm"))
+    assert "colortemperature" in effect_filter(ShotSpec(effect="cool"))
+    assert effect_filter(ShotSpec()) == ""
+    assert effect_filter(None) == ""
+
+
+# ── 2. 音效位置 ──────────────────────────────────────────────────────
+
+
+@ffmpeg_only
+def test_sfx_onsets_match_shot_start_plus_offset(tmp_path: Path) -> None:
+    dur, xfade_d = 2.0, 0.5
+    clips = _clips(tmp_path, dur, n=3)
+    specs: list[ShotSpec | None] = [
+        ShotSpec(effect="warm", duration=dur, sfx=[{"id": "impact_hard", "offset": 0.5}]),
+        ShotSpec(
+            transition_in="dissolve",
+            duration=dur,
+            sfx=[{"id": "ding_bell", "offset": 0.3}, {"id": "pop_dry", "offset": 1.8}],
+        ),
+        ShotSpec(
+            transition_in="whip",
+            duration=dur,
+            sfx=[{"id": "boom_short", "offset": 1.0}],
+        ),
+    ]
+    out = _render(clips, tmp_path / "sfx.mp4", specs, transition="fade", xfade_d=xfade_d)
+
+    # 期望:起点(扣重叠)+ offset。starts=[0, 1.5, 3.0]
+    seam = seam_transitions(specs, 3, "fade")
+    starts = shot_start_times([dur, dur, dur], xfade_d, seam)
+    assert starts == pytest.approx([0.0, 1.5, 3.0])
+    expected = [t for _, t in spec_sfx_cues(specs, starts)]
+    assert expected == pytest.approx([0.5, 1.8, 3.3, 4.0])
+
+    x = _audio_mono(out)
+    onsets = _onsets(x)
+    assert onsets, "no audio onsets detected (base should be silent)"
+    for t_exp in expected:
+        nearest = min(onsets, key=lambda o: abs(o - t_exp))
+        assert abs(nearest - t_exp) <= 0.1, (
+            f"sfx onset mismatch: expected {t_exp}s, nearest {nearest:.3f}s "
+            f"(all onsets={[round(o, 3) for o in onsets]})"
+        )
+
+
+def _audio_stream_count(path: Path) -> int:
+    out = subprocess.run(
+        [
+            FFPROBE,
+            "-v",
+            "error",
+            "-select_streams",
+            "a",
+            "-show_entries",
+            "stream=index",
+            "-of",
+            "csv=p=0",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return len([line for line in out.splitlines() if line])
+
+
+@ffmpeg_only
+def test_sfx_absent_without_spec(tmp_path: Path) -> None:
+    """无 spec 时不产生 spec sfx 音轨(装配器不新增音频输入)。"""
+    clips = _clips(tmp_path, 2.0, n=2)
+    out = _render(clips, tmp_path / "nospec.mp4", None)
+    assert _audio_stream_count(out) == 0, "no-spec render should have no audio track"
+
+
+@ffmpeg_only
+def test_sfx_present_with_spec(tmp_path: Path) -> None:
+    """有 spec sfx 时成片带音轨(对照组)。"""
+    clips = _clips(tmp_path, 2.0, n=2)
+    specs: list[ShotSpec | None] = [
+        ShotSpec(duration=2.0, sfx=[{"id": "ding_bell", "offset": 0.5}]),
+        ShotSpec(transition_in="dissolve", duration=2.0),
+    ]
+    out = _render(clips, tmp_path / "withspec.mp4", specs)
+    assert _audio_stream_count(out) == 1
+
+
+# ── 3. 特效 ──────────────────────────────────────────────────────────
+
+
+@ffmpeg_only
+def test_mono_effect_zero_chroma(tmp_path: Path) -> None:
+    clips = _clips(tmp_path, 2.0, n=2)
+    specs: list[ShotSpec | None] = [ShotSpec(effect="mono", duration=2.0)] * 2
+    out = _render(clips, tmp_path / "mono.mp4", specs)
+    _, u, v = _frame_yuv(out, 1.0)  # 镜0 中段
+    assert abs(u - 128) < 2, f"mono U={u:.2f} not neutral"
+    assert abs(v - 128) < 2, f"mono V={v:.2f} not neutral"
+
+
+@ffmpeg_only
+def test_warm_effect_raises_rb_ratio(tmp_path: Path) -> None:
+    clips = _clips(tmp_path, 2.0, n=2)
+    base = _render(clips, tmp_path / "base.mp4", None)
+    specs: list[ShotSpec | None] = [ShotSpec(effect="warm", duration=2.0)] * 2
+    warm = _render(clips, tmp_path / "warm.mp4", specs)
+
+    def rb(p: Path) -> float:
+        f = _frame_rgb(p, 1.0).astype(float)
+        return f[:, :, 0].mean() / max(f[:, :, 2].mean(), 1.0)
+
+    rb_base, rb_warm = rb(base), rb(warm)
+    assert rb_warm > rb_base + 0.05, f"warm R/B {rb_warm:.3f} not above baseline {rb_base:.3f}"
+
+
+# ── 4. 转场 ──────────────────────────────────────────────────────────
+
+
+def _seam_midpoints(durations, seam, d):
+    starts = shot_start_times(durations, d, seam)
+    mids = []
+    for i in range(1, len(durations)):
+        tok = seam[i - 1]
+        di = 0.0 if tok == "cut" else d
+        mids.append(starts[i] + di / 2)
+    return mids
+
+
+@ffmpeg_only
+def test_transitions_vs_hardcut(tmp_path: Path) -> None:
+    """spec 接缝(dissolve/whip)中点帧与全硬切基线同刻帧 SSIM < 0.98;两接缝形态不同。"""
+    dur, xfade_d = 2.0, 0.5
+    clips = _clips(tmp_path, dur, n=3)
+    seam = ["dissolve", "whip"]
+    specs: list[ShotSpec | None] = [
+        ShotSpec(duration=dur),  # 第 1 镜 transition_in 忽略
+        ShotSpec(transition_in="dissolve", duration=dur),
+        ShotSpec(transition_in="whip", duration=dur),
+    ]
+    spec_out = _render(clips, tmp_path / "spec.mp4", specs, transition="fade", xfade_d=xfade_d)
+    # 全硬切基线(同素材,总时长与 spec 版一致:2 条接缝,都 d=0.5 vs 都 d=0)
+    base_out = _render(clips, tmp_path / "cut.mp4", None, transition="cut", xfade_d=xfade_d)
+
+    mids = _seam_midpoints([dur] * 3, seam, xfade_d)
+    for idx in (0, 1):
+        f_spec = _frame_rgb(spec_out, mids[idx])
+        f_base = _frame_rgb(base_out, mids[idx])
+        s = compare_ssim(f_spec, f_base, channel_axis=2)
+        assert s < 0.98, f"seam{idx} midpoint SSIM {s:.3f} >= 0.98 (no visible transition)"
+
+    # 不同接缝转场形态不同(dissolve 中点 ≠ whip 中点)
+    s_diff = compare_ssim(
+        _frame_rgb(spec_out, mids[0]), _frame_rgb(spec_out, mids[1]), channel_axis=2
+    )
+    assert s_diff < 0.98, f"dissolve vs whip midpoints too similar (SSIM {s_diff:.3f})"
+
+
+@ffmpeg_only
+def test_cut_seam_is_hardcut(tmp_path: Path) -> None:
+    """spec 指定 transition_in='cut' 的接缝确为硬切:该镜以原始画面直接进入。
+
+    spec 版 seam0=fade(d=0.5)、seam1=cut(d=0),第 3 镜起点 = 2.0+2.0−0.5 = 3.5。
+    硬切不混合 → 第 3 镜起点之后的画面应等于该镜素材自身对应帧;若 cut 未生效
+    (仍走 xfade),起点会前移 0.5s 且画面是混合帧,SSIM 会明显掉。
+    """
+    dur, xfade_d = 2.0, 0.5
+    clips = _clips(tmp_path, dur, n=3)
+    specs: list[ShotSpec | None] = [
+        ShotSpec(duration=dur),
+        ShotSpec(transition_in="fade", duration=dur),
+        ShotSpec(transition_in="cut", duration=dur),
+    ]
+    out = _render(clips, tmp_path / "withcut.mp4", specs, transition="fade", xfade_d=xfade_d)
+
+    starts = shot_start_times([dur] * 3, xfade_d, seam_transitions(specs, 3, "fade"))
+    assert starts == pytest.approx([0.0, 1.5, 3.5])  # seam1 cut → 不重叠
+
+    t = dur / 2
+    f_spec = _frame_rgb(out, starts[2] + t)
+    f_clip2 = _frame_rgb(clips[2], t)
+    s = compare_ssim(f_spec, f_clip2, channel_axis=2)
+    assert s > 0.95, f"cut seam frame SSIM {s:.3f} — 第3镜未以原始画面硬切进入"
+
+
+# ── 5. 时长 ──────────────────────────────────────────────────────────
+
+
+@ffmpeg_only
+def test_duration_equals_sum_minus_overlaps(tmp_path: Path) -> None:
+    dur, xfade_d = 3.0, 0.5
+    clips = _clips(tmp_path, dur, n=4)
+    specs: list[ShotSpec | None] = [
+        ShotSpec(duration=dur),
+        ShotSpec(transition_in="dissolve", duration=dur),
+        ShotSpec(transition_in="cut", duration=dur),
+        ShotSpec(transition_in="whip", duration=dur),
+    ]
+    out = _render(clips, tmp_path / "dur.mp4", specs, transition="fade", xfade_d=xfade_d)
+    # 4×3 − (0.5 + 0 + 0.5) = 11.0
+    expected = sum([dur] * 4) - 2 * xfade_d
+    got = _probe_dur(out)
+    assert got == pytest.approx(expected, abs=1.0 / _FPS + 0.02), f"got {got}, expected {expected}"
+
+
+@ffmpeg_only
+def test_repatch_changes_output(tmp_path: Path) -> None:
+    """同素材、仅改镜0 effect(warm→mono)重渲 → 成片逐字节不同(证明 spec 生效)。"""
+    clips = _clips(tmp_path, 2.0, n=2)
+    warm: list[ShotSpec | None] = [ShotSpec(effect="warm", duration=2.0)] * 2
+    mono: list[ShotSpec | None] = [ShotSpec(effect="mono", duration=2.0)] * 2
+    o1 = _render(clips, tmp_path / "w.mp4", warm)
+    o2 = _render(clips, tmp_path / "m.mp4", mono)
+    h1 = subprocess.run(["sha256sum", str(o1)], capture_output=True, text=True).stdout
+    h2 = subprocess.run(["sha256sum", str(o2)], capture_output=True, text=True).stdout
+    assert h1 != h2
