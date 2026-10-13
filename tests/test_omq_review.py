@@ -5,10 +5,14 @@
   bad5 半屏灰块  bad6 黑屏+静音  bad7 静音段  bad8 削波  bad8b 瞬态 click
 
 外加 r5 复核要求的四类:
-  长片(>=60s) 40s 之后噪点花屏 → red
+  长片(>=60s) 40s 之后噪点花屏 → red(全片扫描, 非只扫片头)
   长片(>=60s) 40s 之后绿闪     → red
-  右侧 1/3 灰条(非象限对齐)    → red
-  正常片 + 1.5s 中段黑场       → 不 red(转场黑场豁免)
+  右侧 1/3 灰条(非象限对齐)    → red(行/列条带检测, 非 2x2 象限)
+  正常片 + 1.5s 中段黑场       → 不 red(黑场单独门槛, 转场豁免)
+  片头/片尾黑场(标题卡/淡入淡出) → 不 red(首尾豁免)
+
+黑场判红由全片密集扫描的"连续黑场/静帧 run"决定(4 点抽帧只作参考),
+因为点时间戳分不清片头黑与片中黑; 见 review_workflow.py 内注释。
 
 "正常片" 一律用仓库内已入库的真实成片
 (artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4) 现场
@@ -468,7 +472,13 @@ def _make_half_gray(out_dir: Path) -> Path:
 
 
 def _make_right_third_gray(out_dir: Path) -> Path:
-    """Right 1/3 width gray bar over a normal clip (non-quadrant-aligned)."""
+    """Right 1/3 width gray bar over a normal clip (non-quadrant-aligned).
+
+    The bar colour (light grey 0xB4B4B4) is chosen to contrast with the base's
+    middle-third luma (≈124), so the flat run steps clearly away from its
+    neighbours — a mid-grey bar would sit at the base's own luma and the
+    boundary step would collapse to noise.
+    """
     base = _make_base(out_dir, duration=5)
     d = out_dir / "bad_right_third_gray.mp4"
     _run(
@@ -482,7 +492,7 @@ def _make_right_third_gray(out_dir: Path) -> Path:
             "-i",
             str(base),
             "-vf",
-            "drawbox=x=iw*2/3:y=0:w=iw/3:h=ih:color=0x808080:t=fill",
+            "drawbox=x=iw*2/3:y=0:w=iw/3:h=ih:color=0xB4B4B4:t=fill",
             "-c:v",
             "libx264",
             "-preset",
@@ -693,14 +703,16 @@ class TestBadClipsRed:
         r = _review(_make_half_gray(tmp_path), tmp_path / "out5")
         assert r["verdict"] == "red", r["violations"]
         assert r["allows_compose"] is False
-        assert "region flat" in " ".join(r["violations"])
+        assert "is_region_flat" in " ".join(r["violations"]), r["violations"]
 
     def test_bad6_black_silent(self, tmp_path: Path) -> None:
         r = _review(_make_black_silent(tmp_path), tmp_path / "out6")
         assert r["verdict"] == "red", r["violations"]
         assert r["allows_compose"] is False
         joined = " ".join(r["violations"])
-        assert "黑帧" in joined
+        # an all-black clip is a whole-clip black/freeze run, caught by the dense
+        # scan (the 4-point black spot is now only a reference warning)
+        assert "黑场" in joined, joined
         assert "白噪声" not in joined, joined
 
     def test_bad7_silence_gap(self, tmp_path: Path) -> None:
@@ -745,7 +757,7 @@ class TestLongAndNonQuadrantDefects:
         r = _review(_make_right_third_gray(tmp_path), tmp_path / "third")
         assert r["verdict"] == "red", r["violations"]
         assert r["allows_compose"] is False
-        assert "region flat" in " ".join(r["violations"])
+        assert "is_region_flat" in " ".join(r["violations"]), r["violations"]
 
     def test_mid_clip_black_1p5s_not_red(self, tmp_path: Path) -> None:
         r = _review(_make_black_dip_1p5s(tmp_path), tmp_path / "black_dip")

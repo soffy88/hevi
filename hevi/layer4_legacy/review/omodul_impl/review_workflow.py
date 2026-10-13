@@ -426,9 +426,9 @@ def review_finished_video_workflow(
     }
     if broken:
         violations.append(f"{len(broken)}/{len(checks)} 帧不可解码(破图)")
-    # Black / freeze on the spot frames: exempt a leading/trailing black or
-    # title card (a fade-in/out or hold at the head/tail is normal); only a
-    # mid-clip black spot is a defect.
+    # Black / freeze on the spot frames: a leading/trailing black or title card
+    # (a fade-in/out or hold at the head/tail) is normal, so only a mid-clip
+    # spot is reported — and even that is only a reference warning (see below).
     _exempt_s = float(cfg.get("black_freeze_head_tail_exempt_s", 1.5))
     _dur_s = float(info.duration_s or 0.0)
 
@@ -442,10 +442,17 @@ def review_finished_video_workflow(
 
     black = [c for c in black if _mid_clip(c)]
     flat = [c for c in flat if _mid_clip(c)]
+    # These 4-point observations are reported but do NOT decide red: a black or
+    # flat *spot* is ambiguous (head/tail title card, a short dip-to-black, a
+    # solid intro) and the point-timestamp exemption above cannot tell a leading
+    # black run from a mid-clip one.  The authoritative black/freeze verdict is
+    # the whole-clip dense scan below, which judges *runs* (>=3s) with a proper
+    # head/tail run exemption — so a 1.5s mid black stays warn while an all-black
+    # clip still goes red.
     if black:
-        violations.append(f"{len(black)}/{len(checks)} 帧为黑帧")
+        warnings.append(f"{len(black)}/{len(checks)} 抽帧为黑帧(参考, 是否判红见全片扫描)")
     if flat and len(flat) == len(checks) and checks:
-        violations.append("全部抽帧为平帧(疑似冻结画面)")
+        warnings.append("全部抽帧为平帧(参考, 疑似冻结画面)")
     elif flat:
         warnings.append(f"{len(flat)}/{len(checks)} 帧为平帧")
     if noise:
@@ -675,24 +682,32 @@ def review_finished_video_workflow(
                 f"局部坏段 ≥{worst['run_len']} 连续帧(≈{_secs:.1f}s @ {worst['start_s']}s, {desc})"
             )
 
-        # Black / freeze: mid-clip continuous run >= min_black_freeze_s, with
+        # Black / freeze: mid-clip continuous run >= min_black_freeze_s, with a
         # head/tail exemption (a leading/trailing black or title card is normal).
+        # The exemption trims only the head or the tail window a run actually
+        # hugs — so a head black (0-2s) and a separate tail black (12-14s) each
+        # collapse below the threshold and vanish, while a run that spans the
+        # *whole* clip is not a title card at all: it is an all-black/frozen
+        # clip and is kept at full length, so it still goes red.
         min_bf_s = float(cfg.get("min_black_freeze_s", 3.0))
-        min_bf_frames = max(2, int(round(min_bf_s * dense_fps)))
         duration_s = float(info.duration_s or 0.0)
         exempt_s = float(cfg.get("black_freeze_head_tail_exempt_s", 1.5))
         for start, run_len, flags in _runs(BLACKFREEZE_KEYS):
-            if run_len < min_bf_frames:
-                continue
             t0 = float(dense_checks[start].get("timestamp_s") or 0.0)
             t1 = t0 + run_len / dense_fps
-            # exempt when the run hugs the head or the tail of the clip
-            if t0 <= exempt_s or (duration_s and t1 >= duration_s - exempt_s):
+            hugs_head = t0 <= exempt_s
+            hugs_tail = bool(duration_s) and t1 >= duration_s - exempt_s
+            if hugs_head and hugs_tail:
+                eff_start, eff_end = t0, t1  # whole-clip black -> keep full length
+            else:
+                eff_start = max(t0, exempt_s) if hugs_head else t0
+                eff_end = min(t1, duration_s - exempt_s) if hugs_tail else t1
+            if eff_end - eff_start < min_bf_s:
                 continue
             blackfreeze_hits.append(
                 {
-                    "start_s": round(t0, 2),
-                    "end_s": round(t1, 2),
+                    "start_s": round(eff_start, 2),
+                    "end_s": round(eff_end, 2),
                     "run_len": run_len,
                     "flags": list(flags),
                 }

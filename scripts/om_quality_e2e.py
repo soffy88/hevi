@@ -389,10 +389,11 @@ def make_half_gray_fixture(out_dir: Path) -> Path:
 
     The clip carries real sine-wave audio so the review gate's red verdict
     cannot come from a missing-audio-track violation: it must come from the
-    2x2 quadrant region-flat detector, which sees the bottom half frozen as a
-    solid grey block while the top half (real test pattern) differs by >20 luma
-    units.  The blockiness-ratio hit on the grey block is secondary evidence;
-    the region-flat violation is the intended signal.
+    whole-frame region-flat (uniform row/column strip) detector, which sees the
+    bottom half frozen as a solid grey block while the top half (real test
+    pattern) steps away by >8 luma units.  The blockiness-ratio hit on the grey
+    block is secondary evidence; the region-flat violation is the intended
+    signal.
     """
     dest = out_dir / "bad_half_gray.mp4"
     subprocess.run(
@@ -521,9 +522,10 @@ def make_long_glitch_fixture(out_dir: Path) -> Path:
 def make_right_third_gray_fixture(out_dir: Path) -> Path:
     """Normal clip with a right-1/3-width grey bar (non-quadrant-aligned block).
 
-    The bar straddles the 2x2 quadrant boundary, so a quadrant-only region
-    detector misses it; the whole-frame strip detector must flag it.  A real
-    sine audio track means the red cannot come from a missing-audio violation.
+    The bar straddles any 2x2 quadrant boundary, so a quadrant-only region
+    detector misses it; the whole-frame row/column strip detector must flag it.
+    A real sine audio track means the red cannot come from a missing-audio
+    violation.
     """
     dest = out_dir / "bad_right_third_gray.mp4"
     subprocess.run(

@@ -49,13 +49,16 @@ MIN_SPATIAL_VARIATION = 5.0  # minimum stdev for non-flat frame
 #: the frame the contiguous uniform run must cover; ``REGION_MIN_STEP`` is the
 #: minimum luma difference between the run and its immediate neighbours.
 #:
-#: Basis (measured): a real half-screen / third-screen grey bar has per-line
-#: stdev ≈ 0.02–0.03 and a boundary step of 27–59 luma, while normal "flat"
-#: backgrounds (chalkboard/title cards) keep per-line stdev ≈ 1.8–2.5 and a
-#: step of 0.1–2 — so 1.0 / 0.15 / 20 separates them with >2x margin.
+#: Basis (measured over 27 real/reviewer clips, all spot + dense frames): a real
+#: half-screen / third-screen grey bar has per-line stdev ≈ 0.0–0.7 and a
+#: boundary step of 31–57 luma, while normal content with a uniform run ≥15%
+#: (chalkboard, whale-under-shadow, letterbox) tops out at step 1.4 — so
+#: 1.0 / 0.15 / 8 separates them with ~5x margin below and ~4x above.  The
+#: threshold is intentionally well under the worst true bar (31) rather than
+#: tuned to it, so a lower-contrast solid bar (grey-on-grey) still fires.
 REGION_UNIFORM_STDEV = 1.0
 REGION_MIN_FRAC = 0.15
-REGION_MIN_STEP = 20.0
+REGION_MIN_STEP = 8.0
 
 #: Hash geometry for average-hash.
 HASH_SIZE = 8
