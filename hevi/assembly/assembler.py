@@ -569,11 +569,13 @@ async def assemble_longvideo(
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
         xfade_d: float = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
-        use_xfade = (
-            (transition if isinstance(transition, str) else transition[0]) != "cut"
-            and len(durations) > 1
-            and xfade_d > 0.05
-        )
+        # 逐接缝转场列表里可能混有 "cut";只要有任一接缝不是 cut 就必须走 xfade 链
+        # (cut 接缝由 build_xfade_chain 用 concat 直拼)。空列表是非法输入,直接报错,
+        # 不要让它走到 transition[0] 触发 IndexError。
+        if isinstance(transition, list) and not transition:
+            raise ValueError("assemble_longvideo: transition list must not be empty")
+        seam_tokens = [transition] if isinstance(transition, str) else list(transition)
+        use_xfade = any(t != "cut" for t in seam_tokens) and len(durations) > 1 and xfade_d > 0.05
 
         if use_xfade and bgm_beat_align and bgm_path is not None and bgm_path.exists():
             import asyncio

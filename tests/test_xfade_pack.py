@@ -808,3 +808,44 @@ def test_cut_seam_renders_real_concat(tmp_path: Path) -> None:
     )
     dur = _probe_dur(out)
     assert dur == pytest.approx(total, abs=0.1), f"got {dur}, expected {total}"
+
+
+@ffmpeg_only
+def test_assemble_longvideo_mixed_cut_list(tmp_path: Path) -> None:
+    """assemble_longvideo 端到端:transition=["fade","cut"] 真跑通,时长公式正确。
+
+    F5 之前:list 中间出现 "cut" 会因注册表没有它而抛 ValueError;空 list 会
+    在 transition[0] 处 IndexError。这里跑真实装配,并断言空 list 明确抛错。
+    """
+    import asyncio
+
+    from hevi.assembly.assembler import ShotSegment, assemble_longvideo
+
+    shots = []
+    for i, src in enumerate(["testsrc2", "smptehdbars", "rgbtestsrc"]):
+        p = tmp_path / f"alv{i}.mp4"
+        subprocess.run(
+            [FFMPEG, "-y", "-f", "lavfi",
+             "-i", f"{src}=duration=2:size=320x240:rate=30",
+             "-pix_fmt", "yuv420p", str(p)],
+            check=True, capture_output=True,
+        )
+        shots.append(ShotSegment(video_path=p))
+
+    out = tmp_path / "alv_mixed.mp4"
+    asyncio.run(
+        assemble_longvideo(
+            shots=shots, output_path=out, transition=["fade", "cut"],
+            transition_duration=0.5, width=320, height=240, fps=30, color_normalize=False,
+        )
+    )
+    assert _probe_dur(out) == pytest.approx(5.5, abs=0.15)  # 3×2 − 0.5
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        asyncio.run(
+            assemble_longvideo(
+                shots=shots, output_path=tmp_path / "x.mp4", transition=[],
+                transition_duration=0.5, width=320, height=240, fps=30,
+                color_normalize=False,
+            )
+        )
