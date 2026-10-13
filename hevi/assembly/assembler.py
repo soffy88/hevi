@@ -301,9 +301,16 @@ def build_xfade_chain(
     `xfade_d` 可以是单一值(所有转场同一重叠时长,原有行为)或逐转场的列表——
     BGM 节拍对齐(HEVI 路线图 Phase2 #37)按节拍点微调每处转场的重叠时长,不是
     整条链统一一个数,故需要这个泛化。
+
+    逐接缝列表里的元素还可以是特殊值 `"cut"`(硬切):该接缝用 concat 直接拼接
+    (d 记为 0),其余接缝仍走 xfade,总时长公式随之正确
+    (总时长 = sum(durations) - sum(非 cut 接缝的 d))。str 形式传 `"cut"` 等价于
+    全部接缝硬切。空列表抛 ValueError(无法对应任何接缝)。
     """
     from hevi.assembly.xfade_transitions import resolve
 
+    if isinstance(transition, list) and not transition:
+        raise ValueError("transition list must not be empty")
     n = len(durations)
     if n == 1:
         return "", "0:v", durations[0]
@@ -312,26 +319,51 @@ def build_xfade_chain(
         raise ValueError(
             f"xfade_d list must have {n - 1} entries for {n} shots, got {len(xfade_ds)}"
         )
-    # 解析 transition: str → 单一 ffmpeg 片段; list[str] → 逐接缝解析
+    # 归一化 transition 为逐接缝的 token 列表(str → 同一种铺满所有接缝)
     if isinstance(transition, str):
-        transition_values = [resolve(transition)] * (n - 1)
+        seam_tokens = [transition] * (n - 1)
     else:
         if len(transition) != n - 1:
             raise ValueError(
                 f"transition list must have {n - 1} entries for {n} shots, got {len(transition)}"
             )
-        transition_values = [resolve(t) for t in transition]
-    parts: list[str] = []
-    prev = "[0:v]"
+        seam_tokens = list(transition)
+
+    # 无 cut 接缝 → 保持原路径(filter_complex 逐字不变,向后兼容 golden)。
+    if "cut" not in seam_tokens:
+        transition_values = [resolve(t) for t in seam_tokens]
+        parts: list[str] = []
+        prev = "[0:v]"
+        merged = durations[0]
+        for i in range(1, n):
+            d = xfade_ds[i - 1]
+            offset = merged - d
+            out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
+            parts.append(
+                f"{prev}[{i}:v]xfade=transition={transition_values[i - 1]}:duration={d}:offset={offset:.3f}{out_label}"
+            )
+            merged = merged + durations[i] - d
+            prev = out_label
+        return ";".join(parts), "[vout]", merged
+
+    # 含 cut 接缝:cut 用 concat 直拼,其余走 xfade。concat 与 xfade 混用时各输入
+    # 时基不一致会 "Error reinitializing filters",故先给每个输入统一 settb=AVTB。
+    parts = [f"[{i}:v]settb=AVTB[vs{i}]" for i in range(n)]
+    prev = "[vs0]"
     merged = durations[0]
     for i in range(1, n):
-        d = xfade_ds[i - 1]
-        offset = merged - d
-        out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
-        parts.append(
-            f"{prev}[{i}:v]xfade=transition={transition_values[i - 1]}:duration={d}:offset={offset:.3f}{out_label}"
-        )
-        merged = merged + durations[i] - d
+        token = seam_tokens[i - 1]
+        out_label = f"[vc{i}]" if i < n - 1 else "[vout]"
+        if token == "cut":
+            parts.append(f"{prev}[vs{i}]concat=n=2:v=1:a=0{out_label}")
+            merged = merged + durations[i]
+        else:
+            d = xfade_ds[i - 1]
+            offset = merged - d
+            parts.append(
+                f"{prev}[vs{i}]xfade=transition={resolve(token)}:duration={d}:offset={offset:.3f}{out_label}"
+            )
+            merged = merged + durations[i] - d
         prev = out_label
     return ";".join(parts), "[vout]", merged
 

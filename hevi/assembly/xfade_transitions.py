@@ -95,57 +95,83 @@ _BUILTIN_TRANSITIONS: list[Transition] = [
 ]
 
 # ── custom 转场（6 个，使用 xfade custom:expr=...）───────────────────
-# 表达式变量: X,Y 像素坐标; W,H 画面宽高; P 过渡进度 [0,1]; A,B 两输入画面
+#
+# 表达式契约（与内置 fade 一致，经 ffmpeg 7.0.2 实测）：
+#   P=1（过渡起始帧）输出 == A 末帧；P=0（过渡结束帧）输出 == B 首帧；中间连续。
+#   内置 fade 即 A*P+B*(1-P)（实测与 transition=fade 逐帧一致），故方向是 P:1→0。
+# 变量：X,Y 为**全画面亮度坐标**（所有平面一致，实测）；W,H 为全画面宽高
+#   （不随平面变化，实测）；A/B 为当前平面两输入的像素值；PLANE ∈ {0=Y,1=U,2=V}。
+#   要取别的位置的像素，只能用 a0/a1/a2(X,Y) / b0/b1/b2(X,Y)（分别采样 A/B 的
+#   Y/U/V 平面，坐标仍是全画面亮度坐标），故空间位移类转场用
+#   if(eq(PLANE,0),a0(..),if(eq(PLANE,1),a1(..),a2(..))) 逐平面取样。
+# 逗号必须写成 `\,`（ffmpeg filtergraph 分隔符），否则解析失败。
+
+# 逐平面空间取样：sample(input A or B, 采样 X 表达式, 采样 Y 表达式)
+_SAMP_A0 = "if(eq(PLANE\\,0)\\,a0({x}\\,{y})\\,if(eq(PLANE\\,1)\\,a1({x}\\,{y})\\,a2({x}\\,{y})))"
+_SAMP_B0 = "if(eq(PLANE\\,0)\\,b0({x}\\,{y})\\,if(eq(PLANE\\,1)\\,b1({x}\\,{y})\\,b2({x}\\,{y})))"
+
+# flash: 前半 A 提亮到接近白，后半从白回落到 B。中点基本全白。
+#   Y 平面趋近 235、U/V 趋近 128（用 PLANE 区分，否则会变粉/绿）。
+_FLASH_WHITE = "128+eq(PLANE\\,0)*107"  # Y=235, U=V=128
+_FLASH = "if(gt(P\\,0.5)\\,A*(2*P-1)+({w})*(2-2*P)\\,B*(1-2*P)+({w})*(2*P))".format(w=_FLASH_WHITE)
+
+# burn: 以画面中心为圆心的径向"灼烧"掩膜向外扩散，掩膜内取 B、外取 A，边缘平滑过渡。
+#   P=1 时掩膜为空（输出 A），P=0 时铺满（输出 B）。
+_BURN_R = "hypot(X-W/2\\,Y-H/2)/hypot(W/2\\,H/2)"
+_BURN = "A*(1-clip(((1-P)*1.25-{r})*12\\,0\\,1))+B*clip(((1-P)*1.25-{r})*12\\,0\\,1)".format(
+    r=_BURN_R
+)
+
+# ink: 墨晕——与 burn 同构，但半径加正弦扰动，扩散边界不规则、更像墨迹晕开。
+_INK_R = "{r}+0.12*sin(X/23)*sin(Y/19)".format(r=_BURN_R)
+_INK = "A*(1-clip(((1-P)*1.25-({r}))*5\\,0\\,1))+B*clip(((1-P)*1.25-({r}))*5\\,0\\,1)".format(
+    r=_INK_R
+)
+
+# whip: 横向甩镜——A 向左侧快速位移并带水平拖影（三取样平均模拟运动模糊）滑出，
+#   B 从右侧带拖影滑入。位移 s=(1-P)*W，拖影半径随 (1-P) 收缩（两端为 0，无跳变）。
+_WHIP_BLUR = "(1-P)*14"
+_WHIP = "if(lt(X\\,W-(1-P)*W)\\,({a0}+{a1}+{a2})/3\\,({b0}+{b1}+{b2})/3)".format(
+    a0=_SAMP_A0.format(x="clip(X+(1-P)*W\\,0\\,W-1)", y="Y"),
+    a1=_SAMP_A0.format(x="clip(X+(1-P)*W-{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
+    a2=_SAMP_A0.format(x="clip(X+(1-P)*W+{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
+    b0=_SAMP_B0.format(x="clip(X-W+(1-P)*W\\,0\\,W-1)", y="Y"),
+    b1=_SAMP_B0.format(x="clip(X-W+(1-P)*W-{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
+    b2=_SAMP_B0.format(x="clip(X-W+(1-P)*W+{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
+)
+
+# glitch: 块状错位——按 32px 高的行块做横向伪随机位移（sin 哈希），
+#   并让一部分块整块取自 B；B 块占比随 P→0 增大（=1-P），位移两端为 0（无跳变）。
+_GLITCH_N = "0.5+0.5*sin(floor(Y/32)*12.9898)"
+_GLITCH_DX = "clip(X+({n}-0.5)*70*4*P*(1-P)\\,0\\,W-1)".format(n=_GLITCH_N)
+_GLITCH = "if(lt({n}\\,1-P)\\,{gb}\\,{ga})".format(
+    n=_GLITCH_N,
+    ga=_SAMP_A0.format(x=_GLITCH_DX, y="Y"),
+    gb=_SAMP_B0.format(x=_GLITCH_DX, y="Y"),
+)
+
+# zoom_punch: 推进冲击——前半 A 以画面中心放大（采样坐标向中心收缩）冲击，
+#   中点切到 B，B 从放大状态回落到原尺寸。缩放系数两端为 1（无跳变）。
+_ZOOM_KA = "(1-0.35*(1-P))"
+_ZOOM_KB = "(1-0.35*P)"
+_ZOOM = "if(gt(P\\,0.5)\\,{a}\\,{b})".format(
+    a=_SAMP_A0.format(
+        x="clip(W/2+(X-W/2)*{k}\\,0\\,W-1)".format(k=_ZOOM_KA),
+        y="clip(H/2+(Y-H/2)*{k}\\,0\\,H-1)".format(k=_ZOOM_KA),
+    ),
+    b=_SAMP_B0.format(
+        x="clip(W/2+(X-W/2)*{k}\\,0\\,W-1)".format(k=_ZOOM_KB),
+        y="clip(H/2+(Y-H/2)*{k}\\,0\\,H-1)".format(k=_ZOOM_KB),
+    ),
+)
 
 _CUSTOM_EXPRESSIONS: list[Transition] = [
-    Transition(
-        "whip",
-        "甩镜",
-        "custom",
-        "X+P*W*(A-B)/W",
-        ["hard", "energetic", "wipe"],
-        0.4,
-    ),
-    Transition(
-        "burn",
-        "灼烧",
-        "custom",
-        "A*(1-P*P)+(B-A)*P*P",
-        ["hard", "energetic"],
-        0.5,
-    ),
-    Transition(
-        "glitch",
-        "故障",
-        "custom",
-        "X+(B-A)*sin(P*6.28)*W/4",
-        ["hard", "glitch"],
-        0.4,
-    ),
-    Transition(
-        "flash",
-        "闪白",
-        "custom",
-        "A+(B-A)*P*P",
-        ["soft", "energetic"],
-        0.3,
-    ),
-    Transition(
-        "zoom_punch",
-        "推进冲击",
-        "custom",
-        "A*(1-P)+B*P*(1+P*0.5)",
-        ["hard", "zoom", "energetic"],
-        0.5,
-    ),
-    Transition(
-        "ink",
-        "墨晕",
-        "custom",
-        "A*(1-P)+B*P+sin(P*3.14)*0.1",
-        ["soft"],
-        0.6,
-    ),
+    Transition("whip", "甩镜", "custom", _WHIP, ["hard", "energetic", "wipe"], 0.4),
+    Transition("burn", "灼烧", "custom", _BURN, ["hard", "energetic"], 0.5),
+    Transition("glitch", "故障", "custom", _GLITCH, ["hard", "glitch"], 0.4),
+    Transition("flash", "闪白", "custom", _FLASH, ["soft", "energetic"], 0.3),
+    Transition("zoom_punch", "推进冲击", "custom", _ZOOM, ["hard", "zoom", "energetic"], 0.5),
+    Transition("ink", "墨晕", "custom", _INK, ["soft"], 0.6),
 ]
 
 ALL_TRANSITIONS: list[Transition] = _BUILTIN_TRANSITIONS + _CUSTOM_EXPRESSIONS
