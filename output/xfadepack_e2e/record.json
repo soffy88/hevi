@@ -1,0 +1,30 @@
+{
+  "xfadepack_e2e": {
+    "transitions": [
+      "fade",
+      "dissolve",
+      "whip",
+      "zoom_punch"
+    ],
+    "xfade_d": 0.6,
+    "filter_complex": "[0:v][1:v]xfade=transition=fade:duration=0.6:offset=2.400[vx1];[vx1][2:v]xfade=transition=dissolve:duration=0.6:offset=5.400[vx2];[vx2][3:v]xfade=transition=whip:duration=0.6:offset=8.400[vx3];[vx3][4:v]xfade=transition=custom:expr=A*(1-P)+B*P*(1+P*0.5):duration=0.6:offset=11.400[vout]",
+    "expected_total": 12.6,
+    "ffprobe": {
+      "duration": 12.6,
+      "size_bytes": 3105392,
+      "sha256": "657f72aab097dd6834c89aa620fbec110efcaba84a1bb0961dbd41c6b99e75c2"
+    }
+  },
+  "hardcut_baseline": {
+    "ffprobe": {
+      "duration": 15.0,
+      "size_bytes": 231922,
+      "sha256": "5af34637c5b7506c90e1e1e7e39e867a0d5bb3aefb2be76cff9208f76d436d8d"
+    }
+  },
+  "contact_sheet": {
+    "path": "/data/soffy/projects/hevi-xfadepack/output/xfadepack_e2e/contact_sheet.png",
+    "cells": 64,
+    "size_bytes": 1272745
+  }
+}
