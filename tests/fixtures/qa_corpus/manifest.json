@@ -1,0 +1,292 @@
+{
+  "corpus_version": "1.0",
+  "generator": "tests/fixtures/qa_corpus/make_corpus.py",
+  "base": {
+    "kind": "lavfi",
+    "source": "testsrc2 + sine/pink-noise mix",
+    "width": 1280,
+    "height": 720,
+    "fps": 24,
+    "duration_s": 14
+  },
+  "encode": {
+    "vcodec": "libx264",
+    "crf": 20,
+    "preset": "veryfast",
+    "acodec": "aac",
+    "threads": 1,
+    "bitexact": true,
+    "x264_params": "threads=1:sliced-threads=0:rc-lookahead=0:keyint=48:min-keyint=48:scenecut=0"
+  },
+  "clip_count": 18,
+  "bad_clip_count": 17,
+  "sha_stable_count": 18,
+  "clips": [
+    {
+      "id": "good_clean",
+      "recipe": "clean base clip with an in-frame subtitle",
+      "expected_failures": [],
+      "defect_window_s": null,
+      "sha256": "911e85aa868f3c8328aa6686991ea93573e866fc77cfaca2c98398e3c11e71ad",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad01_noise_full",
+      "recipe": "full-frame random noise video, base audio kept",
+      "expected_failures": [
+        "visual.noise"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "138e8c3025f894ca695dc7dd043db6edd3a3f843b7336dc5c5b2437ae61c51e3",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad02_glitch_local",
+      "recipe": "random-noise overlay only during 4-7 s",
+      "expected_failures": [
+        "visual.noise@4-7s"
+      ],
+      "defect_window_s": [
+        4.0,
+        7.0
+      ],
+      "sha256": "da7f1b59d66040e297dc68dabed41d2756d1c65996db9f1bee42c7b8904d3ce1",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad03_macroblock_qp51",
+      "recipe": "re-encode at QP 51 (extreme macroblocking)",
+      "expected_failures": [
+        "visual.macroblock"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "e2426b8f3e0b2e15670b7535ca799115f619f3fecf799b0b7e9fa8ca3dd22432",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad04_macroblock_mpeg2",
+      "recipe": "320x180 mpeg2 q31 upscaled with nearest-neighbour",
+      "expected_failures": [
+        "visual.macroblock"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "9e7d9b5d6263d919c3cb971c6081ca1afeb678f6c3cfac6cc9466c59d52f06a7",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad05_green_full",
+      "recipe": "decoder-failure green (Y=0,U=0,V=0) whole clip",
+      "expected_failures": [
+        "visual.green"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "2832b2d2b0c3268c366ecb6ac12223fec5af9ae9efc775e6d24f0e552b1db352",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad06_green_local",
+      "recipe": "full-frame green flash during 6-9 s",
+      "expected_failures": [
+        "visual.green@6-9s"
+      ],
+      "defect_window_s": [
+        6.0,
+        9.0
+      ],
+      "sha256": "5ce35ab5445d7d784eb771202b44ae04d6d87273dd5e801af9d854bfa9becbe5",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad07_halfgray_bottom",
+      "recipe": "bottom half replaced with flat gray",
+      "expected_failures": [
+        "visual.half_gray"
+      ],
+      "defect_window_s": [
+        7.0,
+        14
+      ],
+      "sha256": "92ba4ec6aaa6bf8328c66a9454a7934570400686e3331c1995a6b84b2294227b",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad08_black_silent",
+      "recipe": "black video + silent audio for the whole clip",
+      "expected_failures": [
+        "visual.black",
+        "audio.silence"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "9d513ec412e73cef351bcc603249dee2f3ef1cdf4b24b45e7e27af5a60d265f1",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad09_audio_silence_gap",
+      "recipe": "audio muted during 3-11 s",
+      "expected_failures": [
+        "audio.silence_gap@3-11s"
+      ],
+      "defect_window_s": [
+        3.0,
+        11.0
+      ],
+      "sha256": "474b3fde5ea6b4724925483b687181955904d4e5871554ad1ea376c05097ba1d",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad10_audio_clip",
+      "recipe": "+40 dB and hard limiter during 5-8 s (clipping)",
+      "expected_failures": [
+        "audio.clipping@5-8s"
+      ],
+      "defect_window_s": [
+        5.0,
+        8.0
+      ],
+      "sha256": "d91318e06644e5b8e38fbe6d50de939b0402f307bc38d49f56d04376f0781328",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad11_audio_pops",
+      "recipe": "periodic 900 Hz clicks every 0.5 s (pops/clicks)",
+      "expected_failures": [
+        "audio.clicks"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "7b6f2b97c1f7d03883758545841097e302c3ffa80fc67696119d8ea4768152f7",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad12_subtitle_out_of_frame",
+      "recipe": "burned subtitle runs past the right frame edge",
+      "expected_failures": [
+        "subtitle.out_of_frame"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "6b0846fee64dbb1b92889add31b3504f5c747badba05626640899037094720b0",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad13_font_too_small",
+      "recipe": "burned subtitle font 10 px (< 2% of 720 px frame height)",
+      "expected_failures": [
+        "subtitle.font_too_small"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "25db6e25ee9cb20cb357e15285711b6f6abb67fb6ed6548fab4b4b450cd10b8e",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad14_asr_mismatch",
+      "recipe": "burned caption text differs from the espeak TTS audio track",
+      "expected_failures": [
+        "subtitle.asr_mismatch"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "e5226da310f75271f622b513f89cf6e08dd79f58687bc18a30bbbbe783df9a91",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad15_frozen_mid",
+      "recipe": "video frozen between 6.0 s and 9.0 s (frames 144-216)",
+      "expected_failures": [
+        "visual.freeze@6-9s"
+      ],
+      "defect_window_s": [
+        6.0,
+        9.0
+      ],
+      "sha256": "10c2981dcd760a410a813419fd89a6616626cd45374285a027d2fcebc737d7e5",
+      "duration_s": 14.001,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad16_av_desync",
+      "recipe": "audio delayed 200 ms relative to video (adelay=200)",
+      "expected_failures": [
+        "av.desync>120ms"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "d4911bb2a00e396371741cf9b9f7b753875f5d9ce06b88027dba16c78e3b0044",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    },
+    {
+      "id": "bad17_letterbox_excess",
+      "recipe": "letterbox bars of 108 px top and bottom (>15% each)",
+      "expected_failures": [
+        "visual.letterbox_excess"
+      ],
+      "defect_window_s": [
+        0.0,
+        14
+      ],
+      "sha256": "a878059e17fd67295e9fd1aa26fc31a1f5b96b19827711b75f5779466fdc1a7b",
+      "duration_s": 14.0,
+      "sha_stable": true,
+      "sha_note": null
+    }
+  ]
+}
