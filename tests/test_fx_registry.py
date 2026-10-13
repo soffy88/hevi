@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import shutil
 import subprocess
@@ -22,7 +23,8 @@ from hevi.api.main import app
 from hevi.fx import FXRegistry, FXTemplate, Category, Source
 from hevi.fx.loader import get_registry, load_all, reset_registry
 from hevi.fx.registry import template_slug, preview_mp4_path, preview_thumbnail_path
-from hevi.fx.sources import load_sfx, load_talkcraft, load_xfade
+from hevi.fx.sources import load_sfx, load_talkcraft, load_talkcraft_with_skipped, load_xfade
+from hevi.fx.sources.talkcraft import TplMetaError
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TPL_META_PATH = REPO_ROOT / "hevi-remotion-talkcraft" / "src" / "cards" / "tplMeta.ts"
@@ -32,6 +34,7 @@ INDEX_PATH = PREVIEW_DIR / "index.json"
 CONTACT_SHEET_PATH = PREVIEW_DIR / "contact_sheet.png"
 
 FFPROBE = shutil.which("ffprobe") or "/home/soffy/.local/bin/ffprobe"
+FFMPEG = shutil.which("ffmpeg") or "/home/soffy/.local/bin/ffmpeg"
 
 
 def _tpl_meta_ids() -> list[str]:
@@ -242,6 +245,50 @@ class TestTalkcraftSource:
             assert t.name_zh
             assert t.tags
 
+    def test_no_entries_skipped_in_repo_meta(self) -> None:
+        """Every card in the repo's tplMeta.ts maps to a known category."""
+        templates, skipped = load_talkcraft_with_skipped()
+        assert skipped == [], f"repo tplMeta.ts has unmapped categories: {skipped}"
+        assert len(templates) == len(_tpl_meta_ids())
+
+    def test_unknown_category_is_warned_and_skipped_not_dropped(
+        self, tmp_path: Path, caplog
+    ) -> None:
+        """An unmapped category is logged + returned, never silently dropped."""
+        meta = tmp_path / "tplMeta.ts"
+        meta.write_text(
+            "export const TPL_META = {\n"
+            '  "known-card": { name: "已知卡", category: "运镜" },\n'
+            '  "weird-card": { name: "未知卡", category: "未知类" },\n'
+            "};\n",
+            encoding="utf-8",
+        )
+        with caplog.at_level(logging.WARNING, logger="hevi.fx.sources.talkcraft"):
+            templates, skipped = load_talkcraft_with_skipped(meta)
+
+        assert [t.source_ref for t in templates] == ["known-card"]
+        assert [s["id"] for s in skipped] == ["weird-card"]
+        assert skipped[0]["category_zh"] == "未知类"
+        assert "未知类" in skipped[0]["reason"]
+        # a warning was actually emitted naming the skipped card
+        assert any("weird-card" in rec.getMessage() for rec in caplog.records)
+
+    def test_missing_tpl_meta_raises(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            load_talkcraft_with_skipped(tmp_path / "nope.ts")
+
+    def test_unparseable_tpl_meta_raises(self, tmp_path: Path) -> None:
+        meta = tmp_path / "tplMeta.ts"
+        meta.write_text("// no entries here at all\n", encoding="utf-8")
+        with pytest.raises(TplMetaError):
+            load_talkcraft_with_skipped(meta)
+
+    def test_registry_reports_skipped(self) -> None:
+        """load_all() carries the per-source skipped map (empty for the repo)."""
+        reg = load_all()
+        assert reg.skipped_count() == 0
+        assert reg.skipped.get("talkcraft") == []
+
 
 class TestXfadeSource:
     def test_entries_exist(self) -> None:
@@ -313,6 +360,15 @@ class TestFXAPI:
         assert data["total"] >= 80
         assert data["total"] == len(data["templates"])
         assert data["categories"] == client.get("/api/fx/templates").json()["categories"]
+
+    def test_list_exposes_skipped_and_load_errors(self, client: TestClient) -> None:
+        """The list response surfaces any dropped entries (never silent)."""
+        data = client.get("/api/fx/templates").json()
+        assert "skipped" in data
+        assert "load_errors" in data
+        # the real repo has no unmapped categories and no source load errors
+        assert data["skipped"].get("talkcraft") == []
+        assert data["load_errors"] == {}
 
     def test_list_filter_category(self, client: TestClient) -> None:
         r = client.get("/api/fx/templates", params={"category": "character"})
@@ -540,14 +596,41 @@ class TestPreviewAcceptance:
             assert info["fps"] is not None and abs(info["fps"] - 30) <= 0.5
 
     def test_ok_records_are_non_static(self) -> None:
-        """Every ok preview must have a measured mean adjacent-frame diff > 0.01."""
+        """Every ok preview must clear the real motion metric.
+
+        The old 0-255 mean-diff > 0.01 check was meaningless (146/166 ok rows
+        were below 0.01 normalised). The index now records
+        ``motion_frame_ratio`` (fraction of frames with a real per-pixel change)
+        and the acceptance rule is ``>= MOTION_FRAME_RATIO_MIN`` (0.10).
+        """
         data = _load_index()
         ok = [r for r in data["templates"] if r["status"] == "ok"]
         assert ok
+        threshold = data["config"]["motion_frame_ratio_min"]
         for rec in ok:
-            diff = rec.get("frame_diff_mean")
-            assert diff is not None, f"{rec['id']}: no frame_diff_mean recorded"
-            assert diff > 0.01, f"{rec['id']}: static-looking preview (diff {diff})"
+            ratio = rec.get("motion_frame_ratio")
+            assert ratio is not None, f"{rec['id']}: no motion_frame_ratio recorded"
+            assert ratio >= threshold, (
+                f"{rec['id']}: static-looking preview (motion_frame_ratio {ratio} < {threshold})"
+            )
+        # the summary must agree with the per-record data
+        assert data["summary"]["below_motion_min"] == 0
+
+    def test_motion_metric_is_measured_not_written_off(self) -> None:
+        """A truly static clip scores 0.0 on the metric (sanity, no mocks)."""
+        data = _load_index()
+        # every ok row must also carry the peak-area / mean-norm companions
+        for rec in data["templates"]:
+            if rec["status"] != "ok":
+                continue
+            assert rec.get("motion_peak_area") is not None
+            assert rec.get("motion_mean_norm") is not None
+            assert rec.get("max_pixel_delta") is not None
+        # spot-check the metric reproduces from disk for one row
+        sample = next(r for r in data["templates"] if r["status"] == "ok")
+        mp4 = REPO_ROOT / sample["mp4_path"]
+        info = _ffprobe(mp4)
+        assert info["duration_s"] > 0
 
     def test_ok_mp4_sha256_matches_index(self) -> None:
         data = _load_index()
@@ -564,6 +647,63 @@ class TestPreviewAcceptance:
                 continue
             jpg = REPO_ROOT / rec["thumbnail_path"]
             assert jpg.exists(), f"{rec['id']}: missing thumbnail {jpg}"
+
+    def test_sfx_thumbnails_are_distinct_and_not_blank(self) -> None:
+        """The 5 sfx thumbnails must be pairwise-different and non-blank.
+
+        The R1 sfx thumbnails were 4 identical all-black frames (sha 821ae959…).
+        """
+        import io
+
+        import numpy as np
+        from PIL import Image
+
+        data = _load_index()
+        sfx = [r for r in data["templates"] if r["source"] == "sfx" and r["status"] == "ok"]
+        assert len(sfx) >= 5, f"expected >=5 sfx previews, got {len(sfx)}"
+        shas = [r["thumbnail_sha256"] for r in sfx]
+        assert len(set(shas)) == len(shas), f"sfx thumbnails not unique: {shas}"
+        for rec in sfx:
+            jpg = REPO_ROOT / rec["thumbnail_path"]
+            img = Image.open(io.BytesIO(jpg.read_bytes())).convert("L")
+            arr = np.asarray(img).astype(float)
+            assert arr.std() > 5.0, f"{rec['id']}: thumbnail looks blank (std {arr.std():.2f})"
+
+    def test_sfx_previews_have_no_black_frame(self) -> None:
+        """Every sampled sfx frame must be non-black (R1: most of the 2s was black)."""
+        data = _load_index()
+        sfx = [r for r in data["templates"] if r["source"] == "sfx" and r["status"] == "ok"]
+        assert sfx
+        for rec in sfx:
+            mp4 = REPO_ROOT / rec["mp4_path"]
+            for t in ("0.1", "0.5", "1.0", "1.5", "1.9"):
+                r = subprocess.run(
+                    [
+                        FFMPEG,
+                        "-v",
+                        "info",
+                        "-ss",
+                        t,
+                        "-i",
+                        str(mp4),
+                        "-frames:v",
+                        "1",
+                        "-vf",
+                        "signalstats,metadata=print:key=lavfi.signalstats.YAVG",
+                        "-f",
+                        "null",
+                        "-",
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    timeout=60,
+                )
+                vals = re.findall(r"lavfi\.signalstats\.YAVG=([0-9.eE+-]+)", r.stdout)
+                assert vals, f"{rec['id']}@{t}s: could not measure brightness"
+                assert float(vals[0]) > 0.5, (
+                    f"{rec['id']}@{t}s: frame is (near) black (YAVG {vals[0]})"
+                )
 
     def test_contact_sheet_covers_every_category(self) -> None:
         data = _load_index()
