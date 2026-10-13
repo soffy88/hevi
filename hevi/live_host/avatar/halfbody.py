@@ -346,7 +346,8 @@ class HalfBodyAvatar:
             cf = _font(34)
             lines, cur = [], ""
             for ch in caption:
-                if d.textlength(cur + ch, font=cf) > W - 90:
+                # kinsoku: closing punctuation never starts a line
+                if d.textlength(cur + ch, font=cf) > W - 90 and ch not in "。，、！？；：…”’）》」":
                     lines.append(cur)
                     cur = ""
                 cur += ch
