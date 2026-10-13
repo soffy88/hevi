@@ -38,3 +38,6 @@
 - 长任务（批量渲染/E2E）用 `nohup setsid <cmd> > <log> 2>&1 &` 独立启动，sleep 轮询直到产物生成，不得在产物完成前结束。
 - 禁止 mock/占位/写死产物；验收数据必须来自真实 ffprobe/抽帧/测试输出。DONE 里不得写未实测的数据，不得自称"独立验证通过"。
 - 不要询问，直接执行到底。最后写 `SFXBAD_DONE.md`（做了什么、文件清单、接口、测试命令与真实结果、产物路径+ffprobe+sha256、lint 前后、已知限制），commit，最后一行写 `DONE SFXBAD-R1`。
+- 注意：`.venv` 是指向 /data/soffy/projects/hevi/.venv 的软链（git status 里会显示为未跟踪），**不要删除也不要提交**；若丢失用 `ln -s /data/soffy/projects/hevi/.venv .venv` 重建。
+
+- **磁盘安全规则（2026-10-13 硬性）**：绝对不要删除 worktree 目录之外的任何文件；绝对不要做任何"清理磁盘空间"的操作（不删缓存/镜像/卷/日志/他人目录）。磁盘满了就停下并在 DONE/日志里写明，等主会话处理。
