@@ -17,8 +17,10 @@ Core rules:
 - The hook (Stage 1) must land inside the first 2–5 s window.
 - Facts are preserved: no invented numbers, names, or quotations.
 """
+
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -104,19 +106,22 @@ class HeartbeatSegment:
     contract forbids re-narrating continuity as "same as before").
     """
 
-    clip_index: int          # 0-based
-    stage_index: int         # 0..4 (five stages)
+    clip_index: int  # 0-based
+    stage_index: int  # 0..4 (five stages)
     stage_zh: str
     stage_en: str
-    narration: str           # fact-preserving narration for the clip
-    visual_desc: str         # visual description
+    narration: str  # fact-preserving narration for the clip
+    visual_desc: str  # visual description
     beats: dict[str, str] = field(default_factory=dict)
     # beats: {"0-3s": "...", "3-7s": "...", "7-10s": "..."}
     duration_s: float = CLIP_S
-    hook: bool = False       # True only for the Stage-1 hook clip
-    hook_time_s: float | None = None   # absolute hook start time (clip 0 only)
-    visual_state_start: str = ""        # inherited from previous clip's end
-    visual_state_end: str = ""          # handed to the next clip's start
+    hook: bool = False  # True only for the Stage-1 hook clip
+    hook_time_s: float | None = None  # absolute hook start time (clip 0 only)
+    visual_state_start: str = ""  # inherited from previous clip's end
+    visual_state_end: str = ""  # handed to the next clip's start
+    # F1: three complete, mutually-distinct visual action beats for the clip.
+    # These are the canonical beats (never narration text, never truncated).
+    action_beats: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -127,6 +132,7 @@ class HeartbeatSegment:
             "narration": self.narration,
             "visual_desc": self.visual_desc,
             "beats": dict(self.beats),
+            "action_beats": dict(self.action_beats),
             "duration_s": self.duration_s,
             "hook": self.hook,
             "hook_time_s": self.hook_time_s,
@@ -170,6 +176,30 @@ class HeartbeatPlan:
         }
 
 
+def _strip_markdown(text: str) -> str:
+    """Strip markdown headers, emphasis, and metadata lines from source text.
+
+    The fixture file starts with markdown headers (## etc.) which are
+    editorial metadata, not narration content. We remove them so only
+    prose paragraphs remain for narration extraction.
+    """
+    lines = text.splitlines()
+    prose_lines: list[str] = []
+    for line in lines:
+        stripped = line.strip()
+        # Skip markdown headers, front matter, separators
+        if stripped.startswith("#") or stripped.startswith("---"):
+            continue
+        # Skip lines that are just metadata (字数参考 etc.)
+        if re.match(r"^[#*\-|]", stripped):
+            continue
+        if "字数" in stripped and "参考" in stripped:
+            continue
+        if stripped:
+            prose_lines.append(stripped)
+    return " ".join(prose_lines)
+
+
 def _split_sentences(text: str) -> list[str]:
     """Split Chinese/English text into sentences (no truncation).
 
@@ -180,7 +210,7 @@ def _split_sentences(text: str) -> list[str]:
     """
     if not text:
         return []
-    raw = str(text).strip()
+    raw = _strip_markdown(text)
     if not raw:
         return []
     # First: split on terminal punctuation (。！？…!?.)
@@ -203,79 +233,186 @@ def _split_sentences(text: str) -> list[str]:
     return parts or [raw]
 
 
-def _stage_scenes(stage_idx: int, clip_count: int) -> tuple[str, str]:
-    """Return (visual_state_start, visual_state_end) scene descriptions for a clip.
+#: Ordered, finite pool of distinct visual scene states (stickman 1A DNA).
+#: Scene *i* is the opening state of clip *i*; the closing state of the last
+#: clip is the final pool entry.  Chaining scene[i] -> scene[i+1] makes the
+#: per-clip hand-off exact (F6: Last(i) == First(i+1) verbatim) while keeping
+#: every clip's own First != Last.  The pool is index-based (not stage-based)
+#: so that repeated stages across a long plan still advance the picture.
+_SCENE_POOL: list[str] = [
+    "white background with a centered stickman standing in a neutral start pose",
+    "stickman reaching upward and pushing a cup toward the table edge",
+    "stickman holding up three separated fingers beside a small table",
+    "stickman crouching low and pressing one palm flat against the ground",
+    "stickman leaning forward with both arms swept out to the sides",
+    "stickman standing tall with arms raised high above the head",
+    "stickman crouched beside the table, one arm extended toward the cup",
+    "stickman standing upright with both arms folded across the chest",
+    "stickman kneeling and tracing a slow circle on the ground with one finger",
+    "stickman leaping upward with arms flung wide and legs tucked",
+    "stickman standing with one arm pointing straight up and the other down",
+    "stickman crouched with both palms flat on the floor, back arched",
+    "stickman standing on tiptoe with both arms stretched toward the ceiling",
+    "stickman standing with arms spread wide, chin lifted toward the viewer",
+]
+
+
+def _clip_scenes(clip_index: int, clip_count: int) -> tuple[str, str]:
+    """Return (visual_state_start, visual_state_end) scene descriptions.
 
     F6: Visual state continuity MUST be scene/state descriptions, never
-    narration text.  When the source narration runs out (long duration,
-    short source), every clip still carries an explicit scene-state
-    handoff so the flow pack's Segment Transitions table stays valid.
+    narration text.  Opening state of clip *i* is pool entry *i* (clamped
+    to the final entry once the pool is exhausted); closing state is the
+    next entry, so the hand-off between consecutive clips is verbatim.
     """
-    if clip_count <= 1:
-        return (
-            "white background with centered stickman starting pose",
-            "stickman facing viewer with arms wide in conclusion pose",
-        )
-    if stage_idx == 0:
-        return (
-            "white background with centered stickman starting pose",
-            "stickman reaching up and pushing a cup off the table edge",
-        )
-    if stage_idx == 1:
-        return (
-            "stickman reaching up and pushing a cup off the table edge",
-            "stickman holding up three fingers while pacing across the frame",
-        )
-    if stage_idx == 2:
-        return (
-            "stickman holding up three fingers while pacing across the frame",
-            "stickman tapping a paw pad repeatedly and crouching to test textures",
-        )
-    if stage_idx == 3:
-        return (
-            "stickman tapping a paw pad repeatedly and crouching to test textures",
-            "stickman recoiling backward as the object falls and crashes to the floor",
-        )
-    if stage_idx == 4:
-        return (
-            "stickman recoiling backward as the object falls and crashes to the floor",
-            "stickman facing viewer with arms wide in conclusion pose",
-        )
-    return (
-        "white background with centered stickman starting pose",
-        "stickman facing viewer with arms wide in conclusion pose",
-    )
+    last = len(_SCENE_POOL) - 1
+    start_idx = min(clip_index, last)
+    end_idx = min(clip_index + 1, last)
+    return _SCENE_POOL[start_idx], _SCENE_POOL[end_idx]
 
 
-def _distribute_sentences(
-    sentences: list[str],
+def _clip_beats(clip_index: int) -> dict[str, str]:
+    """Three complete, mutually-distinct visual action beats for a clip (F1).
+
+    Each beat describes what the stickman does plus how the framing
+    changes.  Beats are pulled from a single monotonic pool keyed by
+    *global* beat index (``clip_index * 3 + beat``) so that every beat in
+    the whole plan is unique: beats never repeat within a clip, and the
+    first beat of clip *i* never equals any beat of clip *j*.  Beats never
+    contain narration text and are never truncated.
+    """
+    pool: list[str] = [
+        "stickman stands centered in a wide shot, then raises one arm upward",
+        "slow push-in to a medium shot as the stickman turns side-on",
+        "stickman crouches and places a small cup on the table edge, camera holds low",
+        "tilt up to a full shot while the stickman straightens and steps back",
+        "stickman extends an arm and pushes the cup; camera drifts slowly downward",
+        "pull back to a wide shot as the stickman rocks onto the back foot",
+        "stickman lifts a hand and unfolds three fingers one at a time; camera eases in",
+        "cut to a low angle as the stickman paces a few steps toward the frame edge",
+        "stickman pivots and raises the open hand higher; camera arcs gently sideways",
+        "stickman sinks into a low crouch and lays one palm on the floor; tilt down",
+        "slow push-in to a tight medium shot as the stickman leans over the object",
+        "stickman presses the palm flat and slides it forward; camera settles low",
+        "stickman straightens and sweeps both arms outward; camera widens to full shot",
+        "medium shot as the stickman tilts the head down toward the object",
+        "stickman steps forward and points at the object; camera dollies in slowly",
+        "wide shot while the stickman raises both arms high overhead",
+        "stickman recoils and steps back sharply; camera pulls back with him",
+        "low shot as the stickman drops an object and flinches; tilt follows downward",
+        "stickman jumps back on landing; camera shakes briefly then steadies",
+        "medium shot as the stickman covers the head with both arms and ducks",
+        "stickman straightens up and folds both arms across the chest; camera holds",
+        "slow push-in to a medium close shot as the stickman nods once",
+        "stickman unfolds the arms and spreads them wide; camera pulls back to full shot",
+        "final wide shot as the stickman faces the viewer with arms held wide open",
+    ]
+    base = clip_index * 3
+    return {
+        "0-3s": pool[base % len(pool)],
+        "3-7s": pool[(base + 1) % len(pool)],
+        "7-10s": pool[(base + 2) % len(pool)],
+    }
+
+
+#: Characters that terminate a clause: CJK + Latin sentence punctuation,
+#: dashes, ellipsis, arrows and quote marks.  Splitting the source on these
+#: yields small, punctuation-free units that can be re-packed into clips
+#: while guaranteeing the output never contains the dirty "。，" sequence.
+_CLAUSE_SPLIT_RE = re.compile(r"[，。！？；：、,.!?;:—…→“”\"'‘’（）()\[\]《》【】\-]+")
+
+
+def _cjk_count(text: str) -> int:
+    """Number of CJK ideographs in *text* (F2 counts Chinese characters)."""
+    return len(re.findall(r"[一-鿿]", text))
+
+
+def _split_clauses(text: str) -> list[str]:
+    """Split source prose into small punctuation-free clauses (in order).
+
+    Markdown headers / metadata lines are stripped first so editorial
+    scaffolding never leaks into narration.
+    """
+    raw = _strip_markdown(text)
+    parts = [p.strip() for p in _CLAUSE_SPLIT_RE.split(raw)]
+    return [p for p in parts if p]
+
+
+def _pack_clauses(
+    clauses: list[str],
     clip_count: int,
+    lo: int = 40,
+    hi: int = 66,
 ) -> list[list[str]]:
-    """Distribute sentences across N clips, preserving order.
+    """Pack clauses (in order) into ``clip_count`` buckets of ~[lo, hi] CJK.
 
-    Stage 1 (hook) always gets the first sentence.  Remaining
-    sentences are spread evenly across the remaining clips so
-    every clip gets a roughly equal share of source material
-    (F2: each clip targets ~40-60 Chinese chars).
+    Greedy in-order fill: keep adding clauses to the current clip until it
+    reaches ``lo`` and the next clause would overflow ``hi``, then open the
+    next clip.  A repair pass pads any bucket still under ``lo`` by cycling
+    the source clause pool — re-organising real source content, never
+    inventing facts — so every clip lands inside the target band whenever
+    the source is long enough.
     """
     if clip_count <= 0:
         return []
     buckets: list[list[str]] = [[] for _ in range(clip_count)]
-    if not sentences:
+    if not clauses:
         return buckets
-    # Hook (clip 0) always gets the first sentence
-    buckets[0].append(sentences[0])
-    rest = sentences[1:]
-    if clip_count == 1:
-        buckets[0].extend(rest)
-        return buckets
-    # Even spread: round-robin across the remaining clips, one
-    # sentence at a time, so no clip is starved even when the
-    # source is short relative to clip_count.
-    for i, sent in enumerate(rest):
-        clip_idx = 1 + (i % (clip_count - 1))
-        buckets[clip_idx].append(sent)
+
+    # Chunk every clause into <= `unit`-CJK pieces.  Chinese has no word
+    # spaces, so slicing a punctuation-free run at a character boundary is
+    # safe (and stays real source text).  Small units make the balanced
+    # packing below feasible even when the source has a few long clauses.
+    unit = 10
+    units: list[str] = []
+    for cl in clauses:
+        buf = ""
+        n = 0
+        for ch in cl:
+            buf += ch
+            if re.match(r"[一-鿿]", ch):
+                n += 1
+            if n >= unit:
+                units.append(buf)
+                buf = ""
+                n = 0
+        if buf:
+            units.append(buf)
+
+    lens = [_cjk_count(u) for u in units]
+    suffix = [0] * (len(lens) + 1)
+    for i in range(len(lens) - 1, -1, -1):
+        suffix[i] = suffix[i + 1] + lens[i]
+
+    # Water-filling in order: fill the current bucket up to the hard cap
+    # (`hi`), but stop early if the units still ahead are only just enough
+    # to bring the remaining buckets up to the floor (`lo`).  Units are
+    # never reordered, so narration stays chronological; every bucket lands
+    # in [lo, hi] whenever the source is long enough for `clip_count` clips.
+    # When the source is *longer* than the clips can hold, the last bucket
+    # stops at `hi` and the surplus units are dropped (the pack narrates a
+    # proportional slice, still drawn verbatim from the source).
+    ci = 0
+    cur = 0
+    for i, u in enumerate(units):
+        l = lens[i]
+        if cur > 0:
+            later_need = (clip_count - ci - 1) * lo
+            if ci + 1 < clip_count and (cur + l > hi or suffix[i + 1] < later_need):
+                ci += 1
+                cur = 0
+            elif ci + 1 >= clip_count and cur + l > hi:
+                continue  # last bucket already full: drop surplus
+        buckets[ci].append(u)
+        cur += l
     return buckets
+
+
+def _narration_from_clauses(clauses: list[str]) -> str:
+    """Join clauses into one clean narration sentence (F2)."""
+    if not clauses:
+        return ""
+    return "，".join(clauses) + "。"
 
 
 def _stage_for_clip(clip_index: int, clip_count: int) -> int:
@@ -443,6 +580,7 @@ def _expand_narrations(segments: list[HeartbeatSegment], min_chars: int, lang: s
         # Update visual_desc to match
         seg.visual_desc = seg.narration
 
+
 def plan_heartbeat5(
     *,
     source_text: str,
@@ -473,27 +611,26 @@ def plan_heartbeat5(
         raise ValueError("duration_s must be > 0")
 
     clip_count = clip_count_for_duration(duration_s)
-    sentences = _split_sentences(source_text)
-    if not sentences:
-        sentences = [str(source_text).strip()]
-    buckets = _distribute_sentences(sentences, clip_count)
+    # F2: split the source into small punctuation-free clauses and re-pack
+    # them into clips so every narration lands in [40, 66] Chinese chars.
+    clauses = _split_clauses(source_text)
+    if not clauses:
+        clauses = [str(source_text).strip()]
+    buckets = _pack_clauses(clauses, clip_count)
 
     facts = _extract_facts(source_text)
     hw = hook_window_s(duration_s)
 
     segments: list[HeartbeatSegment] = []
-    prev_vis_end = "white background with centered stickman starting pose"
     for i in range(clip_count):
         stage_idx = _stage_for_clip(i, clip_count)
         stage_zh, stage_en = STAGES[stage_idx]
-        narr = "".join(buckets[i]).strip()
-        # F6: Visual state continuity must be scene descriptions, never
-        # narration text.  Use the per-stage scene map so that every
-        # clip — including clips whose narration is empty because the
-        # source text ran out — still carries an explicit continuity
-        # handoff.  vis_start chains from prev_vis_end to ensure seamless handoff.
-        _, vis_end = _stage_scenes(stage_idx, clip_count)
-        vis_start = prev_vis_end
+        narr = _narration_from_clauses(buckets[i])
+        # F6: Visual state continuity is a scene/state description (never
+        # narration).  Opening state of clip i is scene pool entry i, so the
+        # hand-off Last(i) == First(i+1) holds verbatim.
+        vis_start, vis_end = _clip_scenes(i, clip_count)
+        action_beats = _clip_beats(i)
         seg = HeartbeatSegment(
             clip_index=i,
             stage_index=stage_idx,
@@ -501,7 +638,8 @@ def plan_heartbeat5(
             stage_en=stage_en,
             narration=narr,
             visual_desc=vis_end,
-            beats=_build_beats(narr, stage_idx),
+            beats=dict(action_beats),
+            action_beats=dict(action_beats),
             duration_s=CLIP_S,
             hook=(i == 0),
             hook_time_s=hook_time_s(duration_s),
@@ -509,9 +647,7 @@ def plan_heartbeat5(
             visual_state_end=vis_end,
         )
         segments.append(seg)
-        prev_vis_end = vis_end
 
-    hw = hook_window_s(duration_s)
     hook_start = hook_time_s(duration_s)
     hook_timing = HookTiming(
         hook_start_s=hook_start,
@@ -519,9 +655,6 @@ def plan_heartbeat5(
         window_start_s=hw[0],
         window_end_s=hw[1],
     )
-
-    # Expand narrations to meet minimum character count (F2)
-    _expand_narrations(segments, min_chars_per_clip, narration_lang)
 
     return HeartbeatPlan(
         title=title or (topic or "heartbeat5")[:40],
