@@ -305,7 +305,7 @@ def _clip_beats(clip_index: int) -> dict[str, str]:
         "stickman straightens up and folds both arms across the chest; camera holds",
         "slow push-in to a medium close shot as the stickman nods once",
         "stickman unfolds the arms and spreads them wide; camera pulls back to full shot",
-        "final wide shot as the stickman faces the viewer with arms held wide open",
+        "final wide shot as the stickman turns toward the viewer with arms held wide open",
     ]
     base = clip_index * 3
     return {

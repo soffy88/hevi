@@ -232,8 +232,8 @@ def main() -> int:
             "path": "output/dirstyle_e2e/source_clean.mp4",
             "kind": "generated",
             "description": "Clean text-free 1920x1080 12s source rendered with PIL "
-            "(graded sky + hill ridge + walking human silhouette); no "
-            "subtitles, watermark, logo or caption in the picture.",
+            "(graded sky + hill ridge + walking human silhouette); the picture "
+            "carries no on-screen text, logo or caption of any kind.",
             "generation_command": "python scripts/gen_clean_source.py",
             "license": "CC0 (self-generated, no third-party content)",
             "duration_s": src_probe["duration_s"],
