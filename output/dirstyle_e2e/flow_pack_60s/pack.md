@@ -10,14 +10,25 @@
 ## Director Proposal
 
 **Title**: heartbeat5
-**Core message**: 
+**Core message**: 猫为什么总爱把桌上的东西推下去
 **Narrative arc**: 5-stage heartbeat (黄金钩子 → 打破常识 → 拉出内幕 → 真相揭秘 → 升华互动)
+
+## Segment Transitions (Continuity Handoff)
+
+| Clip | Opening Frame | Closing Frame |
+|------|---------------|---------------|
+| Clip 00 | white background with centered stick figure starti | 猫为什么总爱把桌上的东西推下去？ |
+| Clip 01 | 猫为什么总爱把桌上的东西推下去？ | 背后有三个原因。 |
+| Clip 02 | 背后有三个原因。 | 触碰物体是在测试猎物。 |
+| Clip 03 | 触碰物体是在测试猎物。 | 就意味着可能是活物。 |
+| Clip 04 | 就意味着可能是活物。 | 对猫的神经系统是强烈刺激。 |
+| Clip 05 | 对猫的神经系统是强烈刺激。 | 哪怕被责备两句也是极好的互动。 |
 
 ## Global Continuity Block
 
 - **Character DNA**: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.
 - **Line weight**: uniform smooth stroke thickness on every line
-- **Palette**: vivid red, electric blue, warm gold
+- **Palette**: pastel pink, mustard yellow, mint green
 - **Composition (9:16)**: use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line
 - **Rhythm**: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle
 - **Negative constraints**: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing
@@ -31,21 +42,21 @@
 **Global continuity lock (repeated verbatim)**:
 - Character DNA: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.
 - Line weight: uniform smooth stroke thickness on every line
-- Palette: vivid red, electric blue, warm gold
+- Palette: pastel pink, mustard yellow, mint green
 - Composition (9:16): use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line
 - Rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle
 - Negative: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing
 
 **Timed visual beats**:
-- [0-3s]: 你知道吗？
-- [3-7s]: 你知道吗？
-- [7-10s]: 你知道吗？
+- [0-3s]: 猫为什么总爱把桌上的东西推下去？
+- [3-7s]: ，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
+- [7-10s]: transition from ，画面中展示了这个行为的细节，火柴人角色...
 
-**Audio voiceover (audio-only, no speech bubbles)**: "你知道吗？"
+**Audio voiceover (audio-only, no speech bubbles)**: "猫为什么总爱把桌上的东西推下去？，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。"
 
 **Compiled generation prompt**:
 ```
-One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 你知道吗？
+One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 猫为什么总爱把桌上的东西推下去？，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
 ```
 
 **Negative prompt**: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing, handheld, asymmetry, off-center subject, high contrast dramatic shadow, desaturated muted palette
@@ -58,21 +69,21 @@ One classic black line stickman on white. Its head is a black circular outline s
 **Global continuity lock (repeated verbatim)**:
 - Character DNA: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.
 - Line weight: uniform smooth stroke thickness on every line
-- Palette: vivid red, electric blue, warm gold
+- Palette: pastel pink, mustard yellow, mint green
 - Composition (9:16): use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line
 - Rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle
 - Negative: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing
 
 **Timed visual beats**:
-- [0-3s]: 全球每天消耗超过400亿杯咖啡。
-- [3-7s]: 全球每天消耗超过400亿杯咖啡。
-- [7-10s]: 全球每天消耗超过400亿杯咖啡。
+- [0-3s]: 背后有三个原因。
+- [3-7s]: ，火柴人角色在画面中做出解释的手势，用简单线条表达这个概念，背景保持纯白，突出角色的动作和表情。
+- [7-10s]: transition from ，火柴人角色在画面中做出解释的手势，用简...
 
-**Audio voiceover (audio-only, no speech bubbles)**: "全球每天消耗超过400亿杯咖啡。"
+**Audio voiceover (audio-only, no speech bubbles)**: "背后有三个原因。，火柴人角色在画面中做出解释的手势，用简单线条表达这个概念，背景保持纯白，突出角色的动作和表情。"
 
 **Compiled generation prompt**:
 ```
-One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 全球每天消耗超过400亿杯咖啡。
+One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 背后有三个原因。，火柴人角色在画面中做出解释的手势，用简单线条表达这个概念，背景保持纯白，突出角色的动作和表情。
 ```
 
 **Negative prompt**: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing, handheld, asymmetry, off-center subject, high contrast dramatic shadow, desaturated muted palette
@@ -85,21 +96,21 @@ One classic black line stickman on white. Its head is a black circular outline s
 **Global continuity lock (repeated verbatim)**:
 - Character DNA: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.
 - Line weight: uniform smooth stroke thickness on every line
-- Palette: vivid red, electric blue, warm gold
+- Palette: pastel pink, mustard yellow, mint green
 - Composition (9:16): use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line
 - Rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle
 - Negative: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing
 
 **Timed visual beats**:
-- [0-3s]: 
-- [3-7s]: 
-- [7-10s]: 
+- [0-3s]: 首先，猫的脚垫非常敏感，触碰物体是在测试猎物。
+- [3-7s]: ，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
+- [7-10s]: transition from ，画面中展示了这个行为的细节，火柴人角色...
 
-**Audio voiceover (audio-only, no speech bubbles)**: ""
+**Audio voiceover (audio-only, no speech bubbles)**: "首先，猫的脚垫非常敏感，触碰物体是在测试猎物。，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。"
 
 **Compiled generation prompt**:
 ```
-One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn
+One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 首先，猫的脚垫非常敏感，触碰物体是在测试猎物。，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
 ```
 
 **Negative prompt**: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing, handheld, asymmetry, off-center subject, high contrast dramatic shadow, desaturated muted palette
@@ -112,21 +123,21 @@ One classic black line stickman on white. Its head is a black circular outline s
 **Global continuity lock (repeated verbatim)**:
 - Character DNA: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.
 - Line weight: uniform smooth stroke thickness on every line
-- Palette: vivid red, electric blue, warm gold
+- Palette: pastel pink, mustard yellow, mint green
 - Composition (9:16): use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line
 - Rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle
 - Negative: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing
 
 **Timed visual beats**:
-- [0-3s]: 
-- [3-7s]: 
-- [7-10s]: 
+- [0-3s]: 轻轻一推，如果物体会动或逃跑，就意味着可能是活物。
+- [3-7s]: ，画面通过火柴人的动作展示这个内容，保持简洁清晰的视觉风格。
+- [7-10s]: transition from ，画面通过火柴人的动作展示这个内容，保持...
 
-**Audio voiceover (audio-only, no speech bubbles)**: ""
+**Audio voiceover (audio-only, no speech bubbles)**: "轻轻一推，如果物体会动或逃跑，就意味着可能是活物。，画面通过火柴人的动作展示这个内容，保持简洁清晰的视觉风格。"
 
 **Compiled generation prompt**:
 ```
-One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn
+One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 轻轻一推，如果物体会动或逃跑，就意味着可能是活物。，画面通过火柴人的动作展示这个内容，保持简洁清晰的视觉风格。
 ```
 
 **Negative prompt**: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing, handheld, asymmetry, off-center subject, high contrast dramatic shadow, desaturated muted palette
@@ -139,21 +150,21 @@ One classic black line stickman on white. Its head is a black circular outline s
 **Global continuity lock (repeated verbatim)**:
 - Character DNA: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.
 - Line weight: uniform smooth stroke thickness on every line
-- Palette: vivid red, electric blue, warm gold
+- Palette: pastel pink, mustard yellow, mint green
 - Composition (9:16): use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line
 - Rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle
 - Negative: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing
 
 **Timed visual beats**:
-- [0-3s]: 
-- [3-7s]: 
-- [7-10s]: 
+- [0-3s]: 其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。
+- [3-7s]: ，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
+- [7-10s]: transition from ，画面中展示了这个行为的细节，火柴人角色...
 
-**Audio voiceover (audio-only, no speech bubbles)**: ""
+**Audio voiceover (audio-only, no speech bubbles)**: "其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。"
 
 **Compiled generation prompt**:
 ```
-One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn
+One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
 ```
 
 **Negative prompt**: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing, handheld, asymmetry, off-center subject, high contrast dramatic shadow, desaturated muted palette
@@ -166,21 +177,21 @@ One classic black line stickman on white. Its head is a black circular outline s
 **Global continuity lock (repeated verbatim)**:
 - Character DNA: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.
 - Line weight: uniform smooth stroke thickness on every line
-- Palette: vivid red, electric blue, warm gold
+- Palette: pastel pink, mustard yellow, mint green
 - Composition (9:16): use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line
 - Rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle
 - Negative: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing
 
 **Timed visual beats**:
-- [0-3s]: 
-- [3-7s]: 
-- [7-10s]: 
+- [0-3s]: 最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。
+- [3-7s]: ，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
+- [7-10s]: transition from ，画面中展示了这个行为的细节，火柴人角色...
 
-**Audio voiceover (audio-only, no speech bubbles)**: ""
+**Audio voiceover (audio-only, no speech bubbles)**: "最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。"
 
 **Compiled generation prompt**:
 ```
-One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn
+One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, vivid red, electric blue, warm gold, 16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, absolute left-right symmetry, subject dead-center; planimetric front-on face, no dutch; dollhouse miniature scale feel; layered front-to-back symmetrical depth, pastel pink / mustard yellow / mint green / sky blue; high lightness, low contrast; one color theme per scene, mechanical horizontal track; 90-degree whip pan transition; overhead flat lay for objects, avg 3.5s/shot, cut on whip pan / object hand-off / 90-degree turn, 最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，背景保持简洁的白底黑线风格。
 ```
 
 **Negative prompt**: gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, photorealism, 3D humanoid rendering, detailed pupils or realistic eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing, handheld, asymmetry, off-center subject, high contrast dramatic shadow, desaturated muted palette
