@@ -308,16 +308,32 @@ def make_noise_fixture(out_dir: Path) -> Path:
     dest = out_dir / "bad_noise.mp4"
     subprocess.run(
         [
-            "ffmpeg", "-hide_banner", "-y", "-f", "lavfi",
-            "-i", "nullsrc=s=640x360:r=24:d=5",
-            "-f", "lavfi",
-            "-i", "anoisesrc=d=5:c=white:r=44100:a=0.5",
-            "-vf", "geq=random(1)*255:128:128",
-            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-shortest",
+            "ffmpeg",
+            "-hide_banner",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "nullsrc=s=640x360:r=24:d=5",
+            "-f",
+            "lavfi",
+            "-i",
+            "anoisesrc=d=5:c=white:r=44100:a=0.5",
+            "-vf",
+            "geq=random(1)*255:128:128",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
             str(dest),
         ],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     return dest
 
@@ -338,17 +354,32 @@ def make_macroblock_fixture(out_dir: Path) -> Path:
     # which produces genuine quantisation-boundary macroblocks.
     subprocess.run(
         [
-            "ffmpeg", "-hide_banner", "-y", "-f", "lavfi",
-            "-i", "testsrc=s=640x360:r=24:d=5",
-            "-f", "lavfi",
+            "ffmpeg",
+            "-hide_banner",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=s=640x360:r=24:d=5",
+            "-f",
+            "lavfi",
             "-i",
             "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
-            "-c:v", "libx264", "-preset", "ultrafast", "-qp", "51",
-            "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-shortest",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-qp",
+            "51",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
             str(dest),
         ],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     return dest
 
@@ -366,17 +397,36 @@ def make_half_gray_fixture(out_dir: Path) -> Path:
     dest = out_dir / "bad_half_gray.mp4"
     subprocess.run(
         [
-            "ffmpeg", "-hide_banner", "-y",
-            "-f", "lavfi", "-i", "testsrc=s=640x360:r=24:d=5",
-            "-f", "lavfi",
-            "-i", "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
-            "-filter_complex", "[0:v]drawbox=x=0:y=180:w=640:h=180:color=gray:t=fill[v]",
-            "-map", "[v]", "-map", "1:a",
-            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-shortest",
+            "ffmpeg",
+            "-hide_banner",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=s=640x360:r=24:d=5",
+            "-f",
+            "lavfi",
+            "-i",
+            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
+            "-filter_complex",
+            "[0:v]drawbox=x=0:y=180:w=640:h=180:color=gray:t=fill[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
             str(dest),
         ],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
     return dest
 
@@ -392,15 +442,122 @@ def make_black_silent_fixture(out_dir: Path) -> Path:
     dest = out_dir / "bad_black_silent.mp4"
     subprocess.run(
         [
-            "ffmpeg", "-hide_banner", "-y",
-            "-f", "lavfi", "-i", "color=c=black:s=640x360:r=24:d=5",
-            "-f", "lavfi", "-i",
+            "ffmpeg",
+            "-hide_banner",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=640x360:r=24:d=5",
+            "-f",
+            "lavfi",
+            "-i",
             "anullsrc=channel_layout=stereo:sample_rate=44100",
-            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-shortest",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
             str(dest),
         ],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
+    )
+    return dest
+
+
+def make_long_glitch_fixture(out_dir: Path) -> Path:
+    """70s normal clip with a 3s noise glitch at 50-53s (whole-clip scan).
+
+    The defect is far past the old 24s dense-scan cap, so this fixture only
+    turns red if the local defect scan really covers the whole clip.  A real
+    sine audio track means the red cannot come from a missing-audio violation.
+    """
+    dest = out_dir / "bad_long_glitch.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=s=640x360:r=24:d=70",
+            "-f",
+            "lavfi",
+            "-i",
+            "nullsrc=s=640x360:r=24:d=3,geq=lum='random(1)*255':cb='random(2)*255':cr='random(3)*255'",
+            "-f",
+            "lavfi",
+            "-i",
+            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=70",
+            "-filter_complex",
+            "[0:v][1:v]overlay=0:0:enable='between(t,50,53)'[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "2:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(dest),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return dest
+
+
+def make_right_third_gray_fixture(out_dir: Path) -> Path:
+    """Normal clip with a right-1/3-width grey bar (non-quadrant-aligned block).
+
+    The bar straddles the 2x2 quadrant boundary, so a quadrant-only region
+    detector misses it; the whole-frame strip detector must flag it.  A real
+    sine audio track means the red cannot come from a missing-audio violation.
+    """
+    dest = out_dir / "bad_right_third_gray.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=s=640x360:r=24:d=5",
+            "-f",
+            "lavfi",
+            "-i",
+            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
+            "-filter_complex",
+            "[0:v]drawbox=x=427:y=0:w=213:h=360:color=gray:t=fill[v]",
+            "-map",
+            "[v]",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(dest),
+        ],
+        check=True,
+        capture_output=True,
     )
     return dest
 
@@ -774,6 +931,8 @@ def section_review(out: Path) -> dict[str, Any]:
         ("macroblock", make_macroblock_fixture),
         ("half_gray", make_half_gray_fixture),
         ("black_silent", make_black_silent_fixture),
+        ("long_glitch", make_long_glitch_fixture),
+        ("right_third_gray", make_right_third_gray_fixture),
     ):
         clip = maker(step_dir)
         rep = review_finished_video(
@@ -800,9 +959,7 @@ def section_review(out: Path) -> dict[str, Any]:
             f"violations={len(rep.get('violations') or [])}"
         )
     results["bad_cases"] = bad_cases
-    results["red_demo_via_bad_cases"] = all(
-        (v.get("verdict") == "red") for v in bad_cases.values()
-    )
+    results["red_demo_via_bad_cases"] = all((v.get("verdict") == "red") for v in bad_cases.values())
     return results
 
 

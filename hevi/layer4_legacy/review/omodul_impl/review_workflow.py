@@ -624,16 +624,15 @@ def review_finished_video_workflow(
     # 4-point spot frames above.
     CORRUPTION_KEYS = ("is_noise", "is_color_anomaly", "is_region_flat")
     BLACKFREEZE_KEYS = ("is_black", "is_flat")
+    dense_fps = 2.0
     dense_defect_hits: list[dict[str, Any]] = []
     blackfreeze_hits: list[dict[str, Any]] = []
     if dense:
         dense_checks: list[dict[str, Any]] = []
         for i, df in enumerate(dense):
-            try:
-                # timestamp is encoded in the filename as "..._<sec>s.png"
-                ts = float(Path(df).stem.rsplit("_", 1)[-1])
-            except ValueError, IndexError:
-                ts = i / 2.0
+            # dense_sample_frames decodes at fps=2.0 in order, so frame i is at
+            # i / fps seconds — the filename only carries the frame number.
+            ts = i / dense_fps
             try:
                 dc = frame_stats(path=df, index=i, timestamp_s=ts).to_dict()
             except Exception:
@@ -671,22 +670,22 @@ def review_finished_video_workflow(
         if dense_defect_hits:
             worst = max(dense_defect_hits, key=lambda h: h["run_len"])
             desc = " + ".join(worst["flags"])
+            _secs = worst["run_len"] / dense_fps
             violations.append(
-                f"局部坏段 ≥{worst['run_len']} 连续帧(≈{worst['run_len'] * 0.5:.1f}s @ "
-                f"{worst['start_s']}s, {desc})"
+                f"局部坏段 ≥{worst['run_len']} 连续帧(≈{_secs:.1f}s @ {worst['start_s']}s, {desc})"
             )
 
         # Black / freeze: mid-clip continuous run >= min_black_freeze_s, with
         # head/tail exemption (a leading/trailing black or title card is normal).
         min_bf_s = float(cfg.get("min_black_freeze_s", 3.0))
-        min_bf_frames = max(2, int(round(min_bf_s * 2.0)))
+        min_bf_frames = max(2, int(round(min_bf_s * dense_fps)))
         duration_s = float(info.duration_s or 0.0)
         exempt_s = float(cfg.get("black_freeze_head_tail_exempt_s", 1.5))
         for start, run_len, flags in _runs(BLACKFREEZE_KEYS):
             if run_len < min_bf_frames:
                 continue
             t0 = float(dense_checks[start].get("timestamp_s") or 0.0)
-            t1 = t0 + run_len * 0.5
+            t1 = t0 + run_len / dense_fps
             # exempt when the run hugs the head or the tail of the clip
             if t0 <= exempt_s or (duration_s and t1 >= duration_s - exempt_s):
                 continue
@@ -701,8 +700,9 @@ def review_finished_video_workflow(
         if blackfreeze_hits:
             worst = max(blackfreeze_hits, key=lambda h: h["run_len"])
             desc = " + ".join(worst["flags"])
+            _bf_secs = worst["run_len"] / dense_fps
             violations.append(
-                f"片中连续黑场/静帧 {worst['run_len'] * 0.5:.1f}s @ {worst['start_s']}-"
+                f"片中连续黑场/静帧 {_bf_secs:.1f}s @ {worst['start_s']}-"
                 f"{worst['end_s']}s ({desc}, ≥{min_bf_s:.0f}s 门槛)"
             )
 

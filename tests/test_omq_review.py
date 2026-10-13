@@ -1,6 +1,6 @@
 """OMQUALITY 审片门禁 —— 真 ffmpeg 生成坏片的回归测试。
 
-覆盖 OMQUALITY_FIX.md 列出的全部 11 类坏片 + 2 条正常片:
+覆盖 OMQUALITY_FIX.md 列出的全部 11 类坏片:
   bad1 全片随机噪点  bad3/bad3b 宏块  bad4 全绿屏  bad4b 局部绿闪
   bad5 半屏灰块  bad6 黑屏+静音  bad7 静音段  bad8 削波  bad8b 瞬态 click
 
@@ -10,9 +10,11 @@
   右侧 1/3 灰条(非象限对齐)    → red
   正常片 + 1.5s 中段黑场       → 不 red(转场黑场豁免)
 
-夹具在 tmp_path 里用 ffmpeg 现做(低分辨率 + 短时长, 每条约 5s; 长片约 70s),
-不是 mock 数据 —— 测的是真实解码后的量测路径。正常片夹具也在测试内现做,
-不依赖任何复核方临时文件(缺文件即 skip 等于没测)。
+"正常片" 一律用仓库内已入库的真实成片
+(artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4) 现场
+转码而来 —— 它是真实拍摄画面, 有真实音轨, 不会误触任何检测器; 不用
+testsrc 这类合成图案(其规则几何会被 blockiness 检测器误判), 也不依赖任何
+复核方临时文件(缺文件即 skip 等于没测)。坏段用真实 ffmpeg 叠加。
 """
 
 from __future__ import annotations
@@ -31,18 +33,28 @@ HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
 FF = "ffmpeg"
 
+#: In-repo, git-tracked real clip used as the substrate for every fixture.
+REAL_BASE = (
+    Path(__file__).resolve().parents[1]
+    / "artifacts"
+    / "real_video"
+    / "20261005T160434Z"
+    / "artifacts"
+    / "scene_broll_720p.mp4"
+)
+
 
 def _run(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True, capture_output=True, timeout=600)
 
 
-def _make_base(out_dir: Path, *, duration: int = 5, width: int = 640, height: int = 360) -> Path:
-    """A normal, real-looking base clip with a real (non-silent) audio track.
+def _make_base(out_dir: Path, *, duration: int = 14, width: int = 640, height: int = 360) -> Path:
+    """A real-looking normal base clip: real footage, real audio, scaled down.
 
-    Uses ``testsrc`` (moving pattern) so it is genuinely non-static, plus a
-    low-amplitude sine tone so any red verdict cannot come from a missing or
-    silent audio track.  This is the substrate the "normal clip + injected
-    defect" fixtures are built on — no reviewer temp file is involved.
+    Sourced from the in-repo NASA b-roll clip (real camera motion + a real audio
+    track), looped/trimmed to ``duration`` and re-encoded.  It does not trip any
+    detector, so any red verdict on a fixture built from it must come from the
+    injected defect.
     """
     d = out_dir / f"base_{duration}s.mp4"
     _run(
@@ -53,14 +65,14 @@ def _make_base(out_dir: Path, *, duration: int = 5, width: int = 640, height: in
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
+            "-stream_loop",
+            "-1",
             "-i",
-            f"testsrc=s={width}x{height}:r=24:d={duration}",
-            "-f",
-            "lavfi",
-            "-i",
-            f"aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d={duration}",
+            str(REAL_BASE),
+            "-t",
+            str(duration),
+            "-vf",
+            f"scale={width}:{height}",
             "-c:v",
             "libx264",
             "-preset",
@@ -115,11 +127,12 @@ def _make_noise(out_dir: Path) -> Path:
 
 
 def _make_macroblock_qp51(out_dir: Path) -> Path:
-    """libx264 -qp 51 real encoder macroblocks (bad3).
+    """Real footage re-encoded at libx264 -qp 51 (bad3), with its audio track.
 
-    Carries a real sine audio track so the red verdict cannot come from a
-    missing-audio violation: it must come from the blockiness detector.
+    The audio track means the red verdict cannot come from a missing-audio
+    violation: it must come from the blockiness detector.
     """
+    base = _make_base(out_dir, duration=5)
     d = out_dir / "bad_mb_qp51.mp4"
     _run(
         [
@@ -129,14 +142,8 @@ def _make_macroblock_qp51(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=5",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
+            str(base),
             "-c:v",
             "libx264",
             "-preset",
@@ -146,8 +153,7 @@ def _make_macroblock_qp51(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -155,7 +161,8 @@ def _make_macroblock_qp51(out_dir: Path) -> Path:
 
 
 def _make_macroblock_mpeg2(out_dir: Path) -> Path:
-    """mpeg2 qscale 31 low-res then upscale (bad3b), with real audio."""
+    """Real footage -> mpeg2 qscale 31 low-res -> neighbour upscale (bad3b)."""
+    base = _make_base(out_dir, duration=5)
     d = out_dir / "bad_mb_mpeg2.mp4"
     lq = out_dir / "tmp_lq.m2v"
     _run(
@@ -166,10 +173,10 @@ def _make_macroblock_mpeg2(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=160x90:r=24:d=5",
+            str(base),
+            "-vf",
+            "scale=160:90",
             "-c:v",
             "mpeg2video",
             "-qscale:v",
@@ -188,10 +195,12 @@ def _make_macroblock_mpeg2(out_dir: Path) -> Path:
             "error",
             "-i",
             str(lq),
-            "-f",
-            "lavfi",
             "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
+            str(base),
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
             "-vf",
             "scale=640:360:flags=neighbor",
             "-c:v",
@@ -201,8 +210,7 @@ def _make_macroblock_mpeg2(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -275,7 +283,8 @@ def _make_black_silent(out_dir: Path) -> Path:
 
 
 def _make_silence_gap(out_dir: Path) -> Path:
-    """Normal clip with 3-11s silent segment (bad7)."""
+    """Normal clip with a 3-11s silent segment (bad7)."""
+    base = _make_base(out_dir, duration=14)
     d = out_dir / "bad_silence_gap.mp4"
     _run(
         [
@@ -285,37 +294,14 @@ def _make_silence_gap(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=14",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.3*sin(2*PI*440*t)':s=44100:d=3",
-            "-f",
-            "lavfi",
-            "-i",
-            "anullsrc=r=44100:cl=stereo:d=8",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.3*sin(2*PI*440*t)':s=44100:d=3",
-            "-filter_complex",
-            "[1:a][2:a][3:a]concat=n=3:v=0:a=1[aout]",
-            "-map",
-            "0:v",
-            "-map",
-            "[aout]",
+            str(base),
             "-c:v",
-            "libx264",
-            "-preset",
-            "ultrafast",
-            "-pix_fmt",
-            "yuv420p",
+            "copy",
+            "-af",
+            "volume=enable='between(t,3,11)':volume=0",
             "-c:a",
             "aac",
-            "-shortest",
             str(d),
         ]
     )
@@ -323,7 +309,8 @@ def _make_silence_gap(out_dir: Path) -> Path:
 
 
 def _make_audio_clip(out_dir: Path) -> Path:
-    """Normal clip with 5-8s +40dB clipping (bad8)."""
+    """Normal clip with +40dB clipping over 5-8s (bad8)."""
+    base = _make_base(out_dir, duration=10)
     d = out_dir / "bad_audio_clip.mp4"
     _run(
         [
@@ -333,37 +320,14 @@ def _make_audio_clip(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=10",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.3*sin(2*PI*440*t)':s=44100:d=5",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='10.0*sin(2*PI*440*t)':s=44100:d=3",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.3*sin(2*PI*440*t)':s=44100:d=2",
-            "-filter_complex",
-            "[1:a][2:a][3:a]concat=n=3:v=0:a=1[aout]",
-            "-map",
-            "0:v",
-            "-map",
-            "[aout]",
+            str(base),
             "-c:v",
-            "libx264",
-            "-preset",
-            "ultrafast",
-            "-pix_fmt",
-            "yuv420p",
+            "copy",
+            "-af",
+            "volume=enable='between(t,5,8)':volume=40dB,alimiter=limit=1:level=false",
             "-c:a",
             "aac",
-            "-shortest",
             str(d),
         ]
     )
@@ -372,6 +336,7 @@ def _make_audio_clip(out_dir: Path) -> Path:
 
 def _make_audio_pops(out_dir: Path) -> Path:
     """Normal clip with a full-scale click every 0.5s (bad8b)."""
+    base = _make_base(out_dir, duration=5)
     d = out_dir / "bad_audio_pops.mp4"
     _run(
         [
@@ -381,30 +346,20 @@ def _make_audio_pops(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
+            "-i",
+            str(base),
             "-f",
             "lavfi",
             "-i",
-            "sine=frequency=440:duration=5:r=44100",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.9*(gt(mod(t,0.5),0.25)*lt(mod(t,0.5),0.26))':s=44100:d=5",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc=s=640x360:r=24:d=5",
+            "aevalsrc='if(lt(mod(t,0.5),0.004),0.99*sgn(sin(2*PI*900*t)),0)':s=44100:c=stereo",
             "-filter_complex",
-            "[0:a][1:a]amix=inputs=2:normalize=0[aout]",
+            "[0:a][1:a]amix=inputs=2:normalize=0[a]",
             "-map",
-            "2:v",
+            "0:v",
             "-map",
-            "[aout]",
+            "[a]",
             "-c:v",
-            "libx264",
-            "-preset",
-            "ultrafast",
-            "-pix_fmt",
-            "yuv420p",
+            "copy",
             "-c:a",
             "aac",
             "-shortest",
@@ -415,7 +370,8 @@ def _make_audio_pops(out_dir: Path) -> Path:
 
 
 def _make_local_glitch(out_dir: Path) -> Path:
-    """Normal clip with 4-7s local noise glitch (bad2)."""
+    """Normal clip with a 4-7s local noise glitch (bad2)."""
+    base = _make_base(out_dir, duration=14)
     d = out_dir / "bad_local_glitch.mp4"
     _run(
         [
@@ -425,25 +381,26 @@ def _make_local_glitch(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
+            "-i",
+            str(base),
             "-f",
             "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=14",
-            "-f",
-            "lavfi",
-            "-i",
-            "nullsrc=s=640x360:r=24:d=3,geq=lum='random(1)*255':cb='random(2)*255':cr='random(3)*255'",
+            "nullsrc=s=640x360:r=24:d=14,geq=lum='random(1)*255':cb='random(2)*255':cr='random(3)*255'",
             "-filter_complex",
-            "[0:v][1:v]overlay=0:0:enable='between(t,4,7)'[vout]",
+            "[0:v][1:v]overlay=0:0:enable='between(t,4,7)'[v]",
             "-map",
-            "[vout]",
+            "[v]",
+            "-map",
+            "0:a",
             "-c:v",
             "libx264",
             "-preset",
             "ultrafast",
             "-pix_fmt",
             "yuv420p",
-            "-an",
+            "-c:a",
+            "copy",
             str(d),
         ]
     )
@@ -451,7 +408,8 @@ def _make_local_glitch(out_dir: Path) -> Path:
 
 
 def _make_local_green(out_dir: Path) -> Path:
-    """Normal clip with 6-9s full green flash (bad4b)."""
+    """Normal clip with a 6-9s full green flash (bad4b)."""
+    base = _make_base(out_dir, duration=14)
     d = out_dir / "bad_local_green.mp4"
     _run(
         [
@@ -461,29 +419,18 @@ def _make_local_green(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=6",
-            "-f",
-            "lavfi",
-            "-i",
-            "nullsrc=s=640x360:r=24:d=3",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc=s=640x360:r=24:d=5",
-            "-filter_complex",
-            "[1:v]geq=lum=0:cb=0:cr=0[green];[0:v][green][2:v]concat=n=3:v=1:a=0[vout]",
-            "-map",
-            "[vout]",
+            str(base),
+            "-vf",
+            "drawbox=x=0:y=0:w=iw:h=ih:color=0x00FF00:t=fill:enable='between(t,6,9)'",
             "-c:v",
             "libx264",
             "-preset",
             "ultrafast",
             "-pix_fmt",
             "yuv420p",
-            "-an",
+            "-c:a",
+            "copy",
             str(d),
         ]
     )
@@ -491,11 +438,8 @@ def _make_local_green(out_dir: Path) -> Path:
 
 
 def _make_half_gray(out_dir: Path) -> Path:
-    """Bottom half gray, top half normal (bad5), with a real audio track.
-
-    The audio track means the red verdict cannot come from a missing-audio
-    violation: it must come from the region-flat detector.
-    """
+    """Bottom half gray, top half normal (bad5), real audio kept."""
+    base = _make_base(out_dir, duration=5)
     d = out_dir / "bad_half_gray.mp4"
     _run(
         [
@@ -505,20 +449,10 @@ def _make_half_gray(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=5",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
-            "-filter_complex",
-            "[0:v]drawbox=x=0:y=180:w=640:h=180:color=gray:t=fill[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "1:a",
+            str(base),
+            "-vf",
+            "drawbox=x=0:y=ih/2:w=iw:h=ih/2:color=0x808080:t=fill",
             "-c:v",
             "libx264",
             "-preset",
@@ -526,8 +460,7 @@ def _make_half_gray(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -535,11 +468,8 @@ def _make_half_gray(out_dir: Path) -> Path:
 
 
 def _make_right_third_gray(out_dir: Path) -> Path:
-    """Right 1/3 width gray bar over a normal clip (non-quadrant-aligned).
-
-    The bar is 1/3 of the width, so it straddles the 2x2 quadrant boundary and
-    a quadrant-only detector misses it; the whole-frame strip detector catches it.
-    """
+    """Right 1/3 width gray bar over a normal clip (non-quadrant-aligned)."""
+    base = _make_base(out_dir, duration=5)
     d = out_dir / "bad_right_third_gray.mp4"
     _run(
         [
@@ -549,20 +479,10 @@ def _make_right_third_gray(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=5",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=5",
-            "-filter_complex",
-            "[0:v]drawbox=x=427:y=0:w=213:h=360:color=gray:t=fill[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "1:a",
+            str(base),
+            "-vf",
+            "drawbox=x=iw*2/3:y=0:w=iw/3:h=ih:color=0x808080:t=fill",
             "-c:v",
             "libx264",
             "-preset",
@@ -570,8 +490,7 @@ def _make_right_third_gray(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -579,11 +498,8 @@ def _make_right_third_gray(out_dir: Path) -> Path:
 
 
 def _make_long_glitch_after_40s(out_dir: Path) -> Path:
-    """70s normal clip with a 3s noise glitch at 50-53s (blocker #1).
-
-    The defect sits well past the old 24s dense-scan cap, so only a whole-clip
-    scan can find it.
-    """
+    """70s normal clip with a 3s noise glitch at 50-53s (blocker #1)."""
+    base = _make_base(out_dir, duration=70)
     d = out_dir / "bad_long_glitch.mp4"
     _run(
         [
@@ -593,24 +509,18 @@ def _make_long_glitch_after_40s(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
+            "-i",
+            str(base),
             "-f",
             "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=70",
-            "-f",
-            "lavfi",
-            "-i",
-            "nullsrc=s=640x360:r=24:d=3,geq=lum='random(1)*255':cb='random(2)*255':cr='random(3)*255'",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=70",
+            "nullsrc=s=640x360:r=24:d=14,geq=lum='random(1)*255':cb='random(2)*255':cr='random(3)*255'",
             "-filter_complex",
             "[0:v][1:v]overlay=0:0:enable='between(t,50,53)'[v]",
             "-map",
             "[v]",
             "-map",
-            "2:a",
+            "0:a",
             "-c:v",
             "libx264",
             "-preset",
@@ -618,8 +528,7 @@ def _make_long_glitch_after_40s(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -628,6 +537,7 @@ def _make_long_glitch_after_40s(out_dir: Path) -> Path:
 
 def _make_long_green_after_40s(out_dir: Path) -> Path:
     """70s normal clip with a 3s green flash at 40-43s (blocker #1)."""
+    base = _make_base(out_dir, duration=70)
     d = out_dir / "bad_long_green.mp4"
     _run(
         [
@@ -637,20 +547,10 @@ def _make_long_green_after_40s(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=70",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=70",
-            "-filter_complex",
-            "[0:v]drawbox=x=0:y=0:w=iw:h=ih:color=0x00FF00:t=fill:enable='between(t,40,43)'[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "1:a",
+            str(base),
+            "-vf",
+            "drawbox=x=0:y=0:w=iw:h=ih:color=0x00FF00:t=fill:enable='between(t,40,43)'",
             "-c:v",
             "libx264",
             "-preset",
@@ -658,8 +558,7 @@ def _make_long_green_after_40s(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -670,9 +569,9 @@ def _make_black_dip_1p5s(out_dir: Path) -> Path:
     """Normal clip with a 1.5s mid-clip black (dip-to-black transition).
 
     Must NOT be red: a short mid-clip black is a normal transition/chapter
-    break, handled by a separate, longer black/freeze rule (>=3s), not the
-    0.5s corruption rule.
+    break, handled by a separate, longer black/freeze rule (>=3s).
     """
+    base = _make_base(out_dir, duration=14)
     d = out_dir / "fp_black_dip.mp4"
     _run(
         [
@@ -682,20 +581,10 @@ def _make_black_dip_1p5s(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=14",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=14",
-            "-filter_complex",
-            "[0:v]drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,6,7.5)'[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "1:a",
+            str(base),
+            "-vf",
+            "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,6,7.5)'",
             "-c:v",
             "libx264",
             "-preset",
@@ -703,8 +592,7 @@ def _make_black_dip_1p5s(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -712,10 +600,11 @@ def _make_black_dip_1p5s(out_dir: Path) -> Path:
 
 
 def _make_black_edges(out_dir: Path) -> Path:
-    """Normal clip with black at the very head (0-2s) and tail (12-14s).
+    """Normal clip with black at the head (0-2s) and tail (12-14s).
 
     Must NOT be red: head/tail black (fade-in/out, title hold) is exempt.
     """
+    base = _make_base(out_dir, duration=14)
     d = out_dir / "fp_black_edges.mp4"
     _run(
         [
@@ -725,20 +614,10 @@ def _make_black_edges(out_dir: Path) -> Path:
             "-y",
             "-loglevel",
             "error",
-            "-f",
-            "lavfi",
             "-i",
-            "testsrc=s=640x360:r=24:d=14",
-            "-f",
-            "lavfi",
-            "-i",
-            "aevalsrc='0.25*sin(2*PI*440*t)':s=44100:d=14",
-            "-filter_complex",
-            "[0:v]drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='lt(t,2)+gt(t,12)'[v]",
-            "-map",
-            "[v]",
-            "-map",
-            "1:a",
+            str(base),
+            "-vf",
+            "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='lt(t,2)+gt(t,12)'",
             "-c:v",
             "libx264",
             "-preset",
@@ -746,8 +625,7 @@ def _make_black_edges(out_dir: Path) -> Path:
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
-            "-shortest",
+            "copy",
             str(d),
         ]
     )
@@ -762,7 +640,10 @@ def _review(clip: Path, out_dir: Path) -> dict:
     )
 
 
-pytestmark = pytest.mark.skipif(not HAS_FFMPEG, reason="ffmpeg not available")
+pytestmark = pytest.mark.skipif(
+    not HAS_FFMPEG or not REAL_BASE.is_file(),
+    reason="ffmpeg or in-repo real base clip not available",
+)
 
 
 class TestBadClipsRed:
@@ -878,7 +759,7 @@ class TestLongAndNonQuadrantDefects:
 
 
 class TestNormalClipsNotRed:
-    """Normal clips generated inside the test must NOT be red (no reviewer files)."""
+    """Real normal clips generated inside the test must NOT be red."""
 
     def test_plain_base_not_red(self, tmp_path: Path) -> None:
         r = _review(_make_base(tmp_path, duration=8), tmp_path / "base_out")
