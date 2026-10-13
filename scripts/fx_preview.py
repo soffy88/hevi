@@ -890,7 +890,12 @@ def _load_label_font(size: int):
 
 
 def build_contact_sheet(records: list[dict], out_path: Path) -> dict:
-    """Tile >=4 thumbnails per category into one PNG."""
+    """Tile >=4 thumbnails per category, plus a dedicated sfx row, into one PNG.
+
+    sfx entries live in the ``overlay`` category, so a plain per-category pass
+    would never show them. An extra row is appended for every ``sfx`` source
+    entry so the waveform thumbnails are always visible.
+    """
     from PIL import Image, ImageDraw
 
     ok = [
@@ -911,6 +916,11 @@ def build_contact_sheet(records: list[dict], out_path: Path) -> dict:
                 continue
             used.add(r["id"])
             picked.append(r)
+    # dedicated sfx row (they are overlay-category but deserve their own row)
+    sfx_rows = [r for r in ok if r["source"] == "sfx" and r["id"] not in used][:per_cat]
+    for r in sfx_rows:
+        used.add(r["id"])
+        picked.append(r)
 
     if not picked:
         return {"error": "no rendered thumbnails available", "counts": {}}
@@ -940,7 +950,8 @@ def build_contact_sheet(records: list[dict], out_path: Path) -> dict:
         except OSError as exc:
             draw.rectangle([x, y, x + tw, y + th], fill=(60, 20, 20))
             draw.text((x + 6, y + 6), f"missing: {exc}", fill=(255, 120, 120), font=small)
-        counts[rec["category"]] = counts.get(rec["category"], 0) + 1
+        key = rec["source"] if rec["source"] == "sfx" else rec["category"]
+        counts[key] = counts.get(key, 0) + 1
         draw.rectangle([x, y + th, x + tw, y + th + label_h], fill=(10, 12, 16))
         draw.text(
             (x + 6, y + th + 5),

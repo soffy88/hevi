@@ -745,3 +745,5 @@ class TestPreviewAcceptance:
         ok_cats = {r["category"] for r in data["templates"] if r["status"] == "ok"}
         for cat in ok_cats:
             assert counts.get(cat, 0) >= 4, f"contact sheet has <4 thumbnails for {cat}"
+        # sfx thumbnails get their own row so the waveform previews are visible
+        assert counts.get("sfx", 0) >= 4, "contact sheet is missing the sfx waveform row"
