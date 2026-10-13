@@ -1,0 +1,10 @@
+[PASS] check_no_sibling_call.py
+[PASS] check_omodul_signature.py
+[PASS] check_enabled_pillars.py
+[PASS] check_flat_namespace.py
+[PASS] check_no_project_prefix.py
+[PASS] check_oprim_keyword_only.py
+[PASS] check_obase_no_reverse_dep.py
+[PASS] check_oservi_injection.py
+[PASS] check_async_contract.py
+3O_V3_LINT=PASS
