@@ -120,6 +120,11 @@ def extract_frame(video: Path, png: Path, ss: float) -> None:
     subprocess.run(cmd, check=True, capture_output=True)
 
 
+def frame_path(sid: str, frac: float) -> Path:
+    """Deterministic representative-frame path (0.0 -> ``<sid>_frame0.png``)."""
+    return OUT / f"{sid}_frame{frac:g}.png"
+
+
 def main() -> int:
     assert SOURCE.exists(), f"missing clean source {SOURCE}"
     src_probe = probe(SOURCE)
@@ -141,7 +146,7 @@ def main() -> int:
         # representative frames from the graded video
         for frac in (0.0, 0.25, 0.5, 0.75):
             ss = res.duration_s * frac
-            extract_frame(out_mp4, OUT / f"{sid}_frame{frac}.png", ss)
+            extract_frame(out_mp4, frame_path(sid, frac), ss)
 
         # subbed version
         subbed = OUT / f"{sid}_subbed.mp4"

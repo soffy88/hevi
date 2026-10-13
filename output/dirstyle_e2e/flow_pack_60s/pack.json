@@ -14,7 +14,7 @@
     "clip_count": 6,
     "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
     "line_weight": "uniform smooth stroke thickness on every line",
-    "palette_words": "vivid red, electric blue, warm gold",
+    "palette_words": "crimson red, cobalt blue, amber gold",
     "composition_aspect": "use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line",
     "rhythm": "avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
     "voice_profile": "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。",
@@ -49,7 +49,7 @@
   },
   "plan": {
     "title": "heartbeat5",
-    "topic": "猫为什么总爱把桌上的东西推下去",
+    "topic": "# 长中文通用常识文 — 猫推东西行为的科学解释\n\n## 字数参考：约 420 字\n\n猫为什么总爱把桌上的东西推下去",
     "duration_s": 60,
     "clip_count": 6,
     "hook_window": [
@@ -63,111 +63,143 @@
         "stage_index": 0,
         "stage_zh": "黄金钩子",
         "stage_en": "Golden Hook",
-        "narration": "猫为什么总爱把桌上的东西推下去？",
-        "visual_desc": "猫为什么总爱把桌上的东西推下去？",
+        "narration": "猫为什么总爱把桌上的，东西推下去，这个行为背后其实有深，刻的进化与心理原因，首先，猫的脚垫非常敏感，上面分布着大量的触觉，感受器，当它们触碰物体时。",
+        "visual_desc": "stickman reaching upward and pushing a cup toward the table edge",
         "beats": {
-          "0-3s": "猫为什么总爱把桌",
-          "3-7s": "上的东西推下去？",
-          "7-10s": "conclude: 把桌上的东西推下去？"
+          "0-3s": "stickman stands centered in a wide shot, then raises one arm upward",
+          "3-7s": "slow push-in to a medium shot as the stickman turns side-on",
+          "7-10s": "stickman crouches and places a small cup on the table edge, camera holds low"
+        },
+        "action_beats": {
+          "0-3s": "stickman stands centered in a wide shot, then raises one arm upward",
+          "3-7s": "slow push-in to a medium shot as the stickman turns side-on",
+          "7-10s": "stickman crouches and places a small cup on the table edge, camera holds low"
         },
         "duration_s": 10.0,
         "hook": true,
         "hook_time_s": 2.0,
-        "visual_state_start": "white background with centered stickman starting pose",
-        "visual_state_end": "stickman reaching up and pushing a cup off the table edge"
+        "visual_state_start": "white background with a centered stickman standing in a neutral start pose",
+        "visual_state_end": "stickman reaching upward and pushing a cup toward the table edge"
       },
       {
         "clip_index": 1,
         "stage_index": 1,
         "stage_zh": "打破常识",
         "stage_en": "Disrupting Assumptions",
-        "narration": "背后有三个原因。",
-        "visual_desc": "背后有三个原因。",
+        "narration": "实际上是在用脚垫探测，物体的质地，温度和移动性，轻轻一推，如果物体会滚动或发出，声响，就说明它可能是活物或，值得追踪的目标，这是猫科动物刻在基因。",
+        "visual_desc": "stickman holding up three separated fingers beside a small table",
         "beats": {
-          "0-3s": "背后有三",
-          "3-7s": "个原因。",
-          "7-10s": "conclude: 背后有三个原因。"
+          "0-3s": "tilt up to a full shot while the stickman straightens and steps back",
+          "3-7s": "stickman extends an arm and pushes the cup; camera drifts slowly downward",
+          "7-10s": "pull back to a wide shot as the stickman rocks onto the back foot"
+        },
+        "action_beats": {
+          "0-3s": "tilt up to a full shot while the stickman straightens and steps back",
+          "3-7s": "stickman extends an arm and pushes the cup; camera drifts slowly downward",
+          "7-10s": "pull back to a wide shot as the stickman rocks onto the back foot"
         },
         "duration_s": 10.0,
         "hook": false,
         "hook_time_s": 2.0,
-        "visual_state_start": "stickman reaching up and pushing a cup off the table edge",
-        "visual_state_end": "stickman holding up three fingers while pacing across the frame"
+        "visual_state_start": "stickman reaching upward and pushing a cup toward the table edge",
+        "visual_state_end": "stickman holding up three separated fingers beside a small table"
       },
       {
         "clip_index": 2,
         "stage_index": 1,
         "stage_zh": "打破常识",
         "stage_en": "Disrupting Assumptions",
-        "narration": "首先，猫的脚垫非常敏感，触碰物体是在测试猎物。",
-        "visual_desc": "首先，猫的脚垫非常敏感，触碰物体是在测试猎物。",
+        "narration": "里的狩猎本能，在野外，小猫需要通过推，抓，拍来学习如何捕捉猎物，其次，高处跌落产生的声音和，运动轨迹，对猫的神经系统是强烈，刺激，物体坠落时的抛物线。",
+        "visual_desc": "stickman crouching low and pressing one palm flat against the ground",
         "beats": {
-          "0-3s": "首先",
-          "3-7s": "猫的脚垫非常敏感",
-          "7-10s": "触碰物体是在测试猎物。"
+          "0-3s": "stickman lifts a hand and unfolds three fingers one at a time; camera eases in",
+          "3-7s": "cut to a low angle as the stickman paces a few steps toward the frame edge",
+          "7-10s": "stickman pivots and raises the open hand higher; camera arcs gently sideways"
+        },
+        "action_beats": {
+          "0-3s": "stickman lifts a hand and unfolds three fingers one at a time; camera eases in",
+          "3-7s": "cut to a low angle as the stickman paces a few steps toward the frame edge",
+          "7-10s": "stickman pivots and raises the open hand higher; camera arcs gently sideways"
         },
         "duration_s": 10.0,
         "hook": false,
         "hook_time_s": 2.0,
-        "visual_state_start": "stickman holding up three fingers while pacing across the frame",
-        "visual_state_end": "stickman holding up three fingers while pacing across the frame"
+        "visual_state_start": "stickman holding up three separated fingers beside a small table",
+        "visual_state_end": "stickman crouching low and pressing one palm flat against the ground"
       },
       {
         "clip_index": 3,
         "stage_index": 2,
         "stage_zh": "拉出内幕",
         "stage_en": "Unveiling Insider Secrets",
-        "narration": "轻轻一推，如果物体会动或逃跑，就意味着可能是活物。",
-        "visual_desc": "轻轻一推，如果物体会动或逃跑，就意味着可能是活物。",
+        "narration": "碰撞声，滚动节奏，都会触发猫大脑中的奖，赏回路，即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦，最后，猫咪敏锐地观察到。",
+        "visual_desc": "stickman leaning forward with both arms swept out to the sides",
         "beats": {
-          "0-3s": "轻轻一推",
-          "3-7s": "如果物体会动或逃跑",
-          "7-10s": "就意味着可能是活物。"
+          "0-3s": "stickman sinks into a low crouch and lays one palm on the floor; tilt down",
+          "3-7s": "slow push-in to a tight medium shot as the stickman leans over the object",
+          "7-10s": "stickman presses the palm flat and slides it forward; camera settles low"
+        },
+        "action_beats": {
+          "0-3s": "stickman sinks into a low crouch and lays one palm on the floor; tilt down",
+          "3-7s": "slow push-in to a tight medium shot as the stickman leans over the object",
+          "7-10s": "stickman presses the palm flat and slides it forward; camera settles low"
         },
         "duration_s": 10.0,
         "hook": false,
         "hook_time_s": 2.0,
-        "visual_state_start": "stickman holding up three fingers while pacing across the frame",
-        "visual_state_end": "stickman tapping a paw pad repeatedly and crouching to test textures"
+        "visual_state_start": "stickman crouching low and pressing one palm flat against the ground",
+        "visual_state_end": "stickman leaning forward with both arms swept out to the sides"
       },
       {
         "clip_index": 4,
         "stage_index": 3,
         "stage_zh": "真相揭秘",
         "stage_en": "Ultimate Truth Revelation",
-        "narration": "其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
-        "visual_desc": "其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
+        "narration": "只要东西掉到地上，主人就会立刻冲过来，哪怕被责备两句，对独居的猫来说也是极，好的社交互动，在猫的认知里，负面关注也是关注，远比主人无视它要好得，多。",
+        "visual_desc": "stickman standing tall with arms raised high above the head",
         "beats": {
-          "0-3s": "其次",
-          "3-7s": "高处跌落产生的声音和运动轨迹",
-          "7-10s": "对猫的神经系统是强烈刺激。"
+          "0-3s": "stickman straightens and sweeps both arms outward; camera widens to full shot",
+          "3-7s": "medium shot as the stickman tilts the head down toward the object",
+          "7-10s": "stickman steps forward and points at the object; camera dollies in slowly"
+        },
+        "action_beats": {
+          "0-3s": "stickman straightens and sweeps both arms outward; camera widens to full shot",
+          "3-7s": "medium shot as the stickman tilts the head down toward the object",
+          "7-10s": "stickman steps forward and points at the object; camera dollies in slowly"
         },
         "duration_s": 10.0,
         "hook": false,
         "hook_time_s": 2.0,
-        "visual_state_start": "stickman tapping a paw pad repeatedly and crouching to test textures",
-        "visual_state_end": "stickman recoiling backward as the object falls and crashes to the floor"
+        "visual_state_start": "stickman leaning forward with both arms swept out to the sides",
+        "visual_state_end": "stickman standing tall with arms raised high above the head"
       },
       {
         "clip_index": 5,
         "stage_index": 4,
         "stage_zh": "升华互动",
         "stage_en": "Elevation & High-Engagement Discussion",
-        "narration": "最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。",
-        "visual_desc": "最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。",
+        "narration": "因此，推东西，主人出现，这一因果关系被不断强，化，逐渐变成一种习得性行，为模式，简而言之，猫推东西是狩猎本能，神经刺激与社交需求三，重机制共同驱动的结果。",
+        "visual_desc": "stickman crouched beside the table, one arm extended toward the cup",
         "beats": {
-          "0-3s": "最后",
-          "3-7s": "猫咪发现只要东西掉地",
-          "7-10s": "主人就会立刻冲过来"
+          "0-3s": "wide shot while the stickman raises both arms high overhead",
+          "3-7s": "stickman recoils and steps back sharply; camera pulls back with him",
+          "7-10s": "low shot as the stickman drops an object and flinches; tilt follows downward"
+        },
+        "action_beats": {
+          "0-3s": "wide shot while the stickman raises both arms high overhead",
+          "3-7s": "stickman recoils and steps back sharply; camera pulls back with him",
+          "7-10s": "low shot as the stickman drops an object and flinches; tilt follows downward"
         },
         "duration_s": 10.0,
         "hook": false,
         "hook_time_s": 2.0,
-        "visual_state_start": "stickman recoiling backward as the object falls and crashes to the floor",
-        "visual_state_end": "stickman facing viewer with arms wide in conclusion pose"
+        "visual_state_start": "stickman standing tall with arms raised high above the head",
+        "visual_state_end": "stickman crouched beside the table, one arm extended toward the cup"
       }
     ],
-    "source_facts": [],
+    "source_facts": [
+      "420"
+    ],
     "hook_timing": {
       "hook_start_s": 2.0,
       "hook_end_s": 5.0,
@@ -180,14 +212,14 @@
       "clip_index": 0,
       "stage_zh": "黄金钩子",
       "stage_en": "Golden Hook",
-      "narration": "猫为什么总爱把桌上的东西推下去？",
+      "narration": "猫为什么总爱把桌上的，东西推下去，这个行为背后其实有深，刻的进化与心理原因，首先，猫的脚垫非常敏感，上面分布着大量的触觉，感受器，当它们触碰物体时。",
       "beats": {
-        "0-3s": "stickman reaches up and pushes a cup off the table edge",
-        "3-7s": "stickman leans forward with raised eyebrows, arm extended, camera slowly pushes in",
-        "7-10s": "stickman steps back and watches the cup wobble then fall, camera pulls back to wide shot"
+        "0-3s": "stickman stands centered in a wide shot, then raises one arm upward",
+        "3-7s": "slow push-in to a medium shot as the stickman turns side-on",
+        "7-10s": "stickman crouches and places a small cup on the table edge, camera holds low"
       },
       "prompt": {
-        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, , , , 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, 猫为什么总爱把桌上的东西推下去？",
+        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, crimson red, cobalt blue, amber gold, 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "negative": "gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, , 3D humanoid rendering, detailed pupils or eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing",
         "camera": "rapid scene changes, kinetic motion-graphic transformations, frequent visual events; preserve identical stick-figure design, constant line weight, strict temporal consistency; character-driven actions: leaping, touching glass, drawing luminous lines, opening doors",
         "aspect_note": "9:16 or 16:9",
@@ -195,10 +227,9 @@
         "provenance": [
           "character_dna: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
           "line_weight: uniform smooth stroke thickness on every line",
-          "palette_words: vivid red, electric blue, warm gold",
+          "palette_words: crimson red, cobalt blue, amber gold",
           "composition: 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid",
-          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
-          "scene: 猫为什么总爱把桌上的东西推下去？"
+          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle"
         ],
         "keyframe_style": null,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
@@ -213,7 +244,7 @@
         "clip_count": 6,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
         "line_weight": "uniform smooth stroke thickness on every line",
-        "palette_words": "vivid red, electric blue, warm gold",
+        "palette_words": "crimson red, cobalt blue, amber gold",
         "composition_aspect": "use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line",
         "rhythm": "avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "voice_profile": "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。",
@@ -251,14 +282,14 @@
       "clip_index": 1,
       "stage_zh": "打破常识",
       "stage_en": "Disrupting Assumptions",
-      "narration": "背后有三个原因。",
+      "narration": "实际上是在用脚垫探测，物体的质地，温度和移动性，轻轻一推，如果物体会滚动或发出，声响，就说明它可能是活物或，值得追踪的目标，这是猫科动物刻在基因。",
       "beats": {
-        "0-3s": "stickman holds up three fingers while pacing left to right",
-        "3-7s": "stickman draws a diagram in mid-air with sweeping arm gestures, camera slowly pushes in",
-        "7-10s": "stickman crouches and traces circles on the ground thoughtfully, camera pulls back to wide shot"
+        "0-3s": "tilt up to a full shot while the stickman straightens and steps back",
+        "3-7s": "stickman extends an arm and pushes the cup; camera drifts slowly downward",
+        "7-10s": "pull back to a wide shot as the stickman rocks onto the back foot"
       },
       "prompt": {
-        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, , , , 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, 背后有三个原因。",
+        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, crimson red, cobalt blue, amber gold, 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "negative": "gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, , 3D humanoid rendering, detailed pupils or eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing",
         "camera": "rapid scene changes, kinetic motion-graphic transformations, frequent visual events; preserve identical stick-figure design, constant line weight, strict temporal consistency; character-driven actions: leaping, touching glass, drawing luminous lines, opening doors",
         "aspect_note": "9:16 or 16:9",
@@ -266,10 +297,9 @@
         "provenance": [
           "character_dna: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
           "line_weight: uniform smooth stroke thickness on every line",
-          "palette_words: vivid red, electric blue, warm gold",
+          "palette_words: crimson red, cobalt blue, amber gold",
           "composition: 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid",
-          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
-          "scene: 背后有三个原因。"
+          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle"
         ],
         "keyframe_style": null,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
@@ -284,7 +314,7 @@
         "clip_count": 6,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
         "line_weight": "uniform smooth stroke thickness on every line",
-        "palette_words": "vivid red, electric blue, warm gold",
+        "palette_words": "crimson red, cobalt blue, amber gold",
         "composition_aspect": "use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line",
         "rhythm": "avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "voice_profile": "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。",
@@ -322,14 +352,14 @@
       "clip_index": 2,
       "stage_zh": "打破常识",
       "stage_en": "Disrupting Assumptions",
-      "narration": "首先，猫的脚垫非常敏感，触碰物体是在测试猎物。",
+      "narration": "里的狩猎本能，在野外，小猫需要通过推，抓，拍来学习如何捕捉猎物，其次，高处跌落产生的声音和，运动轨迹，对猫的神经系统是强烈，刺激，物体坠落时的抛物线。",
       "beats": {
-        "0-3s": "stickman holds up three fingers while pacing left to right",
-        "3-7s": "stickman draws a diagram in mid-air with sweeping arm gestures, camera slowly pushes in",
-        "7-10s": "stickman crouches and traces circles on the ground thoughtfully, camera pulls back to wide shot"
+        "0-3s": "stickman lifts a hand and unfolds three fingers one at a time; camera eases in",
+        "3-7s": "cut to a low angle as the stickman paces a few steps toward the frame edge",
+        "7-10s": "stickman pivots and raises the open hand higher; camera arcs gently sideways"
       },
       "prompt": {
-        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, , , , 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, 首先，猫的脚垫非常敏感，触碰物体是在测试猎物。",
+        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, crimson red, cobalt blue, amber gold, 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "negative": "gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, , 3D humanoid rendering, detailed pupils or eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing",
         "camera": "rapid scene changes, kinetic motion-graphic transformations, frequent visual events; preserve identical stick-figure design, constant line weight, strict temporal consistency; character-driven actions: leaping, touching glass, drawing luminous lines, opening doors",
         "aspect_note": "9:16 or 16:9",
@@ -337,10 +367,9 @@
         "provenance": [
           "character_dna: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
           "line_weight: uniform smooth stroke thickness on every line",
-          "palette_words: vivid red, electric blue, warm gold",
+          "palette_words: crimson red, cobalt blue, amber gold",
           "composition: 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid",
-          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
-          "scene: 首先，猫的脚垫非常敏感，触碰物体是在测试猎物。"
+          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle"
         ],
         "keyframe_style": null,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
@@ -355,7 +384,7 @@
         "clip_count": 6,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
         "line_weight": "uniform smooth stroke thickness on every line",
-        "palette_words": "vivid red, electric blue, warm gold",
+        "palette_words": "crimson red, cobalt blue, amber gold",
         "composition_aspect": "use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line",
         "rhythm": "avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "voice_profile": "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。",
@@ -393,14 +422,14 @@
       "clip_index": 3,
       "stage_zh": "拉出内幕",
       "stage_en": "Unveiling Insider Secrets",
-      "narration": "轻轻一推，如果物体会动或逃跑，就意味着可能是活物。",
+      "narration": "碰撞声，滚动节奏，都会触发猫大脑中的奖，赏回路，即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦，最后，猫咪敏锐地观察到。",
       "beats": {
-        "0-3s": "stickman taps a paw pad repeatedly, testing sensitivity",
-        "3-7s": "stickman crouches low and touches an object with one finger, camera slowly pushes in",
-        "7-10s": "stickman presses a paw against different textures in sequence, camera pulls back to wide shot"
+        "0-3s": "stickman sinks into a low crouch and lays one palm on the floor; tilt down",
+        "3-7s": "slow push-in to a tight medium shot as the stickman leans over the object",
+        "7-10s": "stickman presses the palm flat and slides it forward; camera settles low"
       },
       "prompt": {
-        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, , , , 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, 轻轻一推，如果物体会动或逃跑，就意味着可能是活物。",
+        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, crimson red, cobalt blue, amber gold, 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "negative": "gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, , 3D humanoid rendering, detailed pupils or eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing",
         "camera": "rapid scene changes, kinetic motion-graphic transformations, frequent visual events; preserve identical stick-figure design, constant line weight, strict temporal consistency; character-driven actions: leaping, touching glass, drawing luminous lines, opening doors",
         "aspect_note": "9:16 or 16:9",
@@ -408,10 +437,9 @@
         "provenance": [
           "character_dna: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
           "line_weight: uniform smooth stroke thickness on every line",
-          "palette_words: vivid red, electric blue, warm gold",
+          "palette_words: crimson red, cobalt blue, amber gold",
           "composition: 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid",
-          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
-          "scene: 轻轻一推，如果物体会动或逃跑，就意味着可能是活物。"
+          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle"
         ],
         "keyframe_style": null,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
@@ -426,7 +454,7 @@
         "clip_count": 6,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
         "line_weight": "uniform smooth stroke thickness on every line",
-        "palette_words": "vivid red, electric blue, warm gold",
+        "palette_words": "crimson red, cobalt blue, amber gold",
         "composition_aspect": "use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line",
         "rhythm": "avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "voice_profile": "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。",
@@ -464,14 +492,14 @@
       "clip_index": 4,
       "stage_zh": "真相揭秘",
       "stage_en": "Ultimate Truth Revelation",
-      "narration": "其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
+      "narration": "只要东西掉到地上，主人就会立刻冲过来，哪怕被责备两句，对独居的猫来说也是极，好的社交互动，在猫的认知里，负面关注也是关注，远比主人无视它要好得，多。",
       "beats": {
-        "0-3s": "stickman pushes a cup and watches it wobble precariously",
-        "3-7s": "stickman recoils backward as the object starts moving, camera slowly pushes in",
-        "7-10s": "stickman leans in close to examine the moving object, camera pulls back to wide shot"
+        "0-3s": "stickman straightens and sweeps both arms outward; camera widens to full shot",
+        "3-7s": "medium shot as the stickman tilts the head down toward the object",
+        "7-10s": "stickman steps forward and points at the object; camera dollies in slowly"
       },
       "prompt": {
-        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, , , , 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, 其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
+        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, crimson red, cobalt blue, amber gold, 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "negative": "gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, , 3D humanoid rendering, detailed pupils or eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing",
         "camera": "rapid scene changes, kinetic motion-graphic transformations, frequent visual events; preserve identical stick-figure design, constant line weight, strict temporal consistency; character-driven actions: leaping, touching glass, drawing luminous lines, opening doors",
         "aspect_note": "9:16 or 16:9",
@@ -479,10 +507,9 @@
         "provenance": [
           "character_dna: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
           "line_weight: uniform smooth stroke thickness on every line",
-          "palette_words: vivid red, electric blue, warm gold",
+          "palette_words: crimson red, cobalt blue, amber gold",
           "composition: 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid",
-          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
-          "scene: 其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。"
+          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle"
         ],
         "keyframe_style": null,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
@@ -497,7 +524,7 @@
         "clip_count": 6,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
         "line_weight": "uniform smooth stroke thickness on every line",
-        "palette_words": "vivid red, electric blue, warm gold",
+        "palette_words": "crimson red, cobalt blue, amber gold",
         "composition_aspect": "use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line",
         "rhythm": "avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "voice_profile": "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。",
@@ -535,14 +562,14 @@
       "clip_index": 5,
       "stage_zh": "升华互动",
       "stage_en": "Elevation & High-Engagement Discussion",
-      "narration": "最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。",
+      "narration": "因此，推东西，主人出现，这一因果关系被不断强，化，逐渐变成一种习得性行，为模式，简而言之，猫推东西是狩猎本能，神经刺激与社交需求三，重机制共同驱动的结果。",
       "beats": {
-        "0-3s": "stickman drops an object from overhead and flinches",
-        "3-7s": "stickman tracks the falling arc with head tilted upward, camera slowly pushes in",
-        "7-10s": "stickman jumps back as the object crashes to the floor, camera pulls back to wide shot"
+        "0-3s": "wide shot while the stickman raises both arms high overhead",
+        "3-7s": "stickman recoils and steps back sharply; camera pulls back with him",
+        "7-10s": "low shot as the stickman drops an object and flinches; tilt follows downward"
       },
       "prompt": {
-        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, , , , 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle, 最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。",
+        "positive": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints., uniform smooth stroke thickness on every line, crimson red, cobalt blue, amber gold, 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid, avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "negative": "gray tint, paper texture, gradients, shadows, lighting, bloom, fog, 3D depth, filled head, facial marks, body silhouette, outlined limbs, detached joints, separate hand or foot shapes, changed proportions, broken line weight, , 3D humanoid rendering, detailed pupils or eyes, extra limbs, malformed anatomy, visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks, speech bubbles, dialogue text boxes, abstract liquid or shape morphing",
         "camera": "rapid scene changes, kinetic motion-graphic transformations, frequent visual events; preserve identical stick-figure design, constant line weight, strict temporal consistency; character-driven actions: leaping, touching glass, drawing luminous lines, opening doors",
         "aspect_note": "9:16 or 16:9",
@@ -550,10 +577,9 @@
         "provenance": [
           "character_dna: One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
           "line_weight: uniform smooth stroke thickness on every line",
-          "palette_words: vivid red, electric blue, warm gold",
+          "palette_words: crimson red, cobalt blue, amber gold",
           "composition: 9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; subject placed on vertical center axis or rule-of-thirds grid",
-          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
-          "scene: 最后，猫咪发现只要东西掉地，主人就会立刻冲过来，哪怕被责备两句也是极好的互动。"
+          "rhythm: avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle"
         ],
         "keyframe_style": null,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
@@ -568,7 +594,7 @@
         "clip_count": 6,
         "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints.",
         "line_weight": "uniform smooth stroke thickness on every line",
-        "palette_words": "vivid red, electric blue, warm gold",
+        "palette_words": "crimson red, cobalt blue, amber gold",
         "composition_aspect": "use foreground/background depth instead of left-right staging; stack motion vertically; reveal downward or upward; keep overlay text in the interface-safe upper/lower band; switch the composition axis to the vertical center line",
         "rhythm": "avg 10.0s/clip, one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
         "voice_profile": "Voice profile: 中文普通话女声，约 30 岁，温和清亮，中速约 4 字/秒，近讲干声，无混响。",
