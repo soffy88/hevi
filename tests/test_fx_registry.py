@@ -617,7 +617,11 @@ class TestPreviewAcceptance:
         assert data["summary"]["below_motion_min"] == 0
 
     def test_motion_metric_is_measured_not_written_off(self) -> None:
-        """A truly static clip scores 0.0 on the metric (sanity, no mocks)."""
+        """The recorded motion metric must reproduce from the file on disk.
+
+        Re-measures ``motion_frame_ratio`` for a sample of ok rows with ffmpeg
+        and checks it matches the index (so the numbers are real, not written).
+        """
         data = _load_index()
         # every ok row must also carry the peak-area / mean-norm companions
         for rec in data["templates"]:
@@ -626,11 +630,39 @@ class TestPreviewAcceptance:
             assert rec.get("motion_peak_area") is not None
             assert rec.get("motion_mean_norm") is not None
             assert rec.get("max_pixel_delta") is not None
-        # spot-check the metric reproduces from disk for one row
-        sample = next(r for r in data["templates"] if r["status"] == "ok")
-        mp4 = REPO_ROOT / sample["mp4_path"]
-        info = _ffprobe(mp4)
-        assert info["duration_s"] > 0
+
+        # Recompute for a bounded sample: one per source, foreground-cropped for
+        # talkcraft exactly like the renderer does.
+        ok = [r for r in data["templates"] if r["status"] == "ok"]
+        sample: list[dict] = []
+        seen_src: set[str] = set()
+        for r in ok:
+            if r["source"] not in seen_src:
+                seen_src.add(r["source"])
+                sample.append(r)
+        assert len(sample) >= 3, "expected one ok row per source to re-measure"
+        for rec in sample:
+            mp4 = REPO_ROOT / rec["mp4_path"]
+            region = "crop=540:486:0:237" if rec["source"] == "talkcraft" else None
+            vf = (f"{region}," if region else "") + (
+                "tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YMAX"
+            )
+            r = subprocess.run(
+                [FFMPEG, "-v", "info", "-i", str(mp4), "-vf", vf, "-f", "null", "-"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=120,
+            )
+            ymax = [
+                float(x) for x in re.findall(r"lavfi\.signalstats\.YMAX=([0-9.eE+-]+)", r.stdout)
+            ]
+            assert ymax, f"{rec['id']}: could not re-measure motion"
+            recomputed = sum(1 for x in ymax if x > 24) / len(ymax)
+            assert abs(recomputed - rec["motion_frame_ratio"]) < 0.02, (
+                f"{rec['id']}: index motion_frame_ratio {rec['motion_frame_ratio']} "
+                f"!= recomputed {recomputed:.4f}"
+            )
 
     def test_ok_mp4_sha256_matches_index(self) -> None:
         data = _load_index()
