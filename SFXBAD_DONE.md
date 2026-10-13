@@ -153,3 +153,98 @@ bad15_frozen_mid          14.00s sha 10c2981dcd76…  (freeze 6.0–9.0s)
    如再现，以本 DONE 所列的已提交实现为准。
 
 DONE SFXBAD-R1
+
+## R2 返工（2026-10-13，对照 SFXBAD_FIX.md 逐条）
+
+R2 复核 HEAD `9aaed762`。返工提交：`64d6e1cd`（SFX）、`b4305d64`（坏片）。
+下面每条只写**本轮真实测得**的数据（命令 + 输出）。
+
+### 1. 【SFX 方向 bug，近似重复】已修
+- `scripts/sfx/sfx_synth.py::sweep_bandpass` 去掉了 `lo, hi = sorted(...)`，改为
+  `freqs = np.geomspace(f0, f1, k)`（`np.geomspace` 直接支持降序），频率中心序列
+  保持 f0→f1 方向；仍保留 `stack[i0, rows]` 的 O(k·n) 写法（未回退 `(n,n)` 广播）。
+- 复测（STFT 谱质心对时间的斜率，Hz/s；正=上行，负=下行）：
+  ```
+  whoosh_air_up   +3603.7    whoosh_air_down  -2355.3
+  riser_classic   +1153.6    riser_long        +787.3
+  swipe_left     +17060.8    swipe_right     -16845.7
+  swipe_up       +12444.7    swipe_down      -11735.8
+  downer_resolve  -888.2     downer_tense     -2305.5    downer_deep -308.9
+  ```
+  所有 `*_down`/`downer` 均为负（下行），`*_up`/riser 均为正（上行）。
+- 新增测试 `test_sweep_direction_matches_source`（对全部 whoosh/swipe/riser/downer，
+  按 source 的 f0/f1 断言斜率符号）与 `test_down_and_up_sweeps_are_spectrally_opposite`
+  （whoosh_air_down/up、swipe_down/up 斜率必须反号）。
+
+### 2. 【多样性测试】已加，且参数已拉开
+- 新增 `test_same_type_assets_are_distinct`：对同类两两算「32 个对数频带平均谱
+  （去均值后 L2 归一）+ 20 段包络（归一）」拼接特征的余弦（各占一半），要求 ≤0.99。
+- 实测同类两两余弦**最大 0.9795**（boom_thunder↔boom_cinematic）；原报告的
+  click_mech/click_soft、impact_hard/impact_punch、glitch_break/glitch_stutter、
+  riser_classic/riser_long 现全部 ≤0.99（同类最大值排序前六：
+  0.9795 / 0.9743 / 0.9567 / 0.9506 / 0.9506 / 0.9493）。
+
+### 3. 【响度不达标】已修，豁免已删除
+- 采用规格 (a)：把之前未提交的 `body_bed`（低通粉噪 + `tanh` 软饱和，crest 由
+  ~12 dB 降到 ~8 dB）正式用上，给 impact×4、boom_short、typewriter×4、shutter×3、
+  heartbeat_single/double/slow 各加一层持续低频体声；`loudness_limited` 豁免删除
+  （manifest 里 0 条 true，schema 里 `const False`，测试不再允许豁免）。
+- 全部 70 条重生成，实测（`gen_sfx_library.py --force`，`ebur128`）：
+  ```
+  assets  : 70  (long 51, short 19)
+  peak >= -1 dBFS          : none
+  loudness_limited         : 0
+  long-clip LUFS 范围       : -17.5 .. -15.3   （全部在 -16±1.5）
+  true peak 范围            : -10.5 .. -1.1 dBFS（全部 < -1）
+  ```
+- 生成器峰值 RSS **159956 kB ≈ 160 MB**（`/usr/bin/time -v`，24.5 s）。
+- 70/70 与库内文件逐字节一致（重渲到 scratch 后 sha256 全等，见验收）。
+
+### 4. 【bad14 带入第二种缺陷】已修
+- `make_corpus.py`：bad14 字幕由 `"please remember to water the plants tomorrow
+  morning"`(40 px) 改为 `"remember to water the plants tomorrow"`(32 px, x=80)，
+  完全落在画面安全区内。
+- 实测 t=2.0s 帧右边缘 4 px 列亮像素数：bad14 = **0**（原 76）；bad12 仍 86（正对照）。
+- 新增断言：`test_asr_mismatch_metadata_and_audio` 断言 bad14 右边缘无亮像素。
+
+### 5. 【bad11 同时也是削波片】已修
+- `make_corpus.py`：bad11 由 `0.99*sgn(sin(...))` 满幅方波改为短促阻尼
+  4 kHz 瞬态 `0.40*exp(-mod(t,0.5)/0.0015)*sin(2*PI*4000*t)`（每 0.5s 一次）。
+- 实测（解码整轨）：bad11 峰值 **-7.43 dBFS**、一阶差分 >0.15 的冲激数 **673**、
+  |x|≥0.99 采样数 **0**（原 +5.2 dBFS / 5003）；good_clean 冲激数 0。
+- 测试改写：bad10 削波改为「连续 ≥3 个采样贴顶」（实测 run=26）；bad11 用冲激计数
+  （>20）判 pops，并断言其**不削波**（peak < -1 且贴顶 run=0）。
+
+### 6. 【测试太松】已收紧
+- 宏块 SSIM：坏片 <0.95、good_clean >0.98（原 <0.99 / >0.95）。
+- clean 片新增：`silencedetect` 无静音段、右/下边缘无字幕溢出、无黑边。
+  字幕边缘用「对 base.mp4 的 overlay 差分」判定（testsrc2 自身边缘就亮，纯亮度阈值
+  会误判）——good_clean 右/下边缘 overlay 像素 **0**。
+
+### 7. 【工作区卫生】已处理
+- `body_bed()` 按第 3 点正式启用并提交（不再有未提交的旧 pi 残留）。
+
+### 验收复测（本轮真实命令与输出）
+```
+$ JWT_SECRET=test-secret-local .venv/bin/python -m pytest \
+      tests/test_sfx_library.py tests/qa_corpus -q
+30 passed in 86.83s (0:01:26)
+```
+- 重新生成后 **70 个 wav**，sha256 全部唯一；重渲到 `/tmp/sfxbad_scratch/lib2`
+  后与库内文件 **70/70 逐字节一致**；生成器峰值 RSS **160 MB**（见上）。
+- 频谱图：所有 `*_down`/`downer` 下行、`*_up`/riser 上行；同类两两相似度 ≤0.9795。
+- 所有 ≥0.5s 资产 ebur128 在 −17.5…−15.3（−16±1.5），真峰值 < −1 dBFS。
+- 18 条坏片：bad14 右边缘干净、bad11 不削波；18/18 sha 稳定；
+  `good_clean 911e85aa868f…`、`bad11_audio_pops 34b253c84c1b…`、
+  `bad14_asr_mismatch be87959abd01…`、`bad12 f7548cc339b6…`。
+- `lint_after.txt`：`3O_V3_LINT=FAIL`，**4 项失败**（check_no_sibling_call /
+  check_omodul_signature / check_enabled_pillars / check_oprim_keyword_only），
+  全部命中 vendored `.venv/…/{omodul,oprim}`，与本单元文件无关（≤ 任务允许的 4）。
+- 未 push、未 merge、未切分支、未 rebase。
+
+### 本轮已知限制（如实）
+- 短于 0.5s 的 19 条仍按峰值归一、`lufs_integrated=null`（EBU R128 积分响度在
+  该时长无定义）——与规格一致，非豁免。
+- 坏片 mp4 仍不入库（按任务），测试首跑在 `/tmp/hevi_qa_corpus` 自动重生成。
+
+DONE SFXBAD-R2
