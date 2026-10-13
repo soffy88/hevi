@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react';
 import { publishStudioApi } from '@/lib/api-client';
 import { TabBar, type TabItem } from '@/components/shared';
 
-type Tab = 'publish' | 'motion' | 'html-video' | 'voice' | 'dance';
+type Tab = 'motion' | 'html-video' | 'voice' | 'dance';
 
 const TABS: Array<TabItem<Tab>> = [
-  { key: 'publish',    label: '多平台发布', icon: '📤' },
   { key: 'motion',     label: '动效合成',   icon: '✨' },
   { key: 'html-video', label: 'HTML 视频',  icon: '🌐' },
   { key: 'voice',      label: '语音工作室', icon: '🎙️' },
@@ -29,18 +28,7 @@ const voiceApiMap: Record<string, (body: Record<string, string>) => Promise<unkn
 };
 
 export function PublishStudioConsole() {
-  const [activeTab, setActiveTab] = useState<Tab>('publish');
-
-  // ── 多平台发布 ──────────────────────────────────────────────────────────────
-  const [platforms, setPlatforms] = useState<Array<Record<string, unknown>>>([]);
-  const [selectedPlatform, setSelectedPlatform] = useState('');
-  const [pubForm, setPubForm] = useState({ video_path: '', title: '', description: '', tags: '' });
-  const [pubTaskId, setPubTaskId] = useState<string | null>(null);
-  const [pubStatus, setPubStatus] = useState('');
-  const [pubError, setPubError] = useState('');
-  const [distributionAccounts, setDistributionAccounts] = useState<Array<Record<string, unknown>>>([]);
-  const [distributionHistory, setDistributionHistory] = useState<Array<Record<string, unknown>>>([]);
-  const [distributionStatus, setDistributionStatus] = useState('');
+  const [activeTab, setActiveTab] = useState<Tab>('motion');
 
   // ── 动效合成 ────────────────────────────────────────────────────────────────
   const [motionCat, setMotionCat] = useState(MOTION_CATEGORIES[0]);
@@ -68,26 +56,6 @@ export function PublishStudioConsole() {
   const [danceForm, setDanceForm] = useState({ audio_path: '', dance_type: 'urban', duration_s: '' });
   const [danceStatus, setDanceStatus] = useState('');
   const [danceError, setDanceError] = useState('');
-
-  // 加载平台列表
-  useEffect(() => {
-    publishStudioApi.listPlatforms()
-      .then((res) => {
-        const list = (res as { platforms: Array<Record<string, unknown>> }).platforms;
-        setPlatforms(list.filter((p) => p.enabled));
-      })
-      .catch(() => setPlatforms([]));
-  }, []);
-
-  useEffect(() => {
-    Promise.all([publishStudioApi.distributionAccounts(), publishStudioApi.distributionHistory()])
-      .then(([accounts, history]) => {
-        setDistributionAccounts(accounts.accounts);
-        setDistributionHistory(history.history);
-        setDistributionStatus('分发服务已连接');
-      })
-      .catch(() => setDistributionStatus('分发服务暂不可用'));
-  }, []);
 
   // 动效模板列表
   useEffect(() => {
@@ -123,46 +91,6 @@ export function PublishStudioConsole() {
         .catch(() => setDanceGpu({ available: false }));
     }
   }, [activeTab]);
-
-  // ── 发布流程 ────────────────────────────────────────────────────────────────
-  const handlePublish = async () => {
-    setPubError('');
-    setPubStatus('');
-    if (!selectedPlatform) {
-      setPubError('请选择发布平台');
-      return;
-    }
-    if (!pubForm.video_path || !pubForm.title) {
-      setPubError('视频路径和标题为必填');
-      return;
-    }
-    try {
-      const res = await publishStudioApi.publish({
-        platform: selectedPlatform,
-        video_path: pubForm.video_path,
-        title: pubForm.title,
-        description: pubForm.description || undefined,
-        tags: pubForm.tags ? pubForm.tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
-      });
-      const taskId = (res as { task_id: string }).task_id;
-      setPubTaskId(taskId);
-      setPubStatus(`任务已提交: ${taskId}`);
-    } catch (e) {
-      setPubError(e instanceof Error ? e.message : String(e));
-    }
-  };
-
-  const handleConfirmPublish = async () => {
-    if (!pubTaskId) return;
-    setPubError('');
-    try {
-      const res = await publishStudioApi.confirmPublish({ task_id: pubTaskId });
-      const status = (res as Record<string, unknown>).status as string;
-      setPubStatus(`发布状态: ${status}`);
-    } catch (e) {
-      setPubError(e instanceof Error ? e.message : String(e));
-    }
-  };
 
   // ── 动效渲染 ────────────────────────────────────────────────────────────────
   const handleMotionRender = async () => {
@@ -244,105 +172,9 @@ export function PublishStudioConsole() {
   // ── UI ──────────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">🚀 发布工作室</h1>
+      <h1 className="text-2xl font-bold mb-6">🚀 创作工作室</h1>
 
       <TabBar items={TABS} active={activeTab} onChange={setActiveTab} variant="pill" />
-
-      {/* ── 多平台发布 Tab ─────────────────────────────────────────────────── */}
-      {activeTab === 'publish' && (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">分发账户</h2>
-              <span className="text-xs text-gray-500">{distributionStatus}</span>
-            </div>
-            {distributionAccounts.length === 0 ? (
-              <p className="mt-2 text-sm text-gray-500">暂无已验证的登录账户</p>
-            ) : (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {distributionAccounts.map((account, index) => (
-                  <span key={`${String(account.account_ref)}-${index}`} className="rounded bg-white px-2 py-1 text-xs">
-                    {String(account.platform)} · {String(account.display_name ?? account.account_ref)}
-                  </span>
-                ))}
-              </div>
-            )}
-            <details className="mt-3 text-sm">
-              <summary className="cursor-pointer text-gray-600">分发历史</summary>
-              <p className="mt-2 text-gray-500">{distributionHistory.length ? `已有 ${distributionHistory.length} 条记录` : '暂无发布记录'}</p>
-            </details>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">选择平台</label>
-            <div className="flex gap-2 flex-wrap">
-              {platforms.length === 0 && <span className="text-gray-400 text-sm">加载中...</span>}
-              {platforms.map((p) => (
-                <button
-                  key={p.id as string}
-                  onClick={() => setSelectedPlatform(p.id as string)}
-                  className={`px-3 py-1.5 rounded text-sm border ${
-                    selectedPlatform === p.id
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  {p.name as string}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">视频路径 *</label>
-            <input
-              type="text"
-              value={pubForm.video_path}
-              onChange={(e) => setPubForm((f) => ({ ...f, video_path: e.target.value }))}
-              placeholder="/path/to/video.mp4"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">标题 *</label>
-            <input
-              type="text"
-              value={pubForm.title}
-              onChange={(e) => setPubForm((f) => ({ ...f, title: e.target.value }))}
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">描述</label>
-            <textarea
-              value={pubForm.description}
-              onChange={(e) => setPubForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">标签 (逗号分隔)</label>
-            <input
-              type="text"
-              value={pubForm.tags}
-              onChange={(e) => setPubForm((f) => ({ ...f, tags: e.target.value }))}
-              placeholder="tag1, tag2, tag3"
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            />
-          </div>
-          {pubError && <div className="text-red-500 text-sm">{pubError}</div>}
-          {pubStatus && <div className="text-green-600 text-sm">{pubStatus}</div>}
-          <div className="flex gap-2">
-            <button onClick={handlePublish} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
-              提交发布
-            </button>
-            {pubTaskId && (
-              <button onClick={handleConfirmPublish} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
-                确认发布
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── 动效合成 Tab ─────────────────────────────────────────────────── */}
       {activeTab === 'motion' && (

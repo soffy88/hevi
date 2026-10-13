@@ -128,10 +128,8 @@ async def test_explainer_and_reference_and_shorts(tmp_path: Path) -> None:
     )
     assert clip.status == "planned"
     assert clip.production_order["target"] == "none"
-    pubs = clip.data.get("publish_results") or []
-    assert pubs and pubs[0]["status"] == "handoff"
-    ticket = Path(pubs[0]["payload"]["external_id"])
-    assert ticket.exists()
+    # Platform publishing moved to Easel: the line no longer has a publish stage.
+    assert "publish_results" not in clip.data
 
 
 @pytest.mark.asyncio

@@ -111,7 +111,6 @@ def plan_ai_short(
     url: str | None = None,
     user_id: str = "",
     cost_mode: str = "low_cost",
-    publish_to: list[str] | None = None,
 ) -> dict[str, Any]:
     """规划 AI Shorts pipeline (从零生成 UGC 视频)。
 
@@ -125,7 +124,6 @@ def plan_ai_short(
         "url": url,
         "user_id": user_id,
         "cost_mode": cost_mode,
-        "publish_to": publish_to or ["tiktok", "instagram", "youtube"],
         "stages": [
             {"stage": "analyze", "mode": "gemini", "desc": "网页抓取 + Gemini 研究"},
             {"stage": "script", "mode": "gemini", "desc": "病毒式脚本 (hook→problem→solution→CTA)"},
@@ -135,7 +133,6 @@ def plan_ai_short(
             {"stage": "broll", "mode": "flux_2_pro", "desc": "Ken Burns B-roll images"},
             {"stage": "composite", "mode": "ffmpeg", "desc": "ASS subtitles + hook overlays"},
             {"stage": "gallery", "mode": "s3", "desc": "上传到 public S3"},
-            {"stage": "publish", "mode": "upload_post", "desc": "TikTok/Ins/YouTube"},
         ],
         "estimated_cost_usd": 0.65 if cm == "low_cost" else 2.0,
         "checkpoint_policy": "after_every_major_stage",
@@ -164,7 +161,6 @@ def plan_youtube_studio(
                 "desc": "AI 缩略图 + face overlay",
             },
             {"stage": "description", "mode": "gemini", "desc": "SEO 描述 + 章节时间戳 + hashtags"},
-            {"stage": "publish", "mode": "upload_post", "desc": "一键发布到 YouTube"},
         ],
         "estimated_cost_usd": 0.0,
         "checkpoint_policy": "after_titles",

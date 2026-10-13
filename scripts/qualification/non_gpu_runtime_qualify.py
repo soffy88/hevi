@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import hashlib
 import json
 import os
 import subprocess
@@ -320,8 +319,6 @@ def w4_w5_digital_human() -> dict[str, Any]:
         "tests/test_duix_contract.py",
         "tests/test_director_echo_dialogue.py",
         "tests/test_explainer_cover.py",
-        "tests/distribution/test_contract.py",
-        "tests/distribution/test_mcp_process.py",
         "tests/distribution/test_short_video_factory_regressions.py",
     ]
     proc = subprocess.run(
@@ -335,14 +332,13 @@ def w4_w5_digital_human() -> dict[str, Any]:
     tail = (proc.stdout or "").strip().splitlines()
     summary = tail[-1] if tail else ""
     return {
-        "wave": "W4_W5_DIGITAL_HUMAN_AND_DISTRIBUTION_REGRESSION",
+        "wave": "W4_W5_DIGITAL_HUMAN_REGRESSION",
         "generated_at": _now(),
         "tests": tests,
         "returncode": proc.returncode,
         "summary": summary,
         "DIGITAL_HUMAN_FAIL_CLOSED": "PASS" if proc.returncode == 0 else "FAIL",
         "TALKING_FACE_PROVIDER_IDENTITY": "PASS" if proc.returncode == 0 else "FAIL",
-        "distribution_control_plane": "SOURCE_VERIFIED" if proc.returncode == 0 else "FAIL",
         "E2E_LIPSYNC_VERIFIED": False,
         "e2e_note": "E2E talking-face needs GPU/ComfyUI — ENV_BLOCKED, not upgraded to LIPSYNC_VERIFIED",
         "gpu_policy": "SKIPPED_BY_OWNER",
@@ -425,82 +421,6 @@ def w6_w9_external_providers() -> dict[str, Any]:
         "readiness_ref": "artifacts/qualification/provider_readiness.json",
         "second_provider_audit_ref": "artifacts/qualification/second-provider-audit.json",
         "EXTERNAL_PROVIDER_READINESS": "PASS" if import_ok else "FAIL",
-    }
-
-
-def w10_w14_distribution() -> dict[str, Any]:
-    tests = [
-        "tests/distribution/test_contract.py",
-        "tests/distribution/test_mcp_process.py",
-        "tests/distribution/test_short_video_factory_regressions.py",
-    ]
-    proc = subprocess.run(
-        [sys.executable, "-m", "pytest", *tests, "-q", "--no-header"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-        env=_child_env(),
-        timeout=120,
-    )
-    # control-plane checks without network
-    from hevi.distribution.models import DistributionPlatform, DistributionTarget
-    from hevi.distribution.safety import verify_publishable_source
-    from hevi.distribution.service import create_job, job_store
-
-    safety_ok = False
-    idempotency_ok = False
-    try:
-        with tempfile.TemporaryDirectory(prefix="hevi-dist-") as td:
-            src = Path(td) / "v.mp4"
-            src.write_bytes(b"hevi-owned-artifact")
-            digest = hashlib.sha256(src.read_bytes()).hexdigest()
-            verify_publishable_source(src, expected_sha256=digest, quality_passed=True)
-            safety_ok = True
-            store_path = Path(td) / "jobs.json"
-            os.environ["HEVI_DISTRIBUTION_JOB_STORE"] = str(store_path)
-            target = DistributionTarget(
-                platform=DistributionPlatform.DOUYIN,
-                account_ref="acct-test",
-                title="t",
-            )
-            job = create_job(
-                src,
-                target,
-                artifact_id="art-1",
-                quality_passed=True,
-                idempotency_key="idem-1",
-            )
-            # recreate same key → new job id but store is source of truth
-            job2 = create_job(
-                src,
-                target,
-                artifact_id="art-1",
-                quality_passed=True,
-                idempotency_key="idem-1",
-            )
-            idempotency_ok = job.idempotency_key == job2.idempotency_key == "idem-1"
-            store = job_store()
-            assert store.get(job.distribution_job_id) is not None
-            safety_ok = safety_ok and idempotency_ok
-    except Exception:
-        safety_ok = False
-    finally:
-        os.environ.pop("HEVI_DISTRIBUTION_JOB_STORE", None)
-
-    return {
-        "wave": "W10_W14_DISTRIBUTION_CONTROL_PLANE",
-        "generated_at": _now(),
-        "tests": tests,
-        "pytest_returncode": proc.returncode,
-        "pytest_summary": ((proc.stdout or "").strip().splitlines() or [""])[-1],
-        "safety_gate": "PASS" if safety_ok else "FAIL",
-        "idempotency_key": "PASS" if idempotency_ok else "FAIL",
-        "DISTRIBUTION_CONTROL_PLANE": (
-            "SOURCE_VERIFIED" if proc.returncode == 0 and safety_ok else "FAIL"
-        ),
-        "real_publish_authorized": False,
-        "douyin_blocker": "OWNER_BLOCKED_NOT_AUTHORIZED",
-        "note": "No real platform publish without owner account authorization.",
     }
 
 
@@ -599,9 +519,6 @@ async def main() -> int:
     external = w6_w9_external_providers()
     _write(ART / "external-provider-readiness.json", external)
 
-    dist = w10_w14_distribution()
-    _write(ART / "distribution-provider-qualification.json", dist)
-
     matrix = w15_capability_matrix()
     _write(ART / "non-gpu-generation-capability-matrix.json", matrix)
 
@@ -618,7 +535,6 @@ async def main() -> int:
         "TALKING_FACE_PROVIDER_IDENTITY": dh.get("TALKING_FACE_PROVIDER_IDENTITY"),
         "EXTERNAL_PROVIDER_READINESS": external.get("EXTERNAL_PROVIDER_READINESS"),
         "EXPLICIT_PROVIDER_SUBSTITUTION": external.get("EXPLICIT_PROVIDER_SUBSTITUTION"),
-        "DISTRIBUTION_CONTROL_PLANE": dist.get("DISTRIBUTION_CONTROL_PLANE"),
         "GPU_POLICY": "SKIPPED_BY_OWNER",
     }
     print(json.dumps(gates, indent=2))
@@ -632,7 +548,6 @@ async def main() -> int:
             "DIGITAL_HUMAN_FAIL_CLOSED",
             "TALKING_FACE_PROVIDER_IDENTITY",
             "EXTERNAL_PROVIDER_READINESS",
-            "DISTRIBUTION_CONTROL_PLANE",
         )
     )
     return 1 if soft_fail else 0

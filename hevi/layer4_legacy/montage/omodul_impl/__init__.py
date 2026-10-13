@@ -48,7 +48,6 @@ from hevi.layer4_legacy.montage.oskill_impl import (
     stage_edit_plan,
     stage_intake,
     stage_mix,
-    stage_publish,
     stage_research,
     stage_runtime,
     stage_score,
@@ -335,7 +334,6 @@ def plan_delivery(
         "platforms": platforms,
         "steps": [
             {"step": "export_bundle", "tool": "export_bundle"},
-            {"step": "publish_matrix", "tool": "publish.matrix", "platforms": platforms},
         ],
         "checklist": [
             "SEO metadata complete and keyword-rich",

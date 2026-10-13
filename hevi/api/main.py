@@ -23,7 +23,6 @@ from hevi.api.routers.canvas import router as canvas_router
 from hevi.api.routers.creative import router as creative_router
 from hevi.api.routers.credits import router as credits_router
 from hevi.api.routers.dashboard import router as dashboard_router
-from hevi.api.routers.distribution import router as distribution_router
 from hevi.api.routers.director import router as director_router
 from hevi.api.routers.director_pipeline import router as director_pipeline_router
 from hevi.api.routers.explainer import router as explainer_router
@@ -35,7 +34,6 @@ from hevi.api.routers.pipeline import router as pipeline_router
 from hevi.api.routers.pro_studio import router as pro_studio_router
 from hevi.api.routers.provider_presets import router as provider_presets_router
 from hevi.api.routers.providers import router as providers_router
-from hevi.api.routers.publishers import router as publishers_router
 from hevi.api.routers.material_corpus import router as material_corpus_router
 from hevi.api.routers.mpt import router as mpt_router
 from hevi.api.routers.narrator import router as narrator_router
@@ -170,7 +168,6 @@ app.include_router(pipeline_router, prefix="/api")
 app.include_router(pro_studio_router, prefix="/api")
 app.include_router(provider_presets_router, prefix="/api")
 app.include_router(providers_router, prefix="/api")
-app.include_router(publishers_router, prefix="/api")
 app.include_router(material_corpus_router, prefix="/api")
 app.include_router(backlot_router, prefix="/api")
 app.include_router(studio_router, prefix="/api")
@@ -206,7 +203,6 @@ app.include_router(voice_openai_router)
 app.include_router(stream_edit_router, prefix="/api")
 app.include_router(screenshot_studio_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
-app.include_router(distribution_router, prefix="/api")
 app.include_router(lite_router, prefix="/api")  # 本地零费用:选题→veya-loop→确认→HTML 出片
 app.include_router(longcat_router, prefix="/api")
 app.include_router(montage_router, prefix="/api")

@@ -419,7 +419,6 @@ class DailyTopicsRequest(BaseModel):
 class DailyTickRequest(BaseModel):
     calendar_id: str | None = None
     now: str | None = None
-    publish: bool = True
 
 
 class VeyaProduceRequest(BaseModel):
@@ -427,7 +426,6 @@ class VeyaProduceRequest(BaseModel):
     slots: dict[str, Any] = Field(default_factory=dict)
     render_runtime: str | None = None
     execute: bool = False
-    publish: bool = False
     platforms: list[str] = Field(default_factory=list)
     production_mode: str | None = None
 
@@ -483,7 +481,7 @@ async def post_daily_tick(
 ) -> dict[str, Any]:
     from hevi.studio.daily import tick
 
-    jobs = await tick(now=req.now, calendar_id=req.calendar_id, publish=req.publish)
+    jobs = await tick(now=req.now, calendar_id=req.calendar_id)
     return {"jobs": [j.to_dict() for j in jobs], "count": len(jobs)}
 
 
@@ -519,7 +517,6 @@ async def post_veya_produce(
         slots=req.slots,
         render_runtime=req.render_runtime,
         execute=req.execute,
-        publish=req.publish,
         platforms=req.platforms,
         production_mode=req.production_mode,
     )

@@ -520,14 +520,6 @@ async def ai_shorts_generation_workflow(
         manifest = ArtifactManifest(artifacts=artifacts)
         trail.append({"stage": "composite", "path": str(composite), "verified": True})
 
-        publish_results: list[dict[str, Any]] = []
-        for platform in data.get("publish_to") or data.get("publish_platforms") or []:
-            from hevi.publishers import publish_to_platform
-
-            result = await publish_to_platform(
-                str(platform), composite, title=script.hook, description=_script_narration(script)
-            )
-            publish_results.append(result.to_dict())
         report = {
             "status": "succeeded",
             "operation": "ai_shorts_generation_workflow",
@@ -535,7 +527,6 @@ async def ai_shorts_generation_workflow(
             "decision_trail": trail,
             "cost_usd": float(data.get("actual_cost_usd") or cfg.get("actual_cost_usd") or 0.0),
             "artifact_manifest": manifest.model_dump(mode="json"),
-            "publish_results": publish_results,
         }
         report_path = output / "ai_shorts_report.json"
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -556,7 +547,6 @@ async def ai_shorts_generation_workflow(
                 "talking_head_path": str(talking_head),
                 "b_roll_paths": [str(path) for path in b_roll],
                 "composite_path": str(composite),
-                "publish_results": publish_results,
             },
         }
     except (FileNotFoundError, ValueError, RuntimeError, httpx.HTTPError) as exc:

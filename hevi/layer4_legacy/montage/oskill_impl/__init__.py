@@ -81,7 +81,6 @@ def pipeline_preflight(
             "score": ToolCapability.ENHANCEMENT,
             "nle": ToolCapability.EDIT_PLAN,
             "delivery": ToolCapability.DELIVERY,
-            "publish": ToolCapability.PUBLISH,
             "runtime": ToolCapability.VIDEO_COMPOSE,
             "director": ToolCapability.EDIT_PLAN,
         }
@@ -506,50 +505,6 @@ def stage_dispatch(
     }
 
 
-def stage_publish(
-    data: dict[str, Any],
-    ctx: dict[str, Any],
-) -> dict[str, Any]:
-    """阶段：publish——发布各平台。
-
-    对应 pipeline stage: stage_publish
-    """
-    media = data.get("media_path")
-    platforms = data.get("platforms") or []
-
-    if not media or not platforms:
-        return {"publish_results": [], "publish_skipped": True}
-
-    results = []
-    for platform in platforms:
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            from hevi.publishers import publish_to_platform
-
-            result = asyncio.run(
-                publish_to_platform(
-                    str(platform),
-                    Path(str(media)),
-                    title=str(data.get("title") or data.get("topic") or ""),
-                    description=str(data.get("description") or ""),
-                    tags=list(data.get("tags") or []),
-                )
-            )
-            results.append(result.to_dict())
-        else:
-            results.append(
-                {
-                    "platform": platform,
-                    "status": "blocked",
-                    "media_path": str(media),
-                    "reason": "同步 stage_publish 不能在运行中的事件循环执行；请使用 hevi.studio.stages.stage_publish",
-                }
-            )
-
-    return {"publish_results": results}
-
-
 # ─── Checkpoint & Review ────────────────────────────
 
 
@@ -600,7 +555,6 @@ __all__ = [
     "stage_timeline",
     "stage_runtime",
     "stage_dispatch",
-    "stage_publish",
     # Checkpoint & Review
     "checkpoint_write",
     "checkpoint_approve",

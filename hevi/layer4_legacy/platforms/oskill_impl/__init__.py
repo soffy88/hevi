@@ -18,11 +18,6 @@ from hevi.layer4_legacy.platforms.oskill_impl.content import (
     download_media,
     monitor_targets,
 )
-from hevi.layer4_legacy.platforms.oskill_impl.publish import (
-    create_publish_task,
-    publish_to_platform,
-    repost_content,
-)
 from hevi.layer4_legacy.platforms.oskill_impl.risk import (
     RiskController,
     apply_cooldown,
@@ -43,15 +38,12 @@ __all__ = [
     "check_account_risk",
     "collect_content",
     "create_comment_rule",
-    "create_publish_task",
     "download_media",
     "execute_comment_rule",
     "load_account_state",
     "monitor_targets",
     "parse_comment_target",
     "parse_share_text",
-    "publish_to_platform",
-    "repost_content",
     "resolve_share_link",
     "save_account_state",
     "schedule_recovery",

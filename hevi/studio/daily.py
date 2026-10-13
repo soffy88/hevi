@@ -1,7 +1,7 @@
-"""日更排产 —— 解说线按系列选题、历史现场按史料选题,每日一条并写发布交接单。
+"""日更排产 —— 解说线按系列选题、历史现场按史料选题,每日一条。
 
-不重开管线:选题进已有 `explainer` / `history_scene` 配方,出片交接既有产品线,
-发布走 `publish.matrix`。历史现场教科书连载仍可由 `/history-series/produce-daily`
+不重开管线:选题进已有 `explainer` / `history_scene` 配方,出片交接既有产品线;
+平台发布已迁至 Easel,本层不再发布。历史现场教科书连载仍可由 `/history-series/produce-daily`
 走通鉴;本层给「选题日历」和 Veya/cron 同一把 tick。
 """
 
@@ -62,7 +62,6 @@ class DailyJob:
     status: str
     title: str = ""
     slate: dict[str, Any] = field(default_factory=dict)
-    publish: list[dict[str, Any]] = field(default_factory=list)
     reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -174,24 +173,10 @@ def _pick(cal: DailyCalendar, day: str) -> TopicItem | None:
     return None
 
 
-async def _publish(platforms: list[str], media: str, title: str) -> list[dict[str, Any]]:
-    from hevi.studio.tools import invoke_tool
-
-    results: list[dict[str, Any]] = []
-    for platform in platforms:
-        res = await invoke_tool(
-            "publish.matrix",
-            {"platform": platform, "media_path": media, "title": title},
-        )
-        results.append(res.to_dict())
-    return results
-
-
 async def tick(
     *,
     now: date | str | None = None,
     calendar_id: str | None = None,
-    publish: bool = True,
 ) -> list[DailyJob]:
     """每个日历至多排一条到期选题。"""
     ensure_default_calendars()
@@ -216,22 +201,6 @@ async def tick(
             slate=slate.to_dict(),
             reason=slate.reason,
         )
-        media = ""
-        plan = slate.data.get("edit_plan") if isinstance(slate.data, dict) else None
-        if isinstance(plan, dict):
-            media = str(plan.get("preview_path") or "")
-        if publish and cal.platforms and media:
-            job.publish = await _publish(cal.platforms, media, topic.title)
-        elif publish and cal.platforms:
-            job.publish = [
-                {
-                    "status": "queued",
-                    "platform": p,
-                    "reason": "waiting-delivery",
-                    "title": topic.title,
-                }
-                for p in cal.platforms
-            ]
         topic.produced_job_id = job.job_id
         _JOBS[job.job_id] = job
         fired.append(job)

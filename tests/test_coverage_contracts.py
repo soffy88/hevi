@@ -138,28 +138,19 @@ def test_platform_schema_decisions_and_risk_classification() -> None:
         AccountProfile,
         ContentRecord,
         MonitorTarget,
-        PublishResult,
-        PublishTask,
         RiskCategory,
         classify_platform_error,
     )
 
     account = AccountProfile(platform="douyin", status="active", has_read_state=True)
     assert account.is_available()
-    assert account.can_publish()
     account.status = "risk"
     assert not account.is_available()
-    assert not account.can_publish()
     target = MonitorTarget(platform="douyin", group_name="g", tags=["a"])
     assert target.matches_tags("g", "a")
     assert not target.matches_tags("other", "a")
     assert not target.matches_tags("g", "b")
     assert ContentRecord(platform="xhs").media_type == "video"
-    assert not PublishTask(platform="xhs", account_id=1).is_available()
-    publish = PublishTask(platform="xhs", account_id=1, media_paths=["out.mp4"])
-    assert publish.is_available()
-    result = PublishResult(status="ok", platform="xhs", external_id="e", url="u")
-    assert result.to_dict()["external_id"] == "e"
     assert classify_platform_error("429 captcha")[0] is RiskCategory.RISK
     assert classify_platform_error("login required")[0] is RiskCategory.AUTH
     assert classify_platform_error("network timeout")[0] is RiskCategory.NETWORK
@@ -486,13 +477,13 @@ def test_account_manager_persists_and_filters_storage_states(tmp_path: Path) -> 
     profile = manager.get_account_profile(1, "douyin")
     assert profile is not None and profile.cookies_count == 1
     assert manager.list_accounts("douyin")[0]["id"] == 1
-    assert verify_account(tmp_path, 1, "douyin")["can_publish"]
+    assert verify_account(tmp_path, 1, "douyin")["has_creator_state"]
     assert manager.delete_account(1, "douyin")
     assert not manager.delete_account(1, "douyin")
 
 
 @pytest.mark.asyncio
-async def test_platform_content_comment_publish_and_share_boundaries(tmp_path: Path) -> None:
+async def test_platform_content_comment_and_share_boundaries(tmp_path: Path) -> None:
     from hevi.platforms.oskill.comment import (
         check_interval_safety,
         create_comment_rule,
@@ -500,11 +491,6 @@ async def test_platform_content_comment_publish_and_share_boundaries(tmp_path: P
         parse_comment_target,
     )
     from hevi.platforms.oskill.content import collect_content, download_media, monitor_targets
-    from hevi.platforms.oskill.publish import (
-        create_publish_task,
-        publish_to_platform,
-        repost_content,
-    )
     from hevi.platforms.oskill.share_downloader import (
         ShareDownloader,
         parse_share_text,
@@ -549,17 +535,6 @@ async def test_platform_content_comment_publish_and_share_boundaries(tmp_path: P
     assert downloaded[0].download_status == "done"
     assert downloaded[1].download_status == "failed"
     assert downloaded[0].local_path.endswith("douyin_1")
-
-    task = create_publish_task(1, "douyin", title="x" * 30, media_paths=["video.mp4"])
-    assert len(task.title) == 20
-    assert (await publish_to_platform(task, browser_context=None)).status == "failed"
-    unimplemented = await publish_to_platform(task, browser_context=object())
-    assert unimplemented.status == "not_implemented"
-    empty = create_publish_task(1, "douyin")
-    assert (await publish_to_platform(empty)).status == "failed"
-    repost = await repost_content(5, 1, "xhs")
-    assert repost["task_id"] == "repost_5_xhs"
-    assert repost["ok"] is False and repost["status"] == "not_implemented"
 
     parsed = parse_share_text("😀 https://www.douyin.com/video/123?aweme_id=123")
     assert parsed["platform"] == "douyin" and parsed["aweme_id"] == "123"
@@ -993,15 +968,10 @@ def test_openshorts_atoms_and_skills_build_complete_deliverables(
         "video", reframing=oprim.ReframingMode.TRACK, target_clips=1, with_hook_text=True
     )
     assert clips.status == "planned" and clips.clips[0].effects["hook_text"]
-    short = oskill.generate_ai_short(
-        "product", url="https://example.test", publish_platforms=["tiktok"]
-    )
-    assert short.status == "blocked" and short.publish_status == ""
-    tickets = oskill.create_publish_tickets(short, ["tiktok", "youtube"])
-    assert len(tickets) == 2 and tickets[0].media_path == short.composite_path
+    short = oskill.generate_ai_short("product", url="https://example.test")
+    assert short.status == "blocked"
     yt: YouTubeStudioJob = oskill.generate_youtube_package("video", source_title="Topic")
     assert yt.selected_title and yt.description.chapters
-    assert oskill.create_publish_tickets(yt, ["youtube"])[0].title == yt.selected_title
 
 
 @pytest.mark.asyncio
@@ -1069,11 +1039,7 @@ async def test_montage_atoms_and_stage_directors_persist_checkpoints(tmp_path: P
     ]["compiled"]
     order = oskill.stage_dispatch({"topic": "T", "timeline": timeline["timeline"]}, {})
     assert order["production_order"]["topic"] == "T"
-    assert (
-        len(oskill.stage_publish({"media_path": "v", "platforms": ["x"]}, {})["publish_results"])
-        == 1
-    )
-    assert oskill.stage_publish({}, {})["publish_skipped"]
+    assert not hasattr(oskill, "stage_publish")
     planned = omodul.plan_reference_analysis("v")
     assert planned["analysis_tools"]
     assert omodul.plan_delivery("p", {"ok": True})["steps"]
@@ -1301,7 +1267,6 @@ def test_magiviz_atoms_and_skills_produce_each_stage_output() -> None:
 async def test_platform_planners_bind_accounts_media_and_review_steps(tmp_path: Path) -> None:
     from hevi.platforms.omodul.plan_comment import build_comment_plan
     from hevi.platforms.omodul.plan_monitor import build_monitor_plan
-    from hevi.platforms.omodul.plan_publish import build_publish_plan, execute_publish_plan
     from hevi.platforms.schemas import MonitorTarget
 
     targets = [
@@ -1315,16 +1280,6 @@ async def test_platform_planners_bind_accounts_media_and_review_steps(tmp_path: 
         "xhs", "auto_comment", 7, "keyword", ["hello"], target_kind="keyword"
     )
     assert comment["rule"]["keyword"] == "keyword" and comment["review"]["required"] is False
-    media = tmp_path / "out.jpg"
-    media.write_bytes(b"image")
-    publish = build_publish_plan(
-        7, "xhs", [str(media), "missing.mp4"], title="T", scheduled_at="2026-01-01T00:00:00Z"
-    )
-    assert publish["media"]["paths"] == [str(media)]
-    assert publish["media"]["missing"] == ["missing.mp4"]
-    assert publish["scheduled_at"] == "2026-01-01T00:00:00"
-    result = await execute_publish_plan(publish)
-    assert result["status"] == "failed"
 
 
 def test_semantic_motion_profile_and_layout_share_one_frozen_time_contract() -> None:

@@ -3297,7 +3297,7 @@ async def test_voicepro_translate_providers_and_pipeline_dispatch_contracts(
     assert one.translated_text == "translated:a" and len(many) == 2
     assert skill_apply_terminology("old", {"old": "new"}) == "new"
     assert plan_ai_short(description="d", cost_mode="standard")["estimated_cost_usd"] == 2.0
-    assert len(plan_youtube_studio("video")["stages"]) == 4
+    assert len(plan_youtube_studio("video")["stages"]) == 3
     assert plan_clip_generator("video", target_clips=3)["pipeline"] == "clip_generator"
 
 
@@ -3791,8 +3791,7 @@ async def test_studio_ops_dispatches_wrappers_and_preserves_failure_semantics(
 
     monkeypatch.setattr("hevi.studio.tools.invoke_tool", invoke)
     assert (await ops.score_video({"path": str(local)}))["accepted"] is True
-    for publisher in (ops.pub_douyin, ops.pub_kuaishou, ops.pub_xhs, ops.pub_sph, ops.pub_bili):
-        assert (await publisher({"topic": "history"}))["accepted"] is True
+    assert not any(name.startswith("pub_") for name in ops.OPS)
     assert ops.qc_production({"shots": []})["status"] == "ok"
     assert ops.qc_layout({"boxes": [1]})["boxes"] == 1
     assert (
@@ -3858,7 +3857,7 @@ async def test_studio_ops_dispatches_wrappers_and_preserves_failure_semantics(
 
     monkeypatch.setattr("hevi.studio.daily.tick", tick)
     monkeypatch.setattr("hevi.studio.veya.produce", produce)
-    assert (await ops.daily_tick({"publish": False}))["count"] == 1
+    assert (await ops.daily_tick({}))["count"] == 1
     assert (await ops.veya_produce({"line_id": "explainer"}))["job"]["job"] == "p"
 
 

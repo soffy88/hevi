@@ -3,7 +3,7 @@
 The old montage planner is intentionally kept for backwards compatibility.
 This module is the execution path: it calls HEVI's real studio stage adapters,
 writes per-stage checkpoints, pauses at human gates, and refuses to claim a
-compose/publish result without a verified local artifact.
+compose result without a verified local artifact.
 """
 
 from __future__ import annotations
@@ -30,7 +30,6 @@ from hevi.studio.stages import (
     stage_dispatch,
     stage_edit_plan,
     stage_intake,
-    stage_publish,
     stage_research,
     stage_runtime,
     stage_script,
@@ -327,6 +326,21 @@ def _rig_plan(data: dict[str, Any], _context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _publish_handoff(data: dict[str, Any], _context: dict[str, Any]) -> dict[str, Any]:
+    """Final ``publish`` stage: Hevi no longer uploads to platforms.
+
+    Platform publishing moved to Easel; this stage only records the verified
+    local deliverable as a handoff so manifests that end in ``publish`` still
+    complete without claiming any upload.
+    """
+    media = data.get("media_path") or data.get("output_path") or data.get("result_video_path")
+    return {
+        "publish_results": [],
+        "publish_skipped": True,
+        "publish_handoff": {"owner": "easel", "media_path": str(media or "")},
+    }
+
+
 async def _compose(data: dict[str, Any], _context: dict[str, Any]) -> dict[str, Any]:
     output_path = data.get("output_path") or str(
         Path(str(data.get("output_dir") or "output/montage")) / "final.mp4"
@@ -404,7 +418,7 @@ _DEFAULT_STAGES: dict[str, Any] = {
     "runtime": stage_runtime,
     "dispatch": stage_dispatch,
     "compose": _compose,
-    "publish": stage_publish,
+    "publish": _publish_handoff,
 }
 
 

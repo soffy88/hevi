@@ -1,6 +1,6 @@
 id: shorts_clip
 product: 拆条矩阵
-summary: 已有成片 → 时间线拆条 + 国内矩阵交接单（不重渲）
+summary: 已有成片 → 时间线拆条（不重渲；平台发布已迁至 Easel）
 handoff: none
 render_runtime: ffmpeg
 slots:
@@ -12,7 +12,7 @@ slots:
     description: 标题/选题
   - name: platforms
     required: false
-    description: 发布平台列表
+    description: 目标平台列表（仅用于打包，发布由 Easel 负责）
 tools:
   - clip.factory
   - clip.virality
@@ -22,8 +22,6 @@ tools:
   - nle.edit_plan
   - timeline.create
   - timeline.ripple
-  - publish.matrix
-  - publish.douyin
   - delivery.preview
   - asset.bind
 pipeline:
@@ -41,5 +39,3 @@ pipeline:
       fn: hevi.studio.stages:stage_assets
     - name: dispatch
       fn: hevi.studio.stages:stage_dispatch
-    - name: publish
-      fn: hevi.studio.stages:stage_publish

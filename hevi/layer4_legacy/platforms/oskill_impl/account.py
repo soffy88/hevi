@@ -181,7 +181,6 @@ def verify_account(base_dir: Path, account_id: int, platform: str) -> dict[str, 
         "platform": platform,
         "has_read_state": has_read,
         "has_creator_state": has_creator,
-        "can_publish": has_read or has_creator,
         "browser_mode": resolve_browser_mode("auto", has_chrome=True),
         "needs_creator": platform_needs_creator_state(platform),
     }
