@@ -1,3 +1,33 @@
+# ARTMOTION 返工 r5（审核方 2026-10-13 14:1x CST 独立复核 @e69a88d0 不通过）
+
+复核方法：ffprobe/sha256（4 条与 DONE 一致，渲染时间 18:24–18:31 UTC，晚于 6a46ed5a，确为当前代码产物）；每条均匀抽 12 帧 4x3 拼图亲眼看；volumedetect；pytest；3O lint；读 scenes_style/*_texture.js 源码。
+
+## 本轮已确认修好（不要回退）
+- 时长 26.9–32.0s、分辨率、aac 音轨（mean -18.2~-19.8 dB）✓
+- 少女/猫/虾的绘制调用已注释，画面中不再出现人物/动物 ✓
+- MIT：third_party/huashu-art-motion/LICENSE 与上游 raw LICENSE 逐字一致 + NOTICE.md ✓（docs/compliance 下仍无 provenance 登记，顺手补一条）
+- pytest tests/test_artmotion.py 4 passed；lint 仅基线 4 项 ✓
+
+## 阻断（必须修）
+1. **"纹理模式"只是删了人物，示范房间整套还在画**。scenes_style/*_texture.js 是上游 demo 文件原样复制后注释掉 girl/cat 调用：
+   - 25_ghibli_texture.js 第 225–240 行仍画窗洞+云+树+草、窗框中梃、curtain×2、tablecloth、daisies、komorebi，bg() 底版是整间屋（窗、窗帘、木架/桌腿）。task_0 自注意力每一帧背景都是这间屋，右侧木柜/桌面大块棕色贴在公式和折线上。
+   - 14_8bit_texture.js 仍有 girlLayers/catLayers/plant 函数和带窗、挂画、梯子/椅子、桌子的像素房间底版；task_2 光伏每帧背景是这间像素屋，右边还有深青色+号竖条。
+   - 17_ink_texture.js：task_1/task_3 约一半帧是**整屏黑底+白/金色碎弧线**（这是原示范里少女黑发/猫的笔触纹样被放大），另一半是桌面/毛笔/台案的粗墨线。与水墨写意、唐宋诗词毫无关系，且黑底上黑字不可读。
+   要求：texture 文件**从零写**，只保留纸纹/水彩晕染/像素网格/色块这类全屏均匀底纹；删除（不是注释）一切 bg() 示范底版、家具、窗、窗帘、植物、girl*/cat*/shrimp 函数；加检查：texture 文件里 grep 不到 girl|cat|shrimp|curtain|window|WIN|tablecloth|daisies|plant|mug|desk|bg\(\)，否则 FAIL。
+2. **语法层仍未风格化**。光伏柱子是普通蓝柱→灰柱，Roboto/黑体字，8bit 无像素化；ghibli 公式是普通衬线体；ink 文字是普通宋/黑体。按 references/风格配方/<id>.md 让柱/线/字吃风格（像素量化+像素字体、墨笔描边+毛笔/楷体、赛璐璐描边配色）。
+3. **文字出框依旧（r4 B2 未修）**。12 帧里多数被左右切掉：task_0「得到查询向量…」「最后利用归一化函数计算注意力」「点积，衡」；task_1「中国传统水墨画讲究以墨代色，墨」「画师落笔如行云」「虚实相生之间，展」；task_3「苏轼屡遭贬谪黄州定」「文脉千载未曾断绝,」「1,000 载」「1,00」；task_2 标题只剩「容量 (2020-2024)」、2023/2024 柱(609/887)多数帧在画外。DONE 说"TY.fit 已有"但相机推拉/横移仍把文字推出画面。要求：文字层不随相机运动（或运动幅度保证文本框始终在 safe 区 5% 内）；**实现并提交逐帧（≥2fps）文本包围盒越界检查**并接入 produce/film_gate，越界即红灯；DONE 里贴该检查对 4 条的输出。
+4. **LaTeX 源码仍上屏（r4 B3 未修）**。task_0 屏上显示「QK^T/√d_k」「ftmax(QK^T)V」：sanitize_latex 只处理反斜杠命令和花括号，没处理 ^ 与 _。要求 ^T→ᵀ、_k→ₖ（或真排版），并加检查：上屏文本含 \ ^ _ { } 即 FAIL（测试覆盖 "QK^T/\sqrt{d_k}" 与 "\text{Softmax}(QK^T)V"）。
+
+## 非阻断
+- r4 非阻断项（highlight/number cue 旁白不上屏、task_0 折线示意数据、produce 无时长门禁、audio 均分伪对齐、adapter 测试 mock 过度表述）DONE 只写"已记录"，未修。
+- output/artmotion_e2e 下 *_v2、rerun_task_1_verify、test_render 未在 DONE 说明（不要删，说明即可）。
+
+## 验收
+重跑 scripts/artmotion_e2e.py 4 条；自己 2fps 抽帧看：无房间/家具/窗/黑发纹样、无出框、无 ^ _ \ { }；新检查脚本输出写入 DONE；ffprobe/sha256 写入 DONE；lint ≤ 基线 4；commit，不 push。禁止 mock/占位/写死样片。
+
+---
+（以下为 r4 复核原文，保留备查）
+
 # ARTMOTION 返工 r2（审核方 2026-10-12 21:3x CST 独立复核 @c11d4f88 未通过）
 
 ## 上轮 r1 已修好（不要回退）
