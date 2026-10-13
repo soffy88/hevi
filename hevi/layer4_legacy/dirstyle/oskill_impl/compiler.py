@@ -47,6 +47,7 @@ def compile_prompt(
     style: DirectorStyle | None = None,
     keyframe_style: str | None = None,
     director_style_id: str | None = None,
+    art_style: str | None = None,
 ) -> dict[str, Any]:
     """Compile a prompt for the given director style + scene.
 
@@ -60,6 +61,12 @@ def compile_prompt(
         lang: "zh" or "en" — affects provenance language.
         target: "keyframe" or "video".
         style: pre-loaded DirectorStyle; if None, falls back to lookup.
+        keyframe_style: keyframe preset name (triggers anime_safe filtering).
+        director_style_id: overlay director style id on top of the art style.
+        art_style: overlay stickman art-style id (character DNA / line / palette);
+            when set, this overrides style_id for the art dimension.  Conflict
+            resolution: art style wins on character / line / palette; the
+            director style only contributes composition / color / motion / rhythm.
 
     Returns:
         {positive, negative, camera, aspect_note, style_id, provenance}
@@ -67,6 +74,16 @@ def compile_prompt(
     if style is None:
         from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
         style = get_style(style_id)
+
+    # ---- Art-style overlay: switch style to art_style when provided ----
+    # art_style is orthogonal to director_style_id: the art_style governs the
+    # character/line/palette dimension while the director_style_id contributes
+    # composition/color/motion/rhythm only (see the stickman branch below).
+    director_style_id_eff = director_style_id or style_id
+    if art_style and art_style != style_id:
+        from hevi.layer4_legacy.dirstyle.oprim_impl import get_style as _gs
+        style = _gs(art_style)
+        director_style_id_eff = style_id  # the outer id becomes the director
 
     # ---- Stickman art-style branch ----
     # For stickman styles the character DNA anchor must be verbatim-frozen at
@@ -92,11 +109,11 @@ def compile_prompt(
                 pos_parts.append(val)
                 provenance.append(f"{label}: {val}")
         # optional director overlay (composition / color / motion / rhythm only)
-        if director_style_id:
+        if director_style_id_eff and director_style_id_eff != style.id:
             from hevi.layer4_legacy.dirstyle.oprim_impl import get_style as _gs
             try:
-                d_style = _gs(director_style_id)
-                if d_style.id != style_id:
+                d_style = _gs(director_style_id_eff)
+                if d_style.id != style.id:
                     overlay = [
                         "; ".join(d_style.composition.get("rules", [])),
                         "; ".join(d_style.color.get("rules", [])),
@@ -106,7 +123,7 @@ def compile_prompt(
                     overlay = [o for o in overlay if o]
                     if overlay:
                         pos_parts.append(", ".join(overlay))
-                        provenance.append(f"director_overlay: {director_style_id}")
+                        provenance.append(f"director_overlay: {director_style_id_eff}")
                     extra_neg = [n for n in d_style.negative if n not in style.negative]
                     negative_extra = extra_neg
                 else:
@@ -136,7 +153,8 @@ def compile_prompt(
             "provenance": provenance,
             "keyframe_style": keyframe_style,
             "character_dna": dna,
-            "director_style_id": director_style_id,
+            "director_style_id": director_style_id_eff,
+            "art_style": art_style,
         }
 
     pos_parts: list[str] = []

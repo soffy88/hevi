@@ -6,6 +6,10 @@ from hevi.layer4_legacy.dirstyle.omodul_impl.grade import (
     sha256_file,
     signalstats_mean,
 )
+from hevi.layer4_legacy.dirstyle.omodul_impl.export_flow_pack import (
+    FlowPack,
+    export_flow_pack,
+)
 
 __all__ = [
     "GradeResult",
@@ -14,4 +18,6 @@ __all__ = [
     "run_style_grade",
     "sha256_file",
     "signalstats_mean",
+    "FlowPack",
+    "export_flow_pack",
 ]
