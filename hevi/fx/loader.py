@@ -8,8 +8,16 @@ Usage:
 
 from __future__ import annotations
 
+import logging
+
 from hevi.fx.registry import FXRegistry, preview_mp4_path, preview_thumbnail_path
-from hevi.fx.sources import load_sfx, load_talkcraft, load_xfade
+from hevi.fx.sources import (
+    load_sfx,
+    load_talkcraft_with_skipped,
+    load_xfade,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def load_all(*, sync_previews: bool = True) -> FXRegistry:
@@ -19,6 +27,10 @@ def load_all(*, sync_previews: bool = True) -> FXRegistry:
     - talkcraft (``hevi-remotion-talkcraft/src/cards/tplMeta.ts``, read-only)
     - xfade (``hevi.assembly.xfade_transitions`` if importable, else ffmpeg help)
     - sfx (``assets/audio/sfx/library/manifest.json`` if present, else *.wav scan)
+
+    Entries skipped by a source (e.g. a talkcraft card whose category is not in
+    the map) are recorded on the registry as ``registry.skipped`` — never
+    silently dropped.
 
     Args:
         sync_previews: If True (default), fill ``preview_mp4`` / ``thumbnail``
@@ -31,11 +43,20 @@ def load_all(*, sync_previews: bool = True) -> FXRegistry:
     """
     registry = FXRegistry()
 
-    for name, loader in (("talkcraft", load_talkcraft), ("xfade", load_xfade), ("sfx", load_sfx)):
+    try:
+        talkcraft, skipped = load_talkcraft_with_skipped()
+        registry.add_many(talkcraft)
+        registry.skipped["talkcraft"] = skipped
+    except Exception as e:  # noqa: BLE001 — a broken source must not kill the catalog
+        logger.warning("failed to load talkcraft templates: %s", e)
+        registry.load_errors["talkcraft"] = str(e)
+
+    for name, loader in (("xfade", load_xfade), ("sfx", load_sfx)):
         try:
             registry.add_many(loader())
         except Exception as e:  # noqa: BLE001 — a broken source must not kill the catalog
-            print(f"Warning: failed to load {name} templates: {e}")
+            logger.warning("failed to load %s templates: %s", name, e)
+            registry.load_errors[name] = str(e)
 
     if sync_previews:
         sync_previews_disk(registry)

@@ -62,6 +62,8 @@ def list_templates(
             "total": len(templates),
             "categories": registry.categories(),
             "sources": registry.sources(),
+            "skipped": registry.skipped,
+            "load_errors": registry.load_errors,
             "templates": [t.to_dict() for t in templates],
         }
     )

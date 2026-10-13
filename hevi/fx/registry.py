@@ -111,6 +111,12 @@ class FXRegistry:
 
     def __init__(self) -> None:
         self._templates: dict[str, FXTemplate] = {}
+        #: Per-source list of entries the loader refused to add (e.g. talkcraft
+        #: cards with an unmapped category), as ``{id, name_zh, category_zh,
+        #: reason}``. Surfaced so nothing is silently dropped.
+        self.skipped: dict[str, list[dict[str, str]]] = {}
+        #: Per-source fatal load errors (``{source: message}``).
+        self.load_errors: dict[str, str] = {}
 
     def add(self, template: FXTemplate) -> None:
         """Add a template to the registry. Raises ValueError on duplicate id."""
@@ -186,3 +192,7 @@ class FXRegistry:
             key = t.source.value
             counts[key] = counts.get(key, 0) + 1
         return counts
+
+    def skipped_count(self) -> int:
+        """Total number of entries a source refused to add (never silent)."""
+        return sum(len(v) for v in self.skipped.values())
