@@ -563,9 +563,33 @@ def select_templates(only: list[str] | None, source: str | None, limit: int | No
     return sel
 
 
+def _load_label_font(size: int):
+    """Load a label font that can render both ASCII and CJK (card names are zh).
+
+    Prefers a CJK-capable TTF/TTC so Chinese names are not rendered as tofu,
+    falls back to DejaVu, then to PIL's bitmap default.
+    """
+    from PIL import ImageFont
+
+    candidates = [
+        "/home/soffy/.local/share/fonts/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+    ]
+    for path in candidates:
+        if Path(path).exists():
+            try:
+                return ImageFont.truetype(path, size)
+            except OSError:
+                continue
+    return ImageFont.load_default()
+
+
 def build_contact_sheet(records: list[dict], out_path: Path) -> dict:
     """Tile >=4 thumbnails per category into one PNG."""
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
 
     ok = [
         r
@@ -600,10 +624,7 @@ def build_contact_sheet(records: list[dict], out_path: Path) -> dict:
     )
     draw = ImageDraw.Draw(sheet)
 
-    try:
-        small = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 13)
-    except OSError:
-        small = ImageFont.load_default()
+    small = _load_label_font(13)
 
     counts: dict[str, int] = {}
     for i, rec in enumerate(picked):
