@@ -243,11 +243,11 @@
             "properties": {
               "lufs_integrated": {
                 "type": "number",
-                "minimum": -40.0,
+                "minimum": -17.5,
                 "maximum": -14.5
               },
               "loudness_limited": {
-                "type": "boolean"
+                "const": false
               }
             }
           }

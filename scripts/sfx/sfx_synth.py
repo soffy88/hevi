@@ -76,15 +76,21 @@ def bandpass(x: np.ndarray, sr: float, freq: float, q: float) -> np.ndarray:
 def sweep_bandpass(
     x: np.ndarray, sr: float, f0: float, f1: float, q: float, k: int = 12
 ) -> np.ndarray:
-    """Linear frequency sweep from ``f0`` to ``f1`` (log interpolation).
+    """Frequency sweep from ``f0`` to ``f1`` (log interpolation).
+
+    The direction is preserved: ``f0 < f1`` sweeps up, ``f0 > f1`` sweeps
+    *down*.  An earlier revision sorted the endpoints (``lo, hi = ...``)
+    before building the centre sequence, so every down-sweep silently ran
+    upward and ``whoosh_air_down``/``whoosh_air_up`` (and ``swipe_down``/
+    ``swipe_up``) came out spectrally identical.  ``np.geomspace`` handles a
+    descending pair directly, so no sort is needed.
 
     Pre-filters at ``k`` centres and linearly crossfades adjacent pairs along
     the time axis. No chunk boundaries, so there are no comb artefacts.
     """
     if k < 2:
         raise ValueError("k must be >= 2")
-    lo, hi = (f0, f1) if f0 <= f1 else (f1, f0)
-    freqs = np.geomspace(lo, hi, k)
+    freqs = np.geomspace(f0, f1, k)
     stack = np.stack([bandpass(x, sr, float(f), q) for f in freqs])
     n = x.size
     pos = (np.arange(n) / max(n - 1, 1)) * (k - 1)
@@ -97,6 +103,58 @@ def sweep_bandpass(
     # at 44.1 kHz / 1 s, which is what OOM-killed the earlier runs.
     rows = np.arange(n)
     return stack[i0, rows] * (1.0 - frac) + stack[i1, rows] * frac
+
+
+def body_bed(
+    rng: np.random.Generator,
+    sr: int,
+    n: int,
+    gain: float,
+    fc: float = 120.0,
+    decay_s: float = 0.9,
+    attack_s: float = 0.004,
+) -> np.ndarray:
+    """Sustained low body-rumble bed (soft-saturated filtered pink noise).
+
+    Impulsive SFX (a camera shutter click, a typewriter key, a heartbeat
+    thump) put almost all of their energy in a few milliseconds.  Such a clip
+    can never reach -16 LUFS *integrated* while staying under -1 dBFS, because
+    integrated loudness averages the whole window and the peak limiter refuses
+    to lift the transient.  A real impact also excites the body of the struck
+    object, so a low-frequency bed is acoustically honest *and* gives the
+    normaliser enough sustained energy to work with.
+
+    To keep the bed from reintroducing a high crest factor of its own, the
+    filtered noise is soft-saturated (``tanh``) and normalised: a low-passed
+    pink-noise band already sits near a 12 dB crest, and the saturation drops
+    it to ~8 dB, which is low enough that the mixed clip can reach -16 LUFS
+    with a true peak under -1 dBFS.
+
+    ``gain`` scales the returned array's RMS; the envelope is a short attack
+    into an exponential decay floored at 25%, so the bed carries the whole
+    clip instead of dying out.
+    """
+    if gain <= 0.0 or n <= 0:
+        return np.zeros(n)
+    x = pink_noise(rng, n)
+    bed = bandpass(x, sr, max(min(fc, sr * 0.2), 20.0), 0.6)
+    peak = float(np.max(np.abs(bed))) if bed.size else 0.0
+    if peak > 1e-12:
+        bed = bed / peak
+    # soft saturation: lowers the crest factor from ~12 dB toward ~7 dB while
+    # keeping the bed broadband (no hard clipping, no added harmonics)
+    bed = np.tanh(2.5 * bed)
+    bed = bed / max(float(np.max(np.abs(bed))), 1e-12)
+    t = np.arange(n) / sr
+    # attack ramp + exponential decay, floored at 25% so the tail carries
+    env = np.clip(t / max(attack_s, 1e-6), 0.0, 1.0) * np.maximum(
+        np.exp(-t / max(decay_s, 1e-3)), 0.25
+    )
+    bed = bed * env
+    rms = float(np.sqrt(np.mean(bed**2))) if bed.size else 0.0
+    if rms > 1e-12:
+        bed = bed / rms * gain
+    return bed
 
 
 def env_linear(n: int) -> np.ndarray:
@@ -271,16 +329,23 @@ def synth_impact(
     noise: float,
     sub: float = 0.0,
     shape: str = "exp",
+    body: float = 0.0,
 ) -> tuple:
     """Transient strike: pitch-dropping body + click + noise transient."""
     n = int(dur * sr)
     t = np.arange(n) / sr
-    body = np.sin(chirp(t, sr, f0, f1, shape=shape)) * np.exp(-t / max(decay, 1e-6))
-    out = body + click * np.exp(-t / 0.004)
+    strike = np.sin(chirp(t, sr, f0, f1, shape=shape)) * np.exp(-t / max(decay, 1e-6))
+    out = strike + click * np.exp(-t / 0.004)
     if noise > 0:
         out = out + noise * pink_noise(rng, n) * np.exp(-t / 0.03)
     if sub > 0:
         out = out + sub * np.sin(2.0 * np.pi * (f1 / 2.0) * t) * np.exp(-t / max(decay * 1.6, 1e-6))
+    if body > 0:
+        # low-frequency body resonance: gives the strike sustained energy so the
+        # clip can reach -16 LUFS integrated without clipping (see body_bed).
+        # The bed centre follows the strike's own low end, so two impacts with
+        # different pitch also get spectrally different beds (diversity).
+        out = out + body_bed(rng, sr, n, body, fc=max(f1 * 1.8, 60.0))
     return out, {
         "dur": dur,
         "f0": f0,
@@ -290,6 +355,7 @@ def synth_impact(
         "noise": noise,
         "sub": sub,
         "shape": shape,
+        "body": body,
     }
 
 
@@ -304,6 +370,7 @@ def synth_boom(
     sub: float,
     noise: float,
     rumble: float,
+    body: float = 0.0,
 ) -> tuple:
     """Low cinematic explosion: sub body + half-down sub + noise transient."""
     n = int(dur * sr)
@@ -320,6 +387,8 @@ def synth_boom(
             * sweep_bandpass(rum, sr, 40.0, 180.0, 1.4, k=10)
             * np.exp(-t / max(decay * 2.0, 1e-6))
         )
+    if body > 0:
+        out += body_bed(rng, sr, n, body)
     return out, {
         "dur": dur,
         "f0": f0,
@@ -328,6 +397,7 @@ def synth_boom(
         "sub": sub,
         "noise": noise,
         "rumble": rumble,
+        "body": body,
     }
 
 
@@ -501,6 +571,7 @@ def synth_typewriter(
     q: float,
     decay_ms: float,
     tone: float,
+    body: float = 0.0,
 ) -> tuple:
     """Mechanical clatter: spaced resonant clacks with slight jitter."""
     n = int(dur * sr)
@@ -516,6 +587,8 @@ def synth_typewriter(
         out[m : m + ln] += (
             clack + 0.7 * click + tone * np.sin(2.0 * np.pi * 180.0 * tt) * np.exp(-tt / 0.02)
         )
+    if body > 0:
+        out = out + body_bed(rng, sr, n, body, fc=max(freq * 0.12, 100.0))
     return out * env_linear(n), {
         "dur": dur,
         "hits": [round(float(h), 4) for h in hits],
@@ -524,11 +597,20 @@ def synth_typewriter(
         "q": q,
         "decay_ms": decay_ms,
         "tone": tone,
+        "body": body,
     }
 
 
 def synth_shutter(
-    rng, sr: int, *, dur: float, clicks, tones, mirror_t: float, mirror_f: float
+    rng,
+    sr: int,
+    *,
+    dur: float,
+    clicks,
+    tones,
+    mirror_t: float,
+    mirror_f: float,
+    body: float = 0.0,
 ) -> tuple:
     """Camera shutter: sequenced mechanical clicks + mirror slap."""
     n = int(dur * sr)
@@ -549,12 +631,15 @@ def synth_shutter(
         ln = min(n - m, max(int(0.05 * sr), 16))
         tt = np.arange(ln) / sr
         out[m : m + ln] += 0.6 * bandpass(np.exp(-tt / 0.012), sr, mirror_f, 2.0)
+    if body > 0:
+        out = out + body_bed(rng, sr, n, body, fc=max(mirror_f * 0.7, 90.0))
     return out * env_linear(n), {
         "dur": dur,
         "clicks": [[float(t0), float(f), float(q), float(a)] for t0, f, q, a in clicks],
         "tones": [float(f) for f in tones],
         "mirror_t": mirror_t,
         "mirror_f": mirror_f,
+        "body": body,
     }
 
 
@@ -571,6 +656,7 @@ def synth_heartbeat(
     lub_gain: float,
     dub_gain: float,
     jitter_ms: float,
+    body: float = 0.0,
 ) -> tuple:
     """Cardiac pulse: lub-dub pairs repeated at ``rate_bpm``."""
     n = int(dur * sr)
@@ -593,6 +679,8 @@ def synth_heartbeat(
             beats += 1
         if beats:
             break
+    if body > 0:
+        out = out + body_bed(rng, sr, n, body, fc=90.0, decay_s=1.0)
     return out * env_linear(n), {
         "dur": dur,
         "rate_bpm": rate_bpm,
@@ -603,6 +691,7 @@ def synth_heartbeat(
         "lub_gain": lub_gain,
         "dub_gain": dub_gain,
         "jitter_ms": jitter_ms,
+        "body": body,
     }
 
 

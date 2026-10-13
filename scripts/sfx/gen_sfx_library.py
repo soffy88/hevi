@@ -234,28 +234,28 @@ CATALOG: list[tuple] = [
         "impact_punch",
         "epic",
         ["punch", "body", "medium"],
-        dict(dur=0.7, f0=140, f1=60, decay=0.11, click=0.7, noise=0.5, sub=0.35),
+        dict(dur=0.7, f0=140, f1=60, decay=0.11, click=0.7, noise=0.5, sub=0.35, body=0.40),
     ),
     (
         "impact",
         "impact_hard",
         "tense",
         ["hard", "hit", "sharp"],
-        dict(dur=0.55, f0=220, f1=90, decay=0.08, click=0.95, noise=0.35, sub=0.2),
+        dict(dur=0.55, f0=220, f1=90, decay=0.08, click=0.95, noise=0.35, sub=0.2, body=0.40),
     ),
     (
         "impact",
         "impact_soft",
         "calm",
         ["soft", "thud", "muted"],
-        dict(dur=0.9, f0=95, f1=45, decay=0.16, click=0.4, noise=0.55, sub=0.5),
+        dict(dur=0.9, f0=95, f1=45, decay=0.16, click=0.4, noise=0.55, sub=0.5, body=0.40),
     ),
     (
         "impact",
         "impact_deep",
         "epic",
         ["deep", "sub", "heavy"],
-        dict(dur=1.2, f0=110, f1=35, decay=0.22, click=0.5, noise=0.3, sub=0.9),
+        dict(dur=1.2, f0=110, f1=35, decay=0.22, click=0.5, noise=0.3, sub=0.9, body=0.30),
     ),
     (
         "impact",
@@ -291,7 +291,7 @@ CATALOG: list[tuple] = [
         "boom_short",
         "tense",
         ["short", "punch", "quick"],
-        dict(dur=0.9, f0=95, f1=38, decay=0.22, sub=0.5, noise=0.8, rumble=0.3),
+        dict(dur=0.9, f0=95, f1=38, decay=0.22, sub=0.5, noise=0.8, rumble=0.3, body=0.40),
     ),
     # -- glitch --------------------------------------------------------
     (
@@ -528,14 +528,23 @@ CATALOG: list[tuple] = [
         "typewriter_single",
         "calm",
         ["single", "one", "key"],
-        dict(dur=0.5, hits=(0.06,), jitter_ms=0, freq=1900, q=6.0, decay_ms=6, tone=0.4),
+        dict(dur=0.5, hits=(0.06,), jitter_ms=0, freq=1900, q=6.0, decay_ms=6, tone=0.4, body=0.10),
     ),
     (
         "typewriter",
         "typewriter_triple",
         "calm",
         ["triple", "word", "keys"],
-        dict(dur=0.8, hits=(0.05, 0.32, 0.6), jitter_ms=12, freq=1900, q=6.0, decay_ms=6, tone=0.4),
+        dict(
+            dur=0.8,
+            hits=(0.05, 0.32, 0.6),
+            jitter_ms=12,
+            freq=1900,
+            q=6.0,
+            decay_ms=6,
+            tone=0.4,
+            body=0.14,
+        ),
     ),
     (
         "typewriter",
@@ -550,6 +559,7 @@ CATALOG: list[tuple] = [
             q=5.5,
             decay_ms=5,
             tone=0.35,
+            body=0.16,
         ),
     ),
     (
@@ -565,6 +575,7 @@ CATALOG: list[tuple] = [
             q=3.4,
             decay_ms=9,
             tone=0.6,
+            body=0.16,
         ),
     ),
     # -- camera shutter ------------------------------------------------
@@ -573,7 +584,14 @@ CATALOG: list[tuple] = [
         "shutter_single",
         "tech",
         ["single", "mirrorless", "clean"],
-        dict(dur=0.5, clicks=((0.02, 8000, 8.0, 1.0),), tones=(), mirror_t=0.055, mirror_f=300),
+        dict(
+            dur=0.5,
+            clicks=((0.02, 8000, 8.0, 1.0),),
+            tones=(),
+            mirror_t=0.055,
+            mirror_f=300,
+            body=0.12,
+        ),
     ),
     (
         "shutter",
@@ -586,6 +604,7 @@ CATALOG: list[tuple] = [
             tones=(2500,),
             mirror_t=0.3,
             mirror_f=250,
+            body=0.15,
         ),
     ),
     (
@@ -599,6 +618,7 @@ CATALOG: list[tuple] = [
             tones=(),
             mirror_t=0.42,
             mirror_f=180,
+            body=0.18,
         ),
     ),
     # -- heartbeat -----------------------------------------------------
@@ -617,6 +637,7 @@ CATALOG: list[tuple] = [
             lub_gain=1.0,
             dub_gain=0.6,
             jitter_ms=0,
+            body=0.22,
         ),
     ),
     (
@@ -634,6 +655,7 @@ CATALOG: list[tuple] = [
             lub_gain=1.0,
             dub_gain=0.6,
             jitter_ms=6,
+            body=0.24,
         ),
     ),
     (
@@ -668,6 +690,7 @@ CATALOG: list[tuple] = [
             lub_gain=1.0,
             dub_gain=0.55,
             jitter_ms=0,
+            body=0.28,
         ),
     ),
     # -- swipe ---------------------------------------------------------
@@ -1233,16 +1256,15 @@ SCHEMA = {
                         }
                     },
                     "else": {
-                        # -16 LUFS is the target, but sparse high-crest effects
-                        # cannot reach it without clipping, so the range is wide
-                        # and ``loudness_limited`` flags the ones that fell short.
+                        # >= 0.5 s clips must all sit within +/-1.5 LU of -16;
+                        # the loudness_limited escape hatch has been retired.
                         "properties": {
                             "lufs_integrated": {
                                 "type": "number",
-                                "minimum": -40.0,
+                                "minimum": -17.5,
                                 "maximum": -14.5,
                             },
-                            "loudness_limited": {"type": "boolean"},
+                            "loudness_limited": {"const": False},
                         }
                     },
                 },
@@ -1269,18 +1291,18 @@ def build_manifest(records: list[dict], seed: int) -> dict:
             "max_duration_s": LONG_MAX_S,
             "lufs_report_min_s": LUFS_REPORT_MIN_S,
             "notes": (
-                "Clips >= 0.5s are loudness-normalised toward -16 LUFS "
-                "integrated (ffmpeg ebur128 for measurement, gain + alimiter "
-                "look-ahead true-peak limiter for the correction); shorter "
-                "clips are peak-normalised. The one inviolable rule is that no "
-                "clip may exceed -1 dBFS true peak, and every clip is checked "
-                "with ebur128 after writing. Sparse, high-crest effects "
-                "(clicks, camera shutters, typewriter keys, heartbeat, "
-                "impact/boom tails) physically cannot reach -16 LUFS while "
-                "staying below -1 dBFS - their crest factor is 20-30 dB, so "
-                "-16 LUFS would need peaks of +5..+8 dBFS. Those clips are "
-                "flagged loudness_limited=true and sit quieter; no clip is "
-                "boosted into clipping to chase the loudness target. Clips "
+                "Clips >= 0.5s are loudness-normalised to -16 LUFS integrated "
+                "(ffmpeg ebur128 for measurement, gain + alimiter look-ahead "
+                "true-peak limiter for the correction); shorter clips are "
+                "peak-normalised. The one inviolable rule is that no clip may "
+                "exceed -1 dBFS true peak, and every clip is checked with "
+                "ebur128 after writing. Impulsive effects (impacts, boom_short, "
+                "camera shutters, typewriter keys, heartbeat) carry a "
+                "soft-saturated low-frequency body bed (see body_bed in "
+                "scripts/sfx/sfx_synth.py) that supplies sustained energy, so "
+                "the mixed clip reaches -16 LUFS while its true peak stays "
+                "under -1 dBFS - the earlier loudness_limited exemption is "
+                "gone and every >= 0.5s asset lands within +/-1.5 LU. Clips "
                 "< 0.5s report lufs_integrated=null because EBU R128 "
                 "integrated loudness is undefined that short."
             ),
