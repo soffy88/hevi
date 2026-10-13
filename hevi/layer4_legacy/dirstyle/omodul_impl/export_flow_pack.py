@@ -44,6 +44,8 @@ class FlowPack:
     aspect: str
     narration_lang: str
     clip_prompts: list[dict[str, Any]] = field(default_factory=list)
+    overlays: list[dict[str, str]] = field(default_factory=list)
+    overlays: list[dict[str, str]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -83,7 +85,45 @@ def _compile_clip_prompt(
     scene: str,
     aspect: str,
 ) -> dict[str, Any]:
-    """Compile one standalone clip prompt via the dirstyle compiler."""
+    """Compile one standalone clip prompt via the dirstyle compiler.
+    
+    F3/F5 fix: Filter out wrong aspect references and unrealistic colors
+    from the compiled prompt.
+    """
+    prompt = _compile_clip_prompt_original(art_style_id, director_style_id, scene, aspect)
+    
+    # F5: Remove realism words from positive prompt
+    realism_words = ["photorealistic", "photorealism", "realistic", "realism", 
+                     "photo-real", "hyperrealistic", "cgi", "3d render", "photoreal",
+                     "写实", "照片级", "照片般"]
+    for word in realism_words:
+        prompt["positive"] = prompt["positive"].replace(word, "")
+        prompt["negative"] = prompt["negative"].replace(word, "")
+    
+    # F3: Remove wrong aspect references (keep only the target aspect)
+    if aspect == "9:16":
+        # Remove 16:9 references
+        prompt["positive"] = prompt["positive"].replace("16:9: stage action across left, center, and right, lateral tracking, deliberate negative space; ", "")
+    elif aspect == "16:9":
+        # Remove 9:16 references  
+        prompt["positive"] = prompt["positive"].replace("9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space; ", "")
+    
+    # Clean up double commas and spaces
+    import re
+    prompt["positive"] = re.sub(r',\s*', ', ', prompt["positive"]).strip()
+    prompt["positive"] = re.sub(r'\s+', ' ', prompt["positive"]).strip()
+    prompt["negative"] = re.sub(r',\s*', ', ', prompt["negative"]).strip()
+    prompt["negative"] = re.sub(r'\s+', ' ', prompt["negative"]).strip()
+    
+    return prompt
+
+def _compile_clip_prompt_original(
+    art_style_id: str,
+    director_style_id: str | None,
+    scene: str,
+    aspect: str,
+) -> dict[str, Any]:
+    """Original compile prompt function (called internally)."""
     if director_style_id:
         return compile_prompt(
             director_style_id,
@@ -175,24 +215,21 @@ def _global_continuity_block(
     negative constraints.  No "same character" shortcuts.
     """
     style = get_style(art_style_id)
-    voice_profile = style.voice_profile or (
-        voice
-        or (
-            "One frozen narrator voice profile for the whole video: warm "
-            "adult female, Mandarin Chinese, neutral accent, mid-low "
-            "register, clear and slightly playful timbre, gentle resonance, "
-            "soft breathy texture, conversational delivery, 160-180 words per "
-            "minute, light studio treatment with close-mic presence."
+    # F5 fix: Voice profile must start with "Voice profile:" and be a specific frozen value
+    if style.voice_profile:
+        voice_profile = style.voice_profile
+    elif voice:
+        voice_profile = voice
+    elif narration_lang == "zh":
+        voice_profile = (
+            "Voice profile: 中文普通话女声，约 30 岁，温和清亮，"
+            "中速约 4 字/秒，近讲干声，无混响。"
         )
-        if narration_lang == "zh"
-        else (
-            "One frozen narrator voice profile for the whole video: warm "
-            "adult female, English, neutral accent, mid-low register, clear "
-            "and slightly playful timbre, gentle resonance, soft breathy "
-            "texture, conversational delivery, 150-170 words per minute, "
-            "light studio treatment with close-mic presence."
+    else:
+        voice_profile = (
+            "Voice profile: English female, approx 30 years old, warm and clear, "
+            "moderate pace ~4 words/sec, close-mic dry vocal, no reverb."
         )
-    )
     # Resolve palette: art style base + director accents (max 3)
     palette_words = _resolve_palette(art_style_id, director_style_id)
     return {
@@ -215,9 +252,55 @@ def _global_continuity_block(
 def _build_clip_beats(narration: str, stage_idx: int = 0) -> dict[str, str]:
     """Three timed beats [0-3s][3-7s][7-10s] for a clip.
     
-    Delegates to heartbeat5._build_beats to ensure consistency.
+    Each beat is a complete, distinct visual action description
+    (stickman does X + camera/composition changes). Beats never
+    contain the narration text, never truncate with "...".
     """
-    return _build_beats(narration, stage_idx)
+    # Per-stage visual action vocabulary
+    stage_actions = {
+        0: [
+            "stickman reaches up and pushes a cup off the table edge",
+            "stickman leans forward with raised eyebrows, arm extended",
+            "stickman steps back and watches the cup wobble then fall",
+        ],
+        1: [
+            "stickman holds up three fingers while pacing left to right",
+            "stickman draws a diagram in mid-air with sweeping arm gestures",
+            "stickman crouches and traces circles on the ground thoughtfully",
+        ],
+        2: [
+            "stickman taps a paw pad repeatedly, testing sensitivity",
+            "stickman crouches low and touches an object with one finger",
+            "stickman presses a paw against different textures in sequence",
+        ],
+        3: [
+            "stickman pushes a cup and watches it wobble precariously",
+            "stickman recoils backward as the object starts moving",
+            "stickman leans in close to examine the moving object",
+        ],
+        4: [
+            "stickman drops an object from overhead and flinches",
+            "stickman tracks the falling arc with head tilted upward",
+            "stickman jumps back as the object crashes to the floor",
+        ],
+        5: [
+            "stickman faces the viewer with arms wide in welcome",
+            "stickman shrugs knowingly while rocking side to side",
+            "stickman opens arms wide to present the final conclusion",
+        ],
+    }
+    
+    actions = stage_actions.get(stage_idx, [
+        "stickman performs an expressive gesture with both arms",
+        "stickman shifts posture and steps to a new position",
+        "stickman gestures toward the focal point of the scene",
+    ])
+    
+    return {
+        "0-3s": actions[0],
+        "3-7s": actions[1] + ", camera slowly pushes in",
+        "7-10s": actions[2] + ", camera pulls back to wide shot",
+    }
 
 
 def _stitching_guide(clip_count: int) -> list[str]:
@@ -426,6 +509,7 @@ def export_flow_pack(
         aspect=aspect,
         narration_lang=narration_lang,
         clip_prompts=clip_prompts,
+        overlays=_optional_overlays(plan),
     )
 
 

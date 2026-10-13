@@ -1,1 +1,145 @@
-{"id": "fincher", "display_zh": "大卫·芬奇", "display_en": "David Fincher", "source": {"origin": "article", "upstream_commit": "24bbcc2", "license": "MIT", "absorbed_from": "mikefluff fincher-cold-lowkey + article"}, "lens_aspect": {"focal": "40-50mm prime, shallow DoF", "aspect": "2.39:1", "notes": "中焦，毫米级精确运镜"}, "composition": {"rules": ["architectural symmetry", "shooting through doorways/hallways", "eye-level for interrogations, slightly low for power-figures"], "zh": "几何监控视角 + 走廊门框构图"}, "lighting": {"rules": ["single hard motivated source", "no fill on shadow side", "key/fill ratio 8:1 or higher", "deep plugged blacks"], "zh": "低照度单光源、暗部大"}, "color": {"palette": ["#2c3e50", "#34495e", "#d35400", "#e5e7e9"], "rules": ["cool desaturated teal cast offset by amber tungsten", "almost monochrome with one warm accent"], "zh": "青绿阴影 + 微暖肤色去饱和"}, "motion": {"rules": ["locked tripod, microscopic dolly moves", "6-12 inch push-in over 15-25 seconds", "no handheld, no whip pan"], "zh": "缓慢机械运镜，几乎无手持"}, "rhythm": {"avg_shot_s": 5.5, "cut_rule": "slow methodical, 4-8 cuts per minute", "zh": "慢而精准"}, "signature": [{"en": "architectural symmetry with shallow depth of field", "zh": "几何监控视角", "required": true}, {"en": "cool desaturated teal with amber practical light", "zh": "青绿阴影 + 微暖去饱和", "required": true}, {"en": "mechanical precise locked-off moves only", "zh": "缓慢机械运镜", "required": true}], "negative": ["handheld", "bright daylight", "warm saturated palette", "shallow focus with bokeh", "film grain"], "fits": ["thriller interrogation", "procedural", "crime drama"], "avoid": ["comedy", "romance", "musical"], "anime_safe": {"conflict_words": ["photorealistic", "live-action"], "rewrites": {"monochrome": "ink-wash grey tones"}, "notes": "冷灰+单光源在动画里可用"}, "vertical_9x16": {"mode": "letterbox", "rules": ["2.39:1 band in 9:16, black bars top/bottom", "subject centered in the band", "subtitle in lower bar"], "note": "严格对称构图适合信箱"}, "grade": {"description": "cool desaturated teal, single warm practical, deep blacks", "ffmpeg_steps": [{"filter": "hue", "args": "h=-5:s=0.55"}, {"filter": "eq", "args": "contrast=1.15:saturation=0.60:gamma=0.88:brightness=-0.05"}, {"filter": "colorbalance", "args": "bs=0.15:gs=0.08:rs=-0.10:rm=0.12:rh=0.18"}, {"filter": "noise", "args": "alls=2:allf=t"}]}}
+{
+  "id": "fincher",
+  "display_zh": "大卫·芬奇",
+  "display_en": "David Fincher",
+  "source": {
+    "origin": "article",
+    "upstream_commit": "24bbcc2",
+    "license": "MIT",
+    "absorbed_from": "mikefluff fincher-cold-lowkey + article"
+  },
+  "lens_aspect": {
+    "focal": "40-50mm prime, shallow DoF",
+    "aspect": "2.39:1",
+    "notes": "中焦，毫米级精确运镜"
+  },
+  "composition": {
+    "rules": [
+      "architectural symmetry",
+      "shooting through doorways/hallways",
+      "eye-level for interrogations, slightly low for power-figures"
+    ],
+    "zh": "几何监控视角 + 走廊门框构图"
+  },
+  "lighting": {
+    "rules": [
+      "single hard motivated source",
+      "no fill on shadow side",
+      "key/fill ratio 8:1 or higher",
+      "deep plugged blacks"
+    ],
+    "zh": "低照度单光源、暗部大"
+  },
+  "color": {
+    "palette": [
+      "#2c3e50",
+      "#34495e",
+      "#d35400",
+      "#e5e7e9"
+    ],
+    "rules": [
+      "cool desaturated teal cast offset by amber tungsten",
+      "almost monochrome with one warm accent"
+    ],
+    "zh": "青绿阴影 + 微暖肤色去饱和"
+  },
+  "motion": {
+    "rules": [
+      "locked tripod, microscopic dolly moves",
+      "6-12 inch push-in over 15-25 seconds",
+      "no handheld, no whip pan"
+    ],
+    "zh": "缓慢机械运镜，几乎无手持"
+  },
+  "rhythm": {
+    "avg_shot_s": 5.5,
+    "cut_rule": "slow methodical, 4-8 cuts per minute",
+    "zh": "慢而精准"
+  },
+  "signature": [
+    {
+      "en": "architectural symmetry with shallow depth of field",
+      "zh": "几何监控视角",
+      "required": true
+    },
+    {
+      "en": "cool desaturated teal with amber practical light",
+      "zh": "青绿阴影 + 微暖去饱和",
+      "required": true
+    },
+    {
+      "en": "mechanical precise locked-off moves only",
+      "zh": "缓慢机械运镜",
+      "required": true
+    }
+  ],
+  "negative": [
+    "handheld",
+    "bright daylight",
+    "warm saturated palette",
+    "shallow focus with bokeh",
+    "film grain"
+  ],
+  "fits": [
+    "thriller interrogation",
+    "procedural",
+    "crime drama"
+  ],
+  "avoid": [
+    "comedy",
+    "romance",
+    "musical"
+  ],
+  "anime_safe": {
+    "conflict_words": [
+      "photorealistic",
+      "live-action"
+    ],
+    "rewrites": {
+      "monochrome": "ink-wash grey tones"
+    },
+    "notes": "冷灰+单光源在动画里可用"
+  },
+  "vertical_9x16": {
+    "mode": "letterbox",
+    "rules": [
+      "2.39:1 band in 9:16, black bars top/bottom",
+      "subject centered in the band",
+      "subtitle in lower bar"
+    ],
+    "note": "严格对称构图适合信箱"
+  },
+  "grade": {
+    "description": "cool desaturated teal, single warm practical, deep blacks",
+    "ffmpeg_steps": [
+      {
+        "filter": "hue",
+        "args": "h=-5:s=0.55"
+      },
+      {
+        "filter": "eq",
+        "args": "contrast=1.15:saturation=0.60:gamma=0.88:brightness=-0.05"
+      },
+      {
+        "filter": "colorbalance",
+        "args": "bs=0.15:gs=0.08:rs=-0.10:rm=0.12:rh=0.18"
+      },
+      {
+        "filter": "noise",
+        "args": "alls=2:allf=t"
+      }
+    ]
+  },
+  "reframe_9x16": {
+    "fg_width": 1080,
+    "fg_y": 260,
+    "bg_mode": "blurred_dark",
+    "bg_color": "#0a0f14",
+    "bg_blur": 40,
+    "vignette": 0.45,
+    "motion": "slow_push_in",
+    "zoom_start": 1.0,
+    "zoom_end": 1.06,
+    "note": "fg 宽 1080 放上三分之一(y≈260)；近黑模糊背景 + 暗角；缓慢推镜"
+  }
+}

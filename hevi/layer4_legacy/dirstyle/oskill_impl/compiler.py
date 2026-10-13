@@ -93,7 +93,12 @@ def compile_prompt(
         dna = style.character_dna.strip()
         lw = style.line_weight.strip()
         pw = ", ".join(style.palette_wordlist)
-        comp = "; ".join(style.composition.get("rules", []))
+        # F3 fix: Only include composition rules matching the target aspect
+        comp_rules = [
+            r for r in style.composition.get("rules", [])
+            if aspect in r or not any(ratio in r for ratio in ["9:16", "16:9"])
+        ]
+        comp = "; ".join(comp_rules)
         rhythm = f"avg {style.rhythm['avg_shot_s']}s/clip, {style.rhythm['cut_rule']}"
 
         pos_parts: list[str] = []
@@ -114,12 +119,28 @@ def compile_prompt(
             try:
                 d_style = _gs(director_style_id_eff)
                 if d_style.id != style.id:
+                    # F3 fix: Only include composition rules matching the target aspect
+                    comp_rules_filtered = [
+                        r for r in d_style.composition.get("rules", [])
+                        if aspect in r or not any(ratio in r for ratio in ["9:16", "16:9"])
+                    ]
                     overlay = [
-                        "; ".join(d_style.composition.get("rules", [])),
+                        "; ".join(comp_rules_filtered),
                         "; ".join(d_style.color.get("rules", [])),
                         "; ".join(d_style.motion.get("rules", [])),
                         f"avg {d_style.rhythm['avg_shot_s']}s/shot, {d_style.rhythm['cut_rule']}",
                     ]
+                    # F3: Filter out colors that conflict with art style palette
+                    # Only include director color rules that don't list specific colors
+                    # (those are handled by the art style's palette_wordlist)
+                    color_rules = d_style.color.get("rules", [])
+                    # Remove rules that are just color lists (keep composition/lightness rules)
+                    color_rules_filtered = [
+                        r for r in color_rules
+                        if not any(c in r for c in ["pink", "yellow", "green", "blue", "gold", "red"])
+                    ]
+                    if color_rules_filtered:
+                        overlay[1] = "; ".join(color_rules_filtered)
                     overlay = [o for o in overlay if o]
                     if overlay:
                         pos_parts.append(", ".join(overlay))

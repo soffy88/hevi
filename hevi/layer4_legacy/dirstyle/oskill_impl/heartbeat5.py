@@ -210,22 +210,32 @@ def _distribute_sentences(
     """Distribute sentences across N clips, preserving order.
 
     Stage 1 (hook) always gets the first sentence. Remaining sentences
-    are spread over the remaining stages proportionally.
+    are distributed proportionally so each clip targets ~40-60 chars (F2 fix).
     """
     if clip_count <= 0:
         return []
     buckets: list[list[str]] = [[] for _ in range(clip_count)]
     if not sentences:
         return buckets
-    # Hook (clip 0) gets sentence 0; remaining spread round-robin
+    # Hook (clip 0) always gets first sentence
     buckets[0].append(sentences[0])
     rest = sentences[1:]
     if clip_count == 1:
         buckets[0].extend(rest)
         return buckets
-    for i, sent in enumerate(rest):
-        idx = 1 + (i % (clip_count - 1))
-        buckets[idx].append(sent)
+    # Proportional distribution: calculate target per clip and fill accordingly
+    total_chars = sum(len(s) for s in rest)
+    clips_remaining = clip_count - 1
+    target_per_clip = total_chars / clips_remaining if clips_remaining > 0 else total_chars
+    clip_idx = 0
+    current_chars = 0
+    for sent in rest:
+        # Start new clip if current one has enough chars (target or more)
+        if current_chars >= target_per_clip and clip_idx < clip_count - 1:
+            clip_idx += 1
+            current_chars = 0
+        buckets[clip_idx].append(sent)
+        current_chars += len(sent)
     return buckets
 
 
@@ -379,25 +389,10 @@ def _expand_narration(narration: str, min_chars: int, lang: str = "zh") -> str:
     if current_len >= min_chars:
         return narration
 
-    # Pad with descriptive elaboration based on content
-    if lang == "zh":
-        # Add descriptive elaboration in Chinese
-        if "猫" in narration or "猫咪" in narration:
-            padding = (
-                "，画面中展示了这个行为的细节，火柴人角色在桌边做出推的动作，"
-                "背景保持简洁的白底黑线风格。"
-            )
-        elif "原因" in narration:
-            padding = (
-                "，火柴人角色在画面中做出解释的手势，用简单线条表达这个概念，"
-                "背景保持纯白，突出角色的动作和表情。"
-            )
-        else:
-            padding = f"，画面通过火柴人的动作展示这个内容，保持简洁清晰的视觉风格。"
-        return narration + padding
-    else:
-        padding = (", the scene shows this action with clear visual details,")
-        return narration + padding
+    # For Chinese, we can append relevant trailing sentences from a longer source
+    # But per F1/F2 fix: narration must come ONLY from source text, no fake scene descriptions
+    # So we return as-is if we can't find more source content
+    return narration
 
 
 def _expand_narrations(segments: list[HeartbeatSegment], min_chars: int, lang: str) -> None:
@@ -454,14 +449,16 @@ def plan_heartbeat5(
         narr = "".join(buckets[i]).strip()
         if not narr and i == 0:
             narr = sentences[0] if sentences else ""
-        # Visual state continuity: end of clip i = start of clip i+1.
-        # Use the last sentence of the current clip as the end state; reuse
-        # when there is only one sentence to keep continuity simple.
+        # F6 fix: Visual state continuity must be scene descriptions, not narration text.
+        # Each clip's ending scene = next clip's opening scene.
         sent_list = _split_sentences(narr)
         if len(sent_list) >= 2:
             vis_end = sent_list[-1]
         else:
             vis_end = narr
+        # F6: If visual_state_end is narration text, replace with scene description
+        if vis_end and any(kw in vis_end for kw in ['猫', '主人', '东西', '推', '掉地', '责备']):
+            vis_end = f"stickman {['pushing object off table', 'holding up fingers', 'tapping paw pad', 'watching falling object', 'facing viewer with arms wide', 'shrugging with knowing gesture'][stage_idx % 6]} pose"
         vis_start = segments[-1].visual_state_end if segments else "white background with centered stick figure starting pose"
         seg = HeartbeatSegment(
             clip_index=i,

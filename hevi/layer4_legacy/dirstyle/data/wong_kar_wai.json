@@ -2,7 +2,12 @@
   "id": "wong_kar_wai",
   "display_zh": "王家卫",
   "display_en": "Wong Kar-wai",
-  "source": {"origin": "article", "upstream_commit": "", "license": "article", "absorbed_from": "dirstyle 文章 10 导演原始参数; 补充字段参考 mikefluff wong-kar-wai-neon-dream (24bbcc2)"},
+  "source": {
+    "origin": "article",
+    "upstream_commit": "",
+    "license": "article",
+    "absorbed_from": "dirstyle 文章 10 导演原始参数; 补充字段参考 mikefluff wong-kar-wai-neon-dream (24bbcc2)"
+  },
   "lens_aspect": {
     "focal": "18mm ultra-wide, intimate body distance",
     "aspect": "2.35:1",
@@ -23,7 +28,12 @@
     "zh": "霓虹与钨丝灯混合光，暗部不死黑"
   },
   "color": {
-    "palette": ["#2f6f5e", "#4fb08a", "#e75480", "#f2c94c"],
+    "palette": [
+      "#2f6f5e",
+      "#4fb08a",
+      "#e75480",
+      "#f2c94c"
+    ],
     "rules": [
       "teal-green shadows with magenta highlights",
       "warm amber mids, dual-tone split"
@@ -37,17 +47,52 @@
     ],
     "zh": "慢门抽帧拖影 + 贴身手持"
   },
-  "rhythm": {"avg_shot_s": 4.0, "cut_rule": "long smoldering holds, cut on breath beat", "zh": "长镜头闷烧，呼吸节拍切"},
+  "rhythm": {
+    "avg_shot_s": 4.0,
+    "cut_rule": "long smoldering holds, cut on breath beat",
+    "zh": "长镜头闷烧，呼吸节拍切"
+  },
   "signature": [
-    {"en": "step-printed motion drag with slow-shutter streaks", "zh": "抽帧拖影", "required": true},
-    {"en": "teal-green shadows against warm amber / magenta highlights dual tone", "zh": "青绿暖黄双色调", "required": true},
-    {"en": "frame-within-frame voyeur peek (door/umbrella/glass/smoke)", "zh": "框架偷窥感", "required": true}
+    {
+      "en": "step-printed motion drag with slow-shutter streaks",
+      "zh": "抽帧拖影",
+      "required": true
+    },
+    {
+      "en": "teal-green shadows against warm amber / magenta highlights dual tone",
+      "zh": "青绿暖黄双色调",
+      "required": true
+    },
+    {
+      "en": "frame-within-frame voyeur peek (door/umbrella/glass/smoke)",
+      "zh": "框架偷窥感",
+      "required": true
+    }
   ],
-  "negative": ["crushed black, pure black shadows", "clean digital, sharp clinical look", "static tripod", "symmetrical centered composition", "bright daylight"],
-  "fits": ["urban night romance", "rainy phone booth", "lonely alley encounter"],
-  "avoid": ["daylight documentary", "corporate explainer", "bright product ad"],
+  "negative": [
+    "crushed black, pure black shadows",
+    "clean digital, sharp clinical look",
+    "static tripod",
+    "symmetrical centered composition",
+    "bright daylight"
+  ],
+  "fits": [
+    "urban night romance",
+    "rainy phone booth",
+    "lonely alley encounter"
+  ],
+  "avoid": [
+    "daylight documentary",
+    "corporate explainer",
+    "bright product ad"
+  ],
   "anime_safe": {
-    "conflict_words": ["film grain photo", "photorealistic", "live-action", "dslr"],
+    "conflict_words": [
+      "film grain photo",
+      "photorealistic",
+      "live-action",
+      "dslr"
+    ],
     "rewrites": {
       "grain": "painterly textured grain",
       "slow shutter drag": "ink-wash motion smear"
@@ -64,13 +109,43 @@
     "note": "18mm 广角不宜硬裁：2.35 信箱 + 前景遮挡改写为上下框"
   },
   "grade": {
-    "description": "teal shadow / magenta highlight split-tone, lifted black, coarse grain, slight motion smear via tmix",
+    "description": "teal shadow / magenta-amber highlight split-tone, lifted black, coarse grain, step-printing motion smear via tmix=4",
     "ffmpeg_steps": [
-      {"filter": "curves", "args": "preset=medium_contrast:master='0/0.06 0.5/0.47 1/0.98'"},
-      {"filter": "colorbalance", "args": "bs=0.12:gs=0.05:rm=0.10:rh=0.22:gh=0.02:bh=-0.08"},
-      {"filter": "eq", "args": "contrast=1.08:saturation=1.18:gamma=1.02"},
-      {"filter": "noise", "args": "alls=14:allf=t+u"},
-      {"filter": "tmix", "args": "frames=3:weights='1 0.6 0.2'"}
+      {
+        "filter": "curves",
+        "args": "preset=medium_contrast:master='0/0.08 0.5/0.50 1/0.95'"
+      },
+      {
+        "filter": "colorbalance",
+        "args": "bs=0.18:gs=0.08:rm=0.12:rh=0.30:gh=0.04:bh=-0.12"
+      },
+      {
+        "filter": "eq",
+        "args": "contrast=1.12:saturation=1.35:gamma=1.03"
+      },
+      {
+        "filter": "noise",
+        "args": "alls=18:allf=t+u"
+      },
+      {
+        "filter": "tmix",
+        "args": "frames=4:weights='1 0.7 0.35 0.15'"
+      }
     ]
+  },
+  "reframe_9x16": {
+    "fg_width": 960,
+    "fg_x": 40,
+    "fg_y": 1000,
+    "bg_mode": "blurred_color_bands",
+    "bg_color": "#2f6f5e",
+    "bg_bands": [
+      "#2f6f5e",
+      "#f2c94c"
+    ],
+    "bg_blur": 40,
+    "tmix_frames": 4,
+    "motion": "slight_drift",
+    "note": "fg 宽 ≈960 偏心(x≈40, y≈1000 下半屏)；tmix=4 拖影；青绿/琥珀模糊色带背景"
   }
 }

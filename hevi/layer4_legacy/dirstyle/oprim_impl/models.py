@@ -38,6 +38,7 @@ class DirectorStyle:
     avoid: list[str]
     vertical_9x16: dict[str, Any]
     grade: dict[str, Any]
+    reframe_9x16: dict[str, Any] = field(default_factory=dict)
     kind: str = "director"
     anime_safe: dict[str, Any] = field(default_factory=dict)
     character_dna: str = ""
@@ -97,6 +98,7 @@ def from_dict(data: dict[str, Any]) -> DirectorStyle:
         avoid=data.get("avoid", []),
         vertical_9x16=data.get("vertical_9x16", {}),
         grade=data.get("grade", {}),
+        reframe_9x16=data.get("reframe_9x16", {}),
         kind=data.get("kind", "director"),
         anime_safe=data.get("anime_safe", {}),
         character_dna=data.get("character_dna", ""),
