@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hevi.local/schemas/sfx-library-manifest.json",
+  "title": "HEVI W4 SFX library manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "sample_rate",
+    "channels",
+    "bit_depth",
+    "loudness_policy",
+    "asset_count",
+    "assets"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "generator": {
+      "type": "string"
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sample_rate": {
+      "type": "integer",
+      "const": 44100
+    },
+    "channels": {
+      "type": "integer",
+      "const": 1
+    },
+    "bit_depth": {
+      "type": "integer",
+      "const": 16
+    },
+    "loudness_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_lufs_integrated",
+        "tolerance_lu",
+        "long_clip_min_s",
+        "peak_limit_dbfs",
+        "min_duration_s",
+        "max_duration_s",
+        "lufs_report_min_s"
+      ],
+      "properties": {
+        "target_lufs_integrated": {
+          "type": "number",
+          "const": -16.0
+        },
+        "tolerance_lu": {
+          "type": "number",
+          "const": 1.5
+        },
+        "long_clip_min_s": {
+          "type": "number",
+          "const": 0.5
+        },
+        "peak_limit_dbfs": {
+          "type": "number",
+          "const": -1.5
+        },
+        "min_duration_s": {
+          "type": "number",
+          "const": 0.1
+        },
+        "max_duration_s": {
+          "type": "number",
+          "const": 4.0
+        },
+        "lufs_report_min_s": {
+          "type": "number",
+          "const": 0.5
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "asset_count": {
+      "type": "integer",
+      "minimum": 60
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 60,
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    }
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "file",
+        "type",
+        "mood",
+        "tags",
+        "duration_s",
+        "sample_rate",
+        "channels",
+        "bit_depth",
+        "lufs_integrated",
+        "loudness_limited",
+        "true_peak_dbfs",
+        "source",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$"
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^assets/audio/sfx/library/[a-z]+/[a-z0-9_]+\\.wav$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "bassdrop",
+            "boom",
+            "chime",
+            "click",
+            "ding",
+            "downer",
+            "glitch",
+            "heartbeat",
+            "impact",
+            "notification",
+            "pop",
+            "riser",
+            "shutter",
+            "sparkle",
+            "swipe",
+            "swoosh",
+            "tick",
+            "typewriter",
+            "whoosh"
+          ]
+        },
+        "mood": {
+          "type": "string",
+          "enum": [
+            "tense",
+            "joyful",
+            "comic",
+            "epic",
+            "calm",
+            "tech"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "duration_s": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 4.0
+        },
+        "sample_rate": {
+          "type": "integer",
+          "const": 44100
+        },
+        "channels": {
+          "type": "integer",
+          "const": 1
+        },
+        "bit_depth": {
+          "type": "integer",
+          "const": 16
+        },
+        "lufs_integrated": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "lufs_integrated_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "loudness_limited": {
+          "type": "boolean"
+        },
+        "true_peak_dbfs": {
+          "type": "number",
+          "maximum": -1.0,
+          "minimum": -120.0
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^synth:[a-z]+:"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "duration_s": {
+                "exclusiveMaximum": 0.5
+              }
+            },
+            "required": [
+              "duration_s"
+            ]
+          },
+          "then": {
+            "properties": {
+              "lufs_integrated": {
+                "type": "null"
+              },
+              "lufs_integrated_note": {
+                "type": "string"
+              },
+              "loudness_limited": {
+                "const": false
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "lufs_integrated": {
+                "type": "number",
+                "minimum": -17.5,
+                "maximum": -14.5
+              },
+              "loudness_limited": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

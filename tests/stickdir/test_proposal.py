@@ -222,3 +222,21 @@ def test_arc_stage3_uses_setup_escalation_payoff():
 
 def test_actions_all_renderable():
     whitelist.assert_renderable(whitelist.ACTION)
+
+
+def test_stage_plans_have_distinct_consecutive_actions():
+    """每个叙事阶段的相邻拍动作必须不同(保证每 ≤3s 有明显轮廓变化)。"""
+    for stage, plan in storyboard._STAGE_PLAN.items():
+        acts = [b[0] for b in plan["beats"]]
+        for a, b in zip(acts, acts[1:]):
+            assert a != b, f"stage {stage} repeats action {a!r} in consecutive beats"
+
+
+def test_stage_plans_are_whitelist_clean():
+    for stage, plan in storyboard._STAGE_PLAN.items():
+        for beat in plan["beats"]:
+            for field, val in zip(("action", "prop", "metaphor", "camera"), beat):
+                assert whitelist.is_valid(field, val), (stage, field, val)
+        assert plan["sfx"] in whitelist.SFX
+        assert plan["transition"] in whitelist.TRANSITION
+        assert plan["bgm"] in whitelist.BGM

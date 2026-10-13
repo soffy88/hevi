@@ -175,7 +175,7 @@ _STAGE_PLAN: dict[str, dict[str, Any]] = {
     "callback": {
         "beats": [
             ("think", "none", "mirror", "push_in"),
-            ("wave", "none", "bridge", "static"),
+            ("point", "arrow", "bridge", "static"),
             ("wave", "none", "horizon", "pull_out"),
         ],
         "sfx": "ding",
@@ -260,31 +260,34 @@ def sanitize_beats(
 
 
 def distribute_narration(stages: list[dict[str, str]], segment_stages: list[str]) -> list[str]:
-    """把旁白阶段文本按叙事顺序分配到各段。
+    """把旁白按叙事顺序均衡分配到各段(按字数预算, 保证不越段)。
 
-    每段承担"不超过其 stage 的一个叙事位置":把每个叙事阶段映射到"stage 序号
-    不超过它的最后一个段", 这样文本按顺序成组, 不会被堆到最后一段。
+    先按句拆分(保留叙事顺序), 再贪心装段:每段约 ``total/n`` 字;遇到叙事阶段
+    边界且当前段已过 60% 预算时提前换段。这样每段旁白 ≈ 10s, 段间不重叠。
     """
-    if not segment_stages:
-        return []
-    arc = (
-        whitelist.ARC_STAGES_STYLE3
-        if segment_stages[0] in whitelist.ARC_STAGES_STYLE3
-        else whitelist.ARC_STAGES
-    )
-    # 段 stage 在 arc 里的序号(未知则按出现顺序)
-    seg_rank = [arc.index(st) if st in arc else i for i, st in enumerate(segment_stages)]
+    import re
 
-    buckets: list[list[str]] = [[] for _ in segment_stages]
+    n = len(segment_stages)
+    if n == 0:
+        return []
+    clause_re = re.compile(r"[^。！？；，、]+[。！？；，、]?")
+    sents: list[tuple[str, str]] = []  # (stage, clause)
     for s in stages:
-        st = s["stage"]
-        rank = arc.index(st) if st in arc else len(arc) - 1
-        # 找 seg_rank <= rank 的最后一段
-        target = 0
-        for i, r in enumerate(seg_rank):
-            if r <= rank:
-                target = i
-        buckets[target].append(s["text"])
+        clauses = [c.strip() for c in clause_re.findall(s["text"]) if c.strip()]
+        for sent in clauses or [s["text"]]:
+            sents.append((s["stage"], sent))
+    if not sents:
+        return [""] * n
+
+    total = sum(len(sent) for _st, sent in sents)
+    # 按"句中点占全文的比例"分配段号, 保证各段字数尽量均等且不越段
+    buckets: list[list[str]] = [[] for _ in range(n)]
+    cum = 0
+    for _stage, sent in sents:
+        mid = cum + len(sent) / 2
+        bucket = min(int(mid / max(total, 1) * n), n - 1)
+        buckets[bucket].append(sent)
+        cum += len(sent)
     return ["".join(b) for b in buckets]
 
 

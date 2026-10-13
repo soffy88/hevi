@@ -22,8 +22,8 @@ from typing import Iterable
 #: 支持画幅(缺省必须报错, 不得静默默认)
 ASPECT: tuple[str, ...] = ("9:16", "16:9")
 
-#: 支持时长(10s 倍数)
-DURATIONS: tuple[int, ...] = (30, 60, 90, 120)
+#: 支持时长(10s 倍数);10 仅用于风格验证短样片
+DURATIONS: tuple[int, ...] = (10, 30, 60, 90, 120)
 
 #: 时长缺省值
 DEFAULT_DURATION: int = 60
