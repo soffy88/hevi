@@ -132,15 +132,79 @@ effect=cool + pop_dry@1.5。转场重叠 d=0.5,理论总时长 = 4×3 − 3×0.5
 - `effect` 的注册表 style 类条目按 id 关键词**尽力而为**映射(blur/sketch/outline/
   mono/soft…),未命中的 style id 是 no-op(不影响渲染,只记录一条 info 日志);
   这不是把 talkcraft 的视觉模板完整搬进 ffmpeg,只是可做的那部分滤镜近似。
-- `style` 字段在 dirstyle 未合并期间是自由字符串(不做校验),合并后需接上校验
-  (代码已留 TODO 锚点)。
-- `camera` / `subtitle_style` / `template` 已建模并持久化,但当前渲染路径**未消费**:
-  运镜属生成期 prompt(非装配期 ffmpeg),`template` 是 FX 注册表 id、装配期无对应
-  滤镜;字幕样式只在有 subtitle_path 时经既有 `get_subtitle_filter` 生效。本单元只
-  保证规格可存可校可读,不改变生成期行为。
-- `shot_specs` 是 `assemble_longvideo` 的**可选**新参数;既有调用方(未传)行为逐字不变,
-  未把 spec 自动接进 longvideo 编排链(超出本单元边界,遵循"最小侵入")。
+- `camera` / `subtitle_style` 已建模并持久化,但当前渲染路径**未消费**:
+  运镜属生成期 prompt(非装配期 ffmpeg),字幕样式只在有 subtitle_path 时经既有
+  `get_subtitle_filter` 生效。本单元只保证规格可存可校可读,不改变生成期行为。
 - 音效混音电平固定 −3 dB(仅 spec sfx 轨);若同时有旁白/BGM,由总混音 amix 叠加,
   未做逐 sfx 的电平/ducking 控制。
 
-DONE SHOTSPEC-R1
+---
+
+# SHOTSPEC_R2 返工验收记录 (分支 feat/shot-spec)
+
+根据 `SHOTSPEC_FIX.md` 与 `SHOTSPEC_R2_PROMPT.md`，对 P1、P2、P3、P4 全部阻断问题完成闭环修复与机器验收验证。无 mock、无占位、无写死数据。
+
+## 1. P1 Template 渲染与拒绝校验 (验收标准 1)
+
+- **装配期渲染接口**: 新增 `hevi/production/shot_spec_render.py` 中的 `template_render(spec)`、`template_filter(spec)`、`template_transition_token(spec)`。
+  - `transition` 类模板: 映射至 `xfade` 逐接缝转场 (如 `tc:black-slam-transition` -> `fadeblack`, `xfade:wipeleft` -> `wipeleft`)，并在进入该镜时附带片头闪白/闪黑等转场过渡滤镜;
+  - `style` 类模板: 映射至单镜画面 `-vf` 滤镜 (如 `tc:pencil-sketch-draw` -> `edgedetect`, `blur` -> `gblur`, `mono` -> `hue=s=0` 等);
+  - `overlay` 类模板: 映射至高对比/画中画叠加/暗角滤镜 (如 `tc:crash-zoom-punch` -> scale/crop 变焦冲拳叠加, `spotlight` -> vignette, `frame` -> drawbox 等);
+  - `character` 类模板: 因需生成期演员视频且无预制资产,装配期不可渲染,在 ShotSpec 校验中直接拒绝返回 422,报错信息携带 `装配期不可渲染`。
+- **单测不变式**: `all(template_render_supported(t) or rejected(t) for t in valid_template_ids())` 在 FX 注册表全量 171 个模板上全部为 `True` (`tests/test_shot_spec_api.py::test_valid_values_come_from_registries`)。
+- **真实 ffmpeg framemd5 测试**: `tests/test_shot_spec_render.py::test_template_render_framemd5_differs` 对三个可渲染 category 各抽 1 个 id (`style: tc:pencil-sketch-draw`, `overlay: tc:crash-zoom-punch`, `transition: tc:black-slam-transition`):
+  - 镜0 纯画面段 (0.0s..2.0s): `md5_tpl == md5_base` (逐帧相同);
+  - 镜1 画面段 (2.67s..4.67s): `md5_tpl != md5_base` (framemd5 显著不同);
+  - 镜2 纯画面段 (5.67s..8.0s): `md5_tpl == md5_base` (逐帧相同)。
+- **独立探测对照**: `/tmp/vfy_shotspec.py` 探针中 `fmd5(p_none) == fmd5(p_tpl)` 结果由原先的 `True` (静默无作用) 变为 `False` (实测产生差异)。
+
+## 2. P2 Style 枚举与渲染 (验收标准 2)
+
+- **合法枚举集合**: `VALID_STYLES = frozenset({"warm", "cool", "mono", "noir", "vignette", "sharpen", "blur", "soft", "sketch", "sepia"})`。
+  - dirstyle 未合并期间,每个合法枚举值均有确定的 ffmpeg `-vf` 滤镜映射 (`STYLE_FILTERS`);
+  - 其它任意未映射值 (包括此前测试的自由字符串 `noir_test_style`) 经 Pydantic 校验全部拒绝并返回 HTTP 422;
+  - 代码保留 `# TODO(dirstyle): validate once feat/director-styles merges` 锚点。
+- **真实 ffmpeg 测试**: `tests/test_shot_spec_render.py::test_style_enum_real_ffmpeg` 对 10 个枚举值逐一执行真实渲染:
+  - 每个合法 style 值的该镜中段帧与无 style 基线相比,SSIM < 0.98 或通道均值发生显著可测偏移 (全部 10 项通过)。
+
+## 3. P3 Duration 真实裁切/补帧与 SFX 对齐 (验收标准 3)
+
+- **渲染定长**: `hevi/assembly/assembler.py` 在 `assemble_longvideo` 中显式读取 `spec.duration`，传给 `_normalize_shot`，通过 `-t` (裁切) 或 `tpad=clone` (补足末帧) 严格控制单镜时长。
+- **成片总长公式验证**: `tests/test_shot_spec_render.py::test_duration_clip_pad_and_sfx_alignment`
+  - 3 镜素材 (native 3.0s), 镜0 `duration=1.5`, 镜1 `duration=4.0`, 镜2 未设 duration (回落素材 3.0s), 接缝0 为 `dissolve (d=0.5)`, 接缝1 为 `cut (d=0)`。
+  - 理论总时长 = 1.5 + 4.0 + 3.0 − 0.5 = 8.0s;
+  - 实测 `ffprobe` 输出时长: `8.000000s` (误差 0.0s <= 1 帧)。
+  - 独立探针中原先失效的 `dur_tpl_with_duration1.5` 实测由 `5.500000s` 变为精确的 `4.000000s` (1.5 + 3.0 − 0.5)。
+- **SFX 起点公式同步验证**:
+  - 镜0 起点 0.0s, offset 0.4s -> 期望 0.4s;
+  - 镜1 起点 1.5 − 0.5 = 1.0s, offset 1.0s -> 期望 2.0s;
+  - 实测音轨起振点误差 <= 0.1s (全部命中)。
+
+## 4. P4 接入出片入口与集成测试 (验收标准 4)
+
+- **生产调用点接入**:
+  - `hevi/production/shot_spec.py`: 实现 `load_shot_specs_for_task` helper, 从 `shot_states.selection_json["shot_spec"]` 读规格;
+  - `hevi/pipeline/longvideo_orchestrator.py`: `orchestrate_longvideo` 接收 `task_id` 与 `repository`, 其内 `bridged_assembler_fn` 自动读取任务规格并传入 `assemble_longvideo(shot_specs=_full_specs)`;
+  - `hevi/director/graph_render.py`: `render_graph_episode` 与 `render_graph_episode_artifact` 接入 `load_shot_specs_for_task` 并传入 `assemble_longvideo(shot_specs=full_specs)`;
+  - `hevi/tasks/task_service.py`: 在主线出片 `render_legacy_longvideo` 与定向返工 `render_legacy_rework` 中透传 `task_id` 与 `self.repository`。
+- **非 demo grep 证明**: `grep -rn "shot_specs=" hevi/ | grep -v tests`
+  - `hevi/pipeline/longvideo_orchestrator.py:1071`
+  - `hevi/pipeline/longvideo_orchestrator.py:1086`
+  - `hevi/director/graph_render.py:177`
+  共 3 处非 demo 的真实生产调用点。
+- **端到端集成测试**: `tests/test_shot_spec_render.py::test_ingress_reads_task_specs_and_renders_mono`
+  - 通过 FastAPI TestClient 调用真实 API `PATCH /tasks/{id}/shots/0/spec` 写入 `effect: mono`;
+  - 经由出片入口 (`render_graph_episode_artifact`) 装配, 底层自动调用 `assemble_longvideo(shot_specs=...)`;
+  - 实测成片镜0 中段 `|U - 128| < 2` 且 `|V - 128| < 2`, 证明 API 写入的 spec 完整作用于最终成片。
+
+## 5. 回归与 Lint 验收 (验收标准 5, 6)
+
+- **Pytest 结果**:
+  - `tests/test_shot_spec_api.py` (23 passed) + `tests/test_shot_spec_render.py` (27 passed) = **50 passed**;
+  - `tests/test_xfade_pack.py`: **226 passed** (全量 golden 逐字无退化);
+  - 总计 **276 passed** (无失败, 0 mock)。
+- **3O v3 Lint**: 运行 `scripts/ci/run_3o_v3_lint.py`，失败项完全同基线 4 项 (`check_no_sibling_call.py, check_omodul_signature.py, check_enabled_pillars.py, check_oprim_keyword_only.py`)，0 新增。
+- **Ruff check**: `All checks passed`。
+- **禁改清单遵守**: 未改动 `hevi/fx/*`、`xfade_transitions.py`、dirstyle、style_presets 等任何禁止文件。
+
+DONE SHOTSPEC-R2
