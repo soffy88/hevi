@@ -661,6 +661,18 @@ class Retriever:
             if not ranked:
                 return None
         best = ranked[0]
+        # Not every sentence needs a gesture (user 2026-10-14): a g_* clip must clearly
+        # beat the plain talk/idle base clips, and gestures keep a minimum spacing.
+        if best.seg.clip.startswith("g_"):
+            base = [c for c in ranked if not c.seg.clip.startswith("g_")]
+            margin = float(os.environ.get("HEVI_MOTIONRAG_GESTURE_MARGIN", "0.015"))
+            gap = float(os.environ.get("HEVI_MOTIONRAG_GESTURE_GAP_S", "5")) * 20
+            last_g = max((t for k, t in self.used.items() if k.startswith("g_")), default=None)
+            too_soon = last_g is not None and now - last_g < gap
+            if base and (too_soon or best.score - base[0].score < margin):
+                top = best.score
+                best = base[0]
+                best.raw_top = top  # a gesture was held back on purpose, not a miss
         best.alternatives = [(c.seg.clip, round(c.score, 3)) for c in ranked[: self.cfg.top_k_log]]
         self.used[best.seg.clip] = now
         return best
@@ -880,7 +892,7 @@ class RagDirector:
                     "latency_ms": round(self._last_latency_ms, 1),
                 }
             )
-            if ch.score < self.cfg.miss_threshold:
+            if getattr(ch, "raw_top", ch.score) < self.cfg.miss_threshold:
                 self.misses += 1
                 log_miss(
                     self.cfg,
