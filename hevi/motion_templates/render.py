@@ -67,6 +67,56 @@ def compute_file_sha256(path: Path | str) -> str:
     return h.hexdigest()
 
 
+def generate_beat_click_track(
+    bpm: float,
+    duration: float,
+    out_path: Path | str,
+    freq: float = 1200.0,
+) -> Path:
+    """Synthesises a deterministic 120-BPM-style click track with ffmpeg lavfi.
+
+    The kinetic specs reference ``assets/audio/beat_120bpm_10s.wav``, but ``*.wav``
+    is git-ignored, so a fresh clone cannot reproduce the render. This helper builds
+    the click track on the fly with the ``aevalsrc`` lavfi source: a decaying sine
+    burst at every beat interval. The output is byte-deterministic for a given
+    (bpm, duration, freq) triple, so renders remain reproducible.
+    """
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    beat_dur = 60.0 / float(bpm)
+    expr = (
+        f"0.7*exp(-55*mod(t,{beat_dur:.6f}))*sin(2*PI*{freq:.1f}*t)"
+    )
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        f"aevalsrc='{expr}':s=48000:d={float(duration):.6f}",
+        "-c:a",
+        "pcm_s16le",
+        str(out_path),
+    ]
+    subprocess.run(cmd, check=True)
+    logger.info("Generated %s beat click track at %s", bpm, out_path)
+    return out_path
+
+
+def _resolve_audio_path(raw: str | Path) -> Path:
+    """Resolves an audio reference relative to CWD first, then the repo root."""
+    cand = Path(raw)
+    if cand.is_absolute():
+        return cand
+    cwd_cand = cand.resolve()
+    if cwd_cand.is_file():
+        return cwd_cand
+    repo_cand = (Path(__file__).resolve().parents[2] / cand).resolve()
+    return repo_cand
+
+
 def create_contact_sheet(
     frames: list[tuple[float, bytes]],
     thumb_w: int,
@@ -144,18 +194,22 @@ async def _render_async(
     out_mp4_path = Path(out_mp4).resolve()
     out_mp4_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Resolve audio
+    # Resolve audio (auto-generate a deterministic beat click if the referenced
+    # git-ignored WAV is missing but the spec declares a bpm).
     effective_audio: Path | None = None
     if audio_path:
-        cand = Path(audio_path).resolve()
+        cand = _resolve_audio_path(audio_path)
         if cand.is_file():
             effective_audio = cand
     elif spec_dict.get("audio"):
-        cand = Path(spec_dict["audio"]).resolve()
+        cand = _resolve_audio_path(spec_dict["audio"])
         if cand.is_file():
             effective_audio = cand
+        elif spec_dict.get("bpm"):
+            generate_beat_click_track(float(spec_dict["bpm"]), duration, cand)
+            effective_audio = cand
     elif spec_dict.get("narration_wav"):
-        cand = Path(spec_dict["narration_wav"]).resolve()
+        cand = _resolve_audio_path(spec_dict["narration_wav"])
         if cand.is_file():
             effective_audio = cand
 

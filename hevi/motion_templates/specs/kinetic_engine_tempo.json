@@ -3,7 +3,7 @@
   "bpm": 120,
   "duration": 10.0,
   "accent": "#10b981",
-  "audio": "assets/audio/beat_120bpm_10s.wav",
+  "audio": "assets/audio/beat_120bpm_click.wav",
   "phrases": [
     {
       "start_beat": 0,

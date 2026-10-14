@@ -121,7 +121,11 @@
 ### 2.3 B4 `kinetic_lyrics` (动态歌词/卡点字排模板)
 - **模板文件**：`hevi/motion_templates/templates/kinetic_lyrics.html`
 - **设计范式**：按 BPM 网格严密对齐（如 120 BPM 下每拍恰为 0.5s），每拍触发独立画面事件。文字采用冲拳式冲击力（Punchy impact，微量超调回弹），支持 `center_punch`、`split_box`、`ticker_stack` 三种动态字排形态，底部配有 16 分音符网格音阶游标。
-- **音频合成**：内置音频混流接口，可载入律动音轨或卡点伴奏同步输出。
+- **音频合成**：内置音频混流接口，可载入律动音轨或卡点伴奏同步输出。spec 的 `audio` 指向 `assets/audio/beat_120bpm_click.wav`；由于 `*.wav` 被 `.gitignore` 过滤，渲染器在文件缺失时会自动用 ffmpeg lavfi `aevalsrc` 现场合成确定性 120 BPM click 音轨（相同参数逐字节一致）。也可手动生成：
+  ```bash
+  PYTHONPATH=$PWD .venv/bin/python scripts/gen_motion_template_audio.py \
+      --bpm 120 --duration 10 --out assets/audio/beat_120bpm_click.wav
+  ```
 - **JSON Spec 结构**：
 ```json
 {
@@ -129,7 +133,7 @@
   "bpm": 120,
   "duration": 10.0,
   "accent": "#f59e0b",
-  "audio": "assets/audio/beat_120bpm_10s.wav",
+  "audio": "assets/audio/beat_120bpm_click.wav",
   "phrases": [
     {
       "start_beat": 0,
