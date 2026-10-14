@@ -56,19 +56,26 @@ class EngUnit:
         self.items: list[dict] = self.manifest["items"]
         self.ids: list[str] = [i["id"] for i in self.items]
         z = np.load(self.root / "index.npz", allow_pickle=False)
-        order = list(z["ids"])
-        self.text_emb = np.stack(
-            [
-                z["text"][self.ids.index(i)] if i in self.ids else z["text"][order.index(i)]
-                for i in self.ids
-            ]
-        )
-        # align embeddings to self.ids order
-        self.text_emb = _l2(self.text_emb)
+        npz_ids = [str(x) for x in z["ids"]]
+        mat = np.atleast_2d(z["text"])
+        # map id -> row in the npz, then take the rows in MANIFEST order, so a
+        # vector can never be paired with the wrong item (the npz order and the
+        # manifest order are independent).
+        row = {i: j for j, i in enumerate(npz_ids)}
+        missing = [i for i in self.ids if i not in row]
+        if missing:
+            raise SystemExit(
+                f"index.npz is missing text vectors for {missing[:5]}"
+                f" ({len(missing)} of {len(self.ids)}); rebuild it with "
+                f"hevi/live_host/eng_lib/build_index.py --unit {root}"
+            )
+        self.text_emb = _l2(np.stack([mat[row[i]] for i in self.ids]))
         self._by_id = {i["id"]: i for i in self.items}
 
     def nearest(self, vec: np.ndarray) -> tuple[dict, float]:
-        sims = self.text_emb @ np.asarray(vec, dtype=np.float32)
+        # cosine: the library rows are already L2-normalised, so the query must
+        # be too (an unnormalised query silently skews every score).
+        sims = self.text_emb @ _l2(np.asarray(vec, dtype=np.float32))
         i = int(np.argmax(sims))
         return self.items[i], float(sims[i])
 
