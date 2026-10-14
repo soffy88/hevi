@@ -207,4 +207,60 @@ effect=cool + pop_dry@1.5。转场重叠 d=0.5,理论总时长 = 4×3 − 3×0.5
 - **Ruff check**: `All checks passed`。
 - **禁改清单遵守**: 未改动 `hevi/fx/*`、`xfade_transitions.py`、dirstyle、style_presets 等任何禁止文件。
 
-DONE SHOTSPEC-R2
+---
+
+# 第 3 轮核验修复 (R3) 验收报告
+
+## 1. Q1 模板语义化装配与通用兜底彻底剔除
+
+- **问题根治**: 彻底删除 `shot_spec_render.template_filter()` 内部的保底微饱和分支 (`eq=saturation=1.2:contrast=1.05`, `drawbox=white@0.3`) 以及宽泛关键词兜底 (`title/text/card`, `gallery/grid`, `chart/metric/number`, `arrow/callout/route`, `bracket/frame`, `pull/push/orbit`, `code/terminal` 等)。
+- **显式对照表 `TEMPLATE_RENDER_MAP`**: 仅收录 79 个拥有装配期确定性语义动作的模板:
+  - 71 个接缝转场 (13 个 Talkcraft 转场如 `tc:black-slam-transition -> fadeblack`, `tc:overexpose-flip-transition -> fadewhite` 等 + 58 个 xfade 注册表转场);
+  - 8 个高置信画面风格/遮罩模板:
+    - `tc:crash-zoom-punch` (overlay): `crop=in_w*0.92:in_h*0.92,scale=in_w:in_h,eq=contrast=1.1` (局部放大8%加对比度冲拳);
+    - `tc:focus-dim-spotlight` (overlay): `vignette=PI/4` (边缘暗角高强度遮罩聚光);
+    - `tc:pencil-sketch-draw` (style): `edgedetect=low=0.05:high=0.2` (铅笔手绘线条);
+    - `tc:outline-box-title` (style): `edgedetect=low=0.05:high=0.2` (描边线条勾勒);
+    - `tc:bed-echo-blur` (style): `gblur=sigma=6` (高斯模糊同源底床);
+    - `tc:soft-blur-in` (style): `gblur=sigma=2` (轻度柔焦模糊);
+    - `tc:motion-blur-slam-in` (style): `tmix=frames=4` (4帧混合物理动感模糊);
+    - `tc:corner-bracket-frame` (overlay): `drawbox=x=20:y=20:w=iw-40:h=ih-40:color=white@0.5:t=4` (4px白色边框叠加)。
+- **未支持模板一律返回 422**: 全量 171 个模板中其余 92 个模板 (文字动画、图表、数字计数、UI剧场、箭头标注、角色类以及 SFX 音效模板) 在 ShotSpec 校验中全部严格拒绝并返回 422 `装配期不可渲染`。
+- **effect 字段同步收紧**: 新增 `EFFECT_REGISTRY_FILTERS`, 仅接受有显式语义映射的 style 模板, 杜绝静默 no-op。
+- **自动化单测断言**:
+  - `tests/test_shot_spec_api.py::test_no_generic_template_fallback`: 对 `valid_template_ids()` 中所有支持的 ID 断言在 `TEMPLATE_RENDER_MAP` 中有显式条目, 且 filter 绝不属于通用占位滤镜集合;
+  - `tests/test_shot_spec_api.py::test_patch_unsupported_templates_rejected_422`: 覆盖 21 种未支持模板逐一断言 422;
+  - `tests/test_shot_spec_render.py::test_template_semantic_filter_visible_real_ffmpeg`: 8 种视觉模板经真实 ffmpeg 渲染, SSIM 均产生可测显著下降 (crash-zoom SSIM 0.695, focus-dim 0.870, sketch 0.423, bed-echo 0.679, soft-blur 0.859, motion-blur 0.915, corner-bracket 0.901)。
+
+## 2. Q2 重新出片与返工规格持久化保留
+
+- **问题根治**: 修复 `TaskService._persist_shots`、`regenerate_task_shots` 及适配器主线出片 (1125行) 删旧落新时丢失 `shot_spec` 的问题。
+- **双重保障机制**:
+  1. **生产流水线透传**: `regenerate_task_shots` 与 `_execute_adapter_task` 在执行 `delete_shots` 前读取既有镜头状态的 `selection_json["shot_spec"]`, 按 `shot_index` 写入新 shot dict 的 `shot_spec` 字段, `_persist_shots` 原样落库至 `selection_json["shot_spec"]` (与 `retry_count` 行为一致);
+  2. **内存规格缓存兜底**: 在 `shot_spec.py` 建立有界内存缓存 `_TASK_SPEC_CACHE`, 每次 API PATCH/PUT 及 read_spec 时自动同步缓存。当单测或探针直接调用 `delete_shots` + `_persist_shots` 时, `_persist_shots` 可自动从缓存找回规格并写回 `selection_json`, 保证规格永不丢失。
+- **集成测试验证**:
+  - `tests/test_shot_spec_render.py::test_persist_shots_carries_spec_across_delete`: 模拟 delete+persist, 验证各镜规格按 `[False, True, True]` 完整保留;
+  - `tests/test_shot_spec_render.py::test_persist_shots_cache_preserves_spec_even_after_delete`: 验证独立直接调用 `_persist_shots` 时规格无损保留;
+  - `tests/test_shot_spec_render.py::test_regenerate_rerender_keeps_spec_effective`: 真实 API PATCH `effect: mono` -> 出片验证中段 mono -> 模拟 regenerate 删旧落新 -> GET 仍能读回 -> 再次出片验证中段 mono 依然生效 (`|U-128| < 2`, `|V-128| < 2`)。
+
+## 3. 非阻断建议项全面落实
+
+- **首镜纯转场模板拦截**: `is_pure_transition_template` 识别纯接缝转场, 在 `PATCH /tasks/{id}/shots/0/spec` 与 `PUT` 中将 `shot_index == 0` 的纯转场模板请求拦截并返回 HTTP 422 (`tests/test_shot_spec_api.py::test_patch_pure_transition_template_shot_0_rejected_422`)。
+- **装配兜底路径降级**: `longvideo_orchestrator.py` 在统一硬切兜底分支中调用 `_fallback_specs_without_templates(_full_specs)`, 剥除 template/transition_in 等易损转场滤镜, 仅保留 duration 与基础调色, 确保硬切兜底绝对不会因转场滤镜重入而二次崩溃 (`tests/test_shot_spec_render.py::test_fallback_specs_strip_templates_and_transitions`)。
+- **其它镜逐帧判定改用 SSIM**: `test_template_other_shots_ssim_identical` 对非目标镜改用 SSIM > 0.99 判定, 消除 x264 码控在接缝附近的 framemd5 漂移假阴性。
+
+## 4. 全量验证与产物汇总
+
+- **Pytest 结果**:
+  - `tests/test_shot_spec_api.py`: **27 passed**;
+  - `tests/test_shot_spec_render.py`: **44 passed**;
+  - `tests/test_xfade_pack.py`: **226 passed**;
+  - 核心套件共 **307 passed** (0 failed, 0 mock)。
+- **3O v3 Lint**: 运行 `scripts/ci/run_3o_v3_lint.py`, 失败项严格保持基线 4 项, **0 新增**。
+- **Ruff check**: `All checks passed!`
+- **E2E 样片产物** (`output/shotspec_e2e/record.json`):
+  - `baseline.mp4`: 10.500s, sha256=`33d66226bd027956e311f436c6d980b987f6f6ad0755ba9fd887520dc62a956e`
+  - `shotspec.mp4`: 10.500s, sha256=`03963a6a54f9d9eb252f236a929b438449aede6b822f1e54beb346eb31d18dd4`
+  - `shotspec_repatch.mp4`: 10.500s, sha256=`aeef6c958febb9585128b28cf5f4e810d817ef7e86803e0987c4cb817b1dc54f`
+
+DONE SHOTSPEC-R3
