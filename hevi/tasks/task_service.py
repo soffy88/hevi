@@ -1122,6 +1122,17 @@ class TaskService:
                 await self.repository.clear_lease(task_id, task["lease_token"])
             shots = result.get("shots")
             if isinstance(shots, list):
+                # 重新出片前读取旧镜头规格，避免 delete_shots 删旧落新时丢失 shot_spec
+                existing_shots = await self.repository.get_shots(task_id)
+                spec_by_index = {
+                    s["shot_index"]: (s.get("selection_json") or {}).get("shot_spec")
+                    for s in existing_shots
+                    if (s.get("selection_json") or {}).get("shot_spec") is not None
+                }
+                for shot in shots:
+                    idx = shot.get("index")
+                    if isinstance(idx, int) and idx in spec_by_index and "shot_spec" not in shot:
+                        shot["shot_spec"] = spec_by_index[idx]
                 await self.repository.delete_shots(task_id)
                 await self._persist_shots(task_id, shots)
             return result
@@ -1590,6 +1601,8 @@ class TaskService:
                             progress_cb=progress_cb,
                             character_reference=character_reference,
                             subject_version=subject_version,
+                            task_id=task.get("id"),
+                            repository=self.repository,
                             **task["config_json"],
                         )
 
@@ -1795,6 +1808,11 @@ class TaskService:
                                 shots=views,
                                 consistency_floor=settings.rework_consistency_floor,
                                 min_rework_count=settings.rework_min_shots,
+                                full_rework=bool(
+                                    (task.get("config_json") or {}).get(
+                                        "rework_full_round", settings.rework_full_round
+                                    )
+                                ),
                             )
                             shot_ids = list(decision.regenerate_shot_ids) or patch.shot_indexes
                             if not shot_ids:
@@ -2290,38 +2308,51 @@ class TaskService:
 
     async def _persist_shots(self, task_id: uuid.UUID, shots: list[dict[str, Any]]) -> None:
         """C3 落库:逐镜头选优明细 → shot_states。best-effort(已成片,失败仅告警)。"""
+        from hevi.production.shot_spec import cache_task_spec, get_cached_task_spec
+
         try:
             for shot in shots:
+                idx = shot.get("index", 0)
+                spec_data = shot.get("shot_spec")
+                if spec_data is None and isinstance(idx, int):
+                    spec_data = get_cached_task_spec(task_id, idx)
+                if spec_data is not None and isinstance(idx, int):
+                    cache_task_spec(task_id, idx, spec_data)
+
+                sel: dict[str, Any] = {
+                    "provider": shot.get("provider"),
+                    "variant_chosen": shot.get("variant_chosen"),
+                    "consistency_score": shot.get("consistency_score"),
+                    "passed": shot.get("passed"),
+                    "duration_s": shot.get("duration_s"),
+                    # shot_verdict 扩展(HEVI 路线图 Phase1):见
+                    # hevi/pipeline/result_mapper.py::map_longvideo_result。
+                    # style/vlm 打分尚无实装信号源(#33/#34/#38)时为 None,不是 0。
+                    "style_score": shot.get("style_score"),
+                    "vlm_score": shot.get("vlm_score"),
+                    "vlm_violations": shot.get("vlm_violations"),
+                    "diagnosis_category": shot.get("diagnosis_category"),
+                    "subject_id": shot.get("subject_id"),
+                    "subject_version": shot.get("subject_version"),
+                    "style_pack_id": shot.get("style_pack_id"),
+                    "style_pack_version": shot.get("style_pack_version"),
+                    "model_version": shot.get("model_version"),
+                    "tier0_passed": shot.get("tier0_passed"),
+                    "tier1_passed": shot.get("tier1_passed"),
+                    # 重试次数硬上限(设计文档 §4.3):首次生成落 0,regenerate_task_shots
+                    # 在整片删旧落新前把旧计数读出来揉进 shots 里,这里原样透传。
+                    "retry_count": shot.get("retry_count", 0),
+                }
+                if spec_data is not None:
+                    sel["shot_spec"] = spec_data
+
                 await self.repository.create_shot_state(
                     {
                         "task_id": task_id,
-                        "shot_index": shot.get("index", 0),
+                        "shot_index": idx,
                         "status": "completed" if shot.get("passed") is True else "failed",
                         "output_path": shot.get("path"),
-                        "selection_json": {
-                            "provider": shot.get("provider"),
-                            "variant_chosen": shot.get("variant_chosen"),
-                            "consistency_score": shot.get("consistency_score"),
-                            "passed": shot.get("passed"),
-                            "duration_s": shot.get("duration_s"),
-                            # shot_verdict 扩展(HEVI 路线图 Phase1):见
-                            # hevi/pipeline/result_mapper.py::map_longvideo_result。
-                            # style/vlm 打分尚无实装信号源(#33/#34/#38)时为 None,不是 0。
-                            "style_score": shot.get("style_score"),
-                            "vlm_score": shot.get("vlm_score"),
-                            "vlm_violations": shot.get("vlm_violations"),
-                            "diagnosis_category": shot.get("diagnosis_category"),
-                            "subject_id": shot.get("subject_id"),
-                            "subject_version": shot.get("subject_version"),
-                            "style_pack_id": shot.get("style_pack_id"),
-                            "style_pack_version": shot.get("style_pack_version"),
-                            "model_version": shot.get("model_version"),
-                            "tier0_passed": shot.get("tier0_passed"),
-                            "tier1_passed": shot.get("tier1_passed"),
-                            # 重试次数硬上限(设计文档 §4.3):首次生成落 0,regenerate_task_shots
-                            # 在整片删旧落新前把旧计数读出来揉进 shots 里,这里原样透传。
-                            "retry_count": shot.get("retry_count", 0),
-                        },
+                        "selection_json": sel,
                     }
                 )
         except Exception as exc:
@@ -2356,6 +2387,11 @@ class TaskService:
         retry_by_index: dict[int, int] = {
             s["shot_index"]: int((s.get("selection_json") or {}).get("retry_count") or 0)
             for s in existing_shots
+        }
+        spec_by_index: dict[int, dict[str, Any]] = {
+            s["shot_index"]: (s.get("selection_json") or {}).get("shot_spec")
+            for s in existing_shots
+            if (s.get("selection_json") or {}).get("shot_spec") is not None
         }
         retry_max = settings.shot_retry_max
         capped = [idx for idx in shot_ids if retry_by_index.get(idx, 0) >= retry_max]
@@ -2419,6 +2455,8 @@ class TaskService:
                 subject_version=subject_version,
                 regenerate_shot_ids=selected_shot_ids,
                 shot_hints=selected_hints,
+                task_id=task.get("id"),
+                repository=self.repository,
                 **task["config_json"],
             )
 
@@ -2475,6 +2513,7 @@ class TaskService:
         )
 
         # 重生成的镜头 retry_count +1,其余(本轮没点名的)沿用旧值,不是清零重记。
+        # 同时按 shot_index 透传已配置的 shot_spec，避免重新出片删旧落新时清空。
         for shot in shots:
             idx = shot.get("index")
             if isinstance(idx, bool) or not isinstance(idx, int):
@@ -2482,6 +2521,8 @@ class TaskService:
                 continue
             old = retry_by_index.get(idx, 0)
             shot["retry_count"] = old + 1 if idx in shot_ids else old
+            if idx in spec_by_index:
+                shot["shot_spec"] = spec_by_index[idx]
 
         # 重刷 shot_states:regenerate 的 result.shots 覆盖全部镜头 → 删旧落新。
         try:

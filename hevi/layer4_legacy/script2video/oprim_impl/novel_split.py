@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 _CHAPTER = re.compile(
-    r"(?:^|\n)(?:#+\s+.+|第[一二三四五六七八九十\d]+章[^\n]*)",
+    r"(?:^|\n)(?:#+\s+.+|第[0-9一二三四五六七八九十百千]+[章回卷节折幕篇部集话][^\n]*)",
 )
 _DIALOGUE = re.compile(r"[「“].+?[」”]")
 DEFAULT_CHUNK_SIZE = 65536
@@ -19,23 +19,40 @@ RAG_CHUNK_OVERLAP = 128
 RAG_SCORE_FLOOR = 0.7
 
 
-def split_chapters(text: str) -> list[tuple[str, str]]:
-    """返回 [(heading, body), ...];无章节标题则整篇一章。"""
+def split_chapters(
+    text: str,
+    *,
+    max_chapter_len: int = DEFAULT_CHUNK_SIZE,
+) -> list[tuple[str, str]]:
+    """返回 [(heading, body), ...]; 优先按第X章/回/节切分，过长章节再按长度切分。"""
     raw = text or ""
     headings = _CHAPTER.findall(raw)
     bodies = _CHAPTER.split(raw)
     if not headings:
-        return [("全文", raw.strip())] if raw.strip() else []
-    # split 前可能有前言
-    pairs: list[tuple[str, str]] = []
-    preface = bodies[0].strip() if bodies else ""
-    chapters = bodies[1:]
-    if preface and not headings:
-        pairs.append(("前言", preface))
-    for heading, body in zip(headings, chapters, strict=False):
-        title = heading.strip().lstrip("#").strip()
-        pairs.append((title or "章", body.strip()))
-    return [item for item in pairs if item[1]]
+        pairs = [("全文", raw.strip())] if raw.strip() else []
+    else:
+        pairs: list[tuple[str, str]] = []
+        preface = bodies[0].strip() if bodies else ""
+        chapters = bodies[1:]
+        if preface:
+            pairs.append(("前言", preface))
+        for heading, body in zip(headings, chapters, strict=False):
+            title = heading.strip().lstrip("#").strip()
+            if body.strip():
+                pairs.append((title or "章", body.strip()))
+
+    # Long chapter length subdivision
+    result: list[tuple[str, str]] = []
+    for heading, body in pairs:
+        if len(body) <= max_chapter_len:
+            result.append((heading, body))
+        else:
+            sub_chunks = split_chunks(body, chunk_size=max_chapter_len, overlap=DEFAULT_CHUNK_OVERLAP)
+            for idx, chunk in enumerate(sub_chunks):
+                sub_heading = f"{heading} (第{idx + 1}节)" if len(sub_chunks) > 1 else heading
+                result.append((sub_heading, chunk))
+
+    return result
 
 
 def split_chunks(

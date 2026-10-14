@@ -58,55 +58,56 @@ async def publish_to_platform(
     engine_available: bool = True,
     browser_context: Any | None = None,
 ) -> PublishResult:
-    """执行平台发布任务。
+    """执行平台发布任务(fail-closed)。
 
-    对应 CreatorHub 的 publish task 流程:探测登录态 -> 启动浏览器 ->
-    选择媒体 -> 编辑信息 -> 发布 -> 结果回填。
+    本函数**尚未实现真实上传**:登录态探测、媒体选择、编辑信息、点击发布、
+    结果回填都不存在。此前版本在拿到 browser_context 后不做任何操作就返回
+    ``status="published"`` / "发布成功",属于伪造结果,已移除。
+
+    约定(与 ``hevi.publishers`` 一致,不 raise,降级返回):
+    - 没有媒体文件 → ``failed``
+    - 浏览器上下文未就绪 → ``failed``
+    - 其余情况 → ``not_implemented``;trail 里绝不出现 ``publish ok=True``。
+    真实发布请走 ``hevi.publishers`` / MatrixMedia 人工确认交接。
     """
     from hevi.platforms.schemas import PublishResult
 
-    if not task.is_available():
-        status = "failed" if task.is_available() else "skipped"
-        return PublishResult(
-            status=status,
-            platform=task.platform,
-            reason=f"账号不可用: {task.platform} 账号 {task.account_id}",
-            trail=[{"step": "account_check", "ok": False}],
-        )
+    del engine_available  # 保留参数仅为兼容旧调用签名
 
-    # 检查媒体文件
-    if not task.media_paths:
+    if not task.is_available() or not task.media_paths:
         return PublishResult(
             status="failed",
             platform=task.platform,
-            reason="没有可用的媒体文件",
+            reason=f"没有可用的媒体文件: {task.platform} 账号 {task.account_id}",
             trail=[{"step": "media_check", "ok": False}],
         )
 
-    trail: list[dict[str, Any]] = []
-    # 1. 探测登录态
-    trail.append({"step": "detect_login", "ok": True})
-    # 2. 启动浏览器
     if not browser_context:
-        trail.append({"step": "browser_start", "ok": False})
         return PublishResult(
             status="failed",
             platform=task.platform,
             reason="浏览器未就绪",
-            trail=trail,
+            trail=[
+                {"step": "media_check", "ok": True},
+                {"step": "browser_start", "ok": False},
+            ],
         )
-    # 3. 选择媒体
-    trail.append({"step": "media_select", "ok": True})
-    # 4. 编辑发布信息
-    # 5. 点击发布
-    # 6. 结果回填
-    trail.append({"step": "publish", "ok": True})
-    # 7. 记录结果
+
+    logger.warning(
+        "publish_to_platform: real upload not implemented for %s (account %s); "
+        "returning not_implemented instead of a fabricated success",
+        task.platform,
+        task.account_id,
+    )
     return PublishResult(
-        status="published",
+        status="not_implemented",
         platform=task.platform,
-        reason="发布成功",
-        trail=trail,
+        reason="平台自动发布未实现:未执行任何上传,请使用 hevi.publishers / MatrixMedia 人工确认发布",
+        trail=[
+            {"step": "media_check", "ok": True},
+            {"step": "browser_start", "ok": True},
+            {"step": "publish", "ok": False, "reason": "not_implemented"},
+        ],
     )
 
 
@@ -128,10 +129,10 @@ async def repost_content(
 
     对应 CreatorHub 的 /api/contents/{cid}/repost-xhs, repost-douyin 等端点。
     """
-    # 实际转发逻辑需要浏览器自动化层
-    # 这里提供接口契约
+    # 转发需要浏览器自动化层,尚未实现:不创建任何任务,明确返回未实现。
     return {
-        "ok": True,
+        "ok": False,
+        "status": "not_implemented",
         "task_id": f"repost_{content_id}_{target_platform}",
-        "message": f"已创建转发任务: {content_id} -> {target_platform}",
+        "message": f"转发未实现,未创建任务: {content_id} -> {target_platform}",
     }

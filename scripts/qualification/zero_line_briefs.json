@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "description": "Qualification INPUT briefs for the 11 zero-cost lines (narration, b-roll queries, source media). These are inputs only; every output is rendered fresh and gated by measured QA. Relative media paths resolve against $HEVI_ASSET_ROOT (default: repo root). Every Studio recipe-required slot (hevi/studio/lines/<line>.yaml: topic / manuscript / source_text / transcript / media_path) is filled; manuscript / source_text / transcript carry the same brief text.",
+  "lines": {
+    "kinetic_promo": {
+      "title": "周口店北京人遗址博物馆 · 北京房山",
+      "topic": "周口店北京人遗址博物馆秋季宣传",
+      "script_lines": [
+        "七十万年前，有人在这里点燃了第一堆火。",
+        "周口店，北京人遗址。",
+        "这个秋天，去看看人类从哪里来。"
+      ],
+      "queries": [
+        "campfire night",
+        "limestone cave",
+        "ancient stone tools",
+        "autumn mountain forest"
+      ]
+    },
+    "explainer": {
+      "title": "火，对早期人类意味着什么？",
+      "topic": "火对早期人类的意义",
+      "script_lines": [
+        "火，对早期人类意味着什么？",
+        "第一，取暖。火让人类能在寒冷的季节和夜晚活下来。",
+        "第二，防御。火光和烟能让野兽保持距离。",
+        "第三，熟食。加热后的食物更容易咀嚼和消化。",
+        "第四，聚集。围着火堆，人们开始在夜里交流、分享和学习。",
+        "所以，学会用火，是人类历史上的一次关键转折。"
+      ],
+      "queries": [
+        "fire flames close up",
+        "people warming hands fire winter",
+        "wolf night forest",
+        "meat cooking open fire",
+        "friends around campfire night",
+        "sunrise mountains"
+      ],
+      "labels": [
+        "",
+        "① 取暖",
+        "② 防御",
+        "③ 熟食",
+        "④ 聚集",
+        ""
+      ]
+    },
+    "cinematic": {
+      "title": "火 种",
+      "topic": "火种：从洞穴到黎明",
+      "script_lines": [
+        "黑暗里，只有一支火把。",
+        "火光贴着岩壁移动，照出前人留下的痕迹。",
+        "石头相击，火星落进干草。",
+        "他走向洞口。",
+        "山谷在晨光里打开，新的一天开始了。"
+      ],
+      "queries": [
+        "burning torch in the dark",
+        "cave wall light exploration",
+        "striking flint sparks",
+        "cave entrance silhouette",
+        "sunrise valley mist"
+      ]
+    },
+    "director_pipeline": {
+      "title": "城市醒来",
+      "script_lines": [
+        "凌晨五点，城市还在沉睡。",
+        "第一盏灯亮起，有人已经出门。",
+        "早餐摊的蒸汽升起来。",
+        "地铁载着第一批人穿过城市。",
+        "八点，街道彻底醒了。"
+      ],
+      "queries": [
+        "city skyline dawn",
+        "window light morning apartment",
+        "street food steam morning",
+        "subway train arriving",
+        "busy crosswalk city timelapse"
+      ],
+      "manuscript": "凌晨五点，城市还在沉睡。第一盏灯亮起，有人已经出门。早餐摊的蒸汽升起来。地铁载着第一批人穿过城市。八点，街道彻底醒了。"
+    },
+    "history_scene": {
+      "title": "周口店 · 北京人",
+      "script_lines": [
+        "周口店遗址位于北京西南的房山区龙骨山。",
+        "一九二一年起，学者们在这里开始调查和发掘。",
+        "一九二九年十二月二日，裴文中发现了第一个北京人头盖骨。",
+        "北京人生活在大约七十万到二十万年前，会打制石器，也会用火。",
+        "一九四一年，头盖骨化石在战乱中下落不明，至今仍是未解之谜。",
+        "一九八七年，周口店北京人遗址被列入世界文化遗产名录。"
+      ],
+      "queries": [
+        "limestone hill aerial",
+        "archaeologist excavation dig",
+        "old skull fossil museum",
+        "stone tools flint",
+        "old archive documents",
+        "cave entrance green hill"
+      ],
+      "labels": [
+        "",
+        "1921",
+        "1929.12.2",
+        "70万—20万年前",
+        "1941",
+        "1987"
+      ],
+      "source_text": "周口店遗址位于北京西南的房山区龙骨山。一九二一年起，学者们在这里开始调查和发掘。一九二九年十二月二日，裴文中发现了第一个北京人头盖骨。北京人生活在大约七十万到二十万年前，会打制石器，也会用火。一九四一年，头盖骨化石在战乱中下落不明，至今仍是未解之谜。一九八七年，周口店北京人遗址被列入世界文化遗产名录。",
+      "source_name": "周口店北京人遗址"
+    },
+    "character_animation": {
+      "topic": "原始人走向洞口、拾石、点亮火把",
+      "script_lines": [
+        "他走向洞口。",
+        "弯腰，捡起一块石头。",
+        "火把点亮了。",
+        "他转过身来。"
+      ]
+    },
+    "talking_head": {
+      "title": "小周 · 历史一分钟",
+      "topic": "一分钟讲清楚北京人",
+      "script_lines": [
+        "大家好，今天用一分钟讲清楚北京人。",
+        "北京人是生活在周口店一带的直立人，距今大约七十万到二十万年。",
+        "他们会打制石器，也留下了用火的痕迹。",
+        "一九二九年发现的头盖骨，让周口店举世闻名。",
+        "我们下期见。"
+      ]
+    },
+    "avatar_spokesperson": {
+      "title": "社区图书馆 · 周末绘本共读",
+      "topic": "社区图书馆周末绘本共读",
+      "script_lines": [
+        "你好，我是社区图书馆的小林。",
+        "这个周末，我们在儿童区举办免费的绘本共读活动。",
+        "周六和周日上午十点开始，适合四到八岁的小朋友。",
+        "不需要报名，带上孩子直接来就好。",
+        "我们周末见！"
+      ],
+      "queries": [
+        "library bookshelves",
+        "children reading books",
+        "parent reading to child",
+        "kids library playing"
+      ],
+      "zero_extras": {
+        "cta": "周六 / 周日 10:00 · 免费"
+      }
+    },
+    "shorts_clip": {
+      "title": "MICHAEL COLLINS · APOLLO 11",
+      "media_path": "data/workspace/assets/open-corpus-seed/clips/nasa_KSC-20190716-MH-NAS01_0001-Return_to_the.mp4",
+      "zero_extras": {
+        "source_lang": "en",
+        "clips": 2
+      }
+    },
+    "podcast_repurpose": {
+      "title": "Apollo 14: the final countdown",
+      "topic": "Apollo 14 发射倒计时（NASA 1971 发射直播）",
+      "media_path": "data/workspace/assets/open-corpus-seed/clips/nasa_Apollo_14_Launch_Coverage.mp4",
+      "zero_extras": {
+        "source_lang": "en",
+        "show": "SPACE ARCHIVE PODCAST · EP.14",
+        "subtitle": "NASA launch coverage, 31 Jan 1971"
+      }
+    },
+    "reference_adapt": {
+      "title": "从轨道看家园",
+      "media_path": "data/workspace/assets/open-corpus-seed/clips/nasa_Earth_Views_from_the_International_Space.mp4",
+      "script_lines": [
+        "地球的弧线上，云层在海面上铺开。",
+        "荒漠和海岸线，从脚下缓缓经过。",
+        "机械臂伸出去，捕获一艘货运飞船。",
+        "日出只用几秒钟，就点亮了整条地平线。",
+        "那条蓝色的细线，就是保护我们的大气层。"
+      ],
+      "offsets": [
+        18,
+        82,
+        139,
+        164,
+        174
+      ],
+      "transcript": "NASA “Earth Views from the International Space Station”: cloud decks over the ocean, deserts and coastlines passing below, the station robotic arm capturing a cargo spacecraft, an orbital sunrise over the horizon, and the thin blue limb of the atmosphere."
+    },
+    "comic_narration": {
+      "title": "为什么猫总爱把东西推下桌？",
+      "topic": "为什么猫总爱把东西推下桌？猫咪的重力实验",
+      "style": "comic_color",
+      "script_lines": [
+        "你有没有发现，猫总喜欢把桌上的杯子推下去？",
+        "其实，这并不是猫在故意捣蛋，而是捕猎本能。",
+        "在野外，猫会用爪子触碰物体，试探猎物是否还会动。",
+        "每一次东西掉落，都会发出声音，给猫带来即时反馈。",
+        "久而久之，猫就发现推东西能吸引主人的注意。",
+        "所以下一次看到猫推杯子，收起贵重物品才是正解。"
+      ]
+    }
+  }
+}

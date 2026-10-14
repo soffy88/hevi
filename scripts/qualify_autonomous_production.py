@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from hevi.layer4_legacy.zerolines.oprim_impl.specs import ZERO_LINES
 from hevi.production.contracts import completion_failure
 from hevi.studio.production_catalog import CANONICAL_LINES, registry_consistency
 from hevi.studio.veya import produce
@@ -35,7 +36,40 @@ def _git_sha() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 
 
-def _slots(line: str) -> dict[str, Any]:
+ZERO_BRIEFS = Path(__file__).resolve().parent / "qualification" / "zero_line_briefs.json"
+HOST_LINES = ("talking_head", "avatar_spokesperson")
+#: talking_head / avatar_spokesperson default to the merged talkcraft host
+#: (Piper TTS + Wav2Lip ONNX on CPU), not the retired GPU avatar route.
+TALKCRAFT_HOST_PROVIDER = "talkcraft_host(piper+wav2lip_onnx,cpu)"
+ZERO_PROVIDER = "zero(piper+pexels/procedural+ffmpeg,cpu)"
+
+
+def _uses_zero(line: str, engine: str, host_renderer: str) -> bool:
+    if engine != "zero" or line not in ZERO_LINES:
+        return False
+    return not (line in HOST_LINES and host_renderer == "talkcraft")
+
+
+def _provider(line: str, engine: str = "zero", host_renderer: str = "talkcraft") -> str:
+    if _uses_zero(line, engine, host_renderer):
+        return ZERO_PROVIDER
+    if line in HOST_LINES:
+        return TALKCRAFT_HOST_PROVIDER
+    return {"localization_dub": "llm_translate+edge_tts", "history_scene": "NIM", "cinematic": "NIM",
+            "director_pipeline": "NIM"}.get(line, "canonical_renderer")
+
+
+def _zero_slots(line: str) -> dict[str, Any]:
+    brief = dict(json.loads(ZERO_BRIEFS.read_text(encoding="utf-8"))["lines"][line])
+    root = Path(os.environ.get("HEVI_ASSET_ROOT") or ".")
+    if brief.get("media_path") and not Path(brief["media_path"]).is_absolute():
+        brief["media_path"] = str(root / brief["media_path"])
+    return {"topic": brief.get("title") or line, "engine": "zero", **brief}
+
+
+def _slots(line: str, engine: str = "zero", host_renderer: str = "talkcraft") -> dict[str, Any]:
+    if _uses_zero(line, engine, host_renderer):
+        return _zero_slots(line)
     values: dict[str, Any] = {"topic": f"HEVI autonomous production qualification: {line}"}
     # Canonical real inputs are existing local source assets. They are inputs
     # only; no historical final artifact is copied or counted as output.
@@ -50,11 +84,17 @@ def _slots(line: str) -> dict[str, Any]:
         values["media_path"] = podcast_video
     if line == "localization_dub":
         values.update({"media_path": source_video, "lang": "en", "dub": True, "translation_provider": "deep_translator"})
-    if line in {"talking_head", "avatar_spokesperson"}:
+    if line in HOST_LINES:
         values["image_path"] = presenter_image
+        values["renderer"] = "talkcraft"
     if line == "history_scene": values["source_text"] = values["topic"]
     if line == "director_pipeline": values["manuscript"] = values["topic"]
     if line == "reference_adapt": values["transcript"] = values["topic"]
+    asset_root = os.environ.get("HEVI_ASSET_ROOT")
+    if asset_root:  # run from a worktree: canonical input assets live in the main checkout
+        for key in ("image_path", "source", "media_path"):
+            if isinstance(values.get(key), str) and not Path(values[key]).is_absolute():
+                values[key] = str(Path(asset_root) / values[key])
     if line in {"documentary_montage", "explainer", "reference_adapt", "history_scene", "cinematic", "director_pipeline", "talking_head", "avatar_spokesperson"}:
         values["tts_engine"] = "edge_tts"
     return values
@@ -87,8 +127,11 @@ def _blocker_matrix_row(line: str, row: dict[str, Any]) -> dict[str, Any]:
     elif row.get("provider") == "NIM" and "network_error" in lowered:
         kind, stage, remediation = "PROVIDER_CONFIGURATION", "provider_call", "audit NIM endpoint/model/function/account entitlement and configure an available route"
         software, env, inp, quality = False, True, False, False
-    elif "comfyui" in lowered or "8188" in lowered or "hardware" in lowered:
-        kind, stage, remediation = "PROVIDER_HARDWARE", "render/avatar", "start EchoMimic ComfyUI on the reserved GPU and rerun talking_head/avatar_spokesperson"
+    elif "wav2lip" in lowered or "talkcraft" in lowered or "piper" in lowered or "remotion render" in lowered:
+        kind, stage, remediation = "PROVIDER_RUNTIME", "render/avatar", "check the talkcraft host runtime (HEVI_TALKCRAFT_PIPER voice, Wav2Lip ONNX model, hevi-remotion-talkcraft gen-index: node scripts/gen-index.mjs) and rerun talking_head/avatar_spokesperson"
+        software, env, inp, quality = False, True, False, False
+    elif "pexels" in lowered:
+        kind, stage, remediation = "PROVIDER_CREDENTIAL", "sourcing/stock", "configure PEXELS_API_KEY (free) for zero-engine b-roll lines"
         software, env, inp, quality = False, True, False, False
     elif "410" in lowered or "model" in lowered and "retired" in lowered:
         kind, stage, remediation = "PROVIDER_CONFIGURATION", "research/provider_call", "use an available NIM model and verify a real inference response"
@@ -126,7 +169,7 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
             # recover with the same run id and without duplicate side effects.
             previous_fault = os.environ.get("HEVI_PRODUCTION_FAULT_INJECTION")
             os.environ["HEVI_PRODUCTION_FAULT_INJECTION"] = "transient_once"
-            job = await produce(line_id=line, slots=_slots(line), execute=True, output_dir=root / line)
+            job = await produce(line_id=line, slots=_slots(line, args.engine, args.host_renderer), execute=True, output_dir=root / line)
             if previous_fault is None:
                 os.environ.pop("HEVI_PRODUCTION_FAULT_INJECTION", None)
             else:
@@ -147,7 +190,8 @@ async def _run(args: argparse.Namespace, root: Path) -> dict[str, Any]:
             status = "completed" if not blocker else ("blocked" if job.status == "blocked" else "failed")
             rows.append({
                 "line": line, "entrypoint": "hevi.studio.veya:produce", "run_id": job.job_id,
-                "provider": {"localization_dub": "llm_translate+edge_tts", "history_scene": "NIM", "cinematic": "NIM", "director_pipeline": "NIM", "talking_head": "EchoMimicV2/ComfyUI", "avatar_spokesperson": "EchoMimicV2/ComfyUI"}.get(line, "canonical_renderer"),
+                "provider": _provider(line, args.engine, args.host_renderer),
+                "engine": "zero" if _uses_zero(line, args.engine, args.host_renderer) else "legacy",
                 "status": status, "zero_human": True, "real_e2e": True,
                 "final_mp4": bool(path and path.is_file()),
                 "ffprobe_valid": bool(
@@ -173,6 +217,10 @@ def main() -> int:
     parser.add_argument("--real", action="store_true")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--lines", nargs="+", choices=CANONICAL_LINES)
+    parser.add_argument("--engine", choices=("zero", "legacy"), default="zero",
+                        help="zero = CPU/no-paid-API engine for the 11 zero lines (briefs: qualification/zero_line_briefs.json)")
+    parser.add_argument("--host-renderer", choices=("talkcraft", "zero"), default="talkcraft",
+                        help="talking_head/avatar_spokesperson: talkcraft host (Wav2Lip) or the zero 2D presenter")
     args = parser.parse_args()
     head = _git_sha()
     root = args.output or Path("artifacts/qualification/autonomous-production") / head
@@ -197,7 +245,7 @@ def main() -> int:
     evidence["blocker_matrix"] = [_blocker_matrix_row(item["line"], item) for item in evidence["lines"]]
     evidence["blocked_lines"] = [item["line"] for item in evidence["lines"] if item["status"] != "completed"]
     evidence["blockers"] = {item["line"]: item.get("blocker") for item in evidence["lines"] if item.get("blocker")}
-    evidence["classification"] = "FULL_ALL_LINES_PRODUCTION_COMPLETE" if evidence["full_auto_verified"] == 13 else "SOFTWARE_QUALIFIED_ENV_BLOCKED"
+    evidence["classification"] = "FULL_ALL_LINES_PRODUCTION_COMPLETE" if evidence["full_auto_verified"] == len(CANONICAL_LINES) else "SOFTWARE_QUALIFIED_ENV_BLOCKED"
     (root / "summary.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = ["# HEVI Autonomous Production Qualification", "", f"HEAD: `{head}`", "", "| LINE | PRODUCT_ENTRY | FINAL_MP4 | QA | FRESH | STATUS | BLOCKER |", "|---|---|---:|---:|---:|---|---|"]
     lines.extend(f"| {row['line']} | {row['entrypoint']} | {row.get('final_mp4', False)} | {row.get('quality_gate', False)} | {row.get('fresh', False)} | {row['status']} | {row.get('blocker') or ''} |" for row in evidence["lines"])

@@ -16,7 +16,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from hevi.director.editor import EditDecision, review
+from hevi.director.editor import DEFAULT_CONSISTENCY_FLOOR, EditDecision, review
 from hevi.director.producer import ProducerPlan, produce
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,8 @@ async def run_director_loop(
     task_service: Any,
     intent: dict[str, Any],
     max_rework_rounds: int = 2,
-    consistency_floor: float = 0.75,
+    consistency_floor: float = DEFAULT_CONSISTENCY_FLOOR,
+    full_rework: bool = False,
 ) -> DirectorResult:
     """对已建 task 跑全自动导演回路。intent 传给 Producer(topic/duration_archetype/budget…)。"""
     trail: list[str] = []
@@ -72,7 +73,9 @@ async def run_director_loop(
     task = await task_service.repository.get_task(task_id)
     quality = (task.get("config_json") or {}).get("quality")
     shots = [_shot_view(r) for r in await task_service.repository.get_shots(task_id)]
-    decision = review(quality=quality, shots=shots, consistency_floor=consistency_floor)
+    decision = review(
+        quality=quality, shots=shots, consistency_floor=consistency_floor, full_rework=full_rework
+    )
     trail.append(
         f"round0: deliver={decision.deliver} regen={decision.regenerate_shot_ids}"
         f" diagnosis={decision.diagnosis}"
@@ -89,7 +92,12 @@ async def run_director_loop(
         shots = regen.get("shots") or [
             _shot_view(r) for r in await task_service.repository.get_shots(task_id)
         ]
-        decision = review(quality=quality, shots=shots, consistency_floor=consistency_floor)
+        decision = review(
+            quality=quality,
+            shots=shots,
+            consistency_floor=consistency_floor,
+            full_rework=full_rework,
+        )
         trail.append(
             f"round{rounds}: deliver={decision.deliver} regen={decision.regenerate_shot_ids}"
             f" diagnosis={decision.diagnosis}"

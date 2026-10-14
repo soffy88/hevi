@@ -330,12 +330,71 @@ def evaluate_talkcraft_host(hosts: list[tuple[Path, dict]]) -> list[Gate]:
     return gates
 
 
+def evaluate_zero_lines(root: Path) -> list[Gate]:
+    """Z1-Z4: zero-cost engine, measured from each line's record.json + re-hash + ffprobe.
+
+    ``root`` holds one directory per line (``<root>/<line>/record.json``), e.g. the
+    ``runs`` directory written by ``qualify_autonomous_production.py --engine zero``.
+    """
+    import hashlib
+    import subprocess
+
+    from hevi.layer4_legacy.zerolines.oprim_impl.specs import LINE_SPECS, ZERO_LINES
+
+    gates: list[Gate] = []
+
+    def add(key: str, requirement: str, ok: bool, evidence: str) -> None:
+        gates.append(Gate(key=key, requirement=requirement, status="PASS" if ok else "BLOCKED", evidence=evidence))
+
+    recs = {}
+    for rec_path in sorted(root.glob("*/record.json")):
+        rec = json.loads(rec_path.read_text())
+        if rec.get("engine") == "zero":
+            recs[rec.get("line_id") or rec_path.parent.name] = rec
+    missing = sorted(set(ZERO_LINES) - set(recs))
+    failed = sorted(line for line, r in recs.items() if r.get("status") != "succeeded")
+    add("Z1", f"all {len(ZERO_LINES)} zero lines rendered with status succeeded", not missing and not failed,
+        f"{len(recs)} records" if not missing and not failed else f"missing={missing} failed={failed}")
+    hash_bad, probe_bad, gate_bad, costly = [], [], [], []
+    for line, rec in recs.items():
+        if (rec.get("cost") or {}).get("usd", 1) != 0 or (rec.get("cost") or {}).get("paid_api"):
+            costly.append(line)
+        spec = LINE_SPECS.get(line)
+        for m in rec.get("qa") or []:
+            path = Path(m["path"])
+            name = f"{line}/{path.name}"
+            if not m.get("pass"):
+                gate_bad.append(name)
+            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != m.get("sha256"):
+                hash_bad.append(name)
+                continue
+            try:
+                out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height",
+                                      "-of", "json", str(path)], capture_output=True, text=True, check=True).stdout
+                info = json.loads(out)
+                v = next(x for x in info["streams"] if x["codec_type"] == "video")
+                has_audio = any(x["codec_type"] == "audio" for x in info["streams"])
+                if (abs(float(info["format"]["duration"]) - float(m["duration"])) > 0.1
+                        or (spec and (v["width"], v["height"]) != (spec.width, spec.height)) or not has_audio):
+                    probe_bad.append(name)
+            except Exception:
+                probe_bad.append(name)
+    add("Z2", "artifact sha256 matches record", not hash_bad, "re-hashed" if not hash_bad else f"mismatch: {hash_bad}")
+    add("Z3", "ffprobe duration/resolution/audio match record + spec", not probe_bad,
+        "durations within 0.1 s, spec resolution, audio present" if not probe_bad else f"mismatch: {probe_bad}")
+    add("Z4", "measured QA gates passed and zero cost", not gate_bad and not costly,
+        "motion/static/black/dark/volume gates passed; cost 0 USD, no paid API" if not gate_bad and not costly
+        else f"gate failures={gate_bad} cost={costly}")
+    return gates
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--e2e-evidence", help="path to the E2E JSON evidence file")
     parser.add_argument("--suite-summary", help="path to a full-suite summary JSON")
     parser.add_argument("--talkcraft-root", help="talkcraft E2E output dir (adds T1-T5, T6-T8 for host layout)")
     parser.add_argument("--talkcraft-host", action="store_true", help="require host-layout lines (T6-T8)")
+    parser.add_argument("--zero-root", help="zero-engine run dir with <line>/record.json (adds Z1-Z4)")
     args = parser.parse_args()
 
     e2e = None
@@ -353,6 +412,8 @@ def main() -> int:
     gates = evaluate(merged if merged else None)
     if args.talkcraft_root:
         gates += evaluate_talkcraft(Path(args.talkcraft_root), require_host=args.talkcraft_host)
+    if args.zero_root:
+        gates += evaluate_zero_lines(Path(args.zero_root))
 
     passed = sum(1 for g in gates if g.status == "PASS")
     width = max(len(g.key) for g in gates)

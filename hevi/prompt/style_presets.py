@@ -5,7 +5,15 @@ camera/color_grade + negative(负向词,供逐镜头下发,RFC-002 item 8)。
 键为中文题材名(沿用既有约定)。
 """
 
-__all__ = ["STYLE_PRESETS", "get_style_preset", "list_style_presets"]
+__all__ = [
+    "STYLE_PRESETS",
+    "get_style_preset",
+    "list_style_presets",
+    "KEYFRAME_STYLE_PRESETS",
+    "DEFAULT_KEYFRAME_STYLE",
+    "get_keyframe_style",
+    "list_keyframe_styles",
+]
 
 # 键匹配 inject_visual_style 的 kwargs: style / lighting / camera / color_grade;
 # 额外 negative 键供 engineer_prompt_pair_from_preset 合并负向。
@@ -165,3 +173,86 @@ def get_style_preset(name: str) -> dict[str, str | None]:
 def list_style_presets() -> list[str]:
     """列出所有可用风格预设名(供 API/前端展示)。"""
     return list(STYLE_PRESETS)
+
+
+# ---------------------------------------------------------------------------
+# Keyframe generation style presets (shared by dramakey / comicnarr / script2video)
+#
+# CPU 上跑写实真人没有优势（SD-Turbo 512px 写实人脸糊、且不像角色卡），因此默认
+# 画风改为国风动漫插画 `anime_guofeng`，写实 `photoreal` 保留为可选且默认关闭。
+# 每个预设提供：prompt_prefix(前置风格词) + style_tags(后置风格词) + negative
+# (负向词，合并进最终 negative) + photoreal(是否写实真人)。
+# ---------------------------------------------------------------------------
+_STYLE_NEG_PHOTO = (
+    "photo, photograph, photorealistic, realistic, hyperrealistic, 3d render, cgi, "
+    "octane render, unreal engine, live-action, real human face, skin pores, dslr, "
+    "film grain, depth of field bokeh"
+)
+
+KEYFRAME_STYLE_PRESETS: dict[str, dict[str, object]] = {
+    "anime_guofeng": {
+        "label": "国风动漫插画",
+        "prompt_prefix": (
+            "chinese anime illustration, guofeng donghua art style, 2d animation cel, "
+            "stylized character design"
+        ),
+        "style_tags": (
+            "flat color shading, bold clean line art, unified limited color palette, "
+            "elegant ancient Chinese costume design, hand-drawn illustration background"
+        ),
+        "negative": _STYLE_NEG_PHOTO,
+        "photoreal": False,
+    },
+    "ink": {
+        "label": "国风水墨",
+        "prompt_prefix": "traditional chinese ink wash painting, shuimo guofeng style",
+        "style_tags": (
+            "flowing ink brush strokes, xuan paper texture, monochrome with subtle washes, "
+            "minimalist negative space, ethereal atmosphere"
+        ),
+        "negative": _STYLE_NEG_PHOTO + ", western oil painting, neon, saturated colors",
+        "photoreal": False,
+    },
+    "flat_comic": {
+        "label": "平涂漫画",
+        "prompt_prefix": "flat comic book illustration, graphic novel panel art",
+        "style_tags": (
+            "flat cel shading, crisp ink outlines, limited halftone palette, "
+            "bold graphic composition"
+        ),
+        "negative": _STYLE_NEG_PHOTO + ", painterly, soft gradients",
+        "photoreal": False,
+    },
+    "photoreal": {
+        "label": "写实真人（可选，默认关闭）",
+        "prompt_prefix": "cinematic photorealistic live-action film still",
+        "style_tags": (
+            "photorealistic, realistic skin texture, natural lighting, "
+            "shallow depth of field, 8k detailed"
+        ),
+        "negative": "cartoon, anime, illustration, painting, drawing, cgi, flat colors",
+        "photoreal": True,
+    },
+}
+
+DEFAULT_KEYFRAME_STYLE = "anime_guofeng"
+
+
+def get_keyframe_style(name: str | None) -> dict[str, object]:
+    """Return a keyframe style preset. Unknown/None -> default (anime_guofeng).
+
+    Raises ValueError only for a non-empty unknown name so that callers can tell a
+    typo apart from the default; None/"" select the default style.
+    """
+    if not name:
+        return KEYFRAME_STYLE_PRESETS[DEFAULT_KEYFRAME_STYLE]
+    if name not in KEYFRAME_STYLE_PRESETS:
+        raise ValueError(
+            f"Unknown keyframe style: {name!r}. Valid: {list(KEYFRAME_STYLE_PRESETS)}"
+        )
+    return KEYFRAME_STYLE_PRESETS[name]
+
+
+def list_keyframe_styles() -> list[str]:
+    """List available keyframe generation style names (for CLI/API/frontend)."""
+    return list(KEYFRAME_STYLE_PRESETS)

@@ -17,6 +17,11 @@ output/
 hevi-web/node_modules/
 hevi-web/.next/
 hevi-remotion/node_modules/
+# talkcraft: node_modules / kbsrc are host symlinks out of the repo; image installs its own
+hevi-remotion-talkcraft/node_modules
+hevi-remotion-talkcraft/kbsrc
+hevi-remotion-talkcraft/public/runs/
+hevi-remotion-talkcraft/out/
 .git/
 tests/
 debug_*.py

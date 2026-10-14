@@ -59,6 +59,8 @@ async def render_graph_episode(
             sfx=sfx,
             intro_clip=intro_clip,
             outro_clip=outro_clip,
+            task_id=task_id,
+            task_service=task_service,
         )
         await task_service.repository.update_task(
             task_id,
@@ -103,6 +105,8 @@ async def render_graph_episode_artifact(
     sfx: str | None = None,
     intro_clip: str | None = None,
     outro_clip: str | None = None,
+    task_id: uuid.UUID | str | None = None,
+    task_service: Any = None,
 ) -> dict[str, Any]:
     """Execute an edited canvas graph and return a real assembled artifact.
 
@@ -138,6 +142,29 @@ async def render_graph_episode_artifact(
     if outro_path is not None:
         segments.append(ShotSegment(outro_path))
 
+    # ShotSpec (GAP_PLAN §2 W1 / R2 FIX P4): 从任务存储读取各镜规格
+    task_specs: list[Any] | None = None
+    if task_service is not None and task_id is not None:
+        try:
+            from hevi.production.shot_spec import load_shot_specs_for_task
+
+            repo = getattr(task_service, "repository", None) or task_service
+            task_specs = await load_shot_specs_for_task(
+                repo=repo,
+                task_id=task_id,
+                ordered_paths=clips,
+            )
+        except Exception as _tse:
+            logger.warning("failed to load shot_specs for graph episode %s: %s", task_id, _tse)
+
+    intro_specs = [None] if intro_path is not None else []
+    outro_specs = [None] if outro_path is not None else []
+    full_specs = (
+        [*intro_specs, *(task_specs or [None] * len(clips)), *outro_specs]
+        if task_specs is not None
+        else None
+    )
+
     await assemble_longvideo(
         shots=segments,
         output_path=final,
@@ -147,6 +174,7 @@ async def render_graph_episode_artifact(
         height=height,
         fps=fps,
         transition=transition,
+        shot_specs=full_specs,
     )
     return {"video_path": str(final), "shot_count": len(clips)}
 
