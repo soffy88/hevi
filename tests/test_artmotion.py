@@ -202,3 +202,30 @@ def test_sanitize_latex_no_source_on_screen():
     # 纯文本原样
     assert sanitize_latex("attention 机制") == "attention 机制"
     assert find_latex_source("attention 机制") == ""
+
+
+def test_texture_files_have_no_demo_elements():
+    """r5 B1：scenes_style/*_texture.js 里 grep 不到 girl|cat|shrimp|curtain|window|WIN|
+    tablecloth|daisies|plant|mug|desk|bg()，否则 FAIL。"""
+    from pathlib import Path
+    from hevi.layer4_legacy.artmotion.omodul_impl.produce import scan_texture_files
+
+    scenes_style = (
+        Path(__file__).resolve().parent.parent
+        / "hevi/layer4_legacy/artmotion/omodul_impl/scripts/engine/scenes_style"
+    )
+    offenders = scan_texture_files(scenes_style)
+    assert offenders == [], f"纹理文件含示范元素：{offenders}"
+
+    # 四个纹理文件都在，且没有上游示范叙事函数
+    names = {p.name for p in scenes_style.glob("*_texture.js")}
+    assert {
+        "17_ink_texture.js",
+        "25_ghibli_texture.js",
+        "14_8bit_texture.js",
+        "12_bauhaus_texture.js",
+    } <= names
+    for p in scenes_style.glob("*_texture.js"):
+        src = p.read_text(encoding="utf-8")
+        for fn in ("girlInk", "catInk", "shrimp", "girlLayers", "catLayers"):
+            assert fn not in src, f"{p.name} 仍含示范函数 {fn}"

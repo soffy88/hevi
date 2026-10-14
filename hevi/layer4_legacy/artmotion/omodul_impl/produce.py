@@ -173,6 +173,38 @@ def find_latex_source(text: str) -> str:
     return "".join(ch for ch in LATEX_SOURCE_CHARS if ch in (text or ""))
 
 
+# r5 B1：纹理场景文件里不得出现任何示范叙事元素（人物/动物/家具/窗/植物/bg() 示范底版）。
+# 审核方要求「texture 文件里 grep 不到 girl|cat|shrimp|curtain|window|WIN|tablecloth|daisies|plant|mug|desk|bg()，否则 FAIL」。
+# 注意：这些 token 只允许出现在注释里也不行——直接禁；注释改用中文说明即可。
+FORBIDDEN_TEXTURE_TOKENS = (
+    "girl",
+    "cat",
+    "shrimp",
+    "curtain",
+    "window",
+    "WIN",
+    "tablecloth",
+    "daisies",
+    "plant",
+    "mug",
+    "desk",
+    "bg()",
+)
+
+
+def scan_texture_files(scenes_style_dir: Path | str) -> list[dict[str, str]]:
+    """扫 scenes_style/*_texture.js，返回违规项 [{file, token}]（空 = 干净）。
+    任何禁用 token 出现即 FAIL——包括注释。"""
+    d = Path(scenes_style_dir)
+    offenders: list[dict[str, str]] = []
+    for f in sorted(d.glob("*_texture.js")):
+        text = f.read_text(encoding="utf-8")
+        for tok in FORBIDDEN_TEXTURE_TOKENS:
+            if tok in text:
+                offenders.append({"file": f.name, "token": tok})
+    return offenders
+
+
 STYLE_SCENE_MODE: dict[str, str] = {
     # 这些风格场景原本是完整叙事插画（少女、猫、虾、bauhaus 人偶等）。
     # 纹理模式只加载背景纹理/底子，不画人物/动物/装饰，让语法层（数学、图表、文字）做主角。
@@ -563,6 +595,11 @@ def produce_artmotion(
                         {"field": "token.s", "value": token.get("s"), "chars": bad}
                     )
 
+    # 纹理场景文件检查（r5 B1）：texture 文件里不得出现示范叙事元素（含注释）
+    texture_offenders = scan_texture_files(
+        Path(__file__).parent / "scripts" / "engine" / "scenes_style"
+    )
+
     deliver_script = scripts_dir / "deliver.py"
     deliver_out_dir = output_dir / "deliver_out"
     deliver_res = subprocess.run(
@@ -637,6 +674,15 @@ def produce_artmotion(
             "threshold": "0 occurrences of \\ ^ _ { } in on-screen text",
             "message": "clean" if not latex_offenders else f"LaTeX 源码上屏：{latex_offenders[:3]}",
         },
+        {
+            "name": "texture_files_clean",
+            "passed": not texture_offenders,
+            "value": len(texture_offenders),
+            "threshold": "no girl|cat|shrimp|curtain|window|WIN|tablecloth|daisies|plant|mug|desk|bg() in scenes_style/*_texture.js",
+            "message": "clean"
+            if not texture_offenders
+            else f"纹理文件含示范元素：{texture_offenders[:3]}",
+        },
     ]
 
     # Generate 6-frame contact sheet
@@ -670,6 +716,7 @@ def produce_artmotion(
             },
             "text_safe": text_safe,
             "latex_offenders": latex_offenders,
+            "texture_offenders": texture_offenders,
             "gates": gates,
             "sha256": get_sha256(out_video),
         }
