@@ -123,16 +123,17 @@ def create_contact_sheet(
     thumb_h: int,
     out_path: Path,
 ) -> Path:
-    """Combines 9 sample frames into a 3x3 contact sheet PNG with timestamp labels."""
-    grid_cols = 3
-    grid_rows = 3
+    """Combines sampled frames into a 3-column contact sheet PNG with timestamp labels."""
+    n = max(1, len(frames))
+    grid_cols = 3 if n >= 3 else n
+    grid_rows = (n + grid_cols - 1) // grid_cols
     sheet_w = thumb_w * grid_cols
     sheet_h = thumb_h * grid_rows
 
     sheet = Image.new("RGB", (sheet_w, sheet_h), color=(11, 15, 25))
     draw = ImageDraw.Draw(sheet)
 
-    for idx, (t, png_bytes) in enumerate(frames[:9]):
+    for idx, (t, png_bytes) in enumerate(frames[: grid_cols * grid_rows]):
         col = idx % grid_cols
         row = idx // grid_cols
         x = col * thumb_w
@@ -237,11 +238,12 @@ async def _render_async(
         await page.goto(f"file://{template_path}")
         await page.evaluate(f"window.initTemplate({json.dumps(spec_dict)}, {w}, {h})")
 
-        # Step 1: Contact sheet (3x3 grid)
+        # Step 1: Contact sheet (6 frames, 3 columns x 2 rows)
         if contact_sheet:
             contact_frames: list[tuple[float, bytes]] = []
-            for k in range(9):
-                t_sample = (k / 8.0) * duration if duration > 0 else 0.0
+            n_samples = 6
+            for k in range(n_samples):
+                t_sample = (k / float(n_samples - 1)) * duration if duration > 0 else 0.0
                 await page.evaluate(f"window.draw({t_sample:.6f})")
                 png_bytes = await page.locator("#canvas").screenshot(type="png")
                 contact_frames.append((t_sample, png_bytes))
