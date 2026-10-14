@@ -52,6 +52,18 @@ def split_sentences(text: str) -> list[str]:
     return out
 
 
+def _make_embedder():
+    """EG2 embedder for the query side of the cosine match.  Offline only — the
+    live path never embeds (it is exact/normalised only)."""
+    try:
+        from hevi.live_host.avatar.motionrag import Config, get_embedder
+
+        return get_embedder(Config(), allow_audio=False)
+    except Exception as e:
+        print("no query embedder (exact/normalised matching only):", e, flush=True)
+        return None
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default="/data/soffy/voicecache")
@@ -61,11 +73,18 @@ def main() -> None:
     ap.add_argument("--no-llm", action="store_true", help="use recorded replies only (offline)")
     args = ap.parse_args()
 
-    cache = VoiceCache(root=Path(args.cache))
+    cache = VoiceCache(root=Path(args.cache), embedder=_make_embedder())
     print(
-        f"cache ready={cache.ready} entries={len(cache.entries)} threshold={cache.threshold}",
+        f"cache ready={cache.ready} entries={len(cache.entries)} threshold={cache.threshold} "
+        f"cosine_path={'on' if cache._emb is not None and cache._text_matrix is not None else 'off'}",
         flush=True,
     )
+    if cache._text_matrix is not None and cache._emb is None:
+        print(
+            "WARNING: index has text vectors but no query embedder — cosine "
+            "matching disabled, only exact/normalised hits will count.",
+            flush=True,
+        )
 
     danmaku = json.loads(Path(args.danmaku).read_text(encoding="utf-8"))["danmaku"][
         : args.max_prompts

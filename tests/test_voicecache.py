@@ -78,6 +78,50 @@ def test_miss_logs_and_counts():
     assert vc.misses == before + 1
 
 
+# ── cosine path (needs a query embedder) ─────────────────────
+class _FakeEmb:
+    """Query embedder: maps a text to a fixed 2-d-ish direction so cosine is
+    deterministic without EG2."""
+
+    def text(self, texts, *, query):
+        import numpy as np
+
+        # 'same topic' → the library vector; anything else → orthogonal
+        out = []
+        for t in texts:
+            if "礼物" in t or "谢谢" in t:
+                out.append([1.0, 0.0] + [0.0] * (N - 2))
+            else:
+                out.append([0.0, 1.0] + [0.0] * (N - 2))
+        return np.asarray(out, dtype=np.float32)
+
+
+def test_cosine_hit_uses_injected_embedder():
+    """A paraphrased reply must be able to score against the library: without a
+    query embedder the cosine path is dead and only exact matches ever hit."""
+    import numpy as np
+
+    v = np.zeros(N, dtype=np.float32)
+    v[0] = 1.0  # library vector for a gift-thanks line
+    vc = _cache([_entry("a", "谢谢哥哥的礼物", "g_heart", "gift_thanks", emb=v)])
+    vc._emb = _FakeEmb()
+
+    hit, score = vc.match("谢谢大哥的礼物呀")  # a paraphrase (no exact match)
+    assert hit is not None and hit.id == "a" and score >= vc.threshold
+
+
+def test_cosine_miss_when_embedder_absent():
+    """Default (no embedder) = live path: paraphrase does not hit, never crashes."""
+    import numpy as np
+
+    v = np.zeros(N, dtype=np.float32)
+    v[0] = 1.0
+    vc = _cache([_entry("a", "谢谢哥哥的礼物", "g_heart", "gift_thanks", emb=v)])
+    assert vc._emb is None
+    hit, score = vc.match("谢谢大哥的礼物呀")
+    assert hit is None and score == 0.0
+
+
 # ── CachedTTS wrapper ────────────────────────────────────────
 class _FakeTTS:
     name = "fake_tts"

@@ -112,6 +112,7 @@ class VoiceCache:
         index: Path | None = None,
         threshold: float | None = None,
         exact_first: bool = True,
+        embedder=None,
     ) -> None:
         self.root = Path(root)
         self.manifest_path = manifest or (self.root / "manifest.json")
@@ -122,6 +123,11 @@ class VoiceCache:
             else float(os.environ.get("HEVI_VOICECACHE_THRESHOLD", "0.82"))
         )
         self.exact_first = exact_first
+        # Optional query embedder for the cosine path.  The live hot path does
+        # NOT embed: it passes embedder=None and gets exact/normalised matching
+        # only.  The offline replay/metrics scripts pass one so paraphrased
+        # replies can score against the library.
+        self._emb = embedder
         self.entries: list[VoiceEntry] = []
         self._by_norm: dict[str, VoiceEntry] = {}
         self._text_matrix: np.ndarray | None = None
