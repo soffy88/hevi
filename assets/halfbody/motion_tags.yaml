@@ -1,0 +1,64 @@
+# Motion clip tags for the Xiaoya half-body avatar (assets/halfbody/xiaoya_e_*.mp4).
+#
+# Each clip gets a short bilingual description used as the *text* anchor in the
+# motion-RAG index (hevi/live_host/avatar/motionrag.py).  "kinds" is a hard
+# filter: a clip may only be chosen while speaking (talk), while paused (idle),
+# or both.  The video/pose embeddings are computed from the mp4 itself, not here.
+#
+# Author: hand-written from a contact sheet of the clips (2026-10-14).
+
+clips:
+  idle:
+    zh: 安静端坐，双手交叠放在桌上，平静地注视镜头
+    en: sitting still, hands folded on the desk, calm resting pose, looking at the camera
+    kinds: [idle]
+
+  talk_a:
+    zh: 说话时双手在胸前轻轻开合，从容地讲解
+    en: talking with both hands gently opening and closing in front of the chest, explaining calmly
+    kinds: [talk]
+
+  talk_b:
+    zh: 说话时手掌摊开、向前小幅比划，自然地讲述
+    en: talking with an open palm gesturing slightly forward, narrating naturally
+    kinds: [talk]
+
+  g_wave:
+    zh: 抬起右手挥手打招呼，问好
+    en: raising the right hand and waving hello, greeting the audience
+    kinds: [talk, idle]
+
+  g_nod:
+    zh: 轻轻低头点头，表示赞同或确认
+    en: nodding the head gently downward, agreeing, yes
+    kinds: [idle, talk]
+
+  g_think:
+    zh: 手托下巴，若有所思地思考，想问题
+    en: hand on chin, thinking, pondering a question, lost in thought
+    kinds: [talk]
+
+  g_hair:
+    zh: 抬手把碎发撩到耳后，整理头发
+    en: brushing stray hair behind the ear with the hand, tidying hair
+    kinds: [idle, talk]
+
+  g_both:
+    zh: 双手一起抬起做手势，强调地讲解
+    en: raising both hands together in a gesture, emphasizing a point
+    kinds: [talk]
+
+  g_lean:
+    zh: 身体前倾，靠近镜头，认真地和你说话
+    en: leaning forward toward the camera, engaging, getting closer, intimate
+    kinds: [talk, idle]
+
+  g_heart:
+    zh: 双手在胸前比出一个心形，表达喜欢
+    en: making a heart shape with both hands, showing love, affection
+    kinds: [talk]
+
+  g_turn:
+    zh: 转头看向侧边，稍作停顿
+    en: turning the head to the side, glancing away briefly, pausing
+    kinds: [idle, talk]

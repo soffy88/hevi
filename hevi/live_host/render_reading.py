@@ -9,9 +9,10 @@ sents = json.loads(sents_json.read_text())
 av = HalfBodyAvatar()
 segs = [Segment("idle", int(1.0 * FPS), caption=title)]
 for i, s in enumerate(sents):
-    w = load_wav16k(wav_dir / f"s{i:02d}.wav")
+    wp = wav_dir / f"s{i:02d}.wav"
+    w = load_wav16k(wp)
     w = np.concatenate([w, np.zeros(int(0.35 * SR), dtype=np.float32)])
-    segs.append(Segment("talk", max(1, round(len(w) / SR * FPS)), wav=w, caption=s))
+    segs.append(Segment("talk", max(1, round(len(w) / SR * FPS)), wav=w, caption=s, audio_path=str(wp)))
 segs.append(Segment("idle", int(1.5 * FPS), caption=title))
 track = []
 for s in segs:
@@ -29,3 +30,12 @@ for s in segs:
 enc.stdin.close(); assert enc.wait() == 0
 c, lag = av.lipsync_corr()
 print("RENDER DONE", out, "lipsync_corr", round(c, 3), flush=True)
+
+if av.rag is not None:
+    cj = out.parent / "rag_choices.json"
+    av.rag.dump_choices(cj)
+    lat = [c["latency_ms"] for c in av.rag.choices if c.get("latency_ms")]
+    print("RAG REPORT choices", len(av.rag.choices), "misses", av.rag.misses,
+          "embedder", av.rag.emb.name if av.rag.emb else "cached_queries",
+          "query_ms_p50", round(sorted(lat)[len(lat)//2], 1) if lat else 0,
+          "query_ms_max", round(max(lat), 1) if lat else 0, "choices_json", cj, flush=True)

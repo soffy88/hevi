@@ -307,6 +307,7 @@ class Segment:
     n_frames: int
     wav: np.ndarray | None = None
     caption: str = ""
+    audio_path: str | None = None  # source wav (for motion-RAG miss logging)
 
 
 class HalfBodyAvatar:
@@ -321,11 +322,17 @@ class HalfBodyAvatar:
         self.idle = BaseClip.load(idle or ASSETS / d_idle, yolo=self.yolo)
         self.talk = BaseClip.load(talk or ASSETS / d_talk, yolo=self.yolo)
         self.director: Director | None = None
+        self.rag = None
         av_name = os.environ.get("HEVI_LIVE_AVATAR", "xiaoya_e")
-        if os.environ.get("HEVI_LIVE_MOTION", "director") == "director" and idle is None and talk is None and av_name in AVATARS:
+        motion = os.environ.get("HEVI_LIVE_MOTION", "director")
+        if motion in ("director", "rag") and idle is None and talk is None and av_name in AVATARS:
             lib = load_library(av_name, yolo=self.yolo)
             if len(lib) >= 2:
-                self.director = Director(lib)
+                if motion == "rag":
+                    from hevi.live_host.avatar.motionrag import build_rag_director
+                    self.rag = build_rag_director(av_name, yolo=self.yolo, clips=lib, fps=FPS, sr=SR)
+                if self.rag is None:  # no index / no query vectors → current behaviour
+                    self.director = Director(lib)
         self.label = label
         self.t = 0  # global clock: motion stays continuous across segments
         self.prev_kind = "idle"
@@ -412,7 +419,9 @@ class HalfBodyAvatar:
     # ---- segments -------------------------------------------------------
     def frames(self, seg: Segment) -> Iterator[np.ndarray]:
         t0 = time.perf_counter()
-        if self.director is not None:
+        if self.rag is not None:
+            refs = self.rag.refs(seg.kind, seg.n_frames, seg.caption, seg.wav, seg.audio_path)
+        elif self.director is not None:
             refs = self.director.refs(seg.kind, seg.n_frames, seg.caption)
         else:
             clip = self.talk if seg.kind == "talk" else self.idle
@@ -423,7 +432,7 @@ class HalfBodyAvatar:
         else:
             out = [ref_frame(r)[0] for r in refs]
         # crossfade 8 frames when switching idle<->talk so the cut is invisible-ish
-        if self.director is None and seg.kind != self.prev_kind and hasattr(self, "_last"):
+        if self.director is None and self.rag is None and seg.kind != self.prev_kind and hasattr(self, "_last"):
             for j in range(min(8, len(out))):
                 a = (j + 1) / 9
                 out[j] = (self._last.astype(np.float32) * (1 - a) + out[j].astype(np.float32) * a).astype(np.uint8)

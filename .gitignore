@@ -93,12 +93,14 @@ data/timelines/
 data/artifacts/
 data/freezone/
 
+# hand-authored motion tags for the motion-RAG index (the only tracked file there)
+!assets/halfbody/motion_tags.yaml
+
 # P7 real-video production output. The accepted run is archived under
 # artifacts/real_video/ with its evidence pack; intermediate re-runs are noise.
 artifacts/real_video/*/work/
 artifacts/real_video/*/artifacts/*_finecut.mp4
 artifacts/real_video/*/artifacts/scene_*.mp4
 artifacts/real_video/*/final/concat.txt
-assets/halfbody/
 audit/live_host/halfbody/*.wav
 audit/live_host/halfbody/*.mp4
