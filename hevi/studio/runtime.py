@@ -7,14 +7,18 @@ from __future__ import annotations
 
 from typing import Any
 
-RUNTIMES = ("remotion", "hyperframes", "manim", "ffmpeg")
+RUNTIMES = ("remotion", "hyperframes", "hyperframes_styled", "manim", "ffmpeg")
 
+_STYLED_HINTS = ("style", "explainer", "风格", "讲解")
 _HYPER_HINTS = (
     "kinetic",
     "typography",
+    "kinetic typography",
     "片头",
     "标题卡",
     "promo",
+    "产品宣传",
+    "产品展示",
     "motion graphic",
     "动效",
     "music-to-video",
@@ -37,6 +41,8 @@ def select_runtime(
     blob = f"{intent} {line_id}".lower()
     if any(h in blob for h in _MANIM_HINTS):
         return {"runtime": "manim", "locked": False, "reason": "intent.manim"}
+    if any(h in blob for h in _STYLED_HINTS):
+        return {"runtime": "hyperframes_styled", "locked": False, "reason": "intent.styled"}
     if any(h in blob for h in _HYPER_HINTS):
         return {"runtime": "hyperframes", "locked": False, "reason": "intent.hyperframes"}
     if any(h in blob for h in _FFMPEG_HINTS):

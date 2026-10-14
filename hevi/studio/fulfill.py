@@ -625,6 +625,76 @@ async def _render_manim_line(order: dict[str, Any], output_dir: Path) -> dict[st
     }
 
 
+
+
+async def _render_character_animation_line(
+    *, order: dict[str, Any], context: dict[str, Any], output_dir: Path
+) -> dict[str, Any]:
+    """Render a real SVG skeletal character animation driven by CMU mocap.
+
+    The puppet is drawn in SVG and every joint is posed from a CMU
+    motion-capture clip (``hevi.studio.cmumocap``).  Narration is synthesised
+    locally with piper, so the film carries a real Chinese voice track.  This is
+    the clean-room replacement for the removed OpenMontage ink-puppet path.
+    """
+    import asyncio
+
+    from hevi.studio.svg_character import Segment, build_character_animation
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / "character_animation.mp4"
+
+    default_lines = [
+        "这是一段由动作捕捉数据驱动的角色动画。",
+        "画面里的小人，每一根骨头都在动。",
+        "它先走几步。",
+        "然后原地踏步，活动一下。",
+        "接着跑起来。",
+        "它挥挥手，打个招呼。",
+        "再转个圈，跳起舞来。",
+        "最后跳一下，稳稳落地。",
+        "所有动作都来自卡内基梅隆大学的公开动作捕捉数据库。",
+    ]
+    lines = [str(x) for x in (order.get("narration_lines") or default_lines)]
+    clips = list(order.get("mocap_clips") or [
+        "walk", "march", "run", "wave", "dance_spin", "dance_glide", "jump", "sit", "twist",
+    ])
+    captions = list(order.get("captions") or [
+        "走两步", "原地踏步", "跑起来", "挥挥手", "转个圈", "跳起舞", "跳一下", "坐下来", "扭一扭",
+    ])
+    count = min(len(lines), len(clips))
+    program = [
+        Segment(clip=clips[i], duration=2.6, caption=captions[i] if i < len(captions) else "")
+        for i in range(count)
+    ]
+    await asyncio.to_thread(
+        build_character_animation,
+        output_path=path,
+        segments=program,
+        narration_lines=lines[:count],
+        title=str(order.get("title") or "SVG 角色动画 · CMU 动作捕捉"),
+        quality=str(order.get("quality") or "looks"),
+        fps=int(order.get("fps") or 30),
+    )
+    if not path.is_file() or path.stat().st_size == 0:
+        return _blocked(
+            "角色动画渲染未产出文件",
+            target="character_animation",
+            line_id=str(order.get("line_id") or ""),
+        )
+    manifest, quality = await _verified_video_manifest([(path, True, "character_animation")])
+    return {
+        "status": "SUCCEEDED",
+        "target": "character_animation",
+        "line_id": str(order.get("line_id") or ""),
+        "result_video_path": str(manifest.primary_path() or path),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "render_runtime": "hyperframes",
+        "mocap_clips": clips[:count],
+    }
+
 async def _render_hyperframes_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     from hevi.providers.hyperframes.provider import hyperframes_generate
 
@@ -698,7 +768,7 @@ _RENDERERS = {
     "localization_dub": _render_localization_line,
     "shorts_clip": _render_clip_line,
     "podcast_repurpose": _render_clip_line,
-    "character_animation": _render_manim_line,
+    "character_animation": _render_character_animation_line,
     "kinetic_promo": _render_hyperframes_line,
     "cinematic": _render_longvideo_line,
     "director_pipeline": _render_longvideo_line,

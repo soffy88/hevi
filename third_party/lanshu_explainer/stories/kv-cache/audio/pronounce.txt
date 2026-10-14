@@ -1,0 +1,18 @@
+ 1 script:  大模型回答问题，是一个 token 一个 token 往外蹦的。
+   read as: 大模型回答问题，是一个 token 一个 token 往外蹦的。
+ 2 script:  每蹦出一个新 token，都要回头看一遍前面所有的 token。
+   read as: 每蹦出一个新 token，都要回头看一遍前面所有的 token。
+ 3 script:  要是每次都把前面重新算一遍，就会越写越慢。
+   read as: 要是每次都把前面重新算一遍，就会越写越慢。
+ 4 script:  KV cache 的办法是：每个 token 的 Key 和 Value 只算一次，存起来；
+   read as: KV cache 的办法是：每个 token 的 Key 和 Value 只算一次，存起来；
+ 5 script:  之后只算新来的那一个，再去缓存里查。
+   read as: 之后只算新来的那一个，再去缓存里查。
+ 6 script:  代价是显存：缓存跟着上下文一起涨。
+   read as: 代价是显存：缓存跟着上下文一起涨。
+ 7 script:  拿 Llama 2 7B 来说，每个 token 大约占 0.5 MB，4K 上下文就要 2 GB。
+   read as: 拿 Llama 2 7B 来说，每个 token 大约占 0.5 MB，4K 上下文就要 2 GB。
+ 8 script:  所以才有 GQA 共用 K 和 V，PagedAttention 按页分配，还有量化压缩。
+   read as: 所以才有 GQA 共用 K 和 V，PagedAttention 按页分配，还有量化压缩。
+ 9 script:  一句话：用显存换速度，只算新的那一个。
+   read as: 一句话：用显存换速度，只算新的那一个。

@@ -1,4 +1,10 @@
-"""OpenMontage ink-theater 动作卡。"""
+"""CMU motion-capture clip catalogue for the SVG character renderer.
+
+The clips under ``assets/mocap-clips/clips`` are 2-D joint tracks derived from
+the **CMU Graphics Lab Motion Capture Database** by :mod:`hevi.studio.cmumocap`
+(see ``assets/mocap-clips/README.md`` for provenance).  This module is the thin
+catalogue the studio tools read.
+"""
 
 from __future__ import annotations
 
@@ -13,22 +19,28 @@ def mocap_dir(*, root: Path | None = None) -> Path:
     return (root or asset_root()) / "mocap-clips"
 
 
+def _clip_meta(path: Path) -> dict[str, Any]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        data = {}
+    return {
+        "name": data.get("name") or path.stem,
+        "path": str(path),
+        "source": data.get("source", ""),
+        "plane": data.get("plane", ""),
+        "fps": data.get("fps"),
+        "frameCount": data.get("frameCount"),
+        "label": data.get("label", ""),
+        "duration": round((data.get("frameCount") or 0) / (data.get("fps") or 30), 3),
+    }
+
+
 def list_mocap(*, root: Path | None = None) -> list[dict[str, Any]]:
-    dest = mocap_dir(root=root)
-    catalog = dest / "catalog.json"
-    if catalog.exists():
-        data = json.loads(catalog.read_text(encoding="utf-8"))
-        if isinstance(data, list):
-            rows = [dict(item) for item in data if isinstance(item, dict)]
-            for row in rows:
-                clip = dest / "clips" / f"{row.get('name')}.json"
-                if clip.exists():
-                    row["path"] = str(clip)
-            return rows
-    clips = dest / "clips"
+    clips = mocap_dir(root=root) / "clips"
     if not clips.is_dir():
         return []
-    return [{"name": path.stem, "path": str(path)} for path in sorted(clips.glob("*.json"))]
+    return [_clip_meta(path) for path in sorted(clips.glob("*.json"))]
 
 
 def get_mocap(name: str, *, root: Path | None = None) -> dict[str, Any] | None:
