@@ -39,7 +39,7 @@ SCENES['12_bauhaus'] = (() => {
   return {
     bg: C.paper,
     draw(c, lt, t) {
-      c.drawImage(ground(), 0, 0);
+      P.tileMirror(c, ground(), 0, 0);
       // 一格色块按拍缓慢轮换（每 0.7s 一格），让底纹每帧都在动但不闪
       const r = U.rng(19), step = Math.floor(t / 0.7);
       const gx = W / 8, gy = H / 5, cyc = [C.red, C.yellow, C.blue, C.cream, C.lblue, C.grey];

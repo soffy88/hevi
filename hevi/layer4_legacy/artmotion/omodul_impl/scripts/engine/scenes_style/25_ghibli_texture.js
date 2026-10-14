@@ -34,9 +34,11 @@ SCENES['25_ghibli'] = (() => {
       // 一层暖色柔光（整屏，无方向性光源的具象暗示），缓慢呼吸
       c.save(); c.globalCompositeOperation = 'screen';
       const a = 0.12 + 0.03 * Math.sin(t * 0.5);
-      const lg = c.createRadialGradient(W / 2, H / 2, 120, W / 2, H / 2, 1150);
+      const sW = (globalThis.STAGE && globalThis.STAGE.W) || c.canvas.width || W;
+      const sH = (globalThis.STAGE && globalThis.STAGE.H) || c.canvas.height || H;
+      const lg = c.createRadialGradient(sW / 2, sH / 2, 120, sW / 2, sH / 2, Math.max(sW, sH) * 0.6);
       lg.addColorStop(0, `rgba(255,240,200,${a})`); lg.addColorStop(1, 'rgba(255,240,200,0)');
-      c.fillStyle = lg; c.fillRect(0, 0, W, H); c.restore();
+      c.fillStyle = lg; c.fillRect(0, 0, sW, sH); c.restore();
     },
   };
 })();

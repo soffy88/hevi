@@ -24,27 +24,24 @@ SCENES['14_8bit'] = (() => {
     P.assertOpaque(g.canvas, '14_8bit/ground');
   });
 
-  // 每帧把底纹整体按格平移（像素滚动），保证全片每帧都有真实变化（film_gate 的快动测量）
-  const frame = () => P.cached('8b_tex_frame', W, H, () => {});
-
   return {
     bg: BG,
     draw(c, lt, t) {
-      const L = frame(), g = L.getContext('2d');
-      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+      const sW = (globalThis.STAGE && globalThis.STAGE.W) || 1920;
+      const sH = (globalThis.STAGE && globalThis.STAGE.H) || 1080;
       // 像素滚动：每帧整格平移（30fps 下 8px/帧 = 1 格/帧）。整帧像素化（clip.js 的 PIXELATE）会把
       // 每帧的亚格位移量化掉，只有 ≥1 格/帧 的位移才能在量化后的成片上留下真实变化（film_gate 的快动测量）。
       const sx = Math.round((t * 240) / CELL) * CELL, sy = Math.round((t * 120) / CELL) * CELL;
-      g.save();
-      g.translate(-((sx % W) + W) % W, -((sy % H) + H) % H);
-      g.drawImage(ground(), 0, 0);
-      g.drawImage(ground(), W, 0);
-      g.drawImage(ground(), 0, H);
-      g.drawImage(ground(), W, H);
-      g.restore();
+      const ox = -((sx % W) + W) % W, oy = -((sy % H) + H) % H;
+      c.save();
       c.imageSmoothingEnabled = false;
-      c.drawImage(L, 0, 0, W, H);
-      c.imageSmoothingEnabled = true;
+      c.beginPath(); c.rect(0, 0, sW, sH); c.clip();
+      for (let y = oy; y < sH; y += H) {
+        for (let x = ox; x < sW; x += W) {
+          c.drawImage(ground(), x, y);
+        }
+      }
+      c.restore();
     },
   };
 })();

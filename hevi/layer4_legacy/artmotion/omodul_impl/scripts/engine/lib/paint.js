@@ -1,8 +1,13 @@
 // 纯代码绘画工具库：噪声、纹理、手绘线、风格渲染器（笔触/色点/马赛克/网点/像素/切面）、共享编舞。
 // 约定：所有随机都用种子；「抖动线条」按 boilFps 换种子（手绘动画的 boiling line），其余保持帧间稳定。
 (() => {
-let W = 1920, H = 1080; U.onStage((w, h) => { W = w; H = h; });   // 画布尺寸跟 U.setStage 走（默认 1920×1080）
 const P = window.PAINT = {};
+let W = 1920, H = 1080;
+U.onStage((w, h) => {
+  W = w; H = h;
+  if (P.lowres) { P.lowres.width = Math.ceil(w / 8); P.lowres.height = Math.ceil(h / 8); }
+  if (P.lowres2) { P.lowres2.width = Math.ceil(w / 2); P.lowres2.height = Math.ceil(h / 2); }
+});
 const { clamp, lerp, ease, rng } = U;
 
 // ---------- 画布 ----------
