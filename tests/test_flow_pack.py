@@ -570,21 +570,22 @@ def _extract_frame(video: Path, ss: float, tag: str, png: Path | None = None):
 
 #: A caption row must carry at least this many high-contrast mask transitions
 #: to count as a "text row" (glyph strokes flip the mask many times per row).
-_BURNED_TRANS_MIN = 18
+_BURNED_TRANS_MIN = 10
 #: A run of consecutive text rows this long (or more) is a text line / band.
-_BURNED_RUN_MIN = 14
+_BURNED_RUN_MIN = 8
 #: Fraction of the frame height treated as the top caption band.
 _BURNED_TOP_BAND = 0.20
-#: Start fraction of the frame height for the bottom caption band.
-_BURNED_BOTTOM_BAND = 0.70
+#: Start fraction of the frame height for the bottom subtitle safe band.
+_BURNED_BOTTOM_BAND = 0.75
 
 
 def _burned_text_signature(png: Path) -> tuple[int, int]:
-    """Return (top_band_run, bottom_band_run) for a frame's caption bands.
+    """Return (top_band_run, bottom_band_run) for a frame's caption/watermark bands (R5-5).
 
-    Burned-in subtitles / watermarks are a *consecutive run* of rows that each
-    carry many high-contrast mask transitions.  A clean silhouette scene has
-    only scattered edges, so its longest run stays small.
+    Detects burned-in subtitles (lower safe band) and top watermarks / shot codes (top 20%).
+    For the top band: high-contrast glyph strokes across consecutive rows.
+    For the bottom band: subtitle rows in the lower interface safe area (bottom 25%,
+    strictly below the 16:9 horizon seam), requiring multi-stroke character edge runs.
     """
     import numpy as np
     from PIL import Image
@@ -592,24 +593,31 @@ def _burned_text_signature(png: Path) -> tuple[int, int]:
 
     arr = np.array(Image.open(png).convert("L")).astype(float)
     h = arr.shape[0]
-    bg = ndimage.uniform_filter(arr, size=51)
-    mask = np.abs(arr - bg) > 40
-    trans = (mask[:, 1:] != mask[:, :-1]).sum(axis=1)
 
-    def longest_run(profile) -> int:
+    top_band = arr[: int(h * _BURNED_TOP_BAND), :]
+    bg_t = ndimage.uniform_filter(top_band, size=21)
+    mask_t = np.abs(top_band - bg_t) > 20
+    trans_t = (mask_t[:, 1:] != mask_t[:, :-1]).sum(axis=1)
+
+    bot_band = arr[int(h * _BURNED_BOTTOM_BAND) :, :]
+    bg_b = ndimage.uniform_filter(bot_band, size=21)
+    mask_b = np.abs(bot_band - bg_b) > 20
+    trans_b = (mask_b[:, 1:] != mask_b[:, :-1]).sum(axis=1)
+
+    def longest_run(profile, min_t=6) -> int:
         best = cur = 0
         for v in profile:
-            cur = cur + 1 if v >= _BURNED_TRANS_MIN else 0
+            cur = cur + 1 if v >= min_t else 0
             best = max(best, cur)
         return best
 
-    top = longest_run(trans[: int(h * _BURNED_TOP_BAND)])
-    bottom = longest_run(trans[int(h * _BURNED_BOTTOM_BAND) :])
-    return top, bottom
+    top_run = longest_run(trans_t, min_t=6)
+    bot_run = longest_run(trans_b, min_t=10)
+    return top_run, bot_run
 
 
 def _has_burned_text(top_run: int, bottom_run: int) -> bool:
-    """True when either caption band shows a text-length stroke run."""
+    """True when either caption band shows a text-length stroke run (R5-5)."""
     return top_run >= _BURNED_RUN_MIN or bottom_run >= _BURNED_RUN_MIN
 
 
@@ -1100,11 +1108,62 @@ class TestB3CleanSource:
 
     def test_burned_text_predicate_counterexamples(self):
         """The predicate separates the measured clean / burned signatures."""
-        # clean source measured top_run=0, bottom_run<=13
-        assert _has_burned_text(0, 13) is False
-        # a top-left watermark (SHOT 02) and a bottom caption both fire
-        assert _has_burned_text(14, 0) is True
-        assert _has_burned_text(0, 47) is True
+        # clean source measured top_run=0, bottom_run=0
+        assert _has_burned_text(0, 0) is False
+        assert _has_burned_text(0, 7) is False
+        # a top-left watermark (SHOT 02 >=8) and a bottom caption (>=8) both fire
+        assert _has_burned_text(8, 0) is True
+        assert _has_burned_text(0, 10) is True
+
+    def test_source_clean_full_scan_5fps_zero_false_positives(self):
+        """source_clean scanned across all frames at 5fps must yield 0 false positives (R5-5)."""
+        assert self.SRC.exists(), f"missing committed artifact {self.SRC}"
+        # 12s at 5fps = 60 sample points
+        for i in range(60):
+            t = i * 0.2
+            png = Path("/tmp") / f"_b3_scan_{i}.png"
+            _extract_frame(self.SRC, t, f"b3_scan_{i}", png)
+            top, bottom = _burned_text_signature(png)
+            assert not _has_burned_text(top, bottom), (
+                f"false positive on clean source at t={t:.2f}s: top={top}, bottom={bottom}"
+            )
+
+    def test_subbed_videos_all_detected_20_frames(self):
+        """4 *_subbed.mp4 at t in {1,3,6,9,11}s (20 frames) must 20/20 be detected (R5-5)."""
+        styles = ["wong_kar_wai", "wes_anderson", "fincher", "zhang_yimou"]
+        timestamps = [1.0, 3.0, 6.0, 9.0, 11.0]
+        for sid in styles:
+            vpath = Path(f"output/dirstyle_e2e/{sid}_subbed.mp4")
+            assert vpath.exists(), f"missing subbed video {vpath}"
+            for t in timestamps:
+                png = Path("/tmp") / f"_b3_sub_{sid}_{int(t)}.png"
+                _extract_frame(vpath, t, f"b3_sub_{sid}_{int(t)}", png)
+                top, bottom = _burned_text_signature(png)
+                assert _has_burned_text(top, bottom), (
+                    f"missed subtitle on {sid}_subbed.mp4 at t={t}s: top={top}, bottom={bottom}"
+                )
+
+    def test_unstroked_shot_02_watermarks_detected(self):
+        """28px and 36px unstroked white 'SHOT 02' at top-left must be detected (R5-5)."""
+        assert self.SRC.exists(), f"missing committed artifact {self.SRC}"
+        from PIL import Image, ImageDraw, ImageFont
+
+        png = Path("/tmp") / "_b3_src_base.png"
+        _extract_frame(self.SRC, 1.0, "b3_base", png)
+        font_path = "/home/soffy/.local/share/fonts/wqy-zenhei.ttc"
+
+        for size in [28, 36]:
+            img = Image.open(png).convert("L")
+            draw = ImageDraw.Draw(img)
+            font = ImageFont.truetype(font_path, size)
+            # unstroked white text at top-left
+            draw.text((30, 30), "SHOT 02", font=font, fill="white")
+            out_png = Path("/tmp") / f"_b3_shot_{size}.png"
+            img.save(out_png)
+            top, bottom = _burned_text_signature(out_png)
+            assert _has_burned_text(top, bottom), (
+                f"missed unstroked SHOT 02 at {size}px: top={top}, bottom={bottom}"
+            )
 
 
 class TestB5Stickman:
