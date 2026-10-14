@@ -1,0 +1,253 @@
+"""SCENE3D renderer: drives the Three.js template with Playwright headless
+Chromium through SwiftShader (CPU WebGL), stepping deterministically via
+``window.__setTime`` and saving one PNG per frame, then encoding to h264 with
+ffmpeg at 30 fps.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Any, Iterator
+
+from .schema import SceneSpec
+from .template import build_html
+
+
+def _find_bin(name: str, *fallbacks: str) -> str:
+    found = shutil.which(name)
+    if found:
+        return found
+    for fb in fallbacks:
+        if Path(fb).is_file():
+            return fb
+    return name
+
+
+FFMPEG = _find_bin("ffmpeg", "/home/soffy/.local/bin/ffmpeg")
+FFPROBE = _find_bin("ffprobe", "/home/soffy/.local/bin/ffprobe")
+
+# Chromium is provided by the python ``playwright`` package; we locate the
+# bundled browser through the package without executing pip installs at runtime.
+_CHROMIUM_ARGS = [
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+    "--no-sandbox",
+    "--disable-gpu-sandbox",
+    "--ignore-gpu-blocklist",
+    "--disable-dev-shm-usage",
+]
+
+
+def vendor_dir() -> Path:
+    return Path(__file__).resolve().parent / "vendor" / "three"
+
+
+class SceneRenderer:
+    """Render a :class:`SceneSpec` to a video deterministically on CPU."""
+
+    def __init__(self, spec: SceneSpec, workdir: str | Path) -> None:
+        self.spec = spec
+        self.workdir = Path(workdir)
+        self.frames_dir = self.workdir / "frames"
+        self.video_path = self.workdir / f"{spec.name}.mp4"
+
+    # -- frame count ------------------------------------------------------ #
+    @property
+    def frame_count(self) -> int:
+        import math
+
+        return max(1, math.ceil(self.spec.duration_s * self.spec.fps))
+
+    def _start_server(self) -> tuple[Any, int]:
+        """Serve ``workdir`` over a local HTTP server (module imports need http).
+
+        Returns (server, port). The server runs in a background thread.
+        """
+        import http.server
+        import socketserver
+        import threading
+
+        workdir = str(self.workdir)
+
+        class _Handler(http.server.SimpleHTTPRequestHandler):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, directory=workdir, **kwargs)
+
+        handler = _Handler
+        httpd = socketserver.TCPServer(("127.0.0.1", 0), handler)
+        port = httpd.server_address[1]
+        t = threading.Thread(target=httpd.serve_forever, daemon=True)
+        t.start()
+        return httpd, port
+
+    # -- browser rendering ------------------------------------------------ #
+    def _write_html(self) -> Path:
+        self.workdir.mkdir(parents=True, exist_ok=True)
+        html_path = self.workdir / "scene.html"
+        html_path.write_text(build_html(self.spec), encoding="utf-8")
+        # Copy vendored three.js next to the html so relative imports resolve.
+        dst = self.workdir / "vendor" / "three"
+        if not dst.exists():
+            dst.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(vendor_dir(), dst, dirs_exist_ok=True)
+        return html_path
+
+    def render_frames(self) -> list[Path]:
+        """Step every frame via Playwright + SwiftShader and save PNGs.
+
+        Returns the list of frame paths (frame_0001.png …)."""
+        from playwright.sync_api import sync_playwright
+
+        html_path = self._write_html()
+        httpd, port = self._start_server()
+        page_url = f"http://127.0.0.1:{port}/scene.html"
+        self.frames_dir.mkdir(parents=True, exist_ok=True)
+
+        n = self.frame_count
+        paths: list[Path] = []
+        duration = self.spec.duration_s
+
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(args=_CHROMIUM_ARGS)
+                page = browser.new_page(
+                    viewport={"width": self.spec.width, "height": self.spec.height},
+                    device_scale_factor=1,
+                )
+                canvas = page.locator("#c")
+                page.goto(page_url)
+                # Wait until the page signals readiness.
+                page.wait_for_function("() => window.__SCENE3D_DONE === true", timeout=60000)
+
+                for i in range(n):
+                    t = (i / self.spec.fps) if n > 1 else 0.0
+                    # Clamp last frame to end of timeline.
+                    if i == n - 1:
+                        t = duration
+                    page.evaluate(f"window.__setTime({t!r})")
+                    frame_path = self.frames_dir / f"frame_{i+1:05d}.png"
+                    canvas.screenshot(path=str(frame_path))
+                    paths.append(frame_path)
+                browser.close()
+        finally:
+            httpd.shutdown()
+        return paths
+
+    # -- encode ----------------------------------------------------------- #
+    def encode(self, frame_paths: list[Path] | None = None) -> Path:
+        if frame_paths is None:
+            frame_paths = sorted(self.frames_dir.glob("frame_*.png"))
+        pattern = (self.frames_dir / "frame_%05d.png").as_posix()
+        cmd = [
+            FFMPEG,
+            "-y",
+            "-framerate", str(self.spec.fps),
+            "-start_number", "1",
+            "-i", pattern,
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            "-preset", "veryfast",
+            "-crf", "20",
+            "-movflags", "+faststart",
+            str(self.video_path),
+        ]
+        subprocess.run(cmd, check=True, capture_output=True)
+        return self.video_path
+
+    # -- convenience ------------------------------------------------------ #
+    def render(self) -> dict[str, Any]:
+        """Full pipeline: frames -> video. Returns a metrics dict."""
+        import time
+
+        t0 = time.perf_counter()
+        paths = self.render_frames()
+        encode_t = time.perf_counter()
+        self.encode(paths)
+        total = time.perf_counter() - t0
+        n = len(paths)
+        return {
+            "video": str(self.video_path),
+            "frames": [str(p) for p in paths],
+            "frame_count": n,
+            "duration_s": self.spec.duration_s,
+            "fps": self.spec.fps,
+            "width": self.spec.width,
+            "height": self.spec.height,
+            "total_render_s": round(total, 3),
+            "per_frame_s": round(total / max(1, n), 4),
+            "encode_s": round(time.perf_counter() - encode_t, 3),
+        }
+
+
+def ffprobe(path: str | Path) -> dict[str, Any]:
+    """Return a small, stable dict of stream facts for a media file."""
+    cmd = [
+        FFPROBE,
+        "-v", "error",
+        "-print_format", "json",
+        "-show_format",
+        "-show_streams",
+        str(path),
+    ]
+    out = subprocess.run(cmd, check=True, capture_output=True).stdout
+    data = json.loads(out)
+    video = next((s for s in data.get("streams", []) if s.get("codec_type") == "video"), {})
+    return {
+        "duration": float(data.get("format", {}).get("duration", 0.0)),
+        "size_bytes": int(data.get("format", {}).get("size", 0)),
+        "width": int(video.get("width", 0)),
+        "height": int(video.get("height", 0)),
+        "codec": video.get("codec_name", ""),
+        "nb_frames": video.get("nb_frames", ""),
+        "has_audio": any(s.get("codec_type") == "audio" for s in data.get("streams", [])),
+    }
+
+
+def sha256(path: str | Path) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def make_contact_sheet(
+    frames: list[Path],
+    out: str | Path,
+    cols: int = 5,
+    thumb_w: int = 320,
+) -> Path:
+    """Montage sampled frames into a single contact sheet PNG via ffmpeg."""
+    import math
+
+    out = Path(out)
+    if not frames:
+        raise ValueError("no frames to montage")
+    rows = math.ceil(len(frames) / cols)
+    tmp_dir = out.parent / (out.stem + "_cs_frames")
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    for idx, fr in enumerate(frames):
+        dst = tmp_dir / f"{idx:05d}.png"
+        if not dst.exists():
+            shutil.copy(fr, dst)
+    cmd = [
+        FFMPEG, "-y",
+        "-framerate", "1",
+        "-start_number", "0",
+        "-i", (tmp_dir / "%05d.png").as_posix(),
+        "-vf", f"scale={thumb_w}:-1,tile={cols}x{rows}",
+        str(out),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+    return out
+
+
+def iter_frame_step(n: int, step: int) -> Iterator[int]:
+    """Yield indices for a contact sheet sample."""
+    for i in range(0, n, step):
+        yield i

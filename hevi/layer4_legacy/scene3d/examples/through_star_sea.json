@@ -1,0 +1,46 @@
+{
+  "name": "through_star_sea",
+  "duration_s": 13.0,
+  "fps": 30,
+  "resolution": 1080,
+  "seed": 31337,
+  "camera": {
+    "aspect": "9:16",
+    "fov": 60.0,
+    "path": [
+      {"t": 0.0,  "pos": [0.0, 0.5, 60.0], "look": [0.0, 0.0, 0.0]},
+      {"t": 6.5,  "pos": [0.0, 0.8, 20.0], "look": [0.0, 0.2, 0.0]},
+      {"t": 13.0, "pos": [0.0, 1.2, 6.0],  "look": [0.0, 0.5, 0.0]}
+    ]
+  },
+  "lights": {
+    "sun_color": [0.9, 0.85, 1.0],
+    "sun_intensity": 1.8,
+    "sun_pos": [4.0, 10.0, 4.0],
+    "ambient_color": [0.30, 0.40, 0.75],
+    "ambient_intensity": 0.6,
+    "rim_color": [0.7, 0.85, 1.0],
+    "rim_intensity": 0.7
+  },
+  "weather": {
+    "background_top": [0.02, 0.03, 0.10],
+    "background_bottom": [0.22, 0.12, 0.34],
+    "fog_color": [0.10, 0.10, 0.24],
+    "fog_density": 0.007,
+    "wind_strength": 0.5,
+    "wind_speed": 1.0,
+    "starfield": true,
+    "star_count": 2600,
+    "bloom_strength": 1.25,
+    "bloom_radius": 0.75,
+    "bloom_threshold": 0.35,
+    "shadows": true
+  },
+  "assets": [
+    {"kind": "planet", "params": {"radius": 3.2, "color": [0.55, 0.65, 0.95], "pos": [0.0, 3.6, 0.0], "spin": 0.2}},
+    {"kind": "planet", "params": {"radius": 1.4, "color": [1.0, 0.7, 0.35], "pos": [-8.0, 8.0, -10.0], "spin": -0.4, "ring": true}},
+    {"kind": "planet", "params": {"radius": 1.0, "color": [0.95, 0.9, 0.6], "pos": [9.0, 6.0, -14.0], "spin": 0.5, "ring": false}},
+    {"kind": "ground", "params": {"color": [0.12, 0.16, 0.10], "radius": 120}},
+    {"kind": "grass", "params": {"count": 1000, "area": 40, "color": [0.16, 0.28, 0.14], "height": 0.6}}
+  ]
+}
