@@ -147,6 +147,34 @@ def test_patch_unknown_template_422(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_patch_character_template_rejected_422(client: TestClient) -> None:
+    """角色类模板因装配期无法绑定演员,ShotSpec 校验直接拒绝 (422: 装配期不可渲染)。"""
+    r = client.patch(_spec_url(0), json={"template": "tc:lower-third-nameplate"})
+    assert r.status_code == 422
+    assert "装配期不可渲染" in r.text
+
+
+def test_patch_supported_template_200(client: TestClient) -> None:
+    """转场/风格/叠加类模板装配期有对应渲染动作,返回 200。"""
+    r = client.patch(_spec_url(0), json={"template": "tc:crash-zoom-punch"})
+    assert r.status_code == 200, r.text
+    assert r.json()["spec"]["template"] == "tc:crash-zoom-punch"
+
+
+def test_patch_valid_style_200(client: TestClient) -> None:
+    """dirstyle 未合并期间,有 ffmpeg 映射的合法 style 枚举值返回 200。"""
+    r = client.patch(_spec_url(0), json={"style": "noir"})
+    assert r.status_code == 200, r.text
+    assert r.json()["spec"]["style"] == "noir"
+
+
+def test_patch_unknown_style_422(client: TestClient) -> None:
+    """dirstyle 未合并期间,未知 style 值返回 422。"""
+    r = client.patch(_spec_url(0), json={"style": "arbitrary_unmapped_style"})
+    assert r.status_code == 422
+
+
+
 def test_patch_unknown_effect_422(client: TestClient) -> None:
     r = client.patch(_spec_url(0), json={"effect": "not-an-effect"})
     assert r.status_code == 422
@@ -242,7 +270,10 @@ def test_put_batch_404_unknown_task(client: TestClient) -> None:
 
 def test_valid_values_come_from_registries() -> None:
     from hevi.production.shot_spec import (
+        rejected,
+        template_render_supported,
         valid_sfx_ids,
+        valid_style_ids,
         valid_template_ids,
         valid_transition_ids,
     )
@@ -251,3 +282,10 @@ def test_valid_values_come_from_registries() -> None:
     assert "whip" in valid_transition_ids()  # custom 转场
     assert len(valid_template_ids()) >= 100
     assert "whoosh_air_up" in valid_sfx_ids()  # manifest 资产
+    assert "noir" in valid_style_ids()
+    assert "sepia" in valid_style_ids()
+
+    # R2 验收要求 1: 每个 valid_template_ids() 中的 id 必须满足:
+    # 或者是装配期可渲染的,或者被 ShotSpec 校验拒绝 (422: 装配期不可渲染)
+    assert all(template_render_supported(t) or rejected(t) for t in valid_template_ids())
+

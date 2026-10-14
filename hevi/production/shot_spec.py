@@ -20,6 +20,7 @@ GAP_PLAN §2 W1:此前每个镜头的"怎么接、加什么效果、配什么音
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,35 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # ── 内置特效名 ────────────────────────────────────────────────────────
 # 这些名字直接映射到 shot_spec_render 里的 ffmpeg 滤镜链。
 BUILTIN_EFFECTS: frozenset[str] = frozenset({"warm", "cool", "mono", "vignette", "sharpen"})
+
+# ── 合法 style 枚举 ───────────────────────────────────────────────────
+# dirstyle 未合并期间,style 只接受有 ffmpeg 映射的枚举值,其它值一律 422。
+# 复用 effect 色调集 + 典型视觉风格滤镜。
+# TODO(dirstyle): validate once feat/director-styles merges
+STYLE_FILTERS: dict[str, str] = {
+    "warm": "colortemperature=temperature=4000",
+    "cool": "colortemperature=temperature=9500",
+    "mono": "hue=s=0",
+    "noir": "hue=s=0,eq=contrast=1.3",
+    "vignette": "vignette=PI/5",
+    "sharpen": "unsharp=5:5:1.2:5:5:0.0",
+    "blur": "gblur=sigma=6",
+    "soft": "gblur=sigma=2",
+    "sketch": "edgedetect=low=0.05:high=0.2",
+    "sepia": "colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131",
+}
+
+VALID_STYLES: frozenset[str] = frozenset(STYLE_FILTERS.keys())
+
+
+def valid_style_ids() -> frozenset[str]:
+    """返回当前合法的 style 枚举 id 集合。"""
+    mod = _dirstyle_module()
+    if mod is not None:
+        ids = getattr(mod, "valid_style_ids", None)
+        if callable(ids):
+            return frozenset(ids())
+    return VALID_STYLES
 
 #: ``transition_in`` 的特殊值:硬切(不重叠,由 build_xfade_chain 的 concat 分支处理)。
 CUT = "cut"
@@ -79,6 +109,26 @@ def sfx_asset_path(sfx_id: str) -> Path:
 def valid_template_ids() -> frozenset[str]:
     """FX 注册表里的全部模板 id。"""
     return frozenset(t.id for t in _registry().list_all())
+
+
+def template_render_supported(template_id: str) -> bool:
+    """FX 注册表模板在装配期是否支持渲染。
+
+    transition / style / overlay 在装配期有确定性渲染动作;
+    character 类模板因生成期演员绑定未决,装配期不可渲染(由 ShotSpec 校验拒绝 -> 422)。
+    """
+    reg = _registry()
+    t = reg.get(template_id)
+    if t is None:
+        return False
+    from hevi.fx.registry import Category
+
+    return t.category in (Category.TRANSITION, Category.STYLE, Category.OVERLAY)
+
+
+def rejected(template_id: str) -> bool:
+    """FX 注册表模板是否在 ShotSpec 校验中被拒绝 (422: 装配期不可渲染)。"""
+    return not template_render_supported(template_id)
 
 
 def valid_style_effect_ids() -> frozenset[str]:
@@ -147,6 +197,10 @@ class ShotSpec(BaseModel):
             return v
         if v not in valid_template_ids():
             raise ValueError(f"unknown template id '{v}' (not in FX registry)")
+        if not template_render_supported(v):
+            raise ValueError(
+                f"template '{v}' is not supported at assembly time (装配期不可渲染)"
+            )
         return v
 
     @field_validator("transition_in")
@@ -179,11 +233,18 @@ class ShotSpec(BaseModel):
         if v is None:
             return v
         mod = _dirstyle_module()
-        if mod is None:
-            return v  # dirstyle 未合并 → 自由字符串
-        ids = getattr(mod, "valid_style_ids", None)
-        if callable(ids) and v not in ids():
-            raise ValueError(f"unknown dirstyle id '{v}'")
+        if mod is not None:
+            # TODO(dirstyle): feat/director-styles 已合并时走 dirstyle 的校验器
+            ids = getattr(mod, "valid_style_ids", None)
+            if callable(ids) and v not in ids():
+                raise ValueError(f"unknown dirstyle id '{v}'")
+            return v
+        # TODO(dirstyle): validate once feat/director-styles merges
+        # dirstyle 未合并期间,仅允许有 ffmpeg 映射的合法 style 枚举,其它一律 422
+        if v not in VALID_STYLES:
+            raise ValueError(
+                f"unknown style '{v}' (dirstyle unmerged: must be one of {sorted(VALID_STYLES)})"
+            )
         return v
 
     @model_validator(mode="after")
@@ -237,3 +298,53 @@ def merge_patch(base: ShotSpec, patch: dict[str, Any]) -> ShotSpec:
     merged = base.model_dump()
     merged.update(patch)
     return ShotSpec.model_validate(merged)
+
+
+_SHOT_INDEX_RE = re.compile(r"shot_(\d+)")
+
+
+async def load_shot_specs_for_task(
+    repo: Any,
+    task_id: Any,
+    shot_count: int | None = None,
+    ordered_paths: list[Path] | None = None,
+) -> list[ShotSpec | None] | None:
+    """从任务存储 (shot_states.selection_json["shot_spec"]) 读取指定任务各镜的 ShotSpec 列表。
+
+    - 若提供 ordered_paths,按路径里的 shot index (shot_XXXX) 对齐;
+    - 否则若提供 shot_count,按 shot_index 0..shot_count-1 顺序对齐;
+    - 若该任务没有镜头或没有任何镜设置 spec,返回 None(保持旧调用行为逐字不变)。
+    """
+    if repo is None or task_id is None:
+        return None
+    try:
+        raw_shots = await repo.get_shots(task_id)
+    except Exception:
+        return None
+    if not raw_shots:
+        return None
+
+    spec_by_idx: dict[int, ShotSpec] = {}
+    for row in raw_shots:
+        idx = row.get("shot_index")
+        if idx is not None and isinstance(idx, int):
+            sp = read_spec(row)
+            if sp is not None:
+                spec_by_idx[idx] = sp
+
+    if not spec_by_idx:
+        return None
+
+    if ordered_paths is not None:
+        specs: list[ShotSpec | None] = []
+        for i, p in enumerate(ordered_paths):
+            m = _SHOT_INDEX_RE.search(p.name)
+            idx = int(m.group(1)) if m else i
+            specs.append(spec_by_idx.get(idx))
+        return specs
+
+    if shot_count is not None:
+        return [spec_by_idx.get(i) for i in range(shot_count)]
+
+    max_idx = max(spec_by_idx.keys()) if spec_by_idx else -1
+    return [spec_by_idx.get(i) for i in range(max_idx + 1)]
