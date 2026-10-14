@@ -11,10 +11,49 @@
 
 ## 输出文件
 
-- `output/artmotion_e2e/task_0/artmotion_landscape.mp4` (sha256 4dd9aac37e511a2a...)
-- `output/artmotion_e2e/task_1/artmotion_portrait.mp4` (sha256 0c22a6cd67d800fb...)
-- `output/artmotion_e2e/task_2/artmotion_landscape.mp4` (sha256 166d8534de2d14a8...)
-- `output/artmotion_e2e/task_3_comparison/artmotion_portrait.mp4` (sha256 877f44b23bdf0163...)
+## ARTMOTION 返工 r5 最终完成总结（2026-10-13）
+
+### 1. 完成内容清单
+- **纹理模式清理与阻断修复（r5 B1）**：
+  - 彻底重写 `scenes_style/*_texture.js`（17_ink, 25_ghibli, 14_8bit, 12_bauhaus），去除了所有上游 demo 房间、家具、窗户、植物、叙事主体（少女/猫/虾），只保留全屏均匀纸纹、水彩晕染、像素格与色块底子。
+  - 修复 ink 纹理底里纸纤维过粗被误认为「笔触碎弧线（黑发/猫纹样）」的问题，改为纯净纸纹颗粒与径向淡墨洗染。
+  - 在 `produce.py` 中接入 `scan_texture_files` 门禁，禁止任何违规 token（`girl|cat|shrimp|curtain|window|WIN|tablecloth|daisies|plant|mug|desk|bg()`，含注释）。
+- **语法层风格化（r5 B2）**：
+  - `t1_3b1b` 语法层引入风格描边（Ink 使用楷体 + 墨色笔触描边；Ghibli 采用赛璐璐暖褐描边）。
+  - `y5_kinetic_type` 语法层 Ink 样式切换为霞鹜文楷（LXGWWenKai-500）与宣纸色卡。
+  - `t3_finance_chart` 与 `14_8bit` 样式通过底层 `PIXELATE` 后处理及像素网格统一吃像素风。
+- **文字层与相机解耦及安全区越界检查（r5 B3）**：
+  - `clip.js` 中将带有 `fixed: true` 的语法层（t1, t3, y5）与相机运动完全解耦（不随镜头推拉/横移推出画面）。
+  - 实现并提交了逐帧（30fps ≥ 2fps）文本包围盒越界检查器（`render.py`），实时记录并落盘成 `<mp4>.textsafe.json`，在 `produce.py` 中接入 `text_in_safe_area` 门禁（越界即红灯）。
+- **LaTeX 源码上屏清理（r5 B4）**：
+  - `produce.py` 的 `sanitize_latex` 增强：完善了 `^` 与 `_` 的 Unicode 上下标映射（如 `^T` → `ᵀ`、`_k` → `ₖ`）及 `\sqrt` 等数学符号映射。
+  - 单元测试覆盖了 `QK^T/\sqrt{d_k}` 与 `\text{Softmax}(QK^T)V` 的转写与无源码上屏门禁。
+
+### 2. 测试与 Lint 结果
+- `pytest tests/test_artmotion.py`：**6 passed**（包含新加的 LaTeX 与 texture 2 类单元测试）。
+- 3O lint：**仅基线 4 项失败**（与合并基线一致，未引入任何新失败）。
+
+### 3. E2E 真实产物与验收数据（ffprobe + film_gate 实测）
+
+| 指标 | task_0 (Ghibli/3b1b 16:9) | task_1 (Ink/Kinetic 9:16) | task_2 (8bit/Chart 16:9) | task_3_comparison (Ink/Kinetic 9:16) |
+|------|--------------------------|--------------------------|--------------------------|--------------------------------------|
+| 时长 (s) | 30.00 | 26.90 | 32.00 | 27.08 |
+| 分辨率 | 1920x1080 | 1080x1920 | 1920x1080 | 1080x1920 |
+| 音轨 | aac (mean -18.2 ~ -19.8 dB) | aac | aac | aac |
+| 门禁灯 | **green** | **green** | **green** | **green** |
+| fast_ratio | 0.1117 | 0.1362 | 0.1047 | 0.2258 |
+| blank_run_s | 0.0s | 0.0s | 0.0s | 0.0s |
+| text_safe 越界帧 | 0/900 帧 (0%) | 0/807 帧 (0%) | 0/960 帧 (0%) | 0/812 帧 (0%) |
+| LaTeX / 纹理违规 | 0 | 0 | 0 | 0 |
+| sha256 | `f377c5708756...` | `939a4b16be6a...` | `c86714959c7e...` | `52310da0a0c5...` |
+
+### 4. 产物路径
+- `output/artmotion_e2e/task_0/artmotion_landscape.mp4`
+- `output/artmotion_e2e/task_1/artmotion_portrait.mp4`
+- `output/artmotion_e2e/task_2/artmotion_landscape.mp4`
+- `output/artmotion_e2e/task_3_comparison/artmotion_portrait.mp4`
+
+DONE ARTMOTION-R5
 
 每条都有 `deliver_out/交付说明.md`（由 deliver.py 生成）和 `.sheet.jpg` contact sheet。
 
@@ -122,3 +161,5 @@ artmotion 未引入新失败。
 - `ARTMOTION_FIX.md` - 审核方修复清单
 - `ARTMOTION_FIX_PROGRESS.md` - 修复进度
 - `output/artmotion_e2e/summary.json` - E2E 完整指标
+
+DONE ARTMOTION-R5
