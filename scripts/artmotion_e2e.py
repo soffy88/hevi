@@ -376,6 +376,7 @@ async def main():
             "fast_ratio": fast_ratio,
             "blank_run_s": rec["blank_run_s"],
             "blue_purple_share": rec["blue_purple_share"],
+            "near_black_frames": rec.get("near_black_frames"),
             "still_ratio": rec["still_ratio"],
             "video_path": video_path,
             "sheet_path": str(sheet_path),
