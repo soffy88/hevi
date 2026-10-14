@@ -185,6 +185,10 @@ def load_scene(path: str | Path) -> SceneSpec:
 
 
 def parse_scene(data: dict[str, Any]) -> SceneSpec:
+    # Validate the raw scene document before building the spec so structural
+    # problems (e.g. an asset missing the required `kind`) are caught here
+    # rather than via a late KeyError during construction.
+    _validate_data(data)
     cam = data.get("camera", {})
     lig = data.get("lights", {})
     wea = data.get("weather", {})
@@ -285,15 +289,22 @@ def scene_to_dict(spec: SceneSpec) -> dict[str, Any]:
     }
 
 
-def validate_scene(spec: SceneSpec) -> None:
-    """Validate a parsed spec against the JSON schema.
+def _validate_data(data: dict[str, Any]) -> None:
+    """Validate the raw scene document dict against the JSON schema."""
+    if not _HAS_JSONSCHEMA:  # pragma: no cover
+        return
+    try:
+        jsonschema.validate(instance=data, schema=_SCHEMA)
+    except jsonschema.ValidationError as exc:
+        raise ValueError(f"scene validation failed: {exc.message}") from exc
 
-    Raises ``ValueError`` (wrapping ``jsonschema.ValidationError``) on failure.
-    """
+
+def validate_scene(spec: SceneSpec) -> None:
+    """Validate a parsed spec (round-tripped through the schema) for symmetry."""
     if not _HAS_JSONSCHEMA:  # pragma: no cover
         return
     doc = scene_to_dict(spec)
     try:
         jsonschema.validate(instance=doc, schema=_SCHEMA)
-    except jsonschema.ValidationError as exc:  # noqa: PLW0703
+    except jsonschema.ValidationError as exc:
         raise ValueError(f"scene validation failed: {exc.message}") from exc

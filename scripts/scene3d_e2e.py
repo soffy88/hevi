@@ -26,7 +26,6 @@ sys.path.insert(0, str(ROOT))
 
 from hevi.layer4_legacy.scene3d import renderer as R  # noqa: E402
 
-
 SHOTS = [
     ("little_planet_orbit", 30, 12.0),
     ("fox_in_wheat", 30, 12.0),
@@ -56,8 +55,8 @@ def main() -> int:
         out.mkdir(parents=True, exist_ok=True)
         (out / "scene.json").write_text(json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8")
 
-        from hevi.layer4_legacy.scene3d.schema import parse_scene
         from hevi.layer4_legacy.scene3d.renderer import SceneRenderer
+        from hevi.layer4_legacy.scene3d.schema import parse_scene
 
         scene = parse_scene(spec)
         r = SceneRenderer(scene, out)

@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -151,7 +149,7 @@ def test_916_subject_in_safe_area(tmp_path: Path) -> None:
 
     mid = Image.open(frames[len(frames) // 2]).convert("RGB")
     arr = np.asarray(mid)
-    h, w, _ = arr.shape
+    h, _, _ = arr.shape
     r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
     # Planet mask: warm tone, not too dark (skip shadows), not blown-out.
     planet_mask = (r > g + 10) & (r > 140) & (b < 200) & (r < 260)
@@ -194,7 +192,7 @@ def test_schema_validation_fails_on_bad_asset() -> None:
     bad = json.loads(json.dumps(_TINY))
     bad["assets"] = [{"kind": "ufo"}]  # unknown kind is allowed (warned), but missing 'kind' is not
     del bad["assets"][0]["kind"]
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):  # schema rejects missing required 'kind'
         S.parse_scene(bad)
 
 

@@ -21,8 +21,6 @@ textures or network assets are required.
 
 from __future__ import annotations
 
-import json
-
 from .schema import SceneSpec, scene_to_dict
 
 

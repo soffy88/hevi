@@ -13,17 +13,17 @@ and no paid API / GPU is touched.
 
 from __future__ import annotations
 
+from .cli import main as cli_main
+from .renderer import SceneRenderer
 from .schema import (
-    SceneSpec,
     AssetSpec,
     CameraSpec,
     LightSpec,
+    SceneSpec,
     WeatherSpec,
     load_scene,
     validate_scene,
 )
-from .renderer import SceneRenderer
-from .cli import main as cli_main
 
 __all__ = [
     "SceneSpec",

@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from .schema import SceneSpec
 from .template import build_html
@@ -103,7 +104,7 @@ class SceneRenderer:
 
         html_path = self._write_html()
         httpd, port = self._start_server()
-        page_url = f"http://127.0.0.1:{port}/scene.html"
+        page_url = f"http://127.0.0.1:{port}/{html_path.name}"
         self.frames_dir.mkdir(parents=True, exist_ok=True)
 
         n = self.frame_count
@@ -267,5 +268,4 @@ def make_contact_sheet(
 
 def iter_frame_step(n: int, step: int) -> Iterator[int]:
     """Yield indices for a contact sheet sample."""
-    for i in range(0, n, step):
-        yield i
+    yield from range(0, n, step)
