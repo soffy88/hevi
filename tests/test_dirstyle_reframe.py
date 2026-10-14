@@ -51,7 +51,7 @@ def _make_test_video(
         "-f",
         "lavfi",
         "-i",
-        (f"gradients=s={w}x{h}:c0=0x000000:c1=0xffffff:speed=0.01:duration={dur}"),
+        (f"gradients=s={w}x{h}:c0=0x000000:c1=0xffffff:speed=0:duration={dur}"),
         "-filter_complex",
         "[0:v][1:v]blend=all_mode=screen,format=yuv420p",
         "-c:v",
@@ -96,14 +96,12 @@ def _extract_mid_frame(video: Path, out_png: Path) -> Path:
 def _find_foreground_bbox(
     png_path: Path, diff_threshold: float = 50.0
 ) -> tuple[int, int, int, int]:
-    """Find the foreground (16:9 video) bounding box in a 9:16 reframe.
+    """Find the foreground (16:9 video) bounding box in a 9:16 reframe (R5-4).
 
-    The reframe lays the full 16:9 source (sharp, detailed, many horizontal
-    edges) over a background that is either a solid colour field or a heavily
-    blurred cover.  So we measure *per-row horizontal-edge energy*: rows that
-    belong to the foreground carry far more left-right pixel-to-pixel change
-    than the smooth background.  This is robust to the tmix smear and the
-    off-centre placement that defeated the earlier vertical-gradient grouping.
+    Identifies the top and bottom boundary transitions of the 16:9 foreground
+    over the 9:16 canvas. Combines boundary edge gradient strength (gy) with
+    interior horizontal detail (gx), without relying on a brittle single relative
+    threshold that dropped dark-scene edges in Fincher.
 
     Returns (x_left, y_top, x_right, y_bottom).
     """
@@ -112,8 +110,7 @@ def _find_foreground_bbox(
 
     gray = arr.mean(axis=2)
     # Vertical gradient summed across each row: the foreground's top and
-    # bottom edges are the strongest horizontal boundaries in the frame
-    # (background is blurred/solid above and below the 16:9 band).
+    # bottom edges are the strongest horizontal boundaries in the frame.
     gy = np.abs(np.diff(gray, axis=0)).sum(axis=1)
     if gy.max() <= 0:
         raise AssertionError("No foreground edges detected in frame")
@@ -121,32 +118,43 @@ def _find_foreground_bbox(
     # Per-row horizontal detail energy (sharp 16:9 content vs smooth bg).
     gx = np.abs(np.diff(gray, axis=1)).mean(axis=1)
 
-    # Candidate top edges: rows whose vertical gradient is a strong peak.
-    # Try each peak as the foreground top, take the strongest later peak as
-    # the bottom, and score the band by the interior horizontal detail it
-    # encloses.  The true foreground maximises that interior detail.
-    thr = gy.max() * 0.35
-    peaks = [int(i) for i in np.where(gy >= thr)[0]]
+    # Candidate edge peaks: local maxima of gy that stand out above noise
+    med = np.median(gy)
+    peaks = []
+    for i in range(1, len(gy) - 1):
+        if gy[i] >= gy[i - 1] and gy[i] >= gy[i + 1] and gy[i] > max(50.0, med * 2.0):
+            peaks.append(i)
     if not peaks:
         peaks = [int(np.argmax(gy))]
 
-    # The foreground band is at least ~150px tall (a 16:9 frame scaled to
-    # >=270px wide); require a real interior so a lone edge row cannot win.
-    min_h = 150
-    best = None  # (score, y_top, y_bottom)
-    for t in peaks:
-        later = [b for b in peaks if b - t >= min_h]
-        if not later:
-            later = [b for b in peaks if b - t >= 40]
-        if not later:
-            continue
-        for b in later:
+    peaks.sort(key=lambda idx: gy[idx], reverse=True)
+    peaks = sorted(peaks[:32])
+
+    best = None
+    # For a 9:16 vertical video reframed from 16:9,
+    # the 16:9 foreground height is between ~400 and ~750 px.
+    for i, t in enumerate(peaks):
+        for b in peaks[i + 1:]:
+            h = b - t
+            if not (400 <= h <= 750):
+                continue
             band = gx[t : b + 1]
             if band.size == 0:
                 continue
-            score = float(band.mean())
+            score = float(band.mean()) * float(gy[t] + gy[b])
             if best is None or score > best[0]:
                 best = (score, t, b)
+
+    if best is None:
+        for i, t in enumerate(peaks):
+            for b in peaks[i + 1:]:
+                h = b - t
+                if not (150 <= h <= 800):
+                    continue
+                score = float(gy[t] + gy[b])
+                if best is None or score > best[0]:
+                    best = (score, t, b)
+
     if best is None:
         raise AssertionError("No foreground edges detected in frame")
     _, y_top, y_bottom = best
