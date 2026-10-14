@@ -194,13 +194,13 @@
 
       const safeLeft = 80 * fScale;
       const safeRight = w - 80 * fScale;
-      const safeTop = (w > h ? 60 : 90) * fScale;
+      const safeTop = (w > h ? 60 : 95) * fScale;
       const headerY = safeTop + 4 * fScale;
 
       c.save();
       c.textBaseline = "top";
       c.fillStyle = "rgba(148, 163, 184, 0.6)";
-      c.font = `700 ${Math.round(14 * fScale)}px monospace`;
+      c.font = `700 ${Math.round((w > h ? 14 : 24) * fScale)}px monospace`;
       c.textAlign = "left";
       ft(c, `BPM ${bpm} // BEAT ${currentBeat.toFixed(1)}`, safeLeft, headerY);
 
@@ -210,8 +210,8 @@
       c.strokeStyle = "rgba(51, 65, 85, 0.4)";
       c.lineWidth = 1;
       c.beginPath();
-      c.moveTo(safeLeft, headerY + 24 * fScale);
-      c.lineTo(safeRight, headerY + 24 * fScale);
+      c.moveTo(safeLeft, headerY + (w > h ? 24 : 36) * fScale);
+      c.lineTo(safeRight, headerY + (w > h ? 24 : 36) * fScale);
       c.stroke();
       c.restore();
 
@@ -253,7 +253,7 @@
     window.draw = function (t) {
       ctx.clearRect(0, 0, width, height);
       if (__recordText) { window.__textBoxes = []; window.__containers = []; }
-      const _top = (width > height ? 60 : 90) * fScale;
+      const _top = (width > height ? 60 : 85) * fScale;
       const _bot = height - (width > height ? 70 : 110) * fScale;
       window.__safeArea = { left: 80 * fScale, top: _top, right: width - 80 * fScale, bottom: _bot };
 

@@ -196,7 +196,8 @@
 
       const safeLeft = 80 * fScale;
       const safeRight = w - 80 * fScale;
-      const safeTop = (w > h ? 80 : 130) * fScale;
+      const isLandscape = w > h;
+      const safeTop = (isLandscape ? 80 : 130) * fScale;
 
       c.save();
       c.textAlign = "left";
@@ -204,20 +205,20 @@
 
       let y = safeTop;
       c.fillStyle = "#f59e0b";
-      c.font = `700 ${Math.round(14 * fScale)}px monospace`;
+      c.font = `700 ${Math.round((isLandscape ? 14 : 24) * fScale)}px monospace`;
       ft(c, "LAYER BUILD // MODULAR ARCHITECTURE", safeLeft, y);
-      y += 24 * fScale;
+      y += (isLandscape ? 24 : 36) * fScale;
 
       c.fillStyle = "#ffffff";
-      c.font = `700 ${Math.round(30 * fScale)}px -apple-system, sans-serif`;
+      c.font = `700 ${Math.round((isLandscape ? 30 : 48) * fScale)}px -apple-system, sans-serif`;
       ft(c, (spec.title || "").replace(/。/g, ""), safeLeft, y);
-      y += 42 * fScale;
+      y += (isLandscape ? 42 : 60) * fScale;
 
       if (spec.title_en) {
         c.fillStyle = "rgba(148, 163, 184, 0.85)";
-        c.font = `500 ${Math.round(15 * fScale)}px monospace`;
+        c.font = `500 ${Math.round((isLandscape ? 15 : 24) * fScale)}px monospace`;
         ft(c, spec.title_en.replace(/。/g, ""), safeLeft, y);
-        y += 28 * fScale;
+        y += (isLandscape ? 28 : 38) * fScale;
       }
 
       c.strokeStyle = "rgba(51, 65, 85, 0.4)";
@@ -237,12 +238,13 @@
       drawBackground(ctx, width, height, t);
 
       const isLandscape = width > height;
-      const cx = isLandscape ? width * 0.38 : width * 0.48;
-      const cy = isLandscape ? height * 0.62 : height * 0.62;
-      const isoScale = fScale * 0.92;
+      const isPortrait = height > width + 50;
+      const cx = isLandscape ? width * 0.38 : (isPortrait ? width * 0.25 : width * 0.32);
+      const cy = isLandscape ? height * 0.62 : (isPortrait ? height * 0.68 : height * 0.65);
+      const isoScale = fScale * (isPortrait ? 0.88 : 0.92);
 
-      const layerSize = 340;
-      const layerSpacingZ = 110;
+      const layerSize = isPortrait ? 300 : (isLandscape ? 340 : 280);
+      const layerSpacingZ = isPortrait ? 185 : (isLandscape ? 110 : 120);
       const itemCount = schedule.length;
 
       for (let i = 0; i < itemCount; i++) {
@@ -287,8 +289,8 @@
         ctx.fill();
 
         // Right side annotation card
-        const cardX = isLandscape ? width * 0.68 : width * 0.62;
-        const cardY = pCenter.y - 28 * fScale;
+        const cardX = isLandscape ? width * 0.68 : (isPortrait ? 460 * fScale : width * 0.54);
+        const cardY = pCenter.y - (isPortrait ? 42 : 28) * fScale;
         const revealCardP = Spring.stepResponse(tau - 0.2, 16.0, 0.85);
 
         if (revealCardP > 0.05) {
@@ -304,22 +306,24 @@
 
           ctx.textAlign = "left";
           ctx.textBaseline = "top";
-          if (__recordText) window.__containers.push({ x: cardX - 10 * fScale, y: cardY - 6 * fScale, w: 340 * fScale, h: 82 * fScale });
+          const cardW = isPortrait ? 545 * fScale : (isLandscape ? 340 * fScale : 400 * fScale);
+          const cardH = isPortrait ? 130 * fScale : 82 * fScale;
+          if (__recordText) window.__containers.push({ x: cardX - 10 * fScale, y: cardY - 6 * fScale, w: cardW, h: cardH });
           let cyText = cardY;
 
           ctx.fillStyle = accent;
-          ctx.font = `700 ${Math.round(12 * fScale)}px monospace`;
+          ctx.font = `700 ${Math.round((isPortrait ? 24 : 12) * fScale)}px monospace`;
           ft(ctx, `[ ${lData.tag || "LAYER"} ]`, cardX, cyText);
-          cyText += 18 * fScale;
+          cyText += (isPortrait ? 32 : 18) * fScale;
 
           ctx.fillStyle = "#ffffff";
-          ctx.font = `700 ${Math.round(18 * fScale)}px -apple-system, sans-serif`;
+          ctx.font = `700 ${Math.round((isPortrait ? 44 : 18) * fScale)}px -apple-system, sans-serif`;
           ft(ctx, (lData.name_zh || "").replace(/。/g, ""), cardX, cyText);
-          cyText += 28 * fScale;
+          cyText += (isPortrait ? 52 : 28) * fScale;
 
           if (lData.stat) {
             ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
-            ctx.font = `500 ${Math.round(13 * fScale)}px monospace`;
+            ctx.font = `500 ${Math.round((isPortrait ? 24 : 13) * fScale)}px monospace`;
             ft(ctx, lData.stat.replace(/。/g, ""), cardX, cyText);
           }
           ctx.restore();

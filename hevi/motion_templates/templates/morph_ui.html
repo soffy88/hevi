@@ -171,21 +171,21 @@
       switch (state.type) {
         case "button":
           return {
-            x: cx - 260 * fScale,
-            y: cy - 48 * fScale,
-            w: 520 * fScale,
-            h: 96 * fScale,
-            radius: 48 * fScale,
+            x: cx - (isLandscape ? 260 : 430) * fScale,
+            y: cy - (isLandscape ? 48 : 64) * fScale,
+            w: (isLandscape ? 520 : 860) * fScale,
+            h: (isLandscape ? 96 : 128) * fScale,
+            radius: (isLandscape ? 48 : 40) * fScale,
             bg: "#1e293b",
             border: state.accent || "#f59e0b",
             borderWidth: 2 * fScale
           };
         case "progress":
           return {
-            x: cx - (isLandscape ? 440 : 400) * fScale,
-            y: cy - 70 * fScale,
-            w: (isLandscape ? 880 : 800) * fScale,
-            h: 140 * fScale,
+            x: cx - (isLandscape ? 440 : 430) * fScale,
+            y: cy - (isLandscape ? 70 : 115) * fScale,
+            w: (isLandscape ? 880 : 860) * fScale,
+            h: (isLandscape ? 140 : 230) * fScale,
             radius: 28 * fScale,
             bg: "#182234",
             border: "#334155",
@@ -193,10 +193,10 @@
           };
         case "metric":
           return {
-            x: cx - 290 * fScale,
-            y: cy - 170 * fScale,
-            w: 580 * fScale,
-            h: 340 * fScale,
+            x: cx - (isLandscape ? 290 : 430) * fScale,
+            y: cy - (isLandscape ? 170 : 240) * fScale,
+            w: (isLandscape ? 580 : 860) * fScale,
+            h: (isLandscape ? 340 : 480) * fScale,
             radius: 32 * fScale,
             bg: "#162032",
             border: state.accent || "#38bdf8",
@@ -204,10 +204,10 @@
           };
         case "chart":
           return {
-            x: cx - (isLandscape ? 440 : 410) * fScale,
-            y: cy - 240 * fScale,
-            w: (isLandscape ? 880 : 820) * fScale,
-            h: 480 * fScale,
+            x: cx - (isLandscape ? 440 : 430) * fScale,
+            y: cy - (isLandscape ? 240 : 300) * fScale,
+            w: (isLandscape ? 880 : 860) * fScale,
+            h: (isLandscape ? 480 : 600) * fScale,
             radius: 32 * fScale,
             bg: "#141e30",
             border: "#334155",
@@ -215,10 +215,10 @@
           };
         case "player":
           return {
-            x: cx - (isLandscape ? 450 : 420) * fScale,
-            y: cy - 250 * fScale,
-            w: (isLandscape ? 900 : 840) * fScale,
-            h: 500 * fScale,
+            x: cx - (isLandscape ? 450 : 430) * fScale,
+            y: cy - (isLandscape ? 250 : 300) * fScale,
+            w: (isLandscape ? 900 : 860) * fScale,
+            h: (isLandscape ? 500 : 600) * fScale,
             radius: 28 * fScale,
             bg: "#111827",
             border: state.accent || "#e11d48",
@@ -227,10 +227,10 @@
         case "card":
         default:
           return {
-            x: cx - 400 * fScale,
-            y: cy - 190 * fScale,
-            w: 800 * fScale,
-            h: 380 * fScale,
+            x: cx - (isLandscape ? 400 : 430) * fScale,
+            y: cy - (isLandscape ? 190 : 250) * fScale,
+            w: (isLandscape ? 800 : 860) * fScale,
+            h: (isLandscape ? 380 : 500) * fScale,
             radius: 32 * fScale,
             bg: "#132137",
             border: state.accent || "#10b981",
@@ -332,11 +332,11 @@
       c.save();
       const safeLeft = 60 * fScale;
       const safeRight = w - 60 * fScale;
-      const safeTop = (w > h ? 60 : 105) * fScale;
+      const safeTop = (w > h ? 60 : 100) * fScale;
 
       c.textBaseline = "top";
-      c.fillStyle = "rgba(148, 163, 184, 0.4)";
-      c.font = `600 ${Math.round(18 * fScale)}px monospace`;
+      c.fillStyle = "rgba(148, 163, 184, 0.5)";
+      c.font = `600 ${Math.round((w > h ? 18 : 24) * fScale)}px monospace`;
       c.textAlign = "left";
       ft(c, "HEVI MOTION ARCHITECTURE // " + (spec.title || "STUDIO PIPELINE"), safeLeft, safeTop);
 
@@ -350,6 +350,7 @@
       const s = sched.state;
       const cx = geom.x + geom.w / 2;
       const cy = geom.y + geom.h / 2;
+      const isLandscape = width > height;
 
       c.save();
       c.globalAlpha = Math.max(0, Math.min(1.0, alpha));
@@ -358,14 +359,14 @@
       if (s.type === "button") {
         c.fillStyle = s.accent || "#f59e0b";
         c.beginPath();
-        c.arc(geom.x + 36 * fScale, cy, 6 * fScale, 0, Math.PI * 2);
+        c.arc(geom.x + (isLandscape ? 36 : 54) * fScale, cy, (isLandscape ? 6 : 10) * fScale, 0, Math.PI * 2);
         c.fill();
 
         c.fillStyle = "#f8fafc";
-        c.font = `600 ${Math.round(22 * fScale)}px -apple-system, sans-serif`;
+        c.font = `600 ${Math.round((isLandscape ? 22 : 44) * fScale)}px -apple-system, sans-serif`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        ft(c, (s.title || "").replace(/。/g, ""), cx + 12 * fScale, cy);
+        ft(c, (s.title || "").replace(/。/g, ""), cx + (isLandscape ? 12 : 20) * fScale, cy);
         c.restore();
         return;
       }
@@ -375,17 +376,17 @@
         c.textAlign = "center";
         c.textBaseline = "middle";
         c.fillStyle = s.accent || "#f59e0b";
-        c.font = `700 ${Math.round(14 * fScale)}px monospace`;
-        ft(c, s.badge || "PROCESSING", cx, geom.y + 36 * fScale);
+        c.font = `700 ${Math.round((isLandscape ? 14 : 24) * fScale)}px monospace`;
+        ft(c, s.badge || "PROCESSING", cx, geom.y + (isLandscape ? 36 : 48) * fScale);
 
         c.fillStyle = "#f8fafc";
-        c.font = `600 ${Math.round(22 * fScale)}px -apple-system, sans-serif`;
-        ft(c, (s.title || "").replace(/。/g, ""), cx, geom.y + 70 * fScale);
+        c.font = `600 ${Math.round((isLandscape ? 22 : 44) * fScale)}px -apple-system, sans-serif`;
+        ft(c, (s.title || "").replace(/。/g, ""), cx, geom.y + (isLandscape ? 70 : 112) * fScale);
 
-        const trackW = geom.w - 100 * fScale;
-        const trackH = 12 * fScale;
-        const trackX = geom.x + 50 * fScale;
-        const trackY = geom.y + 104 * fScale;
+        const trackW = geom.w - (isLandscape ? 100 : 120) * fScale;
+        const trackH = (isLandscape ? 12 : 18) * fScale;
+        const trackX = geom.x + (isLandscape ? 50 : 60) * fScale;
+        const trackY = geom.y + (isLandscape ? 104 : 172) * fScale;
 
         c.fillStyle = "rgba(51, 65, 85, 0.6)";
         drawRoundedRect(c, trackX, trackY, trackW, trackH, 6 * fScale);
@@ -402,43 +403,43 @@
       // Top badge
       if (s.badge) {
         c.fillStyle = s.accent || "#f59e0b";
-        c.font = `700 ${Math.round(14 * fScale)}px monospace`;
+        c.font = `700 ${Math.round((isLandscape ? 14 : 24) * fScale)}px monospace`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        ft(c, s.badge, cx, geom.y + 36 * fScale);
+        ft(c, s.badge, cx, geom.y + (isLandscape ? 36 : 48) * fScale);
       }
 
-      // Title
+      // Title (主文字 >= 44px on 9:16)
       if (s.title) {
         c.fillStyle = "#f8fafc";
-        c.font = `600 ${Math.round(24 * fScale)}px -apple-system, sans-serif`;
+        c.font = `600 ${Math.round((isLandscape ? 24 : 44) * fScale)}px -apple-system, sans-serif`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        ft(c, s.title.replace(/。/g, ""), cx, geom.y + 76 * fScale);
+        ft(c, s.title.replace(/。/g, ""), cx, geom.y + (isLandscape ? 76 : 118) * fScale);
       }
 
       // 3. Metric type (Big number cleanly separated from title)
       if (s.type === "metric") {
         c.fillStyle = "#ffffff";
-        c.font = `800 ${Math.round(72 * fScale)}px monospace`;
+        c.font = `800 ${Math.round((isLandscape ? 72 : 108) * fScale)}px monospace`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        ft(c, s.value || "18", cx, geom.y + 195 * fScale);
+        ft(c, s.value || "18", cx, geom.y + (isLandscape ? 195 : 275) * fScale);
 
         if (s.unit) {
           c.fillStyle = s.accent || "#38bdf8";
-          c.font = `600 ${Math.round(16 * fScale)}px monospace`;
-          ft(c, s.unit, cx, geom.y + 270 * fScale);
+          c.font = `600 ${Math.round((isLandscape ? 16 : 32) * fScale)}px monospace`;
+          ft(c, s.unit, cx, geom.y + (isLandscape ? 270 : 395) * fScale);
         }
       }
 
       // 4. Chart type (bars strictly constrained below title line)
       else if (s.type === "chart") {
         const bars = s.bars || [0.4, 0.65, 0.9, 0.75, 0.5];
-        const barAreaW = geom.w - 120 * fScale;
-        const baseY = geom.y + geom.h - 52 * fScale;
-        const maxBarH = geom.h - 170 * fScale; // Leaves top 170px for badge + title
-        const startX = geom.x + 60 * fScale;
+        const barAreaW = geom.w - (isLandscape ? 120 : 140) * fScale;
+        const baseY = geom.y + geom.h - (isLandscape ? 52 : 60) * fScale;
+        const maxBarH = geom.h - (isLandscape ? 170 : 230) * fScale;
+        const startX = geom.x + (isLandscape ? 60 : 70) * fScale;
         const slotW = barAreaW / bars.length;
         const barW = slotW * 0.62;
 
@@ -455,15 +456,15 @@
 
       // 5. Player preview
       else if (s.type === "player") {
-        const playerAreaW = geom.w - 100 * fScale;
-        const playX = geom.x + 50 * fScale;
-        const playY = geom.y + 260 * fScale;
+        const playerAreaW = geom.w - (isLandscape ? 100 : 120) * fScale;
+        const playX = geom.x + (isLandscape ? 50 : 60) * fScale;
+        const playY = geom.y + (isLandscape ? 260 : 360) * fScale;
 
         const waveCount = 24;
         const wGap = playerAreaW / waveCount;
         for (let i = 0; i < waveCount; i++) {
           const amp = 0.25 + 0.7 * Math.abs(Math.sin((i * 0.45) + t * 2.0));
-          const wh = 54 * fScale * amp;
+          const wh = (isLandscape ? 54 : 80) * fScale * amp;
           const wx = playX + i * wGap;
           c.fillStyle = wx < playX + playerAreaW * (s.playhead || 0.65) ? (s.accent || "#e11d48") : "rgba(71, 85, 105, 0.5)";
           drawRoundedRect(c, wx, playY - wh / 2, 4 * fScale, wh, 2 * fScale);
@@ -474,18 +475,18 @@
         c.strokeStyle = "#ffffff";
         c.lineWidth = 2 * fScale;
         c.beginPath();
-        c.moveTo(headX, playY - 42 * fScale);
-        c.lineTo(headX, playY + 42 * fScale);
+        c.moveTo(headX, playY - (isLandscape ? 42 : 60) * fScale);
+        c.lineTo(headX, playY + (isLandscape ? 42 : 60) * fScale);
         c.stroke();
       }
 
       // 6. Generic card detail
       else if (s.detail) {
         c.fillStyle = "rgba(203, 213, 225, 0.85)";
-        c.font = `500 ${Math.round(18 * fScale)}px monospace`;
+        c.font = `500 ${Math.round((isLandscape ? 18 : 32) * fScale)}px monospace`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        ft(c, s.detail.replace(/。/g, ""), cx, geom.y + 210 * fScale);
+        ft(c, s.detail.replace(/。/g, ""), cx, geom.y + (isLandscape ? 210 : 300) * fScale);
       }
 
       c.restore();
