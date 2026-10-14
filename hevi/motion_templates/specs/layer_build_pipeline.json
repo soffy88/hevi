@@ -1,0 +1,40 @@
+{
+  "title": "多模态成片架构分层建造",
+  "title_en": "System Architecture Layered Assembly",
+  "duration": 10.0,
+  "bpm": 120,
+  "layers": [
+    {
+      "id": "substrate",
+      "name_zh": "数据底座与素材接入层",
+      "name_en": "L1: Asset & Substrate Layer",
+      "tag": "SUBSTRATE",
+      "accent": "#f59e0b",
+      "stat": "100+ Multi-format Assets"
+    },
+    {
+      "id": "graph",
+      "name_zh": "分镜语义图谱与时长规划",
+      "name_en": "L2: Semantic Story Graph",
+      "tag": "GRAPH CORE",
+      "accent": "#38bdf8",
+      "stat": "Graph DAG Latency < 12ms"
+    },
+    {
+      "id": "engine",
+      "name_zh": "确定性纯函数动效渲染器",
+      "name_en": "L3: Stateless Motion Engine",
+      "tag": "RENDER CORE",
+      "accent": "#10b981",
+      "stat": "60 FPS Sub-frame Seeking"
+    },
+    {
+      "id": "gate",
+      "name_zh": "智能审片门禁与交付发布",
+      "name_en": "L4: Quality Gate & Delivery",
+      "tag": "DELIVER NODE",
+      "accent": "#f43f5e",
+      "stat": "Zero Artifact Gate Green"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "title": "Hevi 架构进化里程碑",
+  "title_en": "Hevi Architecture Evolution Roadmap",
+  "duration": 10.0,
+  "bpm": 120,
+  "milestones": [
+    {
+      "index": "01",
+      "year": "V1",
+      "title_zh": "启发式脚本与粗粒度拼片",
+      "title_en": "Heuristic Scripting & Coarse Assembly",
+      "desc_zh": "早期基于规则模板的素材硬切拼装，奠定短视频自动化管线基础框架",
+      "desc_en": "Early rule-based video stitching establishing core automation foundations",
+      "accent": "#f59e0b"
+    },
+    {
+      "index": "02",
+      "year": "V2",
+      "title_zh": "领域模块解耦与管线标准化",
+      "title_en": "Domain Decoupling & Pipeline Standards",
+      "desc_zh": "抽象分镜、语音合成、音频伴奏与画面渲染为独立微服务节点",
+      "desc_en": "Decoupling storyboards, TTS, audio beds and visual renderers into clean microservices",
+      "accent": "#38bdf8"
+    },
+    {
+      "index": "03",
+      "year": "V3",
+      "title_zh": "闭环质量门禁与全链路审计",
+      "title_en": "Closed-Loop Quality Gate & Full Audit",
+      "desc_zh": "引入自动化黑场拦截、文字溢出校验与视觉卡顿检测等严苛品控指标",
+      "desc_en": "Introducing automated blank-frame guards, text overflow audits and stutter analysis",
+      "accent": "#10b981"
+    },
+    {
+      "index": "04",
+      "year": "V4",
+      "title_zh": "单文件纯函数确定性动效",
+      "title_en": "Stateless Pure Function Motion Templates",
+      "desc_zh": "落地单 HTML 闭式弹簧动效模板，实现相同输入完全一致的确定性输出",
+      "desc_en": "Adopting single-file closed-form spring templates for strictly reproducible outputs",
+      "accent": "#f59e0b"
+    }
+  ]
+}

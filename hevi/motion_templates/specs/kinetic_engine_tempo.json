@@ -1,0 +1,49 @@
+{
+  "title": "Hevi 动效节拍引擎",
+  "bpm": 120,
+  "duration": 10.0,
+  "accent": "#10b981",
+  "audio": "assets/audio/beat_120bpm_10s.wav",
+  "phrases": [
+    {
+      "start_beat": 0,
+      "beats_count": 4,
+      "words": ["闭式", "弹簧", "微量", "过冲"],
+      "subtext": "CLOSED-FORM SPRING // TINY OVERSHOOT",
+      "accent": "#10b981",
+      "layout": "center_punch"
+    },
+    {
+      "start_beat": 4,
+      "beats_count": 4,
+      "words": ["容器", "形变", "内容", "进出"],
+      "subtext": "CONTAINER MORPH // CONTENT PACING",
+      "accent": "#f59e0b",
+      "layout": "split_box"
+    },
+    {
+      "start_beat": 8,
+      "beats_count": 4,
+      "words": ["无态", "逐帧", "毫秒", "复现"],
+      "subtext": "STATELESS SEEK // REPRODUCIBLE FRAMES",
+      "accent": "#38bdf8",
+      "layout": "ticker_stack"
+    },
+    {
+      "start_beat": 12,
+      "beats_count": 4,
+      "words": ["多宽", "高比", "自动", "适配"],
+      "subtext": "MULTI-ASPECT // PARALLEL EXPORT",
+      "accent": "#f59e0b",
+      "layout": "center_punch"
+    },
+    {
+      "start_beat": 16,
+      "beats_count": 4,
+      "words": ["绿灯", "自检", "高质", "交付"],
+      "subtext": "GATE PASS // PRODUCTION READY",
+      "accent": "#10b981",
+      "layout": "split_box"
+    }
+  ]
+}
