@@ -279,6 +279,40 @@ async def main():
                 },
             ],
         },
+
+        # Task 4 (r6 新增): 9:16 + t1_3b1b + 25_ghibli —— 竖屏吉卜力底纹理 10s 样片，
+        # 验收「12_bauhaus/25_ghibli/14_8bit 竖屏是否有同样的黑底问题」。
+        {
+            "id": "task_4_portrait_ghibli",
+            "desc": "9:16 + t1_3b1b + 25_ghibli (竖屏水彩底 10s 样片：验证竖屏纹理无黑底)",
+            "grammar": "t1_3b1b",
+            "style": "25_ghibli",
+            "aspect": "9:16",
+            "topic": "注意力机制竖屏样片",
+            "short_sample": True,
+            "segments": [
+                {
+                    "id": "t4_s1",
+                    "sceneType": "hook",
+                    "narration": "自注意力机制让每个词都能看到句子里所有的词。",
+                    "props": {
+                        "cues": [
+                            {"kind": "equation", "data": {"tokens": [{"s": "Q"}, {"s": "K^T"}, {"s": "/\\sqrt{d_k}"}]}},
+                        ],
+                    },
+                },
+                {
+                    "id": "t4_s2",
+                    "sceneType": "definition",
+                    "narration": "查询与键做点积，再除以维度的平方根做数值缩放。",
+                    "props": {
+                        "cues": [
+                            {"kind": "line", "data": {"values": [1.0, 2.4, 3.8, 5.1, 6.4], "color": "TEAL_C"}},
+                        ],
+                    },
+                },
+            ],
+        },
     ]
 
     results_summary = []
@@ -349,8 +383,13 @@ async def main():
         }
         results_summary.append(summary_entry)
         print(f"Task {task_id} Completed: dur={dur:.2f}s, res={w}x{h}, gate={gate_light}, fast_ratio={fast_ratio:.4f}")
-        assert 20.0 <= dur <= 40.0, f"Duration {dur}s not in [20, 40]!"
-        assert gate_light == "green", f"Gate light {gate_light} is not green!"
+        # r6：task_4 是 10s 样片（短于 film_gate 的 20s 短片段档，快动门禁只提示不拦），单独放宽时长断言。
+        if item.get("short_sample"):
+            assert 6.0 <= dur <= 20.0, f"Short sample duration {dur}s not in [6, 20]!"
+            assert gate_light in ("green", "yellow"), f"Gate light {gate_light} is red on short sample!"
+        else:
+            assert 20.0 <= dur <= 40.0, f"Duration {dur}s not in [20, 40]!"
+            assert gate_light == "green", f"Gate light {gate_light} is not green!"
         assert sheet_path.is_file(), f"Contact sheet missing: {sheet_path}"
 
     print("\n\n" + "=" * 60)
