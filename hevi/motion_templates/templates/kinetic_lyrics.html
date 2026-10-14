@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Hevi Motion Template - Kinetic Lyrics</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #0b0f19;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="../lib/spring.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let spec = {
+      title: "代码律动 // 纯函数动效",
+      bpm: 120,
+      duration: 12.0,
+      accent: "#f59e0b",
+      phrases: [
+        {
+          start_beat: 0,
+          beats_count: 4,
+          words: ["灵感", "触发", "毫秒", "对齐"],
+          subtext: "INSTANT INSPIRATION // SUB-FRAME PRECISION",
+          accent: "#f59e0b",
+          layout: "center_punch"
+        },
+        {
+          start_beat: 4,
+          beats_count: 4,
+          words: ["节点", "点亮", "全链", "贯通"],
+          subtext: "NODE ILLUMINATION // PIPELINE ENGAGED",
+          accent: "#10b981",
+          layout: "split_box"
+        },
+        {
+          start_beat: 8,
+          beats_count: 4,
+          words: ["零阶", "跃失", "纯粹", "函数"],
+          subtext: "ZERO ARTIFACTS // PURE FUNCTION RENDER",
+          accent: "#38bdf8",
+          layout: "ticker_stack"
+        },
+        {
+          start_beat: 12,
+          beats_count: 4,
+          words: ["像素", "重构", "瞬时", "定格"],
+          subtext: "PIXEL RECONSTRUCTION // TIMELINE FREEZE",
+          accent: "#f43f5e",
+          layout: "center_punch"
+        },
+        {
+          start_beat: 16,
+          beats_count: 4,
+          words: ["确定", "交付", "成片", "出炉"],
+          subtext: "DETERMINISTIC DELIVERY // FINAL ASSET",
+          accent: "#10b981",
+          layout: "split_box"
+        },
+        {
+          start_beat: 20,
+          beats_count: 4,
+          words: ["何为", "智能", "动效", "新章"],
+          subtext: "HEVI MOTION TEMPLATES // CHAPTER CLOSED",
+          accent: "#f59e0b",
+          layout: "ticker_stack"
+        }
+      ]
+    };
+
+    let width = 1080;
+    let height = 1920;
+    let beatSchedule = [];
+
+    function buildSchedule() {
+      beatSchedule = [];
+      const bpm = spec.bpm || 120;
+      const beatDur = 60.0 / bpm;
+
+      for (let pIdx = 0; pIdx < spec.phrases.length; pIdx++) {
+        const phrase = spec.phrases[pIdx];
+        const phraseStartT = phrase.start_beat * beatDur;
+        const phraseDur = phrase.beats_count * beatDur;
+
+        // Schedule words on each beat
+        const wordList = phrase.words || [];
+        const wordsSched = [];
+        for (let w = 0; w < wordList.length; w++) {
+          const wordBeat = phrase.start_beat + w;
+          const wordStartT = wordBeat * beatDur;
+          wordsSched.push({
+            word: wordList[w].replace(/。/g, ""), // Strip full stops
+            beat: wordBeat,
+            tStart: wordStartT
+          });
+        }
+
+        beatSchedule.push({
+          phraseIndex: pIdx,
+          data: phrase,
+          tStart: phraseStartT,
+          tEnd: phraseStartT + phraseDur,
+          words: wordsSched
+        });
+      }
+    }
+
+    window.initTemplate = function (newSpec, w, h) {
+      if (newSpec) {
+        spec = Object.assign({}, spec, newSpec);
+      }
+      width = w || 1080;
+      height = h || 1920;
+      canvas.width = width;
+      canvas.height = height;
+      buildSchedule();
+    };
+
+    function drawRoundedRect(c, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.arcTo(x + w, y, x + w, y + r, r);
+      c.lineTo(x + w, y + h - r);
+      c.arcTo(x + w, y + h, x + w - r, y + h, r);
+      c.lineTo(x + r, y + h);
+      c.arcTo(x, y + h, x, y + h - r, r);
+      c.lineTo(x, y + r);
+      c.arcTo(x, y, x + r, y, r);
+      c.closePath();
+    }
+
+    // Steady typography backdrop with BPM tempo indicators
+    function drawBackground(c, w, h, t) {
+      c.fillStyle = "#0a0e17";
+      c.fillRect(0, 0, w, h);
+
+      const sScale = w / 1080;
+      const vScale = h / 1920;
+      const bpm = spec.bpm || 120;
+      const beatDur = 60.0 / bpm;
+      const currentBeat = t / beatDur;
+
+      // Header info
+      c.save();
+      const safeLeft = 80 * sScale;
+      const safeRight = w - 80 * sScale;
+      const safeTop = 140 * vScale;
+
+      c.fillStyle = "rgba(148, 163, 184, 0.4)";
+      c.font = `700 ${Math.round(14 * sScale)}px monospace`;
+      c.fillText(`BPM ${bpm} // GRID BEAT ${currentBeat.toFixed(1)}`, safeLeft, safeTop);
+
+      c.textAlign = "right";
+      c.fillText((spec.title || "KINETIC TYPOGRAPHY").replace(/。/g, ""), safeRight, safeTop);
+
+      // Top rule line
+      c.strokeStyle = "rgba(51, 65, 85, 0.4)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(safeLeft, safeTop + 24 * vScale);
+      c.lineTo(safeRight, safeTop + 24 * vScale);
+      c.stroke();
+      c.restore();
+
+      // Bottom BPM grid visualization
+      c.save();
+      const safeBottom = h - 160 * vScale;
+      const gridW = safeRight - safeLeft;
+      const beatSlots = 16;
+      const slotW = gridW / beatSlots;
+      const activeSlot = Math.floor(currentBeat) % beatSlots;
+      const frac = currentBeat - Math.floor(currentBeat);
+
+      for (let b = 0; b < beatSlots; b++) {
+        const bx = safeLeft + b * slotW;
+        const isCur = b === activeSlot;
+        c.fillStyle = isCur ? (spec.accent || "#f59e0b") : "rgba(51, 65, 85, 0.4)";
+        const barH = isCur ? 16 * vScale : 8 * vScale;
+        c.fillRect(bx + 2, safeBottom - barH, slotW - 4, barH);
+      }
+
+      // Playhead tracker
+      const headX = safeLeft + ((currentBeat % beatSlots) / beatSlots) * gridW;
+      c.strokeStyle = spec.accent || "#f59e0b";
+      c.lineWidth = 2 * sScale;
+      c.beginPath();
+      c.moveTo(headX, safeBottom - 26 * vScale);
+      c.lineTo(headX, safeBottom + 4 * vScale);
+      c.stroke();
+      c.restore();
+    }
+
+    window.draw = function (t) {
+      ctx.clearRect(0, 0, width, height);
+      drawBackground(ctx, width, height, t);
+
+      const sScale = width / 1080;
+      const vScale = height / 1920;
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // Safe area bounds
+      const safeLeft = 80 * sScale;
+      const safeRight = width - 80 * sScale;
+      const safeW = safeRight - safeLeft;
+
+      // Find active phrase
+      let curPhraseSched = null;
+      for (let p = 0; p < beatSchedule.length; p++) {
+        const item = beatSchedule[p];
+        if (t >= item.tStart && t < item.tEnd) {
+          curPhraseSched = item;
+          break;
+        }
+      }
+
+      // If past last phrase, stick to last
+      if (!curPhraseSched && beatSchedule.length > 0) {
+        if (t >= beatSchedule[beatSchedule.length - 1].tEnd) {
+          curPhraseSched = beatSchedule[beatSchedule.length - 1];
+        } else {
+          curPhraseSched = beatSchedule[0];
+        }
+      }
+
+      if (!curPhraseSched) return;
+
+      const phrase = curPhraseSched.data;
+      const accent = phrase.accent || spec.accent || "#f59e0b";
+      const words = curPhraseSched.words;
+
+      // Phrase container transition alpha
+      const pTau = t - curPhraseSched.tStart;
+      const phraseAlpha = Math.min(1.0, Spring.stepResponse(pTau, 16.0, 0.85));
+
+      ctx.save();
+      ctx.globalAlpha = phraseAlpha;
+
+      // Subtext banner
+      if (phrase.subtext) {
+        ctx.fillStyle = accent;
+        ctx.font = `700 ${Math.round(16 * sScale)}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(phrase.subtext.replace(/。/g, ""), cx, cy - 240 * vScale);
+      }
+
+      // Layout type 1: Center punch (punchy giant words landing on beats)
+      if (phrase.layout === "center_punch") {
+        // Collect landed words
+        const landed = [];
+        let latestWordIdx = 0;
+        let latestTau = 0;
+
+        for (let i = 0; i < words.length; i++) {
+          if (t >= words[i].tStart) {
+            landed.push(words[i].word);
+            latestWordIdx = i;
+            latestTau = t - words[i].tStart;
+          }
+        }
+
+        const fullText = landed.join(" ");
+        // Giant punchy spring scale for latest word hit
+        const hitSpring = Spring.stepResponse(latestTau, 18.0, 0.82);
+        const scale = 1.0 + (1.0 - hitSpring) * 0.16;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+
+        // Highlight box for active word
+        const fontPx = Math.round(92 * sScale);
+        ctx.font = `900 ${fontPx}px -apple-system, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        const textMetrics = ctx.measureText(fullText);
+        const boxPad = 24 * sScale;
+        const boxW = Math.min(safeW, textMetrics.width + boxPad * 2);
+
+        // Draw accent under-layer
+        ctx.fillStyle = "rgba(24, 34, 52, 0.85)";
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2 * sScale;
+        drawRoundedRect(ctx, -boxW / 2, -70 * vScale, boxW, 140 * vScale, 20 * sScale);
+        ctx.fill();
+        ctx.stroke();
+
+        // Main text
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(fullText, 0, 4 * vScale);
+        ctx.restore();
+      }
+
+      // Layout type 2: Split contrast box
+      else if (phrase.layout === "split_box") {
+        const topWords = words.slice(0, 2);
+        const botWords = words.slice(2, 4);
+
+        const topText = topWords.map(w => w.word).join(" ");
+        const botText = botWords.map(w => w.word).join(" ");
+
+        // Top line
+        const topTau = Math.max(0, t - words[0].tStart);
+        const topP = Spring.stepResponse(topTau, 16.0, 0.82);
+        const topScale = 1.0 + (1.0 - topP) * 0.14;
+
+        ctx.save();
+        ctx.translate(cx, cy - 80 * vScale);
+        ctx.scale(topScale, topScale);
+        ctx.fillStyle = accent;
+        ctx.font = `900 ${Math.round(84 * sScale)}px -apple-system, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(topText, 0, 0);
+        ctx.restore();
+
+        // Bottom line (reveals at word 2)
+        if (words[2] && t >= words[2].tStart) {
+          const botTau = t - words[2].tStart;
+          const botP = Spring.stepResponse(botTau, 16.0, 0.82);
+          const botScale = 1.0 + (1.0 - botP) * 0.14;
+
+          ctx.save();
+          ctx.translate(cx, cy + 80 * vScale);
+          ctx.scale(botScale, botScale);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `900 ${Math.round(84 * sScale)}px -apple-system, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(botText, 0, 0);
+          ctx.restore();
+        }
+      }
+
+      // Layout type 3: Ticker stack (vertical staggered list)
+      else {
+        const stackStartY = cy - 140 * vScale;
+        const stackSpacing = 90 * vScale;
+
+        for (let i = 0; i < words.length; i++) {
+          const wItem = words[i];
+          if (t < wItem.tStart) continue;
+
+          const wTau = t - wItem.tStart;
+          const wP = Spring.stepResponse(wTau, 18.0, 0.82);
+          const isLatest = (i === words.length - 1) || (i < words.length - 1 && t < words[i + 1].tStart);
+
+          ctx.save();
+          const wordY = stackStartY + i * stackSpacing;
+          const slideX = (1.0 - wP) * 40 * sScale;
+
+          ctx.fillStyle = isLatest ? accent : "rgba(226, 232, 240, 0.85)";
+          ctx.font = `800 ${Math.round((isLatest ? 74 : 64) * sScale)}px -apple-system, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(wItem.word, cx + slideX, wordY);
+
+          // Active ticker indicator dot
+          if (isLatest) {
+            ctx.fillStyle = accent;
+            ctx.beginPath();
+            ctx.arc(cx - 240 * sScale, wordY, 8 * sScale, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      ctx.restore();
+    };
+
+    buildSchedule();
+  })();
+  </script>
+</body>
+</html>

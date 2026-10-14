@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Hevi Motion Template - Morph UI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #0b0f19;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="../lib/spring.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let spec = {
+      title: "智能视频生成流水线",
+      bpm: 120,
+      duration: 12.0,
+      states: [
+        {
+          id: "start_btn",
+          type: "button",
+          title: "启动智能成片引擎",
+          badge: "INITIALIZE",
+          accent: "#f59e0b",
+          duration_beats: 4
+        },
+        {
+          id: "parse_progress",
+          type: "progress",
+          title: "脚本解析与分镜语义分解",
+          badge: "ANALYZING 88%",
+          progress: 0.88,
+          accent: "#10b981",
+          duration_beats: 4
+        },
+        {
+          id: "metric_stats",
+          type: "metric",
+          title: "原子镜头规划就绪",
+          badge: "SHOTS: 18 / 18",
+          value: "18",
+          unit: "CLIPS",
+          accent: "#38bdf8",
+          duration_beats: 4
+        },
+        {
+          id: "perf_chart",
+          type: "chart",
+          title: "算力调度与渲染吞吐",
+          badge: "THROUGHPUT",
+          bars: [0.45, 0.72, 0.95, 0.84, 0.62],
+          accent: "#f59e0b",
+          duration_beats: 4
+        },
+        {
+          id: "preview_player",
+          type: "player",
+          title: "4K 确定性画质实时预览",
+          badge: "PREVIEW 60FPS",
+          playhead: 0.65,
+          accent: "#e11d48",
+          duration_beats: 4
+        },
+        {
+          id: "gate_check",
+          type: "card",
+          title: "质量门禁与黑场审片通过",
+          badge: "QUALITY VERIFIED",
+          detail: "film_gate: 0 errors | 0 dropouts",
+          accent: "#10b981",
+          duration_beats: 4
+        }
+      ]
+    };
+
+    let width = 1080;
+    let height = 1920;
+
+    // Timeline precomputed structure
+    let stateSchedule = [];
+    let totalDuration = 12.0;
+
+    function buildSchedule() {
+      const beatDur = 60.0 / (spec.bpm || 120);
+      let curT = 0.5; // slight intro offset
+      stateSchedule = [];
+
+      for (let i = 0; i < spec.states.length; i++) {
+        const s = spec.states[i];
+        const dur = (s.duration_beats || 4) * beatDur;
+        stateSchedule.push({
+          index: i,
+          state: s,
+          tStart: curT,
+          tEnd: curT + dur,
+          dur: dur
+        });
+        curT += dur;
+      }
+      totalDuration = Math.max(spec.duration || 12.0, curT + 0.5);
+    }
+
+    window.initTemplate = function (newSpec, w, h) {
+      if (newSpec) {
+        spec = Object.assign({}, spec, newSpec);
+      }
+      width = w || 1080;
+      height = h || 1920;
+      canvas.width = width;
+      canvas.height = height;
+      buildSchedule();
+    };
+
+    // Calculate container geometry targets for each state based on aspect ratio
+    function getStateGeometry(state, idx, w, h) {
+      const isLandscape = w > h;
+      const isSquare = Math.abs(w - h) < 50;
+      const baseScale = isLandscape ? h / 1080 : w / 1080;
+
+      const cx = w / 2;
+      const cy = h / 2;
+
+      switch (state.type) {
+        case "button":
+          return {
+            x: cx - (260 * baseScale),
+            y: cy - (48 * baseScale),
+            w: 520 * baseScale,
+            h: 96 * baseScale,
+            radius: 48 * baseScale,
+            bg: "#1e293b",
+            border: state.accent || "#f59e0b",
+            borderWidth: 2 * baseScale
+          };
+        case "progress":
+          return {
+            x: cx - (420 * baseScale),
+            y: cy - (70 * baseScale),
+            w: 840 * baseScale,
+            h: 140 * baseScale,
+            radius: 28 * baseScale,
+            bg: "#182234",
+            border: "#334155",
+            borderWidth: 2 * baseScale
+          };
+        case "metric":
+          return {
+            x: cx - (300 * baseScale),
+            y: cy - (180 * baseScale),
+            w: 600 * baseScale,
+            h: 360 * baseScale,
+            radius: 36 * baseScale,
+            bg: "#162032",
+            border: state.accent || "#38bdf8",
+            borderWidth: 2 * baseScale
+          };
+        case "chart":
+          return {
+            x: cx - (440 * baseScale),
+            y: cy - (260 * baseScale),
+            w: 880 * baseScale,
+            h: 520 * baseScale,
+            radius: 32 * baseScale,
+            bg: "#141e30",
+            border: "#334155",
+            borderWidth: 2 * baseScale
+          };
+        case "player":
+          return {
+            x: cx - (450 * baseScale),
+            y: cy - (280 * baseScale),
+            w: 900 * baseScale,
+            h: 560 * baseScale,
+            radius: 28 * baseScale,
+            bg: "#111827",
+            border: state.accent || "#e11d48",
+            borderWidth: 2 * baseScale
+          };
+        case "card":
+        default:
+          return {
+            x: cx - (420 * baseScale),
+            y: cy - (220 * baseScale),
+            w: 840 * baseScale,
+            h: 440 * baseScale,
+            radius: 32 * baseScale,
+            bg: "#132137",
+            border: state.accent || "#10b981",
+            borderWidth: 2.5 * baseScale
+          };
+      }
+    }
+
+    // Closed-form spring interpolation for state geometry
+    function computeContainerAtTime(t, w, h) {
+      if (stateSchedule.length === 0) buildSchedule();
+
+      // Find which interval we are in
+      let prevIdx = 0;
+      let nextIdx = 0;
+      let transitionStart = 0;
+
+      for (let i = 0; i < stateSchedule.length; i++) {
+        if (t >= stateSchedule[i].tStart) {
+          prevIdx = i;
+          nextIdx = Math.min(i + 1, stateSchedule.length - 1);
+          transitionStart = stateSchedule[i].tStart;
+        }
+      }
+
+      const curSched = stateSchedule[prevIdx];
+      const nextSched = stateSchedule[nextIdx];
+
+      const gCur = getStateGeometry(curSched.state, prevIdx, w, h);
+      const gNext = getStateGeometry(nextSched.state, nextIdx, w, h);
+
+      // Transition occurs at nextSched.tStart
+      if (prevIdx < nextIdx && t >= nextSched.tStart) {
+        const tau = t - nextSched.tStart;
+        const p = Spring.stepResponse(tau, 14.0, 0.82);
+
+        // Compute morph blur: peak around tau=0.15s, ends around tau=0.35s
+        let blurPx = 0;
+        if (tau >= 0 && tau < 0.35) {
+          const triangle = 1.0 - Math.abs(tau - 0.17) / 0.17;
+          blurPx = Math.max(0, triangle * 4.5);
+        }
+
+        return {
+          x: gCur.x + (gNext.x - gCur.x) * p,
+          y: gCur.y + (gNext.y - gCur.y) * p,
+          w: gCur.w + (gNext.w - gCur.w) * p,
+          h: gCur.h + (gNext.h - gCur.h) * p,
+          radius: gCur.radius + (gNext.radius - gCur.radius) * p,
+          bg: gNext.bg,
+          border: gNext.border,
+          borderWidth: gCur.borderWidth + (gNext.borderWidth - gCur.borderWidth) * p,
+          activeIdx: tau > 0.15 ? nextIdx : prevIdx,
+          contentFadeOutIdx: prevIdx,
+          contentFadeInIdx: nextIdx,
+          transitionTau: tau,
+          isTransitioning: tau < 0.45,
+          blurPx: blurPx
+        };
+      }
+
+      return {
+        x: gCur.x,
+        y: gCur.y,
+        w: gCur.w,
+        h: gCur.h,
+        radius: gCur.radius,
+        bg: gCur.bg,
+        border: gCur.border,
+        borderWidth: gCur.borderWidth,
+        activeIdx: prevIdx,
+        contentFadeOutIdx: -1,
+        contentFadeInIdx: prevIdx,
+        transitionTau: 10.0,
+        isTransitioning: false,
+        blurPx: 0
+      };
+    }
+
+    // Helper to draw rounded rectangle
+    function drawRoundedRect(c, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.arcTo(x + w, y, x + w, y + r, r);
+      c.lineTo(x + w, y + h - r);
+      c.arcTo(x + w, y + h, x + w - r, y + h, r);
+      c.lineTo(x + r, y + h);
+      c.arcTo(x, y + h, x, y + h - r, r);
+      c.lineTo(x, y + r);
+      c.arcTo(x, y, x + r, y, r);
+      c.closePath();
+    }
+
+    // Draw background (clean dark slate, subtle vignette, technical grid markers)
+    function drawBackground(c, w, h, t) {
+      c.fillStyle = "#090d16";
+      c.fillRect(0, 0, w, h);
+
+      // Subtle radial warmth, no flashing, no large purple
+      const grad = c.createRadialGradient(w / 2, h / 2, 80, w / 2, h / 2, Math.max(w, h) * 0.75);
+      grad.addColorStop(0, "rgba(22, 32, 50, 0.4)");
+      grad.addColorStop(1, "rgba(9, 13, 22, 1.0)");
+      c.fillStyle = grad;
+      c.fillRect(0, 0, w, h);
+
+      // Subtle watermark / header
+      c.save();
+      c.fillStyle = "rgba(148, 163, 184, 0.35)";
+      c.font = `600 ${Math.round(20 * (w / 1080))}px monospace`;
+      c.fillText("HEVI MOTION ARCHITECTURE // " + (spec.title || "STUDIO PIPELINE"), 60 * (w / 1080), 80 * (h / 1920));
+
+      c.textAlign = "right";
+      const timeStr = `T+${t.toFixed(2)}s`;
+      c.fillText(timeStr, w - (60 * (w / 1080)), 80 * (h / 1920));
+      c.restore();
+    }
+
+    // Draw content inside the container
+    function drawContainerContent(c, geom, sched, alpha, t, w, h) {
+      if (alpha <= 0.01) return;
+      const s = sched.state;
+      const sScale = w / 1080;
+      const cx = geom.x + geom.w / 2;
+      const cy = geom.y + geom.h / 2;
+
+      c.save();
+      c.globalAlpha = Math.max(0, Math.min(1.0, alpha));
+
+      // Badge top
+      if (s.badge) {
+        c.fillStyle = s.accent || "#f59e0b";
+        c.font = `700 ${Math.round(15 * sScale)}px monospace`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        const badgeY = geom.y + (geom.h > 180 * sScale ? 46 * sScale : geom.h / 2 - 18 * sScale);
+        c.fillText(s.badge, cx, badgeY);
+      }
+
+      // Title
+      if (s.title) {
+        c.fillStyle = "#f8fafc";
+        c.font = `600 ${Math.round((geom.h > 240 * sScale ? 28 : 22) * sScale)}px -apple-system, sans-serif`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        const titleY = geom.h > 200 * sScale ? geom.y + 90 * sScale : cy;
+        // Strip full stops per rule
+        const cleanTitle = s.title.replace(/。/g, "");
+        c.fillText(cleanTitle, cx, titleY);
+      }
+
+      // Specialized content per type
+      if (s.type === "button") {
+        // Dot indicator
+        c.fillStyle = s.accent || "#f59e0b";
+        c.beginPath();
+        c.arc(geom.x + 36 * sScale, cy, 6 * sScale, 0, Math.PI * 2);
+        c.fill();
+      } else if (s.type === "progress") {
+        // Progress track & bar
+        const trackW = geom.w - 120 * sScale;
+        const trackH = 14 * sScale;
+        const trackX = geom.x + 60 * sScale;
+        const trackY = cy + 24 * sScale;
+
+        c.fillStyle = "rgba(51, 65, 85, 0.6)";
+        drawRoundedRect(c, trackX, trackY, trackW, trackH, 7 * sScale);
+        c.fill();
+
+        const pct = Math.min(1.0, (s.progress || 0.75) * Spring.stepResponse(t - sched.tStart, 12.0, 0.85));
+        c.fillStyle = s.accent || "#10b981";
+        drawRoundedRect(c, trackX, trackY, trackW * pct, trackH, 7 * sScale);
+        c.fill();
+      } else if (s.type === "metric") {
+        // Big number
+        c.fillStyle = "#ffffff";
+        c.font = `800 ${Math.round(84 * sScale)}px monospace`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillText(s.value || "18", cx, cy + 30 * sScale);
+
+        if (s.unit) {
+          c.fillStyle = s.accent || "#38bdf8";
+          c.font = `600 ${Math.round(18 * sScale)}px monospace`;
+          c.fillText(s.unit, cx, cy + 95 * sScale);
+        }
+      } else if (s.type === "chart") {
+        // Bar chart
+        const bars = s.bars || [0.4, 0.65, 0.9, 0.75, 0.5];
+        const barAreaW = geom.w - 140 * sScale;
+        const barAreaH = 180 * sScale;
+        const startX = geom.x + 70 * sScale;
+        const baseY = geom.y + geom.h - 70 * sScale;
+        const barW = (barAreaW / bars.length) * 0.65;
+        const gap = barAreaW / bars.length;
+
+        for (let b = 0; b < bars.length; b++) {
+          const bH = bars[b] * barAreaH * Spring.stepResponse(t - sched.tStart - (b * 0.08), 16.0, 0.82);
+          const bx = startX + b * gap + (gap - barW) / 2;
+          const by = baseY - bH;
+
+          c.fillStyle = b === 2 ? (s.accent || "#f59e0b") : "rgba(71, 85, 105, 0.7)";
+          drawRoundedRect(c, bx, by, barW, bH, 6 * sScale);
+          c.fill();
+        }
+      } else if (s.type === "player") {
+        // Player preview waveform + playhead
+        const playerAreaW = geom.w - 120 * sScale;
+        const playX = geom.x + 60 * sScale;
+        const playY = cy + 40 * sScale;
+
+        // Waveform bars
+        const waveCount = 24;
+        const wGap = playerAreaW / waveCount;
+        for (let i = 0; i < waveCount; i++) {
+          const amp = 0.25 + 0.7 * Math.abs(Math.sin((i * 0.45) + t * 2.0));
+          const wh = 60 * sScale * amp;
+          const wx = playX + i * wGap;
+          c.fillStyle = wx < playX + playerAreaW * (s.playhead || 0.65) ? (s.accent || "#e11d48") : "rgba(71, 85, 105, 0.5)";
+          drawRoundedRect(c, wx, playY - wh / 2, 4 * sScale, wh, 2 * sScale);
+          c.fill();
+        }
+
+        // Playhead indicator
+        const headX = playX + playerAreaW * (s.playhead || 0.65);
+        c.strokeStyle = "#ffffff";
+        c.lineWidth = 2 * sScale;
+        c.beginPath();
+        c.moveTo(headX, playY - 45 * sScale);
+        c.lineTo(headX, playY + 45 * sScale);
+        c.stroke();
+      } else if (s.detail) {
+        c.fillStyle = "rgba(203, 213, 225, 0.85)";
+        c.font = `500 ${Math.round(20 * sScale)}px monospace`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillText(s.detail.replace(/。/g, ""), cx, cy + 60 * sScale);
+      }
+
+      c.restore();
+    }
+
+    // Cursor driving the sequence (stateless function of t)
+    function drawCursor(c, t, geom, w, h) {
+      const sScale = w / 1080;
+      // Cursor trajectory targets corresponding to states
+      let targetX = geom.x + geom.w / 2;
+      let targetY = geom.y + geom.h / 2;
+
+      // Small cursor wiggle or click action
+      const clickPulse = Math.sin(t * 3.14159) > 0.8 ? 0.9 : 1.0;
+
+      c.save();
+      c.translate(targetX + 60 * sScale, targetY + 20 * sScale);
+      c.scale(clickPulse * sScale, clickPulse * sScale);
+
+      // Draw modern cursor pointer
+      c.fillStyle = "#ffffff";
+      c.strokeStyle = "#0f172a";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.lineTo(16, 16);
+      c.lineTo(7, 18);
+      c.lineTo(12, 28);
+      c.lineTo(6, 30);
+      c.lineTo(1, 20);
+      c.lineTo(-6, 26);
+      c.closePath();
+      c.fill();
+      c.stroke();
+
+      c.restore();
+    }
+
+    // Main pure draw(t) function
+    window.draw = function (t) {
+      ctx.clearRect(0, 0, width, height);
+
+      // 1. Steady minimal background
+      drawBackground(ctx, width, height, t);
+
+      // 2. Compute container geometry via closed-form spring
+      const geom = computeContainerAtTime(t, width, height);
+
+      // 3. Draw container with optional short blur during morph
+      ctx.save();
+      if (geom.blurPx > 0.5) {
+        ctx.filter = `blur(${geom.blurPx.toFixed(1)}px)`;
+      }
+
+      // Outer glow / accent rim
+      ctx.shadowColor = geom.border;
+      ctx.shadowBlur = 12 * (width / 1080);
+      ctx.fillStyle = geom.bg;
+      ctx.strokeStyle = geom.border;
+      ctx.lineWidth = geom.borderWidth;
+
+      drawRoundedRect(ctx, geom.x, geom.y, geom.w, geom.h, geom.radius);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.stroke();
+      ctx.restore();
+
+      // 4. Content timing:
+      // Content exits before next morph and enters after container starts morphing
+      if (geom.isTransitioning) {
+        // Previous content fading out
+        const curAlpha = Math.max(0, 1.0 - (geom.transitionTau / 0.15));
+        const nextAlpha = Math.max(0, (geom.transitionTau - 0.18) / 0.2);
+
+        if (curAlpha > 0 && geom.contentFadeOutIdx >= 0) {
+          drawContainerContent(ctx, geom, stateSchedule[geom.contentFadeOutIdx], curAlpha, t, width, height);
+        }
+        if (nextAlpha > 0 && geom.contentFadeInIdx >= 0) {
+          drawContainerContent(ctx, geom, stateSchedule[geom.contentFadeInIdx], nextAlpha, t, width, height);
+        }
+      } else {
+        // Settled content
+        drawContainerContent(ctx, geom, stateSchedule[geom.activeIdx], 1.0, t, width, height);
+      }
+
+      // 5. Virtual interactive cursor
+      drawCursor(ctx, t, geom, width, height);
+    };
+
+    // Auto init on load
+    buildSchedule();
+  })();
+  </script>
+</body>
+</html>

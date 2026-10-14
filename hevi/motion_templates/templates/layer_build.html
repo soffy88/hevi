@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Hevi Motion Template - Layer Build</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #0b0f19;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="../lib/spring.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let spec = {
+      title: "多模态成片架构分层建造",
+      title_en: "System Architecture Layered Assembly",
+      duration: 12.0,
+      bpm: 120,
+      layers: [
+        {
+          id: "substrate",
+          name_zh: "数据底座与素材接入层",
+          name_en: "L1: Asset & Substrate Layer",
+          tag: "SUBSTRATE",
+          accent: "#f59e0b",
+          stat: "100+ Multi-format Assets"
+        },
+        {
+          id: "graph",
+          name_zh: "分镜语义图谱与时长规划",
+          name_en: "L2: Semantic Story Graph",
+          tag: "GRAPH CORE",
+          accent: "#38bdf8",
+          stat: "Graph DAG Latency < 12ms"
+        },
+        {
+          id: "engine",
+          name_zh: "确定性纯函数动效渲染器",
+          name_en: "L3: Stateless Motion Engine",
+          tag: "RENDER CORE",
+          accent: "#10b981",
+          stat: "60 FPS Sub-frame Seeking"
+        },
+        {
+          id: "gate",
+          name_zh: "智能审片门禁与交付发布",
+          name_en: "L4: Quality Gate & Delivery",
+          tag: "DELIVER NODE",
+          accent: "#f43f5e",
+          stat: "Zero Artifact Gate Green"
+        }
+      ]
+    };
+
+    let width = 1080;
+    let height = 1920;
+    let schedule = [];
+
+    function buildSchedule() {
+      schedule = [];
+      const count = spec.layers.length;
+      const totalDur = spec.duration || 12.0;
+      const stepDur = (totalDur - 1.5) / count;
+
+      for (let i = 0; i < count; i++) {
+        const item = spec.layers[i];
+        const tStart = 0.6 + i * stepDur;
+        schedule.push({
+          index: i,
+          data: item,
+          tStart: tStart,
+          tSettle: tStart + 0.6
+        });
+      }
+    }
+
+    window.initTemplate = function (newSpec, w, h) {
+      if (newSpec) {
+        spec = Object.assign({}, spec, newSpec);
+      }
+      width = w || 1080;
+      height = h || 1920;
+      canvas.width = width;
+      canvas.height = height;
+      buildSchedule();
+    };
+
+    // Isometric projection helpers
+    // x: right-down, y: left-down, z: up
+    function projectIso(x, y, z, cx, cy, scale) {
+      const cos30 = 0.8660254;
+      const sin30 = 0.5;
+      const px = cx + (x - y) * cos30 * scale;
+      const py = cy + (x + y) * sin30 * scale - z * scale;
+      return { x: px, y: py };
+    }
+
+    function drawIsoPlatform(c, cx, cy, z, size, scale, accent, fillAlpha) {
+      const half = size / 2;
+      const p1 = projectIso(-half, -half, z, cx, cy, scale);
+      const p2 = projectIso(half, -half, z, cx, cy, scale);
+      const p3 = projectIso(half, half, z, cx, cy, scale);
+      const p4 = projectIso(-half, half, z, cx, cy, scale);
+
+      c.save();
+      c.beginPath();
+      c.moveTo(p1.x, p1.y);
+      c.lineTo(p2.x, p2.y);
+      c.lineTo(p3.x, p3.y);
+      c.lineTo(p4.x, p4.y);
+      c.closePath();
+
+      c.fillStyle = `rgba(24, 34, 52, ${fillAlpha})`;
+      c.fill();
+      c.strokeStyle = accent;
+      c.lineWidth = 2 * scale;
+      c.stroke();
+
+      // Platform grid lines
+      c.strokeStyle = "rgba(71, 85, 105, 0.35)";
+      c.lineWidth = 1 * scale;
+      const subdiv = 3;
+      for (let i = 1; i < subdiv; i++) {
+        const u = -half + (size / subdiv) * i;
+        const g1 = projectIso(u, -half, z, cx, cy, scale);
+        const g2 = projectIso(u, half, z, cx, cy, scale);
+        c.beginPath();
+        c.moveTo(g1.x, g1.y);
+        c.lineTo(g2.x, g2.y);
+        c.stroke();
+
+        const h1 = projectIso(-half, u, z, cx, cy, scale);
+        const h2 = projectIso(half, u, z, cx, cy, scale);
+        c.beginPath();
+        c.moveTo(h1.x, h1.y);
+        c.lineTo(h2.x, h2.y);
+        c.stroke();
+      }
+      c.restore();
+    }
+
+    function drawBackground(c, w, h, t) {
+      c.fillStyle = "#0b0f19";
+      c.fillRect(0, 0, w, h);
+
+      const sScale = w / 1080;
+      const vScale = h / 1920;
+      const safeLeft = 80 * sScale;
+      const safeRight = w - 80 * sScale;
+      const safeTop = 150 * vScale;
+
+      c.save();
+      c.fillStyle = "#f59e0b";
+      c.font = `700 ${Math.round(14 * sScale)}px monospace`;
+      c.fillText("LAYER BUILD // MODULAR ARCHITECTURE", safeLeft, safeTop);
+
+      c.fillStyle = "#ffffff";
+      c.font = `700 ${Math.round(34 * sScale)}px -apple-system, sans-serif`;
+      c.fillText((spec.title || "").replace(/。/g, ""), safeLeft, safeTop + 42 * vScale);
+
+      if (spec.title_en) {
+        c.fillStyle = "rgba(148, 163, 184, 0.85)";
+        c.font = `500 ${Math.round(16 * sScale)}px monospace`;
+        c.fillText(spec.title_en.replace(/。/g, ""), safeLeft, safeTop + 76 * vScale);
+      }
+
+      c.strokeStyle = "rgba(51, 65, 85, 0.4)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(safeLeft, safeTop + 96 * vScale);
+      c.lineTo(safeRight, safeTop + 96 * vScale);
+      c.stroke();
+      c.restore();
+    }
+
+    window.draw = function (t) {
+      ctx.clearRect(0, 0, width, height);
+      drawBackground(ctx, width, height, t);
+
+      const sScale = width / 1080;
+      const vScale = height / 1920;
+      const isLandscape = width > height;
+
+      // Center for isometric projection
+      const cx = isLandscape ? width * 0.42 : width * 0.5;
+      const cy = isLandscape ? height * 0.6 : height * 0.62;
+      const isoScale = (isLandscape ? height / 1080 : width / 1080) * 0.95;
+
+      const layerSize = 360;
+      const layerSpacingZ = 120;
+      const itemCount = schedule.length;
+
+      // Draw layers from bottom (index 0) to top (index itemCount - 1)
+      for (let i = 0; i < itemCount; i++) {
+        const item = schedule[i];
+        const lData = item.data;
+        const targetZ = i * layerSpacingZ;
+
+        // Drop-in closed-form spring
+        const tau = t - item.tStart;
+        const p = Spring.stepResponse(tau, 14.0, 0.82);
+        if (p < 0.001) continue;
+
+        // Current Z position (starts 300 units above, drops with tiny spring bounce)
+        const currentZ = (targetZ + 320) - (320 * p);
+        const accent = lData.accent || "#f59e0b";
+
+        // Connecting struts to layer below if both exist
+        if (i > 0 && p > 0.4) {
+          const prevZ = (i - 1) * layerSpacingZ;
+          const half = layerSize / 2;
+          const corners = [
+            [-half, -half],
+            [half, -half],
+            [half, half],
+            [-half, half]
+          ];
+          ctx.strokeStyle = "rgba(71, 85, 105, 0.6)";
+          ctx.lineWidth = 1.5 * isoScale;
+          for (let c = 0; c < 4; c++) {
+            const pBot = projectIso(corners[c][0], corners[c][1], prevZ, cx, cy, isoScale);
+            const pTop = projectIso(corners[c][0], corners[c][1], currentZ, cx, cy, isoScale);
+            ctx.beginPath();
+            ctx.moveTo(pBot.x, pBot.y);
+            ctx.lineTo(pTop.x, pTop.y);
+            ctx.stroke();
+          }
+        }
+
+        // Draw isometric platform
+        drawIsoPlatform(ctx, cx, cy, currentZ, layerSize, isoScale, accent, 0.82);
+
+        // Platform center node
+        const pCenter = projectIso(0, 0, currentZ, cx, cy, isoScale);
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.arc(pCenter.x, pCenter.y, 6 * isoScale, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Right side annotation card
+        const cardX = isLandscape ? width * 0.72 : width * 0.65;
+        const cardY = pCenter.y - 30 * vScale;
+        const revealCardP = Spring.stepResponse(tau - 0.2, 16.0, 0.85);
+
+        if (revealCardP > 0.05) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1.0, revealCardP);
+
+          // Pointer line from platform to text card
+          ctx.strokeStyle = accent;
+          ctx.lineWidth = 1.5 * sScale;
+          ctx.beginPath();
+          ctx.moveTo(pCenter.x, pCenter.y);
+          ctx.lineTo(cardX - 10 * sScale, cardY + 20 * vScale);
+          ctx.stroke();
+
+          // Text card
+          ctx.fillStyle = accent;
+          ctx.font = `700 ${Math.round(12 * sScale)}px monospace`;
+          ctx.textAlign = "left";
+          ctx.fillText(`[ ${lData.tag || "LAYER"} ]`, cardX, cardY);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `700 ${Math.round(18 * sScale)}px -apple-system, sans-serif`;
+          ctx.fillText((lData.name_zh || "").replace(/。/g, ""), cardX, cardY + 24 * vScale);
+
+          if (lData.stat) {
+            ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
+            ctx.font = `500 ${Math.round(13 * sScale)}px monospace`;
+            ctx.fillText(lData.stat.replace(/。/g, ""), cardX, cardY + 46 * vScale);
+          }
+          ctx.restore();
+        }
+      }
+    };
+
+    buildSchedule();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Hevi Motion Template - Timeline Explainer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #0b0f19;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="../lib/spring.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let spec = {
+      title: "AI 视频模型技术演进史",
+      title_en: "Evolution of Generative Video Architecture",
+      duration: 12.0,
+      bpm: 120,
+      milestones: [
+        {
+          index: "01",
+          year: "2023",
+          title_zh: "时空解耦注意力机制突破",
+          title_en: "Spatio-Temporal Decoupled Attention",
+          desc_zh: "在空间自注意力之后引入一维时间注意力，使视频潜空间帧间连贯性获得质的跃升",
+          desc_en: "Introducing 1D temporal attention after spatial layers enabled radical temporal coherence in latent space",
+          accent: "#f59e0b"
+        },
+        {
+          index: "02",
+          year: "2024",
+          title_zh: "扩散变换器跨模态联合建模",
+          title_en: "Diffusion Transformer Joint Scaling",
+          desc_zh: "DiT 架构全面替代 U-Net，参数规模扩展带来逼真的物理世界动力学仿真与长镜头稳定",
+          desc_en: "DiT architecture replaced U-Net, scaling compute to simulate complex physics dynamics across long shots",
+          accent: "#38bdf8"
+        },
+        {
+          index: "03",
+          year: "2025",
+          title_zh: "端到端音画同步与物理常识对齐",
+          title_en: "End-to-End Audio-Visual Synchronization",
+          desc_zh: "多模态大模型直接生成伴随音效与语音口型，彻底摆脱外部后期拼接的漂移误差",
+          desc_en: "Direct generation of synchronized audio, dialogue and sound effects without drifting alignment errors",
+          accent: "#10b981"
+        },
+        {
+          index: "04",
+          year: "2026",
+          title_zh: "纯代码驱动确定性动效引擎",
+          title_en: "Code-Driven Deterministic Motion Engine",
+          desc_zh: "回归单 HTML 与无状态纯函数渲染，实现零幻觉、毫秒级对齐与毫秒级可复现交付",
+          desc_en: "Stateless pure function rendering guaranteeing zero hallucination, sub-frame precision and reproducible delivery",
+          accent: "#f59e0b"
+        }
+      ]
+    };
+
+    let width = 1080;
+    let height = 1920;
+    let schedule = [];
+
+    function buildSchedule() {
+      schedule = [];
+      const count = spec.milestones.length;
+      const totalDur = spec.duration || 12.0;
+      const stepDur = (totalDur - 1.5) / count;
+
+      for (let i = 0; i < count; i++) {
+        const m = spec.milestones[i];
+        const tStart = 0.8 + i * stepDur;
+        schedule.push({
+          index: i,
+          data: m,
+          tStart: tStart,
+          tSettle: tStart + 0.6
+        });
+      }
+    }
+
+    window.initTemplate = function (newSpec, w, h) {
+      if (newSpec) {
+        spec = Object.assign({}, spec, newSpec);
+      }
+      width = w || 1080;
+      height = h || 1920;
+      canvas.width = width;
+      canvas.height = height;
+      buildSchedule();
+    };
+
+    // Text wrapping helper avoiding broken Chinese words and strictly respecting safe width
+    function wrapText(c, text, maxW) {
+      if (!text) return [];
+      const clean = text.replace(/。/g, ""); // Strip full stops per rule
+      const lines = [];
+      let curLine = "";
+
+      for (let i = 0; i < clean.length; i++) {
+        const testLine = curLine + clean[i];
+        const metrics = c.measureText(testLine);
+        if (metrics.width > maxW && curLine.length > 0) {
+          lines.push(curLine);
+          curLine = clean[i];
+        } else {
+          curLine = testLine;
+        }
+      }
+      if (curLine) lines.push(curLine);
+      return lines;
+    }
+
+    function drawRoundedRect(c, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.arcTo(x + w, y, x + w, y + r, r);
+      c.lineTo(x + w, y + h - r);
+      c.arcTo(x + w, y + h, x + w - r, y + h, r);
+      c.lineTo(x + r, y + h);
+      c.arcTo(x, y + h, x, y + h - r, r);
+      c.lineTo(x, y + r);
+      c.arcTo(x, y, x + r, y, r);
+      c.closePath();
+    }
+
+    // Line-art blueprint background
+    function drawBackground(c, w, h, t) {
+      c.fillStyle = "#0b0f19";
+      c.fillRect(0, 0, w, h);
+
+      // Technical blueprint grid ticks (subtle, clean, not grid floor)
+      c.strokeStyle = "rgba(51, 65, 85, 0.25)";
+      c.lineWidth = 1;
+      const tickStep = 60 * (w / 1080);
+      for (let x = tickStep; x < w; x += tickStep * 2) {
+        c.beginPath();
+        c.moveTo(x, 0);
+        c.lineTo(x, 10 * (h / 1920));
+        c.moveTo(x, h - 10 * (h / 1920));
+        c.lineTo(x, h);
+        c.stroke();
+      }
+
+      // Safe area visual boundaries check & header
+      const sScale = w / 1080;
+      const vScale = h / 1920;
+      const safeLeft = 80 * sScale;
+      const safeTop = 160 * vScale;
+      const safeRight = w - 80 * sScale;
+
+      c.save();
+      // Section tag
+      c.fillStyle = "#f59e0b";
+      c.font = `700 ${Math.round(14 * sScale)}px monospace`;
+      c.fillText("TIMELINE EXPLAINER // LINE-ART ARCHITECTURE", safeLeft, safeTop - 40 * vScale);
+
+      // Title bilingual
+      c.fillStyle = "#ffffff";
+      c.font = `700 ${Math.round(36 * sScale)}px -apple-system, sans-serif`;
+      c.fillText((spec.title || "").replace(/。/g, ""), safeLeft, safeTop);
+
+      if (spec.title_en) {
+        c.fillStyle = "rgba(148, 163, 184, 0.85)";
+        c.font = `500 ${Math.round(18 * sScale)}px monospace`;
+        c.fillText(spec.title_en.replace(/。/g, ""), safeLeft, safeTop + 32 * vScale);
+      }
+
+      // Header rule line
+      c.strokeStyle = "rgba(71, 85, 105, 0.4)";
+      c.beginPath();
+      c.moveTo(safeLeft, safeTop + 54 * vScale);
+      c.lineTo(safeRight, safeTop + 54 * vScale);
+      c.stroke();
+
+      c.restore();
+    }
+
+    window.draw = function (t) {
+      ctx.clearRect(0, 0, width, height);
+      drawBackground(ctx, width, height, t);
+
+      const sScale = width / 1080;
+      const vScale = height / 1920;
+      const isLandscape = width > height;
+
+      // Safe area bounds
+      const safeLeft = 80 * sScale;
+      const safeRight = width - 80 * sScale;
+      const safeTop = 260 * vScale;
+      const safeBottom = height - 160 * vScale;
+
+      // Timeline axis position
+      const axisX = safeLeft + 40 * sScale;
+      const availableH = safeBottom - safeTop;
+      const itemCount = schedule.length;
+      const itemSpacing = availableH / itemCount;
+
+      // Axis line height animated with closed-form spring
+      const firstT = schedule[0] ? schedule[0].tStart : 0.8;
+      const lastT = schedule[itemCount - 1] ? schedule[itemCount - 1].tStart : 10.0;
+      const overallProgress = Spring.stepResponse(t - firstT, 10.0, 0.85);
+      const axisCurrentY = safeTop + availableH * Math.min(1.0, overallProgress * 1.05);
+
+      // Draw background vertical axis guide line
+      ctx.strokeStyle = "rgba(51, 65, 85, 0.5)";
+      ctx.lineWidth = 2 * sScale;
+      ctx.beginPath();
+      ctx.moveTo(axisX, safeTop);
+      ctx.lineTo(axisX, safeBottom);
+      ctx.stroke();
+
+      // Active illuminated tracer line
+      if (axisCurrentY > safeTop) {
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 3 * sScale;
+        ctx.beginPath();
+        ctx.moveTo(axisX, safeTop);
+        ctx.lineTo(axisX, Math.min(axisCurrentY, safeBottom));
+        ctx.stroke();
+      }
+
+      // Render milestone nodes and reveal cards
+      for (let i = 0; i < itemCount; i++) {
+        const item = schedule[i];
+        const m = item.data;
+        const nodeY = safeTop + (i + 0.5) * itemSpacing;
+
+        // Has the timeline reached this milestone?
+        const tau = t - item.tStart;
+        const revealP = Spring.stepResponse(tau, 14.0, 0.82);
+        const isReached = tau >= 0;
+
+        // Node circle
+        ctx.save();
+        const nodeRadius = 12 * sScale;
+        ctx.beginPath();
+        ctx.arc(axisX, nodeY, nodeRadius, 0, Math.PI * 2);
+        ctx.fillStyle = isReached ? (m.accent || "#f59e0b") : "#1e293b";
+        ctx.strokeStyle = isReached ? "#ffffff" : "#475569";
+        ctx.lineWidth = 2 * sScale;
+        ctx.fill();
+        ctx.stroke();
+
+        // Node inner index number
+        if (isReached) {
+          ctx.fillStyle = "#0f172a";
+          ctx.font = `800 ${Math.round(11 * sScale)}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(m.index || String(i + 1), axisX, nodeY);
+        }
+        ctx.restore();
+
+        // Reveal card to the right of the axis
+        if (revealP > 0.01) {
+          ctx.save();
+          const cardX = axisX + 36 * sScale;
+          const cardW = safeRight - cardX;
+          const cardH = itemSpacing * 0.82;
+          const cardY = nodeY - cardH * 0.45;
+
+          ctx.globalAlpha = Math.min(1.0, revealP);
+
+          // Card slide-in / scale-in via spring
+          const slideOffset = (1.0 - revealP) * 24 * sScale;
+          const drawCardX = cardX + slideOffset;
+
+          // Connector line from axis node to card
+          ctx.strokeStyle = m.accent || "#f59e0b";
+          ctx.lineWidth = 1.5 * sScale;
+          ctx.beginPath();
+          ctx.moveTo(axisX + nodeRadius, nodeY);
+          ctx.lineTo(drawCardX, nodeY);
+          ctx.stroke();
+
+          // Card container box (line-art technical style)
+          ctx.fillStyle = "rgba(22, 32, 50, 0.75)";
+          ctx.strokeStyle = isReached && tau < 1.5 ? (m.accent || "#f59e0b") : "rgba(71, 85, 105, 0.5)";
+          ctx.lineWidth = 1.5 * sScale;
+          drawRoundedRect(ctx, drawCardX, cardY, cardW, cardH, 16 * sScale);
+          ctx.fill();
+          ctx.stroke();
+
+          // Card accent left indicator strip
+          ctx.fillStyle = m.accent || "#f59e0b";
+          ctx.beginPath();
+          ctx.moveTo(drawCardX, cardY + 16 * sScale);
+          ctx.lineTo(drawCardX, cardY + cardH - 16 * sScale);
+          ctx.lineWidth = 4 * sScale;
+          ctx.stroke();
+
+          // Content layout inside card
+          const contentPadX = 24 * sScale;
+          const textMaxW = cardW - contentPadX * 2;
+          const textStartX = drawCardX + contentPadX;
+
+          // Milestone year + tag
+          ctx.fillStyle = m.accent || "#f59e0b";
+          ctx.font = `700 ${Math.round(13 * sScale)}px monospace`;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "top";
+          ctx.fillText(`[ ${m.year || "MILESTONE"} ]  PHASE ${m.index || "0" + (i + 1)}`, textStartX, cardY + 16 * vScale);
+
+          // Chinese title (guaranteed within textMaxW, no trailing full stop)
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `700 ${Math.round(20 * sScale)}px -apple-system, sans-serif`;
+          const titleZh = (m.title_zh || "").replace(/。/g, "");
+          ctx.fillText(titleZh, textStartX, cardY + 40 * vScale);
+
+          // English title
+          if (m.title_en) {
+            ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
+            ctx.font = `500 ${Math.round(12 * sScale)}px monospace`;
+            ctx.fillText(m.title_en.replace(/。/g, ""), textStartX, cardY + 68 * vScale);
+          }
+
+          // Chinese description paragraph (wrapped with measureText)
+          if (m.desc_zh) {
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = `400 ${Math.round(15 * sScale)}px -apple-system, sans-serif`;
+            const lines = wrapText(ctx, m.desc_zh, textMaxW);
+            const lineH = 22 * vScale;
+            const descStartY = cardY + 92 * vScale;
+            for (let l = 0; l < Math.min(lines.length, 3); l++) {
+              ctx.fillText(lines[l], textStartX, descStartY + l * lineH);
+            }
+          }
+
+          ctx.restore();
+        }
+      }
+    };
+
+    buildSchedule();
+  })();
+  </script>
+</body>
+</html>
