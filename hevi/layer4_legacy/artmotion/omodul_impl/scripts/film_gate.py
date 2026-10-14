@@ -68,6 +68,9 @@ METRICS = {
     "fast_ratio":         ("快速运动帧占比", "low_bad", 0.06, 0.035, True, ""),
     "blank_run_s":        ("中段近乎纯色的空画面（最长连续）", "high_bad", None, 0.3, True, "秒"),
     "blue_purple_share":  ("蓝紫底画面时长占比", "high_bad", 0.12, 0.30, True, ""),
+    # r6 B1 新增门禁：大面积近黑帧（竖屏纹理底透明漏成黑底的症状）。单帧 luma<40 像素 >20% 且全片底色不是深色 → 红灯。
+    # 全片底色按各帧平均亮度取中位数判定（>110 视为浅色风格）；深色风格（3b1b 黑底等）不拦。
+    "near_black_frames":  ("大面积近黑帧数（浅底风格不应有）", "high_bad", None, 0.5, True, "帧"),
     "fast_ratio_worst_window": ("最差30秒窗口的快动帧占比", "low_bad", 0.02, None, False, ""),
     "top10_share":        ("运动集中度（前10%帧占运动量）", "info", None, None, False, ""),
     "drift_ratio":        ("慢漂帧占比", "high_bad", 0.65, None, False, ""),
@@ -548,6 +551,29 @@ def template_similarity(F, shots, template):
 
 BP_HUE, BP_SAT, BP_VAL, BP_FRAME = (225, 300), 0.30, (0.06, 0.90), 0.30
 
+# r6 B1：大面积近黑帧门禁。竖屏纹理底透明漏成黑底时，成片会出现「黑底 + 灰色弧线」的帧。
+# 判据：2fps 抽帧，单帧 luma<40 的像素 >20% 算近黑帧；全片底色是不是深色按各帧平均亮度中位数判
+# （>110 视为浅色风格）。浅色风格里出现近黑帧 → 红灯；深色风格（3b1b 黑底等）本身就不拦。
+NB_LUMA, NB_FRAC, NB_LIGHT_MEAN = 40, 0.20, 110
+
+
+def near_black(path, fps=SAMPLE_FPS, width=240):
+    """返回 (近黑帧数, 近黑时间码, 全片平均亮度中位数)。深色风格（中位亮度 ≤ NB_LIGHT_MEAN）返回 0。"""
+    w, h = probe(path)[:2]
+    hh = max(2, int(round(h * width / w / 2)) * 2)
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={width}:{hh}",
+                          "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+    F = np.frombuffer(raw, np.uint8).reshape(-1, hh, width).astype(np.float32)
+    if not len(F):
+        return 0, [], 255.0
+    means = F.reshape(len(F), -1).mean(1)
+    med = float(np.median(means))
+    if med <= NB_LIGHT_MEAN:                       # 深色风格：近黑是设计，不拦
+        return 0, [], round(med, 1)
+    dark = (F < NB_LUMA).reshape(len(F), -1).mean(1) > NB_FRAC
+    times = [round(i / fps, 1) for i in np.where(dark)[0]]
+    return int(dark.sum()), times, round(med, 1)
+
 
 def blue_purple(path, fps=SAMPLE_FPS, width=160):
     """蓝紫帧占比与蓝紫段时间码。色相 225°–300°、饱和度 ≥0.30、亮度 0.06–0.90 的像素占一帧 ≥30% 算蓝紫帧。"""
@@ -577,7 +603,7 @@ def blue_purple(path, fps=SAMPLE_FPS, width=160):
 SHORT_S = float(os.environ.get("FILM_GATE_MIN_S", 20))  # 标定集都是 45 秒以上的成片；短于这个时长的片段读数噪声大，红灯降为黄灯只提示
 
 
-FACT_GATES = {"blank_run_s", "blue_purple_share"}   # 片长再短也照样红灯（配色不随片长变）
+FACT_GATES = {"blank_run_s", "blue_purple_share", "near_black_frames"}   # 片长再短也照样红灯（配色不随片长变）
 
 
 def grade(res):
@@ -628,6 +654,7 @@ LOOK = {
     "slow_zoom_share": lambda r: f"{r['slow_zoom_share']:.0%} 的时长是匀速慢推/慢拉镜头",
     "dissolve_share": lambda r: f"转场里 {r['dissolve_share']:.0%} 是交叉淡化",
     "template_sim_share": lambda r: f"{r['template_sim_share']:.0%} 的时长和示范片构图几乎一样",
+    "near_black_frames": lambda r: f"浅底风格里出现 {r['near_black_frames']} 帧大面积近黑画面（时间码 {'、'.join(f'{t:.1f}s' for t in r.get('near_black_times_s', [])[:8])}）；竖屏纹理底漏成黑底的典型症状",
 }
 
 
@@ -649,6 +676,10 @@ def explain(res):
         head = (f"中段有 {len(res['blank_runs_s'])} 段近乎纯色的空画面（{segs}），最长 {res['blank_run_s']:.2f}s，"
                 f"整帧几乎没有边缘或纹理、主体不在画里") + ("；另外" + head if lv != "green" else "")
     bp = res["lights"].get("blue_purple_share")
+    if res["lights"].get("near_black_frames") == "red":
+        ts = "、".join(f"{t:.1f}s" for t in res.get("near_black_times_s", [])[:8])
+        head = (f"浅底风格里有 {res['near_black_frames']} 帧大面积近黑画面（{ts}）"
+                + ("；另外" + head if lv != "green" or blank_red else ""))
     if bp in ("red", "yellow") and not res.get("allow_blue_purple"):
         segs = "、".join(f"{a:.1f}–{b:.1f}s" for a, b in res["blue_purple_spans_s"][:6])
         msg = f"{res['blue_purple_share']:.0%} 的画面是蓝紫底（{segs}）"
@@ -686,6 +717,7 @@ def measure(path, sub_band=None, vertical="auto", template=DEFAULT_TEMPLATE, all
     cv2.setNumThreads(max(1, (os.cpu_count() or 2) // 2))
     res = analyze(path, sub_band=sub_band, vertical=vertical, template=tpl)
     res["blue_purple_share"], res["blue_purple_spans_s"] = blue_purple(path)
+    res["near_black_frames"], res["near_black_times_s"], res["near_black_median_luma"] = near_black(path)
     if allow_blue_purple and allow_blue_purple.strip():
         res["allow_blue_purple"] = allow_blue_purple.strip()
     rows, red = grade(res)

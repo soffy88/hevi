@@ -32,10 +32,12 @@ SCENES['12_bauhaus'] = (() => {
     g.beginPath(); g.moveTo(40, 170); g.lineTo(1900, 840); g.stroke();
     // 做旧：斑驳噪声 + 颗粒
     g.globalAlpha = 0.5; g.drawImage(mottle('paper', 3, [150, 130, 95], 0.35), 0, 0, W, H); g.globalAlpha = 1;
-    g.drawImage(P.grain('bh_tex', 0.02, [40, 35, 30], 0.35), 0, 0);
+    g.drawImage(P.grain('bh_tex', 0.02, [40, 35, 30], 0.35, W, H), 0, 0);
+    P.assertOpaque(g.canvas, '12_bauhaus/ground');    // r6 B1：有透明像素 → boot fail
   });
 
   return {
+    bg: C.paper,
     draw(c, lt, t) {
       c.drawImage(ground(), 0, 0);
       // 一格色块按拍缓慢轮换（每 0.7s 一格），让底纹每帧都在动但不闪

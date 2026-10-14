@@ -202,9 +202,13 @@ return {
     }
   },
 };
-// 曲线标签：放在曲线末端上方
+// 曲线标签：放在曲线末端上方。r6 非阻断：底纹是高对比水彩色块，小号标签直接压上去可读性差，
+// 先描一圈纸色/深色的底再填字（ink 风格用暖纸色底，其余用深色底）。
 function label(c, l, a, colr, u) { if (!l.q.text || a <= 0) return; const e = l.scr[l.scr.length - 1];
-  c.save(); c.globalAlpha *= a; c.font = `${40 * u}px "${ZHF}"`; c.fillStyle = colr; c.textAlign = 'right'; c.fillText(l.q.text, e[0], e[1] - 30 * u); c.restore(); }
+  c.save(); c.globalAlpha *= a; c.font = `${40 * u}px "${ZHF}"`; c.textAlign = 'right'; c.textBaseline = 'alphabetic';
+  const halo = OUT ? 'rgba(250,246,236,0.92)' : 'rgba(16,14,12,0.85)';
+  c.lineJoin = 'round'; c.lineWidth = 8 * u; c.strokeStyle = halo; c.strokeText(l.q.text, e[0], e[1] - 30 * u);
+  c.fillStyle = colr; c.fillText(l.q.text, e[0], e[1] - 30 * u); c.restore(); }
 // 强调框：Circumscribe 先绕一圈（1s），同时 SurroundingRectangle 画出来并留住（末帧有焦点）
 function box(c, x, y, w, h, lt, u) {
   if (lt <= 0) return; DG.circumscribe(c, x - 8 * u, y - 8 * u, w + 16 * u, h + 16 * u, MO.seg(lt, 0, 1.0), { lw: 4 * u, col: M.YELLOW });

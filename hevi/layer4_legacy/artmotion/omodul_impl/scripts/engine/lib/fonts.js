@@ -14,6 +14,9 @@ window.FONT_FACES = [
   {family:'PlayfairDisplay-700i', url:'lib/fonts/PlayfairDisplay-700i.woff'},
   {family:'PlayfairDisplay-700', url:'lib/fonts/PlayfairDisplay-700.woff'},
   {family:'PressStart2P-400', url:'lib/fonts/PressStart2P-400.woff'},
+  // 像素风中文（r6 B2）：Fusion Pixel Font 12px 比例版（SIL OFL 1.1），GB2312 子集。
+  // 8bit 语法里文字不进 1/8 低分辨率缓冲，改用它按整数倍在原始分辨率画（或像素化倍率 ≤2），数字才可读。
+  {family:'FusionPixel12-400', url:'lib/fonts/FusionPixel12-400.woff'},
   {family:'Poppins-600', url:'lib/fonts/Poppins-600.woff'},
   {family:'Poppins-700', url:'lib/fonts/Poppins-700.woff'},
   {family:'Poppins-800', url:'lib/fonts/Poppins-800.woff'},

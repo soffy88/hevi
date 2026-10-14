@@ -297,7 +297,7 @@ STYLE_ALIASES: dict[str, str] = {
 STYLE_THEME_MAP: dict[str, str] = {
     "17_ink": "paper",
     "25_ghibli": "paper",
-    "14_8bit": "bauhaus",
+    "14_8bit": "arcade",
     "12_bauhaus": "bauhaus",
     "20_dunhuang": "wood",
     "26_vaporwave": "poster",
@@ -631,12 +631,6 @@ def produce_artmotion(
             "light": gate_res["lights"].get("fast_ratio"),
         },
         {
-            "name": "still_ratio",
-            "passed": True,
-            "value": gate_res["still_ratio"],
-            "light": gate_res["lights"].get("still_ratio", "--"),
-        },
-        {
             "name": "blank_run_s",
             "passed": gate_res["lights"].get("blank_run_s") == "green",
             "value": gate_res["blank_run_s"],
@@ -649,6 +643,16 @@ def produce_artmotion(
             "value": gate_res["blue_purple_share"],
             "threshold": "<0.12 (green)",
             "light": gate_res["lights"].get("blue_purple_share"),
+        },
+        {
+            "name": "near_black_frames",
+            "passed": gate_res["lights"].get("near_black_frames") == "green",
+            "value": gate_res.get("near_black_frames"),
+            "threshold": "0 frames with luma<40 >20% on a light-ground style (r6 B1)",
+            "light": gate_res["lights"].get("near_black_frames"),
+            "message": "clean"
+            if gate_res["lights"].get("near_black_frames") == "green"
+            else f"浅底风格出现 {gate_res.get('near_black_frames')} 帧大面积近黑画面：{gate_res.get('near_black_times_s', [])[:8]}",
         },
         {
             "name": "artmotion_deliver",
@@ -689,6 +693,14 @@ def produce_artmotion(
     sheet_out = out_video.with_suffix(".sheet.jpg")
     generate_contact_sheet(out_video, sheet_out, total_s, is_vertical=(h > w))
 
+    # 只报告的 info 项（不进 gates，不参与 status 判定）：静止类指标会把「停住→猛动→停住」的好片判反，
+    # film_gate 里也只是报告项。r6 起不再以 passed=True 的假门禁形式出现（审核方点名）。
+    info_items = [
+        {"name": "still_ratio", "value": gate_res["still_ratio"], "light": gate_res["lights"].get("still_ratio", "--"),
+         "note": "静止帧占比：静止本身不是坏事，只报告"},
+        {"name": "duration_s", "value": total_s, "note": "片长（秒）：本管线不设时长门禁，只报告"},
+    ]
+
     records = [
         {
             "video_path": str(out_video),
@@ -718,6 +730,7 @@ def produce_artmotion(
             "latex_offenders": latex_offenders,
             "texture_offenders": texture_offenders,
             "gates": gates,
+            "info": info_items,
             "sha256": get_sha256(out_video),
         }
     ]

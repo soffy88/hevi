@@ -146,9 +146,11 @@ async function boot() {
   // 供 produce/film_gate 的越界检查读取（≥2fps 逐帧）。低透明度（<0.3，如 y5 背景巨型序号）不算，
   // 那是装饰字不是正文。
   let acc = null, dcCanvas = null, dcT = null;
-  // base = 主画布的「舞台变换」：像素化时是 1/8 缩放（语法照常按舞台坐标排版），否则是单位阵。
-  const base = styleId === '14_8bit' ? [1 / 8, 0, 0, 1 / 8, 0, 0] : [1, 0, 0, 1, 0, 0];
-  const pf = styleId === '14_8bit' ? 8 : 1;   // 像素化：低分辨率缓冲最后被 8× 最近邻放大回主画布
+  // 语法层量化倍率（r6 B2）：8bit 风格里底纹照旧 1/8 像素化，但语法层（柱/线/字）单独进 1/2 缓冲——
+  // 文字像素化倍率 ≤2，数字才读得清（r5 把整帧 1/8 量化，CJK 文字被毁成不可读的方块）。
+  const PIX = styleId === '14_8bit' ? 2 : 1;
+  const base = PIX > 1 ? [1 / PIX, 0, 0, 1 / PIX, 0, 0] : [1, 0, 0, 1, 0, 0];
+  const pf = PIX;
   const fontSize = cc => { const m = /([\d.]+)px/.exec(cc.font || ''); return m ? parseFloat(m[1]) : 32; };
   const mul = (A, B) => ({ a: A.a * B.a + A.c * B.b, b: A.b * B.a + A.d * B.b, c: A.a * B.c + A.c * B.d, d: A.b * B.c + A.d * B.d, e: A.a * B.e + A.c * B.f + A.e, f: A.b * B.e + A.d * B.f + A.f });
   // 字框最终落在屏幕的哪里（真实像素坐标）：语法画在语法画布（dc）上就直接用它的变换；画到离屏缓冲
@@ -188,10 +190,10 @@ async function boot() {
   // 永远按 safe 区排版，运动由换页色带提供；其余语法（图表/公式，如 t1/t3）跟相机（内容随之移动，
   // film_gate 才有可测的快动）。两条路都由逐帧越界检查兜底：越界即红灯。
   const camG = t => (G.fixed ? { x: W / 2, y: H / 2, z: 1, moving: true } : camFn(t));
-  // 8bit 像素化后处理（r5 B2）：整帧（风格底＋语法层）按 8px 量化再放大，柱/线/字一起吃像素风
+  // 8bit 像素化后处理（r6 B2）：底纹 1/8 量化（像素风），语法层 1/2 量化（文字可读）。两层分别合成。
   const PIXELATE = styleId === '14_8bit';
-  const drawScene = t => {
-    // 风格底：吃相机运动（全屏纹理推/移，提供片子的运动感）
+  // 风格底：吃相机运动（全屏纹理推/移，提供片子的运动感）。画进当前 c（像素化时是 1/8 缓冲）。
+  const drawBg = t => {
     c.save();
     CAM.apply(c, camFn(t));
     if (styleScene && typeof styleScene.draw === 'function') {
@@ -203,8 +205,10 @@ async function boot() {
       c.restore();
     }
     c.restore();
-    // 语法层：跟随小幅相机（camG）；回到 base 变换（像素化时保留 1/8 缩放，语法仍按舞台坐标排版），
-    // 画的时候记字框（字框含相机变换）。测出的设备像素字框再按 accInv 换算回舞台像素，越界检查用真实画幅。
+  };
+  // 语法层：跟随小幅相机（camG）；回到 base 变换（像素化时 1/2 缩放，语法仍按舞台坐标排版），
+  // 画的时候记字框（字框含相机变换）。测出的字框按 pf 换算回舞台像素，越界检查用真实画幅。
+  const drawGrammar = t => {
     c.setTransform(...base);
     acc = null;
     c.save(); CAM.apply(c, camG(t));
@@ -217,18 +221,30 @@ async function boot() {
   window.renderFrame = t => {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, W, H);
+    // r6 B1：渲染前先铺一层不透明纸色兜底。风格底若因任何原因没盖满（纹理建错尺寸、场景异常），
+    // 也不会漏成黑底；纹理场景的 ground() 另有 alpha=255 断言。alpha 模式（透明出片）不铺。
+    if (styleScene && styleScene.bg && !spec.alpha) { c.fillStyle = styleScene.bg; c.fillRect(0, 0, W, H); }
     if (PIXELATE) {
-      const L = PAINT.lowres, g = L.getContext('2d');         // 低分辨率缓冲：1 低像素 = 8 屏幕像素
-      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, L.width, L.height);
-      g.save(); g.scale(1 / 8, 1 / 8);                        // 用主坐标画进低分辨率缓冲
-      const real = c; c = g;                                  // 临时把「当前画布」换成低分辨率缓冲
-      try { drawScene(t); } finally { c = real; }
-      g.restore();
+      // 1) 风格底：1/8 缓冲量化（像素风底纹）
+      const L8 = PAINT.lowres, g8 = L8.getContext('2d');
+      g8.setTransform(1, 0, 0, 1, 0, 0); g8.clearRect(0, 0, L8.width, L8.height);
+      g8.save(); g8.scale(1 / 8, 1 / 8);
+      const real8 = c; c = g8;
+      try { drawBg(t); } finally { c = real8; }
+      g8.restore();
       c.imageSmoothingEnabled = false;
-      c.drawImage(L, 0, 0, L.width, L.height, 0, 0, W, H);    // 低分辨率缓冲铺满主画布（8× 最近邻放大）
+      c.drawImage(L8, 0, 0, L8.width, L8.height, 0, 0, W, H);
+      // 2) 语法层：1/2 缓冲量化（柱/线/字像素化 ≤2，数字可读）
+      const L2 = PAINT.lowres2, g2 = L2.getContext('2d');
+      g2.setTransform(1, 0, 0, 1, 0, 0); g2.clearRect(0, 0, L2.width, L2.height);
+      const real2 = c; c = g2;
+      try { drawGrammar(t); } finally { c = real2; }
+      c.imageSmoothingEnabled = false;
+      c.drawImage(L2, 0, 0, L2.width, L2.height, 0, 0, W, H);
       c.imageSmoothingEnabled = true;
     } else {
-      drawScene(t);
+      drawBg(t);
+      drawGrammar(t);
     }
     c.setTransform(1, 0, 0, 1, 0, 0);
     if (band) band(c);

@@ -40,18 +40,19 @@ let CN = '"PuHui-Medium"', CNB = '"PuHui-Bold"', NUM = '"RobotoCondensed", "PuHu
 let L, BUF;
 const fmtv = (d, v) => (d.prefix || '') + TY.fmt(v, d.decimals ?? 1) + (d.suffix || '');
 return {
-  fonts: ['PuHui-Medium', 'PuHui-Bold'],
+  fonts: ['PuHui-Medium', 'PuHui-Bold', 'FusionPixel12-400'],
   safe: true,
   fixed: true,   // 全屏图表：整页不挂相机（文字/柱不随镜头动），运动由柱生长/数字滚动/像素化提供
   legacyTheme: legacy,
   init(ctx) {
     P = palette(ctx); RED = P.red; INK = P.ink; SUB = P.sub; GRID = P.grid;
-    // 风格化字体（r5 B2）：8bit 的数字/拉丁用像素字体（PressStart2P 无汉字字形，中文仍走普惠体，
-    // 由 clip.js 的整帧像素化统一吃像素风）；中文若也换 PressStart2P 会因缺字撑爆排版
+    // 风格化字体（r6 B2）：8bit 的中文/数字/拉丁一律用像素字体 Fusion Pixel（OFL，含 CJK），
+    // 语法层单独走 1/2 缓冲（clip.js 的 PIX_GRAMMAR），文字像素化倍率 ≤2，数字 100% 可读。
+    // 之前用 PressStart2P 只有拉丁、中文回退普惠体，再被整帧 1/8 量化，CJK 与数字全糊。
     const px = ctx.style === '14_8bit';
-    CN = '"PuHui-Medium"';
-    CNB = '"PuHui-Bold"';
-    NUM = px ? '"PressStart2P-400", "PuHui-Medium"' : '"RobotoCondensed", "PuHui-Medium"';
+    CN = px ? '"FusionPixel12-400"' : '"PuHui-Medium"';
+    CNB = px ? '"FusionPixel12-400"' : '"PuHui-Bold"';
+    NUM = px ? '"FusionPixel12-400"' : '"RobotoCondensed", "PuHui-Medium"';
     const { W, H, u, data: d } = ctx, c = document.createElement('canvas').getContext('2d');
     const m = Math.max((ctx.portrait ? 70 : 90) * u, Math.max(ctx.safe.left, W * 0.05) + 4);   // 左右留白不低于 5% 安全区（与逐帧越界检查同一条线）
     const kind = (ctx.of('bar', 'line', 'candle')[0] || {}).kind || d.chart || 'bar';

@@ -12,6 +12,7 @@ window.PALETTES = {
   snow:    { bg: '#E9EEF0', surface: '#FFFFFF', ink: '#1F2A30', sub: '#5E6B72', accent: '#D9482B', accent2: '#3E7C8C' },   // 雪原
   wood:    { bg: '#EDE3D1', surface: '#F7F1E6', ink: '#2B2622', sub: '#7A6E62', accent: '#C4552D', accent2: '#3F5B4B' },   // 暖木
   chalk:   { bg: '#23302B', surface: '#2E3D37', ink: '#F1EFE6', sub: '#A9B3AA', accent: '#F4D35E', accent2: '#E87D5A' },   // 黑板
+  arcade:  { bg: '#0A4A58', surface: '#0D5260', ink: '#F4FBFA', sub: '#BEE0E2', accent: '#F2A93B', accent2: '#E8603C' },   // 8-bit 街机（深青底，浅青字；配 14_8bit 像素底）
 };
 const KEYS = ['bg', 'surface', 'ink', 'sub', 'accent', 'accent2'];
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;

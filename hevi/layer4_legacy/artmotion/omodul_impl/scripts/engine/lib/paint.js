@@ -12,6 +12,8 @@ P.cached = (key, w, h, fn) => { if (!CACHE[key]) { const c = P.canvas(w, h); fn(
 P.scratch = (key) => { if (!CACHE['s_' + key]) CACHE['s_' + key] = P.canvas(); return CACHE['s_' + key]; };
 // 低分辨率缓冲（1 低像素 = 8 屏幕像素）：像素风格整帧量化用（clip.js 的 PIXELATE 后处理）
 P.lowres = P.canvas(Math.ceil(W / 8), Math.ceil(H / 8));
+// r6 B2：语法层（柱/线/字）单独用 1/2 缓冲——文字不进 1/8 缓冲，像素化倍率 ≤2，数字才读得清。
+P.lowres2 = P.canvas(Math.ceil(W / 2), Math.ceil(H / 2));
 
 // ---------- 噪声 ----------
 const perm = new Uint8Array(512); { const r = rng(1337); const p = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = (r() * (i + 1)) | 0; [p[i], p[j]] = [p[j], p[i]]; } for (let i = 0; i < 512; i++) perm[i] = p[i & 255]; }
@@ -31,24 +33,26 @@ P.mix = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2],
 P.jitter = (c, r, amt) => [c[0] + (r() - .5) * amt, c[1] + (r() - .5) * amt, c[2] + (r() - .5) * amt];
 
 // ---------- 纹理（缓存） ----------
-// 纸/墙/岩石：底色 + 多层噪声斑驳 + 细颗粒
-P.texture = (key, base, opt = {}) => P.cached('tex_' + key, W, H, (g) => {
+// 纸/墙/岩石：底色 + 多层噪声斑驳 + 细颗粒。
+// r6 B1：w/h 显式传尺寸（默认舞台尺寸）。纹理场景一律按 1920×1080 建图——竖屏舞台 1080×1920 时
+// 若按舞台尺寸建图，场景里那张 1920×1080 的缓存画布就只被盖住左 1080px，右侧透明 → 成片丢 alpha 后成黑底。
+P.texture = (key, base, opt = {}) => { const { w = W, h = H } = opt; return P.cached(`tex_${key}_${w}x${h}`, w, h, (g) => {
   const { scale = 0.004, amt = 26, grain = 14, dark = null, seed = 1 } = opt;
-  const img = g.createImageData(W, H), d = img.data, b = P.hex(base), r = rng(seed);
+  const img = g.createImageData(w, h), d = img.data, b = P.hex(base), r = rng(seed);
   const dk = dark ? P.hex(dark) : null;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const n = P.fbm(x * scale + seed, y * scale, 5), gr = (r() - .5) * grain;
-    const i = (y * W + x) * 4;
+    const i = (y * w + x) * 4;
     let c = b;
     if (dk) c = P.mix(b, dk, clamp(n * 1.2 + 0.25));
     d[i] = c[0] + n * amt + gr; d[i + 1] = c[1] + n * amt + gr; d[i + 2] = c[2] + n * amt * 0.8 + gr; d[i + 3] = 255;
   }
   g.putImageData(img, 0, 0);
-});
-// 颗粒噪点叠层（扁平插画的 grain、旧印刷）：透明底上的随机点
-P.grain = (key, density = 0.08, col = [0, 0, 0], alpha = 0.18) => P.cached('grain_' + key, W, H, (g) => {
-  const img = g.createImageData(W, H), d = img.data, r = rng(key.length * 97 + 3);
-  for (let i = 0; i < W * H; i++) if (r() < density) { d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = 255 * alpha * (0.4 + r() * 0.6); }
+}); };
+// 颗粒噪点叠层（扁平插画的 grain、旧印刷）：透明底上的随机点。w/h 显式传尺寸（默认舞台尺寸），理由同 P.texture。
+P.grain = (key, density = 0.08, col = [0, 0, 0], alpha = 0.18, w = W, h = H) => P.cached(`grain_${key}_${w}x${h}`, w, h, (g) => {
+  const img = g.createImageData(w, h), d = img.data, r = rng(key.length * 97 + 3);
+  for (let i = 0; i < w * h; i++) if (r() < density) { d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = 255 * alpha * (0.4 + r() * 0.6); }
   g.putImageData(img, 0, 0);
 });
 // 龟裂纹（古典油画）：随机游走的细裂线网
@@ -60,6 +64,20 @@ P.craquelure = (key, alpha = 0.35) => P.cached('crack_' + key, W, H, (g) => {
     g.stroke();
   }
 });
+
+// 不透明断言（r6 B1）：纹理底必须每个像素 alpha=255。竖屏舞台上若按舞台尺寸建纹理、
+// 再画进 1920×1080 的缓存画布，右侧/下方会留下透明区，成片丢掉 alpha 后就是黑底。
+// 场景在 boot 时对 ground() 调一次；有透明像素就抛错 → render.py 报页面错误、拒绝渲染。
+P.assertOpaque = (cv, label = 'texture') => {
+  const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+  for (let i = 3; i < d.length; i += 4) {
+    if (d[i] !== 255) {
+      const px = (i - 3) / 4;
+      throw new Error(`纹理底「${label}」有透明像素 alpha=${d[i]}（画布 ${cv.width}×${cv.height}，像素 (${px % cv.width},${Math.floor(px / cv.width)})）：竖屏会渲成黑底，必须整屏不透明（r6 B1）`);
+    }
+  }
+  return cv;
+};
 
 // ---------- 手绘线 ----------
 // 把折线/曲线采样后加噪声抖动；boil = 当前时间换种子的频率（0 = 不抖）
