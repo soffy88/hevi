@@ -83,10 +83,10 @@
       ],
       "format": {
         "duration": "10.500000",
-        "size": "8777191"
+        "size": "8869895"
       }
     },
-    "sha256": "5f7fcc745826edf6d99c4e37bba11617decacd54c3c5772e93bc4bc94f69af9f",
+    "sha256": "30b3335067d2cd3190f1c98bd94f3bbd7c6ec5a1f03397ec0bd72db5afabb4cb",
     "ffmpeg_calls": [
       {
         "args": [
@@ -94,7 +94,9 @@
           "-i",
           "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot0.mp4",
           "-vf",
-          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=4000",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=4000,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
           "-an",
           "-c:v",
           "libx264",
@@ -104,9 +106,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_qbfxg465/norm_0000.mp4"
+          "/tmp/hevi_assemble_v1aqvazc/norm_0000.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_qbfxg465/norm_0000.mp4"
+        "expected_output": "/tmp/hevi_assemble_v1aqvazc/norm_0000.mp4"
       },
       {
         "args": [
@@ -114,7 +116,9 @@
           "-i",
           "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot1.mp4",
           "-vf",
-          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,hue=s=0",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,hue=s=0,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
           "-an",
           "-c:v",
           "libx264",
@@ -124,9 +128,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_qbfxg465/norm_0001.mp4"
+          "/tmp/hevi_assemble_v1aqvazc/norm_0001.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_qbfxg465/norm_0001.mp4"
+        "expected_output": "/tmp/hevi_assemble_v1aqvazc/norm_0001.mp4"
       },
       {
         "args": [
@@ -134,7 +138,9 @@
           "-i",
           "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot2.mp4",
           "-vf",
-          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=9500",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=9500,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
           "-an",
           "-c:v",
           "libx264",
@@ -144,9 +150,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_qbfxg465/norm_0002.mp4"
+          "/tmp/hevi_assemble_v1aqvazc/norm_0002.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_qbfxg465/norm_0002.mp4"
+        "expected_output": "/tmp/hevi_assemble_v1aqvazc/norm_0002.mp4"
       },
       {
         "args": [
@@ -164,21 +170,21 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_qbfxg465/norm_0003.mp4"
+          "/tmp/hevi_assemble_v1aqvazc/norm_0003.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_qbfxg465/norm_0003.mp4"
+        "expected_output": "/tmp/hevi_assemble_v1aqvazc/norm_0003.mp4"
       },
       {
         "args": [
           "-y",
           "-i",
-          "/tmp/hevi_assemble_qbfxg465/norm_0000.mp4",
+          "/tmp/hevi_assemble_v1aqvazc/norm_0000.mp4",
           "-i",
-          "/tmp/hevi_assemble_qbfxg465/norm_0001.mp4",
+          "/tmp/hevi_assemble_v1aqvazc/norm_0001.mp4",
           "-i",
-          "/tmp/hevi_assemble_qbfxg465/norm_0002.mp4",
+          "/tmp/hevi_assemble_v1aqvazc/norm_0002.mp4",
           "-i",
-          "/tmp/hevi_assemble_qbfxg465/norm_0003.mp4",
+          "/tmp/hevi_assemble_v1aqvazc/norm_0003.mp4",
           "-filter_complex",
           "[0:v][1:v]xfade=transition=dissolve:duration=0.5:offset=2.500[vx1];[vx1][2:v]xfade=transition=custom:expr=if(lt(X\\,W-(1-P)*W)\\,(if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3\\,(if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3):duration=0.5:offset=5.000[vx2];[vx2][3:v]xfade=transition=fade:duration=0.5:offset=7.500[vout]",
           "-map",
@@ -191,15 +197,15 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_qbfxg465/video_silent.mp4"
+          "/tmp/hevi_assemble_v1aqvazc/video_silent.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_qbfxg465/video_silent.mp4"
+        "expected_output": "/tmp/hevi_assemble_v1aqvazc/video_silent.mp4"
       },
       {
         "args": [
           "-y",
           "-i",
-          "/tmp/hevi_assemble_qbfxg465/video_silent.mp4",
+          "/tmp/hevi_assemble_v1aqvazc/video_silent.mp4",
           "-i",
           "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/whoosh/whoosh_air_up.wav",
           "-i",
@@ -221,9 +227,9 @@
           "-b:a",
           "192k",
           "-shortest",
-          "/tmp/hevi_assemble_qbfxg465/muxed.mp4"
+          "/tmp/hevi_assemble_v1aqvazc/muxed.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_qbfxg465/muxed.mp4"
+        "expected_output": "/tmp/hevi_assemble_v1aqvazc/muxed.mp4"
       }
     ]
   },
@@ -243,10 +249,10 @@
       ],
       "format": {
         "duration": "10.500000",
-        "size": "2961601"
+        "size": "2541724"
       }
     },
-    "sha256": "93672ac5c9a4edd5bdf306fa5e8d4d6529bcc00b2f7bfee0d40f38f075ce928e",
+    "sha256": "809f017f161335dc248483520bdc796415a06ab9d7b96d254e6348334f1e62fc",
     "ffmpeg_calls": [
       {
         "args": [
@@ -264,9 +270,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0000.mp4"
+          "/tmp/hevi_assemble_fmelbw9i/norm_0000.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_ek4zvq3g/norm_0000.mp4"
+        "expected_output": "/tmp/hevi_assemble_fmelbw9i/norm_0000.mp4"
       },
       {
         "args": [
@@ -284,9 +290,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0001.mp4"
+          "/tmp/hevi_assemble_fmelbw9i/norm_0001.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_ek4zvq3g/norm_0001.mp4"
+        "expected_output": "/tmp/hevi_assemble_fmelbw9i/norm_0001.mp4"
       },
       {
         "args": [
@@ -304,9 +310,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0002.mp4"
+          "/tmp/hevi_assemble_fmelbw9i/norm_0002.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_ek4zvq3g/norm_0002.mp4"
+        "expected_output": "/tmp/hevi_assemble_fmelbw9i/norm_0002.mp4"
       },
       {
         "args": [
@@ -324,21 +330,21 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0003.mp4"
+          "/tmp/hevi_assemble_fmelbw9i/norm_0003.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_ek4zvq3g/norm_0003.mp4"
+        "expected_output": "/tmp/hevi_assemble_fmelbw9i/norm_0003.mp4"
       },
       {
         "args": [
           "-y",
           "-i",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0000.mp4",
+          "/tmp/hevi_assemble_fmelbw9i/norm_0000.mp4",
           "-i",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0001.mp4",
+          "/tmp/hevi_assemble_fmelbw9i/norm_0001.mp4",
           "-i",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0002.mp4",
+          "/tmp/hevi_assemble_fmelbw9i/norm_0002.mp4",
           "-i",
-          "/tmp/hevi_assemble_ek4zvq3g/norm_0003.mp4",
+          "/tmp/hevi_assemble_fmelbw9i/norm_0003.mp4",
           "-filter_complex",
           "[0:v][1:v]xfade=transition=fade:duration=0.5:offset=2.500[vx1];[vx1][2:v]xfade=transition=fade:duration=0.5:offset=5.000[vx2];[vx2][3:v]xfade=transition=fade:duration=0.5:offset=7.500[vout]",
           "-map",
@@ -351,9 +357,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_ek4zvq3g/video_silent.mp4"
+          "/tmp/hevi_assemble_fmelbw9i/video_silent.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_ek4zvq3g/video_silent.mp4"
+        "expected_output": "/tmp/hevi_assemble_fmelbw9i/video_silent.mp4"
       }
     ]
   },
@@ -399,10 +405,10 @@
       ],
       "format": {
         "duration": "10.500000",
-        "size": "8476735"
+        "size": "8529087"
       }
     },
-    "sha256": "91dbd382e5f065dde041f784e58d2999724280aa68abe5bc3888ec6142da0d0d",
+    "sha256": "c443e0bb93b280c7353fbf499538e5a35691ab4e6282bed751b238f57d633ec2",
     "ffmpeg_calls": [
       {
         "args": [
@@ -410,7 +416,9 @@
           "-i",
           "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot0.mp4",
           "-vf",
-          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,vignette=PI/5",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,vignette=PI/5,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
           "-an",
           "-c:v",
           "libx264",
@@ -420,9 +428,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0000.mp4"
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0000.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_p0kur0ht/norm_0000.mp4"
+        "expected_output": "/tmp/hevi_assemble_qu1rxn3p/norm_0000.mp4"
       },
       {
         "args": [
@@ -430,7 +438,9 @@
           "-i",
           "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot1.mp4",
           "-vf",
-          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,hue=s=0",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,hue=s=0,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
           "-an",
           "-c:v",
           "libx264",
@@ -440,9 +450,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0001.mp4"
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0001.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_p0kur0ht/norm_0001.mp4"
+        "expected_output": "/tmp/hevi_assemble_qu1rxn3p/norm_0001.mp4"
       },
       {
         "args": [
@@ -450,7 +460,9 @@
           "-i",
           "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot2.mp4",
           "-vf",
-          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=9500",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=9500,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
           "-an",
           "-c:v",
           "libx264",
@@ -460,9 +472,9 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0002.mp4"
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0002.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_p0kur0ht/norm_0002.mp4"
+        "expected_output": "/tmp/hevi_assemble_qu1rxn3p/norm_0002.mp4"
       },
       {
         "args": [
@@ -480,21 +492,21 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0003.mp4"
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0003.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_p0kur0ht/norm_0003.mp4"
+        "expected_output": "/tmp/hevi_assemble_qu1rxn3p/norm_0003.mp4"
       },
       {
         "args": [
           "-y",
           "-i",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0000.mp4",
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0000.mp4",
           "-i",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0001.mp4",
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0001.mp4",
           "-i",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0002.mp4",
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0002.mp4",
           "-i",
-          "/tmp/hevi_assemble_p0kur0ht/norm_0003.mp4",
+          "/tmp/hevi_assemble_qu1rxn3p/norm_0003.mp4",
           "-filter_complex",
           "[0:v][1:v]xfade=transition=dissolve:duration=0.5:offset=2.500[vx1];[vx1][2:v]xfade=transition=custom:expr=if(lt(X\\,W-(1-P)*W)\\,(if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3\\,(if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3):duration=0.5:offset=5.000[vx2];[vx2][3:v]xfade=transition=fade:duration=0.5:offset=7.500[vout]",
           "-map",
@@ -507,15 +519,15 @@
           "20",
           "-pix_fmt",
           "yuv420p",
-          "/tmp/hevi_assemble_p0kur0ht/video_silent.mp4"
+          "/tmp/hevi_assemble_qu1rxn3p/video_silent.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_p0kur0ht/video_silent.mp4"
+        "expected_output": "/tmp/hevi_assemble_qu1rxn3p/video_silent.mp4"
       },
       {
         "args": [
           "-y",
           "-i",
-          "/tmp/hevi_assemble_p0kur0ht/video_silent.mp4",
+          "/tmp/hevi_assemble_qu1rxn3p/video_silent.mp4",
           "-i",
           "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/whoosh/whoosh_air_up.wav",
           "-i",
@@ -537,9 +549,9 @@
           "-b:a",
           "192k",
           "-shortest",
-          "/tmp/hevi_assemble_p0kur0ht/muxed.mp4"
+          "/tmp/hevi_assemble_qu1rxn3p/muxed.mp4"
         ],
-        "expected_output": "/tmp/hevi_assemble_p0kur0ht/muxed.mp4"
+        "expected_output": "/tmp/hevi_assemble_qu1rxn3p/muxed.mp4"
       }
     ]
   }

@@ -172,7 +172,7 @@ async def _normalize_shot(
     out = tmp_dir / f"norm_{idx:04d}.mp4"
     vf = _normalize_vf(width, height, fps, brightness=brightness)
     if extra_vf:
-        vf += f",{extra_vf}"
+        vf += f",{extra_vf},scale={width}:{height},setsar=1"
 
     target = target_duration if target_duration is not None else shot.target_duration
     args = ["-y", "-i", str(shot.video_path)]

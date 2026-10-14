@@ -23,7 +23,13 @@ import pytest
 from skimage.metrics import structural_similarity as compare_ssim
 
 from hevi.assembly.assembler import ShotSegment, assemble_longvideo, build_xfade_chain
-from hevi.production.shot_spec import ShotSpec
+from hevi.production.shot_spec import (
+    VALID_STYLES,
+    ShotSpec,
+    rejected,
+    template_render_supported,
+    valid_template_ids,
+)
 from hevi.production.shot_spec_render import (
     effect_filter,
     seam_transitions,
@@ -426,14 +432,268 @@ def test_duration_equals_sum_minus_overlaps(tmp_path: Path) -> None:
     assert got == pytest.approx(expected, abs=1.0 / _FPS + 0.02), f"got {got}, expected {expected}"
 
 
+def _framemd5(path: Path) -> list[str]:
+    """提取视频每帧的 framemd5 列表 (每行去注保留帧 md5 字符串)。"""
+    res = subprocess.run(
+        [
+            FFMPEG,
+            "-v",
+            "error",
+            "-i",
+            str(path),
+            "-map",
+            "0:v",
+            "-f",
+            "framemd5",
+            "-",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    lines = [line.strip() for line in res.stdout.splitlines() if not line.startswith("#")]
+    # framemd5 输出格式: stream, dts, pts, duration, size, hash
+    return [l.split(",")[-1].strip() for l in lines if l]
+
+
+# ── 6. R2 FIX: Template 真实 ffmpeg 验收 (按 category) ──────────────
+
+
+def test_template_all_valid_supported_or_rejected() -> None:
+    """R2 验收 1 单测: valid_template_ids() 中所有 ID 均需满足 supported 或 rejected。"""
+    all_ids = valid_template_ids()
+    assert len(all_ids) >= 100
+    assert all(template_render_supported(t) or rejected(t) for t in all_ids)
+
+
 @ffmpeg_only
-def test_repatch_changes_output(tmp_path: Path) -> None:
-    """同素材、仅改镜0 effect(warm→mono)重渲 → 成片逐字节不同(证明 spec 生效)。"""
+@pytest.mark.parametrize(
+    ("category", "tpl_id"),
+    [
+        ("style", "tc:pencil-sketch-draw"),
+        ("overlay", "tc:crash-zoom-punch"),
+        ("transition", "tc:black-slam-transition"),
+    ],
+)
+def test_template_render_framemd5_differs(tmp_path: Path, category: str, tpl_id: str) -> None:
+    """每个可渲染 category 抽 1 个 id 真实渲染:
+
+    - 该镜时间段 framemd5 与无 template 渲染不同;
+    - 其它镜纯段逐帧相同 (framemd5 一致)。
+    """
+    dur, xfade_d = 3.0, 0.5
+    clips = _clips(tmp_path, dur, n=3)
+    base_out = _render(clips, tmp_path / f"base_{category}.mp4", None, transition="fade", xfade_d=xfade_d)
+    tpl_specs: list[ShotSpec | None] = [
+        None,
+        ShotSpec(template=tpl_id, duration=dur),
+        None,
+    ]
+    tpl_out = _render(clips, tmp_path / f"tpl_{category}.mp4", tpl_specs, transition="fade", xfade_d=xfade_d)
+
+    md5_base = _framemd5(base_out)
+    md5_tpl = _framemd5(tpl_out)
+    assert len(md5_base) == len(md5_tpl), f"frame count mismatch {len(md5_base)} vs {len(md5_tpl)}"
+
+    # 3 镜 (各 3.0s, xfade_d=0.5, 总长 8.0s = 240 帧):
+    # 镜0 纯画面范围: 0.0s..2.0s (0..59 帧, 共 60 帧, 绝不沾接缝0)
+    # 镜1 中段画面范围: 2.67s..4.67s (80..139 帧, 共 60 帧, 绝在镜1内部)
+    # 镜2 纯画面范围: 5.67s..8.0s (170..239 帧, 共 70 帧, 绝在接缝1之后)
+    pure_shot0 = slice(0, 60)
+    shot1_range = slice(80, 140)
+    pure_shot2 = slice(170, len(md5_base))
+
+    # 1. 镜0 纯画面段逐帧一致
+    assert md5_tpl[pure_shot0] == md5_base[pure_shot0], (
+        f"category {category} affected shot 0: first mismatch at "
+        f"{next(i for i, (a, b) in enumerate(zip(md5_tpl[pure_shot0], md5_base[pure_shot0], strict=True)) if a != b)}"
+    )
+
+    # 2. 镜1 时间段 framemd5 显著不同
+    assert md5_tpl[shot1_range] != md5_base[shot1_range], (
+        f"category {category} ({tpl_id}) had no visual difference on shot 1"
+    )
+
+    # 3. 镜2 纯画面段逐帧一致
+    assert md5_tpl[pure_shot2] == md5_base[pure_shot2], (
+        f"category {category} affected shot 2: first mismatch at "
+        f"{next(i for i, (a, b) in enumerate(zip(md5_tpl[pure_shot2], md5_base[pure_shot2], strict=True)) if a != b)}"
+    )
+
+
+# ── 7. R2 FIX: Style 枚举逐值真实 ffmpeg 验收 ──────────────────────────
+
+
+@ffmpeg_only
+@pytest.mark.parametrize("style_name", sorted(VALID_STYLES))
+def test_style_enum_real_ffmpeg(tmp_path: Path, style_name: str) -> None:
+    """每个合法 style 枚举值真实渲染: 该镜中段帧与无 style 基线 SSIM < 0.98 或通道均值有可测偏移。"""
     clips = _clips(tmp_path, 2.0, n=2)
-    warm: list[ShotSpec | None] = [ShotSpec(effect="warm", duration=2.0)] * 2
-    mono: list[ShotSpec | None] = [ShotSpec(effect="mono", duration=2.0)] * 2
-    o1 = _render(clips, tmp_path / "w.mp4", warm)
-    o2 = _render(clips, tmp_path / "m.mp4", mono)
-    h1 = subprocess.run(["sha256sum", str(o1)], capture_output=True, text=True).stdout
-    h2 = subprocess.run(["sha256sum", str(o2)], capture_output=True, text=True).stdout
-    assert h1 != h2
+    base_out = _render(clips, tmp_path / f"base_style_{style_name}.mp4", None)
+    specs: list[ShotSpec | None] = [ShotSpec(style=style_name, duration=2.0), None]
+    style_out = _render(clips, tmp_path / f"styled_{style_name}.mp4", specs)
+
+    # 取镜0中段 (1.0s) 比较画面
+    f_base = _frame_rgb(base_out, 1.0)
+    f_style = _frame_rgb(style_out, 1.0)
+    s = compare_ssim(f_style, f_base, channel_axis=2)
+
+    if style_name == "warm":
+        rb_base = f_base[:, :, 0].mean() / max(f_base[:, :, 2].mean(), 1.0)
+        rb_style = f_style[:, :, 0].mean() / max(f_style[:, :, 2].mean(), 1.0)
+        assert rb_style > rb_base + 0.04 or s < 0.98
+    elif style_name == "cool":
+        rb_base = f_base[:, :, 0].mean() / max(f_base[:, :, 2].mean(), 1.0)
+        rb_style = f_style[:, :, 0].mean() / max(f_style[:, :, 2].mean(), 1.0)
+        assert rb_style < rb_base - 0.04 or s < 0.98
+    elif style_name in ("mono", "noir"):
+        _, u, v = _frame_yuv(style_out, 1.0)
+        assert (abs(u - 128) < 2 and abs(v - 128) < 2) or s < 0.98
+    else:
+        assert s < 0.98, f"style '{style_name}' SSIM {s:.4f} >= 0.98 vs baseline"
+
+
+# ── 8. R2 FIX: Duration 真实裁切/补帧与 SFX 对齐验收 ───────────────────
+
+
+@ffmpeg_only
+def test_duration_clip_pad_and_sfx_alignment(tmp_path: Path) -> None:
+    """R2 验收 3: spec.duration 裁剪(3.0->1.5)与补帧(3.0->4.0);
+
+    - ffprobe 成片时长 = Σ(spec.duration 或素材时长) − Σ(非 cut 接缝 d) ±1 帧;
+    - sfx 起点公式随之正确,误差 ≤0.1s。
+    """
+    native_dur = 3.0
+    clips = _clips(tmp_path, native_dur, n=3)
+    specs: list[ShotSpec | None] = [
+        ShotSpec(duration=1.5, sfx=[{"id": "impact_hard", "offset": 0.4}]),
+        ShotSpec(transition_in="dissolve", duration=4.0, sfx=[{"id": "ding_bell", "offset": 1.0}]),
+        ShotSpec(transition_in="cut"),  # 未给 duration -> 回落素材原时长 3.0s
+    ]
+    out = _render(clips, tmp_path / "dur_clip_pad.mp4", specs, transition="fade", xfade_d=0.5)
+
+    # 时长理论值: 1.5 + 4.0 + 3.0 - 0.5(dissolve) - 0.0(cut) = 8.0s
+    expected_dur = 1.5 + 4.0 + native_dur - 0.5
+    measured_dur = _probe_dur(out)
+    assert measured_dur == pytest.approx(expected_dur, abs=1.0 / _FPS + 0.02)
+
+    # SFX 期望起点:
+    # 镜0 起点 0.0, offset 0.4 -> 0.4s
+    # 镜1 起点 1.5 - 0.5 = 1.0, offset 1.0 -> 2.0s
+    seam = seam_transitions(specs, 3, "fade")
+    starts = shot_start_times([1.5, 4.0, native_dur], 0.5, seam)
+    assert starts == pytest.approx([0.0, 1.0, 5.0])
+    expected_cues = [t for _, t in spec_sfx_cues(specs, starts)]
+    assert expected_cues == pytest.approx([0.4, 2.0])
+
+    x = _audio_mono(out)
+    onset_list = _onsets(x)
+    assert onset_list, "no onsets found"
+    for t_exp in expected_cues:
+        nearest = min(onset_list, key=lambda o: abs(o - t_exp))
+        assert abs(nearest - t_exp) <= 0.1, (
+            f"sfx onset mismatch: expected {t_exp}s, nearest {nearest:.3f}s"
+        )
+
+
+# ── 9. R2 FIX: 出片入口存储读取与集成测试 ──────────────────────────────
+
+
+@ffmpeg_only
+def test_ingress_reads_task_specs_and_renders_mono(tmp_path: Path) -> None:
+    """R2 验收 4: 经由 API PATCH 单镜 spec (effect=mono),
+
+    出片入口 (director/graph_render) 从任务存储读 spec 传给 assemble_longvideo,
+    该镜中段 |U-128| < 2。
+    """
+    from uuid import uuid4
+
+    from fastapi.testclient import TestClient
+
+    from hevi.api.main import app
+    from hevi.api.routers.tasks import get_repository
+    from hevi.auth.dependencies import get_current_user
+    from hevi.director.graph_render import render_graph_episode_artifact
+
+    task_id = uuid4()
+    user = {"id": "spec-ingress-test"}
+    clips = _clips(tmp_path, 2.0, n=2)
+
+    # 模拟真实任务存储 (shot_states 行)
+    shots_data = [
+        {
+            "id": uuid4(),
+            "task_id": str(task_id),
+            "shot_index": i,
+            "status": "pending",
+            "selection_json": {},
+        }
+        for i in range(2)
+    ]
+
+    class FakeTaskRepo:
+        async def get_task(self, tid):
+            return {"id": str(task_id), "user_id": user["id"]}
+
+        async def get_shots(self, tid):
+            return shots_data
+
+        async def save_shot(self, row):
+            for i, s in enumerate(shots_data):
+                if s["id"] == row["id"]:
+                    shots_data[i] = row
+
+    fake_repo = FakeTaskRepo()
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_repository] = lambda: fake_repo
+
+    client = TestClient(app)
+    try:
+        # ① 通过真实 API PATCH 镜0 effect=mono
+        r = client.patch(
+            f"/api/tasks/{task_id}/shots/0/spec",
+            json={"effect": "mono"},
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["spec"]["effect"] == "mono"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+
+    # ② 模拟现有出片入口所调用的 executor 服务
+    class FakeExecutor:
+        async def execute_graph(self, graph_id: str):
+            return {
+                "results": {
+                    "shot_0000": {"node_type": "video", "success": True, "output": {"output": str(clips[0])}},
+                    "shot_0001": {"node_type": "video", "success": True, "output": {"output": str(clips[1])}},
+                }
+            }
+
+    class FakeTaskService:
+        repository = fake_repo
+
+    # ③ 走现有的出片入口执行装配 (内部自动从 repository.get_shots(task_id) 读 spec)
+    out_dir = tmp_path / "task_out"
+    rendered = asyncio.run(
+        render_graph_episode_artifact(
+            graph_id="test_graph",
+            output_dir=out_dir,
+            executor_service=FakeExecutor(),
+            width=_W,
+            height=_H,
+            fps=_FPS,
+            transition="cut",
+            task_id=task_id,
+            task_service=FakeTaskService(),
+        )
+    )
+
+    final_video = Path(rendered["video_path"])
+    assert final_video.exists()
+
+    # ④ 镜0 (带 mono spec) 中段 |U-128| < 2, |V-128| < 2
+    _, u0, v0 = _frame_yuv(final_video, 1.0)
+    assert abs(u0 - 128) < 2, f"Shot 0 mid U={u0:.2f} not neutral"
+    assert abs(v0 - 128) < 2, f"Shot 0 mid V={v0:.2f} not neutral"
+
