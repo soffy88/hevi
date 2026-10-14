@@ -1154,3 +1154,50 @@ class TestB5Stickman:
             if not any((m != rep).mean() < 0.005 for rep in clusters):
                 clusters.append(m)
         assert len(clusters) >= 4, f"only {len(clusters)} distinct poses in the video"
+
+
+class TestArtifactIntegrity:
+    """R5-3: Committed artifacts existence and SHA256SUMS matching. Hard failure (no skip)."""
+
+    E2E_DIR = Path("output/dirstyle_e2e")
+    SHA256SUMS = E2E_DIR / "SHA256SUMS"
+
+    REQUIRED_FILES = [
+        "source_clean.mp4",
+        "wong_kar_wai.mp4",
+        "wes_anderson.mp4",
+        "fincher.mp4",
+        "zhang_yimou.mp4",
+        "wong_kar_wai_subbed.mp4",
+        "wes_anderson_subbed.mp4",
+        "fincher_subbed.mp4",
+        "zhang_yimou_subbed.mp4",
+        "stickman_9x16.mp4",
+        "contact_sheet.png",
+        "record.json",
+        "flow_pack_60s/pack.md",
+        "flow_pack_60s/pack.json",
+    ]
+
+    def test_sha256sums_all_exist_and_match(self):
+        """Assert all files in SHA256SUMS exist and their sha256 hashes match."""
+        import hashlib
+
+        assert self.SHA256SUMS.exists(), f"missing committed artifact {self.SHA256SUMS}"
+        lines = [l.strip() for l in self.SHA256SUMS.read_text(encoding="utf-8").splitlines() if l.strip()]
+        assert len(lines) >= 10, f"SHA256SUMS has only {len(lines)} entries (expected >=10)"
+        for line in lines:
+            expected_sha, fname = line.split(None, 1)
+            target = self.E2E_DIR / fname.strip()
+            assert target.exists(), f"artifact listed in SHA256SUMS missing: {target} (never skip)"
+            h = hashlib.sha256(target.read_bytes()).hexdigest()
+            assert h == expected_sha, (
+                f"sha256 mismatch for {fname}: got {h}, expected {expected_sha}"
+            )
+
+    @pytest.mark.parametrize("fname", REQUIRED_FILES)
+    def test_required_artifacts_exist(self, fname):
+        """Assert each style video, subbed video, contact sheet, record, and pack exist."""
+        target = self.E2E_DIR / fname
+        assert target.exists(), f"Required artifact {fname} missing: {target} (never skip)"
+
