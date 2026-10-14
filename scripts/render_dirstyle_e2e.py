@@ -198,7 +198,7 @@ def main() -> int:
     draw = ImageDraw.Draw(sheet)
     for r, sid in enumerate(STYLES):
         for c, frac in enumerate((0.0, 0.25, 0.5, 0.75)):
-            img = Image.open(OUT / f"{sid}_frame{frac}.png").resize((tw, th))
+            img = Image.open(frame_path(sid, frac)).resize((tw, th))
             sheet.paste(img, (r * tw, c * th))
         draw.text((r * tw + 8, th * 4 + 6), STYLE_ZH[sid], font=font, fill="black")
     sheet.save(OUT / "contact_sheet.png")
