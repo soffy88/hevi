@@ -11,7 +11,7 @@
   },
   "water_ripple": {
     "path": "samples/aimotion_fx/sample_water_ripple.mp4",
-    "sha256": "a30856ad94ecd4c90f75e1a8d853857fa486d83a567dd61166681e00b5e274c0",
+    "sha256": "b1488f69fdda2750dbfb2bd31d8023fd6b171dffe01f672e8e75a009e7237011",
     "duration": 5.84,
     "total_frames": 146,
     "width": 720,
@@ -21,7 +21,7 @@
   },
   "glass_refract": {
     "path": "samples/aimotion_fx/sample_glass_refract.mp4",
-    "sha256": "302f0d9ac29488c4aa548a26eb654031a4ce581ef77b03e49412bdfa814402ce",
+    "sha256": "2675fecca5d63edc6f5a893aae49c79ffca71a94505f6fbb2ec54c7a20e13564",
     "duration": 5.84,
     "total_frames": 146,
     "width": 720,
@@ -31,30 +31,49 @@
   },
   "reframe_interview": {
     "path": "samples/aimotion_fx/sample_reframe_interview_9x16.mp4",
-    "sha256": "a2592d8f0487722f905f131bf0e8b80c62c790826d6ab98ea3b6b16f89f7d3e2",
+    "sha256": "c93c1633ef98b01d0f7de848b03f5c658af7b07a026a23800bfa48d07bd37740",
     "duration": 5.96,
     "total_frames": 149,
     "width": 404,
     "height": 720,
     "fps": 25.0,
     "metrics": {
-      "subject_captured_mean": 0.8753,
-      "window_occupancy_mean": 0.9029,
-      "subject_coverage": 0.9029
-    }
+      "subject_in_window_ratio": 1.0,
+      "subject_coverage": 1.0,
+      "displacement_p50": 2.0,
+      "displacement_p95": 4.0,
+      "displacement_max": 6.0,
+      "shot_cuts": [
+        54,
+        98,
+        116,
+        151
+      ],
+      "is_person_mode": true,
+      "num_frames": 152
+    },
+    "contact_sheet": "samples/aimotion_fx/sample_reframe_interview_9x16_sheet.jpg",
+    "windows_overlay": "samples/aimotion_fx/reframe_interview_windows.jpg"
   },
   "reframe_broll": {
     "path": "samples/aimotion_fx/sample_reframe_broll_9x16.mp4",
-    "sha256": "d9d459a0cdd442832ffa96ad64ef8846468cd1c35b979de39820a45f490ce51c",
+    "sha256": "b9924f2b3de87646c2682a12da1399dd94e96b51f4aae1aced9958d1d613ba61",
     "duration": 5.96,
     "total_frames": 149,
     "width": 404,
     "height": 720,
     "fps": 25.0,
     "metrics": {
-      "subject_captured_mean": 0.9781,
-      "window_occupancy_mean": 0.7207,
-      "subject_coverage": 0.9781
-    }
+      "subject_in_window_ratio": 1.0,
+      "subject_coverage": 1.0,
+      "displacement_p50": 0.0,
+      "displacement_p95": 1.0,
+      "displacement_max": 2.0,
+      "shot_cuts": [],
+      "is_person_mode": false,
+      "num_frames": 152
+    },
+    "contact_sheet": "samples/aimotion_fx/sample_reframe_broll_9x16_sheet.jpg",
+    "windows_overlay": "samples/aimotion_fx/reframe_broll_windows.jpg"
   }
 }
