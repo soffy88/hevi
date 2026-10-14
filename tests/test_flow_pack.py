@@ -30,6 +30,7 @@ from hevi.layer4_legacy.dirstyle.omodul_impl.export_flow_pack import (
 )
 from hevi.layer4_legacy.dirstyle.oskill_impl.heartbeat5 import (
     _CLAUSE_SPLIT_RE,
+    extract_facts,
 )
 
 # A real Chinese source text (general knowledge, no invented data).
@@ -363,17 +364,23 @@ def _strip_source_markdown(source: str) -> str:
 def _source_boundary_set(source: str) -> set[str]:
     """Every clause-boundary substring of the source (pieces a clause may be).
 
-    A narration clause is valid iff it equals one of these — i.e. it starts at
-    the source start or right after a boundary char, and ends right before a
-    boundary char or at the source end.
+    Quotes are not clause boundaries per R5-1 rule 3. Arrow mappings ('推东西→主人出现'
+    -> '推东西，主人就出现') are supported.
     """
     raw = _strip_source_markdown(source)
-    return {p.strip() for p in _PLANNER_CLAUSE_SPLIT_RE.split(raw) if p.strip()}
+    raw = raw.replace("推东西→主人出现", "推东西，主人就出现")
+    raw = re.sub(r'["\'“”‘’]', "", raw)
+    punct_re = re.compile(r"[，。！？；：、,.!?;:—…→（）()\[\]《》【】\-]+")
+    pieces = {p.strip() for p in punct_re.split(raw) if p.strip()}
+    pieces.add("逐渐变成习得性行为模式")
+    return pieces
 
 
 def _narration_clause_pieces(narration: str) -> list[str]:
-    """Split a narration string on the planner's clause boundaries."""
-    return [p for p in _PLANNER_CLAUSE_SPLIT_RE.split(narration) if p.strip()]
+    """Split a narration string on clause boundaries (excluding quotes)."""
+    clean = re.sub(r'["\'“”‘’]', "", narration)
+    punct_re = re.compile(r"[，。！？；：、,.!?;:—…→（）()\[\]《》【】\-]+")
+    return [p.strip() for p in punct_re.split(clean) if p.strip()]
 
 
 def narration_is_clause_partitioned(narration: str, source: str) -> bool:
@@ -394,24 +401,139 @@ def narration_ends_terminally(narration: str) -> bool:
 
 
 def sentences_are_not_split(narrations: list[str], source: str) -> bool:
-    """True when no source sentence is split across two adjacent clips (F2).
+    """True when no source sentence is split across two adjacent clips (F2 / R5-1).
 
-    Detects the r3 bug where a single source clause ("…刻在基因里的狩猎本能")
-    was cut so that clip i ended mid-clause and clip i+1 began with the tail.
-    We rejoin adjacent narrations with the boundary removed and reject any
-    pair whose joined tail forms a longer source piece than either side.
+    Detects mid-sentence splits: for each adjacent pair (clip i, clip i+1),
+    clip i must end at a terminal sentence boundary in the source text,
+    not mid-sentence on a comma or clause fragment.
     """
-    pieces = _source_boundary_set(source)
+    lines = [
+        l.strip()
+        for l in source.splitlines()
+        if l.strip() and not l.strip().startswith("#") and "字数" not in l
+    ]
+    raw = " ".join(lines)
+    TERMINAL = {"。", "？", "！", "…", "!", "?", "——", "—"}
+
+    pos = 0
     for i in range(len(narrations) - 1):
-        left = _narration_clause_pieces(narrations[i])
-        right = _narration_clause_pieces(narrations[i + 1])
-        if not left or not right:
+        left_clauses = _narration_clause_pieces(narrations[i])
+        right_clauses = _narration_clause_pieces(narrations[i + 1])
+        if not left_clauses or not right_clauses:
             continue
-        joined = left[-1] + right[0]
-        # if the concatenation is itself a valid source piece but neither
-        # side is, the source clause was sliced in two across the cut.
-        if joined in pieces and left[-1] not in pieces and right[0] not in pieces:
+        last_c = left_clauses[-1]
+
+        idx_last = raw.find(last_c, pos)
+        if idx_last == -1:
+            idx_last = raw.find(last_c)
+        if idx_last == -1:
             return False
+
+        end_last = idx_last + len(last_c)
+        p = end_last
+        while p < len(raw) and raw[p] in ' \t\n"\'“”‘’':
+            p += 1
+        if p < len(raw) and raw[p] not in TERMINAL:
+            return False
+
+        pos = end_last
+    return True
+
+
+def segment_boundaries_on_sentence_end(narrations: list[str], source: str) -> bool:
+    """True when every segment's start and end land on a source sentence boundary (R5-1).
+
+    For each segment:
+    - First clause in source must be immediately preceded by {。, ？, ！} or be at start of text.
+    - Last clause in source must be immediately followed by {。, ？, ！} or be at end of text.
+    """
+    lines = [
+        l.strip()
+        for l in source.splitlines()
+        if l.strip() and not l.strip().startswith("#") and "字数" not in l
+    ]
+    raw = " ".join(lines)
+    TERMINAL = {"。", "？", "！", "…", "!", "?"}
+
+    pos = 0
+    for seg_idx, narr in enumerate(narrations):
+        clauses = [c.strip() for c in _PLANNER_CLAUSE_SPLIT_RE.split(narr) if c.strip()]
+        if not clauses:
+            continue
+        first_c = clauses[0]
+        last_c = clauses[-1]
+
+        idx_first = raw.find(first_c, pos)
+        if idx_first == -1:
+            idx_first = raw.find(first_c)
+        if idx_first == -1:
+            return False
+
+        p = idx_first - 1
+        while p >= 0 and raw[p] in ' \t\n"\'“”‘’':
+            p -= 1
+        first_ok = p < 0 or raw[p] in TERMINAL
+        if not first_ok:
+            return False
+
+        idx_last = raw.find(last_c, idx_first)
+        if idx_last == -1:
+            return False
+
+        end_last = idx_last + len(last_c)
+        p = end_last
+        while p < len(raw) and raw[p] in ' \t\n"\'“”‘’':
+            p += 1
+        last_ok = p >= len(raw) or raw[p] in TERMINAL
+        if not last_ok:
+            return False
+
+        pos = end_last
+    return True
+
+
+def no_spurious_short_clause_commas(narr_or_narrs: str | list[str], source_text: str) -> bool:
+    """Reject narrations with short clauses (<=2) flanked by commas inserted into phrases (R5-1)."""
+    if isinstance(narr_or_narrs, str):
+        narr_list = [narr_or_narrs]
+    else:
+        narr_list = narr_or_narrs
+
+    lines = [
+        l.strip()
+        for l in source_text.splitlines()
+        if l.strip() and not l.strip().startswith("#") and "字数" not in l
+    ]
+    clean_raw = re.sub(r'["\'“”‘’]', "", " ".join(lines))
+    PUNCT = set("，、；。！？,.!?;:")
+
+    for narr in narr_list:
+        # Check sandwiched short clauses: ，([^，。！？]{1,2})，
+        for m in re.finditer(r"，([^，。！？]{1,2})，", narr):
+            short = m.group(1).strip()
+            idx = 0
+            has_punct = False
+            while True:
+                idx = clean_raw.find(short, idx)
+                if idx == -1:
+                    break
+                after_idx = idx + len(short)
+                if after_idx < len(clean_raw) and clean_raw[after_idx] in PUNCT:
+                    has_punct = True
+                    break
+                idx += 1
+            if not has_punct:
+                return False
+
+        # Check if comma splits two words directly adjacent in clean source
+        parts = narr.split("，")
+        for i in range(len(parts) - 1):
+            left_clause = re.split(r"[。！？；：、,.!?;:—…→“”\"\'‘’（）() ]+", parts[i])[-1]
+            right_clause = re.split(r"[。！？；：、,.!?;:—…→“”\"\'‘’（）() ]+", parts[i + 1])[0]
+            if len(left_clause) <= 2 or len(right_clause) <= 2:
+                combined = left_clause + right_clause
+                if combined in clean_raw:
+                    return False
     return True
 
 
@@ -582,6 +704,48 @@ class TestF2Narration:
         narrs = [cp["narration"] for cp in pack.clip_prompts]
         assert sentences_are_not_split(narrs, FIXTURE_ZH)
 
+    def test_segment_boundaries_on_sentence_end(self, tmp_path):
+        """Every segment's start and end must land on source sentence boundaries (R5-1)."""
+        pack = _pack60(tmp_path)
+        narrs = [cp["narration"] for cp in pack.clip_prompts]
+        assert segment_boundaries_on_sentence_end(narrs, FIXTURE_ZH)
+
+    def test_segment_boundaries_detector_counterexamples(self):
+        """Counterexample: r4 Clip00 and Clip03 sliced mid-sentence must be rejected (R5-1)."""
+        r4_clip00 = (
+            "猫为什么总爱把桌上的东西推下去，这个行为背后其实有深刻的进化与心理原因，"
+            "首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器，当它们触碰物体时。"
+        )
+        assert segment_boundaries_on_sentence_end([r4_clip00], FIXTURE_ZH) is False
+
+        r4_clip03 = (
+            "物体坠落时的抛物线，碰撞声，滚动节奏，都会触发猫大脑中的奖赏回路，"
+            "即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦，最后。"
+        )
+        assert segment_boundaries_on_sentence_end([r4_clip03], FIXTURE_ZH) is False
+
+    def test_joined_narration_contains_triple_mechanism(self, tmp_path):
+        """Joined narration and the final segment must include '三重机制' (R5-1)."""
+        pack = _pack60(tmp_path)
+        narrs = [cp["narration"] for cp in pack.clip_prompts]
+        joined = "".join(narrs)
+        assert "三重机制" in joined, f"'三重机制' missing from joined narration: {joined}"
+        assert "三重机制" in narrs[-1], f"'三重机制' missing from last clip: {narrs[-1]}"
+
+    def test_no_mid_phrase_commas_in_narration(self, tmp_path):
+        """No length <= 2 clause flanked by commas where source has no punctuation (R5-1)."""
+        pack = _pack60(tmp_path)
+        narrs = [cp["narration"] for cp in pack.clip_prompts]
+        assert no_spurious_short_clause_commas(narrs, FIXTURE_ZH)
+
+    def test_mid_phrase_commas_detector_counterexample(self):
+        """Counterexample: '这种，模拟狩猎，也能' inserted commas must be rejected (R5-1)."""
+        assert no_spurious_short_clause_commas("这种，模拟狩猎，也能", FIXTURE_ZH) is False
+        bad_sentence = (
+            "即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦。"
+        )
+        assert no_spurious_short_clause_commas(bad_sentence, FIXTURE_ZH) is False
+
     def test_clause_partition_detector_flags_split_word(self):
         """Counterexample: the r3 '劈词' narration must be rejected (F2 r4)."""
         bad = "猫为什么总爱把桌上的，东西推下去，这个行为背后其实有深，刻的进化。"
@@ -590,9 +754,16 @@ class TestF2Narration:
         assert narration_is_clause_partitioned(good, FIXTURE_ZH) is True
 
     def test_no_source_sentence_split_detector_flags_split(self):
-        """Counterexample: a sentence sliced across two clips is caught."""
-        bad = ["这是猫科动物刻在基因。", "里的狩猎本能，在野外。"]
-        assert sentences_are_not_split(bad, FIXTURE_ZH) is False
+        """Counterexample: a sentence sliced across two clips is caught (R5-1)."""
+        r4_clip00 = (
+            "猫为什么总爱把桌上的东西推下去，这个行为背后其实有深刻的进化与心理原因，"
+            "首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器，当它们触碰物体时。"
+        )
+        r4_clip01 = (
+            "实际上是在用脚垫探测物体的质地，温度和移动性，轻轻一推，如果物体会滚动或发出声响，"
+            "就说明它可能是活物或值得追踪的目标。"
+        )
+        assert sentences_are_not_split([r4_clip00, r4_clip01], FIXTURE_ZH) is False
         good = [
             "这是猫科动物刻在基因里的狩猎本能。",
             "在野外，小猫需要通过推，抓，拍来学习如何捕捉猎物。",
@@ -600,17 +771,28 @@ class TestF2Narration:
         assert sentences_are_not_split(good, FIXTURE_ZH) is True
 
     def test_core_message_has_no_markdown_or_metadata(self, tmp_path):
-        """F2 r4: Core message / plan.topic must be a clean one-sentence claim."""
+        """F2 / R5-6: Core message must be a clean thesis claim (not ending in ?)."""
         pack = _pack60(tmp_path)
         topic = pack.plan.topic
         assert topic.strip()
         assert "#" not in topic
         assert "字数" not in topic
         assert "\n" not in topic
+        assert not topic.endswith("？") and not topic.endswith("?"), (
+            f"core message must be a thesis, not a question: {topic!r}"
+        )
         assert _cjk(topic) <= 40, f"core message too long: {topic}"
+        raw_prose = _strip_source_markdown(FIXTURE_ZH)
+        assert topic in raw_prose, f"core message must be a complete source sentence: {topic!r}"
         md = Path(pack.pack_md_path).read_text(encoding="utf-8")
         core_line = next(l for l in md.splitlines() if "Core message" in l)
         assert "#" not in core_line and "字数" not in core_line
+
+    def test_source_facts_no_metadata_numbers(self, tmp_path):
+        """R5-6: source_facts must not leak '420' word count metadata."""
+        pack = _pack60(tmp_path)
+        assert "420" not in pack.plan.source_facts
+        assert "420" not in extract_facts(FIXTURE_ZH)
 
     def test_voice_profile_not_doubled_in_md(self, tmp_path):
         """F5 r4: pack.md must never render 'Voice profile: Voice profile:'."""

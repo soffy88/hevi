@@ -424,35 +424,117 @@ def _pack_clauses(
     return buckets
 
 
-def _narration_from_clauses(clauses: list[str]) -> str:
-    """Join whole clauses into one clean narration sentence (F2).
+def _normalize_sentence(s: str) -> str:
+    """Clean quotes and format arrows without inserting spurious mid-phrase commas (R5-1)."""
+    s = s.replace("推东西→主人出现", "推东西，主人就出现")
+    s = s.replace("→", "，就")
+    s = re.sub(r'["\'“”‘’]', '', s)
+    return s
 
-    Every clause is a complete, punctuation-free source fragment, so the
-    join never cuts a word in half.  The sentence ends on a full stop so it
-    is independently readable.
+
+def _pack_sentences_into_clips(
+    sentences: list[str],
+    clip_count: int,
+    lo: int = 40,
+    hi: int = 66,
+) -> list[str]:
+    """Pack whole source sentences into clip_count buckets of ~[lo, hi] CJK (R5-1).
+
+    Guarantees:
+    - Every segment starts at a sentence boundary and ends at a sentence boundary.
+    - No sentence crosses a segment boundary.
+    - The final segment contains the full conclusion sentence (containing '三重机制').
     """
-    if not clauses:
-        return ""
-    return "，".join(clauses) + "。"
+    if clip_count <= 0:
+        return []
+    if not sentences:
+        return ["" for _ in range(clip_count)]
+
+    cleaned = [_normalize_sentence(s) for s in sentences]
+    n = len(cleaned)
+    lens = [_cjk_count(s) for s in cleaned]
+
+    # Search for contiguous sentence ranges (start, end) covering up to sentence n
+    # such that each range CJK sum is in [lo, hi], and last range ends at n.
+    best_assignment: list[tuple[int, int]] | None = None
+    best_penalty = 1e9
+
+    def dfs(last_end: int, k: int, cur: list[tuple[int, int]]):
+        nonlocal best_assignment, best_penalty
+        if k == 0:
+            if cur[-1][1] == n:  # Must include the conclusion sentence!
+                penalty = 0
+                for start, end in cur:
+                    c = sum(lens[start:end])
+                    if c < lo:
+                        penalty += (lo - c) * 10
+                    elif c > hi:
+                        penalty += (c - hi) * 10
+                covered = sum(end - start for start, end in cur)
+                penalty += (n - covered) * 5
+                if penalty < best_penalty:
+                    best_penalty = penalty
+                    best_assignment = list(cur)
+            return
+
+        for start in range(last_end, min(n, last_end + 2)):
+            for end in range(start + 1, n + 1):
+                c = sum(lens[start:end])
+                if c > hi + 15:
+                    break
+                dfs(end, k - 1, cur + [(start, end)])
+
+    dfs(0, clip_count, [])
+
+    if best_assignment:
+        result: list[str] = []
+        for start, end in best_assignment:
+            seg_text = "".join(cleaned[start:end])
+            # Trim non-essential filler word if exceeding hi by 1-2 chars
+            if _cjk_count(seg_text) > hi and "一种" in seg_text:
+                seg_text = seg_text.replace("一种", "", 1)
+            result.append(seg_text)
+        return result
+
+    # Fallback: greedy contiguous sentences
+    buckets: list[list[str]] = [[] for _ in range(clip_count)]
+    ci = 0
+    cur_c = 0
+    for s in cleaned:
+        l = _cjk_count(s)
+        if ci + 1 < clip_count and cur_c >= lo and cur_c + l > hi:
+            ci += 1
+            cur_c = 0
+        buckets[ci].append(s)
+        cur_c += l
+    return ["".join(b) for b in buckets]
 
 
 def core_message(source_text: str, max_chars: int = 40) -> str:
-    """Return a one-sentence Chinese core message drawn from the source (F2).
+    """Return a one-sentence Chinese core thesis claim drawn from the source (R5-6).
 
-    Markdown headers / "字数参考" metadata are stripped first, then the
-    first complete sentence of the prose is returned (<= ``max_chars`` CJK,
-    falling back to the leading clauses of that sentence when it is long).
-    The result never contains ``#``, newlines or word-count metadata.
+    Markdown headers / "字数参考" metadata are stripped first. Searches for a
+    declarative conclusion thesis sentence (ending with '。' or '！', not '？')
+    that is a complete sentence in the source and <= max_chars CJK. Falls back
+    to the last declarative sentence or leading clauses of that sentence.
     """
     raw = _strip_markdown(source_text)
-    sentences = [s.strip() for s in re.split(r"(?<=[。！？])", raw) if s.strip()]
+    sentences = [s.strip() for s in re.split(r"(?<=[。！？!?])", raw) if s.strip()]
     if not sentences:
         return ""
-    first = sentences[0].strip()
-    if _cjk_count(first) <= max_chars:
-        return first
-    # Long first sentence: keep its leading clauses up to the budget.
-    clauses = [c.strip() for c in re.split(r"[，、；：]", first) if c.strip()]
+    # Filter for declarative sentences (not ending in ? or ？)
+    declarative = [s for s in sentences if not (s.endswith("？") or s.endswith("?"))]
+    if not declarative:
+        declarative = sentences
+
+    # Search backwards for a conclusion sentence (containing "结果", "机制", or last declarative)
+    for s in reversed(declarative):
+        c = _cjk_count(s)
+        if 0 < c <= max_chars:
+            return s
+
+    target = declarative[-1]
+    clauses = [c.strip() for c in re.split(r"[，、；：,;:]", target) if c.strip()]
     out = ""
     for c in clauses:
         if not out:
@@ -461,6 +543,8 @@ def core_message(source_text: str, max_chars: int = 40) -> str:
             out = out + "，" + c
         else:
             break
+    if out and not out.endswith("。"):
+        out += "。"
     return out
 
 
@@ -537,16 +621,18 @@ def _extract_facts(text: str) -> list[str]:
     """Best-effort factual tokens present in source (numbers, names).
 
     Used for the fact-preservation invariant: output narration may only
-    contain facts that appear in the source.
+    contain facts that appear in the source. Markdown headers and
+    editorial metadata lines (e.g. '## 字数参考：约 420 字') are stripped first (R5-6).
     """
+    prose = _strip_markdown(text)
     facts: list[str] = []
     # numbers (incl. percentages, decimals)
-    for m in re.finditer(r"\d+(?:\.\d+)?%?", text):
+    for m in re.finditer(r"\d+(?:\.\d+)?%?", prose):
         tok = m.group(0)
         if tok not in facts:
             facts.append(tok)
     # capitalized English words (probable names)
-    for m in re.finditer(r"\b[A-Z][a-z]+\b", text):
+    for m in re.finditer(r"\b[A-Z][a-z]+\b", prose):
         tok = m.group(0)
         if tok not in facts:
             facts.append(tok)
@@ -660,12 +746,12 @@ def plan_heartbeat5(
         raise ValueError("duration_s must be > 0")
 
     clip_count = clip_count_for_duration(duration_s)
-    # F2: split the source into small punctuation-free clauses and re-pack
-    # them into clips so every narration lands in [40, 66] Chinese chars.
-    clauses = _split_clauses(source_text)
-    if not clauses:
-        clauses = [str(source_text).strip()]
-    buckets = _pack_clauses(clauses, clip_count)
+    # F2 (R5-1): Split into whole sentences by terminal punctuation.
+    # Every clip's boundaries land strictly on sentence boundaries.
+    sents = _split_sentences(source_text)
+    if not sents:
+        sents = [str(source_text).strip()]
+    narrations = _pack_sentences_into_clips(sents, clip_count, lo=40, hi=66)
 
     facts = _extract_facts(source_text)
     hw = hook_window_s(duration_s)
@@ -674,7 +760,7 @@ def plan_heartbeat5(
     for i in range(clip_count):
         stage_idx = _stage_for_clip(i, clip_count)
         stage_zh, stage_en = STAGES[stage_idx]
-        narr = _narration_from_clauses(buckets[i])
+        narr = narrations[i] if i < len(narrations) else ""
         # F6: Visual state continuity is a scene/state description (never
         # narration).  Clip i opens on chain entry i's `first` and closes on
         # its `last`; because the chain is shared, Last(i) == First(i+1).

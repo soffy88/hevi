@@ -25,6 +25,7 @@ from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
 from hevi.layer4_legacy.dirstyle.oskill_impl.compiler import compile_prompt
 from hevi.layer4_legacy.dirstyle.oskill_impl.heartbeat5 import (
     HeartbeatPlan,
+    core_message,
     plan_heartbeat5,
 )
 
@@ -403,11 +404,9 @@ def export_flow_pack(
         min_chars_per_clip=45,
     )
 
-    # F7: Ensure core message is not empty
-    if not plan.topic or not plan.topic.strip():
-        # Extract a core message from the source text (first sentence or summary)
-        sentences = [s.strip() for s in re.split(r"[。！？]", source_text) if s.strip()]
-        plan.topic = sentences[0] if sentences else "Narrative about the source topic"
+    # F7 (R5-6): Ensure core message is not empty and is a valid declarative thesis
+    if not plan.topic or not plan.topic.strip() or plan.topic.endswith("？") or plan.topic.endswith("?"):
+        plan.topic = core_message(source_text) or "Narrative about the source topic"
 
     global_block = _global_continuity_block(
         art_style_id=art_style,
