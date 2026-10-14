@@ -1,0 +1,30 @@
+# Slim repack of an already-built hevi-api image (no code/dependency changes):
+#  - CUDA torch -> CPU torch of the same version, nvidia-*/cuda-*/triton dropped
+#    (host GPU is unusable; the container runs with runc and never had CUDA)
+#  - all layers flattened into one, so files overwritten/chowned in later
+#    layers (node_modules copied twice, chown -R) are stored once.
+# Build (from deploy/slim):
+#   docker build --network host --build-arg HTTPS_PROXY=http://127.0.0.1:7890 \
+#     --build-arg BASE_IMAGE=hevi-cftunnel-hevi-api:pre-slim-20261014 \
+#     -f Dockerfile.api-repack -t hevi-cftunnel-hevi-api:slim .
+ARG BASE_IMAGE=hevi-cftunnel-hevi-api:pre-slim-20261014
+FROM ${BASE_IMAGE} AS src
+USER root
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+COPY strip-cuda-venv.sh /tmp/strip-cuda-venv.sh
+RUN sh /tmp/strip-cuda-venv.sh /app/.venv \
+    && chown -R hevi:hevi /app/.venv \
+    && rm -rf /tmp/strip-cuda-venv.sh /root/.cache /root/.npm
+
+FROM scratch
+COPY --from=src / /
+ENV PATH=/app/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PYTHON_VERSION=3.14.7 \
+    PYTHONPATH=/app
+WORKDIR /app
+USER hevi
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD curl -sf http://localhost:8000/api/health || exit 1
+CMD ["uvicorn", "hevi.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
