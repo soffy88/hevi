@@ -8,8 +8,8 @@
 
 ## Director Proposal
 
-**Title**: 猫为什么总爱把桌上的东西推下去？
-**Core message**: 猫为什么总爱把桌上的东西推下去？
+**Title**: 简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。
+**Core message**: 简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。
 **Narrative arc**: 5-stage heartbeat (黄金钩子 → 打破常识 → 拉出内幕 → 真相揭秘 → 升华互动)
 
 ## Segment Transitions (Continuity Handoff)
@@ -56,7 +56,7 @@
 - [3-7s]: medium shot: stickman moves from neutral start pose into push the cup, camera tracks only vertically
 - [7-10s]: medium shot: stickman reaching upward to push the cup toward the table edge, camera tilts slightly to follow
 
-**Audio voiceover (audio-only, no speech bubbles)**: "猫为什么总爱把桌上的东西推下去，这个行为背后其实有深刻的进化与心理原因，首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器，当它们触碰物体时。"
+**Audio voiceover (audio-only, no speech bubbles)**: "猫为什么总爱把桌上的东西推下去？这个行为背后其实有深刻的进化与心理原因。首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器。"
 
 **Compiled generation prompt**:
 ```
@@ -87,7 +87,7 @@ One classic black line stickman on white. Its head is a black circular outline s
 - [3-7s]: medium shot: stickman moves from push the cup into three separated fingers, camera tilts down slightly
 - [7-10s]: medium shot: stickman holding up three separated fingers beside a small table, camera tilts slightly to follow
 
-**Audio voiceover (audio-only, no speech bubbles)**: "实际上是在用脚垫探测物体的质地，温度和移动性，轻轻一推，如果物体会滚动或发出声响，就说明它可能是活物或值得追踪的目标。"
+**Audio voiceover (audio-only, no speech bubbles)**: "当它们触碰物体时，实际上是在用脚垫探测物体的质地、温度和移动性。轻轻一推，如果物体会滚动或发出声响，就说明它可能是活物或值得追踪的目标。"
 
 **Compiled generation prompt**:
 ```
@@ -118,7 +118,7 @@ One classic black line stickman on white. Its head is a black circular outline s
 - [3-7s]: medium shot: stickman moves from three separated fingers into crouch, camera tilts up slightly
 - [7-10s]: medium shot: stickman crouching low and pressing one palm flat against the ground, camera tilts slightly to follow
 
-**Audio voiceover (audio-only, no speech bubbles)**: "这是猫科动物刻在基因里的狩猎本能，在野外，小猫需要通过推，抓，拍来学习如何捕捉猎物，其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。"
+**Audio voiceover (audio-only, no speech bubbles)**: "这是猫科动物刻在基因里的狩猎本能——在野外，小猫需要通过推、抓、拍来学习如何捕捉猎物。其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。"
 
 **Compiled generation prompt**:
 ```
@@ -149,7 +149,7 @@ One classic black line stickman on white. Its head is a black circular outline s
 - [3-7s]: medium shot: stickman moves from crouch into arms raised high, camera pushes in along the vertical axis
 - [7-10s]: medium shot: stickman standing tall with both arms raised high above the head, camera tilts slightly to follow
 
-**Audio voiceover (audio-only, no speech bubbles)**: "物体坠落时的抛物线，碰撞声，滚动节奏，都会触发猫大脑中的奖赏回路，即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦，最后。"
+**Audio voiceover (audio-only, no speech bubbles)**: "物体坠落时的抛物线、碰撞声、滚动节奏，都会触发猫大脑中的奖赏回路。即使没有真正的猎物，这种模拟狩猎也能释放多巴胺，让猫感到满足和愉悦。"
 
 **Compiled generation prompt**:
 ```
@@ -180,7 +180,7 @@ One classic black line stickman on white. Its head is a black circular outline s
 - [3-7s]: medium shot: stickman moves from arms raised high into point at the object, camera holds at eye level
 - [7-10s]: medium shot: stickman raising one straight arm to point at the object, camera tilts slightly to follow
 
-**Audio voiceover (audio-only, no speech bubbles)**: "猫咪敏锐地观察到，只要东西掉到地上，主人就会立刻冲过来，哪怕被责备两句，对独居的猫来说也是极好的社交互动，在猫的认知里，负面关注也是关注。"
+**Audio voiceover (audio-only, no speech bubbles)**: "最后，猫咪敏锐地观察到：只要东西掉到地上，主人就会立刻冲过来。哪怕被责备两句，对独居的猫来说也是极好的社交互动。"
 
 **Compiled generation prompt**:
 ```
@@ -211,7 +211,7 @@ One classic black line stickman on white. Its head is a black circular outline s
 - [3-7s]: medium shot: stickman moves from point at the object into neutral start pose, camera rises slowly
 - [7-10s]: medium shot: stickman standing in a neutral start pose with both arms resting at the sides, camera tilts slightly to follow
 
-**Audio voiceover (audio-only, no speech bubbles)**: "远比主人无视它要好得多，因此，推东西，主人出现，这一因果关系被不断强化，逐渐变成一种习得性行为模式，简而言之，猫推东西是狩猎本能。"
+**Audio voiceover (audio-only, no speech bubbles)**: "因此，推东西，主人就出现这一因果关系被不断强化，逐渐变成习得性行为模式。简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。"
 
 **Compiled generation prompt**:
 ```

@@ -19,7 +19,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-ROOT = Path("/data/soffy/projects/hevi-dirstyle")
+ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output" / "dirstyle_e2e" / "source_clean.mp4"
 FRAMES = ROOT / "output" / "dirstyle_e2e" / "_source_frames"
 

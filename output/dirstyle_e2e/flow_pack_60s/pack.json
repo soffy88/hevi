@@ -48,8 +48,8 @@
     ]
   },
   "plan": {
-    "title": "猫为什么总爱把桌上的东西推下去？",
-    "topic": "猫为什么总爱把桌上的东西推下去？",
+    "title": "简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。",
+    "topic": "简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。",
     "duration_s": 60,
     "clip_count": 6,
     "hook_window": [
@@ -63,7 +63,7 @@
         "stage_index": 0,
         "stage_zh": "黄金钩子",
         "stage_en": "Golden Hook",
-        "narration": "猫为什么总爱把桌上的东西推下去，这个行为背后其实有深刻的进化与心理原因，首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器，当它们触碰物体时。",
+        "narration": "猫为什么总爱把桌上的东西推下去？这个行为背后其实有深刻的进化与心理原因。首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器。",
         "visual_desc": "stickman reaching upward to push the cup toward the table edge",
         "beats": {
           "0-3s": "wide shot: stickman standing in a neutral start pose with both arms resting at the sides, camera holds steady",
@@ -86,7 +86,7 @@
         "stage_index": 1,
         "stage_zh": "打破常识",
         "stage_en": "Disrupting Assumptions",
-        "narration": "实际上是在用脚垫探测物体的质地，温度和移动性，轻轻一推，如果物体会滚动或发出声响，就说明它可能是活物或值得追踪的目标。",
+        "narration": "当它们触碰物体时，实际上是在用脚垫探测物体的质地、温度和移动性。轻轻一推，如果物体会滚动或发出声响，就说明它可能是活物或值得追踪的目标。",
         "visual_desc": "stickman holding up three separated fingers beside a small table",
         "beats": {
           "0-3s": "wide shot: stickman reaching upward to push the cup toward the table edge, camera holds steady",
@@ -109,7 +109,7 @@
         "stage_index": 1,
         "stage_zh": "打破常识",
         "stage_en": "Disrupting Assumptions",
-        "narration": "这是猫科动物刻在基因里的狩猎本能，在野外，小猫需要通过推，抓，拍来学习如何捕捉猎物，其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
+        "narration": "这是猫科动物刻在基因里的狩猎本能——在野外，小猫需要通过推、抓、拍来学习如何捕捉猎物。其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
         "visual_desc": "stickman crouching low and pressing one palm flat against the ground",
         "beats": {
           "0-3s": "wide shot: stickman holding up three separated fingers beside a small table, camera holds steady",
@@ -132,7 +132,7 @@
         "stage_index": 2,
         "stage_zh": "拉出内幕",
         "stage_en": "Unveiling Insider Secrets",
-        "narration": "物体坠落时的抛物线，碰撞声，滚动节奏，都会触发猫大脑中的奖赏回路，即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦，最后。",
+        "narration": "物体坠落时的抛物线、碰撞声、滚动节奏，都会触发猫大脑中的奖赏回路。即使没有真正的猎物，这种模拟狩猎也能释放多巴胺，让猫感到满足和愉悦。",
         "visual_desc": "stickman standing tall with both arms raised high above the head",
         "beats": {
           "0-3s": "wide shot: stickman crouching low and pressing one palm flat against the ground, camera holds steady",
@@ -155,7 +155,7 @@
         "stage_index": 3,
         "stage_zh": "真相揭秘",
         "stage_en": "Ultimate Truth Revelation",
-        "narration": "猫咪敏锐地观察到，只要东西掉到地上，主人就会立刻冲过来，哪怕被责备两句，对独居的猫来说也是极好的社交互动，在猫的认知里，负面关注也是关注。",
+        "narration": "最后，猫咪敏锐地观察到：只要东西掉到地上，主人就会立刻冲过来。哪怕被责备两句，对独居的猫来说也是极好的社交互动。",
         "visual_desc": "stickman raising one straight arm to point at the object",
         "beats": {
           "0-3s": "wide shot: stickman standing tall with both arms raised high above the head, camera holds steady",
@@ -178,7 +178,7 @@
         "stage_index": 4,
         "stage_zh": "升华互动",
         "stage_en": "Elevation & High-Engagement Discussion",
-        "narration": "远比主人无视它要好得多，因此，推东西，主人出现，这一因果关系被不断强化，逐渐变成一种习得性行为模式，简而言之，猫推东西是狩猎本能。",
+        "narration": "因此，推东西，主人就出现这一因果关系被不断强化，逐渐变成习得性行为模式。简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。",
         "visual_desc": "stickman standing in a neutral start pose with both arms resting at the sides",
         "beats": {
           "0-3s": "wide shot: stickman raising one straight arm to point at the object, camera holds steady",
@@ -197,9 +197,7 @@
         "visual_state_end": "stickman standing in a neutral start pose with both arms resting at the sides"
       }
     ],
-    "source_facts": [
-      "420"
-    ],
+    "source_facts": [],
     "hook_timing": {
       "hook_start_s": 2.0,
       "hook_end_s": 5.0,
@@ -212,7 +210,7 @@
       "clip_index": 0,
       "stage_zh": "黄金钩子",
       "stage_en": "Golden Hook",
-      "narration": "猫为什么总爱把桌上的东西推下去，这个行为背后其实有深刻的进化与心理原因，首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器，当它们触碰物体时。",
+      "narration": "猫为什么总爱把桌上的东西推下去？这个行为背后其实有深刻的进化与心理原因。首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器。",
       "beats": {
         "0-3s": "wide shot: stickman standing in a neutral start pose with both arms resting at the sides, camera holds steady",
         "3-7s": "medium shot: stickman moves from neutral start pose into push the cup, camera tracks only vertically",
@@ -282,7 +280,7 @@
       "clip_index": 1,
       "stage_zh": "打破常识",
       "stage_en": "Disrupting Assumptions",
-      "narration": "实际上是在用脚垫探测物体的质地，温度和移动性，轻轻一推，如果物体会滚动或发出声响，就说明它可能是活物或值得追踪的目标。",
+      "narration": "当它们触碰物体时，实际上是在用脚垫探测物体的质地、温度和移动性。轻轻一推，如果物体会滚动或发出声响，就说明它可能是活物或值得追踪的目标。",
       "beats": {
         "0-3s": "wide shot: stickman reaching upward to push the cup toward the table edge, camera holds steady",
         "3-7s": "medium shot: stickman moves from push the cup into three separated fingers, camera tilts down slightly",
@@ -352,7 +350,7 @@
       "clip_index": 2,
       "stage_zh": "打破常识",
       "stage_en": "Disrupting Assumptions",
-      "narration": "这是猫科动物刻在基因里的狩猎本能，在野外，小猫需要通过推，抓，拍来学习如何捕捉猎物，其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
+      "narration": "这是猫科动物刻在基因里的狩猎本能——在野外，小猫需要通过推、抓、拍来学习如何捕捉猎物。其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。",
       "beats": {
         "0-3s": "wide shot: stickman holding up three separated fingers beside a small table, camera holds steady",
         "3-7s": "medium shot: stickman moves from three separated fingers into crouch, camera tilts up slightly",
@@ -422,7 +420,7 @@
       "clip_index": 3,
       "stage_zh": "拉出内幕",
       "stage_en": "Unveiling Insider Secrets",
-      "narration": "物体坠落时的抛物线，碰撞声，滚动节奏，都会触发猫大脑中的奖赏回路，即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦，最后。",
+      "narration": "物体坠落时的抛物线、碰撞声、滚动节奏，都会触发猫大脑中的奖赏回路。即使没有真正的猎物，这种模拟狩猎也能释放多巴胺，让猫感到满足和愉悦。",
       "beats": {
         "0-3s": "wide shot: stickman crouching low and pressing one palm flat against the ground, camera holds steady",
         "3-7s": "medium shot: stickman moves from crouch into arms raised high, camera pushes in along the vertical axis",
@@ -492,7 +490,7 @@
       "clip_index": 4,
       "stage_zh": "真相揭秘",
       "stage_en": "Ultimate Truth Revelation",
-      "narration": "猫咪敏锐地观察到，只要东西掉到地上，主人就会立刻冲过来，哪怕被责备两句，对独居的猫来说也是极好的社交互动，在猫的认知里，负面关注也是关注。",
+      "narration": "最后，猫咪敏锐地观察到：只要东西掉到地上，主人就会立刻冲过来。哪怕被责备两句，对独居的猫来说也是极好的社交互动。",
       "beats": {
         "0-3s": "wide shot: stickman standing tall with both arms raised high above the head, camera holds steady",
         "3-7s": "medium shot: stickman moves from arms raised high into point at the object, camera holds at eye level",
@@ -562,7 +560,7 @@
       "clip_index": 5,
       "stage_zh": "升华互动",
       "stage_en": "Elevation & High-Engagement Discussion",
-      "narration": "远比主人无视它要好得多，因此，推东西，主人出现，这一因果关系被不断强化，逐渐变成一种习得性行为模式，简而言之，猫推东西是狩猎本能。",
+      "narration": "因此，推东西，主人就出现这一因果关系被不断强化，逐渐变成习得性行为模式。简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。",
       "beats": {
         "0-3s": "wide shot: stickman raising one straight arm to point at the object, camera holds steady",
         "3-7s": "medium shot: stickman moves from point at the object into neutral start pose, camera rises slowly",

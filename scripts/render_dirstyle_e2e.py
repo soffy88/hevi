@@ -22,7 +22,7 @@ from hevi.layer4_legacy.dirstyle.omodul_impl.grade import run_style_grade
 from hevi.layer4_legacy.dirstyle.oprim_impl import get_style
 from hevi.layer4_legacy.dirstyle.oskill_impl.compiler import compile_prompt
 
-ROOT = Path("/data/soffy/projects/hevi-dirstyle")
+ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "output" / "dirstyle_e2e"
 SOURCE = OUT / "source_clean.mp4"
 CJK_FONT = "/home/soffy/.local/share/fonts/wqy-zenhei.ttc"

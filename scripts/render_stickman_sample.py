@@ -28,7 +28,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-ROOT = Path("/data/soffy/projects/hevi-dirstyle")
+ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "output" / "dirstyle_e2e"
 VIDEO_PATH = OUT_DIR / "stickman_9x16.mp4"
 POSES_JSON = OUT_DIR / "stickman_poses.json"
