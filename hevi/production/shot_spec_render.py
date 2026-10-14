@@ -34,18 +34,16 @@ _EFFECT_FILTERS: dict[str, str] = {
     "sharpen": "unsharp=5:5:1.2:5:5:0.0",
 }
 
-# 注册表 style 类条目:按 id 关键词尽力而为映射到 ffmpeg 滤镜(命中即用,未命中=no-op)。
-_STYLE_KEYWORD_FILTERS: list[tuple[str, str]] = [
-    ("motion-blur", "tmix=frames=4"),
-    ("blur", "gblur=sigma=6"),
-    ("sketch", "edgedetect=low=0.05:high=0.2"),
-    ("pencil", "edgedetect=low=0.05:high=0.2"),
-    ("draw", "edgedetect=low=0.05:high=0.2"),
-    ("outline", "edgedetect=low=0.05:high=0.2"),
-    ("mono", "hue=s=0"),
-    ("noir", "hue=s=0"),
-    ("soft", "gblur=sigma=2"),
-]
+# 注册表 style 类条目:显式映射到语义对应的 ffmpeg 滤镜 (GAP_PLAN §2 W1 / R3 FIX)。
+# 只有在此表中有明确条目、且映射与模板语义一致的 style 模板才允许作为 ``effect`` 使用;
+# 其余 style 模板 (文字动画/图表/UI 等) 一律拒绝,绝不静默 no-op。
+EFFECT_REGISTRY_FILTERS: dict[str, str] = {
+    "tc:bed-echo-blur": "gblur=sigma=6",
+    "tc:soft-blur-in": "gblur=sigma=2",
+    "tc:motion-blur-slam-in": "tmix=frames=4",
+    "tc:pencil-sketch-draw": "edgedetect=low=0.05:high=0.2",
+    "tc:outline-box-title": "edgedetect=low=0.05:high=0.2",
+}
 
 # Talkcraft 转场类模板 -> xfade 转场 token 映射表
 _TALKCRAFT_TRANSITION_MAP: dict[str, str] = {
@@ -330,22 +328,18 @@ def combined_shot_filter(spec: ShotSpec | None) -> str:
 
 
 def effect_filter(spec: ShotSpec | None) -> str:
-    """把 spec.effect 翻成单镜 ``-vf`` 片段;无 effect 或无法映射时返回 ``""``。
+    """把 spec.effect 翻成单镜 ``-vf`` 片段;无 effect 时返回 ``""``。
 
-    内置 5 种(warm/cool/mono/vignette/sharpen)精确映射;注册表 style 类条目按
-    id 关键词尽力而为;两者都不命中 → 空串(no-op,不阻断渲染)。
+    内置 5 种(warm/cool/mono/vignette/sharpen)精确映射;注册表 style 类条目仅接受
+    ``EFFECT_REGISTRY_FILTERS`` 中有显式语义映射的 id;其余取值已在 ShotSpec 校验时 422,
+    不会到达此处。
     """
     if spec is None or not spec.effect:
         return ""
     eff = spec.effect
     if eff in _EFFECT_FILTERS:
         return _EFFECT_FILTERS[eff]
-    low = eff.lower()
-    for keyword, filt in _STYLE_KEYWORD_FILTERS:
-        if keyword in low:
-            return filt
-    logger.info("shot_spec: effect '%s' has no ffmpeg mapping (no-op)", eff)
-    return ""
+    return EFFECT_REGISTRY_FILTERS.get(eff, "")
 
 
 def seam_transitions(
@@ -460,6 +454,7 @@ def build_sfx_mixdown_filter(
 
 
 __all__ = [
+    "EFFECT_REGISTRY_FILTERS",
     "TEMPLATE_RENDER_MAP",
     "build_sfx_mixdown_filter",
     "combined_shot_filter",

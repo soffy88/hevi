@@ -129,10 +129,10 @@ def rejected(template_id: str) -> bool:
 
 
 def valid_style_effect_ids() -> frozenset[str]:
-    """注册表里 category==style 的模板 id(effect 字段可接受这些)。"""
-    from hevi.fx.registry import Category
+    """effect 字段可接受的注册表 style 模板 id(仅显式语义映射的, 其余 422)。"""
+    from hevi.production.shot_spec_render import EFFECT_REGISTRY_FILTERS
 
-    return frozenset(t.id for t in _registry().list_all() if t.category == Category.STYLE)
+    return frozenset(EFFECT_REGISTRY_FILTERS.keys())
 
 
 def valid_transition_ids() -> frozenset[str]:
@@ -221,7 +221,7 @@ class ShotSpec(BaseModel):
             return v
         raise ValueError(
             f"unknown effect '{v}' (must be one of {sorted(BUILTIN_EFFECTS)} "
-            "or a registry style id)"
+            "or a registry style id with an explicit assembly-time mapping)"
         )
 
     @field_validator("style")

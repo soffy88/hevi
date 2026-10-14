@@ -224,6 +224,17 @@ def test_patch_unknown_effect_422(client: TestClient) -> None:
     assert r.status_code == 422
 
 
+def test_patch_unsupported_registry_style_effect_422(client: TestClient) -> None:
+    """R3: 注册表 style 模板若无显式装配期语义映射, 作为 effect 同样返回 422 (不静默 no-op)。"""
+    # tc:typewriter-reveal 是合法注册表模板, 但无显式 effect 滤镜映射
+    r = client.patch(_spec_url(0), json={"effect": "tc:typewriter-reveal"})
+    assert r.status_code == 422, r.text
+    # 有显式映射的 style 模板可以作 effect
+    r2 = client.patch(_spec_url(0), json={"effect": "tc:pencil-sketch-draw"})
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["spec"]["effect"] == "tc:pencil-sketch-draw"
+
+
 def test_patch_unknown_sfx_422(client: TestClient) -> None:
     r = client.patch(_spec_url(0), json={"sfx": [{"id": "not-a-sfx", "offset": 0.0}]})
     assert r.status_code == 422
