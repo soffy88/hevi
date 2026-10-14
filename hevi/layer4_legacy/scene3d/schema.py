@@ -46,6 +46,11 @@ class CameraSpec:
     far: float = 2000.0
     # Waypoints: list of {t, pos:[x,y,z], look:[x,y,z]}
     path: list[dict[str, Any]] = field(default_factory=list)
+    # Per-aspect waypoint overrides: {"9:16": [...], "16:9": [...]}.  When the
+    # requested aspect is present here it wins over ``path`` so a portrait
+    # reframe can pull the camera back instead of reusing the landscape flight
+    # (which would crop the subject out of the top of frame).
+    paths: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     # Optional dolly default position if no path given.
     pos: list[float] = field(default_factory=lambda: [0.0, 2.0, 12.0])
     look: list[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
@@ -76,10 +81,18 @@ class WeatherSpec:
     wind_speed: float = 1.4
     starfield: bool = True
     star_count: int = 1400
+    # Star shell radius (world units).  A small value places the stars right in
+    # the camera path so a push-in flies *through* them; a large value keeps
+    # them as a distant backdrop.
+    star_radius: float = 900.0
+    star_size: float = 1.0
     bloom_strength: float = 0.55
     bloom_radius: float = 0.55
     bloom_threshold: float = 0.85
     shadows: bool = True
+    # Gentle fox breathing/tail sway.  Disabled by the wind-determinism test so
+    # that a static camera + wind off yields byte-identical frames.
+    fox_sway: bool = True
 
 
 @dataclass
@@ -148,6 +161,21 @@ _SCHEMA: dict[str, Any] = {
                         "required": ["t", "pos", "look"],
                     },
                 },
+                "paths": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "t": {"type": "number"},
+                                "pos": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+                                "look": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+                            },
+                            "required": ["t", "pos", "look"],
+                        },
+                    },
+                },
                 "pos": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
                 "look": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
             },
@@ -204,6 +232,7 @@ def parse_scene(data: dict[str, Any]) -> SceneSpec:
             near=float(cam.get("near", 0.1)),
             far=float(cam.get("far", 2000.0)),
             path=cam.get("path", []),
+            paths=cam.get("paths", {}),
             pos=list(cam.get("pos", [0.0, 2.0, 12.0])),
             look=list(cam.get("look", [0.0, 0.0, 0.0])),
         ),
@@ -225,10 +254,13 @@ def parse_scene(data: dict[str, Any]) -> SceneSpec:
             wind_speed=float(wea.get("wind_speed", 1.4)),
             starfield=bool(wea.get("starfield", True)),
             star_count=int(wea.get("star_count", 1400)),
+            star_radius=float(wea.get("star_radius", 900.0)),
+            star_size=float(wea.get("star_size", 1.0)),
             bloom_strength=float(wea.get("bloom_strength", 0.55)),
             bloom_radius=float(wea.get("bloom_radius", 0.55)),
             bloom_threshold=float(wea.get("bloom_threshold", 0.85)),
             shadows=bool(wea.get("shadows", True)),
+            fox_sway=bool(wea.get("fox_sway", True)),
         ),
         assets=[_to_asset(a) for a in data.get("assets", [])],
     )
@@ -257,6 +289,13 @@ def scene_to_dict(spec: SceneSpec) -> dict[str, Any]:
                 {"t": float(w["t"]), "pos": vec(w["pos"]), "look": vec(w["look"])}
                 for w in spec.camera.path
             ],
+            "paths": {
+                aspect: [
+                    {"t": float(w["t"]), "pos": vec(w["pos"]), "look": vec(w["look"])}
+                    for w in waypoints
+                ]
+                for aspect, waypoints in spec.camera.paths.items()
+            },
             "pos": vec(spec.camera.pos),
             "look": vec(spec.camera.look),
         },
@@ -278,10 +317,13 @@ def scene_to_dict(spec: SceneSpec) -> dict[str, Any]:
             "wind_speed": spec.weather.wind_speed,
             "starfield": spec.weather.starfield,
             "star_count": spec.weather.star_count,
+            "star_radius": spec.weather.star_radius,
+            "star_size": spec.weather.star_size,
             "bloom_strength": spec.weather.bloom_strength,
             "bloom_radius": spec.weather.bloom_radius,
             "bloom_threshold": spec.weather.bloom_threshold,
             "shadows": spec.weather.shadows,
+            "fox_sway": spec.weather.fox_sway,
         },
         "assets": [
             {"kind": a.kind, "name": a.name, "params": a.params} for a in spec.assets

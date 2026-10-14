@@ -68,14 +68,18 @@ class Capability:
     def validate_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """Validate ``params`` against ``params_schema``; return the params.
 
-        Raises :class:`CapabilityError` on any schema violation.  When a JSON
-        schema validator is unavailable the params are returned unchanged so a
-        capability is still callable in minimal environments.
+        Raises :class:`CapabilityError` on any schema violation.  When the JSON
+        schema validator itself cannot be imported we refuse to validate rather
+        than waving the params through: silently accepting unvalidated params is
+        a fake success, which the capability contract forbids.
         """
         try:
             import jsonschema
-        except Exception:  # pragma: no cover - jsonschema is always present in CI.
-            return params
+        except Exception as exc:  # pragma: no cover - jsonschema is always present in CI.
+            raise CapabilityError(
+                f"capability {self.name}: cannot validate params, jsonschema "
+                f"unavailable: {exc}"
+            ) from exc
         try:
             jsonschema.validate(instance=params, schema=self.params_schema)
         except Exception as exc:  # jsonschema.ValidationError subclasses Exception.

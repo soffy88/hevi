@@ -8,44 +8,53 @@
     "aspect": "16:9",
     "fov": 40.0,
     "path": [
-      {"t": 0.0,  "pos": [10.0, 3.0, 10.0], "look": [0.0, 0.0, 0.0]},
-      {"t": 6.0,  "pos": [0.0, 4.0, 15.0],  "look": [0.0, 0.0, 0.0]},
-      {"t": 12.0, "pos": [-10.0, 3.0, 10.0],"look": [0.0, 0.0, 0.0]}
-    ]
+      {"t": 0.0,  "pos": [10.0, 4.2, 10.0], "look": [0.0, 3.0, 0.0]},
+      {"t": 6.0,  "pos": [0.0, 4.6, 15.5],  "look": [0.0, 3.0, 0.0]},
+      {"t": 12.0, "pos": [-10.0, 4.2, 10.0],"look": [0.0, 3.0, 0.0]}
+    ],
+    "paths": {
+      "9:16": [
+        {"t": 0.0,  "pos": [11.5, 5.0, 11.5], "look": [0.0, 3.0, 0.0]},
+        {"t": 6.0,  "pos": [0.0, 5.2, 19.0],   "look": [0.0, 3.0, 0.0]},
+        {"t": 12.0, "pos": [-11.5, 5.0, 11.5],"look": [0.0, 3.0, 0.0]}
+      ]
+    }
   },
   "lights": {
-    "sun_color": [1.0, 0.85, 0.6],
-    "sun_intensity": 1.4,
+    "sun_color": [1.0, 0.86, 0.62],
+    "sun_intensity": 1.45,
     "sun_pos": [8.0, 14.0, 6.0],
-    "ambient_color": [0.35, 0.45, 0.7],
-    "ambient_intensity": 0.7,
-    "rim_color": [0.6, 0.8, 1.0],
-    "rim_intensity": 0.55
+    "ambient_color": [0.42, 0.5, 0.72],
+    "ambient_intensity": 0.78,
+    "rim_color": [0.62, 0.82, 1.0],
+    "rim_intensity": 0.6
   },
   "weather": {
-    "background_top": [0.04, 0.06, 0.18],
-    "background_bottom": [0.28, 0.13, 0.20],
-    "fog_color": [0.16, 0.15, 0.28],
-    "fog_density": 0.011,
+    "background_top": [0.06, 0.10, 0.26],
+    "background_bottom": [0.42, 0.24, 0.36],
+    "fog_color": [0.24, 0.22, 0.38],
+    "fog_density": 0.010,
     "wind_strength": 0.8,
     "wind_speed": 1.2,
     "starfield": true,
     "star_count": 1500,
+    "star_radius": 620.0,
+    "star_size": 1.1,
     "bloom_strength": 0.55,
     "bloom_radius": 0.55,
     "bloom_threshold": 0.85,
     "shadows": true
   },
   "assets": [
-    {"kind": "ground", "params": {"color": [0.16, 0.20, 0.12], "radius": 60}},
-    {"kind": "planet", "params": {"radius": 2.4, "color": [0.92, 0.6, 0.42], "pos": [0.0, 2.6, 0.0], "spin": 0.3}},
-    {"kind": "planet", "params": {"radius": 1.1, "color": [0.5, 0.7, 0.95], "pos": [6.0, 5.0, -3.0], "spin": -0.5, "ring": false}},
-    {"kind": "planet", "params": {"radius": 0.8, "color": [0.95, 0.8, 0.4], "pos": [-5.5, 4.0, -2.0], "spin": 0.6}},
-    {"kind": "tree", "params": {"pos": [3.5, 0.0, 2.0], "scale": 1.2, "color": [0.24, 0.5, 0.26]}},
-    {"kind": "tree", "params": {"pos": [-4.0, 0.0, -1.5], "scale": 1.0}},
-    {"kind": "rock", "params": {"pos": [1.5, 0.0, 3.5], "scale": 1.4}},
-    {"kind": "rock", "params": {"pos": [-2.5, 0.0, 3.0], "scale": 0.9}},
-    {"kind": "grass", "params": {"count": 900, "area": 30, "color": [0.30, 0.55, 0.22], "height": 0.7}},
-    {"kind": "wheat", "params": {"count": 350, "area": 24, "color": [0.83, 0.66, 0.28], "height": 1.2}}
+    {"kind": "ground", "params": {"color": [0.20, 0.26, 0.15], "radius": 60}},
+    {"kind": "planet", "params": {"radius": 2.4, "color": [0.94, 0.62, 0.44], "pos": [0.0, 3.3, 0.0], "spin": 0.3, "ring_inner": 1.32, "ring_outer": 1.58, "ring_tilt": 1.5708}},
+    {"kind": "planet", "params": {"radius": 1.1, "color": [0.52, 0.72, 0.96], "pos": [7.5, 6.0, -4.0], "spin": -0.5, "ring": false}},
+    {"kind": "planet", "params": {"radius": 0.8, "color": [0.97, 0.82, 0.42], "pos": [-6.5, 5.0, -3.0], "spin": 0.6}},
+    {"kind": "tree", "params": {"pos": [7.0, 0.0, 4.8], "scale": 1.2, "color": [0.28, 0.56, 0.3]}},
+    {"kind": "tree", "params": {"pos": [-7.5, 0.0, -3.5], "scale": 1.0}},
+    {"kind": "rock", "params": {"pos": [4.2, 0.0, 5.5], "scale": 1.4}},
+    {"kind": "rock", "params": {"pos": [-4.6, 0.0, 5.0], "scale": 0.9}},
+    {"kind": "grass", "params": {"count": 900, "area": 30, "color": [0.34, 0.6, 0.26], "height": 0.7}},
+    {"kind": "wheat", "params": {"count": 350, "area": 24, "color": [0.88, 0.70, 0.30], "height": 1.1}}
   ]
 }

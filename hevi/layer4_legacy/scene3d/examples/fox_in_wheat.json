@@ -8,41 +8,48 @@
     "aspect": "9:16",
     "fov": 38.0,
     "path": [
-      {"t": 0.0,  "pos": [3.6, 2.6, 6.4], "look": [0.0, 0.7, 0.0]},
-      {"t": 6.0,  "pos": [0.0, 2.8, 6.6], "look": [0.0, 0.7, 0.0]},
-      {"t": 12.0, "pos": [-3.6, 2.6, 6.4], "look": [0.0, 0.7, 0.0]}
-    ]
+      {"t": 0.0,  "pos": [3.8, 2.6, 7.8], "look": [0.0, 0.8, 0.0]},
+      {"t": 6.0,  "pos": [0.0, 2.8, 8.0], "look": [0.0, 0.8, 0.0]},
+      {"t": 12.0, "pos": [-3.8, 2.6, 7.8], "look": [0.0, 0.8, 0.0]}
+    ],
+    "paths": {
+      "16:9": [
+        {"t": 0.0,  "pos": [3.2, 2.4, 5.6], "look": [0.0, 0.7, 0.0]},
+        {"t": 6.0,  "pos": [0.0, 2.5, 5.8], "look": [0.0, 0.7, 0.0]},
+        {"t": 12.0, "pos": [-3.2, 2.4, 5.6], "look": [0.0, 0.7, 0.0]}
+      ]
+    }
   },
   "lights": {
-    "sun_color": [1.0, 0.82, 0.55],
-    "sun_intensity": 1.5,
+    "sun_color": [1.0, 0.88, 0.6],
+    "sun_intensity": 1.7,
     "sun_pos": [5.0, 12.0, 5.0],
-    "ambient_color": [0.40, 0.48, 0.62],
-    "ambient_intensity": 0.8,
-    "rim_color": [1.0, 0.75, 0.45],
-    "rim_intensity": 0.7
+    "ambient_color": [0.55, 0.6, 0.7],
+    "ambient_intensity": 0.95,
+    "rim_color": [1.0, 0.82, 0.5],
+    "rim_intensity": 0.85
   },
   "weather": {
-    "background_top": [0.12, 0.15, 0.28],
-    "background_bottom": [0.82, 0.60, 0.30],
-    "fog_color": [0.62, 0.45, 0.26],
-    "fog_density": 0.013,
+    "background_top": [0.22, 0.38, 0.62],
+    "background_bottom": [0.95, 0.72, 0.36],
+    "fog_color": [0.78, 0.62, 0.34],
+    "fog_density": 0.009,
     "wind_strength": 1.6,
     "wind_speed": 2.0,
     "starfield": false,
     "star_count": 0,
-    "bloom_strength": 0.55,
+    "bloom_strength": 0.6,
     "bloom_radius": 0.6,
-    "bloom_threshold": 0.88,
+    "bloom_threshold": 0.9,
     "shadows": true
   },
   "assets": [
-    {"kind": "ground", "params": {"color": [0.60, 0.46, 0.22], "radius": 70}},
-    {"kind": "fox", "params": {"pos": [0.0, 0.0, 0.0], "scale": 1.1, "color": [0.96, 0.55, 0.22], "rotY": 0.5}},
-    {"kind": "wheat", "params": {"count": 900, "area": 18, "color": [0.85, 0.70, 0.26], "height": 0.9}},
-    {"kind": "grass", "params": {"count": 300, "area": 16, "color": [0.32, 0.5, 0.2], "height": 0.5}},
-    {"kind": "rock", "params": {"pos": [2.2, 0.0, 1.8], "scale": 0.7}},
-    {"kind": "rock", "params": {"pos": [-2.6, 0.0, 2.2], "scale": 0.6}},
+    {"kind": "ground", "params": {"color": [0.74, 0.58, 0.26], "radius": 70}},
+    {"kind": "fox", "params": {"pos": [0.0, 0.0, 0.0], "scale": 1.15, "color": [1.0, 0.55, 0.16], "rotY": 0.5}},
+    {"kind": "wheat", "params": {"count": 900, "area": 18, "color": [0.95, 0.78, 0.30], "height": 0.95}},
+    {"kind": "grass", "params": {"count": 300, "area": 16, "color": [0.40, 0.64, 0.24], "height": 0.5}},
+    {"kind": "rock", "params": {"pos": [2.2, 0.0, 1.8], "scale": 0.7, "color": [0.6, 0.55, 0.5]}},
+    {"kind": "rock", "params": {"pos": [-2.6, 0.0, 2.2], "scale": 0.6, "color": [0.62, 0.57, 0.52]}},
     {"kind": "tree", "params": {"pos": [5.5, 0.0, -3.5], "scale": 1.4}},
     {"kind": "tree", "params": {"pos": [-6.0, 0.0, -2.5], "scale": 1.2}}
   ]

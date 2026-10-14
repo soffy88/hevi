@@ -155,6 +155,91 @@ class SceneRenderer:
             httpd.shutdown()
         return paths
 
+    # -- diagnostics (collision / framing) -------------------------------- #
+    def _with_page(self, fn):
+        """Serve the scene, open it in Chromium, run ``fn(page)``, tear down."""
+        from playwright.sync_api import sync_playwright
+
+        html_path = self._write_html()
+        httpd, port = self._start_server()
+        page_url = f"http://127.0.0.1:{port}/{html_path.name}"
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(args=_CHROMIUM_ARGS)
+                page = browser.new_page(
+                    viewport={"width": self.spec.width, "height": self.spec.height},
+                    device_scale_factor=1,
+                )
+                page.goto(page_url)
+                page.wait_for_function("() => window.__SCENE3D_DONE === true", timeout=60000)
+                result = fn(page)
+                browser.close()
+        finally:
+            httpd.shutdown()
+        return result
+
+    def probe_collisions(self) -> dict[str, Any]:
+        """Return the in-page geometry collision report (rings vs trees, fields vs props)."""
+        return self._with_page(lambda page: page.evaluate("() => window.__collisionReport()"))
+
+    def probe_subject_bbox(self, t: float) -> dict[str, Any] | None:
+        """Project the primary subject bbox to screen space at time ``t``.
+
+        Returns ``{x0,y0,x1,y1,width,height}`` normalised to [0,1] with y=0 at
+        the top of frame, or ``None`` when the scene has no subject.
+        """
+        return self._with_page(
+            lambda page: page.evaluate(
+                "(t) => { window.__setTime(t); return window.__subjectScreenBBox(); }", t
+            )
+        )
+
+    def probe_subject_bboxes(self, times: list[float]) -> list[dict[str, Any] | None]:
+        """Project the subject bbox at several times within a single page session."""
+        return self._with_page(
+            lambda page: page.evaluate(
+                "(ts) => ts.map(t => { window.__setTime(t); return window.__subjectScreenBBox(); })",
+                times,
+            )
+        )
+
+    def render_frame_at(self, t: float, out: str | Path) -> Path:
+        """Render exactly one frame at time ``t`` to ``out`` (no video encode).
+
+        Used by determinism tests that need a byte-stable single frame.
+        """
+        import base64 as _b64
+
+        out = Path(out)
+
+        def _grab(page):
+            page.evaluate(f"window.__setTime({t!r})")
+            b64 = page.evaluate(
+                """async () => {
+                  const c = document.getElementById('c');
+                  return await new Promise((resolve, reject) => {
+                    c.toBlob(blob => {
+                      const r = new FileReader();
+                      r.onload = () => resolve(r.result);
+                      r.onerror = reject;
+                      r.readAsDataURL(blob);
+                    }, 'image/png');
+                  });
+                }"""
+            )
+            return b64
+
+        b64 = self._with_page(_grab)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(_b64.b64decode(b64.split(",", 1)[1]))
+        return out
+
+    def probe_instance_positions(self) -> list[dict[str, Any]]:
+        """Return the placed field instances (kind/x/y/z/tip_y)."""
+        return self._with_page(
+            lambda page: page.evaluate("() => window.__instancePositions()")
+        )
+
     # -- encode ----------------------------------------------------------- #
     def encode(self, frame_paths: list[Path] | None = None) -> Path:
         if frame_paths is None:
@@ -222,6 +307,38 @@ def ffprobe(path: str | Path) -> dict[str, Any]:
         "codec": video.get("codec_name", ""),
         "nb_frames": video.get("nb_frames", ""),
         "has_audio": any(s.get("codec_type") == "audio" for s in data.get("streams", [])),
+    }
+
+
+def ffprobe_frames(path: str | Path) -> dict[str, Any]:
+    """Probe a video and actually *count* its decoded frames.
+
+    ``nb_frames`` from ``ffprobe`` is a container metadata field and is absent
+    for some muxers; ``-count_frames`` decodes the stream and reports
+    ``nb_read_frames``, which is the ground truth for an integrity gate.  A
+    dropped/truncated encode (e.g. the last frame missing) is caught here.
+    """
+    cmd = [
+        FFPROBE,
+        "-v", "error",
+        "-select_streams", "v:0",
+        "-count_frames",
+        "-print_format", "json",
+        "-show_entries", "stream=nb_read_frames,duration,width,height,r_frame_rate",
+        "-show_entries", "format=duration",
+        str(path),
+    ]
+    out = subprocess.run(cmd, check=True, capture_output=True).stdout
+    data = json.loads(out)
+    streams = data.get("streams", [])
+    video = streams[0] if streams else {}
+    frames_raw = video.get("nb_read_frames", "")
+    return {
+        "nb_read_frames": int(frames_raw) if str(frames_raw).isdigit() else -1,
+        "duration": float(video.get("duration", 0.0) or data.get("format", {}).get("duration", 0.0)),
+        "width": int(video.get("width", 0)),
+        "height": int(video.get("height", 0)),
+        "r_frame_rate": video.get("r_frame_rate", ""),
     }
 
 

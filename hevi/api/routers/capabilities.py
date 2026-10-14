@@ -10,9 +10,13 @@ Endpoints (mounted under ``/api`` by ``hevi/api/main.py``):
 * ``GET  /api/capabilities/{name}``              — describe one capability.
 * ``POST /api/capabilities/{name}/preview``      — render a 3-second preview.
 
-The preview runs the CPU-only SCENE3D renderer synchronously.  In a production
-deployment it would be dispatched to a worker; here it is kept inline so the
-offline tool stays self-contained.
+The preview runs the CPU-only SCENE3D renderer.  The renderer uses the
+*Synchronous* Playwright API, which raises ``It looks like you are using
+Playwright Sync API inside the asyncio loop`` if called from a coroutine on the
+event loop.  The endpoint is therefore declared as a plain ``def``: FastAPI runs
+synchronous endpoints in a worker thread, so the sync Playwright call is safe.
+In a production deployment it would be dispatched to a dedicated worker; here it
+is kept inline so the offline tool stays self-contained.
 """
 
 from __future__ import annotations
@@ -67,8 +71,11 @@ async def get_capability_endpoint(name: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+# NOTE: deliberately a *sync* ``def`` (not ``async def``).  FastAPI runs sync
+# endpoints in a threadpool; the scene3d renderer uses the synchronous Playwright
+# API and would otherwise raise "Playwright Sync API inside the asyncio loop".
 @router.post("/{name}/preview")
-async def preview_capability_endpoint(
+def preview_capability_endpoint(
     name: str,
     params: dict[str, Any] | None = None,
     aspect: str = "16:9",
@@ -76,7 +83,8 @@ async def preview_capability_endpoint(
 ) -> FileResponse:
     """Render a 3-second preview clip for ``name`` and return it as an MP4.
 
-    A missing/unknown capability returns 404.  A render failure (or a missing
+    A missing/unknown capability returns 404.  An unsupported aspect or an
+    invalid param returns 422.  A genuine render failure (or a missing
     artefact) returns 500 — never a fake success.
     """
     try:
@@ -87,6 +95,14 @@ async def preview_capability_endpoint(
         cap.validate_params(params or {})
     except CapabilityError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    # The capability declares the aspects it supports; an unsupported one is a
+    # caller error (422), not a render failure (500).
+    if not cap.supports_aspect(aspect):
+        raise HTTPException(
+            status_code=422,
+            detail=f"capability {name} does not support aspect {aspect!r} "
+            f"(supported: {cap.aspects})",
+        )
     out = Path(tempfile.mkdtemp(prefix="scene3d_preview_"))
     try:
         res = cap.render(params or {}, out, duration=3.0, aspect=aspect, seed=seed)

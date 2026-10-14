@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from hevi.capabilities import Capability, CapabilityError, CapabilityResult, contains, get, register
-from hevi.layer4_legacy.scene3d.renderer import ffprobe, sha256
+from hevi.layer4_legacy.scene3d.renderer import ffprobe, ffprobe_frames, sha256
 from hevi.layer4_legacy.scene3d.schema import parse_scene, scene_to_dict
 
 # Base scene presets (name -> example json file).  Every capability is a thin
@@ -52,6 +52,8 @@ _PARAMS_SCHEMA: dict[str, Any] = {
         "wind_speed": {"type": "number", "minimum": 0.0, "maximum": 4.0},
         "bloom_strength": {"type": "number", "minimum": 0.0, "maximum": 2.0},
         "star_count": {"type": "integer", "minimum": 0, "maximum": 8000},
+        "star_radius": {"type": "number", "minimum": 5.0, "maximum": 2000.0},
+        "star_size": {"type": "number", "minimum": 0.2, "maximum": 6.0},
         "camera_path": {
             "type": "array",
             "items": {
@@ -95,7 +97,13 @@ def _aspect_to_camera(aspect: str) -> dict[str, Any]:
 
 
 def _build_spec(name: str, params: dict[str, Any], duration: float, aspect: str, seed: int) -> Any:
-    """Merge a preset example + safe overrides into a validated SceneSpec."""
+    """Merge a preset example + safe overrides into a validated SceneSpec.
+
+    Seed precedence: an explicit ``params["seed"]`` wins over the ``seed=``
+    keyword argument (which is the caller/registry-level default).  Callers that
+    pass both must expect ``params["seed"]`` to be authoritative; this is
+    asserted by ``test_params_seed_overrides_seed_argument``.
+    """
     preset_path = _EXAMPLES_DIR / _PRESETS[name]
     if not preset_path.is_file():
         raise CapabilityError(f"scene3d preset missing: {preset_path}")
@@ -112,14 +120,56 @@ def _build_spec(name: str, params: dict[str, Any], duration: float, aspect: str,
     data["duration_s"] = float(duration)
     data["camera"] = dict(data.get("camera", {}))
     data["camera"]["aspect"] = aspect
+    # Per-aspect camera path override: a capability preset can ship a separate
+    # portrait flight so a 9:16 render reframes instead of cropping the subject.
+    aspect_paths = data["camera"].get("paths", {}) or {}
+    if aspect in aspect_paths and aspect_paths[aspect]:
+        data["camera"]["path"] = aspect_paths[aspect]
     if params.get("camera_path"):
         data["camera"]["path"] = params["camera_path"]
     wea = dict(data.get("weather", {}))
-    for k in ("wind_strength", "wind_speed", "bloom_strength", "star_count"):
+    for k in ("wind_strength", "wind_speed", "bloom_strength", "star_count", "star_radius", "star_size"):
         if k in params:
             wea[k] = params[k]
     data["weather"] = wea
     return parse_scene(data)
+
+
+def _verify_video(video: Path, *, duration: float, fps: int, name: str) -> dict[str, Any]:
+    """Integrity gate for a produced capability video.
+
+    Checks, in order: the file exists and is non-empty (a missing mp4 must be a
+    ``CapabilityError``, not a ``CalledProcessError`` from ffprobe), its
+    duration is within tolerance, and its *decoded* frame count equals
+    ``ceil(duration*fps)``.  A dropped/truncated frame fails here even when the
+    container duration still looks plausible.
+
+    Returns the counted probe dict.  Raises :class:`CapabilityError` on any
+    failure.
+    """
+    import math
+
+    # 1) existence first — never probe a missing file.
+    if not video.exists() or video.stat().st_size == 0:
+        raise CapabilityError(f"scene3d produced no video for {name}")
+    # 2) probe (both a metadata probe and a decoded frame count).
+    try:
+        probe = ffprobe(video)
+        counted = ffprobe_frames(video)
+    except Exception as exc:
+        raise CapabilityError(f"scene3d probe failed for {name}: {exc}") from exc
+    if abs(probe.get("duration", 0.0) - float(duration)) > 0.5:
+        raise CapabilityError(
+            f"scene3d duration mismatch: wanted {duration}s got {probe.get('duration')}s"
+        )
+    # 3) exact decoded frame count.
+    expected = max(1, math.ceil(float(duration) * int(fps)))
+    if counted["nb_read_frames"] != expected:
+        raise CapabilityError(
+            f"scene3d frame count mismatch for {name}: expected {expected} "
+            f"frames ({duration}s @ {fps}fps) got {counted['nb_read_frames']}"
+        )
+    return {"probe": probe, "counted": counted, "expected_frames": expected}
 
 
 def _render_capability(
@@ -131,12 +181,26 @@ def _render_capability(
     aspect: str,
     seed: int,
 ) -> CapabilityResult:
-    """Core render callable shared by all scene3d capabilities."""
+    """Core render callable shared by all scene3d capabilities.
+
+    Every failure mode (bad params, unsupported aspect, missing preset, render
+    crash, missing/truncated video) surfaces as :class:`CapabilityError` — never
+    as a fake success.
+    """
     from hevi.layer4_legacy.scene3d.renderer import SceneRenderer
 
     # Validate against the capability's own params schema first.
     cap = get(name)
     cap.validate_params(params)
+    # A capability that declares only 16:9/9:16 must refuse 1:1 etc. up front
+    # instead of silently rendering an unsupported frame.
+    if not cap.supports_aspect(aspect):
+        raise CapabilityError(
+            f"capability {name} does not support aspect {aspect!r} "
+            f"(supported: {cap.aspects})"
+        )
+    if duration <= 0:
+        raise CapabilityError(f"capability {name}: duration must be positive, got {duration}")
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -157,20 +221,18 @@ def _render_capability(
         raise CapabilityError(f"scene3d render failed for {name}: {exc}") from exc
 
     video = Path(metrics["video"])
-    probe = ffprobe(video)
-    # Integrity gate: a missing/empty video is a real failure, not a success.
-    if not video.exists() or video.stat().st_size == 0:
-        raise CapabilityError(f"scene3d produced no video for {name}")
-    if abs(probe.get("duration", 0.0) - float(duration)) > 0.5:
-        raise CapabilityError(
-            f"scene3d duration mismatch: wanted {duration}s got {probe.get('duration')}s"
-        )
+    verified = _verify_video(
+        video, duration=duration, fps=int(metrics["fps"]), name=name
+    )
+    probe = verified["probe"]
+    counted = verified["counted"]
     return CapabilityResult(
         mp4=str(video),
         duration_s=metrics["duration_s"],
         sha256=sha256(video),
         qa={
             "frame_count": metrics["frame_count"],
+            "nb_read_frames": counted["nb_read_frames"],
             "fps": metrics["fps"],
             "width": metrics["width"],
             "height": metrics["height"],
