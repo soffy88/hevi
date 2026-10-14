@@ -33,6 +33,8 @@ def _get_font_css(base_dir: Path | None = None) -> str:
     """Generate CSS @font-face rules pointing to subsetted local fonts."""
     if base_dir is None:
         base_dir = Path(__file__).resolve().parent / "assets" / "fonts"
+    else:
+        base_dir = Path(base_dir).resolve()
     fonts_dir_uri = base_dir.as_uri()
 
     return f"""

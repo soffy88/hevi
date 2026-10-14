@@ -97,7 +97,7 @@ def list_capabilities(
     aspect: str | None = None,
 ) -> list[Capability]:
     """List registered capabilities matching optional filters."""
-    results = list(_REGISTRY.values())
+    results = [c for c in _REGISTRY.values()]
     if kind:
         results = [c for c in results if c.kind == kind]
     if aspect:
