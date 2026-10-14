@@ -1,0 +1,60 @@
+{
+  "line_to_structure": {
+    "path": "samples/aimotion_fx/sample_line_to_structure.mp4",
+    "sha256": "5f25b7b235ff6de42ba82ff16de6abb7e5bd302f2fac02a576c6810c7fad26d4",
+    "duration": 5.84,
+    "total_frames": 146,
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "mid_jpg": "samples/aimotion_fx/sample_line_to_structure_mid.jpg"
+  },
+  "water_ripple": {
+    "path": "samples/aimotion_fx/sample_water_ripple.mp4",
+    "sha256": "a30856ad94ecd4c90f75e1a8d853857fa486d83a567dd61166681e00b5e274c0",
+    "duration": 5.84,
+    "total_frames": 146,
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "mid_jpg": "samples/aimotion_fx/sample_water_ripple_mid.jpg"
+  },
+  "glass_refract": {
+    "path": "samples/aimotion_fx/sample_glass_refract.mp4",
+    "sha256": "302f0d9ac29488c4aa548a26eb654031a4ce581ef77b03e49412bdfa814402ce",
+    "duration": 5.84,
+    "total_frames": 146,
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "mid_jpg": "samples/aimotion_fx/sample_glass_refract_mid.jpg"
+  },
+  "reframe_interview": {
+    "path": "samples/aimotion_fx/sample_reframe_interview_9x16.mp4",
+    "sha256": "a2592d8f0487722f905f131bf0e8b80c62c790826d6ab98ea3b6b16f89f7d3e2",
+    "duration": 5.96,
+    "total_frames": 149,
+    "width": 404,
+    "height": 720,
+    "fps": 25.0,
+    "metrics": {
+      "subject_captured_mean": 0.8753,
+      "window_occupancy_mean": 0.9029,
+      "subject_coverage": 0.9029
+    }
+  },
+  "reframe_broll": {
+    "path": "samples/aimotion_fx/sample_reframe_broll_9x16.mp4",
+    "sha256": "d9d459a0cdd442832ffa96ad64ef8846468cd1c35b979de39820a45f490ce51c",
+    "duration": 5.96,
+    "total_frames": 149,
+    "width": 404,
+    "height": 720,
+    "fps": 25.0,
+    "metrics": {
+      "subject_captured_mean": 0.9781,
+      "window_occupancy_mean": 0.7207,
+      "subject_coverage": 0.9781
+    }
+  }
+}
