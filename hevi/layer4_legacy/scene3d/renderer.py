@@ -117,7 +117,6 @@ class SceneRenderer:
                     viewport={"width": self.spec.width, "height": self.spec.height},
                     device_scale_factor=1,
                 )
-                canvas = page.locator("#c")
                 page.goto(page_url)
                 # Wait until the page signals readiness.
                 page.wait_for_function("() => window.__SCENE3D_DONE === true", timeout=60000)
@@ -129,7 +128,26 @@ class SceneRenderer:
                         t = duration
                     page.evaluate(f"window.__setTime({t!r})")
                     frame_path = self.frames_dir / f"frame_{i+1:05d}.png"
-                    canvas.screenshot(path=str(frame_path))
+                    # Read the canvas pixels from inside the page and POST them
+                    # back to our local server as a binary blob.  This avoids
+                    # the element-screenshot stability check, which races with
+                    # the continuous WebGL repaint driven by `__setTime`.
+                    b64 = page.evaluate(
+                        """async () => {
+                          const c = document.getElementById('c');
+                          return await new Promise((resolve, reject) => {
+                            c.toBlob(blob => {
+                              const r = new FileReader();
+                              r.onload = () => resolve(r.result);
+                              r.onerror = reject;
+                              r.readAsDataURL(blob);
+                            }, 'image/png');
+                          });
+                        }"""
+                    )
+                    import base64 as _b64
+                    payload = _b64.b64decode(b64.split(",", 1)[1])
+                    frame_path.write_bytes(payload)
                     paths.append(frame_path)
                 browser.close()
         finally:
