@@ -11,7 +11,7 @@ uv run --with playwright python render.py --spec clip.json --out 片段.mp4 [--a
 页面里有 pageerror 或 console.error（场景报错、缺字形）→ 渲完后非零退出。
 """
 
-import argparse, base64, http.server, json, socketserver, subprocess, sys, threading, functools, time, urllib.parse
+import argparse, base64, http.server, json, queue, socketserver, subprocess, sys, threading, functools, time, urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -71,9 +71,24 @@ if spec and float(spec.get("duration", 0)) > 8:
     print(LONG_CLIP, file=sys.stderr, flush=True)
 
 
+frame_q = queue.Queue(maxsize=4)
+
+
 class Q(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *x):
         pass
+
+    def do_POST(self):
+        if self.path == "/frame":
+            length = int(self.headers.get("Content-Length", 0))
+            data = self.rfile.read(length)
+            if frame_q is not None:
+                frame_q.put(data)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+        else:
+            self.send_error(404)
 
     def translate_path(self, path):
         if path.startswith("/__file__/"):
@@ -172,7 +187,7 @@ with sync_playwright() as p:
                 "-c:v",
                 "libx264",
                 "-preset",
-                "slow",
+                "medium",
                 "-crf",
                 str(a.crf),
                 "-pix_fmt",
@@ -208,12 +223,23 @@ with sync_playwright() as p:
         W_, H_ = (spec.get("width", 1920), spec.get("height", 1080)) if spec else (1920, 1080)
         padx, pady = W_ * 0.05, H_ * 0.05  # 文字必须落在画面内缩 5% 的安全区里
         violations = []  # [{'t': 秒, 'bbox': [x0,y0,x1,y1]}...]
+        if a.solo:
+            render_expr = f"window.renderSolo({repr(a.solo)}, t, {{counter: {'false' if a.no_counter else 'true'}}});"
+        else:
+            render_expr = "await window.prepare(t); window.renderFrame(t);"
+        grab_stream = f"""async (t)=>{{
+          {render_expr}
+          await new Promise(r => window.__canvas.toBlob(b => fetch('/frame', {{method: 'POST', body: b}}).then(r), 'image/png'));
+          const ctx = window.CLIP_CTX;
+          return ctx && ctx.__textBBox ? ctx.__textBBox : null;
+        }}"""
         for i in range(n0, n1):
-            r = pg.evaluate(grab, i / a.fps)
+            bb = pg.evaluate(grab_stream, i / a.fps)
+            frame_bytes = frame_q.get(timeout=60)
+            ff.stdin.write(frame_bytes)
+            del frame_bytes
             if i % 30 == 0:
                 pg.evaluate("if (window.gc) window.gc()")
-            ff.stdin.write(base64.b64decode(r["png"]))
-            bb = r.get("bb")
             if bb and (
                 bb["x0"] < padx - 1
                 or bb["y0"] < pady - 1
