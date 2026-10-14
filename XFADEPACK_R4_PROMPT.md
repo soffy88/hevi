@@ -1,0 +1,1 @@
+读取 XFADEPACK_FIX.md 最末的 "R4" 一节，严格按 H1–H3 返工（同时遵守 XFADEPACK_TASK.md）。只改本 worktree（/data/soffy/projects/hevi-xfadepack），不删 worktree 外任何文件，不清理磁盘（/data 剩余不足 5G 时写 DISK_FULL_NOTE.md 并停止），所有 python 设 PYTHONPATH=/data/soffy/projects/hevi-xfadepack，不 push，CPU-only，禁止 mock。完成后更新 XFADEPACK_DONE.md，最后一行写 DONE XFADEPACK-R4 并 commit（只 add 自己的文件）。
