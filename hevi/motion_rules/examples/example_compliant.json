@@ -1,0 +1,56 @@
+{
+  "title": "符合规范的极简连续形变动效分镜",
+  "bpm": 120.0,
+  "has_contact_sheet": true,
+  "is_loop": true,
+  "first_frame": "hero_state_idle",
+  "last_frame": "hero_state_idle",
+  "shots": [
+    {
+      "id": "shot_01_button_to_loader",
+      "start": 0.0,
+      "dur": 2.0,
+      "transition": {
+        "type": "short_blur_morph",
+        "start": 0.0,
+        "dur": 0.2
+      },
+      "container_morph": {
+        "start": 0.2,
+        "next_morph": 1.8
+      },
+      "texts": [
+        {
+          "text": "即刻启程",
+          "in": 0.3,
+          "out": 1.7
+        }
+      ],
+      "effects": [],
+      "easing": "closed_form_spring"
+    },
+    {
+      "id": "shot_02_loader_to_card",
+      "start": 2.0,
+      "dur": 2.5,
+      "transition": {
+        "type": "short_blur_morph",
+        "start": 2.0,
+        "dur": 0.2
+      },
+      "container_morph": {
+        "start": 2.2,
+        "next_morph": 4.3
+      },
+      "texts": [
+        {
+          "text": "数据就绪",
+          "in": 2.4,
+          "out": 4.1
+        }
+      ],
+      "effects": [],
+      "easing": "closed_form_spring"
+    }
+  ]
+}
