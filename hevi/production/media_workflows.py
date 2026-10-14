@@ -648,6 +648,8 @@ async def shorts_generation_workflow(
             "operation": "shorts_generation_workflow",
             "pillars": sorted(_enabled_pillars),
             "fingerprint": fingerprint,
+            # provenance: the real source this run cut from (input relevance is auditable)
+            "inputs": {"source_video_path": source, "topic": str(data.get("topic") or "")},
             "clips": len(clips),
             "decision_trail": trail,
             "artifact_manifest": manifest.model_dump(mode="json"),
