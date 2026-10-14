@@ -22,9 +22,13 @@ from pathlib import Path
 import pytest
 from playwright.async_api import async_playwright
 
+import re
+
 ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = Path(os.environ.get("AMTPL_TEMPLATES_DIR", ROOT / "hevi" / "motion_templates" / "templates"))
 SPECS_DIR = ROOT / "hevi" / "motion_templates" / "specs"
+
+CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 
 TEMPLATE_SPECS = [
     ("morph_ui.html", ["morph_ui_hevi_pipeline.json", "morph_ui_studio_ops.json"]),
@@ -108,6 +112,8 @@ async def _run_case(template_name, spec_file, w, h):
             await page.evaluate("window.__probeOn = true")
 
         t = 0.0
+        clip_max_cjk_h = 0.0
+        clip_max_cjk_text = ""
         while t <= duration + 1e-6:
             if not native:
                 await page.evaluate("window.__probeBoxes = []")
@@ -147,6 +153,16 @@ async def _run_case(template_name, spec_file, w, h):
                         )
 
             visible = [b for b in boxes if b["alpha"] > 0.5]
+            if w == 1080 and h == 1920:
+                for b in visible:
+                    if CJK_RE.search(b["text"]):
+                        if b["h"] < 22.0 - TOL:
+                            violations.append(
+                                f"t={t:.2f}s 9:16 CJK text ink height {b['h']:.1f}px < 22px threshold: '{b['text']}'"
+                            )
+                        if b["h"] > clip_max_cjk_h:
+                            clip_max_cjk_h = b["h"]
+                            clip_max_cjk_text = b["text"]
             for i in range(len(visible)):
                 for j in range(i + 1, len(visible)):
                     area = _intersection_area(visible[i], visible[j])
@@ -155,6 +171,13 @@ async def _run_case(template_name, spec_file, w, h):
                             f"t={t:.2f}s OVERLAP area={area:.1f}px2 '{visible[i]['text']}' <-> '{visible[j]['text']}'"
                         )
             t += 0.5
+
+        if w == 1080 and h == 1920:
+            if clip_max_cjk_h < 40.0 - TOL:
+                violations.append(
+                    f"9:16 main text ink height {clip_max_cjk_h:.1f}px < 40px requirement (max was '{clip_max_cjk_text}')"
+                )
+
 
         await page.close()
         await browser.close()
