@@ -119,6 +119,16 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         else "talkcraft 本地依赖未就绪（Remotion 子工程 / Piper / Whisper 模型）。",
         None if _talkcraft_ready() else "在 hevi-remotion-talkcraft 执行 npm ci，并配置 HEVI_TALKCRAFT_PIPER / VOICES / WHISPER。",
     ),
+    "whiteboard_explainer": CapabilityDescriptor(
+        "whiteboard_explainer",
+        "白板手绘解说（whiteboard）",
+        ("/api/explainer/run",),
+        _talkcraft_ready(),
+        "手绘白板逐笔动画，CPU 本地渲染，零付费调用；explainer 以 renderer=whiteboard 调用。"
+        if _talkcraft_ready()
+        else "whiteboard 本地依赖未就绪（Playwright 运行时 / Piper / Whisper 模型）。",
+        None if _talkcraft_ready() else "配置 HEVI_TALKCRAFT_PIPER / VOICES / WHISPER 及 hevi-remotion-whiteboard 依赖。",
+    ),
     "tongjian": CapabilityDescriptor(
         "tongjian",
         "通鉴出片",

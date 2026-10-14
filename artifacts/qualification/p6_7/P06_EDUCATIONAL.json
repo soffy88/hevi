@@ -1,0 +1,118 @@
+{
+  "blocked_reason": "no provider credentials configured and CUDA reports no device",
+  "capabilities": {
+    "available": [
+      "asset",
+      "brand",
+      "character",
+      "document",
+      "evidence",
+      "instruction",
+      "motion",
+      "narrator",
+      "presenter",
+      "world"
+    ],
+    "missing": [],
+    "required": [
+      "instruction"
+    ],
+    "satisfied": true
+  },
+  "intent_hash": "721fc14cac6a66016bd34f1b4cdc51454d8873f6c8564c8088a8c7e60cea2884",
+  "narrative_grammar_id": "explanatory",
+  "presenter_grammar_id": "educational_lecture",
+  "product": "P06_EDUCATIONAL",
+  "product_type": "P09_TUTORIAL",
+  "profile": "P06_EDUCATIONAL",
+  "provider": {
+    "credentials_present": [],
+    "gpu_available": false,
+    "mock_used": false,
+    "real_render_qualification": "BLOCKED_BY_PROVIDER",
+    "reason": "no provider credentials configured and CUDA reports no device"
+  },
+  "qa": "delegated_to_existing_runtime",
+  "recipe_evidence": {
+    "candidate_recipe_ids": [
+      "EXPLAINER.CONCEPT_BUILD",
+      "EXPLAINER.PROCESS_FLOW",
+      "COMPOSITION.NEGATIVE_SPACE_TEXT",
+      "EXPLAINER.LAYER_BY_LAYER",
+      "EXPLAINER.CAUSE_EFFECT",
+      "EXPLAINER.ANNOTATED_DIAGRAM",
+      "EXPLAINER.QUESTION_TO_ANSWER",
+      "PRODUCT.WORKFLOW_DEMO",
+      "CAMERA.STATIC_HOLD",
+      "PRESENTER.PRESENTER_PRIMARY",
+      "PRESENTER.PRESENTER_WITH_EVIDENCE",
+      "PRESENTER.PRESENTER_PIP",
+      "PRESENTER.PRESENTER_TO_BROLL",
+      "PRESENTER.BROLL_TO_PRESENTER",
+      "PRODUCT.REAL_UI_FLOW",
+      "PRODUCT.PROBLEM_SOLUTION"
+    ],
+    "rejected_candidates": [
+      "EXPLAINER.PROCESS_FLOW",
+      "COMPOSITION.NEGATIVE_SPACE_TEXT",
+      "EXPLAINER.LAYER_BY_LAYER",
+      "EXPLAINER.CAUSE_EFFECT",
+      "EXPLAINER.ANNOTATED_DIAGRAM",
+      "EXPLAINER.QUESTION_TO_ANSWER",
+      "PRODUCT.WORKFLOW_DEMO",
+      "CAMERA.STATIC_HOLD",
+      "PRESENTER.PRESENTER_PRIMARY",
+      "PRESENTER.PRESENTER_WITH_EVIDENCE",
+      "PRESENTER.PRESENTER_PIP",
+      "PRESENTER.PRESENTER_TO_BROLL",
+      "PRESENTER.BROLL_TO_PRESENTER",
+      "PRODUCT.REAL_UI_FLOW",
+      "PRODUCT.PROBLEM_SOLUTION"
+    ],
+    "selected_recipe_id": "EXPLAINER.CONCEPT_BUILD",
+    "selected_version": "1.0.0"
+  },
+  "runtime": {
+    "blocked": false,
+    "capabilities": {
+      "available": [
+        "asset",
+        "brand",
+        "character",
+        "document",
+        "evidence",
+        "instruction",
+        "motion",
+        "narrator",
+        "presenter",
+        "world"
+      ],
+      "missing": [],
+      "required": [
+        "instruction"
+      ],
+      "satisfied": true
+    },
+    "intent_hash": "721fc14cac6a66016bd34f1b4cdc51454d8873f6c8564c8088a8c7e60cea2884",
+    "prior_states": [
+      "compiled",
+      "validated",
+      "executing"
+    ],
+    "product_profile_id": "P06_EDUCATIONAL",
+    "reason": "",
+    "receipt": {
+      "detail": "ok",
+      "entrypoint_ref": "hevi.production.p0_pipeline:produce",
+      "produced": true,
+      "runtime_id": "p0_existing_stub"
+    },
+    "recipe_fingerprint": "EXPLAINER.CONCEPT_BUILD",
+    "request_hash": "f43d74b19dcaeee41f9b5edf5beea1a32712429bdf9ffdc155cd87083375afd7",
+    "run_id": "794ce069cd58443a9313d9ae1aec79a2",
+    "state": "produced",
+    "success": true
+  },
+  "visual_grammar_id": "educational_clarity",
+  "visual_style_id": "educational_clarity"
+}

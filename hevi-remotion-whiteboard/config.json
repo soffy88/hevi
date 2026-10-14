@@ -1,0 +1,65 @@
+{
+  "dirs": {
+    "projects": "./episodes",
+    "build": "./build"
+  },
+  "tts": {
+    "speed": 1.2
+  },
+  "bgm": {
+    "file": "",
+    "gain": 0.3
+  },
+  "render": {
+    "fps": 30,
+    "leadSeconds": 0.3,
+    "holdSeconds": 0.7,
+    "workers": 4,
+    "pen": {
+      "speed": 1200,
+      "fillSpeed": 9000,
+      "minSeconds": 0.35,
+      "gapSeconds": 0.12,
+      "charSeconds": [0.06, 0.2],
+      "overflow": 0.35,
+      "travelMax": 1.6,
+      "fillMaxSeconds": 1.2
+    }
+  },
+  "captions": {
+    "enabled": true,
+    "fontSize": 46,
+    "baselineY": 1022,
+    "safeTop": 960,
+    "minChars": 6,
+    "maxChars": 20,
+    "leadSeconds": 0.08,
+    "tailSeconds": 0.25
+  },
+  "brand": {
+    "name": "",
+    "slogan": "",
+    "accent": "#2f9e44",
+    "ink": "#1e1e1e",
+    "logo": "",
+    "watermark": {
+      "enabled": false,
+      "position": "top-right",
+      "opacity": 0.72,
+      "size": 36,
+      "margin": 56,
+      "drawInSeconds": 1.2,
+      "sparkle": true,
+      "underline": true
+    },
+    "endCard": {
+      "enabled": false,
+      "seconds": 5.5,
+      "cta": "点赞 · 关注 · 评论区聊聊",
+      "holdSeconds": 1.5
+    },
+    "pen": {
+      "color": "#f5b942"
+    }
+  }
+}
