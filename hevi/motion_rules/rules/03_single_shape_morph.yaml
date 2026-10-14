@@ -1,0 +1,13 @@
+id: single_shape_morph
+title: 单形状连续形变（One shape, never cut）
+category: 元素演变
+trigger:
+  - 多状态 UI 演示、流程串联与概念拆解
+  - 镜头之间的连贯衔接
+counter_example: |
+  频繁硬切镜头、PPT 式翻页转场、每个状态各自建一张全新的独立卡片并暴力淡入淡出，导致画面破碎失焦、缺乏连续工艺质感。
+correct_approach: |
+  单一核心元素贯穿始终（one shape, never cut）。同一个外形元素通过 size（宽高）、radius（圆角）、color（填充/边框）的平滑形变演进为各个 UI 状态（如按钮 → 加载圈 → 对勾 → 灵动岛 → 播放器 → 滑块 → 表格），内容在形变骨架内自如切换。
+source_case_id: "2103483957266268381"
+source_author: Martijn Verbove (@verbove)
+prompt_summary: 采用单形状连续形变（one shape, never cut）：同一核心元素通过尺寸、圆角与颜色的连续 morph 贯穿整套流程，杜绝破碎切镜与 PPT 翻页。

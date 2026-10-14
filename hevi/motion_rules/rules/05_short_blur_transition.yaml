@@ -1,0 +1,12 @@
+id: short_blur_transition
+title: 短模糊过渡（摒弃全黑淡出）
+category: 转场质感
+trigger:
+  - 元素形态转换、状态置换与视觉衔接
+counter_example: |
+  使用全屏变黑的淡入淡出（fade to black）、大面积白色闪屏，或者直接把全黑画面直接切进高对比主题色，产生生硬断层。
+correct_approach: |
+  在形变置换与状态切换的瞬间叠加极短的动态模糊（short blur，约 0.1s~0.2s），使高频像素更平滑过渡；如果要凸显主题色，采用主题色几何元素穿梭过渡，严禁全黑硬切。
+source_case_id: "2103483957266268381"
+source_author: Martijn Verbove (@verbove)
+prompt_summary: 状态置换采用短模糊过渡（short blur）抹平突变，禁止使用全屏黑场淡入淡出，禁止全黑直接硬切强调色。
