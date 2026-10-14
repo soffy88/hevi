@@ -94,7 +94,12 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 
 with sync_playwright() as p:
     b = p.chromium.launch(
-        args=["--disable-web-security", "--disable-dev-shm-usage", "--enable-gpu-rasterization", "--ignore-gpu-blocklist"]
+        args=[
+            "--disable-web-security",
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--js-flags=--max-old-space-size=8192 --expose-gc",
+        ]
     )
     pg = b.new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1)
     errors = []
@@ -205,6 +210,8 @@ with sync_playwright() as p:
         violations = []  # [{'t': 秒, 'bbox': [x0,y0,x1,y1]}...]
         for i in range(n0, n1):
             r = pg.evaluate(grab, i / a.fps)
+            if i % 30 == 0:
+                pg.evaluate("if (window.gc) window.gc()")
             ff.stdin.write(base64.b64decode(r["png"]))
             bb = r.get("bb")
             if bb and (
