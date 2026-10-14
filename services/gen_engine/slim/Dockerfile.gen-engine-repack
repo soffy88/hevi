@@ -1,0 +1,32 @@
+# Slim repack of an already-built gen_engine image (no code/dependency changes
+# for anything that runs):
+#  - cosy-venv: drop triton (pulled in by openai-whisper on x86_64; it only
+#    serves CUDA kernels, and every torch here is +cpu with cuda=None)
+#  - identical files across the four Python environments (same CPU torch,
+#    llvmlite, scipy, ...) become hard links, stored once
+#  - all layers flattened into one
+# Build (from services/gen_engine/slim):
+#   docker build --build-arg BASE_IMAGE=gen_engine-gen-engine:pre-slim-20261014 \
+#     -f Dockerfile.gen-engine-repack -t gen_engine-gen-engine:slim .
+ARG BASE_IMAGE=gen_engine-gen-engine:pre-slim-20261014
+FROM ${BASE_IMAGE} AS src
+USER root
+COPY dedup-hardlink.py /tmp/dedup-hardlink.py
+RUN SP=/opt/cosy-venv/lib/python3.11/site-packages \
+    && rm -rf $SP/triton $SP/triton-*.dist-info \
+    && /opt/cosy-venv/bin/python -c "import torch, whisper; assert torch.version.cuda is None" \
+    && python /tmp/dedup-hardlink.py /usr/local/lib/python3.11/site-packages /opt/ai-venv /opt/cosy-venv /opt/asr-venv \
+    && rm -rf /tmp/dedup-hardlink.py /root/.cache
+
+FROM scratch
+COPY --from=src / /
+ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    LANG=C.UTF-8 \
+    PYTHON_VERSION=3.11.17 \
+    LD_LIBRARY_PATH=/opt/vibeasr:
+WORKDIR /app
+USER voicebox
+EXPOSE 17493
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=60s CMD curl -f http://localhost:17493/api/ai/health || exit 1
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["uvicorn", "gen_engine.server:app", "--host", "0.0.0.0", "--port", "17493"]
