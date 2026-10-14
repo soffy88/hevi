@@ -28,6 +28,43 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
+    // ------------------------------------------------------------------
+    // Test instrumentation: record every fillText bounding box (canvas
+    // space) only when explicitly enabled. Does not alter draw(t) output.
+    // ------------------------------------------------------------------
+    let __recordText = false;
+    window.__textBoxes = [];
+    window.__containers = [];
+    window.setRecordText = function (v) { __recordText = !!v; };
+
+    function _applyTransform(c, x, y) {
+      const m = c.getTransform();
+      return { x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f };
+    }
+
+    function ft(c, text, x, y, maxW) {
+      const str = String(text == null ? "" : text);
+      if (__recordText && str.trim().length > 0) {
+        const m = c.measureText(str);
+        const left = x - m.actualBoundingBoxLeft;
+        const right = x + m.actualBoundingBoxRight;
+        const top = y - m.actualBoundingBoxAscent;
+        const bottom = y + m.actualBoundingBoxDescent;
+        const p0 = _applyTransform(c, left, top);
+        const p1 = _applyTransform(c, right, bottom);
+        const bx = Math.min(p0.x, p1.x), by = Math.min(p0.y, p1.y);
+        const bw = Math.abs(p1.x - p0.x), bh = Math.abs(p1.y - p0.y);
+        let container = null;
+        const ccx = bx + bw / 2, ccy = by + bh / 2;
+        for (const r of (window.__containers || [])) {
+          if (ccx >= r.x && ccx <= r.x + r.w && ccy >= r.y && ccy <= r.y + r.h) { container = r; break; }
+        }
+        window.__textBoxes.push({ x: bx, y: by, w: bw, h: bh, text: str, alpha: c.globalAlpha, container: container });
+      }
+      if (maxW !== undefined) c.fillText(str, x, y, maxW);
+      else c.fillText(str, x, y);
+    }
+
     let spec = {
       title: "智能视频生成流水线",
       bpm: 120,
@@ -92,14 +129,13 @@
 
     let width = 1080;
     let height = 1920;
-
-    // Timeline precomputed structure
+    let fScale = 1.0;
     let stateSchedule = [];
     let totalDuration = 12.0;
 
     function buildSchedule() {
       const beatDur = 60.0 / (spec.bpm || 120);
-      let curT = 0.5; // slight intro offset
+      let curT = 0.5;
       stateSchedule = [];
 
       for (let i = 0; i < spec.states.length; i++) {
@@ -118,110 +154,101 @@
     }
 
     window.initTemplate = function (newSpec, w, h) {
-      if (newSpec) {
-        spec = Object.assign({}, spec, newSpec);
-      }
+      if (newSpec) spec = Object.assign({}, spec, newSpec);
       width = w || 1080;
       height = h || 1920;
       canvas.width = width;
       canvas.height = height;
+      fScale = Math.min(width, height) / 1080;
       buildSchedule();
     };
 
-    // Calculate container geometry targets for each state based on aspect ratio
     function getStateGeometry(state, idx, w, h) {
-      const isLandscape = w > h;
-      const isSquare = Math.abs(w - h) < 50;
-      const baseScale = isLandscape ? h / 1080 : w / 1080;
-
       const cx = w / 2;
       const cy = h / 2;
+      const isLandscape = w > h;
 
       switch (state.type) {
         case "button":
           return {
-            x: cx - (260 * baseScale),
-            y: cy - (48 * baseScale),
-            w: 520 * baseScale,
-            h: 96 * baseScale,
-            radius: 48 * baseScale,
+            x: cx - 260 * fScale,
+            y: cy - 48 * fScale,
+            w: 520 * fScale,
+            h: 96 * fScale,
+            radius: 48 * fScale,
             bg: "#1e293b",
             border: state.accent || "#f59e0b",
-            borderWidth: 2 * baseScale
+            borderWidth: 2 * fScale
           };
         case "progress":
           return {
-            x: cx - (420 * baseScale),
-            y: cy - (70 * baseScale),
-            w: 840 * baseScale,
-            h: 140 * baseScale,
-            radius: 28 * baseScale,
+            x: cx - (isLandscape ? 440 : 400) * fScale,
+            y: cy - 70 * fScale,
+            w: (isLandscape ? 880 : 800) * fScale,
+            h: 140 * fScale,
+            radius: 28 * fScale,
             bg: "#182234",
             border: "#334155",
-            borderWidth: 2 * baseScale
+            borderWidth: 2 * fScale
           };
         case "metric":
           return {
-            x: cx - (300 * baseScale),
-            y: cy - (180 * baseScale),
-            w: 600 * baseScale,
-            h: 360 * baseScale,
-            radius: 36 * baseScale,
+            x: cx - 290 * fScale,
+            y: cy - 170 * fScale,
+            w: 580 * fScale,
+            h: 340 * fScale,
+            radius: 32 * fScale,
             bg: "#162032",
             border: state.accent || "#38bdf8",
-            borderWidth: 2 * baseScale
+            borderWidth: 2 * fScale
           };
         case "chart":
           return {
-            x: cx - (440 * baseScale),
-            y: cy - (260 * baseScale),
-            w: 880 * baseScale,
-            h: 520 * baseScale,
-            radius: 32 * baseScale,
+            x: cx - (isLandscape ? 440 : 410) * fScale,
+            y: cy - 240 * fScale,
+            w: (isLandscape ? 880 : 820) * fScale,
+            h: 480 * fScale,
+            radius: 32 * fScale,
             bg: "#141e30",
             border: "#334155",
-            borderWidth: 2 * baseScale
+            borderWidth: 2 * fScale
           };
         case "player":
           return {
-            x: cx - (450 * baseScale),
-            y: cy - (280 * baseScale),
-            w: 900 * baseScale,
-            h: 560 * baseScale,
-            radius: 28 * baseScale,
+            x: cx - (isLandscape ? 450 : 420) * fScale,
+            y: cy - 250 * fScale,
+            w: (isLandscape ? 900 : 840) * fScale,
+            h: 500 * fScale,
+            radius: 28 * fScale,
             bg: "#111827",
             border: state.accent || "#e11d48",
-            borderWidth: 2 * baseScale
+            borderWidth: 2 * fScale
           };
         case "card":
         default:
           return {
-            x: cx - (420 * baseScale),
-            y: cy - (220 * baseScale),
-            w: 840 * baseScale,
-            h: 440 * baseScale,
-            radius: 32 * baseScale,
+            x: cx - 400 * fScale,
+            y: cy - 190 * fScale,
+            w: 800 * fScale,
+            h: 380 * fScale,
+            radius: 32 * fScale,
             bg: "#132137",
             border: state.accent || "#10b981",
-            borderWidth: 2.5 * baseScale
+            borderWidth: 2.5 * fScale
           };
       }
     }
 
-    // Closed-form spring interpolation for state geometry
     function computeContainerAtTime(t, w, h) {
       if (stateSchedule.length === 0) buildSchedule();
 
-      // Find which interval we are in
       let prevIdx = 0;
       let nextIdx = 0;
-      let transitionStart = 0;
 
       for (let i = 0; i < stateSchedule.length; i++) {
         if (t >= stateSchedule[i].tStart) {
           prevIdx = i;
           nextIdx = Math.min(i + 1, stateSchedule.length - 1);
-          transitionStart = stateSchedule[i].tStart;
         }
       }
 
@@ -231,16 +258,14 @@
       const gCur = getStateGeometry(curSched.state, prevIdx, w, h);
       const gNext = getStateGeometry(nextSched.state, nextIdx, w, h);
 
-      // Transition occurs at nextSched.tStart
       if (prevIdx < nextIdx && t >= nextSched.tStart) {
         const tau = t - nextSched.tStart;
         const p = Spring.stepResponse(tau, 14.0, 0.82);
 
-        // Compute morph blur: peak around tau=0.15s, ends around tau=0.35s
         let blurPx = 0;
         if (tau >= 0 && tau < 0.35) {
           const triangle = 1.0 - Math.abs(tau - 0.17) / 0.17;
-          blurPx = Math.max(0, triangle * 4.5);
+          blurPx = Math.max(0, triangle * 4.0);
         }
 
         return {
@@ -279,7 +304,6 @@
       };
     }
 
-    // Helper to draw rounded rectangle
     function drawRoundedRect(c, x, y, w, h, r) {
       r = Math.min(r, w / 2, h / 2);
       c.beginPath();
@@ -295,169 +319,187 @@
       c.closePath();
     }
 
-    // Draw background (clean dark slate, subtle vignette, technical grid markers)
     function drawBackground(c, w, h, t) {
       c.fillStyle = "#090d16";
       c.fillRect(0, 0, w, h);
 
-      // Subtle radial warmth, no flashing, no large purple
       const grad = c.createRadialGradient(w / 2, h / 2, 80, w / 2, h / 2, Math.max(w, h) * 0.75);
       grad.addColorStop(0, "rgba(22, 32, 50, 0.4)");
       grad.addColorStop(1, "rgba(9, 13, 22, 1.0)");
       c.fillStyle = grad;
       c.fillRect(0, 0, w, h);
 
-      // Subtle watermark / header
       c.save();
-      c.fillStyle = "rgba(148, 163, 184, 0.35)";
-      c.font = `600 ${Math.round(20 * (w / 1080))}px monospace`;
-      c.fillText("HEVI MOTION ARCHITECTURE // " + (spec.title || "STUDIO PIPELINE"), 60 * (w / 1080), 80 * (h / 1920));
+      const safeLeft = 60 * fScale;
+      const safeRight = w - 60 * fScale;
+      const safeTop = (w > h ? 60 : 90) * fScale;
+
+      c.textBaseline = "top";
+      c.fillStyle = "rgba(148, 163, 184, 0.4)";
+      c.font = `600 ${Math.round(18 * fScale)}px monospace`;
+      c.textAlign = "left";
+      ft(c, "HEVI MOTION ARCHITECTURE // " + (spec.title || "STUDIO PIPELINE"), safeLeft, safeTop);
 
       c.textAlign = "right";
-      const timeStr = `T+${t.toFixed(2)}s`;
-      c.fillText(timeStr, w - (60 * (w / 1080)), 80 * (h / 1920));
+      ft(c, `T+${t.toFixed(2)}s`, safeRight, safeTop);
       c.restore();
     }
 
-    // Draw content inside the container
-    function drawContainerContent(c, geom, sched, alpha, t, w, h) {
+    function drawContainerContent(c, geom, sched, alpha, t) {
       if (alpha <= 0.01) return;
       const s = sched.state;
-      const sScale = w / 1080;
       const cx = geom.x + geom.w / 2;
       const cy = geom.y + geom.h / 2;
 
       c.save();
       c.globalAlpha = Math.max(0, Math.min(1.0, alpha));
 
-      // Badge top
-      if (s.badge) {
+      // 1. Button type: concise horizontal layout
+      if (s.type === "button") {
         c.fillStyle = s.accent || "#f59e0b";
-        c.font = `700 ${Math.round(15 * sScale)}px monospace`;
+        c.beginPath();
+        c.arc(geom.x + 36 * fScale, cy, 6 * fScale, 0, Math.PI * 2);
+        c.fill();
+
+        c.fillStyle = "#f8fafc";
+        c.font = `600 ${Math.round(22 * fScale)}px -apple-system, sans-serif`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        const badgeY = geom.y + (geom.h > 180 * sScale ? 46 * sScale : geom.h / 2 - 18 * sScale);
-        c.fillText(s.badge, cx, badgeY);
+        ft(c, (s.title || "").replace(/。/g, ""), cx + 12 * fScale, cy);
+        c.restore();
+        return;
+      }
+
+      // 2. Progress type
+      if (s.type === "progress") {
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        c.fillStyle = s.accent || "#f59e0b";
+        c.font = `700 ${Math.round(14 * fScale)}px monospace`;
+        ft(c, s.badge || "PROCESSING", cx, geom.y + 36 * fScale);
+
+        c.fillStyle = "#f8fafc";
+        c.font = `600 ${Math.round(22 * fScale)}px -apple-system, sans-serif`;
+        ft(c, (s.title || "").replace(/。/g, ""), cx, geom.y + 70 * fScale);
+
+        const trackW = geom.w - 100 * fScale;
+        const trackH = 12 * fScale;
+        const trackX = geom.x + 50 * fScale;
+        const trackY = geom.y + 104 * fScale;
+
+        c.fillStyle = "rgba(51, 65, 85, 0.6)";
+        drawRoundedRect(c, trackX, trackY, trackW, trackH, 6 * fScale);
+        c.fill();
+
+        const pct = Math.min(1.0, (s.progress || 0.75) * Spring.stepResponse(t - sched.tStart, 12.0, 0.85));
+        c.fillStyle = s.accent || "#10b981";
+        drawRoundedRect(c, trackX, trackY, trackW * pct, trackH, 6 * fScale);
+        c.fill();
+        c.restore();
+        return;
+      }
+
+      // Top badge
+      if (s.badge) {
+        c.fillStyle = s.accent || "#f59e0b";
+        c.font = `700 ${Math.round(14 * fScale)}px monospace`;
+        c.textAlign = "center";
+        c.textBaseline = "middle";
+        ft(c, s.badge, cx, geom.y + 36 * fScale);
       }
 
       // Title
       if (s.title) {
         c.fillStyle = "#f8fafc";
-        c.font = `600 ${Math.round((geom.h > 240 * sScale ? 28 : 22) * sScale)}px -apple-system, sans-serif`;
+        c.font = `600 ${Math.round(24 * fScale)}px -apple-system, sans-serif`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        const titleY = geom.h > 200 * sScale ? geom.y + 90 * sScale : cy;
-        // Strip full stops per rule
-        const cleanTitle = s.title.replace(/。/g, "");
-        c.fillText(cleanTitle, cx, titleY);
+        ft(c, s.title.replace(/。/g, ""), cx, geom.y + 76 * fScale);
       }
 
-      // Specialized content per type
-      if (s.type === "button") {
-        // Dot indicator
-        c.fillStyle = s.accent || "#f59e0b";
-        c.beginPath();
-        c.arc(geom.x + 36 * sScale, cy, 6 * sScale, 0, Math.PI * 2);
-        c.fill();
-      } else if (s.type === "progress") {
-        // Progress track & bar
-        const trackW = geom.w - 120 * sScale;
-        const trackH = 14 * sScale;
-        const trackX = geom.x + 60 * sScale;
-        const trackY = cy + 24 * sScale;
-
-        c.fillStyle = "rgba(51, 65, 85, 0.6)";
-        drawRoundedRect(c, trackX, trackY, trackW, trackH, 7 * sScale);
-        c.fill();
-
-        const pct = Math.min(1.0, (s.progress || 0.75) * Spring.stepResponse(t - sched.tStart, 12.0, 0.85));
-        c.fillStyle = s.accent || "#10b981";
-        drawRoundedRect(c, trackX, trackY, trackW * pct, trackH, 7 * sScale);
-        c.fill();
-      } else if (s.type === "metric") {
-        // Big number
+      // 3. Metric type (Big number cleanly separated from title)
+      if (s.type === "metric") {
         c.fillStyle = "#ffffff";
-        c.font = `800 ${Math.round(84 * sScale)}px monospace`;
+        c.font = `800 ${Math.round(72 * fScale)}px monospace`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        c.fillText(s.value || "18", cx, cy + 30 * sScale);
+        ft(c, s.value || "18", cx, geom.y + 195 * fScale);
 
         if (s.unit) {
           c.fillStyle = s.accent || "#38bdf8";
-          c.font = `600 ${Math.round(18 * sScale)}px monospace`;
-          c.fillText(s.unit, cx, cy + 95 * sScale);
+          c.font = `600 ${Math.round(16 * fScale)}px monospace`;
+          ft(c, s.unit, cx, geom.y + 270 * fScale);
         }
-      } else if (s.type === "chart") {
-        // Bar chart
+      }
+
+      // 4. Chart type (bars strictly constrained below title line)
+      else if (s.type === "chart") {
         const bars = s.bars || [0.4, 0.65, 0.9, 0.75, 0.5];
-        const barAreaW = geom.w - 140 * sScale;
-        const barAreaH = 180 * sScale;
-        const startX = geom.x + 70 * sScale;
-        const baseY = geom.y + geom.h - 70 * sScale;
-        const barW = (barAreaW / bars.length) * 0.65;
-        const gap = barAreaW / bars.length;
+        const barAreaW = geom.w - 120 * fScale;
+        const baseY = geom.y + geom.h - 52 * fScale;
+        const maxBarH = geom.h - 170 * fScale; // Leaves top 170px for badge + title
+        const startX = geom.x + 60 * fScale;
+        const slotW = barAreaW / bars.length;
+        const barW = slotW * 0.62;
 
         for (let b = 0; b < bars.length; b++) {
-          const bH = bars[b] * barAreaH * Spring.stepResponse(t - sched.tStart - (b * 0.08), 16.0, 0.82);
-          const bx = startX + b * gap + (gap - barW) / 2;
+          const bH = bars[b] * maxBarH * Spring.stepResponse(t - sched.tStart - (b * 0.08), 16.0, 0.82);
+          const bx = startX + b * slotW + (slotW - barW) / 2;
           const by = baseY - bH;
 
           c.fillStyle = b === 2 ? (s.accent || "#f59e0b") : "rgba(71, 85, 105, 0.7)";
-          drawRoundedRect(c, bx, by, barW, bH, 6 * sScale);
+          drawRoundedRect(c, bx, by, barW, bH, 6 * fScale);
           c.fill();
         }
-      } else if (s.type === "player") {
-        // Player preview waveform + playhead
-        const playerAreaW = geom.w - 120 * sScale;
-        const playX = geom.x + 60 * sScale;
-        const playY = cy + 40 * sScale;
+      }
 
-        // Waveform bars
+      // 5. Player preview
+      else if (s.type === "player") {
+        const playerAreaW = geom.w - 100 * fScale;
+        const playX = geom.x + 50 * fScale;
+        const playY = geom.y + 260 * fScale;
+
         const waveCount = 24;
         const wGap = playerAreaW / waveCount;
         for (let i = 0; i < waveCount; i++) {
           const amp = 0.25 + 0.7 * Math.abs(Math.sin((i * 0.45) + t * 2.0));
-          const wh = 60 * sScale * amp;
+          const wh = 54 * fScale * amp;
           const wx = playX + i * wGap;
           c.fillStyle = wx < playX + playerAreaW * (s.playhead || 0.65) ? (s.accent || "#e11d48") : "rgba(71, 85, 105, 0.5)";
-          drawRoundedRect(c, wx, playY - wh / 2, 4 * sScale, wh, 2 * sScale);
+          drawRoundedRect(c, wx, playY - wh / 2, 4 * fScale, wh, 2 * fScale);
           c.fill();
         }
 
-        // Playhead indicator
         const headX = playX + playerAreaW * (s.playhead || 0.65);
         c.strokeStyle = "#ffffff";
-        c.lineWidth = 2 * sScale;
+        c.lineWidth = 2 * fScale;
         c.beginPath();
-        c.moveTo(headX, playY - 45 * sScale);
-        c.lineTo(headX, playY + 45 * sScale);
+        c.moveTo(headX, playY - 42 * fScale);
+        c.lineTo(headX, playY + 42 * fScale);
         c.stroke();
-      } else if (s.detail) {
+      }
+
+      // 6. Generic card detail
+      else if (s.detail) {
         c.fillStyle = "rgba(203, 213, 225, 0.85)";
-        c.font = `500 ${Math.round(20 * sScale)}px monospace`;
+        c.font = `500 ${Math.round(18 * fScale)}px monospace`;
         c.textAlign = "center";
         c.textBaseline = "middle";
-        c.fillText(s.detail.replace(/。/g, ""), cx, cy + 60 * sScale);
+        ft(c, s.detail.replace(/。/g, ""), cx, geom.y + 210 * fScale);
       }
 
       c.restore();
     }
 
-    // Cursor driving the sequence (stateless function of t)
-    function drawCursor(c, t, geom, w, h) {
-      const sScale = w / 1080;
-      // Cursor trajectory targets corresponding to states
-      let targetX = geom.x + geom.w / 2;
-      let targetY = geom.y + geom.h / 2;
-
-      // Small cursor wiggle or click action
+    function drawCursor(c, t, geom) {
+      const targetX = geom.x + geom.w / 2;
+      const targetY = geom.y + geom.h / 2;
       const clickPulse = Math.sin(t * 3.14159) > 0.8 ? 0.9 : 1.0;
 
       c.save();
-      c.translate(targetX + 60 * sScale, targetY + 20 * sScale);
-      c.scale(clickPulse * sScale, clickPulse * sScale);
+      c.translate(targetX + 50 * fScale, targetY + 20 * fScale);
+      c.scale(clickPulse * fScale, clickPulse * fScale);
 
-      // Draw modern cursor pointer
       c.fillStyle = "#ffffff";
       c.strokeStyle = "#0f172a";
       c.lineWidth = 2;
@@ -472,29 +514,27 @@
       c.closePath();
       c.fill();
       c.stroke();
-
       c.restore();
     }
 
-    // Main pure draw(t) function
     window.draw = function (t) {
       ctx.clearRect(0, 0, width, height);
+      if (__recordText) { window.__textBoxes = []; window.__containers = []; }
 
-      // 1. Steady minimal background
       drawBackground(ctx, width, height, t);
 
-      // 2. Compute container geometry via closed-form spring
       const geom = computeContainerAtTime(t, width, height);
+      window.__containers.push({ x: geom.x, y: geom.y, w: geom.w, h: geom.h });
 
-      // 3. Draw container with optional short blur during morph
       ctx.save();
       if (geom.blurPx > 0.5) {
         ctx.filter = `blur(${geom.blurPx.toFixed(1)}px)`;
       }
 
-      // Outer glow / accent rim
-      ctx.shadowColor = geom.border;
-      ctx.shadowBlur = 12 * (width / 1080);
+      // Neutral low-opacity shadow (replaces colored neon halo per H5)
+      ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
+      ctx.shadowBlur = 14 * fScale;
+      ctx.shadowOffsetY = 6 * fScale;
       ctx.fillStyle = geom.bg;
       ctx.strokeStyle = geom.border;
       ctx.lineWidth = geom.borderWidth;
@@ -502,32 +542,27 @@
       drawRoundedRect(ctx, geom.x, geom.y, geom.w, geom.h, geom.radius);
       ctx.fill();
       ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
       ctx.stroke();
       ctx.restore();
 
-      // 4. Content timing:
-      // Content exits before next morph and enters after container starts morphing
       if (geom.isTransitioning) {
-        // Previous content fading out
         const curAlpha = Math.max(0, 1.0 - (geom.transitionTau / 0.15));
         const nextAlpha = Math.max(0, (geom.transitionTau - 0.18) / 0.2);
 
         if (curAlpha > 0 && geom.contentFadeOutIdx >= 0) {
-          drawContainerContent(ctx, geom, stateSchedule[geom.contentFadeOutIdx], curAlpha, t, width, height);
+          drawContainerContent(ctx, geom, stateSchedule[geom.contentFadeOutIdx], curAlpha, t);
         }
         if (nextAlpha > 0 && geom.contentFadeInIdx >= 0) {
-          drawContainerContent(ctx, geom, stateSchedule[geom.contentFadeInIdx], nextAlpha, t, width, height);
+          drawContainerContent(ctx, geom, stateSchedule[geom.contentFadeInIdx], nextAlpha, t);
         }
       } else {
-        // Settled content
-        drawContainerContent(ctx, geom, stateSchedule[geom.activeIdx], 1.0, t, width, height);
+        drawContainerContent(ctx, geom, stateSchedule[geom.activeIdx], 1.0, t);
       }
 
-      // 5. Virtual interactive cursor
-      drawCursor(ctx, t, geom, width, height);
+      drawCursor(ctx, t, geom);
     };
 
-    // Auto init on load
     buildSchedule();
   })();
   </script>
