@@ -131,7 +131,7 @@ const sun = new THREE.DirectionalLight(new THREE.Color(LIG.sun_color[0],LIG.sun_
 sun.position.set(LIG.sun_pos[0], LIG.sun_pos[1], LIG.sun_pos[2]);
 if (WEA.shadows){
   sun.castShadow = true;
-  sun.shadow.mapSize.set(1024,1024);
+  sun.shadow.mapSize.set(512,512);
   const d = 40;
   sun.shadow.camera.left=-d; sun.shadow.camera.right=d; sun.shadow.camera.top=d; sun.shadow.camera.bottom=-d;
   sun.shadow.camera.near=1; sun.shadow.camera.far=200;
@@ -227,10 +227,22 @@ function makeField(params){
   const area = params.area ?? 30;
   const baseColor = params.color ?? (kind==='wheat'?[0.83,0.66,0.28]:[0.30,0.55,0.22]);
   const height = params.height ?? (kind==='wheat'?1.4:0.7);
-  // blade geometry: a thin tapered quad strip
+  // blade geometry: a thin tapered quad strip with a per-vertex colour
+  // gradient: dark at the base, lighter at the tip. This keeps the lambert
+  // shading readable even at 1080p without blow-out from the sun.
   const blade = new THREE.PlaneGeometry(0.12, height, 1, 4);
   blade.translate(0, height/2, 0);
-  const mat = new THREE.MeshToonMaterial({ color:new THREE.Color(baseColor[0],baseColor[1],baseColor[2]), side:THREE.DoubleSide });
+  const positions = blade.attributes.position;
+  const colors = new Float32Array(positions.count * 3);
+  const base = new THREE.Color(baseColor[0]*0.25, baseColor[1]*0.25, baseColor[2]*0.25);
+  const tip  = new THREE.Color(Math.min(1, baseColor[0]*1.05), Math.min(1, baseColor[1]*1.05), Math.min(1, baseColor[2]*1.05));
+  for (let i=0;i<positions.count;i++){
+    const y = positions.getY(i) / height; // 0 at base, 1 at tip
+    const c = base.clone().lerp(tip, y);
+    colors[i*3]=c.r; colors[i*3+1]=c.g; colors[i*3+2]=c.b;
+  }
+  blade.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  const mat = new THREE.MeshLambertMaterial({ vertexColors:true, side:THREE.DoubleSide });
   const mesh = new THREE.InstancedMesh(blade, mat, count);
   mesh.castShadow = true; mesh.receiveShadow = true;
   const dummy = new THREE.Object3D();

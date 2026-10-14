@@ -14,12 +14,12 @@
   },
   "lights": {
     "sun_color": [1.0, 0.82, 0.55],
-    "sun_intensity": 2.6,
+    "sun_intensity": 1.5,
     "sun_pos": [5.0, 12.0, 5.0],
     "ambient_color": [0.40, 0.48, 0.62],
-    "ambient_intensity": 0.85,
+    "ambient_intensity": 0.8,
     "rim_color": [1.0, 0.75, 0.45],
-    "rim_intensity": 1.0
+    "rim_intensity": 0.7
   },
   "weather": {
     "background_top": [0.10, 0.12, 0.22],
@@ -30,16 +30,16 @@
     "wind_speed": 1.8,
     "starfield": false,
     "star_count": 0,
-    "bloom_strength": 0.85,
-    "bloom_radius": 0.7,
-    "bloom_threshold": 0.62,
+    "bloom_strength": 0.55,
+    "bloom_radius": 0.6,
+    "bloom_threshold": 0.86,
     "shadows": true
   },
   "assets": [
     {"kind": "ground", "params": {"color": [0.55, 0.42, 0.20], "radius": 70}},
     {"kind": "fox", "params": {"pos": [0.0, 0.0, 0.0], "scale": 1.1, "color": [0.95, 0.55, 0.22], "rotY": 0.5}},
-    {"kind": "wheat", "params": {"count": 2600, "area": 26, "color": [0.85, 0.70, 0.26], "height": 1.5}},
-    {"kind": "grass", "params": {"count": 900, "area": 24, "color": [0.32, 0.5, 0.2], "height": 0.7}},
+    {"kind": "wheat", "params": {"count": 1500, "area": 24, "color": [0.85, 0.70, 0.26], "height": 1.4}},
+    {"kind": "grass", "params": {"count": 500, "area": 22, "color": [0.32, 0.5, 0.2], "height": 0.65}},
     {"kind": "rock", "params": {"pos": [3.0, 0.0, 2.5], "scale": 1.0}},
     {"kind": "rock", "params": {"pos": [-3.5, 0.0, 3.0], "scale": 0.7}},
     {"kind": "tree", "params": {"pos": [6.5, 0.0, -4.0], "scale": 1.6}},

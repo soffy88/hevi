@@ -56,12 +56,12 @@ class LightSpec:
     """Sun + ambient + optional rim light."""
 
     sun_color: list[float] = field(default_factory=lambda: [1.0, 0.85, 0.6])
-    sun_intensity: float = 2.2
+    sun_intensity: float = 1.4
     sun_pos: list[float] = field(default_factory=lambda: [8.0, 14.0, 6.0])
     ambient_color: list[float] = field(default_factory=lambda: [0.35, 0.45, 0.7])
     ambient_intensity: float = 0.7
     rim_color: list[float] = field(default_factory=lambda: [0.6, 0.8, 1.0])
-    rim_intensity: float = 0.8
+    rim_intensity: float = 0.6
 
 
 @dataclass
@@ -76,9 +76,9 @@ class WeatherSpec:
     wind_speed: float = 1.4
     starfield: bool = True
     star_count: int = 1400
-    bloom_strength: float = 0.9
-    bloom_radius: float = 0.6
-    bloom_threshold: float = 0.6
+    bloom_strength: float = 0.55
+    bloom_radius: float = 0.55
+    bloom_threshold: float = 0.85
     shadows: bool = True
 
 
@@ -201,12 +201,12 @@ def parse_scene(data: dict[str, Any]) -> SceneSpec:
         ),
         lights=LightSpec(
             sun_color=list(lig.get("sun_color", [1.0, 0.85, 0.6])),
-            sun_intensity=float(lig.get("sun_intensity", 2.2)),
+            sun_intensity=float(lig.get("sun_intensity", 1.4)),
             sun_pos=list(lig.get("sun_pos", [8.0, 14.0, 6.0])),
             ambient_color=list(lig.get("ambient_color", [0.35, 0.45, 0.7])),
             ambient_intensity=float(lig.get("ambient_intensity", 0.7)),
             rim_color=list(lig.get("rim_color", [0.6, 0.8, 1.0])),
-            rim_intensity=float(lig.get("rim_intensity", 0.8)),
+            rim_intensity=float(lig.get("rim_intensity", 0.6)),
         ),
         weather=WeatherSpec(
             background_top=list(wea.get("background_top", [0.05, 0.07, 0.18])),
@@ -217,9 +217,9 @@ def parse_scene(data: dict[str, Any]) -> SceneSpec:
             wind_speed=float(wea.get("wind_speed", 1.4)),
             starfield=bool(wea.get("starfield", True)),
             star_count=int(wea.get("star_count", 1400)),
-            bloom_strength=float(wea.get("bloom_strength", 0.9)),
-            bloom_radius=float(wea.get("bloom_radius", 0.6)),
-            bloom_threshold=float(wea.get("bloom_threshold", 0.6)),
+            bloom_strength=float(wea.get("bloom_strength", 0.55)),
+            bloom_radius=float(wea.get("bloom_radius", 0.55)),
+            bloom_threshold=float(wea.get("bloom_threshold", 0.85)),
             shadows=bool(wea.get("shadows", True)),
         ),
         assets=[_to_asset(a) for a in data.get("assets", [])],
