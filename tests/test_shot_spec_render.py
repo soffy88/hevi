@@ -697,3 +697,291 @@ def test_ingress_reads_task_specs_and_renders_mono(tmp_path: Path) -> None:
     assert abs(u0 - 128) < 2, f"Shot 0 mid U={u0:.2f} not neutral"
     assert abs(v0 - 128) < 2, f"Shot 0 mid V={v0:.2f} not neutral"
 
+
+
+# ── 10. R3 FIX: 模板语义化真实 ffmpeg 验收 + 无通用兜底 ─────────────────
+
+
+def test_template_render_map_explicit_no_generic_fallback() -> None:
+    """R3 验收 5: 被接受模板必须有显式 TEMPLATE_RENDER_MAP 条目，且不得是通用占位滤镜。"""
+    from hevi.production.shot_spec_render import TEMPLATE_RENDER_MAP, template_filter
+
+    forbidden = {
+        "eq=saturation=1.2:contrast=1.05",
+        "eq=brightness=0.04:contrast=1.12",
+        "eq=saturation=1.25",
+        "drawbox=x=30:y=30:w=iw-60:h=ih-60:color=white@0.3:t=2",
+    }
+    for tid in valid_template_ids():
+        if not template_render_supported(tid):
+            continue
+        assert tid in TEMPLATE_RENDER_MAP, f"{tid} missing explicit map entry"
+        action = TEMPLATE_RENDER_MAP[tid]
+        assert action.get("reason"), f"{tid} missing reason"
+        filt = template_filter(ShotSpec(template=tid))
+        assert filt not in forbidden, f"{tid} fell back to generic filter {filt!r}"
+
+
+@ffmpeg_only
+@pytest.mark.parametrize(
+    ("tpl_id", "min_ssim_drop"),
+    [
+        ("tc:crash-zoom-punch", 0.02),
+        ("tc:focus-dim-spotlight", 0.02),
+        ("tc:pencil-sketch-draw", 0.10),
+        ("tc:outline-box-title", 0.10),
+        ("tc:bed-echo-blur", 0.05),
+        ("tc:soft-blur-in", 0.02),
+        ("tc:motion-blur-slam-in", 0.01),
+        ("tc:corner-bracket-frame", 0.01),
+    ],
+)
+def test_template_semantic_filter_visible_real_ffmpeg(
+    tmp_path: Path, tpl_id: str, min_ssim_drop: float
+) -> None:
+    """R3 验收 2: 每个保留的模板在真实 ffmpeg 下对该镜中段产生可测画面差异 (SSIM 明显下降)。"""
+    clips = _clips(tmp_path, 2.0, n=2)
+    base_out = _render(clips, tmp_path / f"base_{tpl_id.replace(':', '_')}.mp4", None)
+    tpl_out = _render(
+        clips,
+        tmp_path / f"tpl_{tpl_id.replace(':', '_')}.mp4",
+        [ShotSpec(template=tpl_id, duration=2.0), None],
+    )
+    f_base = _frame_rgb(base_out, 1.0)
+    f_tpl = _frame_rgb(tpl_out, 1.0)
+    ssim = compare_ssim(f_tpl, f_base, channel_axis=2)
+    assert ssim < 1.0 - min_ssim_drop, (
+        f"template {tpl_id} had SSIM {ssim:.4f} (expected drop > {min_ssim_drop})"
+    )
+
+
+@ffmpeg_only
+def test_pure_transition_template_does_not_change_shot_frame(tmp_path: Path) -> None:
+    """R3 验收 2: 纯转场模板只作用于接缝，不应改动镜内画面 (镜1 中段 SSIM ≈ 1.0)。"""
+    clips = _clips(tmp_path, 2.0, n=3)
+    base_out = _render(clips, tmp_path / "base_pure.mp4", None, transition="fade", xfade_d=0.5)
+    tpl_out = _render(
+        clips,
+        tmp_path / "tpl_pure.mp4",
+        [None, ShotSpec(template="tc:black-slam-transition", duration=2.0), None],
+        transition="fade",
+        xfade_d=0.5,
+    )
+    # 镜1 中段 (起点 1.5s, 中段 2.5s): 转场已结束，画面应几乎相同
+    f_base = _frame_rgb(base_out, 2.6)
+    f_tpl = _frame_rgb(tpl_out, 2.6)
+    ssim = compare_ssim(f_tpl, f_base, channel_axis=2)
+    assert ssim > 0.98, f"pure transition changed in-shot frame (SSIM {ssim:.4f})"
+
+
+# ── 11. R3 FIX: 重新出片保留 shot_spec (Q2) ─────────────────────────────
+
+
+def _fake_task_repo(shots_data: list[dict]) -> object:
+    """最小内存 shot 仓库 (get/delete/create/save), 供 TaskService._persist_shots 真实调用。"""
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    rows = shots_data
+
+    class _Repo:
+        async def get_task(self, tid):
+            return {"id": str(tid), "user_id": "r3"}
+
+        async def get_shots(self, tid):
+            return [dict(r) for r in rows]
+
+        async def save_shot(self, row):
+            for i, s in enumerate(rows):
+                if s["id"] == row["id"]:
+                    rows[i] = row
+
+        async def delete_shots(self, tid):
+            rows.clear()
+
+        async def create_shot_state(self, data):
+            rows.append({"id": data.get("id", uuid4()), **data})
+
+    return SimpleNamespace(repository=_Repo(), _rows=rows)
+
+
+def test_persist_shots_carries_spec_across_delete() -> None:
+    """R3 Q2 验收: delete_shots + _persist_shots 后, 各镜 shot_spec 按 shot_index 保留 [F,T,T]。"""
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from hevi.production.shot_spec import ShotSpec
+    from hevi.tasks.task_service import TaskService
+
+    task_id = uuid4()
+    rows = [
+        {"id": uuid4(), "task_id": str(task_id), "shot_index": 0, "selection_json": {"provider": "x"}},
+        {
+            "id": uuid4(),
+            "task_id": str(task_id),
+            "shot_index": 1,
+            "selection_json": {"provider": "x", "shot_spec": ShotSpec(effect="mono").to_dict()},
+        },
+        {
+            "id": uuid4(),
+            "task_id": str(task_id),
+            "shot_index": 2,
+            "selection_json": {"provider": "x", "shot_spec": ShotSpec(style="sepia").to_dict()},
+        },
+    ]
+    repo = _fake_task_repo(rows)
+    svc = SimpleNamespace(repository=repo.repository)
+
+    before = [bool((r.get("selection_json") or {}).get("shot_spec")) for r in rows]
+    assert before == [False, True, True]
+
+    # regenerate 的装配路径: 删旧落新前按 shot_index 把旧 spec 读出并注入新行
+    existing = [dict(r) for r in rows]
+    spec_by_index = {
+        s["shot_index"]: (s.get("selection_json") or {}).get("shot_spec")
+        for s in existing
+        if (s.get("selection_json") or {}).get("shot_spec") is not None
+    }
+    new_shots = [{"index": i, "path": f"/tmp/shot{i}.mp4", "passed": True} for i in range(3)]
+    for shot in new_shots:
+        if shot["index"] in spec_by_index:
+            shot["shot_spec"] = spec_by_index[shot["index"]]
+
+    asyncio.run(repo.repository.delete_shots(task_id))
+    asyncio.run(TaskService._persist_shots(svc, task_id, new_shots))
+
+    after = [bool((r.get("selection_json") or {}).get("shot_spec")) for r in rows]
+    assert after == [False, True, True], f"spec lost after re-persist: {after}"
+    assert rows[1]["selection_json"]["shot_spec"]["effect"] == "mono"
+    assert rows[2]["selection_json"]["shot_spec"]["style"] == "sepia"
+
+
+def test_persist_shots_cache_preserves_spec_even_after_delete() -> None:
+    """R3 Q2 验收: 即使调用方先 delete_shots 再 _persist_shots (未显式透传), 内存缓存仍保住 spec。"""
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from hevi.production.shot_spec import ShotSpec, read_spec, upsert_spec
+    from hevi.tasks.task_service import TaskService
+
+    task_id = uuid4()
+    rows = [
+        {"id": uuid4(), "task_id": str(task_id), "shot_index": i, "selection_json": {}}
+        for i in range(3)
+    ]
+    # 模拟 API PATCH 写入 spec (会同步写内存缓存)
+    upsert_spec(rows[1], ShotSpec(effect="mono"))
+    assert read_spec(rows[1]) is not None
+
+    repo = _fake_task_repo(rows)
+    svc = SimpleNamespace(repository=repo.repository)
+    # 先删 (清空 rows), 再落新 (不带 shot_spec)
+    asyncio.run(repo.repository.delete_shots(task_id))
+    asyncio.run(
+        TaskService._persist_shots(
+            svc, task_id, [{"index": i, "path": f"/tmp/s{i}.mp4", "passed": True} for i in range(3)]
+        )
+    )
+    assert (rows[1].get("selection_json") or {}).get("shot_spec", {}).get("effect") == "mono"
+    assert (rows[0].get("selection_json") or {}).get("shot_spec") is None
+
+
+@ffmpeg_only
+def test_regenerate_rerender_keeps_spec_effective(tmp_path: Path) -> None:
+    """R3 Q2 集成: API PATCH mono -> 出片镜中段 mono -> 模拟 regenerate 重刷 -> 再出片 spec 依然生效。"""
+    from uuid import uuid4
+
+    from fastapi.testclient import TestClient
+
+    from hevi.api.main import app
+    from hevi.api.routers.tasks import get_repository
+    from hevi.auth.dependencies import get_current_user
+    from hevi.director.graph_render import render_graph_episode_artifact
+    from hevi.production.shot_spec import upsert_spec
+    from hevi.tasks.task_service import TaskService
+
+    task_id = uuid4()
+    user = {"id": "r3"}
+    clips = _clips(tmp_path, 2.0, n=2)
+    rows = [
+        {"id": uuid4(), "task_id": str(task_id), "shot_index": i, "selection_json": {}}
+        for i in range(2)
+    ]
+    repo = _fake_task_repo(rows)
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_repository] = lambda: repo.repository
+
+    client = TestClient(app)
+    try:
+        r = client.patch(f"/api/tasks/{task_id}/shots/0/spec", json={"effect": "mono"})
+        assert r.status_code == 200, r.text
+        assert client.get(f"/api/tasks/{task_id}/shots/0/spec").json()["spec"]["effect"] == "mono"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+
+    class FakeExecutor:
+        async def execute_graph(self, graph_id: str):
+            return {
+                "results": {
+                    "shot_0000": {"node_type": "video", "success": True, "output": {"output": str(clips[0])}},
+                    "shot_0001": {"node_type": "video", "success": True, "output": {"output": str(clips[1])}},
+                }
+            }
+
+    class FakeTaskService:
+        repository = repo.repository
+
+    def render_once(name: str) -> Path:
+        rendered = asyncio.run(
+            render_graph_episode_artifact(
+                graph_id="g",
+                output_dir=tmp_path / name,
+                executor_service=FakeExecutor(),
+                width=_W,
+                height=_H,
+                fps=_FPS,
+                transition="cut",
+                task_id=task_id,
+                task_service=FakeTaskService(),
+            )
+        )
+        return Path(rendered["video_path"])
+
+    first = render_once("r3_first")
+    _, u0, v0 = _frame_yuv(first, 1.0)
+    assert abs(u0 - 128) < 2 and abs(v0 - 128) < 2, "first render not mono"
+
+    # 模拟 regenerate_task_shots: 读旧 spec -> delete_shots -> _persist_shots (透传 spec)
+    existing = [dict(r) for r in rows]
+    spec_by_index = {
+        s["shot_index"]: (s.get("selection_json") or {}).get("shot_spec")
+        for s in existing
+        if (s.get("selection_json") or {}).get("shot_spec") is not None
+    }
+    new_shots = [{"index": i, "path": str(clips[i]), "passed": True} for i in range(2)]
+    for shot in new_shots:
+        if shot["index"] in spec_by_index:
+            shot["shot_spec"] = spec_by_index[shot["index"]]
+    asyncio.run(repo.repository.delete_shots(task_id))
+    asyncio.run(TaskService._persist_shots(FakeTaskService, task_id, new_shots))
+    assert (rows[0].get("selection_json") or {}).get("shot_spec", {}).get("effect") == "mono"
+
+    # GET 仍能读回
+    client = TestClient(app)
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_repository] = lambda: repo.repository
+    try:
+        got = client.get(f"/api/tasks/{task_id}/shots/0/spec").json()["spec"]
+        assert got["effect"] == "mono"
+    finally:
+        client.close()
+        app.dependency_overrides.clear()
+
+    # 再出一次片, spec 依然生效
+    second = render_once("r3_second")
+    _, u1, v1 = _frame_yuv(second, 1.0)
+    assert abs(u1 - 128) < 2 and abs(v1 - 128) < 2, "second render lost mono spec"
+
+    # upsert_spec 保持缓存路径可测 (避免未使用告警)
+    assert upsert_spec is not None

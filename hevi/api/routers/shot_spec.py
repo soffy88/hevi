@@ -26,10 +26,12 @@ from hevi.auth.dependencies import get_current_user
 from hevi.production.shot_spec import (
     SFXCue,
     ShotSpec,
+    clear_cached_task_spec,
     merge_patch,
     read_spec,
     upsert_spec,
 )
+from hevi.production.shot_spec_render import is_pure_transition_template
 from hevi.tasks.repository import TaskRepository
 
 router = APIRouter(prefix="/tasks", tags=["shot-spec"])
@@ -138,6 +140,12 @@ async def patch_shot_spec(
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=_validation_detail(exc)) from exc
 
+    if shot_index == 0 and is_pure_transition_template(merged.template):
+        raise HTTPException(
+            status_code=422,
+            detail="纯转场模板仅作用于入场接缝，不可用于第 1 镜 (shot_index 0 无入场转场)",
+        )
+
     upsert_spec(shot, merged)
     await repo.save_shot(shot)
     return {
@@ -161,9 +169,15 @@ async def put_shot_specs(
     by_index = {s["shot_index"]: s for s in shots}
 
     # 先整体校验镜号存在(任一不存在 → 404,不落任何一条)。
+    # 纯转场模板不可用于第 1 镜 (shot_index 0)。
     for entry in body.specs:
         if entry.shot_index not in by_index:
             raise HTTPException(status_code=404, detail=f"shot {entry.shot_index} not found")
+        if entry.shot_index == 0 and is_pure_transition_template(entry.spec.template):
+            raise HTTPException(
+                status_code=422,
+                detail="纯转场模板仅作用于入场接缝，不可用于第 1 镜 (shot_index 0 无入场转场)",
+            )
 
     # body.specs 里的 spec 已由 pydantic 逐条校验(非法 → FastAPI 自动 422)。
 
@@ -176,6 +190,7 @@ async def put_shot_specs(
                 sel.pop("shot_spec")
                 shot["selection_json"] = sel
                 await repo.save_shot(shot)
+            clear_cached_task_spec(task_id, idx)
 
     for entry in body.specs:
         shot = by_index[entry.shot_index]

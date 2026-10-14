@@ -1072,7 +1072,20 @@ async def orchestrate_longvideo(
                 )
             except Exception as ae:
                 # 装配失败兜底: 统一规格硬切(仍重编码,不用 -c:v copy 防花屏)。
+                # 兜底路径剥除转场与模板滤镜(避免再次触发失败且确保 transition="cut" 生效), 仅保留时长与基础调色。
                 logger.error(f"hevi assembler failed, fallback to hard-cut: {ae}")
+                from hevi.production.shot_spec import ShotSpec
+
+                _fallback_specs = (
+                    [
+                        ShotSpec(duration=s.duration, effect=s.effect)
+                        if s is not None
+                        else None
+                        for s in _full_specs
+                    ]
+                    if _full_specs is not None
+                    else None
+                )
                 await assemble_longvideo(
                     shots=[*intro_seg, *[ShotSegment(p) for p in valid_shots], *outro_seg],
                     output_path=output_path,
@@ -1083,7 +1096,7 @@ async def orchestrate_longvideo(
                     height=_target_h,
                     fps=_target_fps,
                     transition="cut",
-                    shot_specs=_full_specs,
+                    shot_specs=_fallback_specs,
                 )
 
             # RFC-002 item 11: 数字人讲解接入 —— 提供肖像图且有旁白时,用 Duix 由旁白

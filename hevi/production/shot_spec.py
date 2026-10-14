@@ -114,16 +114,13 @@ def valid_template_ids() -> frozenset[str]:
 def template_render_supported(template_id: str) -> bool:
     """FX 注册表模板在装配期是否支持渲染。
 
-    transition / style / overlay 在装配期有确定性渲染动作;
-    character 类模板因生成期演员绑定未决,装配期不可渲染(由 ShotSpec 校验拒绝 -> 422)。
+    仅 TEMPLATE_RENDER_MAP 中拥有明确装配期动作 (71 个接缝转场或 8 种画面滤镜) 的模板被支持。
+    文字动画、图表、数字计数、UI剧场、标注引导、角色类及 SFX 模板等装配期均不可渲染,
+    由 ShotSpec 校验拒绝 -> 422「装配期不可渲染」。
     """
-    reg = _registry()
-    t = reg.get(template_id)
-    if t is None:
-        return False
-    from hevi.fx.registry import Category
+    from hevi.production.shot_spec_render import TEMPLATE_RENDER_MAP
 
-    return t.category in (Category.TRANSITION, Category.STYLE, Category.OVERLAY)
+    return template_id in TEMPLATE_RENDER_MAP
 
 
 def rejected(template_id: str) -> bool:
@@ -272,21 +269,63 @@ def validate_specs(specs: list[dict[str, Any]]) -> list[ShotSpec]:
 
 SPEC_KEY = "shot_spec"
 
+# ── 任务镜规格跨重建内存缓存 (保证即使 delete_shots 先行执行，随后的 persist 仍能找回 spec) ──
+# 键为 (task_id, shot_index)。有界 LRU 风格 dict，避免长期运行无限增长。
+_TASK_SPEC_CACHE: dict[tuple[str, int], dict[str, Any]] = {}
+_TASK_SPEC_CACHE_MAX = 4096
+
+
+def cache_task_spec(task_id: Any, shot_index: int, spec_dict: dict[str, Any]) -> None:
+    """按 (task_id, shot_index) 缓存已配置的规格 dict。"""
+    key = (str(task_id), shot_index)
+    if len(_TASK_SPEC_CACHE) >= _TASK_SPEC_CACHE_MAX and key not in _TASK_SPEC_CACHE:
+        # 简单的 FIFO 淘汰:丢掉最早插入的一项
+        _TASK_SPEC_CACHE.pop(next(iter(_TASK_SPEC_CACHE)), None)
+    _TASK_SPEC_CACHE[key] = spec_dict
+
+
+def get_cached_task_spec(task_id: Any, shot_index: int) -> dict[str, Any] | None:
+    """读取 (task_id, shot_index) 对应的规格 dict (无则 None)。"""
+    return _TASK_SPEC_CACHE.get((str(task_id), shot_index))
+
+
+def clear_cached_task_spec(task_id: Any, shot_index: int) -> None:
+    """清理单个镜头的规格缓存。"""
+    _TASK_SPEC_CACHE.pop((str(task_id), shot_index), None)
+
+
+def clear_task_specs_cache(task_id: Any) -> None:
+    """清理指定任务的所有镜头规格缓存。"""
+    prefix = str(task_id)
+    keys_to_remove = [k for k in _TASK_SPEC_CACHE if k[0] == prefix]
+    for k in keys_to_remove:
+        _TASK_SPEC_CACHE.pop(k, None)
+
 
 def upsert_spec(shot_row: dict[str, Any], spec: ShotSpec) -> dict[str, Any]:
     """把规格写回 shot_states 行(selection_json.shot_spec)。"""
     sel = dict(shot_row.get("selection_json") or {})
-    sel[SPEC_KEY] = spec.to_dict()
+    spec_dict = spec.to_dict()
+    sel[SPEC_KEY] = spec_dict
     shot_row["selection_json"] = sel
+    tid = shot_row.get("task_id")
+    idx = shot_row.get("shot_index")
+    if tid is not None and idx is not None and isinstance(idx, int):
+        cache_task_spec(tid, idx, spec_dict)
     return shot_row
 
 
 def read_spec(shot_row: dict[str, Any]) -> ShotSpec | None:
-    """从 shot_states 行读取规格(无则 None)。"""
+    """从 shot_states 行读取规格(无则 None)。读到后同步写回内存缓存。"""
     raw = (shot_row.get("selection_json") or {}).get(SPEC_KEY)
     if not raw:
         return None
-    return ShotSpec.model_validate(raw)
+    spec = ShotSpec.model_validate(raw)
+    tid = shot_row.get("task_id")
+    idx = shot_row.get("shot_index")
+    if tid is not None and isinstance(idx, int):
+        cache_task_spec(tid, idx, spec.to_dict())
+    return spec
 
 
 def merge_patch(base: ShotSpec, patch: dict[str, Any]) -> ShotSpec:

@@ -64,6 +64,171 @@ _TALKCRAFT_TRANSITION_MAP: dict[str, str] = {
     "tc:line-carry-transition": "slideright",
 }
 
+# ── TEMPLATE_RENDER_MAP: 模板 -> 确定性装配期动作对照表 (GAP_PLAN §2 W1 / R3 FIX) ──
+# 严格拒绝任何非语义的通用占位滤镜。
+# 允许条目: 71 个接缝转场 + 8 种高置信画面风格/遮罩 (写清理由)。
+TEMPLATE_RENDER_MAP: dict[str, dict[str, Any]] = {
+    # ── 1. Talkcraft 转场类模板 (13 个) ─────────────────────────────
+    "tc:black-slam-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "fadeblack",
+        "reason": "Talkcraft 黑震切转场 -> xfade fadeblack",
+    },
+    "tc:caret-wipe-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "wipeleft",
+        "reason": "Talkcraft 光标擦除转场 -> xfade wipeleft",
+    },
+    "tc:chapter-progress-list": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "slideleft",
+        "reason": "Talkcraft 章节进度转场 -> xfade slideleft",
+    },
+    "tc:chapter-title-card": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "fadeblack",
+        "reason": "Talkcraft 章节标题卡转场 -> xfade fadeblack",
+    },
+    "tc:color-slam-beat-card": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "fade",
+        "reason": "Talkcraft 纯色硬切节拍卡 -> xfade fade",
+    },
+    "tc:line-carry-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "slideright",
+        "reason": "Talkcraft 线条接力转场 -> xfade slideright",
+    },
+    "tc:long-take-world": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "dissolve",
+        "reason": "Talkcraft 长镜头世界画布 -> xfade dissolve",
+    },
+    "tc:overexpose-flip-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "fadewhite",
+        "reason": "Talkcraft 过曝翻页转场 -> xfade fadewhite",
+    },
+    "tc:particle-weld-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "dissolve",
+        "reason": "Talkcraft 粒子溶接转场 -> xfade dissolve",
+    },
+    "tc:pullback-cool-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "smoothleft",
+        "reason": "Talkcraft 后拉冷却转场 -> xfade smoothleft",
+    },
+    "tc:push-through-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "rectcrop",
+        "reason": "Talkcraft 推穿转场 -> xfade rectcrop",
+    },
+    "tc:shape-wipe-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "wipeleft",
+        "reason": "Talkcraft 色块扫屏转场 -> xfade wipeleft",
+    },
+    "tc:whip-pan-transition": {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": "whip",
+        "reason": "Talkcraft 横甩转场 -> xfade whip",
+    },
+    # ── 2. 覆盖类模板 (Category.OVERLAY 明确动作) ──────────────────
+    "tc:crash-zoom-punch": {
+        "action": "overlay_filter",
+        "filter": "crop=in_w*0.92:in_h*0.92,scale=in_w:in_h,eq=contrast=1.1",
+        "seam_transition": None,
+        "reason": "急推特写: 局部裁切放大8%并提升对比度实现变焦冲拳视觉冲击",
+    },
+    "tc:focus-dim-spotlight": {
+        "action": "overlay_filter",
+        "filter": "vignette=PI/4",
+        "seam_transition": None,
+        "reason": "聚焦压暗: 镜头边缘高强度暗角遮罩突出中心聚光效果",
+    },
+    "tc:corner-bracket-frame": {
+        "action": "overlay_filter",
+        "filter": "drawbox=x=20:y=20:w=iw-40:h=ih-40:color=white@0.5:t=4",
+        "seam_transition": None,
+        "reason": "对角角框: 4px白色半透明矩形取景框叠加",
+    },
+    # ── 3. 风格类模板 (Category.STYLE 明确动作) ────────────────────
+    "tc:pencil-sketch-draw": {
+        "action": "style_filter",
+        "filter": "edgedetect=low=0.05:high=0.2",
+        "seam_transition": None,
+        "reason": "铅笔手绘揭示: 边缘检测滤镜将单镜画面转换为高反差手绘线条",
+    },
+    "tc:outline-box-title": {
+        "action": "style_filter",
+        "filter": "edgedetect=low=0.05:high=0.2",
+        "seam_transition": None,
+        "reason": "描边框标题: 边缘检测高亮物体与主体轮廓线条",
+    },
+    "tc:bed-echo-blur": {
+        "action": "style_filter",
+        "filter": "gblur=sigma=6",
+        "seam_transition": None,
+        "reason": "同源模糊底床: 高斯模糊(sigma=6)渲染同源底床背景",
+    },
+    "tc:soft-blur-in": {
+        "action": "style_filter",
+        "filter": "gblur=sigma=2",
+        "seam_transition": None,
+        "reason": "柔焦淡入: 轻度高斯模糊(sigma=2)呈现柔焦视感",
+    },
+    "tc:motion-blur-slam-in": {
+        "action": "style_filter",
+        "filter": "tmix=frames=4",
+        "seam_transition": None,
+        "reason": "模糊甩入急停: 连续4帧混合产生物理运动残影与动感模糊",
+    },
+}
+
+# ── 4. xfade 注册表转场模板 (58 个) ─────────────────────────────
+_XFADE_TOKENS: tuple[str, ...] = (
+    "circleclose", "circlecrop", "circleopen", "coverdown", "coverleft", "coverright", "coverup",
+    "diagbl", "diagbr", "diagtl", "diagtr", "dissolve", "distance", "fade", "fadeblack", "fadefast",
+    "fadegrays", "fadeslow", "fadewhite", "hblur", "hlslice", "hlwind", "horzclose", "horzopen",
+    "hrslice", "hrwind", "pixelize", "radial", "rectcrop", "revealdown", "revealleft", "revealright",
+    "revealup", "slidedown", "slideleft", "slideright", "slideup", "smoothdown", "smoothleft",
+    "smoothright", "smoothup", "squeezeh", "squeezev", "vdslice", "vdwind", "vertclose", "vertopen",
+    "vuslice", "vuwind", "wipebl", "wipebr", "wipedown", "wipeleft", "wiperight", "wipetl", "wipetr",
+    "wipeup", "zoomin",
+)
+
+for _tok in _XFADE_TOKENS:
+    TEMPLATE_RENDER_MAP[f"xfade:{_tok}"] = {
+        "action": "seam_transition",
+        "filter": "",
+        "seam_transition": _tok,
+        "reason": f"xfade {_tok} 逐接缝转场",
+    }
+
+
+def is_pure_transition_template(template_id: str | None) -> bool:
+    """是否为纯接缝转场模板 (仅影响入场接缝，无单镜画面滤镜)。"""
+    if not template_id:
+        return False
+    action = TEMPLATE_RENDER_MAP.get(template_id)
+    if not action:
+        return False
+    return bool(action.get("seam_transition") and not action.get("filter"))
+
 
 def style_filter(spec: ShotSpec | None) -> str:
     """把 spec.style 翻成单镜 ``-vf`` 片段;无 style 或未命中映射时返回 ``""``。
@@ -81,72 +246,24 @@ def template_transition_token(spec: ShotSpec | None) -> str | None:
     """若 spec.template 属于转场类模板,返回对应的 xfade 转场 token。"""
     if spec is None or not spec.template:
         return None
-    tid = spec.template
-    if tid in _TALKCRAFT_TRANSITION_MAP:
-        return _TALKCRAFT_TRANSITION_MAP[tid]
-    if tid.startswith("xfade:"):
-        return tid[6:]
-    from hevi.assembly.xfade_transitions import ALL_TRANSITIONS
-
-    if tid in {t.id for t in ALL_TRANSITIONS}:
-        return tid
+    action = TEMPLATE_RENDER_MAP.get(spec.template)
+    if action and action.get("seam_transition"):
+        return action["seam_transition"]
     return None
 
 
 def template_filter(spec: ShotSpec | None) -> str:
-    """若 spec.template 在装配期有单镜画面滤镜 (style/overlay/transition-accent),返回 vf 片段。"""
+    """若 spec.template 在装配期有单镜画面滤镜 (style/overlay),返回 vf 片段。
+
+    严格由 TEMPLATE_RENDER_MAP 驱动, 绝无通用占位滤镜兜底。
+    纯转场类模板装配期动作在接缝处, 返回空串。
+    """
     if spec is None or not spec.template:
         return ""
-    tid = spec.template
-    low = tid.lower()
-
-    # 1. 转场类: 若为 black-slam 或 overexpose,附带片头闪白/闪黑滤镜增强表现
-    if "black-slam" in low or "fadeblack" in low:
-        return "fade=t=in:st=0:d=0.25:color=black"
-    if "overexpose" in low or "fadewhite" in low:
-        return "fade=t=in:st=0:d=0.25:color=white"
-
-    # 2. 覆盖/强调类 (Category.OVERLAY)
-    if "crash-zoom-punch" in low or "zoom-punch" in low:
-        return "crop=in_w*0.92:in_h*0.92,scale=in_w:in_h,eq=contrast=1.1"
-    if "spotlight" in low:
-        return "vignette=PI/4"
-    if any(k in low for k in ("ellipse", "highlighter", "underline", "strike")):
-        return "drawbox=x=iw*0.1:y=ih*0.85:w=iw*0.8:h=12:color=yellow@0.6:t=fill"
-    if any(k in low for k in ("bracket", "frame", "corner")):
-        return "drawbox=x=20:y=20:w=iw-40:h=ih-40:color=white@0.5:t=4"
-    if any(k in low for k in ("chart", "metric", "counter", "progress", "sparkline", "number")):
-        return "drawbox=x=iw*0.08:y=ih*0.7:w=iw*0.4:h=ih*0.18:color=black@0.5:t=fill"
-    if any(k in low for k in ("arrow", "callout", "annotation", "route", "step")):
-        return "drawbox=x=iw*0.15:y=ih*0.2:w=iw*0.7:h=ih*0.08:color=cyan@0.4:t=fill"
-
-    # 3. 风格类 (Category.STYLE): 关键词映射 + 保底微调
-    for keyword, filt in _STYLE_KEYWORD_FILTERS:
-        if keyword in low:
-            return filt
-    if any(k in low for k in ("title", "text", "card", "slab", "quote", "badge", "stagger")):
-        return "eq=brightness=0.04:contrast=1.12"
-    if any(k in low for k in ("gallery", "grid", "strip", "relay", "conveyor")):
-        return "eq=saturation=1.25"
-    if any(k in low for k in ("pull", "push", "drift", "orbit", "tilt", "tour")):
-        return "crop=in_w*0.96:in_h*0.96,scale=in_w:in_h"
-    if any(k in low for k in ("code", "terminal", "log", "walk")):
-        return "curves=vintage"
-
-    # 4. 任意其它非转场模板保底: 产生确定性微饱和调整(保证成片有 framemd5 差异)
-    from hevi.production.shot_spec import _registry
-
-    reg = _registry()
-    t = reg.get(tid)
-    if t is not None:
-        from hevi.fx.registry import Category
-
-        if t.category == Category.OVERLAY:
-            return "drawbox=x=30:y=30:w=iw-60:h=ih-60:color=white@0.3:t=2"
-        if t.category == Category.STYLE:
-            return "eq=saturation=1.2:contrast=1.05"
-
-    return ""
+    action = TEMPLATE_RENDER_MAP.get(spec.template)
+    if not action:
+        return ""
+    return action.get("filter", "")
 
 
 def template_render(spec: ShotSpec | None) -> dict[str, Any]:
@@ -156,12 +273,31 @@ def template_render(spec: ShotSpec | None) -> dict[str, Any]:
       {
         "template_id": str | None,
         "category": str | None,
-        "filter": str,                 # 画面 -vf 滤镜(style / overlay / transition-accent)
+        "action": str | None,
+        "filter": str,                 # 画面 -vf 滤镜(style / overlay)
         "seam_transition": str | None, # 对应接缝转场 token(仅 transition 类)
+        "reason": str | None,          # 语义对应理由
       }
     """
     if spec is None or not spec.template:
-        return {"template_id": None, "category": None, "filter": "", "seam_transition": None}
+        return {
+            "template_id": None,
+            "category": None,
+            "action": None,
+            "filter": "",
+            "seam_transition": None,
+            "reason": None,
+        }
+    action = TEMPLATE_RENDER_MAP.get(spec.template)
+    if not action:
+        return {
+            "template_id": spec.template,
+            "category": None,
+            "action": None,
+            "filter": "",
+            "seam_transition": None,
+            "reason": None,
+        }
     from hevi.production.shot_spec import _registry
 
     t = _registry().get(spec.template)
@@ -169,8 +305,10 @@ def template_render(spec: ShotSpec | None) -> dict[str, Any]:
     return {
         "template_id": spec.template,
         "category": cat,
-        "filter": template_filter(spec),
-        "seam_transition": template_transition_token(spec),
+        "action": action.get("action"),
+        "filter": action.get("filter", ""),
+        "seam_transition": action.get("seam_transition"),
+        "reason": action.get("reason"),
     }
 
 
@@ -322,9 +460,11 @@ def build_sfx_mixdown_filter(
 
 
 __all__ = [
+    "TEMPLATE_RENDER_MAP",
     "build_sfx_mixdown_filter",
     "combined_shot_filter",
     "effect_filter",
+    "is_pure_transition_template",
     "seam_transitions",
     "shot_start_times",
     "spec_sfx_cues",

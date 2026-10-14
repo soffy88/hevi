@@ -154,6 +154,50 @@ def test_patch_character_template_rejected_422(client: TestClient) -> None:
     assert "装配期不可渲染" in r.text
 
 
+def test_patch_unsupported_templates_rejected_422(client: TestClient) -> None:
+    """R3: 文字动画/图表/计数/UI剧场/箭头标注及SFX等装配期无对应渲染器模板均返回 422。"""
+    unsupported = [
+        "tc:typewriter-reveal",
+        "tc:word-slot-cycle",
+        "tc:flying-words",
+        "tc:per-character-rise",
+        "tc:chat-message-flow",
+        "tc:bar-chart-growth",
+        "tc:chart-grow",
+        "tc:line-chart-story-draw",
+        "tc:metric-with-sparkline",
+        "tc:number-counter",
+        "tc:number-slab-pop",
+        "tc:numbered-step-stack",
+        "tc:ui-flow-theater",
+        "tc:converging-arrows",
+        "tc:callout-line-label",
+        "tc:map-route-pin",
+        "sfx:chime",
+        "sfx:ding",
+        "sfx:impact",
+        "sfx:pop",
+        "sfx:whoosh",
+    ]
+    for tid in unsupported:
+        r = client.patch(_spec_url(1), json={"template": tid})
+        assert r.status_code == 422, f"expected 422 for unsupported template {tid}, got {r.status_code}"
+        assert "装配期不可渲染" in r.text
+
+
+def test_patch_pure_transition_template_shot_0_rejected_422(client: TestClient) -> None:
+    """R3: 纯接缝转场模板用于第 1 镜 (shot_index 0) 返回 422 (首镜无入场接缝)。"""
+    # 镜0 使用纯转场模板 -> 422
+    r0 = client.patch(_spec_url(0), json={"template": "tc:black-slam-transition"})
+    assert r0.status_code == 422, r0.text
+    assert "纯转场模板" in r0.text or "入场" in r0.text
+
+    # 镜1 使用纯转场模板 -> 200 合法
+    r1 = client.patch(_spec_url(1), json={"template": "tc:black-slam-transition"})
+    assert r1.status_code == 200, r1.text
+    assert r1.json()["spec"]["template"] == "tc:black-slam-transition"
+
+
 def test_patch_supported_template_200(client: TestClient) -> None:
     """转场/风格/叠加类模板装配期有对应渲染动作,返回 200。"""
     r = client.patch(_spec_url(0), json={"template": "tc:crash-zoom-punch"})
@@ -288,4 +332,36 @@ def test_valid_values_come_from_registries() -> None:
     # R2 验收要求 1: 每个 valid_template_ids() 中的 id 必须满足:
     # 或者是装配期可渲染的,或者被 ShotSpec 校验拒绝 (422: 装配期不可渲染)
     assert all(template_render_supported(t) or rejected(t) for t in valid_template_ids())
+
+
+def test_no_generic_template_fallback() -> None:
+    """R3 验收 5: 对 valid_template_ids() 里每个被接受的 id，断言它在 TEMPLATE_RENDER_MAP 里有显式条目，
+
+    并且 filter 不属于任何通用占位滤镜串。
+    """
+    from hevi.production.shot_spec import ShotSpec, template_render_supported, valid_template_ids
+    from hevi.production.shot_spec_render import TEMPLATE_RENDER_MAP, template_filter
+
+    forbidden_generic_filters = {
+        "eq=saturation=1.2:contrast=1.05",
+        "eq=brightness=0.04:contrast=1.12",
+        "eq=saturation=1.25",
+        "drawbox=x=30:y=30:w=iw-60:h=ih-60:color=white@0.3:t=2",
+    }
+
+    all_ids = valid_template_ids()
+    accepted_ids = [t for t in all_ids if template_render_supported(t)]
+
+    # 断言接受的模板集合非空，且每个均在 TEMPLATE_RENDER_MAP 中显式登记
+    assert len(accepted_ids) >= 70, f"expected at least 70 supported templates, got {len(accepted_ids)}"
+    for tid in accepted_ids:
+        assert tid in TEMPLATE_RENDER_MAP, f"template {tid} supported but missing in TEMPLATE_RENDER_MAP"
+        action = TEMPLATE_RENDER_MAP[tid]
+        assert action.get("reason"), f"template {tid} missing reason in TEMPLATE_RENDER_MAP"
+
+        # 检查其渲染 filter 绝不属于通用占位滤镜串
+        filt = template_filter(ShotSpec(template=tid))
+        assert filt not in forbidden_generic_filters, (
+            f"template {tid} resolved to forbidden generic filter: {filt}"
+        )
 
