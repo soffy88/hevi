@@ -1,5 +1,6 @@
 Hevi — third-party notices
-==========================
+===================
+
 
 Lanshu styled explainer toolkit
 Copyright (c) cclank
@@ -23,3 +24,15 @@ Offline-vendored JavaScript
 
 No OpenMontage code, text or data is included in this worktree; the OpenMontage
 project was used only as a read-only design reference.
+=======
+This project includes software derived from:
+
+## native-subtitle-quote-image
+- Source: /data/soffy/projects/vendor/chengyi-ai__native-subtitle-quote-image
+- Original Author: 程意 (chengyi-ai)
+- License: MIT License (see third_party/native-subtitle-quote-image/LICENSE)
+- Derivative Work:
+  The stitching and layout logic in `hevi/layer4_legacy/quoteimage/oprim_impl/vendor_stitch.py`
+  is adapted from `skills/native-subtitle-quote-image/scripts/native_subtitle_stitch.py`.
+  Modifications include adaptation to Hevi 3O architectural standards, enhanced subtitle band
+  detection, strip clutter cleaning, robust font sizing, and integration with quality gates.
