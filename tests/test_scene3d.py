@@ -24,28 +24,14 @@ import pytest
 
 from hevi.layer4_legacy.scene3d import renderer as R
 from hevi.layer4_legacy.scene3d import schema as S
+from hevi.layer4_legacy.scene3d.browser import chromium_available
 from hevi.layer4_legacy.scene3d.cli import main as cli_main
 
-# All SCENE3D tests use this venv's playwright (where the user already ran
-# ``playwright install``).  We skip the suite gracefully if the chromium binary
-# is missing.
-_CHROMIUM = Path.home() / ".cache" / "ms-playwright"
-
-
-def _chromium_available() -> bool:
-    if not _CHROMIUM.exists():
-        return False
-    for sub in _CHROMIUM.iterdir():
-        if sub.name.startswith("chromium-"):
-            for cand in ("chrome-linux64/chrome", "chrome-linux/chrome"):
-                if (sub / cand).exists():
-                    return True
-    return False
-
-
+# All SCENE3D tests use a resolvable Playwright Chromium bundle.  The suite
+# skips gracefully if none is available (see scene3d.browser).
 pytestmark = pytest.mark.skipif(
-    not _chromium_available(),
-    reason="playwright chromium not installed in ~/.cache/ms-playwright",
+    not chromium_available(),
+    reason="no playwright chromium bundle resolvable (set PLAYWRIGHT_BROWSERS_PATH)",
 )
 
 
@@ -106,61 +92,20 @@ def test_same_seed_determinism(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 2) Wind motion: consecutive wheat/grass frames are not byte-identical.
+# 2) Wind motion is covered properly by tests/test_scene3d_r1b.py
+#    (test_wind_off_is_byte_identical / test_wind_on_changes_frames), which use
+#    a *static* camera and no fox sway so the wind itself is what changes.  The
+#    old moving-camera check here could not distinguish wind from camera motion
+#    and was removed in R1B (see SCENE3D_FIX.md F4).
 # --------------------------------------------------------------------------- #
-def test_wind_produces_frame_motion(tmp_path: Path) -> None:
-    frames = _render(tmp_path / "wind")
-    hashes = [_hash(p) for p in frames]
-    distinct = len(set(hashes))
-    # We expect at least a few distinct frames in a 1-second 10fps shot where
-    # the camera path and grass/wheat are animated.
-    assert distinct >= 3, f"only {distinct}/{len(frames)} distinct frames — wind likely static"
 
 
 # --------------------------------------------------------------------------- #
-# 3) 9:16 safe area: subject is in the middle 60% of the frame.
+# 3) 9:16 safe-area framing is covered by tests/test_scene3d_r1b.py
+#    (test_subject_in_safe_area_real_presets) over the three real presets × two
+#    aspects.  The old fixed-camera check here did not exercise the shipped
+#    presets and was removed in R1B (see SCENE3D_FIX.md F3).
 # --------------------------------------------------------------------------- #
-def test_916_subject_in_safe_area(tmp_path: Path) -> None:
-    cfg = json.loads(json.dumps(_TINY))
-    cfg["camera"]["aspect"] = "9:16"
-    cfg["name"] = "tiny_916"
-    # Re-centre the planet: a 9:16 portrait shot needs the subject in the
-    # vertical centre.  Use a tighter camera framing so the planet fills the
-    # middle third of the frame.
-    cfg["camera"]["path"] = [
-        {"t": 0.0, "pos": [0.0, 2.0, 6.0], "look": [0.0, 1.8, 0.0]},
-        {"t": 1.0, "pos": [0.0, 2.0, 6.0], "look": [0.0, 1.8, 0.0]},
-    ]
-    cfg["assets"] = [
-        {"kind": "ground", "params": {"radius": 60}},
-        {"kind": "planet", "params": {"radius": 1.6, "pos": [0.0, 1.8, 0.0]}},
-    ]
-    spec = S.parse_scene(cfg)
-    assert spec.width * 16 == spec.height * 9  # sanity: 9:16 portrait (h > w)
-    assert spec.width < spec.height  # 9:16 portrait has height > width
-    out = tmp_path / "out916"
-    r = R.SceneRenderer(spec, out)
-    frames = r.render_frames()
-    # Inspect the middle frame to confirm the planet is bright in the middle
-    # band.  We locate the planet by its warm toon colour (high R, low B) and
-    # assert the vertical centroid falls in the central 60% of the frame.
-    import numpy as np
-    from PIL import Image
-
-    mid = Image.open(frames[len(frames) // 2]).convert("RGB")
-    arr = np.asarray(mid)
-    h, _, _ = arr.shape
-    r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
-    # Planet mask: warm tone, not too dark (skip shadows), not blown-out.
-    planet_mask = (r > g + 10) & (r > 140) & (b < 200) & (r < 260)
-    # centroid row
-    counts = planet_mask.sum(axis=1)
-    assert counts.sum() > 30, "no warm planet pixels found in the frame"
-    rows = np.arange(h)
-    centroid = float((rows * counts).sum() / counts.sum())
-    assert 0.25 * h <= centroid <= 0.75 * h, (
-        f"planet centroid row {centroid:.1f} outside safe area (h={h})"
-    )
 
 
 # --------------------------------------------------------------------------- #

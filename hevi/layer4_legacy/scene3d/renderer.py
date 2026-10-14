@@ -13,6 +13,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from .browser import resolve_browsers_path
 from .schema import SceneSpec
 from .template import build_html
 
@@ -102,6 +103,7 @@ class SceneRenderer:
         Returns the list of frame paths (frame_0001.png …)."""
         from playwright.sync_api import sync_playwright
 
+        resolve_browsers_path()  # point Playwright at an available bundle
         html_path = self._write_html()
         httpd, port = self._start_server()
         page_url = f"http://127.0.0.1:{port}/{html_path.name}"
@@ -160,6 +162,7 @@ class SceneRenderer:
         """Serve the scene, open it in Chromium, run ``fn(page)``, tear down."""
         from playwright.sync_api import sync_playwright
 
+        resolve_browsers_path()
         html_path = self._write_html()
         httpd, port = self._start_server()
         page_url = f"http://127.0.0.1:{port}/{html_path.name}"

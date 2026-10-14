@@ -25,24 +25,11 @@ from hevi.capabilities import (
     list_capabilities,
 )
 from hevi.capabilities.scene3d import _META
-
-_CHROMIUM = Path.home() / ".cache" / "ms-playwright"
-
-
-def _chromium_available() -> bool:
-    if not _CHROMIUM.exists():
-        return False
-    for sub in _CHROMIUM.iterdir():
-        if sub.name.startswith("chromium-"):
-            for cand in ("chrome-linux64/chrome", "chrome-linux/chrome"):
-                if (sub / cand).exists():
-                    return True
-    return False
-
+from hevi.layer4_legacy.scene3d.browser import chromium_available
 
 pytestmark = pytest.mark.skipif(
-    not _chromium_available(),
-    reason="playwright chromium not installed in ~/.cache/ms-playwright",
+    not chromium_available(),
+    reason="no playwright chromium bundle resolvable (set PLAYWRIGHT_BROWSERS_PATH)",
 )
 
 
