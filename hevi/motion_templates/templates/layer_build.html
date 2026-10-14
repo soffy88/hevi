@@ -28,6 +28,43 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
+    // ------------------------------------------------------------------
+    // Test instrumentation: record every fillText bounding box (canvas
+    // space) only when explicitly enabled. Does not alter draw(t) output.
+    // ------------------------------------------------------------------
+    let __recordText = false;
+    window.__textBoxes = [];
+    window.__containers = [];
+    window.setRecordText = function (v) { __recordText = !!v; };
+
+    function _applyTransform(c, x, y) {
+      const m = c.getTransform();
+      return { x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f };
+    }
+
+    function ft(c, text, x, y, maxW) {
+      const str = String(text == null ? "" : text);
+      if (__recordText && str.trim().length > 0) {
+        const m = c.measureText(str);
+        const left = x - m.actualBoundingBoxLeft;
+        const right = x + m.actualBoundingBoxRight;
+        const top = y - m.actualBoundingBoxAscent;
+        const bottom = y + m.actualBoundingBoxDescent;
+        const p0 = _applyTransform(c, left, top);
+        const p1 = _applyTransform(c, right, bottom);
+        const bx = Math.min(p0.x, p1.x), by = Math.min(p0.y, p1.y);
+        const bw = Math.abs(p1.x - p0.x), bh = Math.abs(p1.y - p0.y);
+        let container = null;
+        const ccx = bx + bw / 2, ccy = by + bh / 2;
+        for (const r of (window.__containers || [])) {
+          if (ccx >= r.x && ccx <= r.x + r.w && ccy >= r.y && ccy <= r.y + r.h) { container = r; break; }
+        }
+        window.__textBoxes.push({ x: bx, y: by, w: bw, h: bh, text: str, alpha: c.globalAlpha, container: container });
+      }
+      if (maxW !== undefined) c.fillText(str, x, y, maxW);
+      else c.fillText(str, x, y);
+    }
+
     let spec = {
       title: "多模态成片架构分层建造",
       title_en: "System Architecture Layered Assembly",
@@ -71,6 +108,7 @@
 
     let width = 1080;
     let height = 1920;
+    let fScale = 1.0;
     let schedule = [];
 
     function buildSchedule() {
@@ -92,18 +130,15 @@
     }
 
     window.initTemplate = function (newSpec, w, h) {
-      if (newSpec) {
-        spec = Object.assign({}, spec, newSpec);
-      }
+      if (newSpec) spec = Object.assign({}, spec, newSpec);
       width = w || 1080;
       height = h || 1920;
       canvas.width = width;
       canvas.height = height;
+      fScale = Math.min(width, height) / 1080;
       buildSchedule();
     };
 
-    // Isometric projection helpers
-    // x: right-down, y: left-down, z: up
     function projectIso(x, y, z, cx, cy, scale) {
       const cos30 = 0.8660254;
       const sin30 = 0.5;
@@ -133,7 +168,6 @@
       c.lineWidth = 2 * scale;
       c.stroke();
 
-      // Platform grid lines
       c.strokeStyle = "rgba(71, 85, 105, 0.35)";
       c.lineWidth = 1 * scale;
       const subdiv = 3;
@@ -160,69 +194,69 @@
       c.fillStyle = "#0b0f19";
       c.fillRect(0, 0, w, h);
 
-      const sScale = w / 1080;
-      const vScale = h / 1920;
-      const safeLeft = 80 * sScale;
-      const safeRight = w - 80 * sScale;
-      const safeTop = 150 * vScale;
+      const safeLeft = 80 * fScale;
+      const safeRight = w - 80 * fScale;
+      const safeTop = (w > h ? 80 : 130) * fScale;
 
       c.save();
+      c.textAlign = "left";
+      c.textBaseline = "top";
+
+      let y = safeTop;
       c.fillStyle = "#f59e0b";
-      c.font = `700 ${Math.round(14 * sScale)}px monospace`;
-      c.fillText("LAYER BUILD // MODULAR ARCHITECTURE", safeLeft, safeTop);
+      c.font = `700 ${Math.round(14 * fScale)}px monospace`;
+      ft(c, "LAYER BUILD // MODULAR ARCHITECTURE", safeLeft, y);
+      y += 24 * fScale;
 
       c.fillStyle = "#ffffff";
-      c.font = `700 ${Math.round(34 * sScale)}px -apple-system, sans-serif`;
-      c.fillText((spec.title || "").replace(/。/g, ""), safeLeft, safeTop + 42 * vScale);
+      c.font = `700 ${Math.round(30 * fScale)}px -apple-system, sans-serif`;
+      ft(c, (spec.title || "").replace(/。/g, ""), safeLeft, y);
+      y += 42 * fScale;
 
       if (spec.title_en) {
         c.fillStyle = "rgba(148, 163, 184, 0.85)";
-        c.font = `500 ${Math.round(16 * sScale)}px monospace`;
-        c.fillText(spec.title_en.replace(/。/g, ""), safeLeft, safeTop + 76 * vScale);
+        c.font = `500 ${Math.round(15 * fScale)}px monospace`;
+        ft(c, spec.title_en.replace(/。/g, ""), safeLeft, y);
+        y += 28 * fScale;
       }
 
       c.strokeStyle = "rgba(51, 65, 85, 0.4)";
       c.lineWidth = 1;
       c.beginPath();
-      c.moveTo(safeLeft, safeTop + 96 * vScale);
-      c.lineTo(safeRight, safeTop + 96 * vScale);
+      c.moveTo(safeLeft, y);
+      c.lineTo(safeRight, y);
       c.stroke();
       c.restore();
     }
 
     window.draw = function (t) {
       ctx.clearRect(0, 0, width, height);
+      if (__recordText) { window.__textBoxes = []; window.__containers = []; }
+      window.__safeArea = { left: 80 * fScale, top: (width > height ? 60 : 110) * fScale, right: width - 80 * fScale, bottom: height - 60 * fScale };
+
       drawBackground(ctx, width, height, t);
 
-      const sScale = width / 1080;
-      const vScale = height / 1920;
       const isLandscape = width > height;
+      const cx = isLandscape ? width * 0.38 : width * 0.48;
+      const cy = isLandscape ? height * 0.62 : height * 0.62;
+      const isoScale = fScale * 0.92;
 
-      // Center for isometric projection
-      const cx = isLandscape ? width * 0.42 : width * 0.5;
-      const cy = isLandscape ? height * 0.6 : height * 0.62;
-      const isoScale = (isLandscape ? height / 1080 : width / 1080) * 0.95;
-
-      const layerSize = 360;
-      const layerSpacingZ = 120;
+      const layerSize = 340;
+      const layerSpacingZ = 110;
       const itemCount = schedule.length;
 
-      // Draw layers from bottom (index 0) to top (index itemCount - 1)
       for (let i = 0; i < itemCount; i++) {
         const item = schedule[i];
         const lData = item.data;
         const targetZ = i * layerSpacingZ;
 
-        // Drop-in closed-form spring
         const tau = t - item.tStart;
         const p = Spring.stepResponse(tau, 14.0, 0.82);
         if (p < 0.001) continue;
 
-        // Current Z position (starts 300 units above, drops with tiny spring bounce)
-        const currentZ = (targetZ + 320) - (320 * p);
+        const currentZ = (targetZ + 300) - (300 * p);
         const accent = lData.accent || "#f59e0b";
 
-        // Connecting struts to layer below if both exist
         if (i > 0 && p > 0.4) {
           const prevZ = (i - 1) * layerSpacingZ;
           const half = layerSize / 2;
@@ -244,10 +278,8 @@
           }
         }
 
-        // Draw isometric platform
         drawIsoPlatform(ctx, cx, cy, currentZ, layerSize, isoScale, accent, 0.82);
 
-        // Platform center node
         const pCenter = projectIso(0, 0, currentZ, cx, cy, isoScale);
         ctx.fillStyle = accent;
         ctx.beginPath();
@@ -255,36 +287,40 @@
         ctx.fill();
 
         // Right side annotation card
-        const cardX = isLandscape ? width * 0.72 : width * 0.65;
-        const cardY = pCenter.y - 30 * vScale;
+        const cardX = isLandscape ? width * 0.68 : width * 0.62;
+        const cardY = pCenter.y - 28 * fScale;
         const revealCardP = Spring.stepResponse(tau - 0.2, 16.0, 0.85);
 
         if (revealCardP > 0.05) {
           ctx.save();
           ctx.globalAlpha = Math.min(1.0, revealCardP);
 
-          // Pointer line from platform to text card
           ctx.strokeStyle = accent;
-          ctx.lineWidth = 1.5 * sScale;
+          ctx.lineWidth = 1.5 * fScale;
           ctx.beginPath();
           ctx.moveTo(pCenter.x, pCenter.y);
-          ctx.lineTo(cardX - 10 * sScale, cardY + 20 * vScale);
+          ctx.lineTo(cardX - 10 * fScale, cardY + 14 * fScale);
           ctx.stroke();
 
-          // Text card
-          ctx.fillStyle = accent;
-          ctx.font = `700 ${Math.round(12 * sScale)}px monospace`;
           ctx.textAlign = "left";
-          ctx.fillText(`[ ${lData.tag || "LAYER"} ]`, cardX, cardY);
+          ctx.textBaseline = "top";
+          if (__recordText) window.__containers.push({ x: cardX - 10 * fScale, y: cardY - 6 * fScale, w: 340 * fScale, h: 82 * fScale });
+          let cyText = cardY;
+
+          ctx.fillStyle = accent;
+          ctx.font = `700 ${Math.round(12 * fScale)}px monospace`;
+          ft(ctx, `[ ${lData.tag || "LAYER"} ]`, cardX, cyText);
+          cyText += 18 * fScale;
 
           ctx.fillStyle = "#ffffff";
-          ctx.font = `700 ${Math.round(18 * sScale)}px -apple-system, sans-serif`;
-          ctx.fillText((lData.name_zh || "").replace(/。/g, ""), cardX, cardY + 24 * vScale);
+          ctx.font = `700 ${Math.round(18 * fScale)}px -apple-system, sans-serif`;
+          ft(ctx, (lData.name_zh || "").replace(/。/g, ""), cardX, cyText);
+          cyText += 28 * fScale;
 
           if (lData.stat) {
             ctx.fillStyle = "rgba(148, 163, 184, 0.9)";
-            ctx.font = `500 ${Math.round(13 * sScale)}px monospace`;
-            ctx.fillText(lData.stat.replace(/。/g, ""), cardX, cardY + 46 * vScale);
+            ctx.font = `500 ${Math.round(13 * fScale)}px monospace`;
+            ft(ctx, lData.stat.replace(/。/g, ""), cardX, cyText);
           }
           ctx.restore();
         }

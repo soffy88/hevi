@@ -240,9 +240,21 @@
       c.restore();
     }
 
+    function _pushContainer(c, x, y, w, h) {
+      const p0 = _applyTransform(c, x, y);
+      const p1 = _applyTransform(c, x + w, y + h);
+      window.__containers.push({
+        x: Math.min(p0.x, p1.x), y: Math.min(p0.y, p1.y),
+        w: Math.abs(p1.x - p0.x), h: Math.abs(p1.y - p0.y)
+      });
+    }
+
     window.draw = function (t) {
       ctx.clearRect(0, 0, width, height);
       if (__recordText) { window.__textBoxes = []; window.__containers = []; }
+      const _top = (width > height ? 80 : 120) * fScale;
+      const _bot = height - (width > height ? 80 : 120) * fScale;
+      window.__safeArea = { left: 80 * fScale, top: _top, right: width - 80 * fScale, bottom: _bot };
 
       drawBackground(ctx, width, height, t);
 
@@ -324,6 +336,7 @@
         drawRoundedRect(ctx, -boxW / 2, -boxH / 2, boxW, boxH, 16 * fScale);
         ctx.fill();
         ctx.stroke();
+        if (__recordText) _pushContainer(ctx, -boxW / 2, -boxH / 2, boxW, boxH);
 
         ctx.fillStyle = "#ffffff";
         ft(ctx, fullText, 0, 0);

@@ -332,7 +332,7 @@
       c.save();
       const safeLeft = 60 * fScale;
       const safeRight = w - 60 * fScale;
-      const safeTop = (w > h ? 60 : 90) * fScale;
+      const safeTop = (w > h ? 60 : 105) * fScale;
 
       c.textBaseline = "top";
       c.fillStyle = "rgba(148, 163, 184, 0.4)";
@@ -520,6 +520,7 @@
     window.draw = function (t) {
       ctx.clearRect(0, 0, width, height);
       if (__recordText) { window.__textBoxes = []; window.__containers = []; }
+      window.__safeArea = { left: 40 * fScale, top: 40 * fScale, right: width - 40 * fScale, bottom: height - 40 * fScale };
 
       drawBackground(ctx, width, height, t);
 

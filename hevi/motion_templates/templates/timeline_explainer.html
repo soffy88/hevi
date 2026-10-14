@@ -345,6 +345,8 @@
     window.draw = function (t) {
       ctx.clearRect(0, 0, width, height);
       if (__recordText) { window.__textBoxes = []; window.__containers = []; }
+      const _s = safe();
+      window.__safeArea = { left: _s.left, top: _s.top, right: _s.right, bottom: _s.bottom };
 
       drawBackground(ctx, width, height);
       const timelineTop = drawHeader(ctx);
