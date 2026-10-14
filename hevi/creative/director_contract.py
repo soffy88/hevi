@@ -150,6 +150,30 @@ class ShotSpec:
     semantic_refs: tuple[str, ...] = ()
     continuity: ContinuityContract = field(default_factory=ContinuityContract)
     renderer_constraints: tuple[str, ...] = ()
+    # Optional unified-capability binding (CAPABILITY_CONTRACT.md):
+    # ``{"name": "scene3d.fox_wheat", "params": {...}}``.  When present, the
+    # assemble step resolves it through ``hevi.capabilities`` by name and a
+    # missing name is a 422 (see hevi.capabilities.shotspec).
+    capability: dict[str, Any] | None = None
+
+    def capability_name(self) -> str | None:
+        """The bound capability name, or ``None`` when unbound."""
+        if not self.capability:
+            return None
+        name = self.capability.get("name")
+        return str(name) if name else None
+
+    def capability_params(self) -> dict[str, Any]:
+        """The bound capability params (empty when unbound)."""
+        if not self.capability:
+            return {}
+        params = self.capability.get("params") or {}
+        if not isinstance(params, dict):
+            raise PlanValidationError(
+                f"shot {self.shot_id}: capability.params must be an object",
+                code="DIRECTOR_SHOT_CAPABILITY",
+            )
+        return params
 
     def validate(self, known_claims: set[str]) -> None:
         if not self.shot_id:

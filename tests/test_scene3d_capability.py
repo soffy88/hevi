@@ -128,3 +128,92 @@ def test_capability_render_deterministic(tmp_path: Path) -> None:
     a = cap.render({}, tmp_path / "det_a", duration=2.0, aspect="9:16", seed=1234)
     b = cap.render({}, tmp_path / "det_b", duration=2.0, aspect="9:16", seed=1234)
     assert a.sha256 == b.sha256, "same seed produced different artefacts"
+
+
+# --------------------------------------------------------------------------- #
+# ShotSpec integration: capability binding dispatches by name; bad names/aspects
+# are caller errors (422), not renderer failures.
+# --------------------------------------------------------------------------- #
+def _shot_with_capability(binding: dict):
+    from hevi.creative.director_contract import BeatSpec, ShotSpec
+
+    beats = (
+        BeatSpec("b1", 0.0, 1.0, visual_action="enter the scene"),
+        BeatSpec("b2", 1.0, 2.0, visual_action="look at the stars"),
+        BeatSpec("b3", 2.0, 3.0, visual_action="wave goodbye"),
+    )
+    shot = ShotSpec(
+        shot_id="SCENE3D-F7",
+        duration_sec=3.0,
+        narrative_function="gentle discovery",
+        beats=beats,
+        capability=binding,
+    )
+    shot.validate(set())
+    return shot
+
+
+def test_shotspec_assembly_resolves_capability_by_name(monkeypatch, tmp_path: Path) -> None:
+    from hevi.capabilities import CapabilityResult
+    from hevi.creative.shotspec_capability import assemble_shot
+
+    cap = get("scene3d.fox_wheat")
+    calls: dict = {}
+
+    def fake_render(params, out_dir, *, duration, aspect, seed):
+        calls.update(
+            params=params,
+            out_dir=Path(out_dir),
+            duration=duration,
+            aspect=aspect,
+            seed=seed,
+        )
+        return CapabilityResult(
+            mp4=str(tmp_path / "fake.mp4"),
+            duration_s=duration,
+            sha256="test-only",
+        )
+
+    monkeypatch.setattr(cap, "render", fake_render)
+    shot = _shot_with_capability(
+        {"name": "scene3d.fox_wheat", "params": {"seed": 17}}
+    )
+    result = assemble_shot(shot, tmp_path / "assemble", aspect="9:16", seed=81)
+
+    assert result.mp4 == str(tmp_path / "fake.mp4")
+    assert calls == {
+        "params": {"seed": 17},
+        "out_dir": tmp_path / "assemble",
+        "duration": 3.0,
+        "aspect": "9:16",
+        "seed": 81,
+    }
+
+
+def test_shotspec_unknown_capability_returns_422() -> None:
+    from hevi.creative.shotspec_capability import (
+        ShotCapabilityError,
+        resolve_shot_capability,
+    )
+
+    shot = _shot_with_capability(
+        {"name": "scene3d.does_not_exist", "params": {}}
+    )
+    with pytest.raises(ShotCapabilityError) as caught:
+        resolve_shot_capability(shot)
+    assert caught.value.status_code == 422
+    assert "unknown capability" in caught.value.detail
+
+
+def test_shotspec_unsupported_aspect_returns_422(tmp_path: Path) -> None:
+    from hevi.creative.shotspec_capability import (
+        ShotCapabilityError,
+        assemble_shot,
+    )
+
+    shot = _shot_with_capability(
+        {"name": "scene3d.fox_wheat", "params": {}}
+    )
+    with pytest.raises(ShotCapabilityError) as caught:
+        assemble_shot(shot, tmp_path, aspect="1:1")
+    assert caught.value.status_code == 422
