@@ -234,11 +234,12 @@ def draw_snowball_effect(
     accent = _hex_to_rgb(style_cfg.accent_color)
     snow_col = (230, 245, 255) if style_cfg.style_id != "1" else (245, 245, 245)
 
-    # 1. Slope (from top-left to bottom-right)
-    d.polygon([(40, 160), (560, 480), (560, 560), (40, 560)], fill=snow_col, outline=ink)
+    # 1. Snowy field background (full canvas, drawn first)
+    d.rectangle([(0, 0), (w, h)], fill=snow_col, outline=None)
+    # Slope line from top-left to bottom-right
     d.line([(40, 160), (560, 480)], fill=ink, width=6)
 
-    # 2. Small snowball (top left of slope)
+    # 2. Small snowball (top left)
     d.ellipse((100, 120, 160, 180), fill=(255, 255, 255), outline=ink, width=4)
 
     # 3. Medium rolling snowball (middle)
@@ -255,15 +256,20 @@ def draw_snowball_effect(
 
     parts = [
         {
-            "id": "mountain_slope",
-            "polygon": [[0.05, 0.18], [0.95, 0.18], [0.95, 0.95], [0.05, 0.95]],
-            "exclude_polygons": [
-                [[0.50, 0.41], [0.78, 0.41], [0.78, 0.75], [0.50, 0.75]],
-            ],
+            "id": "small_snowball",
+            "polygon": [[0.12, 0.14], [0.21, 0.14], [0.21, 0.23], [0.12, 0.23]],
+        },
+        {
+            "id": "medium_snowball",
+            "polygon": [[0.27, 0.24], [0.41, 0.24], [0.41, 0.38], [0.27, 0.38]],
         },
         {
             "id": "giant_snowball",
-            "polygon": [[0.50, 0.41], [0.78, 0.41], [0.78, 0.75], [0.50, 0.75]],
+            "polygon": [[0.44, 0.32], [0.68, 0.32], [0.68, 0.55], [0.44, 0.55]],
+        },
+        {
+            "id": "mountain_slope",
+            "polygon": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
         },
     ]
     return {
@@ -331,20 +337,20 @@ def draw_growth_curves(
 
     parts = [
         {
-            "id": "axes_frame",
-            "polygon": [[0.05, 0.07], [0.95, 0.07], [0.95, 0.97], [0.05, 0.97]],
-            "exclude_polygons": [
-                [[0.06, 0.65], [0.44, 0.65], [0.44, 0.84], [0.06, 0.96]],
-                [[0.43, 0.18], [0.78, 0.18], [0.78, 0.84], [0.43, 0.84]],
-            ],
+            "id": "exponential_surge",
+            "polygon": [[0.37, 0.13], [0.665, 0.13], [0.665, 0.625], [0.37, 0.625]],
         },
         {
             "id": "linear_ramp",
-            "polygon": [[0.06, 0.65], [0.44, 0.65], [0.44, 0.96], [0.06, 0.96]],
+            "polygon": [[0.10, 0.49], [0.365, 0.49], [0.365, 0.625], [0.10, 0.625]],
         },
         {
-            "id": "exponential_surge",
-            "polygon": [[0.43, 0.18], [0.78, 0.18], [0.78, 0.84], [0.43, 0.84]],
+            "id": "axes_frame",
+            "polygon": [[0.05, 0.06], [0.72, 0.06], [0.72, 0.65], [0.05, 0.65]],
+            "exclude_polygons": [
+                [[0.37, 0.13], [0.665, 0.13], [0.665, 0.625], [0.37, 0.625]],
+                [[0.10, 0.49], [0.365, 0.49], [0.365, 0.625], [0.10, 0.625]],
+            ],
         },
     ]
     return {
@@ -409,7 +415,7 @@ def draw_coin_pyramid(
     parts = [
         {
             "id": "compounding_star",
-            "polygon": [[0.20, 0.05], [0.80, 0.05], [0.80, 0.45], [0.20, 0.45]],
+            "polygon": [[0.16, 0.0], [0.84, 0.0], [0.84, 0.45], [0.16, 0.45]],
         },
         {
             "id": "coin_stacks",

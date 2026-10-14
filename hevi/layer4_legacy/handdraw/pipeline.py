@@ -128,6 +128,7 @@ def render_handdraw_pipeline(
     )
 
     # 3. Generate CPU Illustrations & Collect Parts
+    CANON = 800  # Canonical internal resolution for stable polygon geometry
     illustration_meta_map = {}
     for p_idx, page in enumerate(pages_spec):
         scene_key = page["scene_key"]
@@ -136,7 +137,7 @@ def render_handdraw_pipeline(
             scene_key=scene_key,
             output_path=illu_path,
             style_id=style_id,
-            size=(layout.illu_w, layout.illu_h),
+            size=(CANON, CANON),
         )
         illustration_meta_map[scene_key] = {
             **meta,
@@ -436,8 +437,8 @@ def render_handdraw_pipeline(
                     "parts": illu_info["parts"],
                     "x": layout.illu_x,
                     "y": layout.illu_y,
-                    "width": layout.illu_w,
-                    "height": layout.illu_h,
+                    "width": CANON,
+                    "height": CANON,
                     "weight": 2.8,
                 })
             else:
