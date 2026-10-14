@@ -194,23 +194,24 @@
 
       const safeLeft = 80 * fScale;
       const safeRight = w - 80 * fScale;
-      const safeTop = (w > h ? 80 : 120) * fScale;
+      const safeTop = (w > h ? 60 : 90) * fScale;
+      const headerY = safeTop + 4 * fScale;
 
       c.save();
       c.textBaseline = "top";
       c.fillStyle = "rgba(148, 163, 184, 0.6)";
       c.font = `700 ${Math.round(14 * fScale)}px monospace`;
       c.textAlign = "left";
-      ft(c, `BPM ${bpm} // BEAT ${currentBeat.toFixed(1)}`, safeLeft, safeTop);
+      ft(c, `BPM ${bpm} // BEAT ${currentBeat.toFixed(1)}`, safeLeft, headerY);
 
       c.textAlign = "right";
-      ft(c, String(spec.title || "KINETIC TYPOGRAPHY").replace(/。/g, ""), safeRight, safeTop);
+      ft(c, String(spec.title || "KINETIC TYPOGRAPHY").replace(/。/g, ""), safeRight, headerY);
 
       c.strokeStyle = "rgba(51, 65, 85, 0.4)";
       c.lineWidth = 1;
       c.beginPath();
-      c.moveTo(safeLeft, safeTop + 24 * fScale);
-      c.lineTo(safeRight, safeTop + 24 * fScale);
+      c.moveTo(safeLeft, headerY + 24 * fScale);
+      c.lineTo(safeRight, headerY + 24 * fScale);
       c.stroke();
       c.restore();
 
@@ -252,8 +253,8 @@
     window.draw = function (t) {
       ctx.clearRect(0, 0, width, height);
       if (__recordText) { window.__textBoxes = []; window.__containers = []; }
-      const _top = (width > height ? 80 : 120) * fScale;
-      const _bot = height - (width > height ? 80 : 120) * fScale;
+      const _top = (width > height ? 60 : 90) * fScale;
+      const _bot = height - (width > height ? 70 : 110) * fScale;
       window.__safeArea = { left: 80 * fScale, top: _top, right: width - 80 * fScale, bottom: _bot };
 
       drawBackground(ctx, width, height, t);
@@ -294,8 +295,8 @@
       // Layout 1: Center punch
       // -------------------------------------------------------------
       if (phrase.layout === "center_punch") {
-        const fontPx = Math.round((isLandscape ? 76 : 84) * fScale);
-        const subtextY = cy - fontPx * 1.6;
+        const baseFontPx = Math.round((isLandscape ? 76 : 84) * fScale);
+        const subtextY = cy - baseFontPx * 1.6;
 
         if (phrase.subtext) {
           ctx.fillStyle = accent;
@@ -322,12 +323,20 @@
         ctx.translate(cx, cy);
         ctx.scale(scale, scale);
 
+        const boxPad = 28 * fScale;
+        const PUNCH_MAX = 1.12;
+        const maxTextW = (safeW / PUNCH_MAX) - boxPad * 2;
+        let fontPx = baseFontPx;
         ctx.font = `900 ${fontPx}px -apple-system, sans-serif`;
+        let textMetrics = ctx.measureText(fullText);
+        if (textMetrics.width > maxTextW && textMetrics.width > 0) {
+          fontPx = Math.max(20, Math.floor(fontPx * maxTextW / textMetrics.width));
+          ctx.font = `900 ${fontPx}px -apple-system, sans-serif`;
+          textMetrics = ctx.measureText(fullText);
+        }
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        const textMetrics = ctx.measureText(fullText);
-        const boxPad = 28 * fScale;
-        const boxW = Math.min(safeW, textMetrics.width + boxPad * 2);
+        const boxW = Math.min(safeW / PUNCH_MAX, textMetrics.width + boxPad * 2);
         const boxH = Math.round(fontPx * 1.45);
 
         ctx.fillStyle = "rgba(24, 34, 52, 0.85)";
@@ -347,7 +356,19 @@
       // Layout 2: Split contrast box
       // -------------------------------------------------------------
       else if (phrase.layout === "split_box") {
-        const fontPx = Math.round((isLandscape ? 68 : 76) * fScale);
+        let fontPx = Math.round((isLandscape ? 68 : 76) * fScale);
+        const SPLIT_MAX = 1.12;
+        const maxLineW = (safeW / SPLIT_MAX) - 20 * fScale;
+        const probe = (text, px) => {
+          ctx.font = `900 ${px}px -apple-system, sans-serif`;
+          return ctx.measureText(text).width;
+        };
+        const topProbe = words.slice(0, 2).map(w => w.word).join(" ");
+        const botProbe = words.slice(2, 4).map(w => w.word).join(" ");
+        const widest = Math.max(probe(topProbe, fontPx), probe(botProbe, fontPx));
+        if (widest > maxLineW && widest > 0) {
+          fontPx = Math.max(20, Math.floor(fontPx * maxLineW / widest));
+        }
         const lineOffset = Math.round(fontPx * 0.85);
         const subtextY = cy - lineOffset - fontPx * 0.85;
 
