@@ -1,0 +1,14 @@
+{
+  "logline": "全 AND-THEN 转场，没有因果推进。",
+  "theme": "坚持就会成功",
+  "spoken_language": "zh-CN",
+  "fixed_characters": ["char_fox"],
+  "beats": [
+    {"kind": "greeting", "text": "小朋友你好。", "emotion": "happy", "transition": "AND"},
+    {"kind": "problem", "text": "小狐狸想摘星星。", "emotion": "curious", "transition": "AND"},
+    {"kind": "attempt", "text": "它搬来石头。", "emotion": "trying", "transition": "AND"},
+    {"kind": "solution", "text": "它跳起来。", "emotion": "happy", "transition": "AND"},
+    {"kind": "recap", "text": "它很开心。", "emotion": "proud", "transition": "AND"},
+    {"kind": "farewell", "text": "再见啦。", "emotion": "warm", "transition": null}
+  ]
+}

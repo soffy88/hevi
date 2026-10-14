@@ -1,15 +1,18 @@
 """Hevi capability registry per CAPABILITY_CONTRACT.md.
-Provides register, get, list, resolve for capabilities including qa.kids_gate.
+Provides register, get, list, resolve for capabilities including qa.kids_gate,
+kids.story_gate and kids.consistency_manifest.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-import json
 
 from hevi.quality.kids_gate import kids_gate_workflow
+from hevi.kids.story_gate import kids_story_gate, gate_json
+from hevi.kids.consistency_manifest import validate_manifest, canonical_json
 
 @dataclass
 class CapabilityResult:
@@ -96,4 +99,99 @@ register(Capability(
     render=_render_kids_gate,
     description="幼儿动漫安全与节奏质检闸门",
     line="anime"
+))
+
+
+# Register narrative.kids_story_gate
+_STORY_GATE_PARAMS = {
+    "type": "object",
+    "properties": {
+        "story": {
+            "type": "object",
+            "properties": {
+                "logline": {"type": "string"},
+                "theme": {"type": "string"},
+                "spoken_language": {"type": "string"},
+                "fixed_characters": {"type": "array", "items": {"type": "string"}},
+                "beats": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"type": "string"},
+                            "text": {"type": "string"},
+                            "emotion": {"type": "string"},
+                            "transition": {"type": "string"},
+                        },
+                        "required": ["kind", "text"],
+                    },
+                },
+            },
+        },
+    },
+    "required": ["story"],
+}
+
+
+def _render_kids_story_gate(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+    from pydantic import ValidationError
+
+    story = params.get("story", {})
+    try:
+        report = kids_story_gate(story)
+        qa = report.to_dict()
+    except ValidationError as exc:
+        qa = {"status": "FAIL", "findings": [], "metrics": {}, "error": str(exc)}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report_path = out_dir / "kids_story_gate_report.json"
+    report_path.write_text(json.dumps(qa, ensure_ascii=False, indent=2), encoding="utf-8")
+    return CapabilityResult(duration_s=duration, qa=qa)
+
+
+register(Capability(
+    name="kids.story_gate",
+    kind="line",
+    aspects=["16:9", "9:16"],
+    params_schema=_STORY_GATE_PARAMS,
+    cpu_cost_hint=0.0,
+    render=_render_kids_story_gate,
+    description="幼儿故事闸门：6 节拍结构 + 因果转场比 + 单主题 + 固定角色一致性",
+    line="anime",
+))
+
+
+# Register kids.consistency_manifest (schema + validation)
+_MANIFEST_PARAMS = {
+    "type": "object",
+    "properties": {
+        "manifest": {"type": "object"},
+    },
+    "required": ["manifest"],
+}
+
+
+def _render_kids_consistency_manifest(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+    from pydantic import ValidationError
+
+    manifest = params.get("manifest", {})
+    try:
+        report = validate_manifest(manifest)
+        qa = report.to_dict()
+    except ValidationError as exc:
+        qa = {"status": "FAIL", "findings": [], "errors": [str(exc)], "error": str(exc)}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report_path = out_dir / "kids_consistency_manifest_report.json"
+    report_path.write_text(json.dumps(qa, ensure_ascii=False, indent=2), encoding="utf-8")
+    return CapabilityResult(duration_s=duration, qa=qa)
+
+
+register(Capability(
+    name="kids.consistency_manifest",
+    kind="line",
+    aspects=["16:9", "9:16"],
+    params_schema=_MANIFEST_PARAMS,
+    cpu_cost_hint=0.0,
+    render=_render_kids_consistency_manifest,
+    description="幼儿一致性清单：schema 校验 + 与 ShotSpec 双向绑定",
+    line="anime",
 ))

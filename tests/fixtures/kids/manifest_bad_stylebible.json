@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "project_id": "kids_bad_sb",
+  "episode": 1,
+  "audience": { "age_min": 2, "age_max": 6, "spoken_language": "zh-CN" },
+  "theme": { "one_line": "测试缺 Style Bible 段", "closing_line": "再见？", "closing_action": "挥手" },
+  "style_bible": {
+    "art_style": "圆润低多边形",
+    "camera_language": "",
+    "color_grade": "马卡龙",
+    "negative": "无暴力"
+  },
+  "characters": [ { "id": "char_fox", "name": "小狐狸", "constant_traits": ["圆润"], "seed": 1 } ],
+  "props": [ { "id": "prop_star", "name": "星" } ],
+  "scenes": [ { "id": "scene_forest", "location": "森林" } ],
+  "transition_table": [ { "cut": "S1->S2", "prev_out": "抬头", "next_in": "特写", "technique": "match" } ],
+  "spoken_language": [ { "shot_index": 1, "language": "zh-CN" }, { "shot_index": 2, "language": "zh-CN" } ],
+  "shots": [
+    { "shot_index": 1, "duration": 4.0, "line": "你好 @char_fox", "shot_spec": { "template": null, "transition_in": "fade", "effect": "warm", "style": "soft", "sfx": [ { "id": "chime_soft", "offset": 0.0 } ], "camera": "slow_push_in", "subtitle_style": "kids_large", "duration": 4.0 } },
+    { "shot_index": 2, "duration": 4.0, "line": "看 @prop_star", "shot_spec": { "template": null, "transition_in": "fade", "effect": "warm", "style": "soft", "sfx": [ { "id": "chime_soft", "offset": 0.0 } ], "camera": "slow_push_in", "subtitle_style": "kids_large", "duration": 4.0 } }
+  ]
+}
