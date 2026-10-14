@@ -94,7 +94,7 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 
 with sync_playwright() as p:
     b = p.chromium.launch(
-        args=["--disable-web-security", "--enable-gpu-rasterization", "--ignore-gpu-blocklist"]
+        args=["--disable-web-security", "--disable-dev-shm-usage", "--enable-gpu-rasterization", "--ignore-gpu-blocklist"]
     )
     pg = b.new_page(viewport={"width": 1920, "height": 1080}, device_scale_factor=1)
     errors = []
