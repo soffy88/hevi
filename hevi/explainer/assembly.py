@@ -184,119 +184,133 @@ async def _fulfill_stock_visuals(
     *,
     user_id: str = "explainer_session",
 ) -> None:
-    """🚨 v9.0: 视觉素材装填 —— 为 stock_broll cues 检索真实画面。
+    import json
+    import os
+    import shutil
+    from collections import Counter
 
-    遍历所有 cues，对 visual_type==stock_broll 且没有 mediaUrl 的条目：
-    1. 从 cue.visual_search_query 提取关键词
-    2. 调用 StockSearchService.search() 检索 Pexels
-    3. 下载并通过 media-use 台账冻结到本地，再写入 cue.visual_config[assetUrl]
-    4. 如果检索失败，降级为 browser_broll fallback（用 search query 搜图）
-    """
+    from hevi.sourcing.corpus import Corpus
+
+    corpus_dir = Path(os.environ.get("HEVI_CORPUS_DIR", "data/corpus"))
+    corpus = Corpus.load(corpus_dir)
+    api_key = os.environ.get("PEXELS_API_KEY", "")
+    if not api_key:
+        for env_path in [Path(".env"), Path("/data/soffy/projects/hevi/.env")]:
+            if env_path.exists():
+                for line in env_path.read_text().splitlines():
+                    if line.startswith("PEXELS_API_KEY="):
+                        api_key = line.split("=", 1)[1].strip()
+                        os.environ["PEXELS_API_KEY"] = api_key
+                        break
+            if api_key:
+                break
+
+    # 跟踪素材使用次数与来源分布，严格去重 (每素材至多使用 1 次，多源均衡)
+    usage_counts: Counter[str] = Counter()
+    source_counts: Counter[str] = Counter()
+    MAX_REUSE = 1
+    output_dir.mkdir(parents=True, exist_ok=True)
+    prov = output_dir / "provenance.jsonl"
+    if prov.exists():
+        prov.unlink()
 
     for idx, cue in enumerate(cues):
         if cue.visual_type != "stock_broll":
             continue
-
-        # Skip if already has a media URL
         if cue.visual_config.get("assetUrl"):
             continue
-
-        query = getattr(cue, "visual_search_query", "") or ""
+        query = getattr(cue, "visual_search_query", "") or getattr(cue, "text", "")
         if not query.strip():
-            logger.warning(f"stock_broll cue {idx} missing visual_search_query; skipping")
-            cue.visual_type = "voiceover"  # degrade gracefully
+            cue.visual_type = "voiceover"
             continue
 
-        try:
-            results = await stock_svc.search(
-                user_id=user_id,
-                query=query,
-                media_type="video",
-                count=3,
-            )
-            if results:
-                best = results[0] if isinstance(results, list) else results.get("results", [{}])[0]
-                if not isinstance(best, dict):
-                    continue
-                preview = best.get("preview_url") or best.get("video_url")
-                if preview:
-                    try:
-                        frozen = _freeze_stock_url(
-                            str(preview),
-                            media_type="video",
-                            intent=query,
-                            output_dir=output_dir,
-                            source_metadata={
-                                "provider": best.get("provider") or "stock_search",
-                                "source_page": (
-                                    best.get("source_page")
-                                    or best.get("source_url")
-                                    or best.get("page_url")
-                                ),
-                                "asset_id": (
-                                    best.get("asset_id")
-                                    or best.get("external_id")
-                                    or best.get("id")
-                                ),
-                                "intent": query,
-                            },
-                        )
-                    except Exception as exc:
-                        logger.warning("stock_broll cue %s freeze failed: %s", idx, exc)
-                    else:
-                        cue.visual_config["assetUrl"] = str(frozen)
-                        logger.info("stock_broll cue %s: froze %s", idx, frozen)
-                        continue
-        except Exception as exc:
-            logger.warning(f"Pexels search failed for cue {idx}: {exc}")
+        import asyncio
 
-        # Fallback: use image instead of video
-        try:
-            img_results = await stock_svc.search(
-                user_id=user_id,
-                query=query,
-                media_type="image",
-                count=1,
-            )
-            if img_results:
-                best = (
-                    img_results[0]
-                    if isinstance(img_results, list)
-                    else img_results.get("results", [{}])[0]
-                )
-                if not isinstance(best, dict):
+        # 真实素材检索：优先覆盖 NASA, Wikimedia Commons, Archive.org
+        tasks = [
+            corpus.add_nasa_api(query=query, count=2),
+            corpus.add_wikimedia_commons(query=query, count=2),
+            corpus.add_archive_org(query=query, count=2),
+        ]
+        if api_key:
+            tasks.append(corpus.add_pexels(query=query, count=2, api_key=api_key))
+
+        await asyncio.gather(*tasks, return_exceptions=True)
+        corpus.save()
+
+        # 排除已用满上限的素材
+        excluded = {cid for cid, count in usage_counts.items() if count >= MAX_REUSE}
+        hits = corpus.rank_for_slot(query, top_k=max(len(corpus.records), 50))
+
+        hit = None
+        # 1. 优先选满足阈值且来源不过度集中的候选
+        for cand in hits:
+            cid = cand.get("clip_id")
+            src = cand.get("source")
+            if cid in excluded:
+                continue
+            if float(cand.get("score", 0.0)) < 0.15:
+                continue
+            # 若某单一来源已超过 4 个槽位，优先让渡给其他合格来源
+            if source_counts[src] >= 4 and any(
+                c.get("clip_id") not in excluded
+                and float(c.get("score", 0.0)) >= 0.15
+                and source_counts[c.get("source")] < 4
+                for c in hits
+            ):
+                continue
+            local = Path(corpus.root) / cand["local_path"]
+            if local.exists() and local.stat().st_size > 0:
+                hit = dict(cand)
+                hit["local_abs_path"] = str(local)
+                break
+
+        # 2. 若无命中，选取未被排除且满足安全底线(0.11)的最高分候选
+        if hit is None:
+            for cand in hits:
+                cid = cand.get("clip_id")
+                if cid in excluded:
                     continue
-                img_url = best.get("thumbnail_url") or best.get("preview_url")
-                if img_url:
-                    try:
-                        frozen = _freeze_stock_url(
-                            str(img_url),
-                            media_type="image",
-                            intent=query,
-                            output_dir=output_dir,
-                            source_metadata={
-                                "provider": best.get("provider") or "stock_search",
-                                "source_page": (
-                                    best.get("source_page")
-                                    or best.get("source_url")
-                                    or best.get("page_url")
-                                ),
-                                "asset_id": (
-                                    best.get("asset_id")
-                                    or best.get("external_id")
-                                    or best.get("id")
-                                ),
-                                "intent": query,
-                            },
-                        )
-                    except Exception as exc:
-                        logger.warning("stock_broll cue %s image freeze failed: %s", idx, exc)
-                    else:
-                        cue.visual_config["assetUrl"] = str(frozen)
-                        logger.info("stock_broll cue %s: froze fallback image %s", idx, frozen)
-        except Exception as img_exc:
-            logger.error(f"All stock fallbacks failed for cue {idx}: {img_exc}")
-            cue.visual_type = "voiceover"  # last resort: no visual
+                if float(cand.get("score", 0.0)) < 0.11:
+                    continue
+                local = Path(corpus.root) / cand["local_path"]
+                if local.exists() and local.stat().st_size > 0:
+                    hit = dict(cand)
+                    hit["local_abs_path"] = str(local)
+                    break
+
+        if hit and "local_abs_path" in hit:
+            clip_id = hit.get("clip_id", "")
+            usage_counts[clip_id] += 1
+            source_counts[hit.get("source")] += 1
+
+            remotion_public = Path(__file__).resolve().parent.parent.parent / "hevi-remotion" / "public"
+            dest = remotion_public / "stock" / Path(hit["local_abs_path"]).name
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(hit["local_abs_path"], dest)
+            cue.visual_config["assetUrl"] = f"stock/{dest.name}"
+            cue.visual_config["clip_id"] = hit.get("clip_id")
+            cue.visual_config["clip_score"] = hit.get("score")
+            cue.visual_config["clip_mode"] = "degraded" if hit.get("degraded") else "open_clip_vit_b_32_cpu"
+
+            # Write provenance log with clip score, source, and query
+            prov = output_dir / "provenance.jsonl"
+            with open(prov, "a") as f:
+                prov_record = {
+                    "cue_index": idx,
+                    "slot_query": query,
+                    "clip_id": hit.get("clip_id"),
+                    "source": hit.get("source"),
+                    "score": hit.get("score"),
+                    "title": hit.get("title"),
+                    "asset_url": f"stock/{dest.name}",
+                    "license": hit.get("license"),
+                    "degraded": hit.get("degraded", False),
+                    "clip_mode": "degraded" if hit.get("degraded") else "open_clip_vit_b_32_cpu",
+                }
+                f.write(json.dumps(prov_record, ensure_ascii=False) + "\n")
+        else:
+            cue.visual_type = "voiceover"
 
 
 PREVIEW_SECONDS = PREVIEW_TARGET_SECONDS
@@ -448,7 +462,7 @@ async def assemble_explainer_cues(
             cue.visual_type = "voiceover"
             cue.highlight_selector = None
     # 🚨 v9.0: 视觉素材装填 —— stock_broll 检索真实画面（在 HeyGen 之前）
-    if enable_stock_broll and stock_service is not None:
+    if enable_stock_broll:
         await _fulfill_stock_visuals(
             prepared_cues, stock_service, output_dir, user_id=stock_user_id
         )

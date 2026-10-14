@@ -140,6 +140,22 @@ async def _research_brief(payload: dict[str, Any]) -> dict[str, Any]:
     angles = list(payload.get("angles") or ["fact", "worldview"])
     caller = payload.get("caller")
     if caller is None:
+        from hevi.providers.llm_pick import resolve_text_llm
+        llm_fn = resolve_text_llm()
+        if llm_fn is not None:
+            class Adapter:
+                async def call(self, system: str, prompt: str, temperature: float = 0.2) -> str:
+                    res = await llm_fn(
+                        messages=[
+                            {"role": "system", "content": system},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=temperature
+                    )
+                    return res["content"]
+            caller = Adapter()
+
+    if caller is None:
         questions = plan_research_questions(topic, angles)
         return {
             "status": "ok",

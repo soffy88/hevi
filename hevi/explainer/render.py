@@ -8,6 +8,8 @@ src/data/run_manifest.json,所以渲染段用锁把该 job 的 manifest 拷进�
 from __future__ import annotations
 
 import asyncio
+import re
+import os
 import logging
 import shutil
 import subprocess
@@ -124,9 +126,32 @@ def _expected_duration_s(manifest: list[ManifestSegment]) -> float:
     return _TITLE_CARD_S + sum(float(seg.duration_sec or 0.0) for seg in manifest)
 
 
+def _mean_volume_db(video_path: Path) -> float:
+    """ffmpeg volumedetect 的 mean_volume；无音轨/失败返回 -91（视为静音）。"""
+    proc = subprocess.run(
+        ["ffmpeg", "-v", "info", "-i", str(video_path), "-map", "0:a:0?", "-af", "volumedetect",
+         "-f", "null", "-"],
+        capture_output=True, text=True, check=False,
+    )
+    m = re.search(r"mean_volume:\s*(-?[0-9.]+|-inf) dB", proc.stderr or "")
+    if not m or m.group(1) == "-inf":
+        return -91.0
+    return float(m.group(1))
+
+
 def _mix_bgm_duck(video_path: Path, bgm_path: Path, dest: Path) -> None:
     """把程序化 BGM 侧链闪避混进已有旁白轨(人声段压到约 -22dB)。"""
     dest.parent.mkdir(parents=True, exist_ok=True)
+    # 无旁白（纯音乐片）时不能再对着静音轨压低 BGM，否则成片只剩约 -50dB：
+    # 旁白轨均值 < -45dB 视为无旁白，BGM 以 -6dB 直接作为主音轨。
+    if _mean_volume_db(video_path) < -45.0:
+        fc = ("[1:a]volume=-6dB[bgmv];"
+              "[0:a][bgmv]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]")
+    else:
+        fc = ("[0:a]asplit=2[narr][narrsc];"
+              "[1:a]volume=-18dB[bgmv];"
+              "[bgmv][narrsc]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=300[bgmduck];"
+              "[narr][bgmduck]amix=inputs=2:duration=first:dropout_transition=0[aout]")
     cmd = [
         "ffmpeg",
         "-y",
@@ -135,10 +160,7 @@ def _mix_bgm_duck(video_path: Path, bgm_path: Path, dest: Path) -> None:
         "-i",
         str(bgm_path),
         "-filter_complex",
-        "[0:a]asplit=2[narr][narrsc];"
-        "[1:a]volume=-18dB[bgmv];"
-        "[bgmv][narrsc]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=300[bgmduck];"
-        "[narr][bgmduck]amix=inputs=2:duration=first:dropout_transition=0[aout]",
+        fc,
         "-map",
         "0:v",
         "-map",
@@ -184,7 +206,8 @@ async def _run_remotion_render(composition_id: str, output_path: Path) -> None:
         "render",
         composition_id,
         str(output_path),
-        "--concurrency=4",
+        # memory-bounded hosts can lower this (each worker is a headless Chromium decoding video)
+        f"--concurrency={os.environ.get('HEVI_REMOTION_CONCURRENCY', '4')}",
         cwd=str(_HEVI_REMOTION_DIR),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,

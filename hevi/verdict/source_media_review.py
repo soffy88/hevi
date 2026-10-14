@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import logging
-import shutil
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -49,12 +48,11 @@ def detect_media_type(path: Path) -> str | None:
 
 def _ffprobe_json(path: Path) -> dict[str, Any] | None:
     """ffprobe 整文件 JSON(-show_format -show_streams)。失败返回 None。"""
-    if not shutil.which("ffprobe"):
-        return None
+    ffprobe_bin = "/home/soffy/.local/bin/ffprobe" if Path("/home/soffy/.local/bin/ffprobe").exists() else "ffprobe"
     try:
         result = subprocess.run(
             [
-                "ffprobe",
+                ffprobe_bin,
                 "-v",
                 "quiet",
                 "-print_format",
@@ -97,6 +95,17 @@ def _sample_timestamps(duration: float, count: int = 4) -> list[float]:
     return [round(step * (i + 1), 2) for i in range(count)]
 
 
+
+def _detect_scenes(path: Path) -> list[dict[str, Any]]:
+    try:
+        from scenedetect import ContentDetector, detect
+
+        scene_list = detect(str(path), ContentDetector())
+        return [{"start_time": s[0].seconds, "end_time": s[1].seconds} for s in scene_list]
+    except Exception as exc:
+        logger.warning("scene detect failed: %s", exc)
+        return []
+
 def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) -> dict[str, Any]:
     """视频: ffprobe 技术探测 + 代表帧 + 质量风险。"""
     result: dict[str, Any] = {
@@ -117,9 +126,11 @@ def _probe_video(path: Path, transcribe: Callable[[Path], str] | None = None) ->
             (s for s in streams if isinstance(s, dict) and s.get("codec_type") == "audio"),
             {},
         )
+        scenes = _detect_scenes(path)
         result["technical_probe"] = {
             "duration_seconds": float(fmt.get("duration", 0) or 0),
             "resolution": f"{v.get('width', '?')}x{v.get('height', '?')}",
+            "scenes": scenes,
             "fps": _parse_fps(str(v.get("r_frame_rate", "0/1"))),
             "codec": v.get("codec_name", "unknown"),
             "audio_codec": a.get("codec_name", ""),

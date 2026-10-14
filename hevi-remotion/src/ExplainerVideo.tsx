@@ -84,7 +84,7 @@ const VisualOverlay: React.FC<{
   const assetSrc = typeof asset === "string"
     ? asset.startsWith("http") ? asset : staticFile(asset.replace(/^\//, ""))
     : null;
-  if (visualType === "browser_broll") {
+  if (visualType === "browser_broll" || visualType === "stock_broll") {
     return <BrowserBrollSegment src={assetSrc ?? undefined} />;
   }
   if (visualType === "heygen_avatar") {
@@ -234,10 +234,10 @@ export const ExplainerVideo: React.FC = () => {
 
         return (
           <Sequence key={seg.id} from={from} durationInFrames={durationInFrames} layout="none">
-            <div style={{ position: "relative", zIndex: 5 }}>
+            <AbsoluteFill style={{ zIndex: 5, overflow: "hidden" }}>
               {!manimOwnsFrame && <Scene durationInFrames={durationInFrames} props={seg.props} />}
               <VisualOverlay visualType={seg.visualType} visualConfig={vCfg} />
-            </div>
+            </AbsoluteFill>
             <Audio src={staticFile(seg.audioFile)} />
           </Sequence>
         );
