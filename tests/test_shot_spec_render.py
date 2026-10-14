@@ -521,6 +521,37 @@ def test_template_render_framemd5_differs(tmp_path: Path, category: str, tpl_id:
     )
 
 
+@ffmpeg_only
+@pytest.mark.parametrize(
+    ("tpl_id",),
+    [
+        ("tc:pencil-sketch-draw",),
+        ("tc:crash-zoom-punch",),
+        ("tc:black-slam-transition",),
+    ],
+)
+def test_template_other_shots_ssim_identical(tmp_path: Path, tpl_id: str) -> None:
+    """R3 非阻断建议: 用 SSIM 而非编码后 framemd5 判断"其它镜逐帧相同"。
+
+    x264 码控会让接缝附近的 framemd5 差异向前传播 0.13–0.27s, 因此改用 SSIM:
+    未被模板作用的镜0/镜2 中段与无模板基线 SSIM > 0.99。
+    """
+    dur, xfade_d = 3.0, 0.5
+    clips = _clips(tmp_path, dur, n=3)
+    base_out = _render(clips, tmp_path / f"ssim_base_{tpl_id.replace(':', '_')}.mp4", None, transition="fade", xfade_d=xfade_d)
+    tpl_out = _render(
+        clips,
+        tmp_path / f"ssim_tpl_{tpl_id.replace(':', '_')}.mp4",
+        [None, ShotSpec(template=tpl_id, duration=dur), None],
+        transition="fade",
+        xfade_d=xfade_d,
+    )
+    # 镜0 中段 1.0s; 镜2 中段 (起点 5.5s) 6.5s
+    for t in (1.0, 6.5):
+        s = compare_ssim(_frame_rgb(tpl_out, t), _frame_rgb(base_out, t), channel_axis=2)
+        assert s > 0.99, f"{tpl_id} affected unrelated frame at {t}s (SSIM {s:.4f})"
+
+
 # ── 7. R2 FIX: Style 枚举逐值真实 ffmpeg 验收 ──────────────────────────
 
 
