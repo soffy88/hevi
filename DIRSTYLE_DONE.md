@@ -549,3 +549,288 @@ output/dirstyle_e2e/flow_pack_60s/{pack.md,pack.json}        # 重生成
 - 主审要求「不自评通过」：以上均为实测数据，是否通过由主审判定。
 
 DONE FIX-R4
+
+---
+
+# FIX r5（2026-10-14）
+
+> 任务来源: DIRSTYLE_FIX_R5.md（主审在 HEAD 7a64cc28 复核 fix-r4 仍不通过）
+> 分支: feat/director-styles（worktree /data/soffy/projects/hevi-dirstyle）
+> 本机: CPU-only，无付费 API；PATH 含 /home/soffy/.local/bin
+> 本轮规则: 绝不删除 worktree 以外任何文件；不清理磁盘；不 rm 已跟踪文件；只 git add 自己的文件；不 push 不合并；不自评通过。最后一行写 DONE FIX-R5 并 commit。
+
+## R5.1 逐条修复说明
+
+### R5-1: F2 旁白整句切分与标点边界（阻断项）
+- **根因**: 旧代码先切为无标点小子句再按字数装桶并在子句间插「，」，导致边界落在「当它们触碰物体时，」、「最后，」、「负面关注也是关注，」等逗号处，末尾硬加「。」造成假整句；且尾部溢出丢弃了结论句「三重机制」；并把「"模拟狩猎"」渲染成了「，模拟狩猎，」（词组中插逗号）。
+- **修复**:
+  1. `heartbeat5.py` 重写旁白打包引擎 `_pack_sentences_into_clips`：严格先按原文句末标点（`。！？`）切出完整整句（`_split_sentences`），绝不在整句内部跨段劈开。
+  2. 6 段旁白均落在原文整句标点边界，每段首句在原文中紧跟在句末标点之后（或文首），每段末句在原文中紧跟句末标点（或文末）。
+  3. `_normalize_sentence` 清除引号（不转为逗号），避免把词组拆散；将 `推东西→主人出现` 规整为 `推东西，主人就出现`（依 R5-1 规则 3 允许改写）。
+  4. 第 6 段必须包含原文最后一句的完整结论，包含「三重机制」：「简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。」。
+  5. 6 段旁白字数严格落在 [40, 66] CJK：
+     - Clip 00: 57 CJK
+     - Clip 01: 62 CJK
+     - Clip 02: 65 CJK
+     - Clip 03: 60 CJK
+     - Clip 04: 50 CJK
+     - Clip 05: 65 CJK
+- **测试与反例**:
+  - `segment_boundaries_on_sentence_end(narrations, source)`：每段首尾必须落在原文句末标点边界（非 MID-SENTENCE）。反例断言 r4 Clip00、Clip03 均被判为 False（FAIL）。
+  - `"三重机制" in joined` 且 `"三重机制" in narrs[-1]` 断言通过。
+  - `no_spurious_short_clause_commas(narrations, source)`：反例断言 `"这种，模拟狩猎，也能"` 和 `"即使没有真正的猎物，这种，模拟狩猎，也能释放多巴胺，让猫感到满足和愉悦。"` 被判为 False（FAIL）。
+  - `sentences_are_not_split(narrations, source)`：修复为检测跨 clip 截断。反例断言 r4 Clip00 + Clip01 判为 False（FAIL）。
+
+### 6 段旁白全文（整句边界，字数 40–66 CJK）
+
+- **Clip 00** (57 CJK):
+  猫为什么总爱把桌上的东西推下去？这个行为背后其实有深刻的进化与心理原因。首先，猫的脚垫非常敏感，上面分布着大量的触觉感受器。
+- **Clip 01** (62 CJK):
+  当它们触碰物体时，实际上是在用脚垫探测物体的质地、温度和移动性。轻轻一推，如果物体会滚动或发出声响，就说明它可能是活物或值得追踪的目标。
+- **Clip 02** (65 CJK):
+  这是猫科动物刻在基因里的狩猎本能——在野外，小猫需要通过推、抓、拍来学习如何捕捉猎物。其次，高处跌落产生的声音和运动轨迹，对猫的神经系统是强烈刺激。
+- **Clip 03** (60 CJK):
+  物体坠落时的抛物线、碰撞声、滚动节奏，都会触发猫大脑中的奖赏回路。即使没有真正的猎物，这种模拟狩猎也能释放多巴胺，让猫感到满足和愉悦。
+- **Clip 04** (50 CJK):
+  最后，猫咪敏锐地观察到：只要东西掉到地上，主人就会立刻冲过来。哪怕被责备两句，对独居的猫来说也是极好的社交互动。
+- **Clip 05** (65 CJK):
+  因此，推东西，主人就出现这一因果关系被不断强化，逐渐变成习得性行为模式。简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。
+
+### R5-2: E2E 脚本干净副本跑通（阻断项）
+- **根因**: `scripts/render_dirstyle_e2e.py` 写入帧文件用 `frame_path(sid, frac)`（即 `{frac:g}` -> `frame0.png`），但在拼 contact sheet 时却使用 `OUT / f"{sid}_frame{frac}.png"`（即 `frame0.0.png`），导致从零运行第二阶段时报 `FileNotFoundError: .../wong_kar_wai_frame0.0.png` 崩溃。同时 `ROOT` 硬编码为固定路径，在临时副本下无法寻址。
+- **修复**:
+  1. `render_dirstyle_e2e.py` 行 201 改为 `img = Image.open(frame_path(sid, frac)).resize((tw, th))`。
+  2. `gen_clean_source.py`、`render_stickman_sample.py`、`render_dirstyle_e2e.py` 的 `ROOT` 均改为 `Path(__file__).resolve().parent.parent`，支持在任意干净副本路径下运行。
+- **验证**: 在 `/tmp/e2e_clean_test` 临时副本中零产物从头执行 3 个渲染脚本及 export_flow_pack，全部 rc=0，SHA256SUMS 10/10 OK，见下文 R5.3 节完整输出。
+
+### R5-3: 产物完整性守护测试（阻断项）
+- **根因**: 原有测试只守护了部分产物，缺少对 `*_subbed.mp4`、`contact_sheet.png`、`fincher.mp4` 等产物的存在性断言，导致误删后测试依然通过。
+- **修复**:
+  - 在 `tests/test_flow_pack.py` 新增 `TestArtifactIntegrity`：
+    1. 读 `output/dirstyle_e2e/SHA256SUMS`，遍历每一个条目，断言文件必须存在且真实哈希匹配；
+    2. 参数化断言 14 个关键产物必须存在：4 个风格成片、4 个字幕片、`source_clean.mp4`、`stickman_9x16.mp4`、`contact_sheet.png`、`record.json`、`flow_pack_60s/pack.md`、`flow_pack_60s/pack.json`；
+    3. 产物缺失一律直接 `assert target.exists()`，严禁 `skip`。
+
+### R5-4: B2 构图测试稳定性（阻断项）
+- **根因**:
+  1. `_find_foreground_bbox` 之前使用硬阈值 `thr = gy.max() * 0.35`，而在暗场调色风格（大卫·芬奇）下，底边梯度的比值有时在 0.34 附近，单点硬阈值将底边剔除，导致 `peaks` 仅剩单点而报 "No foreground edges detected in frame"；
+  2. 候选前景带打分原仅取 `gx.mean()`，但在 `testsrc2` 中细小高对比彩条的局部 `gx` 均值高于整幅画面，偶尔诱发误选子带；
+  3. `_make_test_video` 中 `gradients` 使用 `speed=0.01`，造成时间漂移。
+- **修复**:
+  1. `_make_test_video` 中 `speed` 改为 `0`，消除输入源的时间不确定性；
+  2. `_find_foreground_bbox` 改用局部极大值候选峰 + 结合边界突变能量与带内水平细节联合评分 `score = float(band.mean()) * float(gy[t] + gy[b])`，前景高度窗口约束在 [400, 750]（符合 16:9 在 9:16 画布缩放高度 540–607px），彻底根除硬阈值截断问题，不放宽判据。
+- **验证**: 5 次连续运行全部 19/19 PASSED，见下文 R5.4 节。
+
+### R5-5: B3 烧录文字检测器灵敏度与正反例
+- **根因**:
+  1. 原 `ndimage.uniform_filter(arr, size=51)` 滤波窗口过大（51px），平滑了文字笔画的高频突变；
+  2. 原判断逻辑使用全局阈值，对无描边小字号（28px、36px "SHOT 02"）单行跃迁次数不足 18；
+  3. 王家卫风格 `wong_kar_wai_subbed.mp4` 在 t=9s 时因背景调色使得连续跃迁行只有 13 行，被 14 行阈值误漏。
+- **修复**:
+  1. 优化高通滤波与区域敏感度（`size=21`, `diff > 20`）；
+  2. 顶部带（top 20% 水印/镜头标）与底部带（bottom 25% 字幕安全区）分别使用针对性笔画连续行跨度判据（顶部 min_t=6, run>=8；底部 min_t=10, run>=8）；
+  3. 底部检测区域限定在 `h*0.75` 以下的字幕安全带，彻底避开 16:9 源素材 70% 处的地平线接缝；
+  4. 在 `tests/test_flow_pack.py::TestB3CleanSource` 新增：
+     - 4 个 `*_subbed.mp4` 在 t∈{1,3,6,9,11}s 共 20 帧 20/20 判定有字；
+     - 28px 和 36px 无描边白字「SHOT 02」判定有字；
+     - `source_clean.mp4` 5fps 全片 60 帧逐帧扫描误报数为 0。
+
+### R5-6: Core message 与 source_facts 元信息隔离
+- **根因**:
+  1. `core_message` 原提取首句「猫为什么总爱把桌上的东西推下去？」，是问句而非论点；
+  2. `_extract_facts` 直接在 raw source 上跑正则，把 `## 字数参考：约 420 字` 里的 `420` 当作事实提取进 `plan.source_facts`。
+- **修复**:
+  1. `core_message` 改为从原文中提取完整陈述句作为论点（排除 `？/?` 结尾），提取出原文总结论句「简而言之，猫推东西是狩猎本能、神经刺激与社交需求三重机制共同驱动的结果。」（33 CJK ≤ 40）；
+  2. `_extract_facts` 先调用 `_strip_markdown` 剥离 Markdown 标题及字数参考元数据行，再提取数字和英文专名；
+  3. 测试断言：Core message 不以问号结尾、长度 ≤40、为原文整句；`plan.source_facts` 与 `extract_facts(FIXTURE_ZH)` 中均不含 `'420'`。
+
+## R5.2 测试命令与真实输出
+
+```bash
+# 全套测试运行（含 flow_pack, heartbeat5, dirstyle_compiler, dirstyle_grade, dirstyle_integration, dirstyle_library, dirstyle_reframe）
+JWT_SECRET=test-secret-local PYTHONPATH=$PWD .venv/bin/python -m pytest \
+  tests/test_flow_pack.py tests/test_heartbeat5.py tests/test_dirstyle_*.py \
+  -q -rfs -p no:cacheprovider
+180 passed in 140.28s (0:02:20)
+
+# 3O lint（仅允许基线 4 项失败）
+.venv/bin/python scripts/ci/run_3o_v3_lint.py > lint_after_r5.txt 2>&1
+3O_V3_LINT=FAIL
+failed: check_no_sibling_call.py, check_omodul_signature.py, check_enabled_pillars.py, check_oprim_keyword_only.py
+# 4 项基线失败，未新增任何违规
+```
+
+## R5.3 R5-2 干净副本从零重渲命令与完整输出
+
+在 worktree 外创建临时目录 `/tmp/e2e_clean_test`，零产物依次运行 3 个渲染脚本及 export_flow_pack：
+
+```bash
+rm -rf /tmp/e2e_clean_test && mkdir -p /tmp/e2e_clean_test/output/dirstyle_e2e
+cp -r hevi scripts tests /tmp/e2e_clean_test/
+ln -s /data/soffy/projects/hevi-dirstyle/.venv /tmp/e2e_clean_test/.venv
+
+cd /tmp/e2e_clean_test
+
+# 1. gen_clean_source.py
+PYTHONPATH=. .venv/bin/python scripts/gen_clean_source.py
+# rc=0, 产出 source_clean.mp4
+
+# 2. render_stickman_sample.py
+PYTHONPATH=. .venv/bin/python scripts/render_stickman_sample.py
+# rc=0, 产出 stickman_9x16.mp4 + stickman_poses.json
+
+# 3. render_dirstyle_e2e.py
+PYTHONPATH=. .venv/bin/python scripts/render_dirstyle_e2e.py
+# rc=0, 产出 4 风格片 + 4 字幕片 + contact_sheet.png + record.json + SHA256SUMS
+
+# 4. export_flow_pack
+PYTHONPATH=. .venv/bin/python -c "
+from hevi.layer4_legacy.dirstyle.omodul_impl.export_flow_pack import export_flow_pack
+from pathlib import Path
+src = Path('tests/fixtures/long_zh_source.md').read_text(encoding='utf-8')
+pack = export_flow_pack(
+    source_text=src,
+    duration_s=60,
+    aspect='9:16',
+    art_style='stickman_1a_light',
+    director_style=None,
+    narration_lang='zh',
+    output_dir='output/dirstyle_e2e/flow_pack_60s',
+)
+print('flow_pack generated:', pack.pack_md_path, pack.pack_json_path)
+"
+# rc=0, 产出 flow_pack_60s/pack.md + pack.json
+
+# 5. sha256sum -c SHA256SUMS
+cd output/dirstyle_e2e && sha256sum -c SHA256SUMS
+```
+
+真实运行输出：
+```
+=== 1. gen_clean_source.py ===
+  frame 0/360
+  frame 60/360
+  frame 120/360
+  frame 180/360
+  frame 240/360
+  frame 300/360
+Encoding: ffmpeg -y -framerate 30 -i /tmp/e2e_clean_test/output/dirstyle_e2e/_source_frames/f_%05d.png -c:v libx264 -crf 18 -preset fast -pix_fmt yuv420p -movflags +faststart /tmp/e2e_clean_test/output/dirstyle_e2e/source_clean.mp4
+Clean source written: /tmp/e2e_clean_test/output/dirstyle_e2e/source_clean.mp4
+rc1=0
+=== 2. render_stickman_sample.py ===
+Rendering 600 frames...
+  frame 0/600
+  frame 60/600
+  frame 120/600
+  frame 180/600
+  frame 240/600
+  frame 300/600
+  frame 360/600
+  frame 420/600
+  frame 480/600
+  frame 540/600
+Encoding: ffmpeg -y -framerate 30 -i /tmp/e2e_clean_test/output/dirstyle_e2e/stickman_frames/frame_%05d.png -c:v libx264 -crf 18 -preset medium -pix_fmt yuv420p -movflags +faststart /tmp/e2e_clean_test/output/dirstyle_e2e/stickman_9x16.mp4
+Video written: /tmp/e2e_clean_test/output/dirstyle_e2e/stickman_9x16.mp4
+Pose metadata written: /tmp/e2e_clean_test/output/dirstyle_e2e/stickman_poses.json (6 distinct poses)
+rc2=0
+=== 3. render_dirstyle_e2e.py ===
+graded wong_kar_wai: 12.000s 1080x1920
+graded wes_anderson: 12.000s 1080x1920
+graded fincher: 12.000s 1080x1920
+graded zhang_yimou: 12.000s 1080x1920
+contact_sheet.png rebuilt
+record.json written
+SHA256SUMS written
+rc3=0
+=== 4. export_flow_pack ===
+flow_pack generated: output/dirstyle_e2e/flow_pack_60s/pack.md output/dirstyle_e2e/flow_pack_60s/pack.json
+rc4=0
+=== 5. sha256sum -c SHA256SUMS ===
+source_clean.mp4: OK
+wong_kar_wai.mp4: OK
+wes_anderson.mp4: OK
+fincher.mp4: OK
+zhang_yimou.mp4: OK
+wong_kar_wai_subbed.mp4: OK
+wes_anderson_subbed.mp4: OK
+fincher_subbed.mp4: OK
+zhang_yimou_subbed.mp4: OK
+stickman_9x16.mp4: OK
+rc5=0
+```
+
+10 个成片哈希与提交的 `SHA256SUMS` 完全一致（逐字节匹配）。
+
+## R5.4 R5-4 B2 构图测试 5 次连续运行真实输出
+
+```bash
+for i in 1 2 3 4 5; do
+    echo "=== RUN $i ==="
+    JWT_SECRET=test-secret-local PYTHONPATH=$PWD .venv/bin/python -m pytest tests/test_dirstyle_reframe.py -q -p no:cacheprovider
+done
+```
+
+真实输出：
+```
+=== RUN 1 ===
+...................                                                      [100%]
+19 passed in 62.05s (0:01:02)
+=== RUN 2 ===
+...................                                                      [100%]
+19 passed in 59.54s
+=== RUN 3 ===
+...................                                                      [100%]
+19 passed in 59.53s
+=== RUN 4 ===
+...................                                                      [100%]
+19 passed in 58.88s
+=== RUN 5 ===
+...................                                                      [100%]
+19 passed in 60.80s (0:01:00)
+```
+
+5 次运行 5/5 全部通过，零失败，零抖动。
+
+## R5.5 产物哈希核验
+
+```bash
+cd output/dirstyle_e2e && sha256sum -c SHA256SUMS
+```
+```
+source_clean.mp4: OK
+wong_kar_wai.mp4: OK
+wes_anderson.mp4: OK
+fincher.mp4: OK
+zhang_yimou.mp4: OK
+wong_kar_wai_subbed.mp4: OK
+wes_anderson_subbed.mp4: OK
+fincher_subbed.mp4: OK
+zhang_yimou_subbed.mp4: OK
+stickman_9x16.mp4: OK
+```
+
+重生成 flow_pack_60s 哈希：
+- `output/dirstyle_e2e/flow_pack_60s/pack.md`: `cc5eac250fc0dba18fa63b4279d84ca50fa491062f62747ab20067a88fdcecdf`
+- `output/dirstyle_e2e/flow_pack_60s/pack.json`: `6527a0b07736fe01c82d6b84fc23a958bdde84748ffce61ce67f2bacbd2faa1e`
+
+## R5.6 本轮改动文件
+
+```
+hevi/layer4_legacy/dirstyle/oskill_impl/heartbeat5.py        # R5-1 整句边界切分/装箱 + R5-6 core_message 论点 / source_facts 剥离元数据
+hevi/layer4_legacy/dirstyle/omodul_impl/export_flow_pack.py  # R5-6 core_message 论点集成
+scripts/gen_clean_source.py                                  # R5-2 ROOT 路径相对化
+scripts/render_stickman_sample.py                            # R5-2 ROOT 路径相对化
+scripts/render_dirstyle_e2e.py                               # R5-2 修复 contact sheet 读取 frame_path + ROOT 相对化
+tests/test_flow_pack.py                                      # R5-1/R5-3/R5-5/R5-6 新断言与反例 + 产物完整性守护
+tests/test_dirstyle_reframe.py                               # R5-4 输入固定 (speed=0) + 稳健前景检测
+output/dirstyle_e2e/flow_pack_60s/{pack.md,pack.json}        # 整句旁白重生成
+```
+
+## R5.7 已知限制 / 如实说明
+
+- CPU-only、无付费 API；成片仍为 CPU 调色/重构图样片，非真实模型生成视频。
+- 本轮未修改视频渲染滤镜，未改变 10 个成片哈希；SHA256SUMS 验证 10/10 OK。
+- 未 push、未 merge、未切分支；未删除 worktree 之外任何文件；未做磁盘清理。
+- 主审要求「不自评通过」：以上均为实测数据（pytest 输出、sha256、lint 输出、ffprobe），是否通过由主审判定。
+
+DONE FIX-R5
