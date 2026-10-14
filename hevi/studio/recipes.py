@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from hevi.pipeline.manifest import PipelineManifest
 
 LINES_DIR = Path(__file__).resolve().parent / "lines"
+SUPPORTED_RENDER_RUNTIMES = ("remotion", "hyperframes", "ffmpeg", "handdraw")
 
 
 class SlotSpec(BaseModel):
@@ -28,8 +29,15 @@ class Recipe(BaseModel):
     handoff: str = "none"  # tongjian | shortdrama | explainer | none
     slots: list[SlotSpec] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
-    render_runtime: str = "remotion"  # remotion | hyperframes | ffmpeg — proposal 期锁定
+    render_runtime: str = "remotion"
     pipeline: PipelineManifest
+
+    @field_validator("render_runtime")
+    @classmethod
+    def _known_render_runtime(cls, value: str) -> str:
+        if value not in SUPPORTED_RENDER_RUNTIMES:
+            raise ValueError(f"render_runtime must be one of {SUPPORTED_RENDER_RUNTIMES}")
+        return value
 
     @field_validator("handoff")
     @classmethod

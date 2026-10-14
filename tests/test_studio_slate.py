@@ -8,7 +8,12 @@ import pytest
 
 from hevi.memory.store import MemoryStore
 from hevi.studio.assets import reset_assets
-from hevi.studio.recipes import get_recipe, list_recipes, parse_recipe
+from hevi.studio.recipes import (
+    SUPPORTED_RENDER_RUNTIMES,
+    get_recipe,
+    list_recipes,
+    parse_recipe,
+)
 from hevi.studio.slate import Slate, execute_lot_task, run_slate
 
 
@@ -40,7 +45,7 @@ def test_twelve_production_lines_loaded() -> None:
     assert drama.handoff == "shortdrama"
     for rec in list_recipes(refresh=True):
         assert rec.tools, rec.id
-        assert rec.render_runtime in {"remotion", "hyperframes", "ffmpeg"}
+        assert rec.render_runtime in SUPPORTED_RENDER_RUNTIMES
         assert rec.pipeline.stages
         assert rec.pipeline.stages[-1].name in {"dispatch", "publish"}
 

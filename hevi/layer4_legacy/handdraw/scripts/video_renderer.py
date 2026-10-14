@@ -1,10 +1,11 @@
 """Render measured story timelines with path-based text, artwork and marker motion."""
-from pathlib import Path
 import bisect
 import json
 import math
 import subprocess
 import wave
+from pathlib import Path
+
 import numpy as np
 from PIL import Image, ImageColor
 from watermark_assets import watermark_position
@@ -21,7 +22,8 @@ def point_on_asset(metadata,progress):
         if progress < segment['start']:
             if previous:
                 fraction = ease((progress-previous['end'])/max(1e-7,segment['start']-previous['end']))
-                origin=np.array(previous['points'][-1]); destination=np.array(segment['points'][0])
+                origin = np.array(previous['points'][-1])
+                destination = np.array(segment['points'][0])
                 return origin+fraction*(destination-origin)+[0,-10*math.sin(math.pi*fraction)]
             return np.array(segment['points'][0])
         if segment['start']<=progress<=segment['end']:
@@ -47,7 +49,7 @@ class Renderer:
         self.width=self.timeline['canvas']['width']
         self.height=self.timeline['canvas']['height']
         self.fps=self.timeline['canvas']['fps']
-        self.paper=ImageColor.getrgb(self.timeline['paper'])+(255,)
+        self.paper = (*ImageColor.getrgb(self.timeline['paper']), 255)
         self.starts=[page['start'] for page in self.timeline['pages']]
         self.artwork={name:Image.open(self.work/'assets'/f'{name}.png').convert('RGBA') for name in self.timeline['assets']}
         self.pixels={name:np.array(image) for name,image in self.artwork.items()}
@@ -154,7 +156,7 @@ def mix_audio(root,timeline):
     policy = timeline.get('audio_policy', {'background_music': False, 'layers': []})
     normalized_path=root/'normalized-narration.wav'
     # Duplicating mono into two full-level channels adds 3 LU to stereo loudness.
-    subprocess.run(['ffmpeg','-y','-v','error','-i',str(root/'narration.wav'),'-af','loudnorm=I=-20:TP=-2:LRA=7',
+    subprocess.run(['ffmpeg','-y','-v','error','-i',str(root/'narration.wav'),'-af','loudnorm=I=-19:TP=-2:LRA=7',
                     '-ar',str(rate),'-ac','1','-c:a','pcm_s16le',str(normalized_path)],check=True)
     layers = policy.get('layers', [])
     if not layers:
@@ -218,14 +220,14 @@ def export_storyboard(renderer):
 
 
 def render_job(job_directory,start=0.,duration=None,preview=False):
-    from video_verifier import build_fingerprint, file_hash, verify_assets
     from art_direction import verify_art_direction
+    from video_verifier import build_fingerprint, file_hash, verify_assets
     renderer=Renderer(job_directory)
     verify_art_direction(renderer.root,json.loads((renderer.root/'job.json').read_text()))
     verify_assets(renderer.root,renderer.timeline)
     from narration_master import verify_compiled_master
     verify_compiled_master(renderer.root, renderer.timeline)
-    from timeline_contract import validate_timeline,validate_cover
+    from timeline_contract import validate_cover, validate_timeline
     validate_timeline(renderer.timeline)
     validate_cover(renderer)
     export_storyboard(renderer)

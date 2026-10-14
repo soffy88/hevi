@@ -127,75 +127,63 @@ STANDARD_TOPIC_STORYBOARDS: dict[str, dict[str, Any]] = {
 
 
 def _match_topic_spec(topic: str) -> dict[str, Any]:
-    """Matches an input topic to a pre-designed storyboard or derives one."""
-    blob = topic.lower()
-    if any(k in blob for k in ("生气", "愤怒", "做错", "决定", "情绪", "anger")):
-        return STANDARD_TOPIC_STORYBOARDS["anger_decision"]
-    if any(k in blob for k in ("复利", "雪球", "指数", "利滚利", "compound")):
-        return STANDARD_TOPIC_STORYBOARDS["compound_interest"]
+    """Route every Studio handdraw topic to a preschool-safe storyboard template."""
+    from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
 
-    # Fallback generic structured storyboard
+    spec = select_kids_storyboard(topic)
     return {
-        "title": topic[:20],
-        "style_id": "8",
+        "title": spec["title"],
+        "style_id": "17",
         "hand_preset": "navy",
-        "pages": [
-            {
-                "title": f"一、关于{topic[:10]}的常见误区",
-                "scene_key": "anger_brain",
-                "note": "现象与认知偏差",
-                "beats": [
-                    {"text": f"在探讨{topic}时，很多人容易陷入单一维度的直觉判断。"},
-                    {"text": "表面看似微小的细节偏差，会在复杂系统中引发难以预料的连锁反应。"},
-                ],
-            },
-            {
-                "title": f"二、{topic[:10]}的底层运行机制",
-                "scene_key": "balance_scale",
-                "note": "核心动力学剖析",
-                "beats": [
-                    {"text": "从结构因果关系来看，输入端的条件积累决定了输出端的稳态质量。"},
-                    {"text": "只有厘清关键变量之间的制衡逻辑，才能准确把握发展的趋势拐点。"},
-                ],
-            },
-            {
-                "title": f"三、面对{topic[:10]}的最佳行动策略",
-                "scene_key": "calm_decision",
-                "note": "长期主义理性应对",
-                "beats": [
-                    {"text": "在实践中建立负反馈调节回路，保持清晰的认知边界与执行定力。"},
-                    {"text": "专注高价值支点并持续迭代，最终收获稳健而深远的正向成果。"},
-                ],
-            },
-        ],
+        "theme": spec["theme"],
+        "stages": spec["stages"],
+        "pages": spec["pages"],
     }
-
 
 async def render_handdraw_line(
     order: dict[str, Any],
     output_dir: Path,
 ) -> dict[str, Any]:
     """Fulfills line=handdraw requests from Hevi Studio."""
-    topic = str(order.get("topic") or order.get("title") or "为什么越生气越容易做错决定").strip()
+    topic = str(order.get("topic") or order.get("title") or "小狐狸学会轮流").strip()
     canvas_w = int(order.get("width") or order.get("canvas_width") or 1920)
     canvas_h = int(order.get("height") or order.get("canvas_height") or 1080)
-    style_id = str(order.get("style_id") or order.get("style") or "").strip()
-    hand_preset = str(order.get("hand_preset") or order.get("hand") or "").strip()
-
+    style_id = str(order.get("style_id") or order.get("style") or "17").strip()
+    hand_preset = str(order.get("hand_preset") or order.get("hand") or "navy").strip()
     spec = _match_topic_spec(topic)
-    final_style_id = style_id if style_id in {"1", "8", "10", "17"} else spec["style_id"]
-    final_hand = hand_preset if hand_preset in {"navy", "pen-only"} else spec["hand_preset"]
+    if style_id not in {"1", "8", "10", "17"}:
+        raise ValueError(f"unsupported style_id: {style_id}")
+    if hand_preset not in {"navy", "pen-only"}:
+        raise ValueError(f"unsupported hand_preset: {hand_preset}")
+    final_style_id = style_id
+    final_hand = hand_preset
 
     job_id = str(order.get("job_id") or order.get("slate_id") or "handdraw_job")
 
+    from hevi.layer4_legacy.handdraw.kids_storyboards import validate_kids_script
+    from hevi.layer4_legacy.handdraw.layout import compute_canvas_layout
+
+    if (canvas_w, canvas_h) not in {(1920, 1080), (1080, 1920)}:
+        raise ValueError("handdraw canvas must be 1920x1080 or 1080x1920")
+    layout = compute_canvas_layout(canvas_w, canvas_h)
+    safety = validate_kids_script(
+        topic,
+        spec["pages"],
+        aspect="16:9" if canvas_w >= canvas_h else "9:16",
+        caption_font_size=layout.caption_font_size,
+    )
+    if not safety["passed"]:
+        raise ValueError(f"KIDS_ANIME_DIRECTION gate failed before rendering: {safety['checks']}")
+
     result = render_handdraw_pipeline(
         job_id=job_id,
-        title=topic,
+        title=spec["title"],
         pages_spec=spec["pages"],
         output_dir=output_dir,
         canvas_size=(canvas_w, canvas_h),
         style_id=final_style_id,
         hand_preset=final_hand,
+        seed=int(order.get("seed") or 0),
     )
 
     return {
@@ -213,4 +201,6 @@ async def render_handdraw_line(
         "canvas": f"{canvas_w}x{canvas_h}",
         "style_id": final_style_id,
         "hand_preset": final_hand,
+        "kids_safety_path": result.get("kids_safety_path"),
+        "human_review": "pending",
     }

@@ -57,34 +57,33 @@ def compute_canvas_layout(width: int, height: int) -> CanvasLayout:
             note_x=round(width * 0.06),
             note_y=round(height * 0.32),
             note_size=round(height * 0.040),  # ~43px at 1080
-            caption_font_size=round(height * 0.035),  # ~38px at 1080
+            caption_font_size=max(56, round(height * 0.052)),  # Preschool captions >=56px
             caption_bottom_margin=round(height * 0.045),  # ~48px
             caption_max_width_ratio=0.76,
         )
-    else:
-        # Portrait: e.g. 1080x1920
-        return CanvasLayout(
-            width=width,
-            height=height,
-            orientation="portrait",
-            title_x=round(width * 0.08),  # ~86px
-            title_y=round(height * 0.06),  # ~115px
-            title_size=round(width * 0.050),  # ~54px
-            marker_w=round(width * 0.55),
-            marker_h=24,
-            illu_x=round((width - width * 0.78) / 2),  # centered ~118px
-            illu_y=round(height * 0.22),  # ~420px
-            illu_w=round(width * 0.78),  # ~840px
-            illu_h=round(width * 0.78),  # ~840px (square)
-            illu_max_w=round(width * 0.78),
-            illu_max_h=round(width * 0.78),
-            note_x=round(width * 0.08),
-            note_y=round(height * 0.72),  # ~1380px
-            note_size=round(width * 0.042),  # ~45px
-            caption_font_size=round(width * 0.038),  # ~41px
-            caption_bottom_margin=round(height * 0.055),  # ~105px
-            caption_max_width_ratio=0.86,
-        )
+    # Portrait: e.g. 1080x1920
+    return CanvasLayout(
+        width=width,
+        height=height,
+        orientation="portrait",
+        title_x=round(width * 0.08),  # ~86px
+        title_y=round(height * 0.06),  # ~115px
+        title_size=round(width * 0.050),  # ~54px
+        marker_w=round(width * 0.55),
+        marker_h=24,
+        illu_x=round((width - width * 0.78) / 2),  # centered ~118px
+        illu_y=round(height * 0.22),  # ~420px
+        illu_w=round(width * 0.78),  # ~840px
+        illu_h=round(width * 0.78),  # ~840px (square)
+        illu_max_w=round(width * 0.78),
+        illu_max_h=round(width * 0.78),
+        note_x=round(width * 0.08),
+        note_y=round(height * 0.72),  # ~1380px
+        note_size=round(width * 0.042),  # ~45px
+        caption_font_size=max(60, round(width * 0.056)),  # Portrait captions >=56px
+        caption_bottom_margin=round(height * 0.055),  # ~105px
+        caption_max_width_ratio=0.86,
+    )
 
 
 def build_page_actions(

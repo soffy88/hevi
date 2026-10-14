@@ -1,10 +1,11 @@
 """Keep one complete narration waveform authoritative for every visual timing."""
-from pathlib import Path
 import hashlib
 import json
 import math
 import subprocess
 import wave
+from pathlib import Path
+
 import numpy as np
 
 SAMPLE_RATE = 48000
@@ -16,6 +17,44 @@ def sha256(path):
 
 def script_text(manifest):
     return ''.join(beat['text'] for page in manifest['pages'] for beat in page['beats'])
+
+
+def validate_alignment_ranges(expected, entries, sample_count):
+    """Validate alignment on integer PCM sample boundaries, then derive seconds."""
+    if sample_count <= 0:
+        raise ValueError("Narration master has no samples")
+    if len(entries) != len(expected):
+        raise ValueError("Narration alignment must cover every beat exactly once")
+    previous_end_sample = 0
+    beats = {}
+    for expected_beat, entry in zip(expected, entries, strict=True):
+        identifier = expected_beat.get("id")
+        if (
+            not identifier
+            or entry.get("id") != identifier
+            or entry.get("text") != expected_beat["text"]
+            or identifier in beats
+        ):
+            raise ValueError("Narration alignment IDs, order and text must match the script")
+        start, end = float(entry["start"]), float(entry["end"])
+        duration = sample_count / SAMPLE_RATE
+        if not math.isfinite(start) or not math.isfinite(end) or start < 0 or start >= end or end > duration:
+            raise ValueError("Narration ranges must be finite, ordered and strictly inside the master")
+        start_sample = round(start * SAMPLE_RATE)
+        end_sample = round(end * SAMPLE_RATE)
+        if not (
+            0 <= previous_end_sample <= start_sample < end_sample <= sample_count
+        ):
+            raise ValueError("Narration ranges must be ordered integer sample boundaries inside the master")
+        beats[identifier] = {
+            **entry,
+            "start": start_sample / SAMPLE_RATE,
+            "end": end_sample / SAMPLE_RATE,
+            "start_samples": start_sample,
+            "end_samples": end_sample,
+        }
+        previous_end_sample = end_sample
+    return beats
 
 
 def generation_target(root, manifest):
@@ -61,19 +100,7 @@ def load_master(root, manifest, destination):
     duration = len(samples) / SAMPLE_RATE
     expected = [beat for page in manifest['pages'] for beat in page['beats']]
     entries = alignment.get('beats', [])
-    if len(entries) != len(expected):
-        raise ValueError('Narration alignment must cover every beat exactly once')
-    previous_end = 0.
-    beats = {}
-    for expected_beat, entry in zip(expected, entries):
-        identifier = expected_beat.get('id')
-        if not identifier or entry.get('id') != identifier or entry.get('text') != expected_beat['text'] or identifier in beats:
-            raise ValueError('Narration alignment IDs, order and text must match the script')
-        start, end = float(entry['start']), float(entry['end'])
-        if not math.isfinite(start + end) or not 0 <= previous_end <= start < end <= duration + 1 / SAMPLE_RATE:
-            raise ValueError('Narration ranges must be finite, ordered, nonoverlapping and inside the master')
-        beats[identifier] = {**entry, 'start': start, 'end': end}
-        previous_end = end
+    beats = validate_alignment_ranges(expected, entries, len(samples))
     report = {'mode': 'continuous_master', 'source': str(source), 'source_sha256': sha256(source),
               'alignment': str(alignment_path), 'alignment_sha256': sha256(alignment_path),
               'duration': duration, 'sample_rate': SAMPLE_RATE, 'samples': len(samples),

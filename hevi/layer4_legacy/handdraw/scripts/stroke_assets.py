@@ -1,12 +1,13 @@
-from pathlib import Path
 import json
 import math
+from itertools import pairwise
+from pathlib import Path
+
 import numpy as np
+import stroke_paths as stroke_utils
+from paint_motion import build_painting
 from PIL import Image, ImageDraw, ImageFont
 from scipy import ndimage
-from paint_motion import build_painting
-
-import stroke_paths as stroke_utils
 
 ASSET_DIRECTORY = None
 FONT_PATH = None
@@ -33,7 +34,7 @@ def ordered_paths(mask):
         coordinates = np.rint(path).astype(int)
         covered[coordinates[:, 1], coordinates[:, 0]] = True
     # Follow only adjacent leftover pixels. A branch starts a new physical stroke.
-    pending = set(zip(*np.where(skeleton & ~covered)))
+    pending = set(map(tuple, np.argwhere(skeleton & ~covered)))
     while pending:
         point = min(pending)
         chain = []
@@ -84,10 +85,10 @@ def time_paths(paths, shape, start=0., duration=1.):
     travel_weights = [max(3., np.linalg.norm(paths[i + 1][0] - paths[i][-1]) * .22) for i in range(len(paths) - 1)]
     total = sum(weights) + sum(travel_weights)
     cursor = start
-    for index, (path, weight) in enumerate(zip(paths, weights)):
+    for index, (path, weight) in enumerate(zip(paths, weights, strict=True)):
         path_length = lengths(path)
         interval = duration * weight / max(1, total)
-        for point, distance in zip(path, path_length):
+        for point, distance in zip(path, path_length, strict=True):
             x, y = np.rint(point).astype(int)
             if 0 <= y < shape[0] and 0 <= x < shape[1]:
                 reveal[y, x] = min(reveal[y, x], cursor + interval * distance / max(.001, path_length[-1]))
@@ -149,7 +150,7 @@ def build_text(name, text, size, color='#302C26'):
     segments, character_intervals = [], []
     weights = [max(4., sum(lengths(path)[-1] for path in paths)) for _, _, _, _, paths in glyphs]
     cursor = 0.
-    for index, ((character, left, top, glyph, paths), weight) in enumerate(zip(glyphs, weights)):
+    for index, ((character, left, top, glyph, paths), weight) in enumerate(zip(glyphs, weights, strict=True)):
         interval = weight / sum(weights)
         if paths:
             local, strokes = time_paths(paths, glyph.shape, cursor, interval * .94)
@@ -159,7 +160,10 @@ def build_text(name, text, size, color='#302C26'):
             patch[mask] = local[mask]
             owners[top:top+glyph_height, left:left+glyph_width][mask] = index
             for stroke in strokes:
-                stroke['points'] = (np.array(stroke['points']) + [left, top]).tolist()
+                translated = np.asarray(stroke['points'], dtype=float).copy()
+                translated[:, 0] += left
+                translated[:, 1] += top
+                stroke['points'] = translated.tolist()
                 stroke['character_index'] = index
             segments.extend(strokes)
         character_intervals.append({'index':index,'character':character,'start':cursor,'end':cursor+interval})
@@ -188,7 +192,7 @@ def build_brush(name, width, height, color, style='highlight', line_width=None):
     elif style == 'box':
         radius = (line_width or 4) / 2
         corners = np.array([[5,5],[width-6,4],[width-5,height-6],[4,height-5],[5,5]],dtype=float)
-        points = np.vstack([np.linspace(a,b,max(2,round(np.linalg.norm(b-a)/2))) for a,b in zip(corners[:-1],corners[1:])])
+        points = np.vstack([np.linspace(a,b,max(2,round(np.linalg.norm(b-a)/2))) for a, b in pairwise(corners)])
     else:
         raise ValueError(style)
     rgba = np.zeros((height,width,4),dtype=np.uint8)
@@ -196,7 +200,7 @@ def build_brush(name, width, height, color, style='highlight', line_width=None):
     reveal = np.full((height,width),np.inf,dtype=np.float32)
     distances = lengths(points)
     yy,xx = np.ogrid[:height,:width]
-    for point,distance in zip(points,distances):
+    for point, distance in zip(points, distances, strict=True):
         footprint = (xx-point[0])**2 + (yy-point[1])**2 <= radius**2
         reveal[footprint] = np.minimum(reveal[footprint],distance/max(.01,distances[-1]))
     rgba[:,:,3] = np.isfinite(reveal).astype(np.uint8)*255
@@ -274,9 +278,21 @@ def build_illustration(name, source_path, max_width, max_height, crop=None, part
             raise ValueError(f'Empty semantic part: {part["id"]}')
         owners[mask] = index
         part_masks.append(mask)
+    missing = (alpha > 0) & (owners < 0)
+    if missing.any():
+        # Recipe-specific bleed and soft watercolour intentionally extend a few
+        # pixels beyond the vector hull. Attach those pixels to the nearest
+        # already-owned semantic region instead of rejecting a valid style render.
+        _distance, nearest = ndimage.distance_transform_edt(
+            owners < 0, return_indices=True
+        )
+        owners[missing] = owners[
+            nearest[0][missing], nearest[1][missing]
+        ]
+        part_masks = [owners == index for index in range(len(parts))]
     if ((alpha>0)&(owners<0)).any():
         raise ValueError('Semantic parts do not cover every visible pixel; inspect and repair masks')
-    for part, mask in zip(parts, part_masks):
+    for part, mask in zip(parts, part_masks, strict=True):
         if not (outline & mask).any():
             raise ValueError('Part has no drawable outline; prepare a contour layer/mask before generation: '+part['id'])
     ink_reveal = np.full(alpha.shape,np.inf,dtype=np.float32)
@@ -287,7 +303,7 @@ def build_illustration(name, source_path, max_width, max_height, crop=None, part
     ink_duration = .59 if fill_mask.any() else 1.
     cursor = 0.
     previous_tip = np.array([xs.mean(),ys.mean()])
-    for index,(mask,paths,weight) in enumerate(zip(part_masks,part_paths,ink_weights)):
+    for index,(mask,paths,weight) in enumerate(zip(part_masks, part_paths, ink_weights, strict=True)):
         interval = ink_duration*weight/max(1.,sum(ink_weights))
         local,strokes = time_paths(paths,alpha.shape,cursor,interval*.96)
         ink_reveal[mask] = local[mask]
@@ -302,7 +318,7 @@ def build_illustration(name, source_path, max_width, max_height, crop=None, part
     fill_start = ( .61 if sum(ink_weights) else 0. ) if fill_mask.any() else 1.
     cursor=fill_start
     painting={'region_count':0,'brush_pass_count':0,'maximum_brush_radius':0}
-    for index,(mask,weight) in enumerate(zip(part_masks,fill_weights)):
+    for index,(mask,weight) in enumerate(zip(part_masks, fill_weights, strict=True)):
         interval=(1.-fill_start)*weight/max(1.,sum(fill_weights))
         local,strokes,statistics=build_painting(mask&fill_mask,previous_tip,cursor,interval*.96,pixels)
         color_reveal[mask]=local[mask]

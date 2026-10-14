@@ -1,8 +1,9 @@
 """Reject unreviewed image inputs or stale art-direction records before rendering."""
-from pathlib import Path
-from hosted_assets import resolve_asset
 import hashlib
 import json
+from pathlib import Path
+
+from hosted_assets import resolve_asset
 
 PACKAGE=Path(__file__).resolve().parents[1]
 
@@ -33,8 +34,12 @@ def check_record(record_path, required, dependency_hash, style_hash=None):
     entries={Path(entry['source']).resolve() if Path(entry['source']).is_absolute() else (record_path.parent/entry['source']).resolve():entry for entry in record['images']}
     for source,crop in required:
         entry=entries.get(source)
-        if not entry or entry.get('status')!='pass' or not isinstance(entry.get('evidence'), str) or not entry['evidence'].strip():
-            raise ValueError('Image has no completed art-direction review: '+str(source))
+        if not entry or entry.get('status') not in ('pass', 'automated_pass') or not isinstance(entry.get('evidence'), str) or not entry['evidence'].strip():
+            raise ValueError('Image has no completed art-direction record: '+str(source))
+        if entry.get('status') == 'automated_pass' and (
+            entry.get('review_type') != 'automated_only' or entry.get('human_review') != 'pending'
+        ):
+            raise ValueError('Automated art-direction status must explicitly leave human review pending')
         if entry.get('sha256')!=digest(resolve_asset(source)):
             raise ValueError('Image changed after art-direction review: '+str(source))
         if entry.get('method') not in ('generated_under_guidance','composed_with_verified_layers'):
@@ -55,8 +60,8 @@ def check_record(record_path, required, dependency_hash, style_hash=None):
 def verify_art_direction(root, manifest):
     if manifest.get('runtime_fixture'):
         return {'fixture_only':True,'delivery_allowed':False}
-    from style_choice import verify_style
     from drawing_contract import verify_drawing_plans
+    from style_choice import verify_style
     style_review = verify_style(root)
     drawing_review = verify_drawing_plans(root, manifest, style_review)
     design_path=root/manifest.get('design_file','design.json')

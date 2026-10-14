@@ -20,6 +20,7 @@ from hevi.api.routers.auth import router as auth_router
 from hevi.api.routers.authorities import router as authorities_router
 from hevi.api.routers.backlot import router as backlot_router
 from hevi.api.routers.canvas import router as canvas_router
+from hevi.api.routers.capabilities import router as capabilities_router
 from hevi.api.routers.creative import router as creative_router
 from hevi.api.routers.credits import router as credits_router
 from hevi.api.routers.dashboard import router as dashboard_router
@@ -167,6 +168,7 @@ app.include_router(authorities_router, prefix="/api")
 app.include_router(credits_router, prefix="/api")
 app.include_router(payment_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
+app.include_router(capabilities_router, prefix="/api")
 app.include_router(pro_studio_router, prefix="/api")
 app.include_router(provider_presets_router, prefix="/api")
 app.include_router(providers_router, prefix="/api")

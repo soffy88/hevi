@@ -48,9 +48,10 @@ def _render_handdraw(
     output_dir: Path,
     seed: int,
     prefer_cosy: bool,
+    duration: float = 0.0,
 ) -> CapabilityResult:
-    """Run the full handdraw pipeline and return the verified artifacts."""
-    from hevi.layer4_legacy.handdraw.line import STANDARD_TOPIC_STORYBOARDS
+    """Render a topic-grounded preschool video or an exact-duration preview."""
+    from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
     from hevi.layer4_legacy.handdraw.pipeline import render_handdraw_pipeline
 
     # ``seed`` is accepted for interface parity (deterministic CPU render) but the
@@ -60,19 +61,22 @@ def _render_handdraw(
     if hand_preset not in SUPPORTED_HANDS:
         raise CapabilityError(f"unsupported hand_preset: {hand_preset}")
 
-    spec = STANDARD_TOPIC_STORYBOARDS["anger_decision"] if any(
-        k in topic.lower() for k in ("生气", "愤怒", "做错", "决定", "情绪", "anger")
-    ) else STANDARD_TOPIC_STORYBOARDS["compound_interest"]
-
+    spec = select_kids_storyboard(topic)
+    if not 0 <= float(duration) <= 3:
+        raise CapabilityError("duration must be 0 for a full delivery or between 0 and 3 seconds for preview")
+    # The unified capability contract interprets a positive duration as a partial
+    # video render of exactly that many seconds; zero requests a full deliverable.
     result = render_handdraw_pipeline(
         job_id=f"cap_handdraw_{seed}",
-        title=topic,
-        pages_spec=spec["pages"],
+        title=spec["title"],
+        pages_spec=spec["pages"][:1] if duration > 0 else spec["pages"],
         output_dir=output_dir,
         canvas_size=canvas_size,
         style_id=style_id,
         hand_preset=hand_preset,
         prefer_cosy=prefer_cosy,
+        seed=seed,
+        preview_duration=float(duration) if duration > 0 else None,
     )
 
     mp4 = Path(result["video_path"])
@@ -94,6 +98,8 @@ def _render_handdraw(
             "seed": seed,
             "srt": str(srt),
             "verification": result["verification_path"],
+            "kids_safety_report": result.get("kids_safety_path"),
+            "preview": bool(duration > 0),
         },
     )
 
@@ -107,6 +113,7 @@ def _render_canvas(
     *,
     seed: int,
     prefer_cosy: bool = True,
+    duration: float = 0.0,
 ) -> CapabilityResult:
     out_dir = Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -118,6 +125,7 @@ def _render_canvas(
         output_dir=out_dir,
         seed=seed,
         prefer_cosy=prefer_cosy,
+        duration=duration,
     )
 
 
@@ -149,8 +157,9 @@ def _register() -> None:
                 canvas_size=(1920, 1080) if aspect == "16:9" else (1080, 1920),
                 out_dir=out_dir,
                 seed=int(seed),
+                duration=float(duration),
             ),
-            description="完整手绘口播成片：描线+填色+逐字书写+整篇旁白+时间戳对齐+渲染（横屏/竖屏）。",
+            description="幼儿向手绘动画；正 duration 为精确时长预览，0 为完整交付。",
         )
     )
     register(
@@ -205,13 +214,11 @@ def _register() -> None:
 
 def _render_storyboard(topic: str, style_id: str, out_dir: Path, *, seed: int) -> CapabilityResult:
     from hevi.layer4_legacy.handdraw.illustrator import build_scene_illustration
-    from hevi.layer4_legacy.handdraw.line import STANDARD_TOPIC_STORYBOARDS
+    from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
 
     if style_id not in SUPPORTED_STYLES:
         raise CapabilityError(f"unsupported style_id: {style_id}")
-    spec = STANDARD_TOPIC_STORYBOARDS["anger_decision"] if any(
-        k in topic.lower() for k in ("生气", "愤怒", "做错", "决定", "情绪", "anger")
-    ) else STANDARD_TOPIC_STORYBOARDS["compound_interest"]
+    spec = select_kids_storyboard(topic)
 
     out_dir = Path(out_dir).resolve()
     illu_dir = out_dir / "illustrations"
@@ -221,7 +228,7 @@ def _render_storyboard(topic: str, style_id: str, out_dir: Path, *, seed: int) -
         scene_key = page["scene_key"]
         path = illu_dir / f"scene_{p_idx + 1}_{scene_key}.png"
         build_scene_illustration(
-            scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800)
+            scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800), seed=seed
         )
         if not path.is_file():
             raise CapabilityError(f"illustration not produced: {path}")
@@ -246,12 +253,10 @@ def _render_storyboard(topic: str, style_id: str, out_dir: Path, *, seed: int) -
 
 
 def _render_narration(topic: str, out_dir: Path, *, seed: int) -> CapabilityResult:
-    from hevi.layer4_legacy.handdraw.line import STANDARD_TOPIC_STORYBOARDS
+    from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
     from hevi.layer4_legacy.handdraw.tts import build_narration_master
 
-    spec = STANDARD_TOPIC_STORYBOARDS["anger_decision"] if any(
-        k in topic.lower() for k in ("生气", "愤怒", "做错", "决定", "情绪", "anger")
-    ) else STANDARD_TOPIC_STORYBOARDS["compound_interest"]
+    spec = select_kids_storyboard(topic)
 
     out_dir = Path(out_dir).resolve()
     audio_dir = out_dir / "narration"
@@ -277,13 +282,11 @@ def _render_narration(topic: str, out_dir: Path, *, seed: int) -> CapabilityResu
 
 def _render_illustration(topic: str, style_id: str, out_dir: Path, *, seed: int) -> CapabilityResult:
     from hevi.layer4_legacy.handdraw.illustrator import build_scene_illustration
-    from hevi.layer4_legacy.handdraw.line import STANDARD_TOPIC_STORYBOARDS
+    from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
 
     if style_id not in SUPPORTED_STYLES:
         raise CapabilityError(f"unsupported style_id: {style_id}")
-    spec = STANDARD_TOPIC_STORYBOARDS["anger_decision"] if any(
-        k in topic.lower() for k in ("生气", "愤怒", "做错", "决定", "情绪", "anger")
-    ) else STANDARD_TOPIC_STORYBOARDS["compound_interest"]
+    spec = select_kids_storyboard(topic)
 
     out_dir = Path(out_dir).resolve()
     illu_dir = out_dir / "illustrations"
@@ -293,7 +296,7 @@ def _render_illustration(topic: str, style_id: str, out_dir: Path, *, seed: int)
     scene_key = page["scene_key"]
     path = illu_dir / f"scene_1_{scene_key}.png"
     meta = build_scene_illustration(
-        scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800)
+        scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800), seed=seed
     )
     if not path.is_file():
         raise CapabilityError(f"illustration not produced: {path}")

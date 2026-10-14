@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+
 import numpy as np
 from style_choice import digest, verify_style
 
@@ -60,8 +61,12 @@ def validate_narrative_requirements(plan, review, narration):
         if not requirement.get('id') or not quote or quote not in narration or not requirement.get('observable'):
             raise ValueError('Narrative requirements must cite actual narration and state what must be visibly present')
         check = checks.get(requirement['id'], {})
-        if check.get('status') != 'pass' or not check.get('evidence'):
+        if not check.get('evidence') or check.get('status') not in ('pass', 'automated_pass'):
             raise ValueError('An illustration has an unverified or failed narrative requirement: ' + requirement['id'])
+        if check.get('status') == 'automated_pass' and (
+            check.get('review_type') != 'automated_only' or check.get('human_review') != 'pending'
+        ):
+            raise ValueError('Automated narrative checks must leave human review pending')
     return len(requirements)
 
 
@@ -123,8 +128,12 @@ def verify_drawing_plans(job, manifest, style):
             raise ValueError('Actual part masks must match the planned outline/fill order')
         source = Path(action['source'])
         source = source if source.is_absolute() else Path(job) / source
-        if review.get('status') != 'pass' or review.get('source_sha256') != digest(source) or review.get('crop') != action.get('crop'):
+        if review.get('status') not in ('pass', 'automated_pass') or review.get('source_sha256') != digest(source) or review.get('crop') != action.get('crop'):
             raise ValueError('Semantic drawing review is missing, failed, or belongs to another image/crop')
+        if review.get('status') == 'automated_pass' and (
+            review.get('review_type') != 'automated_only' or review.get('human_review') != 'pending'
+        ):
+            raise ValueError('Automated drawing check must explicitly leave human review pending')
         for field in ('anatomy_and_occlusion', 'part_boundaries', 'stroke_breaks', 'outline_then_fill', 'spatial_order'):
             if not review.get(field):
                 raise ValueError('Actual-image drawing review needs evidence for ' + field)

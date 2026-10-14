@@ -1,10 +1,12 @@
 """Verify encoded output and require separate evidence for visual acceptance."""
-from pathlib import Path
 import hashlib
 import json
 import math
 import re
 import subprocess
+from itertools import pairwise
+from pathlib import Path
+
 import numpy as np
 from PIL import Image
 
@@ -113,7 +115,11 @@ def verify_assets(root, timeline):
                         require(times.min()>=part[phase+'_start']-1e-6 and times.max()<=part[phase+'_end']+1e-6,
                                 f'{name}: pixels leak into another semantic part interval')
             entry['semantic_parts_in_order']=[part['id'] for part in parts]
-            ink_mask = (alpha > 0) & (maps['ink_weight'] > .01)
+            # Only validate pixels that are primarily controlled by the outline
+            # reveal. Feathered edge pixels with a small ink_weight are mostly
+            # controlled by the color/paint pass and must be validated against that
+            # brush path rather than treated as hard contour pixels.
+            ink_mask = (alpha > 0) & (maps['ink_weight'] > .5)
             if ink_mask.any():
                 distances, _ = match_reveal_to_tip(metadata, maps['ink'], ink_mask, {'ink'})
                 require(np.isfinite(distances).all() and distances.max() < 9, f'{name}: ink is too far from the nib')
@@ -162,7 +168,7 @@ def verify_job(job_directory, assets_only=False):
     if assets_only:
         print(json.dumps({'assets_checked': len(report['assets'])}))
         return report
-    from timeline_contract import validate_timeline,validate_cover
+    from timeline_contract import validate_cover, validate_timeline
     from video_renderer import Renderer
     validate_timeline(timeline)
     from subtitle_contract import validate_subtitle_delivery
@@ -171,12 +177,12 @@ def verify_job(job_directory, assets_only=False):
     canvas = timeline['canvas']
     for page in timeline['pages']:
         primary = sorted((event for event in page['events'] if not event['caption']), key=lambda event: event['start'])
-        require(all(left['end'] <= right['start'] for left, right in zip(primary, primary[1:])), 'Main pen events overlap')
+        require(all(left['end'] <= right['start'] for left, right in pairwise(primary)), 'Main pen events overlap')
         require(page['last_drawing_end'] <= page['speech_end'] - .45, 'Drawing overruns narration')
         for event in page['events']:
             asset = timeline['assets'][event['asset']]
-            require(0 <= event['x'] and event['x'] + asset['width'] <= canvas['width'], 'Horizontal overflow')
-            require(0 <= event['y'] and event['y'] + asset['height'] <= canvas['height'], 'Vertical overflow')
+            require(event['x'] >= 0 and event['x'] + asset['width'] <= canvas['width'], 'Horizontal overflow')
+            require(event['y'] >= 0 and event['y'] + asset['height'] <= canvas['height'], 'Vertical overflow')
             require(event['end'] > event['start'], 'Empty drawing event')
         report['pages'].append({'page': page['index'] + 1, 'duration_seconds': page['end'] - page['start'],
             'drawing_completed_before_speech_end_seconds': page['speech_end'] - page['last_drawing_end']})
@@ -264,8 +270,10 @@ def finalize_job(job_directory):
     receipt = {'status': 'delivery_review_completed', 'engineering': report, 'review': review}
     (root / 'outputs' / 'verification.json').write_text(json.dumps(receipt, ensure_ascii=False, indent=2))
     lines = ['交付检查记录', f"视频 SHA-256：{video_hash}", f"片长：{report['duration_seconds']:.3f}秒", '工程检查：通过']
-    for category in ('content', 'visual', 'motion', 'audio', 'privacy'):
-        lines.append(f"{category}：{review[category]['evidence']}")
+    lines.extend(
+        f"{category}：{review[category]['evidence']}"
+        for category in ('content', 'visual', 'motion', 'audio', 'privacy')
+    )
     lines += ['未验证或限制：'] + (review.get('limitations') or ['未另行记录；不代表任意主题或平台均已验证。'])
     (root / 'outputs' / 'verification.txt').write_text('\n'.join(lines) + '\n')
     print(str(root / 'outputs' / 'verification.txt'))

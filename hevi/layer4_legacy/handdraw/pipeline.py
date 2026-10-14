@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import math
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -98,12 +99,25 @@ def render_handdraw_pipeline(
     style_id: str = "8",
     hand_preset: str = "navy",
     prefer_cosy: bool = True,
+    seed: int = 0,
+    preview_duration: float | None = None,
 ) -> dict[str, Any]:
-    """Complete end-to-end handdraw production pipeline."""
+    """Complete end-to-end handdraw production pipeline.
+
+    Positive preview_duration returns a real partial MP4 of exactly that duration.
+    Full renders retain an explicit pending-human-review state; no synthetic
+    review evidence is promoted to an approval.
+    """
     output_dir = Path(output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     width, height = canvas_size
+    if width <= 0 or height <= 0:
+        raise ValueError("canvas dimensions must be positive")
+    if preview_duration is not None and (
+        not math.isfinite(float(preview_duration)) or not 0 < float(preview_duration) <= 120
+    ):
+        raise ValueError("preview_duration must be within (0, 120] seconds")
     layout = compute_canvas_layout(width, height)
     style_cfg = get_style_config(style_id)
 
@@ -119,7 +133,7 @@ def render_handdraw_pipeline(
     generate_cover_image(
         cover_path,
         title=title,
-        subtitle="Hevi 手绘口播系列 · 核心原理解析",
+        subtitle="一起学会小办法",
         width=width,
         height=height,
         paper_color=style_cfg.paper_color,
@@ -138,6 +152,7 @@ def render_handdraw_pipeline(
             output_path=illu_path,
             style_id=style_id,
             size=(CANON, CANON),
+            seed=seed,
         )
         illustration_meta_map[scene_key] = {
             **meta,
@@ -155,12 +170,40 @@ def render_handdraw_pipeline(
                 "text": beat["text"],
                 "page_index": p_idx,
                 "beat_index": b_idx,
+                "stage": beat.get("stage", ""),
             })
 
-    master_wav, alignment_json, total_narration_dur = build_narration_master(
+    master_wav, alignment_json, _ = build_narration_master(
         all_beats,
         inputs_audio_dir,
         prefer_cosy=prefer_cosy,
+        use_asr=True,
+    )
+    from hevi.layer4_legacy.handdraw.kids_storyboards import validate_kids_script
+    alignment_doc = json.loads(alignment_json.read_text(encoding="utf-8"))
+    is_preview_job = preview_duration is not None or len(all_beats) < 8
+    kids_report = validate_kids_script(
+        title,
+        pages_spec,
+        aspect="16:9" if width >= height else "9:16",
+        caption_font_size=layout.caption_font_size,
+        characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
+        preview=is_preview_job,
+    )
+    if not kids_report["passed"]:
+        output_dir.joinpath("kids-safety.json").write_text(
+            json.dumps(kids_report, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        raise ValueError(f"KIDS_ANIME_DIRECTION gate failed: {kids_report['checks']}")
+    kids_report["narration_engine"] = alignment_doc.get("engine")
+    kids_report["engines_used"] = alignment_doc.get("engines_used", [])
+    kids_report["caption_method"] = alignment_doc.get("caption_method")
+    kids_report["caption_methods_used"] = alignment_doc.get("caption_methods_used", [])
+    kids_report["alignment_source"] = str(alignment_json)
+    kids_report["alignment_sha256"] = sha256_file(alignment_json)
+    kids_report["audio_sha256"] = sha256_file(master_wav)
+    (output_dir / "kids-safety.json").write_text(
+        json.dumps(kids_report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
     # 5. Build Style Catalog & Resolved Records
@@ -178,7 +221,6 @@ def render_handdraw_pipeline(
 
     # Extract exact recipe text from STYLES.md
     full_styles_text = catalog_source_md.read_text(encoding="utf-8")
-    import re
     matches = list(re.finditer(r"^## (\d+(?:\.\d+)?)[.]? (.+)$", full_styles_text, re.M))
     recipe_text = ""
     for idx, m in enumerate(matches):
@@ -250,7 +292,7 @@ def render_handdraw_pipeline(
         "narrative_route": {
             "decision": "default_life_concept",
             "reason": "生活常见错误 -> 科学概念解释 -> 心理/数学机制剖析 -> 行动建议",
-            "director_review": "遵循因果清晰、画面由简入繁的讲解范式，通过真实手绘过程引导视觉注意力。",
+            "director_review": "自动化规则路由；尚未进行人工导演复核，发布前需要成人检查。",
         },
     }
     (output_dir / "design.json").write_text(json.dumps(design_data, ensure_ascii=False, indent=2))
@@ -263,8 +305,10 @@ def render_handdraw_pipeline(
             "source": "inputs/cover.png",
             "sha256": sha256_file(cover_path),
             "method": "composed_with_verified_layers",
-            "status": "pass",
-            "evidence": "封面使用指定底纸色与标准字形排版，四周边框规整留白。",
+            "status": "automated_pass",
+            "review_type": "automated_only",
+            "human_review": "pending",
+            "evidence": "自动检查：封面文件可解码、画布比例与目标一致；未进行人工视觉复核。",
             "brief_file": "brief_cover.txt",
             "prompt_file": "prompt_cover.txt",
         }
@@ -323,19 +367,23 @@ def render_handdraw_pipeline(
 
         review_item = {
             "plan_id": illu_id,
-            "status": "pass",
+            "status": "automated_pass",
             "source_sha256": illu_info["sha256"],
             "crop": None,
-            "anatomy_and_occlusion": "主体各部位轮廓闭合完整，上下前后分层无遮挡歧义",
-            "part_boundaries": "部位间边界清晰，多边形准确覆盖各部位像素",
-            "stroke_breaks": "独立笔划自然抬笔，无跨空白纸张飞线",
-            "outline_then_fill": "严格先完成全图深色墨线勾勒，再按同一顺序注入色彩平涂",
-            "spatial_order": "从上到下、从左到右自然布局",
+            "review_type": "automated_only",
+            "human_review": "pending",
+            "anatomy_and_occlusion": "自动化结构检查已生成部件边界；人工遮挡/解剖复核尚未完成。",
+            "part_boundaries": "部件多边形和素材哈希已进行一致性校验；未进行人工边界复核。",
+            "stroke_breaks": "使用渲染器的逐步 alpha reveal；未进行人工逐笔质量检查。",
+            "outline_then_fill": "由当前风格配方的线层与填色层自动合成；未进行人工笔触复核。",
+            "spatial_order": "使用模板布局顺序；未进行人工构图复核。",
             "narrative_checks": [
                 {
                     "id": req_id,
-                    "status": "pass",
-                    "evidence": f"实际看图核验，画面准确展现了台词引述的内容：{page_quote}",
+                    "status": "automated_pass",
+                    "review_type": "automated_only",
+                    "human_review": "pending",
+                    "evidence": f"自动化绑定核验：引用文本存在于旁白，素材哈希匹配场景 {scene_key}；尚未进行人工语义看图复核。",
                 }
             ],
         }
@@ -350,8 +398,10 @@ def render_handdraw_pipeline(
             "source": illu_info["rel_path"],
             "sha256": illu_info["sha256"],
             "method": "composed_with_verified_layers",
-            "status": "pass",
-            "evidence": "实际查看主体结构、边缘对比度与语义分区，符合手绘呈现要求。",
+            "status": "automated_pass",
+            "review_type": "automated_only",
+            "human_review": "pending",
+            "evidence": "自动化检查：PNG 可解码且素材哈希匹配；未进行人工视觉/语义复核。",
             "brief_file": b_name,
             "prompt_file": p_name,
         })
@@ -533,48 +583,158 @@ def render_handdraw_pipeline(
 
     from video_job import FilmBuilder
     from video_renderer import render_job
-    from video_verifier import verify_job, finalize_job
+    from video_verifier import verify_job
 
     logger.info("Building timeline for job %s ...", job_id)
     timeline = FilmBuilder(output_dir).build()
 
-    logger.info("Rendering video for job %s ...", job_id)
-    video_path = render_job(output_dir)
+    if preview_duration is not None:
+        requested = float(preview_duration)
+        if requested > float(timeline["duration"]):
+            raise ValueError(
+                f"requested preview {requested:.3f}s exceeds timeline {timeline['duration']:.3f}s"
+            )
+        logger.info("Rendering exact %.3fs preview for job %s ...", requested, job_id)
+        # Start on the first drawn frame, not the one-second title-card hold.
+        # The audio seek follows the same timeline point, avoiding dead-air previews.
+        preview_start = float(timeline["cover_seconds"])
+        video_path = render_job(
+            output_dir, start=preview_start, duration=requested, preview=True
+        )
+        probe = json.loads(subprocess.check_output([
+            FFPROBE, "-v", "error", "-show_streams", "-show_format", "-of", "json", str(video_path)
+        ]))
+        video_stream = next((item for item in probe["streams"] if item.get("codec_type") == "video"), None)
+        audio_stream = next((item for item in probe["streams"] if item.get("codec_type") == "audio"), None)
+        if not video_stream or not audio_stream:
+            raise ValueError("preview MP4 must contain both video and audio streams")
+        duration_val = float(probe["format"]["duration"])
+        if abs(duration_val - requested) > .1:
+            raise ValueError(f"preview duration {duration_val:.3f}s differs from request {requested:.3f}s")
+        loud = subprocess.run([
+            FFMPEG, "-hide_banner", "-i", str(video_path),
+            "-af", "loudnorm=I=-17:TP=-2:LRA=7:print_format=json", "-f", "null", "-"
+        ], capture_output=True, text=True)
+        match = re.search(r'\{\s*"input_i".*?\}', loud.stderr, re.S)
+        preview_loudness = json.loads(match.group()) if match else {}
+        verification_path = output_dir / "preview-verification.json"
+        review_path = output_dir / "review.json"
+        review_data = {
+            "video_sha256": sha256_file(video_path),
+            "review_type": "automated_engineering_only",
+            "human_review": "pending",
+            "content": {"status": "not_reviewed", "evidence": "Kids rule gate executed; adult semantic review remains pending."},
+            "visual": {"status": "not_reviewed", "evidence": "Frame decoding and asset hash checks executed; human visual review remains pending."},
+            "motion": {"status": "not_reviewed", "evidence": "Renderer output decoded; human motion review remains pending."},
+            "audio": {"status": "not_reviewed", "evidence": "Audio stream and loudness measured; human listening review remains pending."},
+            "privacy": {"status": "not_reviewed", "evidence": "Local processing path recorded; manual privacy review remains pending."},
+            "limitations": ["预览片的自动化检查不等同人工审片或发布批准。"],
+        }
+        review_path.write_text(
+            json.dumps(review_data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        preview_report = {
+            "status": "engineering_preview_verified",
+            "video_path": str(video_path),
+            "video_sha256": sha256_file(video_path),
+            "duration_seconds": duration_val,
+            "requested_duration_seconds": requested,
+            "resolution": f"{video_stream['width']}x{video_stream['height']}",
+            "has_audio_stream": True,
+            "audio_measurement": preview_loudness,
+            "human_review": "pending",
+            "note": "Short previews are partial clips; loudness integration is not used as a full-film acceptance measure.",
+        }
+        verification_path.write_text(json.dumps(preview_report, ensure_ascii=False, indent=2), encoding="utf-8")
+        lufs_val = preview_loudness.get("input_i")
+        result = {
+            "job_id": job_id,
+            "video_path": str(video_path),
+            "cover_path": str(output_dir / "outputs" / "cover.png"),
+            "srt_path": str(output_dir / "outputs" / "editing" / "transcript.srt"),
+            "script_path": str(output_dir / "outputs" / "script.txt"),
+            "verification_path": str(verification_path),
+            "kids_safety_path": str(output_dir / "kids-safety.json"),
+            "sha256": preview_report["video_sha256"],
+            "duration": duration_val,
+            "lufs": lufs_val,
+            "canvas": f"{width}x{height}",
+            "style_id": style_id,
+            "hand_preset": hand_preset,
+            "preview": True,
+        }
+        logger.info("Handdraw preview pipeline finished: %s", result)
+        return result
 
-    logger.info("Verifying video for job %s ...", job_id)
+    logger.info("Rendering full video for job %s ...", job_id)
+    video_path = render_job(output_dir)
+    logger.info("Verifying full video for job %s ...", job_id)
     verification = verify_job(output_dir)
 
-    # Fill review.json for finalization
-    review_path = output_dir / "review.json"
-    review_data = {
-        "video_sha256": verification["video_sha256"],
-        "content": {"status": "pass", "evidence": "因果逻辑完整，生活错误到科学机制递进清晰。"},
-        "visual": {"status": "pass", "evidence": "逐笔描线与平涂填色无错位，笔尖贴合准确。"},
-        "motion": {"status": "pass", "evidence": "手部轨迹自然平滑，抬笔与书写时序严密。"},
-        "audio": {"status": "pass", "evidence": "全篇旁白母带无破音爆音，响度符合标准。"},
-        "privacy": {"status": "pass", "evidence": "所有插画与手部均为合规本地渲染，无隐私元数据。"},
-        "limitations": ["CPU离线纯代码渲染；未依赖付费云端生图。"],
-    }
-    review_path.write_text(json.dumps(review_data, ensure_ascii=False, indent=2))
-
-    finalize_path = finalize_job(output_dir)
-
-    # Collect deliverables and probe
     final_video = output_dir / "outputs" / "film.mp4"
     final_cover = output_dir / "outputs" / "cover.png"
     final_srt = output_dir / "outputs" / "editing" / "transcript.srt"
     final_script = output_dir / "outputs" / "script.txt"
     final_verification = output_dir / "outputs" / "verification.txt"
+    verification_json = output_dir / "outputs" / "verification.json"
+    review_path = output_dir / "review.json"
+    video_sha = sha256_file(final_video)
+    review_data = {
+        "video_sha256": verification["video_sha256"],
+        "review_type": "automated_engineering_only",
+        "human_review": "pending",
+        "content": {"status": "not_reviewed", "evidence": "KIDS safety rule report created; human semantic/content review remains pending."},
+        "visual": {"status": "not_reviewed", "evidence": "Assets decode and structural checks pass; human visual review remains pending."},
+        "motion": {"status": "not_reviewed", "evidence": "Timeline, canvas bounds and frame decoding pass; human motion review remains pending."},
+        "audio": {"status": "not_reviewed", "evidence": "Audio stream, loudness, true peak and local TTS engine are recorded; human listening review remains pending."},
+        "privacy": {"status": "not_reviewed", "evidence": "Local pipeline uses no paid API; manual privacy review remains pending."},
+        "limitations": ["自动检查不能替代成人审片。人工语义、视觉、运动、听感及隐私复核尚未完成。"],
+    }
+    review_path.write_text(json.dumps(review_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    receipt = {
+        "status": "engineering_passed_review_required",
+        "engineering": verification,
+        "review": review_data,
+    }
+    verification_json.write_text(json.dumps(receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+    verification_lines = [
+        "工程检查记录",
+        f"视频 SHA-256：{video_sha}",
+        f"片长：{float(verification.get('duration_seconds', 0)):.3f}秒",
+        f"画面：{width}x{height}",
+        "工程检查：通过",
+        f"旁白引擎：{alignment_doc.get('engine')} ({', '.join(alignment_doc.get('engines_used', []))})",
+        f"语速：{alignment_doc.get('characters_per_second', 0):.3f} 中文字符/秒",
+        "人工复核：待完成；不得将此样片视为已完成人工审片。",
+    ]
+    final_verification.write_text("\n".join(verification_lines) + "\n", encoding="utf-8")
 
     video_sha = sha256_file(final_video)
-    dur_str = subprocess.check_output(
-        [FFPROBE, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(final_video)]
-    ).decode().strip()
-    duration_val = float(dur_str)
-
-    # Check loudness
-    lufs_val = verification.get("loudness", {}).get("input_i", "-17.0")
-
+    duration_val = float(verification.get("duration_seconds", 0))
+    loudness = verification.get("loudness", {})
+    lufs_val = loudness.get("input_i")
+    true_peak = loudness.get("input_tp")
+    from hevi.layer4_legacy.handdraw.kids_storyboards import validate_kids_script
+    final_kids = validate_kids_script(
+        title,
+        pages_spec,
+        aspect="16:9" if width >= height else "9:16",
+        caption_font_size=layout.caption_font_size,
+        characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
+        audio_lufs=float(lufs_val) if lufs_val is not None else None,
+        true_peak_dbtp=float(true_peak) if true_peak is not None else None,
+        preview=len(all_beats) < 8,
+    )
+    final_kids["narration_engine"] = alignment_doc.get("engine")
+    final_kids["engines_used"] = alignment_doc.get("engines_used", [])
+    final_kids["caption_method"] = alignment_doc.get("caption_method")
+    final_kids["caption_methods_used"] = alignment_doc.get("caption_methods_used", [])
+    final_kids["audio_sha256"] = sha256_file(inputs_audio_dir / "master.wav")
+    if not final_kids["passed"]:
+        raise ValueError(f"KIDS_ANIME_DIRECTION measured audio gate failed: {final_kids['checks']}")
+    (output_dir / "outputs" / "kids-safety.json").write_text(
+        json.dumps(final_kids, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     result = {
         "job_id": job_id,
         "video_path": str(final_video),
@@ -582,12 +742,16 @@ def render_handdraw_pipeline(
         "srt_path": str(final_srt),
         "script_path": str(final_script),
         "verification_path": str(final_verification),
+        "kids_safety_path": str(output_dir / "outputs" / "kids-safety.json"),
         "sha256": video_sha,
         "duration": duration_val,
         "lufs": lufs_val,
+        "true_peak_dbtp": true_peak,
         "canvas": f"{width}x{height}",
         "style_id": style_id,
         "hand_preset": hand_preset,
+        "preview": False,
+        "human_review": "pending",
     }
     logger.info("Handdraw pipeline finished: %s", result)
     return result

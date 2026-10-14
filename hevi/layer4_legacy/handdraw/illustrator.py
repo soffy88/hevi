@@ -1,20 +1,34 @@
-"""Hevi Handdraw Line: CPU-only deterministic illustration generator.
+"""Hevi Handdraw Line: CPU-only, style-differentiated, deterministic illustrator.
 
-Renders vector-like illustration assets with distinct dark ink outlines
-and colored semantic parts, ensuring full compatibility with the
-stroke-tracing and brush-painting contracts of sweety-handdraw-video.
+Each of the four supported styles renders with its own recipe (F4):
+
+* ``1``  极简黑白线条   crisp uniform black line, no fill, no texture, pure monochrome
+* ``8``  水墨写意       tapered brush strokes, ink bleed, dry-brush 飞白, red seal
+* ``10`` 情绪叙事淡彩速写 thin loose indigo sketch line, one saturated accent, translucent wash
+* ``17`` 墨线绘本       clean pen line, flat watercolour fills with visible paper grain
+
+The illustration is always transparent outside the drawn shapes: there is no
+opaque square backdrop.  All randomness comes from a seeded ``random.Random``
+so the same (scene, style) always yields the same PNG.
+
 Zero external API calls. 100% CPU.
 """
 
 from __future__ import annotations
 
 import math
+import random
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+from scipy import ndimage
 
 from hevi.layer4_legacy.handdraw.styles import HanddrawStyleConfig, get_style_config
+
+SUPERSAMPLE = 2
 
 
 def _hex_to_rgb(hex_code: str) -> tuple[int, int, int]:
@@ -22,423 +36,670 @@ def _hex_to_rgb(hex_code: str) -> tuple[int, int, int]:
     return int(clean[0:2], 16), int(clean[2:4], 16), int(clean[4:6], 16)
 
 
-# ---------------------------------------------------------------------------
-# Topic 1: 为什么越生气越容易做错决定 (Anger & Decisions)
-# ---------------------------------------------------------------------------
-
-
-def draw_anger_brain(
-    output_path: Path,
-    style_cfg: HanddrawStyleConfig,
-    size: tuple[int, int] = (600, 600),
-) -> dict[str, Any]:
-    """Scene 1.1: 人物情绪激动与激活的杏仁核。"""
-    w, h = size
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    ink = _hex_to_rgb(style_cfg.ink_color)
-    accent = _hex_to_rgb(style_cfg.accent_color)
-    skin = (245, 215, 185)
-    cloth = (80, 130, 180) if style_cfg.style_id != "8" else (90, 90, 95)
-    brain_c = accent if style_cfg.style_id != "1" else (240, 240, 240)
-
-    # 1. Torso (lower portion)
-    d.rectangle((180, 420, 420, 560), fill=cloth, outline=ink, width=5)
-    # 2. Neck
-    d.rectangle((270, 360, 330, 430), fill=skin, outline=ink, width=4)
-    # 3. Head & Face (profile/front)
-    d.ellipse((190, 170, 410, 390), fill=skin, outline=ink, width=5)
-    # Eyebrows & Eyes (anger shape)
-    d.line([(230, 260), (280, 280)], fill=ink, width=4)
-    d.line([(370, 260), (320, 280)], fill=ink, width=4)
-    d.ellipse((250, 290, 275, 315), fill=ink)
-    d.ellipse((325, 290, 350, 315), fill=ink)
-    # Mouth (open exclamation)
-    d.ellipse((270, 330, 330, 375), fill=ink)
-    # 4. Active amygdala brain pulse (top/forehead area)
-    d.ellipse((220, 60, 380, 180), fill=brain_c, outline=ink, width=5)
-    # Brain gyri curves inside
-    d.arc((240, 80, 320, 140), start=30, end=210, fill=ink, width=4)
-    d.arc((280, 90, 360, 160), start=180, end=350, fill=ink, width=4)
-    # Radiating stress sparks
-    for angle in [30, 60, 90, 120, 150]:
-        rad = math.radians(angle)
-        x1 = 300 + 90 * math.cos(rad)
-        y1 = 120 - 70 * math.sin(rad)
-        x2 = 300 + 130 * math.cos(rad)
-        y2 = 120 - 100 * math.sin(rad)
-        d.line([(x1, y1), (x2, y2)], fill=accent, width=4)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(output_path)
-
-    # Normalised polygon parts
-    parts = [
-        {
-            "id": "brain_amygdala",
-            "polygon": [[0.15, 0.0], [0.85, 0.0], [0.85, 0.35], [0.15, 0.35]],
-        },
-        {
-            "id": "head",
-            "polygon": [[0.2, 0.28], [0.8, 0.28], [0.8, 0.68], [0.2, 0.68]],
-        },
-        {
-            "id": "torso",
-            "polygon": [[0.2, 0.65], [0.8, 0.65], [0.8, 1.0], [0.2, 1.0]],
-        },
-    ]
-    return {
-        "source": str(output_path),
-        "width": w,
-        "height": h,
-        "parts": parts,
-    }
-
-
-def draw_balance_scale(
-    output_path: Path,
-    style_cfg: HanddrawStyleConfig,
-    size: tuple[int, int] = (600, 600),
-) -> dict[str, Any]:
-    """Scene 1.2: 情绪冲动与理智决策的天平失衡。"""
-    w, h = size
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    ink = _hex_to_rgb(style_cfg.ink_color)
-    accent = _hex_to_rgb(style_cfg.accent_color)
-    logic_col = (100, 175, 120) if style_cfg.style_id != "1" else (220, 220, 220)
-    pan_col = (210, 190, 150) if style_cfg.style_id != "1" else (235, 235, 235)
-
-    # 1. Left pan with heavy anger weight (drawn first, visually lowest)
-    d.line([(100, 320), (70, 420)], fill=ink, width=3)
-    d.line([(100, 320), (170, 420)], fill=ink, width=3)
-    # Pan bowl as a closed filled crescent so it owns a solid fillable region
-    d.pieslice((60, 392, 180, 452), start=0, end=180, fill=pan_col, outline=ink, width=4)
-    # Heavy stone on left pan (red/accent)
-    d.polygon([(80, 420), (160, 420), (145, 358), (95, 358)], fill=accent, outline=ink)
-
-    # 2. Right pan with light logic block
-    d.line([(500, 180), (450, 270)], fill=ink, width=3)
-    d.line([(500, 180), (550, 270)], fill=ink, width=3)
-    d.pieslice((440, 242, 560, 302), start=0, end=180, fill=pan_col, outline=ink, width=4)
-    d.rectangle((475, 240, 525, 272), fill=logic_col, outline=ink, width=4)
-
-    # 3. Tilted Beam (anger on left side heavier -> tilts down to left)
-    # Left at y=320, Right at y=170
-    d.line([(100, 320), (500, 180)], fill=ink, width=8)
-    d.ellipse((285, 235, 315, 265), fill=ink)
-
-    # 4. Base / Fulcrum (center triangular stand)
-    d.polygon([(260, 520), (340, 520), (300, 250)], fill=pan_col, outline=ink)
-    d.rectangle((210, 510, 390, 550), fill=pan_col, outline=ink, width=5)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(output_path)
-
-    parts = [
-        {
-            "id": "left_pan",
-            "polygon": [[0.03, 0.56], [0.32, 0.56], [0.32, 0.80], [0.03, 0.80]],
-        },
-        {
-            "id": "right_pan",
-            "polygon": [[0.62, 0.28], [0.97, 0.28], [0.97, 0.52], [0.62, 0.52]],
-        },
-        {
-            "id": "tilted_beam",
-            "polygon": [[0.01, 0.13], [0.99, 0.13], [0.99, 0.57], [0.01, 0.57]],
-        },
-        {
-            "id": "scale_stand",
-            "polygon": [[0.26, 0.55], [0.74, 0.55], [0.74, 0.98], [0.26, 0.98]],
-        },
-    ]
-    return {
-        "source": str(output_path),
-        "width": w,
-        "height": h,
-        "parts": parts,
-    }
-
-
-def draw_calm_decision(
-    output_path: Path,
-    style_cfg: HanddrawStyleConfig,
-    size: tuple[int, int] = (600, 600),
-) -> dict[str, Any]:
-    """Scene 1.3: 前额叶皮层回归平静，看清最优解。"""
-    w, h = size
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    ink = _hex_to_rgb(style_cfg.ink_color)
-    accent = _hex_to_rgb(style_cfg.accent_color)
-    bulb_col = (250, 220, 80) if style_cfg.style_id != "1" else (240, 240, 240)
-    card_col = (235, 245, 255) if style_cfg.style_id != "1" else (245, 245, 245)
-
-    # 1. Calm Lightbulb (top center)
-    d.ellipse((220, 70, 380, 230), fill=bulb_col, outline=ink, width=5)
-    d.rectangle((260, 225, 340, 270), fill=ink)
-    d.arc((270, 260, 330, 290), start=0, end=180, fill=ink, width=4)
-    # Filament inside bulb
-    d.line([(270, 170), (290, 130), (310, 170), (330, 130)], fill=ink, width=4)
-    # Radiating glow lines
-    for angle in [0, 45, 90, 135, 180, 225, 315]:
-        rad = math.radians(angle)
-        x1 = 300 + 95 * math.cos(rad)
-        y1 = 150 - 95 * math.sin(rad)
-        x2 = 300 + 135 * math.cos(rad)
-        y2 = 150 - 135 * math.sin(rad)
-        d.line([(x1, y1), (x2, y2)], fill=accent, width=4)
-
-    # 2. Decision Card / Clear Road (bottom center)
-    d.rounded_rectangle((120, 320, 480, 540), radius=25, fill=card_col, outline=ink, width=5)
-    # Checkmark inside card
-    d.line([(180, 430), (250, 490), (420, 370)], fill=accent, width=12)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(output_path)
-
-    parts = [
-        {
-            "id": "wisdom_bulb",
-            "polygon": [[0.14, 0.0], [0.86, 0.0], [0.86, 0.50], [0.14, 0.50]],
-        },
-        {
-            "id": "decision_card",
-            "polygon": [[0.10, 0.49], [0.90, 0.49], [0.90, 0.98], [0.10, 0.98]],
-        },
-    ]
-    return {
-        "source": str(output_path),
-        "width": w,
-        "height": h,
-        "parts": parts,
-    }
+def _mix(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))  # type: ignore[return-value]
 
 
 # ---------------------------------------------------------------------------
-# Topic 2: 复利效应 (Compound Interest Effect)
+# Style recipes
 # ---------------------------------------------------------------------------
 
 
-def draw_snowball_effect(
-    output_path: Path,
-    style_cfg: HanddrawStyleConfig,
-    size: tuple[int, int] = (600, 600),
-) -> dict[str, Any]:
-    """Scene 2.1: 滚雪球比喻，坡度与长路。"""
+class _Recipe:
+    """Concrete drawing parameters derived from a style config."""
+
+    def __init__(self, cfg: HanddrawStyleConfig, rng: random.Random) -> None:
+        self.cfg = cfg
+        self.rng = rng
+        self.sid = cfg.style_id
+        self.ink = _hex_to_rgb(cfg.ink_color)
+        self.accent = _hex_to_rgb(cfg.accent_color)
+        self.marker = _hex_to_rgb(cfg.marker_color)
+        self.paper = _hex_to_rgb(cfg.paper_color)
+
+        if self.sid == "1":
+            self.stroke_width = 7.0
+            self.jitter = 0.0
+            self.taper = 0.0
+            self.bleed = 0.0
+            self.grain = 0.0
+            self.dry_brush = 0.0
+            self.fill_opacity = 0.0
+            self.fill_blur = 0.0
+        elif self.sid == "8":
+            self.stroke_width = 8.5
+            self.jitter = 2.0
+            self.taper = 0.55
+            self.bleed = 3.2
+            self.grain = 0.0
+            self.dry_brush = 0.18
+            self.fill_opacity = 0.34
+            self.fill_blur = 5.0
+        elif self.sid == "10":
+            self.stroke_width = 3.2
+            self.jitter = 5.5
+            self.taper = 0.40
+            self.bleed = 0.25
+            self.grain = 0.90
+            self.dry_brush = 0.0
+            self.fill_opacity = 0.45
+            self.fill_blur = 2.7
+        else:  # 17 墨线绘本
+            self.stroke_width = 5.4
+            self.jitter = 1.1
+            self.taper = 0.22
+            self.bleed = 0.8
+            self.grain = 0.9
+            self.dry_brush = 0.0
+            self.fill_opacity = 0.72
+            self.fill_blur = 1.0
+
+    # -- palette ---------------------------------------------------------
+    def fill_color(self, role: str) -> tuple[int, int, int]:
+        """Semantic role -> colour, honouring each style's palette recipe."""
+        if self.sid == "1":
+            # Pure black & white: every fill is a near-white paper tone.
+            return {"warm": (250, 250, 250), "cool": (240, 240, 240), "accent": (232, 232, 232)}.get(
+                role, (247, 247, 247)
+            )
+        if self.sid == "8":
+            # Ink wash: greys plus the red seal; no saturated colour elsewhere.
+            return {
+                "warm": (226, 222, 216),
+                "cool": (198, 202, 206),
+                "accent": self.accent,
+                "green": (206, 210, 204),
+            }.get(role, (214, 212, 208))
+        if self.sid == "10":
+            # Almost bare paper; a single saturated accent is allowed.
+            return {
+                "warm": (250, 246, 240),
+                "cool": (236, 240, 245),
+                "accent": self.accent,
+                "green": (226, 238, 228),
+            }.get(role, (244, 244, 242))
+        # 17 墨线绘本: warm flat storybook watercolour.
+        return {
+            "warm": (247, 216, 190),
+            "cool": (200, 216, 228),
+            "accent": self.accent,
+            "green": self.marker,
+        }.get(role, (240, 226, 205))
+
+
+# ---------------------------------------------------------------------------
+# Low level brushes
+# ---------------------------------------------------------------------------
+
+
+def _resample(points: list[tuple[float, float]], step: float = 1.5) -> list[tuple[float, float]]:
+    if len(points) < 2:
+        return points
+    out = [points[0]]
+    for a, b in pairwise(points):
+        distance = math.hypot(b[0] - a[0], b[1] - a[1])
+        count = max(1, int(distance / step))
+        for index in range(1, count + 1):
+            t = index / count
+            out.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+    return out
+
+
+def _stamp_stroke(
+    mask: np.ndarray,
+    points: list[tuple[float, float]],
+    width: float,
+    recipe: _Recipe,
+    *,
+    taper: bool = False,
+) -> None:
+    """Rasterise a textured brush stroke in a tight local crop.
+
+    The former implementation compared every point against a full-canvas NumPy
+    grid. This version limits raster work to the path bounding box, keeping the
+    same seeded jitter, taper and dry-brush policy while making CPU previews
+    tractable at 1600x1600 supersampled resolution.
+    """
+    dense = _resample(points)
+    if len(dense) < 2:
+        return
+    total = len(dense)
+    pad = max(3, math.ceil(width / 2 + recipe.jitter + 2))
+    height, width_px = mask.shape
+    x0 = max(0, math.floor(min(point[0] for point in dense) - pad))
+    y0 = max(0, math.floor(min(point[1] for point in dense) - pad))
+    x1 = min(width_px, math.ceil(max(point[0] for point in dense) + pad + 1))
+    y1 = min(height, math.ceil(max(point[1] for point in dense) + pad + 1))
+    if x1 <= x0 or y1 <= y0:
+        return
+
+    local = Image.new("L", (x1 - x0, y1 - y0), 0)
+    draw = ImageDraw.Draw(local)
+    previous: tuple[float, float] | None = None
+    previous_radius = width / 2
+    for index, (x, y) in enumerate(dense):
+        t = index / max(1, total - 1)
+        radius = width / 2
+        if taper:
+            radius *= 1.0 - recipe.taper * abs(2 * t - 1) ** 1.5
+        if recipe.dry_brush and recipe.rng.random() < recipe.dry_brush:
+            previous = None
+            continue
+        jx = recipe.rng.uniform(-recipe.jitter, recipe.jitter)
+        jy = recipe.rng.uniform(-recipe.jitter, recipe.jitter)
+        point = (x + jx - x0, y + jy - y0)
+        radius = max(0.6, radius)
+        if previous is not None:
+            line_width = max(1, round(previous_radius + radius))
+            draw.line((previous, point), fill=255, width=line_width)
+        draw.ellipse(
+            (point[0] - radius, point[1] - radius,
+             point[0] + radius, point[1] + radius),
+            fill=255,
+        )
+        previous = point
+        previous_radius = radius
+
+    painted = np.asarray(local, dtype=np.uint8) > 0
+    mask[y0:y1, x0:x1] |= painted
+
+
+def _shape_points(shape: dict[str, Any]) -> list[tuple[float, float]]:
+    kind = shape["kind"]
+    if kind == "polygon":
+        return [(float(x), float(y)) for x, y in shape["points"]]
+    if kind == "ellipse":
+        x0, y0, x1, y1 = shape["box"]
+        steps = 72
+        return [
+            (
+                (x0 + x1) / 2 + (x1 - x0) / 2 * math.cos(2 * math.pi * i / steps),
+                (y0 + y1) / 2 + (y1 - y0) / 2 * math.sin(2 * math.pi * i / steps),
+            )
+            for i in range(steps)
+        ]
+    raise ValueError(kind)
+
+
+def _shape_mask(size: tuple[int, int], shape: dict[str, Any]) -> np.ndarray:
+    layer = Image.new("L", size, 0)
+    draw = ImageDraw.Draw(layer)
+    if shape["kind"] == "polygon":
+        draw.polygon([(float(x), float(y)) for x, y in shape["points"]], fill=255)
+    elif shape["kind"] == "ellipse":
+        draw.ellipse(tuple(float(v) for v in shape["box"]), fill=255)
+    else:
+        raise ValueError(shape["kind"])
+    return np.array(layer) > 127
+
+
+def _grain_mask(size: tuple[int, int], strength: float, rng: random.Random) -> np.ndarray:
+    """Generate reproducible paper grain without Pillow's global-RNG noise."""
     w, h = size
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    ink = _hex_to_rgb(style_cfg.ink_color)
-    accent = _hex_to_rgb(style_cfg.accent_color)
-    snow_col = (230, 245, 255) if style_cfg.style_id != "1" else (245, 245, 245)
+    seeded = np.random.default_rng(rng.randrange(1 << 63))
+    noise = seeded.normal(loc=128.0, scale=32.0, size=(h, w)).clip(0, 255).astype(np.float32)
+    tile = seeded.random((h, w)).astype(np.float32)
+    return (0.5 * noise / 255.0 + 0.5 * tile) < strength
 
-    # 1. Snowy field background (full canvas, drawn first)
-    d.rectangle([(0, 0), (w, h)], fill=snow_col, outline=None)
-    # Slope line from top-left to bottom-right
-    d.line([(40, 160), (560, 480)], fill=ink, width=6)
 
-    # 2. Small snowball (top left)
-    d.ellipse((100, 120, 160, 180), fill=(255, 255, 255), outline=ink, width=4)
+def _render_outline(
+    shape: dict[str, Any],
+    size: tuple[int, int],
+    recipe: _Recipe,
+) -> np.ndarray:
+    mask = np.zeros((size[1], size[0]), dtype=bool)
+    points = _shape_points(shape)
+    closed = [*points, points[0]]
+    _stamp_stroke(mask, closed, recipe.stroke_width, recipe, taper=recipe.taper > 0)
+    return mask
 
-    # 3. Medium rolling snowball (middle)
-    d.ellipse((220, 200, 320, 300), fill=(250, 250, 255), outline=ink, width=5)
 
-    # 4. Giant snowball (bottom right)
-    d.ellipse((360, 260, 540, 440), fill=accent if style_cfg.style_id == "10" else (245, 250, 255), outline=ink, width=6)
-    # Snow texture swirls inside giant ball
-    d.arc((390, 290, 510, 410), start=40, end=200, fill=ink, width=4)
-    d.arc((410, 310, 490, 390), start=210, end=350, fill=ink, width=4)
+def _decor_outline(
+    decor: dict[str, Any],
+    size: tuple[int, int],
+    recipe: _Recipe,
+) -> np.ndarray:
+    mask = np.zeros((size[1], size[0]), dtype=bool)
+    kind = decor["kind"]
+    if kind == "line":
+        _stamp_stroke(mask, [(float(x), float(y)) for x, y in decor["points"]], recipe.stroke_width * decor.get("scale", 0.7), recipe)
+    elif kind == "arc":
+        cx, cy, rx, ry = decor["box"]
+        start, end = decor["start"], decor["end"]
+        steps = max(12, int(abs(end - start) / 3))
+        points = [
+            (
+                cx + rx * math.cos(math.radians(start + (end - start) * i / steps)),
+                cy + ry * math.sin(math.radians(start + (end - start) * i / steps)),
+            )
+            for i in range(steps + 1)
+        ]
+        _stamp_stroke(mask, points, recipe.stroke_width * decor.get("scale", 0.6), recipe)
+    elif kind == "rays":
+        cx, cy, r0, r1 = decor["box"]
+        for angle in decor["angles"]:
+            rad = math.radians(angle)
+            _stamp_stroke(
+                mask,
+                [(cx + r0 * math.cos(rad), cy + r0 * math.sin(rad)), (cx + r1 * math.cos(rad), cy + r1 * math.sin(rad))],
+                recipe.stroke_width * decor.get("scale", 0.55),
+                recipe,
+            )
+    else:
+        raise ValueError(kind)
+    return mask
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(output_path)
 
-    parts = [
-        {
-            "id": "small_snowball",
-            "polygon": [[0.12, 0.14], [0.21, 0.14], [0.21, 0.23], [0.12, 0.23]],
-        },
-        {
-            "id": "medium_snowball",
-            "polygon": [[0.27, 0.24], [0.41, 0.24], [0.41, 0.38], [0.27, 0.38]],
-        },
-        {
-            "id": "giant_snowball",
-            "polygon": [[0.44, 0.32], [0.68, 0.32], [0.68, 0.55], [0.44, 0.55]],
-        },
-        {
-            "id": "mountain_slope",
-            "polygon": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
-        },
-    ]
+# ---------------------------------------------------------------------------
+# Scene catalogue (kids-first, plus the legacy explainer scenes)
+# ---------------------------------------------------------------------------
+
+
+def _p(shape_id: str, points: list[tuple[float, float]], role: str = "warm", z: int = 1) -> dict[str, Any]:
+    return {"id": shape_id, "kind": "polygon", "points": points, "role": role, "z": z}
+
+
+def _e(shape_id: str, box: tuple[float, float, float, float], role: str = "warm", z: int = 1) -> dict[str, Any]:
+    return {"id": shape_id, "kind": "ellipse", "box": box, "role": role, "z": z}
+
+
+def scene_fox_share() -> dict[str, Any]:
     return {
-        "source": str(output_path),
-        "width": w,
-        "height": h,
-        "parts": parts,
+        "shapes": [
+            _e("fox_body", (170, 300, 470, 620), "accent", 3),
+            _e("fox_head", (110, 180, 330, 400), "warm", 4),
+            _p("fox_ear_a", [(140, 200), (185, 120), (225, 200)], "warm", 5),
+            _p("fox_ear_b", [(235, 200), (280, 120), (315, 205)], "warm", 5),
+            _p("fox_tail", [(430, 430), (560, 330), (600, 470), (470, 540)], "accent", 2),
+            _e("apple", (470, 470, 590, 590), "green", 6),
+            _p("apple_leaf", [(525, 470), (585, 430), (555, 480)], "green", 7),
+            _p("ground", [(-20, 600), (620, 600), (620, 680), (-20, 680)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "fox_head", "kind": "arc", "box": (180, 300, 30, 22), "start": 200, "end": 340},
+            {"host": "fox_body", "kind": "line", "points": [(260, 470), (380, 470)], "scale": 0.6},
+        ],
     }
 
 
-def draw_growth_curves(
-    output_path: Path,
-    style_cfg: HanddrawStyleConfig,
-    size: tuple[int, int] = (600, 600),
-) -> dict[str, Any]:
-    """Scene 2.2: 线性增长 vs 复利指数曲线（实色累积区对比）。"""
-    w, h = size
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    ink = _hex_to_rgb(style_cfg.ink_color)
-    accent = _hex_to_rgb(style_cfg.accent_color)
-    grid_col = (205, 212, 222)
-    linear_col = (200, 208, 216) if style_cfg.style_id != "1" else (232, 232, 232)
-    exp_col = (245, 150, 90) if style_cfg.style_id == "10" else (240, 180, 110)
-
-    base_y = 500
-
-    # 1. Coordinate Axes — full frame bars (drawn first, owns only its own pixels)
-    # Y-axis bar: x 60..76
-    d.rectangle((60, 90, 76, base_y + 16), fill=grid_col, outline=ink, width=5)
-    # X-axis bar: y 500..516
-    d.rectangle((60, base_y, 540, base_y + 16), fill=grid_col, outline=ink, width=5)
-    # Arrow heads
-    d.polygon([(52, 90), (84, 90), (68, 58)], fill=ink)
-    d.polygon([(540, base_y + 3), (540, base_y + 13), (562, base_y + 8)], fill=ink)
-
-    # 2. Linear accumulation block (left, gentle ramp)
-    d.polygon([(84, base_y), (290, base_y), (290, 400), (84, base_y)],
-              fill=linear_col, outline=ink, width=5)
-    d.line([(84, base_y), (290, 400)], fill=ink, width=6)
-
-    # 3. Exponential accumulation block (right, hockey-stick surge)
-    exp_pts = []
-    for step in range(40):
-        t = step / 39.0
-        x = 300 + t * 230
-        val = (math.exp(3.0 * t) - 1.0) / (math.exp(3.0) - 1.0)
-        y = base_y - val * 390
-        exp_pts.append((x, y))
-    area_poly = exp_pts + [(530, base_y), (300, base_y)]
-    d.polygon(area_poly, fill=exp_col, outline=ink, width=5)
-    d.line(exp_pts, fill=accent, width=8)
-
-    # 4. Star marker at the inflection apex
-    cx, cy = exp_pts[-1]
-    star = []
-    for step in range(10):
-        r = 20 if step % 2 == 0 else 8
-        ang = math.radians(step * 36 - 90)
-        star.append((cx + r * math.cos(ang), cy - 30 + r * math.sin(ang)))
-    d.polygon(star, fill=accent, outline=ink, width=3)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(output_path)
-
-    parts = [
-        {
-            "id": "exponential_surge",
-            "polygon": [[0.37, 0.13], [0.665, 0.13], [0.665, 0.625], [0.37, 0.625]],
-        },
-        {
-            "id": "linear_ramp",
-            "polygon": [[0.10, 0.49], [0.365, 0.49], [0.365, 0.625], [0.10, 0.625]],
-        },
-        {
-            "id": "axes_frame",
-            "polygon": [[0.05, 0.06], [0.72, 0.06], [0.72, 0.65], [0.05, 0.65]],
-            "exclude_polygons": [
-                [[0.37, 0.13], [0.665, 0.13], [0.665, 0.625], [0.37, 0.625]],
-                [[0.10, 0.49], [0.365, 0.49], [0.365, 0.625], [0.10, 0.625]],
-            ],
-        },
-    ]
+def scene_turn_taking() -> dict[str, Any]:
     return {
-        "source": str(output_path),
-        "width": w,
-        "height": h,
-        "parts": parts,
+        "shapes": [
+            _e("kid_a", (150, 320, 320, 520), "accent", 4),
+            _e("kid_a_head", (175, 200, 295, 330), "warm", 5),
+            _e("kid_b", (400, 320, 570, 520), "cool", 3),
+            _e("kid_b_head", (425, 200, 545, 330), "warm", 4),
+            _p("swing_frame", [(280, 180), (300, 180), (330, 560), (310, 560)], "green", 2),
+            _p("swing_seat", [(250, 430), (350, 430), (350, 460), (250, 460)], "accent", 6),
+            _p("ground", [(-20, 560), (620, 560), (620, 660), (-20, 660)], "cool", 0),
+            _e("ball", (60, 470, 150, 560), "accent", 5),
+        ],
+        "decor": [
+            {"host": "kid_a_head", "kind": "arc", "box": (235, 285, 24, 18), "start": 200, "end": 340},
+            {"host": "kid_b_head", "kind": "arc", "box": (485, 285, 24, 18), "start": 200, "end": 340},
+        ],
     }
 
 
-def draw_coin_pyramid(
-    output_path: Path,
-    style_cfg: HanddrawStyleConfig,
-    size: tuple[int, int] = (600, 600),
-) -> dict[str, Any]:
-    """Scene 2.3: 随时间积累的复利资产塔与复利之星。"""
-    w, h = size
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    ink = _hex_to_rgb(style_cfg.ink_color)
-    accent = _hex_to_rgb(style_cfg.accent_color)
-    gold = (245, 205, 60) if style_cfg.style_id != "1" else (235, 235, 235)
-    base_col = (180, 200, 220) if style_cfg.style_id != "1" else (225, 225, 225)
-
-    # 1. Base pedestal
-    d.rectangle((100, 480, 500, 550), fill=base_col, outline=ink, width=5)
-
-    # 2. Coin stacks: 3 tiers
-    # Tier 1 (bottom 4 coins)
-    for i, x in enumerate([140, 220, 300, 380]):
-        d.rounded_rectangle((x, 410, x + 70, 475), radius=8, fill=gold, outline=ink, width=4)
-        d.text((x + 25, 430), "¥", fill=ink)
-    # Tier 2 (middle 3 coins)
-    for i, x in enumerate([180, 260, 340]):
-        d.rounded_rectangle((x, 335, x + 70, 400), radius=8, fill=gold, outline=ink, width=4)
-        d.text((x + 25, 355), "¥", fill=ink)
-    # Tier 3 (top 2 coins)
-    for i, x in enumerate([220, 300]):
-        d.rounded_rectangle((x, 260, x + 70, 325), radius=8, fill=gold, outline=ink, width=4)
-        d.text((x + 25, 280), "¥", fill=ink)
-
-    # 3. Top Star of Compounding
-    cx, cy, r_outer, r_inner = 300, 150, 65, 28
-    star_pts = []
-    for step in range(10):
-        r = r_outer if step % 2 == 0 else r_inner
-        angle = math.radians(step * 36 - 90)
-        star_pts.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
-    d.polygon(star_pts, fill=accent, outline=ink)
-    # Sparkle rays
-    for angle in [0, 45, 90, 135, 180, 225, 270, 315]:
-        rad = math.radians(angle)
-        x1 = cx + 80 * math.cos(rad)
-        y1 = cy + 80 * math.sin(rad)
-        x2 = cx + 115 * math.cos(rad)
-        y2 = cy + 115 * math.sin(rad)
-        d.line([(x1, y1), (x2, y2)], fill=accent, width=4)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    img.save(output_path)
-
-    parts = [
-        {
-            "id": "compounding_star",
-            "polygon": [[0.16, 0.0], [0.84, 0.0], [0.84, 0.45], [0.16, 0.45]],
-        },
-        {
-            "id": "coin_stacks",
-            "polygon": [[0.10, 0.40], [0.90, 0.40], [0.90, 0.98], [0.10, 0.98]],
-        },
-    ]
+def scene_brush_teeth() -> dict[str, Any]:
     return {
-        "source": str(output_path),
-        "width": w,
-        "height": h,
-        "parts": parts,
+        "shapes": [
+            _e("tooth", (200, 150, 460, 520), "warm", 4),
+            _p("tooth_left_root", [(240, 470), (280, 620), (330, 480)], "warm", 3),
+            _p("tooth_right_root", [(340, 480), (390, 620), (425, 470)], "warm", 3),
+            _p("brush_handle", [(430, 380), (620, 300), (640, 350), (450, 430)], "accent", 5),
+            _p("brush_head", [(370, 330), (440, 300), (470, 390), (395, 420)], "cool", 6),
+            _p("paste", [(380, 300), (450, 268), (462, 300), (392, 332)], "green", 7),
+            _p("sparkle", [(520, 130), (540, 175), (585, 195), (540, 215), (520, 260), (500, 215), (455, 195), (500, 175)], "accent", 8),
+        ],
+        "decor": [
+            {"host": "tooth", "kind": "arc", "box": (300, 300, 60, 40), "start": 200, "end": 340},
+            {"host": "brush_head", "kind": "line", "points": [(395, 350), (455, 330)], "scale": 0.5},
+        ],
     }
 
 
-# Map of standard scene templates
+def scene_stars_nature() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _e("moon", (90, 110, 280, 300), "accent", 3),
+            _p("tree_trunk", [(430, 320), (490, 320), (500, 620), (420, 620)], "warm", 4),
+            _e("tree_crown", (330, 110, 610, 380), "green", 5),
+            _p("star", [(150, 400), (185, 470), (260, 480), (205, 530), (220, 605), (150, 565), (80, 605), (95, 530), (40, 480), (115, 470)], "accent", 6),
+            _p("ground", [(-20, 610), (620, 610), (620, 700), (-20, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "tree_crown", "kind": "arc", "box": (470, 250, 90, 70), "start": 190, "end": 350},
+            {"host": "moon", "kind": "arc", "box": (215, 205, 45, 40), "start": 120, "end": 260},
+        ],
+    }
+
+
+def scene_feelings() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _e("face", (180, 150, 460, 430), "warm", 4),
+            _e("eye_left", (245, 250, 285, 290), "cool", 6),
+            _e("eye_right", (355, 250, 395, 290), "cool", 6),
+            _p("smile", [(250, 340), (280, 375), (360, 375), (390, 340), (360, 400), (280, 400)], "accent", 5),
+            _p("heart_left", [(120, 470), (170, 430), (220, 470), (170, 540)], "accent", 3),
+            _p("heart_right", [(420, 470), (470, 430), (520, 470), (470, 540)], "accent", 3),
+        ],
+        "decor": [
+            {"host": "face", "kind": "arc", "box": (320, 300, 70, 30), "start": 200, "end": 340},
+        ],
+    }
+
+
+def scene_courage() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _p("hill", [(200, 620), (330, 300), (470, 620)], "green", 2),
+            _e("child", (300, 380, 400, 560), "accent", 4),
+            _e("child_head", (315, 300, 385, 385), "warm", 5),
+            _e("sun", (60, 90, 220, 250), "accent", 1),
+            _p("flag_pole", [(330, 220), (342, 220), (342, 330), (330, 330)], "cool", 3),
+            _p("flag", [(342, 225), (440, 255), (342, 290)], "accent", 6),
+            _p("ground", [(-20, 610), (620, 610), (620, 700), (-20, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "sun", "kind": "rays", "box": (140, 170, 95, 135), "angles": [0, 45, 90, 135, 180, 225, 270, 315]},
+        ],
+    }
+
+
+def scene_tidy_up() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _p("toy_box", [(120, 380), (500, 380), (480, 620), (140, 620)], "warm", 3),
+            _p("box_lid", [(100, 330), (520, 330), (500, 395), (120, 395)], "accent", 4),
+            _e("block_a", (180, 430, 270, 520), "green", 6),
+            _e("block_b", (300, 430, 390, 520), "cool", 6),
+            _p("block_c", [(230, 540), (320, 540), (320, 610), (230, 610)], "accent", 6),
+            _p("ground", [(-20, 610), (620, 610), (620, 700), (-20, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "toy_box", "kind": "line", "points": [(160, 480), (460, 480)], "scale": 0.5},
+        ],
+    }
+
+
+# Legacy explainer scenes retained for backward compatibility.
+def scene_anger_brain() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _e("head", (170, 170, 430, 430), "warm", 4),
+            _p("torso", [(180, 420), (420, 420), (450, 620), (150, 620)], "cool", 2),
+            _e("amygdala", (230, 60, 370, 170), "accent", 5),
+            _p("ground", [(-20, 600), (620, 600), (620, 690), (-20, 690)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "amygdala", "kind": "rays", "box": (300, 115, 80, 130), "angles": [30, 60, 90, 120, 150], "scale": 0.5},
+            {"host": "head", "kind": "line", "points": [(250, 300), (290, 315)], "scale": 0.5},
+            {"host": "head", "kind": "line", "points": [(350, 300), (310, 315)], "scale": 0.5},
+        ],
+    }
+
+
+def scene_balance_scale() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _p("beam", [(70, 300), (530, 170), (530, 205), (70, 335)], "warm", 4),
+            _e("pan_left", (60, 350, 210, 440), "cool", 3),
+            _e("pan_right", (400, 200, 550, 290), "cool", 3),
+            _p("stand", [(270, 250), (330, 250), (370, 560), (230, 560)], "warm", 2),
+            _p("ground", [(-20, 550), (620, 550), (620, 640), (-20, 640)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "beam", "kind": "line", "points": [(300, 235), (300, 300)], "scale": 0.8},
+        ],
+    }
+
+
+def scene_calm_decision() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _e("bulb", (230, 80, 370, 230), "accent", 4),
+            _p("card", [(120, 320), (480, 320), (480, 540), (120, 540)], "cool", 3),
+            _p("check", [(180, 430), (230, 480), (420, 360), (400, 400), (235, 520), (160, 460)], "accent", 5),
+        ],
+        "decor": [
+            {"host": "bulb", "kind": "rays", "box": (300, 155, 90, 130), "angles": [0, 45, 90, 135, 180, 225, 270, 315], "scale": 0.5},
+        ],
+    }
+
+
+def scene_snowball_effect() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _e("snowball_small", (90, 120, 170, 200), "cool", 5),
+            _e("snowball_mid", (210, 200, 320, 310), "cool", 4),
+            _e("snowball_big", (350, 260, 560, 470), "accent", 3),
+            _p("slope", [(0, 120), (620, 460), (620, 640), (0, 300)], "warm", 0),
+        ],
+        "decor": [
+            {"host": "snowball_big", "kind": "arc", "box": (455, 365, 90, 80), "start": 40, "end": 200},
+        ],
+    }
+
+
+def scene_growth_curves() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _p("axes", [(60, 90), (78, 90), (78, 516), (60, 516)], "cool", 2),
+            _p("axis_x", [(60, 500), (560, 500), (560, 518), (60, 518)], "cool", 2),
+            _p("linear", [(84, 500), (290, 500), (290, 400)], "cool", 3),
+            _p("exponential", [(300, 500), (430, 300), (530, 120), (530, 500)], "accent", 4),
+        ],
+        "decor": [
+            {"host": "exponential", "kind": "line", "points": [(300, 500), (380, 420), (450, 300), (510, 170)], "scale": 0.8},
+        ],
+    }
+
+
+def scene_coin_pyramid() -> dict[str, Any]:
+    return {
+        "shapes": [
+            _p("base", [(100, 480), (500, 480), (500, 550), (100, 550)], "cool", 2),
+            _p("tier1", [(140, 410), (460, 410), (460, 480), (140, 480)], "accent", 3),
+            _p("tier2", [(190, 340), (410, 340), (410, 410), (190, 410)], "accent", 4),
+            _p("tier3", [(240, 270), (360, 270), (360, 340), (240, 340)], "accent", 5),
+            _p("star", [(300, 130), (322, 185), (380, 190), (335, 228), (348, 285), (300, 252), (252, 285), (265, 228), (220, 190), (278, 185)], "accent", 6),
+        ],
+        "decor": [
+            {"host": "star", "kind": "rays", "box": (300, 205, 75, 110), "angles": [0, 45, 90, 135, 180, 225, 270, 315], "scale": 0.45},
+        ],
+    }
+
+
 ILLUSTRATION_BUILDERS = {
-    "anger_brain": draw_anger_brain,
-    "balance_scale": draw_balance_scale,
-    "calm_decision": draw_calm_decision,
-    "snowball_effect": draw_snowball_effect,
-    "growth_curves": draw_growth_curves,
-    "coin_pyramid": draw_coin_pyramid,
+    # kids-first
+    "fox_share": scene_fox_share,
+    "turn_taking": scene_turn_taking,
+    "brush_teeth": scene_brush_teeth,
+    "stars_nature": scene_stars_nature,
+    "feelings": scene_feelings,
+    "courage": scene_courage,
+    "tidy_up": scene_tidy_up,
+    # legacy explainer
+    "anger_brain": scene_anger_brain,
+    "balance_scale": scene_balance_scale,
+    "calm_decision": scene_calm_decision,
+    "snowball_effect": scene_snowball_effect,
+    "growth_curves": scene_growth_curves,
+    "coin_pyramid": scene_coin_pyramid,
 }
+
+
+# ---------------------------------------------------------------------------
+# Renderer
+# ---------------------------------------------------------------------------
+
+
+def _normalise_polygon(points: list[tuple[float, float]], width: int, height: int) -> list[list[float]]:
+    # Shapes such as the ground intentionally extend beyond the illustration
+    # frame. Clamp vertices to its transparent canvas before exporting polygons.
+    return [
+        [round(min(1.0, max(0.0, x / width)), 6),
+         round(min(1.0, max(0.0, y / height)), 6)]
+        for x, y in points
+    ]
+
+
+def _convex_hull(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    pts = sorted(set(points))
+    if len(pts) <= 2:
+        return pts
+
+    def cross(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[tuple[float, float]] = []
+    for point in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0:
+            lower.pop()
+        lower.append(point)
+    upper: list[tuple[float, float]] = []
+    for point in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0:
+            upper.pop()
+        upper.append(point)
+    return lower[:-1] + upper[:-1]
+
+
+def _render_scene(
+    scene_key: str, cfg: HanddrawStyleConfig, size: tuple[int, int], seed: int = 0
+) -> tuple[Image.Image, list[dict[str, Any]]]:
+    rng = random.Random(f"{scene_key}:{cfg.style_id}:v2:{int(seed)}")
+    recipe = _Recipe(cfg, rng)
+    spec = ILLUSTRATION_BUILDERS[scene_key]()
+
+    scale = SUPERSAMPLE
+    big = (size[0] * scale, size[1] * scale)
+    scaled_shapes = []
+    for shape in spec["shapes"]:
+        item = dict(shape)
+        if shape["kind"] == "polygon":
+            item["points"] = [(x * scale, y * scale) for x, y in shape["points"]]
+        else:
+            item["box"] = tuple(v * scale for v in shape["box"])
+        scaled_shapes.append(item)
+    # Style 10 intentionally uses a smaller, airy vignette composition. The
+    # watercolor sketch needs a larger quiet-paper margin than the other recipes.
+    composition_scale = {"1": 1.0, "8": 0.90, "10": 0.72, "17": 0.82}[cfg.style_id]
+    if composition_scale < 1.0:
+        cx, cy = big[0] / 2, big[1] / 2
+        size_factor = composition_scale
+        for item in scaled_shapes:
+            if item["kind"] == "polygon":
+                item["points"] = [
+                    (cx + (x - cx) * size_factor, cy + (y - cy) * size_factor)
+                    for x, y in item["points"]
+                ]
+            else:
+                x0, y0, x1, y1 = item["box"]
+                item["box"] = (
+                    cx + (x0 - cx) * size_factor,
+                    cy + (y0 - cy) * size_factor,
+                    cx + (x1 - cx) * size_factor,
+                    cy + (y1 - cy) * size_factor,
+                )
+    scaled_decor = []
+    for decor in spec["decor"]:
+        item = dict(decor)
+        if decor["kind"] in ("line",):
+            item["points"] = [(x * scale, y * scale) for x, y in decor["points"]]
+        else:
+            item["box"] = tuple(v * scale for v in decor["box"])
+        if composition_scale < 1.0:
+            cx, cy = big[0] / 2, big[1] / 2
+            size_factor = composition_scale
+            if decor["kind"] == "line":
+                item["points"] = [
+                    (cx + (x - cx) * size_factor, cy + (y - cy) * size_factor)
+                    for x, y in item["points"]
+                ]
+            else:
+                x0, y0, rx, ry = item["box"]
+                item["box"] = (
+                    cx + (x0 - cx) * size_factor,
+                    cy + (y0 - cy) * size_factor,
+                    rx * size_factor,
+                    ry * size_factor,
+                )
+        scaled_decor.append(item)
+
+    # 1. Watercolour / wash fills, painted first so ink sits on top.
+    fill_rgba = np.zeros((big[1], big[0], 4), dtype=np.uint8)
+    if recipe.fill_opacity > 0:
+        for shape in sorted(scaled_shapes, key=lambda s: s["z"]):
+            mask = _shape_mask(big, shape)
+            if not mask.any():
+                continue
+            colour = recipe.fill_color(shape["role"])
+            layer = np.zeros((big[1], big[0], 4), dtype=np.uint8)
+            layer[..., 0], layer[..., 1], layer[..., 2] = colour
+            alpha = np.where(mask, int(255 * recipe.fill_opacity), 0).astype(np.uint8)
+            if recipe.fill_blur:
+                alpha = np.array(
+                    Image.fromarray(alpha).filter(ImageFilter.GaussianBlur(recipe.fill_blur * scale))
+                )
+            if recipe.grain:
+                grain = _grain_mask(big, recipe.grain * 0.35, rng)
+                alpha = np.where(grain & mask, (alpha * 0.55).astype(np.uint8), alpha)
+            layer[..., 3] = alpha
+            # Normal (not additive) compositing keeps wash edges soft, not saturated.
+            base = Image.fromarray(fill_rgba)
+            base.alpha_composite(Image.fromarray(layer))
+            fill_rgba = np.array(base)
+
+    # 2. Ink layer.
+    ink_mask = np.zeros((big[1], big[0]), dtype=bool)
+    for shape in scaled_shapes:
+        ink_mask |= _render_outline(shape, big, recipe)
+    for decor in scaled_decor:
+        ink_mask |= _decor_outline(decor, big, recipe)
+
+    if recipe.bleed:
+        blurred = ndimage.gaussian_filter(ink_mask.astype(np.float32), recipe.bleed * scale)
+        ink_mask = blurred > 0.28
+    ink_rgba = np.zeros((big[1], big[0], 4), dtype=np.uint8)
+    ink_rgba[..., 0], ink_rgba[..., 1], ink_rgba[..., 2] = recipe.ink
+    ink_rgba[..., 3] = np.where(ink_mask, 255, 0).astype(np.uint8)
+
+    composed = Image.fromarray(fill_rgba)
+    composed.alpha_composite(Image.fromarray(ink_rgba))
+
+    # 3. Style 8: a red seal stamp as the signature accent.
+    if cfg.style_id == "8":
+        seal = Image.new("RGBA", big, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(seal)
+        s = int(52 * scale)
+        x, y = int(big[0] - s - 26 * scale), int(big[1] - s - 26 * scale)
+        draw.rounded_rectangle((x, y, x + s, y + s), radius=int(6 * scale), fill=(*recipe.accent, 235))
+        draw.line((x + s * 0.28, y + s * 0.28, x + s * 0.72, y + s * 0.72), fill=(255, 255, 255, 220), width=max(2, int(3 * scale)))
+        draw.line((x + s * 0.72, y + s * 0.28, x + s * 0.28, y + s * 0.72), fill=(255, 255, 255, 220), width=max(2, int(3 * scale)))
+        composed.alpha_composite(seal)
+
+    small = composed.resize(size, Image.Resampling.LANCZOS)
+
+    # 4. Parts: front-most shapes first so greedy ownership matches drawing depth.
+    parts: list[dict[str, Any]] = []
+    for shape in sorted(scaled_shapes, key=lambda s: -s["z"]):
+        if shape["kind"] == "polygon":
+            points = [(x, y) for x, y in shape["points"]]
+        else:
+            points = _shape_points(shape)
+        hull = _convex_hull(points) or points
+        if len(hull) < 3:
+            hull = points
+        parts.append(
+            {
+                "id": shape["id"],
+                "polygon": _normalise_polygon(hull, big[0], big[1]),
+            }
+        )
+    return small, parts
 
 
 def build_scene_illustration(
@@ -446,11 +707,22 @@ def build_scene_illustration(
     output_path: Path,
     style_id: str | int = "8",
     size: tuple[int, int] = (600, 600),
+    seed: int = 0,
 ) -> dict[str, Any]:
-    """Generate illustration and parts metadata for a named scene."""
+    """Generate a transparent, style-differentiated illustration plus part metadata."""
     if scene_key not in ILLUSTRATION_BUILDERS:
         raise ValueError(
-            f"Unknown scene key '{scene_key}'. Supported: {list(ILLUSTRATION_BUILDERS.keys())}"
+            f"Unknown scene key '{scene_key}'. Supported: {sorted(ILLUSTRATION_BUILDERS)}"
         )
     cfg = get_style_config(style_id)
-    return ILLUSTRATION_BUILDERS[scene_key](output_path, cfg, size)
+    image, parts = _render_scene(scene_key, cfg, size, seed=seed)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image.save(output_path)
+    return {
+        "source": str(output_path),
+        "width": image.width,
+        "height": image.height,
+        "parts": parts,
+        "style_id": cfg.style_id,
+    }

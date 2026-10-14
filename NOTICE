@@ -23,3 +23,9 @@ Offline-vendored JavaScript
 
 No OpenMontage code, text or data is included in this worktree; the OpenMontage
 project was used only as a read-only design reference.
+
+Sweety Handdraw Video
+- Includes the separately vendored sweety-handdraw-video implementation and its
+  local hand-drawn video assets under hevi/layer4_legacy/handdraw/. Consult the
+  accompanying vendored license and provenance records for the component-specific
+  copyright, license terms, and source attribution.
