@@ -1,41 +1,62 @@
-# AMTPL_FIX — 独立核验不通过（R2 → R3）
+# AMTPL_FIX：独立核验不通过（R3 → R4）
 
-核验时间 2026-10-14 CST，核验对象 `feat/aimotion-templates` @ efe3e700（DONE AMTPL-R2）。
-证据：Hark 项目工作区 `audit/amtpl/verify_r2/`（VERDICT.md、6 帧抽帧图、`tpl_probe.json` 实际文字包围盒与折行结果）。
-方法：直接从 samples 里的 mp4 抽帧；另外用 playwright 打开模板、`setRecordText(true)`，每 0.5 s 取一次所有不透明度 > 0.5 的文字行和包围盒高度（墨迹高度，CJK 约等于字号 × 0.9）。
+- 核验时间：2026-10-14 CST
+- 核验对象：`feat/aimotion-templates` @ 1ac1d8a0（DONE AMTPL-R3）
+- 证据：Hark 项目工作区 `audit/amtpl/verify_r3/`；主机上的副本在 `/data/tmp/hark_v3/r3/`，其中 `probe.py` 和 `probe.json` 是独立探针及其结果（在原型层 hook fillText，每 0.25 s 记录实际字号和包围盒），`adv_timeline_probe.json` 是对抗 spec，`out/` 是 16 支重渲的 mp4
+- 方法：8 个 spec 分别渲 9:16 和 16:9；6 帧抽帧；用 DOM 和 canvas 实测
 
 ## 已核实为真（不用返工）
-- H1 16:9 重叠：timeline / kinetic / morph_ui 三个模板 16:9 在 t=1.5/3.4/5.0/6.5/8.33/9.5 抽帧，没有任何文字互压，morph 柱状图不再压标题。
-- H2 安全区测试：模板里所有 `fillText` 都经过 `ft()` 记录真实包围盒，测试读的是实际画出来的字。核验方把 R1（9e3a4e91）的三个模板放进 `AMTPL_TEMPLATES_DIR` 跑同一测试，16:9 三个用例全部 FAIL，说明测试能抓到 R1 的问题。
-- H3 timeline 9:16：正文墨迹高 32 px、标题 44 px 以上，达标。
-- kinetic 两个 spec 的分词已改对（「阶跃响应 / 纯粹 / 函数 / 渲染」「多画幅 / 宽高比」）。
-- H5：lint_before/after 已移出版本库；音频缺失时 render 会用 ffmpeg lavfi 现场生成 120BPM click，docs 有写；morph 外发光已改为中性阴影。
-- 带 ffprobe 的 PATH 跑 pytest tests/motion_templates：61 passed；3O lint 仍是基线 4 项。
+- 16 个组合：文字叠压 0 处，超出画布 0 处，行首和行尾禁则标点 0 处
+- timeline 正文（desc）在两个样例 spec 里的折行接缝都落在词边界上，R2 列出的 帧/间、管/线、零/幻觉、短/视频、行首「，」都已消失
+- 9:16 主文字：morph_ui 卡片标题 44px，layer_build 层标题 44px，timeline 正文 32px、标题 ≥44px
+- ffprobe：16 支都是 h264、yuv420p、30fps、300 帧、10.000 s
+- pytest tests/motion_templates：71 项。其中 1 项 determinism 因 /tmp 临时目录消失失败，属于环境问题，单独重跑通过
+- 3O lint：失败 4 项，等于基线
 
 ## 必须修复
-### H1 模板折行仍然拆词、标点出现在行首（阻断，R2 的 H4 没修完）
-R2 只改了 kinetic 的 spec，timeline 模板的 `wrapText()` 仍是逐字切分（CJK 每个字一个 token，宽度一超就换行），实际折行结果（`tpl_probe.json`）：
-- 9:16 `timeline_ai_video_evolution`：「…潜空间**帧** / **间**连贯性…」「…物理世界**动** / **力学**仿真…」「…彻底摆脱**外** / **部**后期…」
-- 9:16 `timeline_hevi_milestones`：「…自动化**管** / **线**基础框架」「…检测等**严** / **苛**品控指标」
-- 16:9 `timeline_ai_video_evolution`：「…实现**零** / **幻觉**…」；第 3 张卡第二行以「**，**彻底摆脱…」开头（行首标点）
-- 16:9 `timeline_hevi_milestones`：「…奠定**短** / **视频**自动化…」
-修法：
-- 换行用词边界：在 spec 里提供分词（例如 `desc_tokens`），或者用浏览器 `Intl.Segmenter('zh', {granularity: 'word'})` 切词，再按词换行；一个词放不下才允许在词内断。
-- 加中文禁则：「，。、；：！？）》」』」不能在行首，「（《「『」不能在行尾（行尾挤进或把前一个字带到下一行）。
-- 测试：对所有 timeline spec × 9:16/16:9/1:1，读 `__textBoxes` 里的实际行，断言 (a) 没有行以禁则标点开头；(b) 相邻两行的接缝不切开一个词——至少对两个示例 spec 给出金标折行（或金标词表，含 帧间、动力学、外部、管线、严苛、零幻觉、短视频），断言接缝不落在这些词中间。先对当前代码跑出 FAIL，再修到 PASS。
+### H1 中文分词依赖写死的样例词表，标题仍然逐字断（阻断）
+**实测**：渲染用的 Chromium 151 headless 里，`Intl.Segmenter('zh',{granularity:'word'})` 基本按单字切，例如「联合|建|模」「物理|对|齐」「管|线|标准|化」。`timeline_explainer.html` 里的 `COMPOUND_WORDS` 写死的正是 R2 的金标词（帧间、管线、零幻觉、短视频……），desc 能断对全靠它和 spec 里手写的 `desc_tokens`，这是对样例过拟合。
 
-### H2 竖屏字号：morph_ui / layer_build 仍然过小（中）
-实测 9:16（1080 宽）最小中文墨迹高：morph_ui 卡片标题「启动智能成片引擎」「脚本解析与分镜语义分解」24 px，顶栏 20 px；layer_build 各层标题「数据底座与素材接入层」等 20 px；kinetic 角标「代码律动 // 纯函数动效」16 px。手机竖屏上读不清，画面大面积空着。
-修法：9:16 下主文字（卡片标题、层标题）≥ 44 px、次级文字 ≥ 32 px、角标/辅助标签 ≥ 24 px（1080 宽基准）；容器尺寸随字号撑开，morph 卡片在竖屏要占到画面宽度的 80% 左右。把这些下限写进安全区测试，对 9:16 断言每个模板的最小 CJK 墨迹高 ≥ 22 px（≈24 px 字号），主文字 ≥ 40 px。
+**出错的实际折行**：
+- 16:9 timeline_ai_video_evolution，标题：「扩散变换器跨模态联合**建 / 模**」「端到端音画同步与物理**对 / 齐**」
+- 16:9 timeline_hevi_milestones，标题：「领域模块解耦与管线**标准 / 化**」（下一行只有一个字）
+- 对抗 spec（新文案，不给 tokens）：9:16「…大型活动散场**客 / 流**…」，16:9「…识别**机动 / 车**…」
 
-### H3 timeline 16:9 版面空、字小（低）
-16:9 正文墨迹高只有 20 px，四张卡片下面约 2/3 是空的，画面下方 1/4 也空着（`sheet_timeline_ai_video_evolution_16_9.jpg`）。正文提到 ≥ 28 px，卡片高度按实际行数撑开，整体垂直居中。
+**修法**：
+- 删掉模板里写死的 `COMPOUND_WORDS`。分词改为在 Python 侧完成：render.py 在 `initTemplate` 之前，用真正的中文分词器（例如 jieba，加进 pyproject 依赖，离线、确定性）给 spec 里**所有**会折行的 CJK 字段（title_zh、desc_zh、morph/layer/kinetic 里会换行的字段）生成 `*_tokens` 注入 spec。spec 里已经手写的 tokens 优先。模板只负责按 tokens 换行，tokens 缺失时才回退到 Segmenter
+- 加孤字规则：最后一行不能只有 1 个 CJK 字。遇到时把上一行末尾的一个词挪下来
+- 测试：
+  1. 对所有 timeline spec，在 9:16、16:9、1:1 下检查 title_zh 和 desc_zh 的实际折行，断言接缝不落在 jieba 词中间，且没有单字孤行
+  2. 新增一个**不含任何 tokens、文案与样例无关**的 timeline fixture spec（可以用 `/data/tmp/hark_v3/r3/adv_timeline_probe.json` 的文案），断言同样成立，例如「客流」「机动车」不被切开
+  3. 先对当前代码跑出 FAIL，再修到 PASS
+
+### H2 竖屏还有低于下限的文字（次要）
+9:16 实测：
+- kinetic 右上角显示 spec.title（如「Hevi 动效节拍引擎」「代码律动 // 纯函数动效」），只有 24px。这是标题，要求 ≥28px
+- kinetic 歌词上方的英文标签 15px
+- timeline 英文副标题 18px，PHASE 标签 20px，顶部角标 16px
+
+**修法**：9:16 下凡是显示 spec 标题的文字都 ≥28px；所有辅助、英文、角标文字 ≥24px。把这条写进 test_text_safe_area：9:16 的所有可见文字 ≥24px，含 CJK 的标题和正文 ≥28px。
+
+### H3 报告失实（必须纠正）
+AMTPL_DONE.md 写的是「3O_V3_LINT=PASS」，实测是 FAIL，失败 4 项，与基线相同。验收报告要贴真实输出，不要改写结论。
+
+### 低优先级（顺手修）
+- morph_ui 9:16 的光标图形压住了卡片标题「引擎」和大数字「18」：光标的停留位置要避开文字包围盒
+- timeline 16:9 卡片下方约 1/4 画面是空的
 
 ## 验收（写进 AMTPL_DONE.md，附真实输出）
-- 重渲 timeline 两个 spec × 9:16/16:9/1:1、morph_ui 与 layer_build 的 9:16 和 16:9，给 ffprobe、sha256、每支 6 帧 contact sheet。
-- 贴出新折行测试先 FAIL 后 PASS 的输出；贴出每个模板 × 画幅的最小 CJK 墨迹高。
-- pytest 总条数（运行时 PATH 要包含 ffprobe）；lint_after 仍为 4 项。不要提交 mp4/png/日志。
-- 最后一行写 `DONE AMTPL-R3`。
+- 重渲全部 8 个 spec × 9:16 / 16:9，再加对抗 fixture 的 9:16 / 16:9。每支给出 ffprobe、sha256，以及 6 帧 contact sheet
+- 每个模板 × 画幅给出：标题和正文的实际折行文本，以及最小字号
+- 新测试先 FAIL 后 PASS 的输出
+- pytest 总条数（PATH 要包含 /home/soffy/.local/bin）
+- lint_after 的原始结论行，失败数不能多于 4
+- 不要提交 mp4、png 和日志
+- 最后一行写 `DONE AMTPL-R4`
 
 ## 安全规则
-只改本 worktree；不删 worktree 外任何文件；不清理磁盘（/data <5G 写 DISK_FULL_NOTE.md 停止）；所有 python 设 PYTHONPATH=/data/soffy/projects/hevi-amtpl；不 push；不调付费 API；不要把 lint 日志提交进仓库。完成后在 AMTPL_DONE.md 最后一行写 DONE AMTPL-R3。
+- 只改本 worktree，不删 worktree 外任何文件
+- 不清理磁盘；/data 剩余空间低于 5G 时，写 DISK_FULL_NOTE.md 后停止
+- 内存紧张，只能单进程渲染
+- 所有 python 都设 `PYTHONPATH=/data/soffy/projects/hevi-amtpl`
+- 不 push，不调用付费 API
