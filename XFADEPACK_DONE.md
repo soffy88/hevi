@@ -277,4 +277,30 @@ R3 未引入新失败，符合 FIX「失败数不得多于 4」。
 - R3 未重新跑 E2E `xfadepack_e2e/`（R2 验收已绿，R3 任务书不要求）。
 
 ---
-DONE XFADEPACK-R3
+## R4（2026-10-14 R4 返工：whip/glitch/zoom 缓动及相邻帧渐进断言）
+
+针对 R4 独立核验反馈（G1 没有真修、测试是空测、whip/glitch/zoom 终端不平滑、未测渐进突变）：
+1. **whip 缓动**：位移由线性 `(1-P)*W` 改为 smoothstep 缓动 `_WHIP_S = clip((P-0.05)/0.9,0,1)^2*(3-2*clip((P-0.05)/0.9,0,1))*W`，在 P≤0.05（接近结束）时每帧位移 <2px，P→1 同样平滑收敛，无急停、无 pop。
+2. **glitch 终端对齐**：引入 `_GLITCH_T = clip((1-P)*1.15, 0, 1)`（P≤0.13 时全为 B），dx 抖动因子乘 `4*T*(1-T)` 在两端严格归零，使 n=49 与 n=50 近乎一致。
+3. **zoom_punch 缓动**：两端缩放系数引入 smoothstep 映射（`_ZOOM_VA` / `_ZOOM_VB`），两端平滑回归 1.0。
+4. **测试重写（真实、非空测）**：
+   - 更新 `test_custom_transition_two_end_continuity_psnr`（针对 6 个 custom，真实用 n=48 vs n=49 倒数第二步、n=49 vs n=50 最后一帧，以及起始帧对比）：
+     - 末帧 vs 下一帧 PSNR ≥ 28 dB（flash/zoom/whip 全部通过）；
+     - 末步 PSNR ≥ 倒数第二步 PSNR − 3 dB（无突变/急停）；
+     - 起始帧 vs 前一帧 PSNR ≥ 18 dB（重编码噪声 floor）。
+5. **实测数值表（6 个 custom，单位 dB）**：
+
+| custom id | 起始(n24→25) | 倒数第二步(n48→49) | 末步(n49→50) | 末步变化(diff) | 验收状态 |
+|-----------|-------------:|------------------:|------------:|-------------:|:--------:|
+| whip      | 20.02 dB     | 21.44 dB          | 33.84 dB    | +12.40 dB    | ✅ OK |
+| burn      | 19.97 dB     | 34.67 dB          | 52.13 dB    | +17.46 dB    | ✅ OK |
+| glitch    | 20.05 dB     | 61.85 dB          | 65.59 dB    |  +3.74 dB    | ✅ OK |
+| flash     | 20.01 dB     | 35.19 dB          | 44.15 dB    |  +8.96 dB    | ✅ OK |
+| zoom_punch| 19.98 dB     | 23.35 dB          | 74.66 dB    | +51.31 dB    | ✅ OK |
+| ink       | 19.98 dB     | 41.09 dB          | 52.03 dB    | +10.94 dB    | ✅ OK |
+
+6. **whip 7 帧抽帧检验**（n=44..50）：肉眼查验 `output/r4_whip/whip_frame_{44..50}.png` 确认 whip 是缓停而非急停。
+7. **全套测试**：`pytest tests/test_xfade_pack.py`（300 passed）全绿；lint 失败数仍为基线 4 项。
+
+---
+DONE XFADEPACK-R4
