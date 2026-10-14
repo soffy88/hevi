@@ -1590,6 +1590,8 @@ class TaskService:
                             progress_cb=progress_cb,
                             character_reference=character_reference,
                             subject_version=subject_version,
+                            task_id=task.get("id"),
+                            repository=self.repository,
                             **task["config_json"],
                         )
 
@@ -2424,6 +2426,8 @@ class TaskService:
                 subject_version=subject_version,
                 regenerate_shot_ids=selected_shot_ids,
                 shot_hints=selected_hints,
+                task_id=task.get("id"),
+                repository=self.repository,
                 **task["config_json"],
             )
 

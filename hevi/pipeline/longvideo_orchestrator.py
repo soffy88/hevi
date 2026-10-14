@@ -176,6 +176,9 @@ async def orchestrate_longvideo(
     story_relationships: list[dict[str, Any]] | None = None,
     story_characters: list[dict[str, Any]] | None = None,
     episode_plan: dict[str, Any] | None = None,
+    # ShotSpec (GAP_PLAN §2 W1 / R2 FIX P4): 任务存储规格读取入口参数
+    task_id: Any | None = None,
+    repository: Any = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Orchestrate long video generation using omodul agentic pipeline.
@@ -1008,6 +1011,26 @@ async def orchestrate_longvideo(
             intro_seg = [ShotSegment(_intro_path)] if _intro_path is not None else []
             outro_seg = [ShotSegment(_outro_path)] if _outro_path is not None else []
 
+            # ShotSpec (GAP_PLAN §2 W1 / R2 FIX P4): 从任务存储读取各镜规格
+            _shot_specs: list[Any] | None = None
+            if repository is not None and task_id is not None:
+                try:
+                    from hevi.production.shot_spec import load_shot_specs_for_task
+
+                    _shot_specs = await load_shot_specs_for_task(
+                        repo=repository,
+                        task_id=task_id,
+                        ordered_paths=valid_shots,
+                    )
+                except Exception as _tse:
+                    logger.warning("failed to load shot_specs for task %s: %s", task_id, _tse)
+
+            _full_specs = (
+                ([None] * len(intro_seg) + _shot_specs + [None] * len(outro_seg))
+                if _shot_specs is not None
+                else None
+            )
+
             # 免费程序化 BGM 兜底:素材库空缺时在此生成(时长取预估成片长,
             # 装配器 -shortest 裁到实际视频长度;拍点 JSON 供 beat-sync 消费)。
             if _procedural_bgm_mood:
@@ -1045,6 +1068,7 @@ async def orchestrate_longvideo(
                     height=_target_h,
                     fps=_target_fps,
                     transition=transition,
+                    shot_specs=_full_specs,
                 )
             except Exception as ae:
                 # 装配失败兜底: 统一规格硬切(仍重编码,不用 -c:v copy 防花屏)。
@@ -1059,6 +1083,7 @@ async def orchestrate_longvideo(
                     height=_target_h,
                     fps=_target_fps,
                     transition="cut",
+                    shot_specs=_full_specs,
                 )
 
             # RFC-002 item 11: 数字人讲解接入 —— 提供肖像图且有旁白时,用 Duix 由旁白
