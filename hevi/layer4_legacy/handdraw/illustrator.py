@@ -70,9 +70,9 @@ class _Recipe:
             self.stroke_width = 8.5
             self.jitter = 2.0
             self.taper = 0.55
-            self.bleed = 3.2
+            self.bleed = 5.2
             self.grain = 0.0
-            self.dry_brush = 0.18
+            self.dry_brush = 0.48
             self.fill_opacity = 0.34
             self.fill_blur = 5.0
         elif self.sid == "10":
@@ -288,6 +288,54 @@ def _decor_outline(
     else:
         raise ValueError(kind)
     return mask
+
+
+def scene_crosswalk() -> dict[str, Any]:
+    """Child-height road crossing: zebra lines, signal and adult/child pair."""
+    return {
+        "shapes": [
+            _p("road", [(0, 450), (640, 450), (640, 700), (0, 700)], "cool", 0),
+            _p("crossing_1", [(90, 470), (155, 470), (180, 660), (115, 660)], "warm", 1),
+            _p("crossing_2", [(220, 470), (285, 470), (310, 660), (245, 660)], "warm", 1),
+            _p("crossing_3", [(350, 470), (415, 470), (440, 660), (375, 660)], "warm", 1),
+            _p("crossing_4", [(480, 470), (545, 470), (570, 660), (505, 660)], "warm", 1),
+            _p("signal_post", [(515, 100), (545, 100), (545, 420), (515, 420)], "cool", 2),
+            _p("signal_box", [(475, 100), (590, 100), (590, 305), (475, 305)], "warm", 3),
+            _e("signal_red", (505, 120, 560, 175), "accent", 4),
+            _e("signal_green", (505, 220, 560, 275), "green", 4),
+            _e("adult_head", (145, 130, 245, 230), "warm", 4),
+            _p("adult_body", [(155, 235), (235, 235), (260, 420), (130, 420)], "cool", 3),
+            _e("child_head", (265, 250, 335, 320), "warm", 5),
+            _p("child_body", [(272, 322), (328, 322), (345, 425), (255, 425)], "accent", 4),
+        ],
+        "decor": [
+            {"host": "adult_body", "kind": "line", "points": [(220, 285), (270, 350)], "scale": 0.65},
+            {"host": "child_body", "kind": "line", "points": [(275, 350), (235, 390)], "scale": 0.55},
+        ],
+    }
+
+
+def scene_hand_washing() -> dict[str, Any]:
+    """Hand-washing at a low sink with soap bubbles."""
+    return {
+        "shapes": [
+            _p("sink_stand", [(130, 455), (500, 455), (470, 650), (160, 650)], "cool", 1),
+            _p("sink_bowl", [(100, 380), (530, 380), (480, 460), (150, 460)], "warm", 3),
+            _p("faucet", [(300, 275), (340, 275), (340, 375), (320, 375), (320, 330), (285, 330)], "cool", 4),
+            _e("soap", (385, 335, 445, 385), "green", 4),
+            _e("hand_left", (205, 350, 275, 400), "warm", 5),
+            _e("hand_right", (280, 350, 350, 400), "warm", 5),
+            _e("bubble_a", (220, 265, 255, 300), "cool", 6),
+            _e("bubble_b", (375, 250, 405, 280), "accent", 6),
+            _e("bubble_c", (415, 280, 438, 303), "cool", 6),
+            _e("hero_head", (235, 95, 365, 225), "warm", 3),
+            _p("hero_body", [(225, 225), (375, 225), (410, 360), (190, 360)], "green", 2),
+        ],
+        "decor": [
+            {"host": "hero_head", "kind": "line", "points": [(270, 160), (285, 170)], "scale": 0.35},
+            {"host": "hero_head", "kind": "line", "points": [(320, 170), (335, 160)], "scale": 0.35},
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -521,6 +569,8 @@ ILLUSTRATION_BUILDERS = {
     "feelings": scene_feelings,
     "courage": scene_courage,
     "tidy_up": scene_tidy_up,
+    "crosswalk": scene_crosswalk,
+    "hand_washing": scene_hand_washing,
     # legacy explainer
     "anger_brain": scene_anger_brain,
     "balance_scale": scene_balance_scale,

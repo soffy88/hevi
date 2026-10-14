@@ -160,6 +160,17 @@ def verify_assets(root, timeline):
 
 def verify_job(job_directory, assets_only=False):
     root = Path(job_directory).resolve()
+    manifest_path = root / 'job.json'
+    require(manifest_path.is_file() and manifest_path.stat().st_size > 0,
+            'Missing required handdraw job manifest')
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+    narration = manifest.get('narration') or {}
+    for label, relative in (('narration master', narration.get('source')),
+                            ('narration alignment', narration.get('alignment'))):
+        require(bool(relative), f'Missing required handdraw {label} path in manifest')
+        artifact = (root / str(relative)).resolve()
+        require(artifact.is_relative_to(root) and artifact.is_file() and artifact.stat().st_size > 44,
+                f'Missing required handdraw {label} artifact: {relative}')
     work, output = root / 'work', root / 'outputs'
     timeline = json.loads((work / 'timeline.json').read_text())
     from art_direction import verify_art_direction

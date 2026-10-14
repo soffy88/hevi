@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 import wave
 from itertools import pairwise
 from pathlib import Path
@@ -12,6 +13,11 @@ import numpy as np
 import pytest
 
 from hevi.layer4_legacy.handdraw.layout import compute_canvas_layout
+
+SCRIPT_DIR = Path(__file__).resolve().parents[1] / "hevi" / "layer4_legacy" / "handdraw" / "scripts"
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from video_verifier import verify_job  # noqa: E402
 
 
 def _required_artifacts(root: Path) -> dict[str, Path]:
@@ -92,12 +98,30 @@ def test_deliverables_exist_and_are_real(handdraw_preview) -> None:
     report = json.loads(artifacts["verification"].read_text(encoding="utf-8"))
     assert report["status"] == "engineering_preview_verified"
     assert report["human_review"] == "pending"
+    safety = json.loads(artifacts["kids_safety"].read_text(encoding="utf-8"))
+    assert safety["passed"] is True
+    assert safety["gate_status"] == "passed_measured_preview_media"
+    assert safety["checks"]["measured_media_gate_complete"] is True
+    assert safety["audio_lufs"] is not None
+    assert safety["true_peak_dbtp"] is not None
+    output_safety = json.loads((root / "outputs" / "kids-safety.json").read_text(encoding="utf-8"))
+    assert output_safety == safety
     review = json.loads(artifacts["review"].read_text(encoding="utf-8"))
     assert review["review_type"] == "automated_engineering_only"
     assert review["human_review"] == "pending"
     for category in ("content", "visual", "motion", "audio", "privacy"):
         assert review[category]["status"] == "not_reviewed"
         assert "review remains pending" in review[category]["evidence"]
+
+    manifest = json.loads((root / "job.json").read_text(encoding="utf-8"))
+    overlay_texts = [
+        str(action.get("text", ""))
+        for page in manifest["pages"] for beat in page["beats"] for action in beat["actions"]
+        if action.get("type") == "text"
+    ]
+    assert overlay_texts
+    assert not any("深入机制分析" in text for text in overlay_texts)
+    assert not any(term in text for text in overlay_texts for term in ("复利", "巴菲特", "暴利", "生死威胁", "毁灭行为"))
 
 
 def test_ffprobe_duration_resolution_and_audio_stream(handdraw_preview) -> None:
@@ -127,6 +151,16 @@ def test_preview_audio_is_non_silent_and_measured_mix_meets_loudness_policy(
     measured = _measure_loudness(wav_path)
     assert -17.0 <= measured["integrated_lufs"] <= -15.0, measured
     assert measured["true_peak_dbtp"] <= -1.5, measured
+    # Check the actual short preview MP4 too. A correctly normalised full mix is
+    # not evidence that the encoded 2s/3s preview itself meets the kids gate.
+    video_measured = _measure_loudness(handdraw_preview.result.mp4)
+    assert -17.0 <= video_measured["integrated_lufs"] <= -15.0, video_measured
+    assert video_measured["true_peak_dbtp"] <= -1.5, video_measured
+    # Check the actual short preview MP4 too. A correctly normalised full mix is
+    # not evidence that the encoded 2s/3s preview itself meets the kids gate.
+    video_measured = _measure_loudness(handdraw_preview.result.mp4)
+    assert -17.0 <= video_measured["integrated_lufs"] <= -15.0, video_measured
+    assert video_measured["true_peak_dbtp"] <= -1.5, video_measured
 
 
 def test_narration_ranges_cues_and_real_asr_timing_are_valid(handdraw_preview) -> None:
@@ -285,3 +319,18 @@ def test_layout_fonts_meet_kids_caption_contract() -> None:
     assert landscape.caption_font_size >= 48
     assert portrait.caption_font_size >= 56
     assert landscape.caption_font_size >= 56
+
+
+
+def test_verify_job_fails_when_narration_master_is_missing(handdraw_preview) -> None:
+    root = handdraw_preview.root
+    master = root / "inputs" / "narration" / "master.wav"
+    held = root / "inputs" / "narration" / "master.wav.r3-held"
+    assert master.is_file()
+    master.replace(held)
+    try:
+        with pytest.raises(Exception, match="narration master"):
+            verify_job(root)
+    finally:
+        held.replace(master)
+    assert master.is_file()

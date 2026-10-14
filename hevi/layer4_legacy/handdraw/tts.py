@@ -44,7 +44,7 @@ CUE_MAX_CHARS = 12
 CUE_TARGET_CHARS = 10
 # KIDS_ANIME_DIRECTION: narration pace must stay at or below 3.5 characters/second.
 MAX_CHARS_PER_SECOND = 3.5
-DEFAULT_LENGTH_SCALE = 3.0
+DEFAULT_LENGTH_SCALE = 2.5
 
 
 def sha256_file(path: Path | str) -> str:
@@ -143,19 +143,21 @@ def _synth_piper(text: str, out_wav: Path, length_scale: float = DEFAULT_LENGTH_
             "--noise-w-scale",
             "0.0",
             "--sentence_silence",
-            "0.25",
+            "0.45",
         ],
-        input=text,
+        # Piper treats each line as a sentence. Natural clause pauses prevent
+        # rushed compound lines without relying on extreme length_scale values.
+        input=__import__("re").sub(r"([，。！？；：])", r"\1\n", text),
         text=True,
         capture_output=True,
     )
     if proc.returncode != 0 or not raw.is_file() or raw.stat().st_size == 0:
         raise RuntimeError(f"piper failed: {(proc.stderr or '')[-400:]}")
-    _to_master_format(raw, out_wav, pad=True)
+    _to_master_format(raw, out_wav, pad=True, tempo=0.8)
     raw.unlink(missing_ok=True)
 
 
-def _to_master_format(src: Path, dst: Path, *, pad: bool) -> None:
+def _to_master_format(src: Path, dst: Path, *, pad: bool, tempo: float = 1.0) -> None:
     """Normalise any audio to 48kHz mono s16le; optionally pad a short tail."""
     cmd = [
         FFMPEG,
@@ -171,8 +173,15 @@ def _to_master_format(src: Path, dst: Path, *, pad: bool) -> None:
         "-c:a",
         "pcm_s16le",
     ]
+    filters = []
+    if abs(float(tempo) - 1.0) > 1e-6:
+        if not 0.5 <= float(tempo) <= 2.0:
+            raise ValueError("tempo factor must be within [0.5, 2.0]")
+        filters.append(f"atempo={float(tempo):.4f}")
     if pad:
-        cmd += ["-af", "apad=pad_dur=0.25"]
+        filters.append("apad=pad_dur=0.25")
+    if filters:
+        cmd += ["-af", ",".join(filters)]
     cmd.append(str(dst))
     subprocess.run(cmd, check=True)
 
@@ -183,7 +192,7 @@ def read_wav_samples(path: Path) -> np.ndarray:
 
 
 def _cache_key(text: str, engine: str, length_scale: float) -> str:
-    return hashlib.sha256(f"{engine}\x00{length_scale:.4f}\x00{text}".encode()).hexdigest()[:24]
+    return hashlib.sha256(f"handdraw-r3-pace-v3-tempo-080\x00{engine}\x00{length_scale:.4f}\x00{text}".encode()).hexdigest()[:24]
 
 
 def _synth_with_cache(
@@ -276,48 +285,99 @@ def _align_chars_to_words(text: str, words: list[dict[str, Any]]) -> list[dict[s
     return [r for r in result if r is not None]  # type: ignore[misc]
 
 
+def _caption_tokens(text: str) -> list[str]:
+    """Tokenise locally, preserving every character so cues never split known words."""
+    try:
+        import jieba
+        tokens = [part for part in jieba.lcut(text, cut_all=False, HMM=True) if part]
+        if "".join(tokens) == text:
+            protected = {
+                "牙齿上", "小小的", "碎屑", "小牙刷", "牙膏", "小狐狸", "小兔子", "小熊", "小猫",
+                "过马路", "人行横道", "红绿灯", "安全过马路", "洗手", "肥皂", "水龙头",
+                "大家都能", "一个接一个", "身边的大人", "记住啦", "轮流玩", "轻轻刷", "指缝",
+                "小朋友", "玩具盒", "积木盒", "小篮子", "怎么办", "告诉", "朋友们", "小球",
+            }
+            merged: list[str] = []
+            cursor = 0
+            while cursor < len(tokens):
+                match = None
+                joined = ""
+                for width in range(1, min(8, len(tokens) - cursor) + 1):
+                    joined += tokens[cursor + width - 1]
+                    if joined in protected:
+                        match = (width, joined)
+                if match:
+                    width, phrase = match
+                    merged.append(phrase)
+                    cursor += width
+                else:
+                    merged.append(tokens[cursor])
+                    cursor += 1
+            return merged
+    except Exception:
+        pass
+    # Offline fallback used only when jieba is absent; long common child-facing
+    # compounds are protected, while punctuation remains attached to its phrase.
+    lexicon = sorted({
+        "牙齿上", "小小的", "碎屑", "小牙刷", "牙膏", "小狐狸", "小兔子", "小熊", "小猫",
+        "过马路", "人行横道", "红绿灯", "安全过马路", "洗手", "肥皂", "水龙头",
+        "大家都能", "一个接一个", "身边的大人", "记住啦", "轮流玩", "轻轻刷", "指缝",
+        "小朋友", "玩具盒", "积木盒", "小篮子", "怎么办", "告诉", "朋友们", "小球",
+    }, key=len, reverse=True)
+    tokens: list[str] = []
+    index = 0
+    while index < len(text):
+        token = next((word for word in lexicon if text.startswith(word, index)), None)
+        if token is None:
+            token = text[index]
+        tokens.append(token)
+        index += len(token)
+    return tokens
+
+
 def _group_chars_into_cues(char_times: list[dict[str, Any]], max_chars: int) -> list[dict[str, Any]]:
-    """Greedy word-boundary grouping, never leaving punctuation alone."""
+    """Group ASR-timed characters on token boundaries; never orphan punctuation."""
     if not char_times:
         return []
+    text = "".join(str(item["char"]) for item in char_times)
+    tokens = _caption_tokens(text)
     groups: list[list[dict[str, Any]]] = []
     current: list[dict[str, Any]] = []
-    for item in char_times:
-        char = item["char"]
-        if current and len(current) >= max_chars and not _is_punctuation(char):
+    cursor = 0
+    for token in tokens:
+        unit = char_times[cursor:cursor + len(token)]
+        cursor += len(token)
+        if not unit:
+            continue
+        only_punctuation = all(_is_punctuation(item["char"]) for item in unit)
+        if only_punctuation:
+            if current:
+                current.extend(unit)
+            elif groups:
+                groups[-1].extend(unit)
+            else:
+                current.extend(unit)
+            if any(item["char"] in "。！？!?" for item in unit) and len(current) >= max(6, max_chars // 2):
+                groups.append(current)
+                current = []
+            continue
+        if current and len(current) + len(unit) > max_chars:
             groups.append(current)
             current = []
-        current.append(item)
-        # Prefer to break right after sentence punctuation once the cue is long enough.
-        if char in "。！？!?" and len(current) >= max(6, max_chars // 2):
+        current.extend(unit)
+        if any(item["char"] in "。！？!?" for item in unit) and len(current) >= max(6, max_chars // 2):
             groups.append(current)
             current = []
     if current:
-        groups.append(current)
-
-    # Pull orphan punctuation groups back into the previous cue.
-    merged: list[list[dict[str, Any]]] = []
-    for group in groups:
-        if merged and all(_is_punctuation(item["char"]) for item in group):
-            merged[-1].extend(group)
+        if groups and all(_is_punctuation(item["char"]) for item in current):
+            groups[-1].extend(current)
         else:
-            merged.append(group)
-    # An over-long tail (punctuation push) is split again on character boundaries.
-    final: list[list[dict[str, Any]]] = []
-    for group in merged:
-        while len(group) > max_chars + 2:
-            final.append(group[:max_chars])
-            group = group[max_chars:]
-        if group:
-            final.append(group)
-    return [
-        {
-            "text": "".join(item["char"] for item in group),
-            "start": group[0]["start"],
-            "end": group[-1]["end"],
-        }
-        for group in final
-    ]
+            groups.append(current)
+    return [{
+        "text": "".join(item["char"] for item in group),
+        "start": min(float(item["start"]) for item in group),
+        "end": max(float(item["end"]) for item in group),
+    } for group in groups if group]
 
 
 def split_text_into_cues(text: str, max_chars: int = CUE_MAX_CHARS) -> list[str]:
@@ -410,7 +470,7 @@ def build_narration_master(
     beats: list[dict[str, Any]],
     output_dir: Path,
     *,
-    pause_gap: float = 0.22,
+    pause_gap: float = 0.32,
     prefer_cosy: bool = True,
     length_scale: float = DEFAULT_LENGTH_SCALE,
     use_asr: bool = True,
@@ -497,9 +557,27 @@ def build_narration_master(
     total_chars = sum(len(b["text"]) for b in beats)
     # Spoken pace excludes the inter-beat pauses: it is the honest measure the
     # kids gate checks ("旁白语速 ≤ 3.5 字/秒").
-    spoken_samples = sum(int(b["end_samples"]) - int(b["start_samples"]) for b in aligned_beats)
-    spoken_seconds = spoken_samples / SAMPLE_RATE
-    characters_per_second = (total_chars / spoken_seconds) if spoken_seconds else 0.0
+    spoken_seconds = 0.0
+    beat_rates: list[float] = []
+    for index, beat in enumerate(aligned_beats):
+        words = asr_words[index] if asr_used else None
+        if words:
+            first_word = min(float(word["start"]) for word in words)
+            last_word = max(float(word["end"]) for word in words)
+            # Keep intra-sentence pauses (they are part of child-friendly pacing)
+            # but exclude the trailing pad added to the WAV container.
+            beat_spoken_seconds = max(0.0, last_word - first_word)
+        else:
+            beat_spoken_seconds = (
+                int(beat["end_samples"]) - int(beat["start_samples"])
+            ) / SAMPLE_RATE
+        spoken_seconds += beat_spoken_seconds
+        beat_rates.append(
+            len(str(beat.get("text", ""))) / beat_spoken_seconds
+            if beat_spoken_seconds > 0 else float("inf")
+        )
+    average_characters_per_second = (total_chars / spoken_seconds) if spoken_seconds else 0.0
+    characters_per_second = max(beat_rates, default=0.0)
     alignment_data = {
         "version": 1,
         "source_sha256": sha256_file(master_wav),
@@ -514,6 +592,12 @@ def build_narration_master(
         "cosyvoice_available": engine == "cosyvoice",
         "length_scale": length_scale,
         "characters_per_second": characters_per_second,
+        "max_beat_characters_per_second": characters_per_second,
+        "average_characters_per_second": average_characters_per_second,
+        "beat_characters_per_second": [
+            {"beat_id": beat["id"], "characters_per_second": beat_rates[index]}
+            for index, beat in enumerate(aligned_beats)
+        ],
         "beats": aligned_beats,
     }
     alignment_json = output_dir / "alignment.json"

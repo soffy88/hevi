@@ -8,6 +8,7 @@ import subprocess
 import sys
 import wave
 import zipfile
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,9 @@ import hevi.layer4_legacy.handdraw.tts as tts
 from hevi.capabilities.registry import CapabilityError
 from hevi.layer4_legacy.handdraw.illustrator import build_scene_illustration
 from hevi.layer4_legacy.handdraw.kids_storyboards import (
+    UnsupportedKidsTopicError,
     select_kids_storyboard,
+    validate_kids_on_screen_text,
     validate_kids_script,
 )
 
@@ -338,3 +341,136 @@ def test_seed_reproduces_real_preview_mp4(
     )
     assert second.mp4 and second.mp4.is_file()
     assert second.sha256 == handdraw_preview.result.sha256
+
+
+
+def test_four_preschool_topics_generate_distinct_narration_and_reject_adult_topics(
+    tmp_path: Path,
+) -> None:
+    cases = [
+        ("小兔子学会分享", "分享"),
+        ("为什么要刷牙", "刷牙"),
+        ("小猫学会过马路", "过马路"),
+        ("为什么要洗手", "洗手"),
+    ]
+    audio_hashes = []
+    scripts = []
+    for index, (topic, required_word) in enumerate(cases):
+        storyboard = select_kids_storyboard(topic)
+        narration = "".join(beat["text"] for page in storyboard["pages"] for beat in page["beats"])
+        assert required_word in narration, {"topic": topic, "narration": narration}
+        assert storyboard["title"] == topic
+        scripts.append(narration)
+        matching_line = next(
+            beat["text"] for page in storyboard["pages"] for beat in page["beats"]
+            if required_word in beat["text"]
+        )
+        out_dir = tmp_path / f"narration-{index}"
+        out_dir.mkdir()
+        master, _alignment, _duration = tts.build_narration_master(
+            [{"id": f"topic-{index}", "text": matching_line}],
+            out_dir,
+            prefer_cosy=False,
+            use_asr=False,
+        )
+        assert master.is_file() and master.stat().st_size > 1000
+        audio_hashes.append(tts.sha256_file(master))
+    assert len(set(scripts)) == 4
+    assert len(set(audio_hashes)) == 4, audio_hashes
+    with pytest.raises(UnsupportedKidsTopicError, match="不适合"):
+        select_kids_storyboard("复利效应与巴菲特")
+    with pytest.raises(UnsupportedKidsTopicError, match="暂不支持"):
+        select_kids_storyboard("小猫学会量子金融")
+    with pytest.raises(CapabilityError, match="不适合"):
+        caps.get("handdraw.full").render(
+            {"topic": "复利效应与巴菲特", "aspect": "16:9", "style_id": "17", "hand_preset": "navy"},
+            tmp_path / "adult-topic-rejected",
+            duration=2.0,
+            aspect="16:9",
+            seed=1,
+        )
+
+
+def test_kids_gate_fails_closed_when_preview_audio_measurements_are_missing() -> None:
+    storyboard = select_kids_storyboard("小狐狸学会轮流")
+    report = validate_kids_script(
+        storyboard["title"], storyboard["pages"], aspect="16:9",
+        caption_font_size=56, characters_per_second=3.0, preview=True,
+        audio_lufs=None, true_peak_dbtp=None, require_audio_measurements=True,
+    )
+    assert not report["passed"]
+    assert not report["checks"]["audio_measurements_present"]
+    assert not report["checks"]["integrated_loudness_minus_16_plus_minus_1_lufs"]
+    assert not report["checks"]["true_peak_at_or_below_minus_1_5_dbtp"]
+    visible = validate_kids_on_screen_text(["一起学小办法", "深入机制分析"])
+    assert not visible["passed"]
+    assert "深入机制分析" in visible["blocked_terms_found"]
+
+
+def test_caption_groups_preserve_chinese_words_and_punctuation() -> None:
+    text = "牙齿上有小小的碎屑，大家都能玩。"
+    tokens = tts._caption_tokens(text)
+    assert "小小的" in tokens
+    assert "碎屑" in tokens
+    assert "大家都能" in tokens
+    char_times = [
+        {"char": char, "start": index * 0.1, "end": (index + 1) * 0.1}
+        for index, char in enumerate(text)
+    ]
+    cues = tts._group_chars_into_cues(char_times, max_chars=8)
+    joined = "".join(item["text"] for item in cues)
+    assert joined == text
+    assert not any(cue["text"].endswith("小") for cue in cues[:-1])
+    assert not any(cue["text"].endswith("碎") for cue in cues[:-1])
+    assert not any(
+        left["text"].endswith("能") and right["text"].startswith("玩")
+        for left, right in pairwise(cues)
+    )
+    assert not any(cue["text"] in "，。！？；：、,.!?;:" for cue in cues)
+
+
+def test_all_preschool_caption_cues_align_to_real_asr_including_final_question(
+    tmp_path: Path,
+) -> None:
+    """Independently rerun CPU ASR over every beat WAV, including the final question."""
+    from hevi.layer4_legacy.handdraw.asr import transcribe_words
+
+    storyboard = select_kids_storyboard("小狐狸学会轮流")
+    beats = [beat for page in storyboard["pages"] for beat in page["beats"]]
+    audio_dir = tmp_path / "full-story-audio"
+    audio_dir.mkdir()
+    _master, alignment_path, duration = tts.build_narration_master(
+        [{"id": f"b{index:02d}", "text": beat["text"]} for index, beat in enumerate(beats)],
+        audio_dir,
+        prefer_cosy=False,
+        use_asr=True,
+    )
+    alignment = json.loads(alignment_path.read_text(encoding="utf-8"))
+    assert len(alignment["beats"]) == 8
+    assert abs(float(alignment["total_duration"]) - duration) <= 1 / tts.SAMPLE_RATE
+    assert float(alignment["characters_per_second"]) <= 3.5
+
+    errors = []
+    final_question_errors = []
+    for index, beat in enumerate(alignment["beats"]):
+        wav = audio_dir / "_synth" / f"{index:04d}.wav"
+        assert wav.is_file() and wav.stat().st_size > 1000
+        independently_transcribed = transcribe_words(wav)
+        assert independently_transcribed, f"CPU ASR returned no words for beat {index}"
+        char_times = tts._align_chars_to_words(beat["text"], independently_transcribed)
+        assert char_times and "".join(cue["text"] for cue in beat["caption_cues"]) == beat["text"]
+        offset = 0
+        for cue in beat["caption_cues"]:
+            expected_start = min(float(item["start"]) for item in char_times[offset:offset + len(cue["text"])])
+            error = abs(float(cue["start"]) - expected_start)
+            errors.append(error)
+            if beat["text"].startswith("下次你想和谁一起玩球呢？") and cue["text"].startswith("下次"):
+                final_question_errors.append(error)
+            offset += len(cue["text"])
+        assert offset == len(beat["text"])
+
+    assert errors
+    p95 = float(np.percentile(errors, 95))
+    assert p95 <= 0.25, {"cue_count": len(errors), "p95_seconds": p95, "max_seconds": max(errors)}
+    assert len(final_question_errors) == 1
+    assert final_question_errors[0] <= 0.25, final_question_errors

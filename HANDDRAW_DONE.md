@@ -66,3 +66,34 @@
 - /home/soffy/.local/bin/ruff check 对本次涉及的 21 个 Python 源/测试文件：All checks passed!；py_compile 通过；git diff --check 通过。
 - 3O v3 lint 实跑结果：3O_V3_LINT=FAIL，9 个检查中 5 PASS / 4 FAIL；失败清单为 check_no_sibling_call.py、check_omodul_signature.py、check_enabled_pillars.py、check_oprim_keyword_only.py，错误均定位到虚拟环境 .../hevi/.venv/lib/python3.14/site-packages/oprim|omodul 的既有文件，而非本 worktree。失败数为 4，不超过 HANDDRAW_FIX.md 中给出的基线 4。遵守硬规则，没有修改该虚拟环境或主 checkout，也没有把 lint 日志加入 Git。
 DONE HANDDRAW-R2
+
+# HANDDRAW-R3 修复与验收（2026-10-15）
+
+工作树：`/data/soffy/projects/hevi-handdraw`；分支：`feat/handdraw-line`。R3 改动仅限本工作树中的 Handdraw 源码、目标测试与本报告。渲染产物、测试缓存及诊断文件留在 `.tmp/`；未修改主 checkout、未删除文件、未清理磁盘、未调用付费 API。
+
+## R3 阻断项
+
+- **B1 主题与故事一致性：** `kids_storyboards.py` 改成主题路由及幼儿故事模板库，覆盖分享/轮流、刷牙、收拾玩具、安全过马路、洗手。主角按输入调整；未知主题明确拒绝，不再静默套用狐狸模板；成人主题（如复利、巴菲特）在能力入口拒绝。回归测试验证四种主题的旁白关键词、脚本差异及合成 WAV SHA-256 两两不同，并验证成人/未知主题失败。
+- **B2 成人画面文字：** 移除“深入机制分析”通用默认标签，改为与台词阶段对应的幼儿化提示；在生成 job 清单前扫描所有文字 overlay，禁用词命中即失败。回归检查实际生成的 `job.json` 上屏文字，不依赖 OCR 或人工猜测。
+- **B3 字幕切分与同步：** 字幕 cue 按本地 Jieba 词边界分组，回退分词也保护常见中文词组并避免孤立标点；按真实 ASR word timing 对齐。独立 ASR 回归覆盖整段 8 beat 旁白；实测 cue 起点误差 p95 为 **0.042 秒**，最终提问 cue 起点误差 **0.000 秒**；验收断言 p95 ≤ 0.25 秒。独立分 beat 语速最大值：轮流故事 **3.343 字/秒**，刷牙故事 **3.102 字/秒**。
+- **B4 预览响度与闸门：** 2 秒预览 MP4 本身执行 loudness 检测、两遍线性归一化，并对重编码后的成片再次测量；LUFS/true peak 缺失、非有限值或超限都会失败。最新实测预览 1920×1080、2.000 秒，输入集成响度 **-16.04 LUFS**、true peak **-2.80 dBTP**，归一化输出测量 **-16.01 LUFS / -2.76 dBTP**，`kids_gate_passed=true`。初始脚本预检不再输出假 PASS：实测媒体通过前报告是 `pending_measured_audio` / `passed=false`；实测之后才写入最终通过报告。
+
+## 次要项与完整成片实测
+
+- 删除旁白 master 的负测已补上：临时移开 `inputs/narration/master.wav`，`verify_job` 必须明确失败；`finally` 将文件恢复。缺失对齐文件同样在验证入口失败。
+- 风格 8 “水墨写意”提升了墨晕与飞白笔触（bleed 5.2、dry-brush 概率 0.48）。风格回归实测 1/8/10/17 四种 recipe 的透明画布与两两视觉差异阈值全部通过（最大 SSIM 必须小于 0.85）。
+- Piper 自然放慢调整为 `length_scale=2.5`、按中文标点拆分语句并使用适度 `atempo=0.8`，不再靠 `length_scale=3.0` 极端拖慢；合成缓存键已版本化。语速闸门使用独立 ASR 实测的**最快三拍/beat**而非整片平均值。
+- **完整横屏《小狐狸学会轮流》**（本次最终源码重跑）：`outputs/film.mp4`，1920×1080，视频 68.333 秒、音频 68.338 秒，SHA-256 `d6628739e58f96dbeea6c1e121acab9ad42a5d86298a8be07aa9926982c00fd2`。最终 root 与 `outputs/kids-safety.json` 均记录 `passed=true`、`gate_status=passed_measured_full_media`、`measured_media_gate_complete=true`；实际音频 **-15.95 LUFS / -1.95 dBTP**，最慢 beat 语速 **3.343 字/秒**，字幕 56 px（横屏底线 48 px），8 个故事阶段、ASR 字幕、禁用词和音频测量检查全部通过。
+- **完整竖屏《为什么要刷牙》**：实测输出为 **1080×1920**，视频 68.467 秒、音频 68.459 秒。对最终 MP4 独立 loudnorm 实测输入 **-15.60 LUFS / -2.01 dBTP**；测量报告中的幼儿闸门通过，字幕 60 px（竖屏底线 56 px），同样为 Piper 旁白及本地 ASR 字幕。独立 ASR 分 beat 的最大语速为 3.102 字/秒。
+- 本地 CosyVoice 健康探测 `127.0.0.1:17600` 返回 HTTP 000，故本次不伪报在线服务端到端成功；实际成片和对齐清楚记录为单一 Piper 引擎。CPU ASR、Piper 和 ffmpeg 路径均实际运行。
+- review 标记继续保留 `human_review=pending`；自动化工程检查不冒充成人对内容、视觉、运动、听感和隐私的人工审核。
+
+## 最终验收记录
+
+- 指定命令：`JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-handdraw/.tmp PYTHONPATH=/data/soffy/projects/hevi-handdraw /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_handdraw_capabilities.py tests/test_handdraw_deliverables.py`
+- 结果：**27 passed, 1 warning in 185.94s；exit code 0**。唯一 warning 是环境依赖 `jieba` 导入 `pkg_resources` 的弃用提醒。
+- `/home/soffy/.local/bin/ruff check` 对本次 7 个源码/测试文件：All checks passed；`py_compile`、`git diff --check` 均通过。
+- 3O v3 lint 重新实跑：9 项中 5 PASS / 4 FAIL，仍是 `check_no_sibling_call.py`、`check_omodul_signature.py`、`check_enabled_pillars.py`、`check_oprim_keyword_only.py`，报错路径全部指向 `/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim|omodul` 的既有包，不属于本工作树。失败数为 R3 文档规定的基线 4；未触碰虚拟环境或主 checkout。
+- 本次剩余空间检查约 35 GB，超过 `/data` 低于 5 GB 的停止阈值；未做清理。
+
+DONE HANDDRAW-R3

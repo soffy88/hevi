@@ -190,11 +190,30 @@ def render_handdraw_pipeline(
         characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
         preview=is_preview_job,
     )
-    if not kids_report["passed"]:
+    content_checks = {
+        key: value
+        for key, value in kids_report["checks"].items()
+        if key not in {
+            "integrated_loudness_minus_16_plus_minus_1_lufs",
+            "true_peak_at_or_below_minus_1_5_dbtp",
+            "audio_measurements_present",
+        }
+    }
+    if not all(content_checks.values()):
+        kids_report["gate_status"] = "failed_content_preflight"
+        kids_report["passed"] = False
         output_dir.joinpath("kids-safety.json").write_text(
             json.dumps(kids_report, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-        raise ValueError(f"KIDS_ANIME_DIRECTION gate failed: {kids_report['checks']}")
+        raise ValueError(f"KIDS_ANIME_DIRECTION content gate failed: {content_checks}")
+    # This report is deliberately NOT a pass. It remains pending until the
+    # actual encoded MP4 (preview) or final mixed film (full render) is measured.
+    kids_report["passed"] = False
+    kids_report["gate_status"] = "pending_measured_audio"
+    kids_report["checks"]["measured_media_gate_complete"] = False
+    kids_report["notes"].append(
+        "剧本预检通过；在输出音频完成实测前，幼儿安全闸门仍为 pending，不能视为通过。"
+    )
     kids_report["narration_engine"] = alignment_doc.get("engine")
     kids_report["engines_used"] = alignment_doc.get("engines_used", [])
     kids_report["caption_method"] = alignment_doc.get("caption_method")
@@ -493,7 +512,13 @@ def render_handdraw_pipeline(
                 })
             else:
                 # Secondary beats: explanatory text + subtle underline
-                note = beat.get("note", page.get("note", "深入机制分析"))
+                safe_notes = {
+                    "problem": "想一想", "try": "试试看", "solve": "好办法",
+                    "recap": "记住啦", "action": "一起做", "goodbye": "下次见",
+                    "interaction": "你来回答", "greeting": "打个招呼",
+                }
+                stage = str(beat.get("stage", ""))
+                note = beat.get("note") or page.get("note") or safe_notes.get(stage, "一起学小办法")
                 actions.append({
                     "type": "text",
                     "text": note,
@@ -571,6 +596,16 @@ def render_handdraw_pipeline(
         },
     }
 
+    from hevi.layer4_legacy.handdraw.kids_storyboards import validate_kids_on_screen_text
+    visible_text = [
+        str(action.get("text", ""))
+        for page in job_pages for beat in page["beats"] for action in beat["actions"]
+        if action.get("type") == "text"
+    ]
+    visible_gate = validate_kids_on_screen_text(visible_text)
+    if not visible_gate["passed"]:
+        raise ValueError(f"KIDS on-screen text gate failed: {visible_gate['blocked_terms_found']}")
+
     job_file = output_dir / "job.json"
     job_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
 
@@ -611,12 +646,86 @@ def render_handdraw_pipeline(
         duration_val = float(probe["format"]["duration"])
         if abs(duration_val - requested) > .1:
             raise ValueError(f"preview duration {duration_val:.3f}s differs from request {requested:.3f}s")
+        # Normalise the encoded preview itself: a short clip is not allowed to
+        # inherit the full-film mix measurement or treat a missing value as PASS.
+        import os
+        import tempfile
+        temp_root = Path(os.environ.get("TMPDIR", "/data/soffy/projects/hevi-handdraw/.tmp")).resolve()
+        temp_root.mkdir(parents=True, exist_ok=True)
+        pre_loud = subprocess.run([
+            FFMPEG, "-hide_banner", "-i", str(video_path),
+            "-af", "loudnorm=I=-16:TP=-2:LRA=7:print_format=json", "-f", "null", "-"
+        ], capture_output=True, text=True)
+        pre_match = re.search(r'\{\s*"input_i".*?\}', pre_loud.stderr, re.S)
+        if pre_loud.returncode != 0 or not pre_match:
+            raise ValueError("KIDS preview normalisation could not measure input loudness")
+        pre_metrics = json.loads(pre_match.group())
+        metric_keys = ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")
+        try:
+            numeric_metrics = {key: float(pre_metrics[key]) for key in metric_keys}
+        except (KeyError, TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("KIDS preview normalisation received null/non-finite measurements") from exc
+        if not all(math.isfinite(value) for value in numeric_metrics.values()):
+            raise ValueError("KIDS preview normalisation received null/non-finite measurements")
+        fd, temp_name = tempfile.mkstemp(prefix="handdraw-preview-normalized-", suffix=".mp4", dir=temp_root)
+        os.close(fd)
+        normalized_video = Path(temp_name)
+        linear_filter = (
+            "loudnorm=I=-16:TP=-2:LRA=7:"
+            f"measured_I={numeric_metrics['input_i']:.6f}:"
+            f"measured_TP={numeric_metrics['input_tp']:.6f}:"
+            f"measured_LRA={numeric_metrics['input_lra']:.6f}:"
+            f"measured_thresh={numeric_metrics['input_thresh']:.6f}:"
+            f"offset={numeric_metrics['target_offset']:.6f}:linear=true"
+        )
+        try:
+            subprocess.run([
+                FFMPEG, "-y", "-hide_banner", "-v", "error", "-i", str(video_path),
+                "-map", "0:v:0", "-map", "0:a:0", "-c:v", "copy",
+                "-af", linear_filter, "-c:a", "aac", "-b:a", "192k",
+                "-map_metadata", "-1", "-movflags", "+faststart", str(normalized_video),
+            ], check=True)
+            normalized_video.replace(video_path)
+        except Exception:
+            # Keep failure explicit; the report must not claim an unmeasured pass.
+            raise
         loud = subprocess.run([
             FFMPEG, "-hide_banner", "-i", str(video_path),
-            "-af", "loudnorm=I=-17:TP=-2:LRA=7:print_format=json", "-f", "null", "-"
+            "-af", "loudnorm=I=-16:TP=-2:LRA=7:print_format=json", "-f", "null", "-"
         ], capture_output=True, text=True)
         match = re.search(r'\{\s*"input_i".*?\}', loud.stderr, re.S)
-        preview_loudness = json.loads(match.group()) if match else {}
+        if loud.returncode != 0 or not match:
+            raise ValueError("KIDS preview audio measurement unavailable; audio_lufs/true_peak must not be null")
+        preview_loudness = json.loads(match.group())
+        if preview_loudness.get("input_i") in (None, "inf", "-inf", "nan") or preview_loudness.get("input_tp") in (None, "inf", "-inf", "nan"):
+            raise ValueError("KIDS preview audio measurement returned null/non-finite loudness or true peak")
+        measured_lufs = float(preview_loudness["input_i"])
+        measured_peak = float(preview_loudness["input_tp"])
+        final_kids = validate_kids_script(
+            title, pages_spec, aspect="16:9" if width >= height else "9:16",
+            caption_font_size=layout.caption_font_size,
+            characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
+            audio_lufs=measured_lufs, true_peak_dbtp=measured_peak, preview=True,
+            require_audio_measurements=True,
+        )
+        final_kids["narration_engine"] = alignment_doc.get("engine")
+        final_kids["engines_used"] = alignment_doc.get("engines_used", [])
+        final_kids["caption_method"] = alignment_doc.get("caption_method")
+        final_kids["caption_methods_used"] = alignment_doc.get("caption_methods_used", [])
+        final_kids["alignment_sha256"] = sha256_file(alignment_json)
+        final_kids["audio_sha256"] = sha256_file(master_wav)
+        final_kids["alignment_source"] = str(alignment_json)
+        final_kids["alignment_sha256"] = sha256_file(alignment_json)
+        final_kids["gate_status"] = "passed_measured_preview_media" if final_kids["passed"] else "failed_measured_preview_media"
+        final_kids["checks"]["measured_media_gate_complete"] = True
+        (output_dir / "kids-safety.json").write_text(
+            json.dumps(final_kids, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        (output_dir / "outputs" / "kids-safety.json").write_text(
+            json.dumps(final_kids, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        if not final_kids["passed"]:
+            raise ValueError(f"KIDS_ANIME_DIRECTION preview gate failed: {final_kids['checks']}")
         verification_path = output_dir / "preview-verification.json"
         review_path = output_dir / "review.json"
         review_data = {
@@ -643,10 +752,12 @@ def render_handdraw_pipeline(
             "has_audio_stream": True,
             "audio_measurement": preview_loudness,
             "human_review": "pending",
-            "note": "Short previews are partial clips; loudness integration is not used as a full-film acceptance measure.",
+            "note": "Preview MP4 audio was normalised and independently measured; missing LUFS/true-peak fails the kids gate.",
+            "true_peak_dbtp": measured_peak,
+            "kids_gate_passed": final_kids["passed"],
         }
         verification_path.write_text(json.dumps(preview_report, ensure_ascii=False, indent=2), encoding="utf-8")
-        lufs_val = preview_loudness.get("input_i")
+        lufs_val = measured_lufs
         result = {
             "job_id": job_id,
             "video_path": str(video_path),
@@ -724,17 +835,25 @@ def render_handdraw_pipeline(
         audio_lufs=float(lufs_val) if lufs_val is not None else None,
         true_peak_dbtp=float(true_peak) if true_peak is not None else None,
         preview=len(all_beats) < 8,
+        require_audio_measurements=True,
     )
     final_kids["narration_engine"] = alignment_doc.get("engine")
     final_kids["engines_used"] = alignment_doc.get("engines_used", [])
     final_kids["caption_method"] = alignment_doc.get("caption_method")
     final_kids["caption_methods_used"] = alignment_doc.get("caption_methods_used", [])
     final_kids["audio_sha256"] = sha256_file(inputs_audio_dir / "master.wav")
+    final_kids["alignment_source"] = str(alignment_json)
+    final_kids["alignment_sha256"] = sha256_file(alignment_json)
+    final_kids["gate_status"] = "passed_measured_full_media" if final_kids["passed"] else "failed_measured_full_media"
+    final_kids["checks"]["measured_media_gate_complete"] = True
     if not final_kids["passed"]:
+        (output_dir / "kids-safety.json").write_text(
+            json.dumps(final_kids, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         raise ValueError(f"KIDS_ANIME_DIRECTION measured audio gate failed: {final_kids['checks']}")
-    (output_dir / "outputs" / "kids-safety.json").write_text(
-        json.dumps(final_kids, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    final_kids_json = json.dumps(final_kids, ensure_ascii=False, indent=2)
+    (output_dir / "outputs" / "kids-safety.json").write_text(final_kids_json, encoding="utf-8")
+    (output_dir / "kids-safety.json").write_text(final_kids_json, encoding="utf-8")
     result = {
         "job_id": job_id,
         "video_path": str(final_video),
