@@ -1,0 +1,138 @@
+{
+  "status": "ok",
+  "op": "review",
+  "input": "artifacts/real_video/20261005T160434Z/final/FINAL.mp4",
+  "sha256": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585",
+  "duration_s": 36.693,
+  "resolution": "1280x720",
+  "fps": 24.995,
+  "has_audio": true,
+  "verdict": "warn",
+  "allows_compose": true,
+  "violations": [],
+  "warnings": [
+    "未提供 SRT: 字幕越界未量测"
+  ],
+  "unmeasured": [
+    "subtitle",
+    "text_dependent"
+  ],
+  "metrics": {
+    "probe": {
+      "path": "artifacts/real_video/20261005T160434Z/final/FINAL.mp4",
+      "kind": "video",
+      "width": 1280,
+      "height": 720,
+      "duration_s": 36.693,
+      "fps": 24.995,
+      "has_audio": true,
+      "size_bytes": 7332828,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "nb_frames": 915,
+      "sha256": "0ae70bae1401201bed568427f65941e168d07b4209f632262acd4843d2fc4585"
+    },
+    "contact_sheet": {
+      "path": ".qual-scratch/t/rev/contact_sheet.png",
+      "width": 1280,
+      "height": 206,
+      "frames": 4,
+      "columns": 4,
+      "rows": 1
+    },
+    "frames": {
+      "count": 4,
+      "checks": [
+        {
+          "index": 0,
+          "timestamp_s": 4.59,
+          "path": ".qual-scratch/t/rev/frames/frame_00_004.59s.png",
+          "mean_luma": 138.234,
+          "stdev_luma": 55.94,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 1,
+          "timestamp_s": 13.76,
+          "path": ".qual-scratch/t/rev/frames/frame_01_013.76s.png",
+          "mean_luma": 166.64,
+          "stdev_luma": 48.192,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 2,
+          "timestamp_s": 22.93,
+          "path": ".qual-scratch/t/rev/frames/frame_02_022.93s.png",
+          "mean_luma": 114.671,
+          "stdev_luma": 39.748,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 3,
+          "timestamp_s": 32.11,
+          "path": ".qual-scratch/t/rev/frames/frame_03_032.11s.png",
+          "mean_luma": 115.031,
+          "stdev_luma": 49.01,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        }
+      ],
+      "black": 0,
+      "broken": 0,
+      "flat": 0
+    },
+    "audio": {
+      "has_audio": true,
+      "loudness_lufs": -19.6,
+      "silence_ratio": 0.0
+    },
+    "slideshow": {
+      "risk": 0.0,
+      "verdict": "green",
+      "components": {
+        "repeat": 0.0,
+        "static": 0.0,
+        "weak_motion": 0.0
+      },
+      "measured": {
+        "mean_hash_distance": 31.0,
+        "mean_frame_delta": 49.4057,
+        "max_frame_delta": 64.0249,
+        "weak_pair_ratio": 0.0
+      },
+      "missing": [
+        "text_dependent"
+      ],
+      "reasons": [
+        "未量测(不计分): 文字依赖"
+      ],
+      "weights": {
+        "repeat": 0.25,
+        "static": 0.3,
+        "weak_motion": 0.25
+      },
+      "is_red": false
+    }
+  },
+  "output_dir": ".qual-scratch/t/rev",
+  "artifacts": {
+    "contact_sheet": ".qual-scratch/t/rev/contact_sheet.png",
+    "frames": [
+      ".qual-scratch/t/rev/frames/frame_00_004.59s.png",
+      ".qual-scratch/t/rev/frames/frame_01_013.76s.png",
+      ".qual-scratch/t/rev/frames/frame_02_022.93s.png",
+      ".qual-scratch/t/rev/frames/frame_03_032.11s.png"
+    ]
+  }
+}

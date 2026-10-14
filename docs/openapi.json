@@ -18593,7 +18593,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/freezone/graphs/{graph_id}/run": {
@@ -18603,6 +18608,11 @@
         ],
         "summary": "Run Graph",
         "operationId": "run_graph_api_freezone_graphs__graph_id__run_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "graph_id",
@@ -18647,6 +18657,11 @@
         ],
         "summary": "Get Graph",
         "operationId": "get_graph_api_freezone_graphs__graph_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "graph_id",
@@ -18691,6 +18706,11 @@
         ],
         "summary": "List Candidates",
         "operationId": "list_candidates_api_freezone_candidates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "status",
@@ -18745,6 +18765,11 @@
         ],
         "summary": "Promote Candidate",
         "operationId": "promote_candidate_api_freezone_candidates__candidate_id__promote_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "candidate_id",
@@ -18799,6 +18824,11 @@
         ],
         "summary": "Reject Candidate",
         "operationId": "reject_candidate_api_freezone_candidates__candidate_id__reject_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "candidate_id",
@@ -24364,6 +24394,17 @@
             ],
             "title": "Preset"
           },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
+          },
           "video_provider": {
             "anyOf": [
               {
@@ -26594,6 +26635,11 @@
           "text": {
             "type": "string",
             "title": "Text"
+          },
+          "unit_id": {
+            "type": "string",
+            "title": "Unit Id",
+            "default": ""
           },
           "target_name": {
             "type": "string",

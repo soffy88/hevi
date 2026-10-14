@@ -1,0 +1,97 @@
+{
+  "blocked_reason": "no provider credentials configured and CUDA reports no device",
+  "capabilities": {
+    "available": [
+      "asset",
+      "brand",
+      "character",
+      "document",
+      "evidence",
+      "instruction",
+      "motion",
+      "narrator",
+      "presenter",
+      "world"
+    ],
+    "missing": [],
+    "required": [
+      "evidence",
+      "motion"
+    ],
+    "satisfied": true
+  },
+  "intent_hash": "db17db2125072beab716765b80bc2b88b3b17381946bc17893c04580421f7b59",
+  "narrative_grammar_id": "documentary",
+  "presenter_grammar_id": "documentary_explainer",
+  "product": "P05_NEWS_ANALYSIS",
+  "product_type": "P07_CINEMATIC_KNOWLEDGE",
+  "profile": "P05_NEWS_ANALYSIS",
+  "provider": {
+    "credentials_present": [
+      "OPENAI_API_KEY",
+      "DASHSCOPE_API_KEY"
+    ],
+    "gpu_available": false,
+    "mock_used": false,
+    "real_render_qualification": "BLOCKED_BY_PROVIDER",
+    "reason": "no provider credentials configured and CUDA reports no device"
+  },
+  "qa": "delegated_to_existing_runtime",
+  "recipe_evidence": {
+    "candidate_recipe_ids": [
+      "CAMERA.TRUCK",
+      "CAMERA.FOLLOW",
+      "CAMERA.GIMBAL"
+    ],
+    "rejected_candidates": [
+      "CAMERA.FOLLOW",
+      "CAMERA.GIMBAL"
+    ],
+    "selected_recipe_id": "CAMERA.TRUCK",
+    "selected_version": "1.0.0"
+  },
+  "runtime": {
+    "blocked": false,
+    "capabilities": {
+      "available": [
+        "asset",
+        "brand",
+        "character",
+        "document",
+        "evidence",
+        "instruction",
+        "motion",
+        "narrator",
+        "presenter",
+        "world"
+      ],
+      "missing": [],
+      "required": [
+        "evidence",
+        "motion"
+      ],
+      "satisfied": true
+    },
+    "intent_hash": "db17db2125072beab716765b80bc2b88b3b17381946bc17893c04580421f7b59",
+    "prior_states": [
+      "compiled",
+      "validated",
+      "executing"
+    ],
+    "product_profile_id": "P05_NEWS_ANALYSIS",
+    "reason": "",
+    "receipt": {
+      "detail": "ok",
+      "entrypoint_ref": "hevi.production.p0_pipeline:produce",
+      "produced": true,
+      "runtime_id": "p0_existing_stub"
+    },
+    "recipe_fingerprint": "CAMERA.TRUCK",
+    "request_hash": "96aaef6f9a47063ab5dea1aac81c4b34bc8f253b9852d1b5b93951ebf3de74c0",
+    "run_id": "45e3deb51875613a02345980fd2308b6",
+    "state": "produced",
+    "success": true
+  },
+  "visual_grammar_id": "documentary_realism",
+  "visual_style_id": "documentary_realism"
+}

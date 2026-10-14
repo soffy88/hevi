@@ -1,0 +1,26 @@
+{
+  "architecture_qualification": "PASS",
+  "products": [
+    "P01_AVATAR_EXPLAINER",
+    "P02_HISTORY_RECONSTRUCTION",
+    "P03_DOCUMENTARY",
+    "P04_SCIENCE_EXPLAINER",
+    "P05_NEWS_ANALYSIS",
+    "P06_EDUCATIONAL",
+    "P07_MARKETING",
+    "P08_BRAND_STORY",
+    "P09_SHORT_VIDEO",
+    "P10_CINEMATIC_STORY"
+  ],
+  "provider": {
+    "credentials_present": [
+      "OPENAI_API_KEY",
+      "DASHSCOPE_API_KEY"
+    ],
+    "gpu_available": false,
+    "mock_used": false,
+    "real_render_qualification": "BLOCKED_BY_PROVIDER",
+    "reason": "no provider credentials configured and CUDA reports no device"
+  },
+  "real_render_qualification": "BLOCKED_BY_PROVIDER"
+}
