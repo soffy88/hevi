@@ -4,12 +4,13 @@ For 2–3 chosen library items, lip-sync the pre-generated EN audio (Xiaoya voic
 onto the half-body avatar and encode a short portrait clip.  Mirrors
 render_reading.py exactly; renders at 480p (270x480) for quick audit.
 
-Usage:
-    HEVI_LIVE_THREADS=8 HEVI_LIVE_FPS=25 HEVI_LIVE_AVATAR=xiaoya_e \\
-    FFMPEG=$(command -v ffmpeg) PYTHONPATH=/data/soffy/projects/hevi-live \\
-    /data/soffy/projects/hevi/.venv/bin/python \\
+Usage (env mirrors /data/soffy/cosyvoice/reading/render.sh):
+    cd /data/soffy/projects/hevi-live && export PATH=$HOME/.local/bin:$PATH \\
+    PYTHONPATH=$PWD FFMPEG=$(command -v ffmpeg) HEVI_LIVE_THREADS=8 HEVI_LIVE_FPS=20 \\
+    HEVI_LIVE_MOUTH=v2 HEVI_LIVE_AVATAR=xiaoya_e \\
+    /data/soffy/projects/hevi/.venv/bin/python -W ignore \\
         hevi/live_host/eng_lib/render_sample_clip.py \\
-        --unit /data/soffy/englib/pep-g7a/u1 --ids k01 k06 d01 --out /data/soffy/voicecache/audit/live_host/englib
+        --unit /data/soffy/englib/pep-g7a/u1 --ids k01 k06 d01
 """
 
 from __future__ import annotations
@@ -82,7 +83,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--unit", default="/data/soffy/englib/pep-g7a/u1")
     ap.add_argument("--ids", nargs="+", default=["k01", "k06", "d01"])
-    ap.add_argument("--out", default="/data/soffy/voicecache/audit/live_host/englib")
+    ap.add_argument("--out", default="audit/live_host/englib")
     args = ap.parse_args()
 
     unit_dir = Path(args.unit)
