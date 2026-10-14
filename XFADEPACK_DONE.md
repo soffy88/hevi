@@ -284,23 +284,100 @@ R3 未引入新失败，符合 FIX「失败数不得多于 4」。
 2. **glitch 终端对齐**：引入 `_GLITCH_T = clip((1-P)*1.15, 0, 1)`（P≤0.13 时全为 B），dx 抖动因子乘 `4*T*(1-T)` 在两端严格归零，使 n=49 与 n=50 近乎一致。
 3. **zoom_punch 缓动**：两端缩放系数引入 smoothstep 映射（`_ZOOM_VA` / `_ZOOM_VB`），两端平滑回归 1.0。
 4. **测试重写（真实、非空测）**：
-   - 更新 `test_custom_transition_two_end_continuity_psnr`（针对 6 个 custom，真实用 n=48 vs n=49 倒数第二步、n=49 vs n=50 最后一帧，以及起始帧对比）：
-     - 末帧 vs 下一帧 PSNR ≥ 28 dB（flash/zoom/whip 全部通过）；
-     - 末步 PSNR ≥ 倒数第二步 PSNR − 3 dB（无突变/急停）；
-     - 起始帧 vs 前一帧 PSNR ≥ 18 dB（重编码噪声 floor）。
-5. **实测数值表（6 个 custom，单位 dB）**：
+   - 更新 `test_custom_transition_two_end_continuity_psnr`（针对 6 个 custom）。**配置：30 fps、320×240、testsrc2(A)→smptehdbars(B) 各 2 s、d=1.0、offset=1.0，ffv1 无损中间件**。转场帧为 30..59，帧 60 起已是纯 B，故真实相邻步为：
+     - 末步 = PSNR(frame 59, frame 60) ≥ 28 dB；
+     - 末步 ≥ 倒数第二步 PSNR(58→59) − 3 dB（无突变/急停）；
+     - 转场首帧 vs 前一帧 PSNR(30→29) ≥ 18 dB（重编码噪声 floor）。
+5. **实测数值表（6 个 custom，单位 dB；30 fps / 320×240 / ffv1）**：
 
-| custom id | 起始(n24→25) | 倒数第二步(n48→49) | 末步(n49→50) | 末步变化(diff) | 验收状态 |
+| custom id | 起始(30vs29) | 倒数第二步(58→59) | 末步(59→60) | 末步变化(diff) | 验收状态 |
 |-----------|-------------:|------------------:|------------:|-------------:|:--------:|
-| whip      | 20.02 dB     | 21.44 dB          | 33.84 dB    | +12.40 dB    | ✅ OK |
-| burn      | 19.97 dB     | 34.67 dB          | 52.13 dB    | +17.46 dB    | ✅ OK |
-| glitch    | 20.05 dB     | 61.85 dB          | 65.59 dB    |  +3.74 dB    | ✅ OK |
-| flash     | 20.01 dB     | 35.19 dB          | 44.15 dB    |  +8.96 dB    | ✅ OK |
-| zoom_punch| 19.98 dB     | 23.35 dB          | 74.66 dB    | +51.31 dB    | ✅ OK |
-| ink       | 19.98 dB     | 41.09 dB          | 52.03 dB    | +10.94 dB    | ✅ OK |
+| whip      | 19.89 dB     | 27.31 dB          | 33.72 dB    |  +6.41 dB    | ✅ OK |
+| burn      | 19.89 dB     | 38.48 dB          | 56.56 dB    | +18.08 dB    | ✅ OK |
+| glitch    | 19.89 dB     | 80.17 dB          | 99.00 dB    | +18.83 dB    | ✅ OK |
+| flash     | 19.89 dB     | 38.68 dB          | 50.15 dB    | +11.47 dB    | ✅ OK |
+| zoom_punch| 19.89 dB     | 23.32 dB          | 99.00 dB    | +75.68 dB    | ✅ OK |
+| ink       | 19.89 dB     | 44.13 dB          | 55.03 dB    | +10.90 dB    | ✅ OK |
+
+   （R4 原表里的「n48→49 / n49→50」列与 30 fps 配置不符，已在 R5 用上表 58→59 / 59→60 修正替换。）
 
 6. **whip 7 帧抽帧检验**（n=44..50）：肉眼查验 `output/r4_whip/whip_frame_{44..50}.png` 确认 whip 是缓停而非急停。
 7. **全套测试**：`pytest tests/test_xfade_pack.py`（300 passed）全绿；lint 失败数仍为基线 4 项。
 
 ---
-DONE XFADEPACK-R4
+## R5（2026-10-14 R5 返工：修 `test_custom_transition_two_end_continuity_psnr` 的空测）
+
+R5 独立核验结论：实现已达标，但连续性测试仍是空测（`i_end=_f3_idx(1.0)=60` 已是纯 B，
+`psnr_end=PSNR(60,61)` 比的是两个纯 B 帧 ≈99 dB，`assert psnr_end >= 28` 恒真）。
+本轮**只改测试**，实现（`hevi/assembly/xfade_transitions.py`）一字未动。
+
+### 修法
+1. **下标修正**：新增 `_continuity_psnr(of, fps, off, d)` 统一量四步，明确帧号契约
+   （30 fps/off=1.0/d=1.0：`i_pre=29, i_start=30, i_prev=58, i_last=59, i_next=60`）：
+   - 末步 `end = PSNR(59, 60)`（转场末帧 → B 下一帧，这才是真值）；
+   - 倒数第二步 `penult = PSNR(58, 59)`；
+   - 起始 `pre = PSNR(30, 29)`。
+   断言：`end >= 28`、`end >= penult - 3`、`pre >= 18`。
+2. **断言自证（防空测）**：新增 `assert next_pair > 60`（`PSNR(60,61)`），证明 `i_next` 确实已是纯 B，
+   防止未来下标再错位退化成空测。
+3. **反例测试（真实 ffmpeg，不 mock）**：`test_continuity_psnr_catches_r3_linear_whip`——
+   在测试内内联 R3 的线性位移 whip（`if(lt(X\,W-(1-P)*W)...` + `_WHIP_BLUR=P*(1-P)*14`），
+   用 `_f3_render_expr` 真实渲染，断言其末步 `PSNR(59,60) < 28`。实测 **11.25 dB**，测试通过。
+4. **无损编码**：连续性测试改用 `-c:v ffv1`（`.mkv`，mp4 不能封 ffv1），排除 libx264 编码噪声，
+   使静态 B 段相邻帧 PSNR=99（`next_pair` 自证成立）。
+
+### 变异验证（证明测试不再空测）
+把 `hevi/assembly/xfade_transitions.py` 换成 R3 版（`57ddcb46`）后跑本测试：
+```
+$ git show 57ddcb46:hevi/assembly/xfade_transitions.py > hevi/assembly/xfade_transitions.py
+$ pytest tests/test_xfade_pack.py -q -k continuity
+3 failed, 4 passed   # whip / glitch / zoom_punch FAIL（whip assert 22.33 >= 28.0）
+```
+R4 旧测试在同样变异下是 **6 passed**（拦不住回归）；R5 修正后能抓住。换回后实现干净（`git status` 无改动）。
+
+### 修正后真实数值（测试配置：30 fps / 320×240 / testsrc2→smptehdbars 各 2 s / d=1.0 / ffv1）
+
+| custom id | 起始(30vs29) | 倒数第二步(58→59) | 末步(59→60) | diff | next_pair(60→61) | 状态 |
+|-----------|-------------:|------------------:|------------:|-----:|-----------------:|:----:|
+| whip      | 19.89 | 27.31 | 33.72 | +6.41  | 99.00 | ✅ |
+| burn      | 19.89 | 38.48 | 56.56 | +18.08 | 99.00 | ✅ |
+| glitch    | 19.89 | 80.17 | 99.00 | +18.83 | 99.00 | ✅ |
+| flash     | 19.89 | 38.68 | 50.15 | +11.47 | 99.00 | ✅ |
+| zoom_punch| 19.89 | 23.32 | 99.00 | +75.68 | 99.00 | ✅ |
+| ink       | 19.89 | 44.13 | 55.03 | +10.90 | 99.00 | ✅ |
+| **R3 线性 whip（反例）** | 19.89 | 11.51 | **11.25** | −0.26 | 99.00 | 必须 <28 ✅ |
+
+数值由 `scripts/r5_continuity_numbers.py`（复用测试自身的 `_f3_sources/_f3_render_expr/_f3_frames`）打印。
+
+### 测试结果
+```
+$ JWT_SECRET=test-only .venv/bin/python -m pytest tests/test_xfade_pack.py \
+    tests/test_assembler.py tests/test_assembly.py tests/test_beat_align.py \
+    tests/test_video_assemble_workflow.py tests/test_tongjian_assemble.py -q
+301 passed, 4 warnings in 116.71s
+```
+（R4 的 300 + R5 新增 1 个反例测试 = 301。）
+
+### Lint（R5）
+```
+$ JWT_SECRET=test-only .venv/bin/python scripts/ci/run_3o_v3_lint.py
+3O_V3_LINT=FAIL
+failed: check_no_sibling_call.py, check_omodul_signature.py,
+        check_enabled_pillars.py, check_oprim_keyword_only.py
+```
+4 项失败与基线逐字相同（全部落在第三方 `.venv/`），未新增失败。
+
+### R5 文件清单
+| 文件 | 改动 |
+|------|------|
+| `tests/test_xfade_pack.py` | 重写 `test_custom_transition_two_end_continuity_psnr`；新增 `_psnr_frames`/`_continuity_psnr`/`_f3_encoder`/`_f3_render_expr`；新增 `test_continuity_psnr_catches_r3_linear_whip` 反例 |
+| `scripts/r5_continuity_numbers.py` | R5 数值打印脚本（仅本地使用） |
+| `XFADEPACK_DONE.md` | 修正 R4 数值表 + 新增 R5 章节 |
+
+### 已知限制（R5）
+- 反例测试内联了 R3 的 whip 表达式字符串（若 `_SAMP_A0/_SAMP_B0` 采样模板将来改名，需同步更新），
+  但它测的是「测试能否抓住回归」，不依赖实现文件的当前内容，不会随实现变化而恒真。
+- `i_next+1` 需存在于成片帧序列中（成片 3 s = 90 帧，`i_next+1=61` 远在范围内）。
+
+---
+DONE XFADEPACK-R5
