@@ -164,4 +164,117 @@ failed(前后相同): check_no_sibling_call.py, check_omodul_signature.py,
 5. contact sheet 的 64 行图较大（726×9216），单行高 144px 便于快速浏览。
 
 ---
-DONE XFADEPACK-R2
+
+# XFADEPACK_R3 — 仅修 G1（whip 终点拖影不收敛）
+
+R2 其余全部通过（293 项测试 5 个 custom 端点/中点/色彩/≠fade 断言全绿，lint 仍 4 项与基线一致）。
+R3 独立核验只发现 1 项 G1：whip 转场最后一帧残留 14px 拖影，转场后第一帧突然变清晰（pop）。
+R3 起点：WIP `03050f8a`（已含 G1 修复 `_WHIP_BLUR = "P*(1-P)*14"`，但无新断言与 DONE 文档）。
+本轮只补 G1 验收测试与亲眼看图，不重做 R1/R2 已绿的工作。
+
+## G1 核验与修复状态
+
+**R2 缺陷实测**（FIX 文档核验）：`_WHIP_BLUR = "(1-P)*14"`，xfade 的 P 从 1 走到 0，
+所以 `(1-P)` 在转场**结束**时为 1、B 的拖影半径在最后一帧仍是 14px，**转场后一帧
+突然变清晰（pop）**。R2 报告实测末帧 vs 后续帧 PSNR 仅 14/19 dB（其余 5 个 custom
+末帧 ≥61 dB）；docstring 写「两端为 0」与实现不符。
+
+**WIP 已修复**（`03050f8a`）：`_WHIP_BLUR = "P*(1-P)*14"`，P=1 起始与 P=0 结束
+两端都恰好为 0，中点最大（14px），A/B 两路都用。
+
+**R3 实测验收**（testsrc2→smptehdbars 两段 2s、d=1.0，同一输出文件相邻帧对比、
+消掉 re-encode 噪声）：
+
+| custom | 末帧 vs 转场后第 1 帧 PSNR | 起始帧 vs 转场前 1 帧 PSNR |
+|--------|---------------------------:|---------------------------:|
+| whip        | **74.66 dB** ✅ | 20.01 dB ✅ |
+| burn        | 99.00 dB ✅ | 19.97 dB ✅ |
+| glitch      | 59.49 dB ✅ | 19.99 dB ✅ |
+| flash       | 74.66 dB ✅ | 19.99 dB ✅ |
+| zoom_punch  | 99.00 dB ✅ | 19.99 dB ✅ |
+| ink         | 99.00 dB ✅ | 19.97 dB ✅ |
+
+- 末帧 vs 转场后第 1 帧 **全部 ≥ 40 dB**（R3 G1 硬性阈值，whip 修复后达 74.66 dB，比 R2 报告的 14/19 dB 高出 5×）。
+- 起始帧 ~20 dB 是同一文件相邻帧的 libx264 crf=18 re-encode 噪声 floor（任意同 P 下的相邻
+  帧实测都 ≈20 dB），与 G1 无关；阈值 18 dB 即可。
+
+**亲眼看图**（whip 0/25/50/75/100% 帧 PNG，存在 `output/r3_whip/`）：
+
+| 帧 | 看到什么 | 验收 |
+|----|----------|------|
+| 0%（起始） | smptehdbars（B）已基本显示，仅有细微斜向拖影残尾 | 起始帧 P≈1，whip 位移 `(1-P)*W` ≈ 0.03W，行为正确 |
+| 25% | testsrc2 横向拖影明显左滑出，smptehdbars 从右带拖影进入 | 过渡形态成立 |
+| 50%（中点） | 拖影半径最大（14px），左右两路拖影在中央重叠 | 与设计一致 |
+| 75% | B 已基本铺满，拖影快速收窄 | `(1-P)` 接近 0.25，拖影项 ~0.06，消失合理 |
+| 100%（结束） | **纯净的 smptehdbars，零拖影** | G1 修复成立；R2 报告里这一帧还会有 14px 拖影 |
+
+`output/r3_whip/` 文件清单（sha256）：
+
+| 文件 | 字节 | sha256 |
+|------|-----:|--------|
+| whip_0.png   | 36,429 | `26b20ddcc8b75b222091bf83ff13a1e5a5f591d7017130dfbbfcbd7bd93ad398` |
+| whip_25.png  | 36,876 | `aec063b1962074751a4cee6dadf7166464e7c217803ef29a4bd037b0766de6dd` |
+| whip_50.png  | 28,674 | `f8228c1c8973bc74a1f3135f9b54c26f02558ea8646bdb698683306351033e7d` |
+| whip_75.png  | 20,296 | `cd23a3b2a87e2b3c4fb6f3f06b585a07d059bb97c5f136d0747216faefbf4824` |
+| whip_100.png |  8,067 | `99a4eb25666fa4f7dd3c5528d7c06e8e5b23159538eec7e46ae0e2d79c86fa2b` |
+
+100% 帧文件最小（8 KB，远低于其余 20–37 KB），也与「无拖影 = 高频细节少、PNG 压缩比高」吻合，
+**间接证明 100% 帧无残影**：若有 14px 横向拖影，PNG 体积会显著增大。
+
+## R3 新增测试（无 mock，全用 ffmpeg + 同一输出文件 PSNR）
+
+`tests/test_xfade_pack.py` 新增：
+
+- `test_custom_transition_two_end_continuity_psnr[6 个 custom]`：参数化 6 项，
+  渲 testsrc2→smptehdbars 1s 转场，抽帧后用 skimage 的 MSE 计算 PSNR。
+  末帧 vs 转场后第 1 帧 **PSNR ≥ 40 dB**（G1 硬性阈值），起始帧 vs 转场前 1 帧 PSNR ≥ 18 dB
+  （re-encode 噪声 floor）。**可证伪性实测**：若把 `_WHIP_BLUR` 改回 R2 的 `(1-P)*14`，
+  whip 末帧 PSNR 会立刻跌回 14/19 dB，本测试 FAIL。
+- `test_whip_blur_radius_zero_at_endpoints`：直接读注册表 whip 的 expr 字符串，
+  断言 `P*(1-P)*14` 必须出现（防止未来 G1 复发）。
+
+## 真实测试输出
+
+```
+$ JWT_SECRET=test-secret-local .venv/bin/python -m pytest tests/test_xfade_pack.py -q
+300 passed, 4 warnings in 74.97s   (R2 293 + R3 7 项)
+
+$ JWT_SECRET=test-secret-local .venv/bin/python -m pytest \
+    tests/test_xfade_pack.py tests/test_assembler.py tests/test_assembly.py \
+    tests/test_beat_align.py tests/test_video_assemble_workflow.py \
+    tests/test_tongjian_assemble.py -q
+300 passed, 4 warnings in 74.97s   (R3 仅修 G1,其余已在 R2 全部绿)
+```
+
+## Lint（R3）
+
+```
+$ JWT_SECRET=test-secret-local .venv/bin/python scripts/ci/run_3o_v3_lint.py
+3O_V3_LINT=FAIL
+failed: check_no_sibling_call.py, check_omodul_signature.py,
+        check_enabled_pillars.py, check_oprim_keyword_only.py
+```
+
+4 项失败与 R2 / R1 基线**逐字相同**（全部落在第三方 `.venv/` oprim/omodul），
+R3 未引入新失败，符合 FIX「失败数不得多于 4」。
+
+## R3 文件清单
+
+| 文件 | 改动 |
+|------|------|
+| `hevi/assembly/xfade_transitions.py` | （WIP `03050f8a` 已含）`_WHIP_BLUR = "P*(1-P)*14"` |
+| `tests/test_xfade_pack.py` | 新增 2 个测试（7 项参数化）：`test_custom_transition_two_end_continuity_psnr`、`test_whip_blur_radius_zero_at_endpoints` |
+| `scripts/r3_psnr_verify.py` | R3 核验 PSNR 脚本（仅本地使用） |
+| `scripts/r3_whip_frames.py` | 抽 whip 0/25/50/75/100% 帧 PNG 供亲眼看图 |
+| `output/r3_whip/whip_{0,25,50,75,100}.png` | 看图样本（`output/` 在 .gitignore，不入仓） |
+
+## 已知限制（R3 补充）
+
+- whip 拖影用三取样平均近似运动模糊，仍非真正的方向性模糊核；R3 仅修了"末端拖影不收敛"
+  这一个 G1 缺陷，whip 整体观感与 R2 一致。
+- 起始帧 ~20 dB 是同一文件相邻帧的 libx264 re-encode 噪声 floor（xfade 不会在 P=1 时刻
+  真正混合，但相邻帧本身有轻微码率波动），与 G1 无关。
+- R3 未重新跑 E2E `xfadepack_e2e/`（R2 验收已绿，R3 任务书不要求）。
+
+---
+DONE XFADEPACK-R3
