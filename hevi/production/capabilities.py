@@ -129,6 +129,13 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         else "whiteboard 本地依赖未就绪（Playwright 运行时 / Piper / Whisper 模型）。",
         None if _talkcraft_ready() else "配置 HEVI_TALKCRAFT_PIPER / VOICES / WHISPER 及 hevi-remotion-whiteboard 依赖。",
     ),
+    "artmotion_explainer": CapabilityDescriptor(
+        "artmotion_explainer",
+        "艺术史速通风格解说动画",
+        ("/api/explainer/run",),
+        True,
+        "支持 35 种艺术风格 + 9 种解说动画语法，纯代码绘制；explainer 以 renderer=artmotion 调用。",
+    ),
     "tongjian": CapabilityDescriptor(
         "tongjian",
         "通鉴出片",

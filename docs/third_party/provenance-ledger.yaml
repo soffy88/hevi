@@ -32,3 +32,27 @@ entries:
     commercial_restrictions: commercial_review_required
     derived_data: false
     last_verified: 2026-09-13
+  - source: huashu-art-motion (artmotion 讲解动画能力)
+    repository: https://github.com/alchaincyf/huashu-art-motion
+    license: MIT
+    version: vendored_2026-07
+    integration_type: internalized_native_module
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    attribution_location: third_party/huashu-art-motion/NOTICE.md
+    commercial_restrictions: none
+    derived_data: true
+    last_verified: 2026-10-13
+  - source: Fusion Pixel Font (artmotion 14_8bit 像素风字体)
+    repository: https://github.com/TakWolf/fusion-pixel-font
+    license: OFL-1.1
+    version: "2026.09.25"
+    integration_type: vendored_font_subset
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    attribution_location: third_party/fusion-pixel-font/NOTICE.md
+    commercial_restrictions: none
+    derived_data: true
+    last_verified: 2026-10-14

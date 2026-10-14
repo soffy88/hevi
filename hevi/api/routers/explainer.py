@@ -65,7 +65,7 @@ class TalkcraftAvatarOption(BaseModel):
 
 class RunRequest(BaseModel):
     topic: str
-    renderer: Literal["hevi-remotion", "talkcraft"] | None = None
+    renderer: Literal["hevi-remotion", "talkcraft", "artmotion"] | None = None
     avatar: TalkcraftAvatarOption | None = None
 
 
