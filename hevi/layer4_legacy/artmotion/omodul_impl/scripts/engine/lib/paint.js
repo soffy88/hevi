@@ -79,6 +79,23 @@ P.assertOpaque = (cv, label = 'texture') => {
   return cv;
 };
 
+// 无缝镜像平铺（r6 非阻断）：把一张底纹按「边缘镜像」铺满当前画布，线性漂移时接缝处像素连续，
+// 不会出现硬边（原来的 2×2 同向平铺会在接缝处颜色突变）。ox/oy 是漂移量（像素，可任意大）。
+// 单元 (i,j)：偶数格正画，奇数格镜像——相邻格在接缝处的像素完全相等。
+P.tileMirror = (g, img, ox = 0, oy = 0) => {
+  const w = img.width, h = img.height, W = g.canvas.width, H = g.canvas.height;
+  const x0 = -(((ox % (2 * w)) + 2 * w) % (2 * w)), y0 = -(((oy % (2 * h)) + 2 * h) % (2 * h));
+  const nx = Math.ceil((W - x0) / w) + 1, ny = Math.ceil((H - y0) / h) + 1;
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const mx = i % 2, my = j % 2;
+    g.save();
+    g.translate(x0 + i * w + (mx ? w : 0), y0 + j * h + (my ? h : 0));
+    g.scale(mx ? -1 : 1, my ? -1 : 1);
+    g.drawImage(img, 0, 0);
+    g.restore();
+  }
+};
+
 // ---------- 手绘线 ----------
 // 把折线/曲线采样后加噪声抖动；boil = 当前时间换种子的频率（0 = 不抖）
 P.boilSeed = (t, fps = 12) => Math.floor(t * fps);
