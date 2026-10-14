@@ -11,7 +11,7 @@ from hevi.creative.assist_registry import ASSIST_REGISTRY
 from hevi.creative.assist_service import AssistService
 from hevi.creative.workflow_service import WorkflowService
 from hevi.mcp.schemas import LIST_CAPABILITIES_INPUT, LIST_CAPABILITIES_OUTPUT
-from hevi.mcp.tools.canvas_tools import build_canvas_skills
+from hevi.mcp.tools.canvas_tools import build_canvas_ops_skills, build_canvas_skills
 from hevi.mcp.tools.creative_tools import build_creative_skills
 from hevi.mcp.tools.embrace_tools import build_embrace_skills
 from hevi.mcp.tools.studio_tools import build_studio_skills
@@ -63,6 +63,9 @@ def build_hevi_mcp_server(
         server.register_skill(skill)
 
     for skill in build_canvas_skills(executor_svc=executor_svc):
+        server.register_skill(skill)
+
+    for skill in build_canvas_ops_skills():
         server.register_skill(skill)
 
     for skill in build_studio_skills():

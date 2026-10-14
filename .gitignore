@@ -74,6 +74,8 @@ data/explainer_cache/
 .claude/
 data/workspace/
 data/hevi_tasks.db
+data/agent_ops.db
+data/agent_ops/
 data/lite_runs/
 *.deb
 data/cinematic_output/

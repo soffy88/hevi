@@ -63,6 +63,7 @@ from hevi.api.routers.lite import router as lite_router
 from hevi.api.routers.longcat import router as longcat_router
 from hevi.api.routers.montage import router as montage_router
 from hevi.api.routers.openshorts import router as openshorts_router
+from hevi.api.routers.ops import router as ops_router
 from hevi.api.routers.voice_studio import router as voice_studio_router
 from hevi.api.routers.voice_platform import openai_router as voice_openai_router
 from hevi.api.routers.voice_platform import router as voice_platform_router
@@ -214,7 +215,7 @@ app.include_router(distribution_router, prefix="/api")
 app.include_router(lite_router, prefix="/api")  # 本地零费用:选题→veya-loop→确认→HTML 出片
 app.include_router(longcat_router, prefix="/api")
 app.include_router(montage_router, prefix="/api")
-app.include_router(openshorts_router, prefix="/api")
+app.include_router(ops_router)  # 单元 C:Agent 画布操作桥 (router 自带 /api/ops 前缀)
 app.include_router(ws_router)  # WebSocket 路由自带 /api/ws 前缀
 app.include_router(freezone_router, prefix="/api")
 app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提升/修复/画像/草图)

@@ -4,6 +4,8 @@
 
 | 工具 | 说明 |
 |---|---|
+| `hevi.agent.ops.execute` | 执行一个 Agent 画布操作（canvas.get / script.rows.* / node.bind_asset / generation.propose / asset.list / task.get）。写操作带 CAS(expectedRevision) 与幂等(opId)；generation.propose 只返回 proposalId 不触发生成。 |
+| `hevi.agent.ops.list` | 列出 Agent 画布操作桥的全部操作描述符（readOnly/scope/params/replay） |
 | `hevi.chat` | Xia 会话制片助理:状态/推进/审计/修复/提升 |
 | `hevi.create_three_view` | 生成角色三视图提示词(正/侧/背) |
 | `hevi.edit_video_elements` | 编辑视频元素列表(插入/替换/删除) |

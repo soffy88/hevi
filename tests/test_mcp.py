@@ -48,8 +48,8 @@ def test_server_registers_14_tools() -> None:
         workflow_svc=MagicMock(spec=WorkflowService),
     )
     tools = _tool_map(server)
-    # 14 基线 + 5 embrace + 4 studio/veya = 23
-    assert len(tools) == 23
+    # 14 基线 + 5 embrace + 4 studio/veya + 2 agent-ops = 25
+    assert len(tools) == 25
 
 
 def test_server_registers_expected_names() -> None:
@@ -73,6 +73,9 @@ def test_server_registers_expected_names() -> None:
         "hevi.subject_create",
         "hevi.subject_search",
         "hevi.execute_canvas",
+        # 单元 C：Agent 画布操作桥
+        "hevi.agent.ops.list",
+        "hevi.agent.ops.execute",
         # 3O 内化(Round 3g):watch / media / repair / promote / chat
         "hevi.watch_video",
         "hevi.media_resolve",
