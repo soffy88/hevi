@@ -115,7 +115,7 @@ class SceneRenderer:
 
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(args=_CHROMIUM_ARGS)
+                browser = p.chromium.launch(args=_CHROMIUM_ARGS) if resolve_browsers_path() is not None else p.chromium.launch(executable_path="/snap/chromium/current/usr/lib/chromium-browser/chrome", args=_CHROMIUM_ARGS)
                 page = browser.new_page(
                     viewport={"width": self.spec.width, "height": self.spec.height},
                     device_scale_factor=1,
@@ -168,7 +168,7 @@ class SceneRenderer:
         page_url = f"http://127.0.0.1:{port}/{html_path.name}"
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(args=_CHROMIUM_ARGS)
+                browser = p.chromium.launch(args=_CHROMIUM_ARGS) if resolve_browsers_path() is not None else p.chromium.launch(executable_path="/snap/chromium/current/usr/lib/chromium-browser/chrome", args=_CHROMIUM_ARGS)
                 page = browser.new_page(
                     viewport={"width": self.spec.width, "height": self.spec.height},
                     device_scale_factor=1,

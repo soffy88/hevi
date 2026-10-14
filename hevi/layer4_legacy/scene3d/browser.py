@@ -70,4 +70,4 @@ def resolve_browsers_path() -> str | None:
 
 def chromium_available() -> bool:
     """Public predicate for tests: is a Chromium bundle resolvable?"""
-    return resolve_browsers_path() is not None
+    return resolve_browsers_path() is not None or Path("/snap/chromium/current/usr/lib/chromium-browser/chrome").is_file()
