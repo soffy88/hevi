@@ -11,10 +11,12 @@ usage:
   OBS: Sources -> Media Source -> untick Local File -> Input: rtmp://<ubuntu26-ip>:1935/xiaoya
        (or rtsp://<ip>:8554/xiaoya, srt://<ip>:8890?streamid=read:xiaoya)
 """
+
 from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import queue
 import re
@@ -27,6 +29,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 from PIL import Image
 
 os.environ.setdefault("HEVI_LIVE_FPS", "20")  # CPU lip-sync runs ~21 fps -> 20 fps keeps real time
@@ -36,18 +40,35 @@ from hevi.live_host.oprim.llm_ollama import OllamaLLM  # noqa: E402
 from hevi.live_host.oprim.tts_piper import PiperTTS  # noqa: E402
 
 STAGE = re.compile(r"[（(【\[][^）)】\]]*[）)】\]]")
-EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F\u200D]")
-ASK = re.compile(r"[?？吗呢么吧哪谁几]|小雅|主播|怎么|什么|推荐|为什么|多少|是不是|能不能|会不会|有没有|讲讲|说说")
+EMOJI = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
+ASK = re.compile(
+    r"[?？吗呢么吧哪谁几]|小雅|主播|怎么|什么|推荐|为什么|多少|是不是|能不能|会不会|有没有|讲讲|说说"
+)
 SPF = SR // FPS  # audio samples per video frame
 
 
 class LiveStreamer:
-    def __init__(self, out: str, *, persona: str = "小雅", max_queue: int = 5, log: Path | None = None) -> None:
+    def __init__(
+        self, out: str, *, persona: str = "小雅", max_queue: int = 5, log: Path | None = None
+    ) -> None:
         self.out = out
         self.av = HalfBodyAvatar()
         self.llm = OllamaLLM(persona=persona, max_reply_chars=60)
         self.tts = PiperTTS()
-        self.questions: deque[tuple[str, str, float]] = deque(maxlen=max_queue)  # (user, text, t_recv)
+        # Optional pre-generated voice cache (default OFF).  Gated exactly like
+        # HEVI_LIVE_MOTION: lazy import, falls back to the real TTS if the
+        # library is missing or disabled.  Never raises into the live loop.
+        vc = os.environ.get("HEVI_LIVE_VOICECACHE", "off")
+        if vc in ("on", "1"):
+            try:
+                from hevi.live_host.voicecache import CachedTTS
+
+                self.tts = CachedTTS(self.tts)
+            except Exception as exc:  # pragma: no cover - never break the live path
+                logger.warning("voice cache unavailable, using real TTS: %s", exc)
+        self.questions: deque[tuple[str, str, float]] = deque(
+            maxlen=max_queue
+        )  # (user, text, t_recv)
         self.qlock = threading.Lock()
         self.ready: queue.Queue = queue.Queue(maxsize=40)  # (frames, wav, caption, meta)
         self.stop = threading.Event()
@@ -75,7 +96,9 @@ class LiveStreamer:
 
         class H(BaseHTTPRequestHandler):
             def do_POST(self):  # body: {"user": "...", "text": "..."} or plain text
-                raw = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode("utf-8", "ignore")
+                raw = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode(
+                    "utf-8", "ignore"
+                )
                 try:
                     d = json.loads(raw)
                     streamer.push(d.get("user", "观众"), d.get("text", ""))
@@ -102,6 +125,7 @@ class LiveStreamer:
                         continue
                     user, _, text = line.partition("\t") if "\t" in line else ("观众", "", line)
                     self.push(user, text)
+
         threading.Thread(target=run, daemon=True).start()
 
     # ---------------- brain ----------------
@@ -153,7 +177,16 @@ class LiveStreamer:
                     seg = wav[a * spf : (b * spf if b < nf else len(wav))]
                     meta = {"q": q, "sentence": s, "chunk_from": a}
                     if a == 0:
-                        meta.update({"audio_s": round(len(wav) / SR, 2), "llm_s": round(t_llm, 2), "tts_s": round(t_tts, 2), "lip_first_s": round(time.time() - t2, 2), "wait_s": round(t0 - t_recv, 2), "qsize": self.ready.qsize()})
+                        meta.update(
+                            {
+                                "audio_s": round(len(wav) / SR, 2),
+                                "llm_s": round(t_llm, 2),
+                                "tts_s": round(t_tts, 2),
+                                "lip_first_s": round(time.time() - t2, 2),
+                                "wait_s": round(t0 - t_recv, 2),
+                                "qsize": self.ready.qsize(),
+                            }
+                        )
                         if first:
                             meta["first_ready_s"] = round(time.time() - t_recv, 2)
                             first = False
@@ -162,19 +195,86 @@ class LiveStreamer:
                 self.speaking = False
                 t_mark = time.time()
             self.stats["answered"] += 1
-            self._event("answer", q=q, reply=reply, total_s=round(time.time() - t0, 2), hold_frames=self.stats.get("hold_frames", 0), late_frames=self.stats["late_frames"])
+            self._event(
+                "answer",
+                q=q,
+                reply=reply,
+                total_s=round(time.time() - t0, 2),
+                hold_frames=self.stats.get("hold_frames", 0),
+                late_frames=self.stats["late_frames"],
+            )
 
     # ---------------- output ----------------
     def _ffmpeg(self, audio_fifo: Path) -> subprocess.Popen:
         is_file = "://" not in self.out
-        fmt = ["-f", "flv"] if self.out.startswith("rtmp") else (["-f", "mpegts"] if not self.out.endswith(".mp4") else [])
+        fmt = (
+            ["-f", "flv"]
+            if self.out.startswith("rtmp")
+            else (["-f", "mpegts"] if not self.out.endswith(".mp4") else [])
+        )
         return subprocess.Popen(
-            [FFMPEG, "-y", "-v", "error",
-             "-probesize", "32", "-analyzeduration", "0", "-thread_queue_size", "512", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-             "-probesize", "32", "-analyzeduration", "0", "-thread_queue_size", "4096", "-f", "s16le", "-ar", str(SR), "-ac", "1", "-i", str(audio_fifo),
-             "-vf", "scale=1080:1920:flags=bicubic", "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
-             "-g", str(FPS * 2), "-b:v", "3500k", "-maxrate", "4000k", "-bufsize", "4000k", "-pix_fmt", "yuv420p",
-             "-c:a", "aac", "-ar", "44100", "-b:a", "128k", *fmt, self.out],
+            [
+                FFMPEG,
+                "-y",
+                "-v",
+                "error",
+                "-probesize",
+                "32",
+                "-analyzeduration",
+                "0",
+                "-thread_queue_size",
+                "512",
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "rgb24",
+                "-s",
+                f"{W}x{H}",
+                "-r",
+                str(FPS),
+                "-i",
+                "-",
+                "-probesize",
+                "32",
+                "-analyzeduration",
+                "0",
+                "-thread_queue_size",
+                "4096",
+                "-f",
+                "s16le",
+                "-ar",
+                str(SR),
+                "-ac",
+                "1",
+                "-i",
+                str(audio_fifo),
+                "-vf",
+                "scale=1080:1920:flags=bicubic",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "veryfast",
+                "-tune",
+                "zerolatency",
+                "-g",
+                str(FPS * 2),
+                "-b:v",
+                "3500k",
+                "-maxrate",
+                "4000k",
+                "-bufsize",
+                "4000k",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                "-ar",
+                "44100",
+                "-b:a",
+                "128k",
+                *fmt,
+                self.out,
+            ],
             stdin=subprocess.PIPE,
         )
 
@@ -193,7 +293,7 @@ class LiveStreamer:
                     break
                 try:
                     fh.write(b)
-                except (BrokenPipeError, ValueError, OSError):
+                except BrokenPipeError, ValueError, OSError:
                     break
 
         wv = threading.Thread(target=writer, args=(vq, enc.stdin), daemon=True)
@@ -242,7 +342,9 @@ class LiveStreamer:
             elif now - target > 1 / FPS:
                 self.stats["late_frames"] += 1
             nonlocal E
-            if E["enc"].poll() is not None:  # sink dropped (relay restart, network): reconnect, keep streaming
+            if (
+                E["enc"].poll() is not None
+            ):  # sink dropped (relay restart, network): reconnect, keep streaming
                 self._event("encoder_restart", code=E["enc"].returncode)
                 self.stats["encoder_restarts"] = self.stats.get("encoder_restarts", 0) + 1
                 self._stop_encoder(E)
@@ -261,7 +363,9 @@ class LiveStreamer:
                 return frames
             for j in range(min(6, len(frames))):
                 a = (j + 1) / 7
-                frames[j] = (last.astype(np.float32) * (1 - a) + frames[j].astype(np.float32) * a).astype(np.uint8)
+                frames[j] = (
+                    last.astype(np.float32) * (1 - a) + frames[j].astype(np.float32) * a
+                ).astype(np.uint8)
             return frames
 
         try:
@@ -282,12 +386,16 @@ class LiveStreamer:
                     if meta.get("chunk_from", 0) == 0:
                         self._event("play", lag_frames=0, **meta)
                     for k, fr in enumerate(frames):
-                        emit(fr, pcm[k * SPF:(k + 1) * SPF].tobytes(), caption)
+                        emit(fr, pcm[k * SPF : (k + 1) * SPF].tobytes(), caption)
                     continue
                 if mode == "talk" and self.speaking and last is not None:
                     # 句子还在分块合成中：定格最后一帧等下一块，不切回待机
                     self.stats["hold_frames"] = self.stats.get("hold_frames", 0) + 1
-                    emit(last, silence[:SPF * 2] if len(silence) >= SPF * 2 else silence, self.caption)
+                    emit(
+                        last,
+                        silence[: SPF * 2] if len(silence) >= SPF * 2 else silence,
+                        self.caption,
+                    )
                     continue
                 # idle: one second chunks keep latency low
                 batch = [idle.frames[idle.pingpong(t_idle + j)] for j in range(FPS // 4)]
@@ -302,7 +410,6 @@ class LiveStreamer:
             self.stats["wall_s"] = round(time.perf_counter() - start, 2)
             self.stats["stream_s"] = round(frame_i / FPS, 2)
             self._stop_encoder(E)
-
 
     def _event(self, kind: str, **kw) -> None:
         e = {"t": round(time.time(), 2), "kind": kind, **kw}
@@ -335,6 +442,7 @@ def main() -> None:
         s.tail_file(Path(a.danmaku_file))
     if a.douyin:
         from hevi.live_host.ingest.douyin_source import start_douyin
+
         start_douyin(a.douyin, s.push, s.stop)
     print(json.dumps(s.run(a.seconds), ensure_ascii=False))
 
