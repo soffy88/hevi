@@ -176,3 +176,67 @@ def test_render_multi_aspect_parallel():
     assert info_916.width == 360 and info_916.height == 640
     assert info_169.width == 640 and info_169.height == 360
     assert info_11.width == 360 and info_11.height == 360
+
+
+def test_reframe_interview_face_containment_and_smoothness():
+    """AMFX-R2 H1 & H2: Interview video must achieve >=90% subject containment and p95<=8, max<=20."""
+    interview_candidates = [
+        Path("samples/aimotion_fx/src_interview_16x9_6s.mp4"),
+        Path("artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4"),
+    ]
+    vid = next((p for p in interview_candidates if p.is_file()), None)
+    if vid is None:
+        pytest.skip("Interview video asset not found")
+
+    is_vert, w_crop, h_crop, x_seq, metrics = compute_reframe_windows(
+        vid,
+        aspect="9:16",
+        smooth_alpha=0.08,
+        max_velocity=7.5,
+    )
+
+    assert not is_vert
+    assert len(x_seq) > 50
+
+    # AMFX-R2 H1: Face/body subject containment >= 90%
+    assert metrics["subject_in_window_ratio"] >= 0.90, (
+        f"Subject containment ratio {metrics['subject_in_window_ratio']:.4f} is below required 90%"
+    )
+
+    # AMFX-R2 H2: Within-shot frame-to-frame displacement p95 <= 8, max <= 20
+    assert metrics["displacement_p95"] <= 8.0, (
+        f"Within-shot displacement p95 ({metrics['displacement_p95']} px) exceeds 8.0 px/frame limit"
+    )
+    assert metrics["displacement_max"] <= 20.0, (
+        f"Within-shot displacement max ({metrics['displacement_max']} px) exceeds 20.0 px/frame limit"
+    )
+
+
+def test_reframe_broll_smoothness():
+    """AMFX-R2 H2: B-roll video without cuts must have smooth camera motion with p95<=8, max<=20."""
+    broll_candidates = [
+        Path("samples/aimotion_fx/src_broll_16x9_6s.mp4"),
+        Path("artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4"),
+    ]
+    vid = next((p for p in broll_candidates if p.is_file()), None)
+    if vid is None:
+        pytest.skip("B-roll video asset not found")
+
+    is_vert, w_crop, h_crop, x_seq, metrics = compute_reframe_windows(
+        vid,
+        aspect="9:16",
+        smooth_alpha=0.08,
+        max_velocity=7.5,
+    )
+
+    assert not is_vert
+    assert len(x_seq) > 50
+
+    # AMFX-R2 H2: Within-shot frame-to-frame displacement p95 <= 8, max <= 20
+    assert metrics["displacement_p95"] <= 8.0, (
+        f"Within-shot displacement p95 ({metrics['displacement_p95']} px) exceeds 8.0 px/frame limit"
+    )
+    assert metrics["displacement_max"] <= 20.0, (
+        f"Within-shot displacement max ({metrics['displacement_max']} px) exceeds 20.0 px/frame limit"
+    )
+

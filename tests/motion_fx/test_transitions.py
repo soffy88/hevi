@@ -153,3 +153,38 @@ def test_transition_with_bpm_snapped_start(sample_clips):
 def test_unknown_transition():
     with pytest.raises(ValueError, match="Unknown transition kind"):
         get_transition_func("non_existent_transition")
+
+
+def test_water_ripple_middle_progress_difference():
+    """AMFX-R2 H3: water_ripple at p=0.48 must have substantial difference from both A and B."""
+    w, h = 360, 640
+    fa = np.full((h, w, 3), [220, 40, 40], dtype=np.uint8)
+    fb = np.full((h, w, 3), [40, 220, 40], dtype=np.uint8)
+
+    from hevi.motion_fx.transitions.water_ripple import render_water_ripple
+
+    out_mid = render_water_ripple(fa, fb, p=0.48)
+    diff_vs_a = float(np.mean(np.abs(out_mid.astype(float) - fa.astype(float))))
+    diff_vs_b = float(np.mean(np.abs(out_mid.astype(float) - fb.astype(float))))
+
+    # Transition must be actively progressing, not already finished into B
+    assert diff_vs_a > 20.0, f"diff_vs_a {diff_vs_a} too low at p=0.48"
+    assert diff_vs_b > 20.0, f"diff_vs_b {diff_vs_b} too low at p=0.48 (finished too early)"
+
+
+def test_glass_refract_dispersion_ceiling():
+    """AMFX-R2 H4: glass_refract must cap chromatic dispersion to <= 0.015."""
+    w, h = 360, 640
+    fa = np.full((h, w, 3), [100, 100, 100], dtype=np.uint8)
+    fb = np.full((h, w, 3), [200, 200, 200], dtype=np.uint8)
+
+    from hevi.motion_fx.transitions.glass_refract import render_glass_refract
+
+    # Even if caller passes high dispersion 0.08, capped at 0.015
+    out_default = render_glass_refract(fa, fb, p=0.5, params={"dispersion": 0.012})
+    out_high = render_glass_refract(fa, fb, p=0.5, params={"dispersion": 0.08})
+    out_capped = render_glass_refract(fa, fb, p=0.5, params={"dispersion": 0.015})
+
+    # High dispersion should be clamped to the 0.015 ceiling output
+    assert np.allclose(out_high, out_capped, atol=1.0)
+
