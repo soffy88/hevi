@@ -129,3 +129,26 @@ def test_cachedtts_disabled_falls_back():
     wrap.enabled = False  # no library loaded
     wrap.synthesize("任意的话", "/tmp/vc_fallback.wav")
     assert backend.calls == 1
+
+
+# ── voicecache_fill normalisation must match the library's ────────────────
+def test_fill_normalize_matches_library():
+    """voicecache_fill.py runs under the CosyVoice venv and cannot import the
+    hevi package, so it carries its own _normalize.  It MUST behave identically
+    to VoiceCache.normalize, otherwise dedup would let duplicate entries in."""
+    import importlib.util
+
+    p = Path("/data/soffy/projects/hevi-live/hevi/live_host/voicecache/voicecache_fill.py")
+    spec = importlib.util.spec_from_file_location("voicecache_fill", p)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # no hevi deps: safe to exec standalone
+    for t in [
+        "谢谢哥哥的礼物。",
+        "【AI生成】欢迎来到小雅的直播间。",
+        " 你好, 世界! ",
+        "Hello World",
+        "晚安～明天见",
+        "、（测试）；",
+        "",
+    ]:
+        assert mod._normalize(t) == normalize(t), t

@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -33,10 +34,47 @@ DEFAULT_ROOT = Path(os.environ.get("HEVI_VOICECACHE_ROOT", "/data/soffy/voicecac
 
 
 def _slug(text: str) -> str:
-    import re
-
     s = re.sub(r"[^\w一-鿿]+", "_", text)
     return f"miss_{s[:28]}"
+
+
+# must stay identical to hevi.live_host.voicecache.normalize (kept in sync by
+# tests/test_voicecache.py::test_fill_normalize_matches_library)
+_PUNCT = re.compile(r"[\s，,。.！!？?；;：:、~～…—\-_“”\"'‘’（）()\[\]【】<>《》/\\|]+")
+_WRAP = re.compile(r"^[【\[].*?[】\]]")
+
+
+def _normalize(text: str) -> str:
+    t = text or ""
+    t = _WRAP.sub("", t)
+    t = _PUNCT.sub(" ", t)
+    t = t.lower().strip()
+    return re.sub(r"\s+", "", t)
+
+
+# miss text → halfbody motion clip hint (kept small: the library already carries
+# the main categories; a filled miss just needs a reasonable gesture)
+_MOTION_CUES = (
+    ("谢谢", "g_heart"),
+    ("感谢", "g_heart"),
+    ("比心", "g_heart"),
+    ("抱抱", "g_heart"),
+    ("欢迎", "g_wave"),
+    ("哈喽", "g_wave"),
+    ("你好", "g_wave"),
+    ("关注", "g_nod"),
+    ("点赞", "g_nod"),
+    ("晚安", "g_wave"),
+    ("拜拜", "g_wave"),
+    ("再见", "g_wave"),
+)
+
+
+def _motion_hint(text: str) -> str:
+    for k, m in _MOTION_CUES:
+        if k in text:
+            return m
+    return "talk_a"
 
 
 def main() -> None:
@@ -61,7 +99,11 @@ def main() -> None:
         if manifest_path.is_file()
         else {"entries": []}
     )
-    existing_norm = {e["text"] for e in manifest["entries"]}
+    # dedup on the NORMALISED text (the same key the live matcher uses), so a
+    # miss that only differs in punctuation from a cached line is skipped.
+    # NOTE: local copy of VoiceCache.normalize — this script runs under the
+    # CosyVoice venv, which has no hevi deps (no httpx), so we don't import it.
+    existing_norm = {_normalize(e["text"]) for e in manifest["entries"]}
 
     # collect unique misses (newest last), dedupe by normalised text
     seen: dict[str, str] = {}
@@ -77,7 +119,7 @@ def main() -> None:
         if t:
             seen[t] = rec.get("ts", "")
 
-    to_fill = [t for t in seen if t not in existing_norm]
+    to_fill = [t for t in seen if _normalize(t) not in existing_norm]
     if args.limit:
         to_fill = to_fill[: args.limit]
     print(f"misses unique={len(seen)} new={len(to_fill)} existing={len(existing_norm)}", flush=True)
@@ -119,7 +161,7 @@ def main() -> None:
                 "text": text,
                 "wav": f"wav/{eid}.wav",
                 "duration": round(float(dur), 2),
-                "motion": "talk_a",
+                "motion": _motion_hint(text),
                 "category": "miss_filled",
             }
         )
