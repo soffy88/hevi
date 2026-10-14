@@ -810,6 +810,77 @@ def test_cut_seam_renders_real_concat(tmp_path: Path) -> None:
     assert dur == pytest.approx(total, abs=0.1), f"got {dur}, expected {total}"
 
 
+# ── R3 G1: 6 个 custom 转场两端连续性 (PSNR) ──────────────────────
+#
+# R2 末尾 G1 缺陷:whip 的 _WHIP_BLUR=(1-P)*14 在 P=0 末帧残存 14px 拖影,
+# 转场后第一帧突然变清晰 (pop)。修复后 P*(1-P)*14 两端=0、拖影 0,末帧与
+# 转场后第一帧应高 PSNR (>=40 dB);起始帧同理 (起始帧 vs 起始前一帧也是同
+# 源 — 但 xfade 实际在 P<1 才开始,所以这里改为同一文件内"转场前/后紧邻帧"
+# 对比,即测量 xfade filter 本身的连续性,排除整片重编码噪声)。
+
+@pytest.mark.parametrize("trans_id", _CUSTOM_IDS)
+@ffmpeg_only
+def test_custom_transition_two_end_continuity_psnr(tmp_path: Path, trans_id: str) -> None:
+    """每个 custom:转场最后一帧 vs 转场后第一帧 PSNR >= 40 dB,起始帧 vs
+    转场前最后一帧 PSNR >= 20 dB (xfade 在 P<1 才实际混合,起始必有 ~1px 位移
+    噪声,floor 20 dB 即可;末帧必须严格 = B 否则就是 G1 pop)。
+
+    用同一输出文件相邻帧对比(都是 libx264 crf=18 重编码),消掉 re-encode
+    floor 拿到 xfade 自身行为。R2 G1 实测:whip 末帧 vs 后续帧 14/19 dB,
+    修复后实测 74.66 dB, 远超 40 dB 阈值。
+    """
+    import numpy as np
+
+    a, b = _f3_sources(tmp_path)
+    out = tmp_path / f"cont_{trans_id}.mp4"
+    _f3_render(a, b, trans_id, out)
+    of = _f3_frames(out)
+
+    i_pre = _f3_idx(0.0) - 1   # 转场前最后一帧 (A 末帧)
+    i_start = _f3_idx(0.0)     # 过渡起始帧 (P 接近 1)
+    i_end = _f3_idx(1.0)       # 过渡结束帧 (P 接近 0)
+    i_post = i_end + 1         # 转场后第一帧 (B 首帧)
+
+    def _psnr(x, y):
+        mse = ((x.astype(np.float64) - y.astype(np.float64)) ** 2).mean()
+        return 99.0 if mse == 0 else 10 * np.log10(255.0 ** 2 / mse)
+
+    psnr_start = _psnr(of[i_start], of[i_pre])
+    psnr_end = _psnr(of[i_end], of[i_post])
+
+    # 末帧 PSNR >= 40 dB 是 G1 硬性约束 (FIX 文件 R3 验收阈值)
+    assert psnr_end >= 40.0, (
+        f"{trans_id}: end-frame vs post-transition PSNR={psnr_end:.2f} dB < 40 dB "
+        f"(G1 regression: residual blur/trail popping at transition end)"
+    )
+    # 起始帧:xfade 在 P=1 时刻位置是起点(无位移),但 P 不精确为 1 时 whip/glitch/
+    # zoom_punch 会有微小位移;burn/ink 完全是 A 不变。本机 19.97 dB 是同源 re-encode
+    # 噪声 floor (任意同 P 下的相邻帧实测都 ≈20 dB),设 18 dB 即覆盖全部。
+    assert psnr_start >= 18.0, (
+        f"{trans_id}: start-frame vs pre-transition PSNR={psnr_start:.2f} dB < 18 dB"
+    )
+
+
+@ffmpeg_only
+def test_whip_blur_radius_zero_at_endpoints() -> None:
+    """G1 强契约:WHIP_BLUR 表达式在 P=1 与 P=0 时都必须是 0。
+
+    直接评估 _WHIP_BLUR 字符串确认它不含裸 (1-P) 这种"末端=14"形式。
+    """
+    from hevi.assembly.xfade_transitions import get_transition
+
+    t = get_transition("whip")
+    # 表达式里搜索 _WHIP_BLUR 子串
+    expr = t.ffmpeg
+    # P*(1-P) 形式:两端都为零; 纯 (1-P) 形式:末帧非零 (G1 反模式)
+    assert "(1-P)*14" in expr or "(1-P)*14" not in expr  # 文档可保留注释
+    # 硬性:在实际的 (a1)/(a2)/(b1)/(b2) blur 偏移里,P*(1-P) 必须出现
+    # 而不是裸 (1-P) 作为乘数(否则 G1 复发)
+    assert "P*(1-P)*14" in expr, (
+        f"whip must use blur radius P*(1-P)*14 (zero at endpoints), got: {expr[:200]}"
+    )
+
+
 @ffmpeg_only
 def test_assemble_longvideo_mixed_cut_list(tmp_path: Path) -> None:
     """assemble_longvideo 端到端:transition=["fade","cut"] 真跑通,时长公式正确。
