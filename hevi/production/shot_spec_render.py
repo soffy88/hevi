@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from hevi.production.shot_spec import CUT, ShotSpec, sfx_asset_path
 
@@ -46,6 +47,149 @@ _STYLE_KEYWORD_FILTERS: list[tuple[str, str]] = [
     ("soft", "gblur=sigma=2"),
 ]
 
+# Talkcraft 转场类模板 -> xfade 转场 token 映射表
+_TALKCRAFT_TRANSITION_MAP: dict[str, str] = {
+    "tc:black-slam-transition": "fadeblack",
+    "tc:chapter-title-card": "fadeblack",
+    "tc:color-slam-beat-card": "fade",
+    "tc:overexpose-flip-transition": "fadewhite",
+    "tc:particle-weld-transition": "dissolve",
+    "tc:pullback-cool-transition": "smoothleft",
+    "tc:push-through-transition": "rectcrop",
+    "tc:shape-wipe-transition": "wipeleft",
+    "tc:whip-pan-transition": "whip",
+    "tc:caret-wipe-transition": "wipeleft",
+    "tc:chapter-progress-list": "slideleft",
+    "tc:long-take-world": "dissolve",
+    "tc:line-carry-transition": "slideright",
+}
+
+
+def style_filter(spec: ShotSpec | None) -> str:
+    """把 spec.style 翻成单镜 ``-vf`` 片段;无 style 或未命中映射时返回 ``""``。
+
+    dirstyle 未合并期间,style 只接受有 ffmpeg 映射的合法枚举值 (见 shot_spec.STYLE_FILTERS)。
+    """
+    if spec is None or not spec.style:
+        return ""
+    from hevi.production.shot_spec import STYLE_FILTERS
+
+    return STYLE_FILTERS.get(spec.style, "")
+
+
+def template_transition_token(spec: ShotSpec | None) -> str | None:
+    """若 spec.template 属于转场类模板,返回对应的 xfade 转场 token。"""
+    if spec is None or not spec.template:
+        return None
+    tid = spec.template
+    if tid in _TALKCRAFT_TRANSITION_MAP:
+        return _TALKCRAFT_TRANSITION_MAP[tid]
+    if tid.startswith("xfade:"):
+        return tid[6:]
+    from hevi.assembly.xfade_transitions import ALL_TRANSITIONS
+
+    if tid in {t.id for t in ALL_TRANSITIONS}:
+        return tid
+    return None
+
+
+def template_filter(spec: ShotSpec | None) -> str:
+    """若 spec.template 在装配期有单镜画面滤镜 (style/overlay/transition-accent),返回 vf 片段。"""
+    if spec is None or not spec.template:
+        return ""
+    tid = spec.template
+    low = tid.lower()
+
+    # 1. 转场类: 若为 black-slam 或 overexpose,附带片头闪白/闪黑滤镜增强表现
+    if "black-slam" in low or "fadeblack" in low:
+        return "fade=t=in:st=0:d=0.25:color=black"
+    if "overexpose" in low or "fadewhite" in low:
+        return "fade=t=in:st=0:d=0.25:color=white"
+
+    # 2. 覆盖/强调类 (Category.OVERLAY)
+    if "crash-zoom-punch" in low or "zoom-punch" in low:
+        return "crop=in_w*0.92:in_h*0.92,scale=in_w:in_h,eq=contrast=1.1"
+    if "spotlight" in low:
+        return "vignette=PI/4"
+    if any(k in low for k in ("ellipse", "highlighter", "underline", "strike")):
+        return "drawbox=x=iw*0.1:y=ih*0.85:w=iw*0.8:h=12:color=yellow@0.6:t=fill"
+    if any(k in low for k in ("bracket", "frame", "corner")):
+        return "drawbox=x=20:y=20:w=iw-40:h=ih-40:color=white@0.5:t=4"
+    if any(k in low for k in ("chart", "metric", "counter", "progress", "sparkline", "number")):
+        return "drawbox=x=iw*0.08:y=ih*0.7:w=iw*0.4:h=ih*0.18:color=black@0.5:t=fill"
+    if any(k in low for k in ("arrow", "callout", "annotation", "route", "step")):
+        return "drawbox=x=iw*0.15:y=ih*0.2:w=iw*0.7:h=ih*0.08:color=cyan@0.4:t=fill"
+
+    # 3. 风格类 (Category.STYLE): 关键词映射 + 保底微调
+    for keyword, filt in _STYLE_KEYWORD_FILTERS:
+        if keyword in low:
+            return filt
+    if any(k in low for k in ("title", "text", "card", "slab", "quote", "badge", "stagger")):
+        return "eq=brightness=0.04:contrast=1.12"
+    if any(k in low for k in ("gallery", "grid", "strip", "relay", "conveyor")):
+        return "eq=saturation=1.25"
+    if any(k in low for k in ("pull", "push", "drift", "orbit", "tilt", "tour")):
+        return "crop=in_w*0.96:in_h*0.96,scale=in_w:in_h"
+    if any(k in low for k in ("code", "terminal", "log", "walk")):
+        return "curves=vintage"
+
+    # 4. 任意其它非转场模板保底: 产生确定性微饱和调整(保证成片有 framemd5 差异)
+    from hevi.production.shot_spec import _registry
+
+    reg = _registry()
+    t = reg.get(tid)
+    if t is not None:
+        from hevi.fx.registry import Category
+
+        if t.category == Category.OVERLAY:
+            return "drawbox=x=30:y=30:w=iw-60:h=ih-60:color=white@0.3:t=2"
+        if t.category == Category.STYLE:
+            return "eq=saturation=1.2:contrast=1.05"
+
+    return ""
+
+
+def template_render(spec: ShotSpec | None) -> dict[str, Any]:
+    """返回 spec.template 在装配期的完整渲染动作字典。
+
+    格式:
+      {
+        "template_id": str | None,
+        "category": str | None,
+        "filter": str,                 # 画面 -vf 滤镜(style / overlay / transition-accent)
+        "seam_transition": str | None, # 对应接缝转场 token(仅 transition 类)
+      }
+    """
+    if spec is None or not spec.template:
+        return {"template_id": None, "category": None, "filter": "", "seam_transition": None}
+    from hevi.production.shot_spec import _registry
+
+    t = _registry().get(spec.template)
+    cat = t.category.value if t else None
+    return {
+        "template_id": spec.template,
+        "category": cat,
+        "filter": template_filter(spec),
+        "seam_transition": template_transition_token(spec),
+    }
+
+
+def combined_shot_filter(spec: ShotSpec | None) -> str:
+    """把 spec 的 effect、style、template 滤镜片段安全串接为单个 ``-vf`` 字符串。"""
+    if spec is None:
+        return ""
+    parts = []
+    eff = effect_filter(spec)
+    if eff:
+        parts.append(eff)
+    sty = style_filter(spec)
+    if sty:
+        parts.append(sty)
+    tpl = template_filter(spec)
+    if tpl:
+        parts.append(tpl)
+    return ",".join(parts)
+
 
 def effect_filter(spec: ShotSpec | None) -> str:
     """把 spec.effect 翻成单镜 ``-vf`` 片段;无 effect 或无法映射时返回 ``""``。
@@ -71,11 +215,11 @@ def seam_transitions(
     n_shots: int,
     default: str,
 ) -> str | list[str]:
-    """逐镜 ``transition_in`` → 逐接缝 token 列表。
+    """逐镜 ``transition_in`` / ``template`` → 逐接缝 token 列表。
 
-    ``specs[i].transition_in`` 描述"进入第 i 镜"的转场,即第 ``i-1`` 条接缝
-    (第 0 镜忽略)。未指定(``None``)回落到 ``default``。当所有接缝都等于
-    ``default`` 且 default 是 str 时返回原 str,保持向后兼容路径(逐字一致的
+    ``specs[i]`` 描述"进入第 i 镜"的转场,即第 ``i-1`` 条接缝 (第 0 镜忽略)。
+    优先取 ``template`` 映射的转场 token;次取 ``transition_in``;未指定回落到 ``default``。
+    当所有接缝都等于 ``default`` 且 default 是 str 时返回原 str,保持向后兼容路径(逐字一致的
     filter_complex);否则返回 list。
     """
     if not specs:
@@ -83,7 +227,8 @@ def seam_transitions(
     tokens: list[str] = []
     for i in range(1, n_shots):
         spec = specs[i] if i < len(specs) else None
-        tok = (spec.transition_in if spec is not None else None) or default
+        tpl_tok = template_transition_token(spec)
+        tok = tpl_tok or (spec.transition_in if spec is not None else None) or default
         tokens.append(tok)
     if all(t == default for t in tokens):
         return default
@@ -178,8 +323,13 @@ def build_sfx_mixdown_filter(
 
 __all__ = [
     "build_sfx_mixdown_filter",
+    "combined_shot_filter",
     "effect_filter",
     "seam_transitions",
     "shot_start_times",
     "spec_sfx_cues",
+    "style_filter",
+    "template_filter",
+    "template_render",
+    "template_transition_token",
 ]

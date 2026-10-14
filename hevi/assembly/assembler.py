@@ -160,6 +160,7 @@ async def _normalize_shot(
     *,
     brightness: float = 0.0,
     extra_vf: str = "",
+    target_duration: float | None = None,
 ) -> tuple[Path, float]:
     """把单镜头归一化到统一规格 + 目标时长 + 亮度修正,返回(归一化文件, 实际时长)。
 
@@ -173,7 +174,7 @@ async def _normalize_shot(
     if extra_vf:
         vf += f",{extra_vf}"
 
-    target = shot.target_duration
+    target = target_duration if target_duration is not None else shot.target_duration
     args = ["-y", "-i", str(shot.video_path)]
     if target and target > 0:
         if target > src_dur + 0.05:
@@ -583,18 +584,25 @@ async def assemble_longvideo(
                     for lm in lumas
                 ]
 
-        # ShotSpec(GAP_PLAN §2 W1):逐镜 effect 滤镜 + 逐镜 transition_in → 逐接缝转场。
+        # ShotSpec(GAP_PLAN §2 W1 / R2 FIX): 逐镜滤镜 (effect/style/template) + 逐镜接缝转场。
         # 未提供 spec 时 spec_effects 全空、transition 原样透传,行为与旧路径一致。
         spec_effects: list[str] = [""] * len(shots)
         if shot_specs:
-            from hevi.production.shot_spec_render import effect_filter, seam_transitions
+            from hevi.production.shot_spec_render import combined_shot_filter, seam_transitions
 
-            spec_effects = [effect_filter(s) for s in shot_specs]
+            spec_effects = [combined_shot_filter(s) for s in shot_specs]
             transition = seam_transitions(shot_specs, len(shots), transition)
 
         # ① 归一化每个镜头
         norm: list[tuple[Path, float]] = []
         for i, shot in enumerate(shots):
+            spec = shot_specs[i] if shot_specs and i < len(shot_specs) else None
+            # 规格中若显式指定 duration,覆盖 ShotSegment 默认时长 (裁剪或补帧)
+            shot_target_dur = (
+                spec.duration
+                if (spec is not None and spec.duration is not None)
+                else shot.target_duration
+            )
             norm.append(
                 await _normalize_shot(
                     shot,
@@ -605,6 +613,7 @@ async def assemble_longvideo(
                     fps,
                     brightness=brightness_by_shot[i],
                     extra_vf=spec_effects[i],
+                    target_duration=shot_target_dur,
                 )
             )
         durations = [d for _, d in norm]
