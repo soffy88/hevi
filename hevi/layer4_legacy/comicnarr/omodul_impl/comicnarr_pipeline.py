@@ -109,6 +109,13 @@ def comic_narration_workflow(
     if engine_name == "zero":
         engine_name = "sdturbo_cpu"
 
+    bg_source = str(
+        input_data.get("background_source")
+        or cfg.get("background_source")
+        or os.environ.get("HEVI_BACKGROUND_SOURCE")
+        or "keyframe"
+    )
+
     base_seed = int(input_data.get("base_seed") or cfg.get("base_seed") or 42)
     tts_engine = str(input_data.get("tts_engine") or cfg.get("tts_engine") or "piper")
     kf_width = int(input_data.get("kf_width") or cfg.get("kf_width") or 512)
@@ -219,7 +226,7 @@ def comic_narration_workflow(
         scene_count=len(script.scenes),
     )
 
-    # 5. Step: Keyframe Generation (ViMax Dual Candidates + OpenCLIP Selection)
+    # 5. Step: Keyframe Generation (ViMax Dual Candidates + OpenCLIP Selection or Procedural Manga 3D)
     engine = resolve_keyframe_engine(engine_name)
     total_kf_gen_sec = 0.0
 
@@ -230,34 +237,60 @@ def comic_narration_workflow(
         seed_2 = base_seed + idx * 17 + 500
 
         # Breakpoint resumption cache
-        h1 = hashlib.sha256(f"{engine_name}:{seed_1}:{scene.prompt_en}".encode("utf-8")).hexdigest()[:12]
-        h2 = hashlib.sha256(f"{engine_name}:{seed_2}:{scene.prompt_en}".encode("utf-8")).hexdigest()[:12]
+        h1 = hashlib.sha256(f"{engine_name}:{bg_source}:{seed_1}:{scene.prompt_en}".encode("utf-8")).hexdigest()[:12]
+        h2 = hashlib.sha256(f"{engine_name}:{bg_source}:{seed_2}:{scene.prompt_en}".encode("utf-8")).hexdigest()[:12]
         cand1_path = frames_dir / f"shot_{idx:02d}_cand1_{h1}.png"
         cand2_path = frames_dir / f"shot_{idx:02d}_cand2_{h2}.png"
 
         t_kf_0 = time.time()
-        if not cand1_path.is_file() or cand1_path.stat().st_size == 0:
-            engine.generate(
-                prompt_en=scene.prompt_en,
-                negative=scene.negative_prompt,
-                width=kf_width,
-                height=kf_height,
-                steps=steps,
-                seed=seed_1,
-                output_path=cand1_path,
-            )
-            apply_style_postprocess(cand1_path, style.postprocess)
-        if not cand2_path.is_file() or cand2_path.stat().st_size == 0:
-            engine.generate(
-                prompt_en=scene.prompt_en,
-                negative=scene.negative_prompt,
-                width=kf_width,
-                height=kf_height,
-                steps=steps,
-                seed=seed_2,
-                output_path=cand2_path,
-            )
-            apply_style_postprocess(cand2_path, style.postprocess)
+        if bg_source == "roomgacha":
+            if not cand1_path.is_file() or cand1_path.stat().st_size == 0:
+                from hevi.capabilities.registry import get as get_cap
+                r_kind = "classroom" if idx % 2 == 0 else "own_room"
+                cap_res = get_cap("manga.room_bg").render(
+                    {"kind": r_kind, "long_edge": kf_width},
+                    out_dir=frames_dir / f"cap_room_{idx}_{seed_1}",
+                    duration=0.0,
+                    seed=str(seed_1),
+                )
+                import shutil
+                shutil.copyfile(cap_res.png, cand1_path)
+                shutil.copyfile(cap_res.png, cand2_path)
+        elif bg_source == "locscout":
+            if not cand1_path.is_file() or cand1_path.stat().st_size == 0:
+                from hevi.capabilities.registry import get as get_cap
+                cap_res = get_cap("manga.location_bg").render(
+                    {"location": "35.6614,139.6680", "long_edge": kf_width, "offline": True},
+                    out_dir=frames_dir / f"cap_loc_{idx}_{seed_1}",
+                    duration=0.0,
+                    seed=str(seed_1),
+                )
+                import shutil
+                shutil.copyfile(cap_res.png, cand1_path)
+                shutil.copyfile(cap_res.png, cand2_path)
+        else:
+            if not cand1_path.is_file() or cand1_path.stat().st_size == 0:
+                engine.generate(
+                    prompt_en=scene.prompt_en,
+                    negative=scene.negative_prompt,
+                    width=kf_width,
+                    height=kf_height,
+                    steps=steps,
+                    seed=seed_1,
+                    output_path=cand1_path,
+                )
+                apply_style_postprocess(cand1_path, style.postprocess)
+            if not cand2_path.is_file() or cand2_path.stat().st_size == 0:
+                engine.generate(
+                    prompt_en=scene.prompt_en,
+                    negative=scene.negative_prompt,
+                    width=kf_width,
+                    height=kf_height,
+                    steps=steps,
+                    seed=seed_2,
+                    output_path=cand2_path,
+                )
+                apply_style_postprocess(cand2_path, style.postprocess)
         total_kf_gen_sec += time.time() - t_kf_0
 
         score1 = score_keyframe(cand1_path, prompt_en=scene.prompt_en)

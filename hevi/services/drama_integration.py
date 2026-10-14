@@ -189,6 +189,34 @@ class DramaIntegration:
             prompts.append(prompt)
         return prompts
 
+    async def generate_background(
+        self,
+        background_source: str = "keyframe",
+        params: dict[str, Any] | None = None,
+        out_dir: str | Path = "/tmp/drama_bg",
+        seed: str = "drama_bg",
+    ) -> dict[str, Any]:
+        """drama 线背景生成：支持 background_source: roomgacha | locscout | keyframe"""
+        out_p = Path(out_dir)
+        out_p.mkdir(parents=True, exist_ok=True)
+        params = params or {}
+        if background_source == "roomgacha":
+            from hevi.capabilities.registry import get as get_cap
+            room_kind = params.get("kind", "living_room")
+            cap_res = get_cap("manga.room_bg").render(
+                {"kind": room_kind}, out_dir=out_p, duration=0.0, seed=seed
+            )
+            return {"background_source": "roomgacha", "path": cap_res.png, "sha256": cap_res.sha256}
+        elif background_source == "locscout":
+            from hevi.capabilities.registry import get as get_cap
+            loc = params.get("location", "35.6614,139.6680")
+            cap_res = get_cap("manga.location_bg").render(
+                {"location": loc, "offline": True}, out_dir=out_p, duration=0.0, seed=seed
+            )
+            return {"background_source": "locscout", "path": cap_res.png, "sha256": cap_res.sha256}
+        else:
+            return {"background_source": "keyframe", "path": str(out_p / "keyframe.png")}
+
     # ============ 7. short-drama-produce ============
     # 预览-确认-执行
 
