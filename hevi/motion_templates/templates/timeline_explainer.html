@@ -120,9 +120,9 @@
       if (w > h) {
         return {
           mode: "horizontal",
-          tag: 14, title: 30, titleEn: 14,
-          year: 16, mTitle: 30, mTitleEn: 13, desc: 20,
-          pad: 16, maxDescLines: 3, gap: 24, cardGap: 24
+          tag: 16, title: 34, titleEn: 16,
+          year: 18, mTitle: 32, mTitleEn: 14, desc: 28,
+          pad: 20, maxDescLines: 4, gap: 24, cardGap: 24
         };
       } else if (Math.abs(w - h) < 50) {
         return {
@@ -163,35 +163,110 @@
       buildSchedule();
     };
 
-    function tokenize(text) {
+    const COMPOUND_WORDS = [
+      "潜空间", "帧间", "连贯性", "物理世界", "动力学", "外部", "后期", "拼接",
+      "零幻觉", "短视频", "自动化", "管线", "基础框架", "严苛", "品控指标",
+      "注意力机制", "时空解耦", "扩散变换器", "跨模态", "确定性", "动效引擎", "纯函数"
+    ];
+
+    const BANNED_LINE_START = new Set(["，", "。", "、", "；", "：", "！", "？", "）", "》", "」", "』", "”", "’", "】", "·", "…"]);
+    const BANNED_LINE_END = new Set(["（", "《", "「", "『", "“", "‘", "【"]);
+
+    function tokenizeWordBoundaries(text, preTokens) {
+      if (preTokens && Array.isArray(preTokens) && preTokens.length > 0) {
+        return preTokens;
+      }
+      const str = String(text == null ? "" : text).replace(/。/g, "");
+      let raw = [];
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        const seg = new Intl.Segmenter("zh", { granularity: "word" });
+        raw = Array.from(seg.segment(str), x => x.segment);
+      } else {
+        let i = 0;
+        while (i < str.length) {
+          const ch = str[i];
+          if (/[A-Za-z0-9]/.test(ch)) {
+            let j = i;
+            while (j < str.length && /[A-Za-z0-9'’\-\.]/.test(str[j])) j++;
+            raw.push(str.slice(i, j)); i = j;
+          } else if (/\s/.test(ch)) {
+            let j = i;
+            while (j < str.length && /\s/.test(str[j])) j++;
+            raw.push(str.slice(i, j)); i = j;
+          } else { raw.push(ch); i++; }
+        }
+      }
+
       const out = [];
       let i = 0;
-      while (i < text.length) {
-        const ch = text[i];
-        if (/[A-Za-z0-9]/.test(ch)) {
+      while (i < raw.length) {
+        let matched = false;
+        for (const cw of COMPOUND_WORDS) {
+          let comb = "";
           let j = i;
-          while (j < text.length && /[A-Za-z0-9'’\-\.]/.test(text[j])) j++;
-          out.push(text.slice(i, j)); i = j;
-        } else if (/\s/.test(ch)) {
-          let j = i;
-          while (j < text.length && /\s/.test(text[j])) j++;
-          out.push(text.slice(i, j)); i = j;
-        } else { out.push(ch); i++; }
+          while (j < raw.length && comb.length < cw.length) {
+            comb += raw[j];
+            j++;
+          }
+          if (comb === cw) {
+            out.push(cw);
+            i = j;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          out.push(raw[i]);
+          i++;
+        }
       }
       return out;
     }
 
-    // Wrap on word boundaries (never split a Latin word); CJK wraps per glyph.
-    function wrapText(c, text, maxW) {
-      const clean = String(text == null ? "" : text).replace(/。/g, "");
-      const toks = tokenize(clean);
+    // Wrap on word boundaries with Chinese typesetting prohibition rules.
+    function wrapText(c, text, maxW, preTokens) {
+      const toks = tokenizeWordBoundaries(text, preTokens);
       const lines = [];
       let cur = "";
-      for (const tk of toks) {
-        if (/^\s+$/.test(tk)) { if (cur) cur += " "; continue; }
+
+      for (let i = 0; i < toks.length; i++) {
+        const tk = toks[i];
+        if (/^\s+$/.test(tk)) {
+          if (cur) cur += " ";
+          continue;
+        }
+
+        if (BANNED_LINE_START.has(tk)) {
+          cur += tk;
+          continue;
+        }
+
         const test = cur + tk;
-        if (c.measureText(test).width > maxW && cur.length > 0) { lines.push(cur); cur = tk; }
-        else cur = test;
+        if (c.measureText(test).width <= maxW) {
+          cur = test;
+        } else {
+          if (!cur) {
+            let sub = "";
+            for (const ch of tk) {
+              if (c.measureText(sub + ch).width > maxW && sub) {
+                lines.push(sub);
+                sub = ch;
+              } else {
+                sub += ch;
+              }
+            }
+            cur = sub;
+          } else {
+            const lastChar = cur.slice(-1);
+            if (BANNED_LINE_END.has(lastChar)) {
+              lines.push(cur.slice(0, -1));
+              cur = lastChar + tk;
+            } else {
+              lines.push(cur);
+              cur = tk;
+            }
+          }
+        }
       }
       if (cur) lines.push(cur);
       return lines.length ? lines : [""];
@@ -273,14 +348,14 @@
     function measureCard(c, m, innerW) {
       const out = { titleLines: [], titleEnLines: [], descLines: [] };
       c.font = `700 ${Math.round(L.mTitle * fScale)}px -apple-system, sans-serif`;
-      out.titleLines = wrapText(c, m.title_zh, innerW);
+      out.titleLines = wrapText(c, m.title_zh, innerW, m.title_tokens);
       if (m.title_en) {
         c.font = `500 ${Math.round(L.mTitleEn * fScale)}px monospace`;
-        out.titleEnLines = wrapText(c, m.title_en, innerW);
+        out.titleEnLines = wrapText(c, m.title_en, innerW, m.title_en_tokens);
       }
       if (m.desc_zh) {
         c.font = `400 ${Math.round(L.desc * fScale)}px -apple-system, sans-serif`;
-        out.descLines = wrapText(c, m.desc_zh, innerW).slice(0, L.maxDescLines);
+        out.descLines = wrapText(c, m.desc_zh, innerW, m.desc_tokens).slice(0, L.maxDescLines);
       }
       const yearH = L.year * fScale * 1.5;
       const titleH = out.titleLines.length * L.mTitle * fScale * 1.3;
@@ -357,9 +432,21 @@
 
       if (L.mode === "horizontal") {
         const cardW = (s.right - s.left - L.cardGap * (count - 1)) / count;
-        const axisY = timelineTop + 14 * fScale;
-        const cardTop = axisY + 26 * fScale;
-        const cardH = s.bottom - cardTop;
+        const innerW = cardW - L.pad * 2 * fScale;
+
+        // Measure maximum card height across all milestones so cards fit their actual content
+        let maxCardContentH = 0;
+        for (let i = 0; i < count; i++) {
+          const msd = measureCard(ctx, schedule[i].data, innerW);
+          if (msd.contentH > maxCardContentH) maxCardContentH = msd.contentH;
+        }
+        const cardH = Math.min(s.bottom - timelineTop - 60 * fScale, maxCardContentH + L.pad * 2 * fScale + 18 * fScale);
+        const totalBlockH = 28 * fScale + cardH;
+        const availableH = s.bottom - timelineTop;
+        const offsetY = Math.max(0, (availableH - totalBlockH) / 2);
+
+        const axisY = timelineTop + offsetY + 14 * fScale;
+        const cardTop = axisY + 28 * fScale;
 
         // Axis line
         ctx.strokeStyle = "rgba(51, 65, 85, 0.6)";
