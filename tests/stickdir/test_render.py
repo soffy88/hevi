@@ -85,3 +85,25 @@ def test_pose_changes_every_3s():
 def test_actions_cover_whitelist():
     whitelist.assert_renderable(whitelist.ACTION)
     assert set(pose.POSES) == set(whitelist.ACTION)
+
+
+def test_subtitles_no_word_split():
+    """每条字幕:任意一个词 token 都完整落在某一条里, 不被拆到两条/两行(不拆词)。"""
+    from hevi.layer4_legacy.stickdir import subtitles
+
+    text = (
+        "很多人以为效率来自更努力。其实真正的效率来自更少的选择。"
+        "当选项变多，大脑每一步都要重新评估，决策成本会吃掉你全部的时间。"
+        "删除一件事，胜过完成三件事。We should focus now."
+    )
+    cues = subtitles.split_cues(text, 0.0, 10.0)
+    assert cues, "split_cues 应至少产出一条字幕"
+    word_tokens = [t for t in subtitles.tokenize(text) if subtitles._is_word(t)]
+    # 每个词(中文词 / 英文词)必须作为完整子串出现在某一条字幕内 —— 不得跨条拆开
+    cue_texts = [c.text for c in cues]
+    for w in word_tokens:
+        assert any(w in ct for ct in cue_texts), f"词被拆开或丢失: {w!r}"
+    # 英文单词整体保留(不被拆成音节)
+    assert any("We" in ct for ct in cue_texts)
+    assert any("focus" in ct for ct in cue_texts)
+    assert any("now" in ct for ct in cue_texts)
