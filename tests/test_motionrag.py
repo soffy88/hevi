@@ -159,6 +159,18 @@ def _director(index, **cfg):
     return RagDirector(clips, index, emb, Config(**cfg), fps=20.0)
 
 
+def test_empty_candidates_fall_back_to_any(index):
+    """An index with only idle clips must still serve a talk query."""
+    r = Retriever(LocalIndex([index.segs[0]], {"fps": 20.0}), Config())
+    ch = r.pick(_unit(index.segs[0].video), None, "talk", None, now=0.0)
+    assert ch is not None and ch.seg.clip == "idle"
+
+
+def test_retriever_returns_none_when_index_empty(index):
+    r = Retriever(LocalIndex([], {"fps": 20.0}), Config())
+    assert r.pick(_unit(np.ones(8)), None, "talk", None, now=0.0) is None
+
+
 def test_refs_returns_exact_count(index):
     d = _director(index)
     refs = d.refs("talk", 57, caption="你好，我是小雅。", wav=None)

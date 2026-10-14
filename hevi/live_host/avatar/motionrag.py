@@ -532,6 +532,9 @@ class LocalIndex:
         return sorted({s.clip for s in self.segs})
 
     def candidates(self, kind: str) -> list[Seg]:
+        """Segments usable for ``kind``; an empty kind means "any"."""
+        if not kind:
+            return list(self.segs)
         return [s for s in self.segs if kind in s.kinds]
 
 
@@ -649,8 +652,14 @@ class Retriever:
         out.sort(key=lambda c: c.score, reverse=True)
         return out
 
-    def pick(self, q_text, q_audio, kind, cur_pose, now) -> Choice:
+    def pick(self, q_text, q_audio, kind, cur_pose, now) -> Choice | None:
         ranked = self.score(q_text, q_audio, kind, cur_pose, now)
+        if not ranked:
+            # no segment of this kind (e.g. an index with only idle clips):
+            # fall back to any candidate rather than failing the render.
+            ranked = self.score(q_text, q_audio, "", cur_pose, now)
+            if not ranked:
+                return None
         best = ranked[0]
         best.alternatives = [(c.seg.clip, round(c.score, 3)) for c in ranked[: self.cfg.top_k_log]]
         self.used[best.seg.clip] = now
@@ -832,6 +841,14 @@ class RagDirector:
         while remaining > 0 and guard < 64:
             guard += 1
             ch = self.retriever.pick(q_text, q_audio, kind, self._last_pose, self.t)
+            if ch is None:  # index empty / no usable clip — emit a frozen frame
+                clip = (
+                    self.clips[self.cur_clip]
+                    if hasattr(self, "cur_clip")
+                    else next(iter(self.clips.values()))
+                )
+                actions.append((clip, None, 0, 1.0, remaining))
+                break
             seg = ch.seg
             clip = self.clips[seg.clip]
             n = seg.end - seg.start
@@ -881,6 +898,10 @@ class RagDirector:
         out: list[tuple] = []
         prev = None
         for clip, seg, start, stride, take in actions:
+            if seg is None:  # no segment available: hold one frame
+                out.extend([(clip, 0)] * take)
+                prev = (clip, 0)
+                continue
             if prev is not None:
                 pc, pi = prev
                 for j in range(XF):
