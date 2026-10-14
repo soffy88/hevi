@@ -32,7 +32,7 @@
     {
       "start_beat": 12,
       "beats_count": 4,
-      "words": ["多宽", "高比", "自动", "适配"],
+      "words": ["多画幅", "宽高比", "自动", "适配"],
       "subtext": "MULTI-ASPECT // PARALLEL EXPORT",
       "accent": "#f59e0b",
       "layout": "center_punch"

@@ -24,7 +24,7 @@
     {
       "start_beat": 8,
       "beats_count": 4,
-      "words": ["零阶", "跃失", "纯粹", "函数"],
+      "words": ["阶跃响应", "纯粹", "函数", "渲染"],
       "subtext": "ZERO ARTIFACTS // PURE FUNCTION RENDER",
       "accent": "#38bdf8",
       "layout": "ticker_stack"
