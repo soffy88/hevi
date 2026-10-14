@@ -1,0 +1,150 @@
+{
+  "status": "ok",
+  "op": "review",
+  "input": "artifacts/real_video/20261005T160434Z/artifacts/scene_interview_sub.mp4",
+  "sha256": "2b8edb17d228d241c0e3df44481574c440e51b5265c79356b7e510a8409ee717",
+  "duration_s": 22.647,
+  "resolution": "1280x720",
+  "fps": 25.0,
+  "has_audio": true,
+  "verdict": "warn",
+  "allows_compose": true,
+  "violations": [],
+  "warnings": [
+    "未提供 SRT: 字幕越界未量测"
+  ],
+  "unmeasured": [
+    "subtitle",
+    "text_dependent"
+  ],
+  "metrics": {
+    "probe": {
+      "path": "artifacts/real_video/20261005T160434Z/artifacts/scene_interview_sub.mp4",
+      "kind": "video",
+      "width": 1280,
+      "height": 720,
+      "duration_s": 22.647,
+      "fps": 25.0,
+      "has_audio": true,
+      "size_bytes": 5091019,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "nb_frames": 566,
+      "sha256": "2b8edb17d228d241c0e3df44481574c440e51b5265c79356b7e510a8409ee717"
+    },
+    "contact_sheet": {
+      "path": ".qual-scratch/probe/scene_interview_sub/contact_sheet.png",
+      "width": 1280,
+      "height": 206,
+      "frames": 4,
+      "columns": 4,
+      "rows": 1
+    },
+    "frames": {
+      "count": 4,
+      "checks": [
+        {
+          "index": 0,
+          "timestamp_s": 2.83,
+          "path": ".qual-scratch/probe/scene_interview_sub/frames/frame_00_002.83s.png",
+          "mean_luma": 154.36,
+          "stdev_luma": 53.511,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 1,
+          "timestamp_s": 8.49,
+          "path": ".qual-scratch/probe/scene_interview_sub/frames/frame_01_008.49s.png",
+          "mean_luma": 153.256,
+          "stdev_luma": 49.751,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 2,
+          "timestamp_s": 14.15,
+          "path": ".qual-scratch/probe/scene_interview_sub/frames/frame_02_014.15s.png",
+          "mean_luma": 109.433,
+          "stdev_luma": 57.837,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 3,
+          "timestamp_s": 19.82,
+          "path": ".qual-scratch/probe/scene_interview_sub/frames/frame_03_019.82s.png",
+          "mean_luma": 108.568,
+          "stdev_luma": 48.841,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        }
+      ],
+      "black": 0,
+      "broken": 0,
+      "flat": 0
+    },
+    "audio": {
+      "has_audio": true,
+      "loudness_lufs": -18.4,
+      "silence_ratio": 0.0
+    },
+    "slideshow": {
+      "risk": 0.0,
+      "verdict": "green",
+      "components": {
+        "repeat": 0.0,
+        "static": 0.0,
+        "weak_motion": 0.0
+      },
+      "measured": {
+        "segment_count": 45,
+        "cut_count": 44,
+        "dense_frame_count": 45,
+        "mean_frame_delta": 27.9687,
+        "max_frame_delta": 72.2341,
+        "short_segment_share": 0.0
+      },
+      "missing": [
+        "text_dependent"
+      ],
+      "reasons": [
+        "未量测(不计分): 文字依赖"
+      ],
+      "weights": {
+        "repeat": 0.25,
+        "static": 0.3,
+        "weak_motion": 0.25
+      },
+      "is_red": false
+    },
+    "promise": {
+      "evidence": {
+        "cuts": 45,
+        "motion_cuts": 0,
+        "still_cuts": 45,
+        "motion_ratio": 0.0,
+        "still_ratio": 1.0
+      },
+      "error": "promise 无法解析: dictionary update sequence element #0 has length 1; 2 is required"
+    }
+  },
+  "output_dir": ".qual-scratch/probe/scene_interview_sub",
+  "artifacts": {
+    "contact_sheet": ".qual-scratch/probe/scene_interview_sub/contact_sheet.png",
+    "frames": [
+      ".qual-scratch/probe/scene_interview_sub/frames/frame_00_002.83s.png",
+      ".qual-scratch/probe/scene_interview_sub/frames/frame_01_008.49s.png",
+      ".qual-scratch/probe/scene_interview_sub/frames/frame_02_014.15s.png",
+      ".qual-scratch/probe/scene_interview_sub/frames/frame_03_019.82s.png"
+    ]
+  }
+}

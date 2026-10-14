@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -951,6 +952,30 @@ def craft_shot_prompt(p: dict[str, Any]) -> dict[str, Any]:
     return _ok(prompt=prompt)
 
 
+def craft_knowledge(p: dict[str, Any]) -> dict[str, Any]:
+    """按阶段取中文制作手艺知识库(stage id / 中文别名都认)。
+
+    不传 stage 时返回全阶段目录(stage/title/files/chars),便于先看有哪些阶段再取。
+    取不到阶段由 load_stage 抛 ValueError —— 这里不吞,让工具调用方拿到明确的失败原因。
+    """
+    from hevi.production.craft_knowledge import list_stages, load_stage, resolve_stage
+
+    stage = str(p.get("stage") or "").strip()
+    rows_all = list_stages()
+    if not stage:
+        return _ok(stages=rows_all, count=len(rows_all))
+    key = resolve_stage(stage)
+    if key is None:
+        return _fail(f"未知制作阶段:{stage!r}")
+    max_chars = p.get("max_chars")
+    limit = int(max_chars) if isinstance(max_chars, int) and max_chars > 0 else None
+    text = load_stage(key, max_chars=limit)
+    rows = [row for row in rows_all if row["stage"] == key]
+    title = rows[0]["title"] if rows else key
+    files = rows[0]["files"] if rows else []
+    return _ok(stage=key, title=title, files=files, text=text, chars=len(text))
+
+
 def delivery_promise(p: dict[str, Any]) -> dict[str, Any]:
     from hevi.production.delivery_promise import classify_from_brief
 
@@ -1041,6 +1066,231 @@ async def veya_produce(p: dict[str, Any]) -> dict[str, Any]:
         production_mode=p.get("production_mode"),
     )
     return _ok(job=job.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# OMQUALITY — 审片 + 后期增强 ops(全部走 hevi.layer4_legacy.{review,enhance})
+# ---------------------------------------------------------------------------
+
+
+def _om_workdir(p: dict[str, Any], suffix: str) -> str:
+    explicit = p.get("output_dir") or p.get("workdir")
+    if explicit:
+        return str(explicit)
+    base = "/tmp/hevi_omq" if os.access("/tmp", os.W_OK) else "."
+    os.makedirs(base, exist_ok=True)
+    return os.path.join(base, suffix)
+
+
+def _resolve_promise_spec(raw: Any) -> dict[str, Any]:
+    """Normalise a delivery-promise spec into the DeliveryPromise dict shape.
+
+    Accepts an already-structured dict, a promise-type string (same aliases the
+    season dispatcher accepts), or anything ``classify_from_brief`` understands.
+    """
+    if isinstance(raw, dict):
+        return dict(raw)
+    from hevi.production.delivery_promise import DeliveryPromise, PromiseType
+    from hevi.season_planner.dispatch import _PROMISE_STR_TO_TYPE
+
+    text = str(raw)
+    if text in _PROMISE_STR_TO_TYPE:
+        ptype = _PROMISE_STR_TO_TYPE[text]
+        return DeliveryPromise(
+            promise_type=ptype,
+            motion_required=ptype in (PromiseType.MOTION_LED, PromiseType.AVATAR_PRESENTER),
+            source_required=ptype is PromiseType.SOURCE_LED,
+            tone_mode="corporate",
+            quality_floor="presentable",
+        ).to_dict()
+    from hevi.production.delivery_promise import classify_from_brief
+
+    return classify_from_brief(text, {}).to_dict()
+
+
+def review_finished_video(p: dict[str, Any]) -> dict[str, Any]:
+    """Real post-render self-check; returns the workflow's status dict verbatim."""
+    from hevi.layer4_legacy.review import review_finished_video_workflow
+
+    src = p.get("input_path") or p.get("video_path")
+    if not src:
+        return _fail("input_path required")
+    config = dict(p.get("config") or {})
+    if p.get("subtitle_path"):
+        config.setdefault("subtitle_path", p["subtitle_path"])
+    promise = p.get("promise") or p.get("delivery_promise")
+    if promise:
+        config.setdefault("promise", _resolve_promise_spec(promise))
+    for key in (
+        "frame_count",
+        "min_lufs",
+        "max_lufs",
+        "max_silence_ratio",
+        "min_duration_s",
+        "require_audio",
+        "expected_resolution",
+        "slideshow",
+        "motion_delta_floor",
+        "repeat_hash_floor",
+        "text_cue_coverage",
+    ):
+        if key in p and key not in config:
+            config[key] = p[key]
+    out = _om_workdir(p, f"review/{Path(str(src)).stem}")
+    report = review_finished_video_workflow(config, {"input_path": str(src)}, out)
+    verdict = report.get("verdict") or report.get("status")
+    if report.get("status") == "failed":
+        return _fail(report.get("error", "review failed"), report=report)
+    return _ok(verdict=verdict, allows_compose=bool(report.get("allows_compose")), report=report)
+
+
+def qc_slideshow_risk(p: dict[str, Any]) -> dict[str, Any]:
+    """Pure algorithm: dense_frames dir + optional subtitle coverage → risk."""
+    from hevi.layer4_legacy.review.oskill_impl.slideshow_risk import score_slideshow_risk
+
+    kwargs: dict[str, Any] = {}
+    cuts: list[dict[str, Any]] = []
+    frames_dir = p.get("dense_frames") or p.get("frames_dir")
+    if frames_dir and Path(str(frames_dir)).is_dir():
+        from hevi.layer4_legacy.review.oprim_impl.frames import (
+            interframe_delta,
+        )
+        from hevi.layer4_legacy.review.oskill_impl.promise_gate import cuts_from_segments
+
+        frames = sorted(Path(str(frames_dir)).glob("*.png"))
+        if len(frames) >= 2:
+            motion_floor = float(p.get("motion_delta_floor", 1.0))
+            deltas = interframe_delta(frames=frames)
+            segments = []
+            start = 0
+            for i, d in enumerate(deltas, start=1):
+                if d >= motion_floor:
+                    segments.append((start, i))
+                    start = i
+            segments.append((start, len(deltas) + 1))
+            cuts = cuts_from_segments(segments=segments, deltas=deltas, motion_floor=motion_floor)
+            still_frames = sum((b - a) for a, b in segments if (b - a) >= 2)
+            total = max(len(frames), 1)
+            mean_delta = sum(deltas) / len(deltas) if deltas else 0.0
+            kwargs = {
+                "repeat": max(0.0, min(1.0, still_frames / total)),
+                "static": max(0.0, min(1.0, 1.0 - mean_delta / 2.0)),
+                "weak_motion": max(0.0, min(1.0, still_frames / total)),
+            }
+    cov = p.get("subtitle_coverage")
+    if cov is not None:
+        kwargs["text_dependent"] = min(
+            1.0, float(cov) / max(float(p.get("text_cue_coverage", 0.8)), 1e-6)
+        )
+    risk = score_slideshow_risk(**kwargs)
+    out: dict[str, Any] = {}
+    promise = p.get("promise") or p.get("delivery_promise")
+    if promise and cuts:
+        from hevi.production.delivery_promise import DeliveryPromise
+
+        verdict = DeliveryPromise.from_dict(_resolve_promise_spec(promise)).validate_cuts(cuts)
+        out["promise_check"] = verdict
+    if risk.verdict == "unknown":
+        # §8-d: a qc_* op with no observed evidence must not return a pass.
+        return _blocked("QC_SLIDESHOW_RISK_NOT_EVALUATED", **out)
+    return _ok(risk=risk.to_dict(), **out)
+
+
+def qc_frame_check(p: dict[str, Any]) -> dict[str, Any]:
+    """One frame → black/flat/broken verdict."""
+    from hevi.layer4_legacy.review.oprim_impl.frames import frame_stats
+
+    fp = p.get("frame_path") or p.get("path")
+    if not fp:
+        return _fail("frame_path required")
+    from pathlib import Path as _Path
+
+    if not _Path(str(fp)).is_file():
+        return _blocked("QC_FRAME_CHECK_NOT_EVALUATED", frame_path=str(fp))
+    check = frame_stats(
+        path=fp,
+        index=int(p.get("index", 0)),
+        timestamp_s=float(p.get("timestamp_s", 0.0)),
+    )
+    return _ok(check=check.to_dict())
+
+
+def _enhance_op(op_name: str) -> Any:
+    def _handler(p: dict[str, Any]) -> dict[str, Any]:
+        from hevi.layer4_legacy.enhance import enhance_media_workflow
+
+        src = p.get("input_path") or p.get("path")
+        if not src:
+            return _fail("input_path required")
+        config = dict(p.get("config") or {})
+        config.setdefault("op", op_name)
+        _ENHANCE_PASSTHROUGH = (
+            "scale",
+            "tile",
+            "look",
+            "intensity",
+            "model",
+            "weight",
+            "upscale",
+            "post_process",
+            "allow_noncommercial",
+            "process_video",
+            "max_frames",
+        )
+        for key, val in p.items():
+            if key in _ENHANCE_PASSTHROUGH and val is not None:
+                config.setdefault(key, val)
+        out = _om_workdir(p, f"enhance/{op_name}/{Path(str(src)).stem}")
+        report = enhance_media_workflow(config, {"input_path": str(src)}, out)
+        if report.get("status") == "failed":
+            return _fail(report.get("error", "enhance failed"), report=report)
+        first = (report.get("results") or [{}])[0]
+        return _ok(
+            output_path=first.get("output_path"),
+            backend=first.get("backend"),
+            license=first.get("license"),
+            commercial_ok=first.get("commercial_ok"),
+            metrics=first.get("metrics"),
+            report=report,
+        )
+
+    return _handler
+
+
+def enhance_matte(p: dict[str, Any]) -> dict[str, Any]:
+    return _enhance_op("matte")(p)
+
+
+def enhance_upscale(p: dict[str, Any]) -> dict[str, Any]:
+    return _enhance_op("upscale")(p)
+
+
+def enhance_face_restore(p: dict[str, Any]) -> dict[str, Any]:
+    # Face restore requires opt-in via config; surface the requirement in the
+    # tool description so the catalog summary stays honest.
+    return _enhance_op("face_restore")(p)
+
+
+def enhance_lut(p: dict[str, Any]) -> dict[str, Any]:
+    return _enhance_op("lut")(p)
+
+
+def enhance_compare_sheet(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.layer4_legacy.enhance.omodul_impl.compare import build_comparison_sheet
+
+    before = p.get("before") or p.get("input_path")
+    after = p.get("after") or p.get("output_path")
+    if not before or not after:
+        return _fail("before and after required")
+    out = _om_workdir(p, f"enhance/compare/{Path(str(before)).stem}_vs_{Path(str(after)).stem}.png")
+    sheet = build_comparison_sheet(
+        before,
+        after,
+        out,
+        title=str(p.get("title") or "BEFORE vs AFTER"),
+        labels=tuple(p.get("labels") or ("BEFORE", "AFTER")),
+    )
+    return _ok(sheet_path=sheet.get("path"), sheet=sheet)
 
 
 OPS: dict[str, Any] = {
@@ -1137,10 +1387,20 @@ OPS: dict[str, Any] = {
     "craft_grade": craft_grade,
     "craft_site": craft_site,
     "craft_shot_prompt": craft_shot_prompt,
+    "craft_knowledge": craft_knowledge,
     "delivery_promise": delivery_promise,
     "delivery_validate": delivery_validate,
     "verdict_scene_pacing": verdict_scene_pacing,
     "verdict_source_review": verdict_source_review,
     "daily_tick": daily_tick,
     "veya_produce": veya_produce,
+    # OMQUALITY — 审片 + 后期增强
+    "review_finished_video": review_finished_video,
+    "qc_slideshow_risk": qc_slideshow_risk,
+    "qc_frame_check": qc_frame_check,
+    "enhance_matte": enhance_matte,
+    "enhance_upscale": enhance_upscale,
+    "enhance_face_restore": enhance_face_restore,
+    "enhance_lut": enhance_lut,
+    "enhance_compare_sheet": enhance_compare_sheet,
 }

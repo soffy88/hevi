@@ -1,0 +1,85 @@
+{
+  "status": "ok",
+  "op": "upscale",
+  "input": "artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4",
+  "input_kind": "video",
+  "output_dir": ".qual-scratch/smoke/up",
+  "results": [
+    {
+      "op": "upscale",
+      "input_path": ".qual-scratch/smoke/up/frames/frame_00.png",
+      "output_path": ".qual-scratch/smoke/up/upscale_frame0.png",
+      "backend": "RealESRGAN_x2plus",
+      "model": "RealESRGAN_x2plus",
+      "license": "commercial-ok",
+      "commercial_ok": true,
+      "metrics": {
+        "in_w": 1280,
+        "in_h": 720,
+        "out_w": 2560,
+        "out_h": 1440,
+        "scale": 2,
+        "model": "RealESRGAN_x2plus"
+      },
+      "notes": []
+    },
+    {
+      "op": "upscale",
+      "input_path": ".qual-scratch/smoke/up/frames/frame_01.png",
+      "output_path": ".qual-scratch/smoke/up/upscale_frame1.png",
+      "backend": "RealESRGAN_x2plus",
+      "model": "RealESRGAN_x2plus",
+      "license": "commercial-ok",
+      "commercial_ok": true,
+      "metrics": {
+        "in_w": 1280,
+        "in_h": 720,
+        "out_w": 2560,
+        "out_h": 1440,
+        "scale": 2,
+        "model": "RealESRGAN_x2plus"
+      },
+      "notes": []
+    },
+    {
+      "op": "upscale",
+      "input_path": ".qual-scratch/smoke/up/frames/frame_02.png",
+      "output_path": ".qual-scratch/smoke/up/upscale_frame2.png",
+      "backend": "RealESRGAN_x2plus",
+      "model": "RealESRGAN_x2plus",
+      "license": "commercial-ok",
+      "commercial_ok": true,
+      "metrics": {
+        "in_w": 1280,
+        "in_h": 720,
+        "out_w": 2560,
+        "out_h": 1440,
+        "scale": 2,
+        "model": "RealESRGAN_x2plus"
+      },
+      "notes": []
+    },
+    {
+      "op": "upscale",
+      "input_path": ".qual-scratch/smoke/up/frames/frame_03.png",
+      "output_path": ".qual-scratch/smoke/up/upscale_frame3.png",
+      "backend": "RealESRGAN_x2plus",
+      "model": "RealESRGAN_x2plus",
+      "license": "commercial-ok",
+      "commercial_ok": true,
+      "metrics": {
+        "in_w": 1280,
+        "in_h": 720,
+        "out_w": 2560,
+        "out_h": 1440,
+        "scale": 2,
+        "model": "RealESRGAN_x2plus"
+      },
+      "notes": []
+    }
+  ],
+  "notes": [
+    "video input: op applied per decoded frame",
+    "process_video=False: enhanced 4 representative frames only"
+  ]
+}
