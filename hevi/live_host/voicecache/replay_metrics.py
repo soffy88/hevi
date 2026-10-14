@@ -119,6 +119,8 @@ def main() -> None:
     piper_saved = 0.0
     cosy_saved = 0.0
     per_cat_hits: dict[str, list[bool]] = {}
+    # every (sentence, best entry, score) so thresholds can be swept afterwards
+    scored: list[dict] = []
     t0_all = time.time()
 
     for i, q in enumerate(danmaku):
@@ -129,6 +131,15 @@ def main() -> None:
         for s in split_sentences(reply):
             total_sentences += 1
             entry, score = cache.match(s)
+            scored.append(
+                {
+                    "sentence": s,
+                    "entry_id": entry.id if entry is not None else None,
+                    "category": entry.category if entry is not None else None,
+                    "score": round(float(score), 4),
+                    "exact": score >= 0.999,
+                }
+            )
             is_hit = entry is not None and score >= cache.threshold
             if is_hit:
                 hits += 1
@@ -157,6 +168,19 @@ def main() -> None:
             )
 
     hit_rate = hits / total_sentences if total_sentences else 0.0
+    # threshold sweep: how the hit rate and saved latency move as the cutoff
+    # slides.  EG2 cosines for same-intent paraphrases cluster ~0.76-0.9 while
+    # unrelated lines sit ~0.66-0.76, so the default 0.82 is not obviously right.
+    sweep = []
+    for th in (0.70, 0.72, 0.74, 0.76, 0.78, 0.80, 0.82, 0.85, 0.88):
+        h = sum(1 for r in scored if r["entry_id"] and r["score"] >= th)
+        sweep.append(
+            {
+                "threshold": th,
+                "hit_rate": round(h / total_sentences, 4) if total_sentences else 0.0,
+                "n_hits": h,
+            }
+        )
     metrics = {
         "n_prompts": len(danmaku),
         "n_sentences": total_sentences,
@@ -165,6 +189,7 @@ def main() -> None:
         "n_misses": total_sentences - hits,
         "piper_time_saved_s": round(piper_saved, 2),
         "cosyvoice_equiv_saved_s": round(cosy_saved, 2),
+        "threshold_sweep": sweep,
         "avg_latency_saved_per_hit_s": round(piper_saved / hits, 3) if hits else 0.0,
         "cache_entries": len(cache.entries),
         "threshold": cache.threshold,
@@ -172,6 +197,7 @@ def main() -> None:
         "wall_s": round(time.time() - t0_all, 1),
         "top_misses": [{"text": t, "norm": normalize(t)} for t in miss_texts[:40]],
         "per_category_hit_rate": {c: round(sum(v) / len(v), 3) for c, v in per_cat_hits.items()},
+        "scored": scored,
     }
     Path(args.out).write_text(json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(metrics, ensure_ascii=False, indent=2), flush=True)
