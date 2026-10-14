@@ -1016,3 +1016,35 @@ def test_regenerate_rerender_keeps_spec_effective(tmp_path: Path) -> None:
 
     # upsert_spec 保持缓存路径可测 (避免未使用告警)
     assert upsert_spec is not None
+
+
+# ── 12. R3 FIX: 兜底路径剥除 spec 重滤镜 (非阻断建议) ─────────────────
+
+
+def test_fallback_specs_strip_templates_and_transitions() -> None:
+    """R3: 装配失败兜底路径只保留 duration/effect, 不重放 template/transition_in/style/sfx。"""
+    from hevi.pipeline.longvideo_orchestrator import _fallback_specs_without_templates
+
+    specs = [
+        ShotSpec(
+            template="tc:crash-zoom-punch",
+            transition_in="whip",
+            style="sepia",
+            effect="warm",
+            sfx=[{"id": "ding_bell", "offset": 0.5}],
+            duration=2.5,
+        ),
+        None,
+    ]
+    fallback = _fallback_specs_without_templates(specs)
+    assert fallback is not None
+    assert fallback[0] is not None
+    assert fallback[0].template is None
+    assert fallback[0].transition_in is None
+    assert fallback[0].style is None
+    assert fallback[0].sfx == []
+    assert fallback[0].effect == "warm"
+    assert fallback[0].duration == 2.5
+    assert fallback[1] is None
+    # None 原样透传
+    assert _fallback_specs_without_templates(None) is None

@@ -24,6 +24,25 @@ logger = logging.getLogger(__name__)
 _SHOT_INDEX_RE = re.compile(r"shot[_-]?(\d+)")
 
 
+def _fallback_specs_without_templates(specs: list[Any] | None) -> list[Any] | None:
+    """兜底硬切路径专用: 剥除 template/transition_in/style/sfx 等重滤镜, 只保留 duration/effect。
+
+    如果首次装配失败由 spec 滤镜引起, 兜底必须不再重复同一滤镜, 否则兜底也会失败。
+    ``None`` 原样返回 (保持旧调用行为逐字不变)。
+    """
+    if specs is None:
+        return None
+    from hevi.production.shot_spec import ShotSpec
+
+    out: list[Any] = []
+    for s in specs:
+        if s is None:
+            out.append(None)
+        else:
+            out.append(ShotSpec(duration=s.duration, effect=s.effect))
+    return out
+
+
 def _safe_size(p: Path) -> int:
     try:
         return p.stat().st_size
@@ -1074,18 +1093,7 @@ async def orchestrate_longvideo(
                 # 装配失败兜底: 统一规格硬切(仍重编码,不用 -c:v copy 防花屏)。
                 # 兜底路径剥除转场与模板滤镜(避免再次触发失败且确保 transition="cut" 生效), 仅保留时长与基础调色。
                 logger.error(f"hevi assembler failed, fallback to hard-cut: {ae}")
-                from hevi.production.shot_spec import ShotSpec
-
-                _fallback_specs = (
-                    [
-                        ShotSpec(duration=s.duration, effect=s.effect)
-                        if s is not None
-                        else None
-                        for s in _full_specs
-                    ]
-                    if _full_specs is not None
-                    else None
-                )
+                _fallback_specs = _fallback_specs_without_templates(_full_specs)
                 await assemble_longvideo(
                     shots=[*intro_seg, *[ShotSegment(p) for p in valid_shots], *outro_seg],
                     output_path=output_path,
