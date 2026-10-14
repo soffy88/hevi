@@ -99,3 +99,11 @@ artifacts/real_video/*/work/
 artifacts/real_video/*/artifacts/*_finecut.mp4
 artifacts/real_video/*/artifacts/scene_*.mp4
 artifacts/real_video/*/final/concat.txt
+
+# Lint and inspection logs (AMFX-R2 H4)
+lint_before.txt
+lint_after.txt
+pi_*.jsonl
+pi_*.err
+pi_*.log
+
