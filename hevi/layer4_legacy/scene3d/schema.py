@@ -98,18 +98,22 @@ class SceneSpec:
 
     @property
     def width(self) -> int:
-        aspect = self.camera.aspect
-        if aspect == "9:16":
-            return round(self.resolution * 9 / 16)
-        if aspect == "1:1":
-            return self.resolution
-        if aspect == "21:9":
-            return round(self.resolution * 21 / 9)
-        return round(self.resolution * 16 / 9)  # 16:9
+        ar = self._aspect_ratio
+        return round(self.resolution * (ar if ar >= 1 else 1))
 
     @property
     def height(self) -> int:
-        return self.resolution
+        ar = self._aspect_ratio
+        return round(self.resolution * (1 if ar >= 1 else 1 / ar))
+
+    @property
+    def _aspect_ratio(self) -> float:
+        # width / height, parsed from the human-readable aspect string.
+        return {
+            "9:16": 9 / 16,
+            "1:1": 1.0,
+            "21:9": 21 / 9,
+        }.get(self.camera.aspect, 16 / 9)
 
 
 # --------------------------------------------------------------------------- #

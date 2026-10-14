@@ -138,28 +138,31 @@ def test_916_subject_in_safe_area(tmp_path: Path) -> None:
         {"kind": "planet", "params": {"radius": 1.6, "pos": [0.0, 1.8, 0.0]}},
     ]
     spec = S.parse_scene(cfg)
-    assert spec.width * 9 == spec.height * 16  # sanity: 9:16
+    assert spec.width * 16 == spec.height * 9  # sanity: 9:16 portrait (h > w)
+    assert spec.width < spec.height  # 9:16 portrait has height > width
     out = tmp_path / "out916"
     r = R.SceneRenderer(spec, out)
     frames = r.render_frames()
     # Inspect the middle frame to confirm the planet is bright in the middle
-    # band.  We do this by finding the brightest non-sky pixels and ensuring
-    # they cluster around the vertical middle.
+    # band.  We locate the planet by its warm toon colour (high R, low B) and
+    # assert the vertical centroid falls in the central 60% of the frame.
     import numpy as np
     from PIL import Image
 
     mid = Image.open(frames[len(frames) // 2]).convert("RGB")
     arr = np.asarray(mid)
     h, w, _ = arr.shape
-    # Mask the sky (top band) and ground (very dark / shadowed bottom).
-    # Heuristic: any pixel with all channels < 230 and brightness > 50 is "subject".
-    brightness = arr.max(axis=2)
-    subject_mask = (brightness > 60) & (brightness < 230)
-    # Find the row with the most subject pixels.
-    rows = subject_mask.sum(axis=1)
-    best = int(rows.argmax())
-    # The subject's vertical centre must be within the central 60% of the frame.
-    assert 0.2 * h <= best <= 0.8 * h, f"subject row {best} outside safe area (h={h})"
+    r, g, b = arr[..., 0], arr[..., 1], arr[..., 2]
+    # Planet mask: warm tone, not too dark (skip shadows), not blown-out.
+    planet_mask = (r > g + 10) & (r > 140) & (b < 200) & (r < 260)
+    # centroid row
+    counts = planet_mask.sum(axis=1)
+    assert counts.sum() > 30, "no warm planet pixels found in the frame"
+    rows = np.arange(h)
+    centroid = float((rows * counts).sum() / counts.sum())
+    assert 0.25 * h <= centroid <= 0.75 * h, (
+        f"planet centroid row {centroid:.1f} outside safe area (h={h})"
+    )
 
 
 # --------------------------------------------------------------------------- #
