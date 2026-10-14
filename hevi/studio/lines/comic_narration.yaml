@@ -1,0 +1,38 @@
+id: comic_narration
+product: 漫画解说
+summary: 主题或故事片段 → 解说脚本 → 一句一图AI关键帧 + TTS + BGM + Ken Burns + 字幕
+handoff: explainer
+render_runtime: zero
+slots:
+  - name: topic
+    required: true
+    description: 解说主题或故事片段
+  - name: style
+    required: false
+    description: 漫画风格模板 (guofeng_anime | comic_color | manga_bw)
+  - name: subtitle_style
+    required: false
+    description: 字幕形式 (bottom | bubble)
+tools:
+  - script.quick
+  - keyframe.generate
+  - score.provider
+  - audio.bgm_plan
+  - nle.edit_plan
+  - timeline.create
+  - delivery.preview
+pipeline:
+  name: comic_narration
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: keyframes
+      fn: hevi.studio.stages:stage_assets
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

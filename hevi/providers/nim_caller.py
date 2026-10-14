@@ -103,6 +103,7 @@ def _make_nim_caller(
     rpm: float = 36.0,
     timeout: float = 60.0,
     fallback_model: str | None = None,
+    extra_body: dict[str, Any] | None = None,
 ) -> Any:
     """返回 omodul 约定的 async LLM caller(messages/max_tokens 等 kwargs → dict)。
 
@@ -259,6 +260,10 @@ def _make_nim_caller(
             "max_tokens": max_tokens,
             "temperature": temperature if temperature is not None else 0.4,
         }
+        # DRAMAPLAN:允许调用方注入额外请求字段(如关闭 reasoning 模型的 thinking,
+        # 避免推理 token 吃掉全部 max_tokens 导致 content 为空)。默认不改行为。
+        if extra_body:
+            payload.update(extra_body)
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
             text = await loop.run_in_executor(ex, _call_with_rotation, payload)

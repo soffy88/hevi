@@ -33,6 +33,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcups2t64 libxcomposite1 libxdamage1 \
     && rm -rf /var/lib/apt/lists/*
 
+# 零成本线引擎(HEVI_LINE_ENGINE=zero)的本地 TTS:Piper 独立 venv,与宿主 .venv 解耦,
+# 可执行文件固定在 /opt/piper/bin/piper(compose 里 HEVI_TALKCRAFT_PIPER 指向它)。
+# 音色 .onnx 由 compose 只读挂到 /opt/piper/voices。单独一层,业务代码改动不失效缓存。
+RUN python -m venv /opt/piper \
+    && /opt/piper/bin/pip install --no-cache-dir piper-tts==1.8.0 \
+    && ln -sf /opt/piper/bin/piper /usr/local/bin/piper \
+    && mkdir -p /opt/piper/voices
+
 # Copy pre-installed venv (Linux amd64 Python 3.14)
 # Scripts in .venv/bin/ have shebangs pointing to the host path
 # /data/soffy/projects/hevi/.venv/bin/python3 — create a symlink so they resolve
@@ -49,11 +57,39 @@ RUN mkdir -p /data/soffy/projects/hevi && \
 # App source
 COPY hevi-remotion/package.json hevi-remotion/package-lock.json ./hevi-remotion/
 RUN cd hevi-remotion && npm ci --omit=dev --no-audit --no-fund
+
+# ── talkcraft 主播线(talking_head / avatar_spokesperson, renderer=talkcraft) ──
+# 宿主上 hevi-remotion-talkcraft/node_modules 是软链到仓库外 vendor runtime,不在 build
+# context 里(.dockerignore 已排除该软链),所以镜像内按同一份 package-lock 独立安装。
+# Chrome Headless Shell 额外运行库(libnss3 等已在上面的 Remotion 层)。
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libdrm2 libgbm1 libxkbcommon0 libxfixes3 libxrandr2 libasound2t64 \
+    libpango-1.0-0 libcairo2 libdbus-1-3 libexpat1 libxshmfence1 \
+    && rm -rf /var/lib/apt/lists/*
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+COPY hevi-remotion-talkcraft/package.json hevi-remotion-talkcraft/package-lock.json ./hevi-remotion-talkcraft/
+RUN cd hevi-remotion-talkcraft \
+    && npm ci --omit=dev --no-audit --no-fund --registry="$NPM_REGISTRY" \
+    && test -x node_modules/.bin/remotion
+# Remotion 4.0.519 期望的 chrome-headless-shell(149.0.7790.0)来自 compose 的
+# additional_contexts.talkcraft_browser(宿主 vendor runtime 已下载好的那份),
+# 运行时与构建时都不联网下载;下面的 ensure 在断网下跑,版本不符会直接构建失败。
+COPY --from=talkcraft_browser . ./hevi-remotion-talkcraft/node_modules/.remotion/
+RUN --network=none cd hevi-remotion-talkcraft \
+    && node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell --version \
+    && npx --no-install remotion browser ensure
 COPY --chown=hevi:hevi hevi-remotion/ ./hevi-remotion/
 COPY --chown=hevi:hevi hevi/ ./hevi/
+COPY --chown=hevi:hevi hevi-remotion-talkcraft/ ./hevi-remotion-talkcraft/
+# 静态索引(gen-index.ts / tpl-index.ts / mediaManifest.ts / kbMeta.ts)在镜像内重新生成;
+# 渲染时 produce.py 写 public/runs/<job>,webpack 缓存写 node_modules/.cache —— 交给 hevi。
+RUN cd hevi-remotion-talkcraft && node scripts/gen-index.mjs \
+    && mkdir -p public/runs node_modules/.cache \
+    && chown -R hevi:hevi src public node_modules/.cache
 COPY alembic.ini ./
 
-RUN mkdir -p /app/output /app/data /app/assets && \
+RUN mkdir -p /app/output /app/data /app/assets /app/.cache/hevi/zerolines && \
+    chown -R hevi:hevi /app/.cache && \
     chown hevi:hevi /app /app/output /app/data /app/assets
 USER hevi
 

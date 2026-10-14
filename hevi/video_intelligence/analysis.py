@@ -39,9 +39,9 @@ def analyze_reel(
     boundaries = ShotBoundaryDetector(threshold, minimum_shot_duration_ms).detect(str(path), probe)
     cut_points = [0, *[item.timestamp_ms for item in boundaries], probe.duration_ms]
     ranges = list(itertools.pairwise(cut_points))
+    global_motion = MotionAnalyzer(sample_count=8).analyze(str(path), probe)
     shots: list[ShotObservation] = []
     for index, (start, end) in enumerate(ranges, start=1):
-        shot_motion = MotionAnalyzer(sample_count=8).analyze(str(path), probe)
         shot_id = f"shot_{index:04d}"
         shots.append(
             ShotObservation(
@@ -58,7 +58,7 @@ def analyze_reel(
                         source="AUTO_SCENE_DETECT",
                     )
                 ],
-                motion_evidence=shot_motion,
+                motion_evidence=global_motion,
                 semantic=ShotSemantic(
                     description=f"Observed shot {shot_id}; semantic provider={'requested' if semantic else 'not_requested'}",
                 ),

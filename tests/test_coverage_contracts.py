@@ -553,12 +553,13 @@ async def test_platform_content_comment_publish_and_share_boundaries(tmp_path: P
     task = create_publish_task(1, "douyin", title="x" * 30, media_paths=["video.mp4"])
     assert len(task.title) == 20
     assert (await publish_to_platform(task, browser_context=None)).status == "failed"
-    published = await publish_to_platform(task, browser_context=object())
-    assert published.status == "published"
+    unimplemented = await publish_to_platform(task, browser_context=object())
+    assert unimplemented.status == "not_implemented"
     empty = create_publish_task(1, "douyin")
-    assert (await publish_to_platform(empty)).status == "skipped"
+    assert (await publish_to_platform(empty)).status == "failed"
     repost = await repost_content(5, 1, "xhs")
     assert repost["task_id"] == "repost_5_xhs"
+    assert repost["ok"] is False and repost["status"] == "not_implemented"
 
     parsed = parse_share_text("😀 https://www.douyin.com/video/123?aweme_id=123")
     assert parsed["platform"] == "douyin" and parsed["aweme_id"] == "123"

@@ -6,6 +6,7 @@ Veya 只调能力、收成品:选产线、填槽、拿 job。不在 Veya 侧重�
 
 from __future__ import annotations
 
+import os
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -80,6 +81,24 @@ def list_jobs() -> list[ProduceJob]:
     return list(_JOBS.values())
 
 
+def _zero_engine_requested(line_id: str, slots: dict[str, Any]) -> bool:
+    """The zero-cost engine was explicitly chosen (slot ``engine`` or HEVI_LINE_ENGINE)."""
+    from hevi.layer4_legacy.zerolines.oprim_impl.specs import resolve_engine
+
+    try:
+        return resolve_engine(line_id=line_id, slot_engine=slots.get("engine"), env_engine=os.getenv("HEVI_LINE_ENGINE")) == "zero"
+    except ValueError:
+        return False  # unknown engine: the Studio renderer reports it as blocked
+
+
+def _auto_mode(line_id: str, requested_mode: str, slots: dict[str, Any]) -> str:
+    """``auto`` -> low_cost for its two recipes, unless the zero engine was chosen
+    (zero is a separate CPU engine routed by Studio fulfil, not the low_cost path)."""
+    if requested_mode == "auto" and line_id in {"emotional_reading", "history_scene"} and not _zero_engine_requested(line_id, slots):
+        return "low_cost"
+    return requested_mode
+
+
 async def produce(
     *,
     line_id: str,
@@ -98,7 +117,7 @@ async def produce(
     # ``auto`` defaults compatible, CPU-first behavior for the two currently
     # supported low-cost recipes. Existing canonical lines retain their
     # established standard renderer until their low-cost strategy is declared.
-    mode = "low_cost" if requested_mode == "auto" and line_id in {"emotional_reading", "history_scene"} else requested_mode
+    mode = _auto_mode(line_id, str(requested_mode), filled)
     if mode == "auto":
         mode = "production"
     policy = policy_for(str(mode))

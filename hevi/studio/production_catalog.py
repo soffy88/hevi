@@ -10,6 +10,7 @@ CANONICAL_LINES = (
     "character_animation", "kinetic_promo", "documentary_montage", "podcast_repurpose",
     "shorts_clip", "localization_dub", "explainer", "reference_adapt", "history_scene",
     "cinematic", "director_pipeline", "talking_head", "avatar_spokesperson",
+    "comic_narration",
 )
 
 
