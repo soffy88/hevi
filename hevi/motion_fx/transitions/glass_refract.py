@@ -28,7 +28,7 @@ def render_glass_refract(
             - angle_deg: Slant angle of glass slab in degrees (default: 18.0)
             - slab_width: Relative thickness of glass pane (default: 0.35 of width)
             - refract_strength: Displacement magnitude of refraction (default: 0.06)
-            - dispersion: Chromatic aberration strength (default: 0.06)
+            - dispersion: Chromatic aberration strength (default: 0.012, max safe limit: 0.015 to avoid prohibited RGB split)
             - glint_power: Specular bevel highlight intensity (default: 0.6)
 
     Returns:
@@ -47,7 +47,9 @@ def render_glass_refract(
     angle_deg = float(cfg.get("angle_deg", 18.0))
     slab_w_rel = float(cfg.get("slab_width", 0.35))
     refract_str = float(cfg.get("refract_strength", 0.06))
-    dispersion = float(cfg.get("dispersion", 0.06))
+    raw_dispersion = float(cfg.get("dispersion", 0.012))
+    # AMFX-R2 H4: Cap chromatic dispersion at 0.015 to prevent prohibited RGB split
+    dispersion = min(0.015, max(0.0, raw_dispersion))
     glint_power = float(cfg.get("glint_power", 0.6))
 
     theta = np.radians(angle_deg)

@@ -54,8 +54,16 @@ def render_water_ripple(
     v = ((yy / h) - cy) * (h / w)  # Aspect-ratio corrected
     dist = np.sqrt(u * u + v * v)
 
-    # Expanding wavefront radius
-    r0 = wave_speed * p
+    # AMFX-R2 H3: Compute screen bounds dynamically so wavefront progresses across full dur [0, 1]
+    corners_u = [-cx, 1.0 - cx]
+    corners_v = [-cy * (h / w), (1.0 - cy) * (h / w)]
+    max_dist = float(max(np.sqrt(cu * cu + cv * cv) for cu in corners_u for cv in corners_v))
+
+    transition_width = 0.20
+    r_start = -transition_width
+    r_end = max_dist + transition_width
+    # Expanding wavefront radius traversing from before origin to beyond farthest corner
+    r0 = r_start + (r_end - r_start) * p
 
     # Envelope fades in and out smoothly so p=0 and p=1 have zero disturbance
     # Envelope = sin(pi * p)
@@ -66,9 +74,9 @@ def render_water_ripple(
     freq1 = 28.0
     freq2 = 42.0
 
-    # Gaussian wave packet around the expanding wavefront
-    packet1 = np.sin(freq1 * dr - 8.0 * p) * np.exp(- (dr / 0.12) ** 2)
-    packet2 = 0.6 * np.sin(freq2 * dr - 14.0 * p) * np.exp(- ((dr + 0.04) / 0.16) ** 2)
+    # Gaussian wave packet centered on the expanding wavefront
+    packet1 = np.sin(freq1 * dr - 8.0 * p) * np.exp(- (dr / 0.16) ** 2)
+    packet2 = 0.6 * np.sin(freq2 * dr - 14.0 * p) * np.exp(- ((dr + 0.04) / 0.20) ** 2)
     wave_height = (packet1 + packet2) * envelope
 
     # Compute spatial gradients of wave height for Snell refraction
@@ -88,7 +96,6 @@ def render_water_ripple(
 
     # Blend between A and B across wavefront
     # Ahead of wavefront (dist > r0) is scene A; behind wavefront (dist < r0) is scene B
-    transition_width = 0.10
     alpha = np.clip((r0 - dist) / transition_width + 0.5, 0.0, 1.0)
     # Smoothstep
     s = alpha * alpha * (3.0 - 2.0 * alpha)
