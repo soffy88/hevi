@@ -98,7 +98,7 @@ renderer.setSize(W, H, false);
 renderer.shadowMap.enabled = !!WEA.shadows;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMappingExposure = SPEC.name === 'through_star_sea' ? 0.62 : 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
@@ -150,23 +150,44 @@ scene.add(rim);
 // Layered, size-attenuated stars so they read at 1080p instead of being 2px
 // specks.  A fraction are large soft "hero" stars; the rest are small and dim.
 let starField = null;
+let starPositions = null;
+const starCorridor = SPEC.name === 'through_star_sea';
 if (WEA.starfield){
   const N = Math.max(0, WEA.star_count|0);
   const pos = new Float32Array(N*3);
+  starPositions = pos;
   const pha = new Float32Array(N);
   const siz = new Float32Array(N);
   const bri = new Float32Array(N);
   const rad = Math.min(CAM.far*0.8, (WEA.star_radius ?? 900));
   const sizeScale = WEA.star_size ?? 1.0;
   for (let i=0;i<N;i++){
-    const u = rnd()*2-1, th = rnd()*Math.PI*2, r = rad*(0.35+0.65*rnd());
-    const s = Math.sqrt(1-u*u);
-    pos[i*3]=Math.cos(th)*s*r; pos[i*3+1]=u*r*0.85+rad*0.06; pos[i*3+2]=Math.sin(th)*s*r;
+    const hero = rnd() < (starCorridor ? 0.025 : 0.12);
+    if (starCorridor){
+      // A volume along the camera's forward route, not a distant spherical shell.
+      // The star is placed at a random 2.5–7.5 world-unit lead in front of the
+      // camera path; its x/y spread matches the real frustum at that lead.
+      const lead = rrange(2.5, 7.5);
+      const z = rrange(0.5, 47.0);
+      const halfW = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * ASPECT * 0.82;
+      const halfH = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * 0.82;
+      const centerY = 0.8 + 1.2 * Math.max(0, Math.min(1, (48.0-z)/37.0));
+      pos[i*3] = rrange(-halfW, halfW);
+      pos[i*3+1] = centerY + rrange(-halfH, halfH);
+      pos[i*3+2] = z;
+      // Nearby stars are substantial enough to read as foreground depth cues.
+      siz[i] = (hero ? rrange(0.45, 0.90) : rrange(0.035, 0.13)) * sizeScale;
+      bri[i] = hero ? rrange(0.88, 1.0) : rrange(0.42, 0.82);
+    } else {
+      const u = rnd()*2-1, th = rnd()*Math.PI*2, r = rad*(0.35+0.65*rnd());
+      const sphereS = Math.sqrt(1-u*u);
+      pos[i*3]=Math.cos(th)*sphereS*r;
+      pos[i*3+1]=u*r*0.85+rad*0.06;
+      pos[i*3+2]=Math.sin(th)*sphereS*r;
+      siz[i] = (hero ? rrange(26, 54) : rrange(7, 17)) * sizeScale;
+      bri[i] = hero ? rrange(0.75, 1.0) : rrange(0.35, 0.8);
+    }
     pha[i]=rnd()*6.283;
-    // 12% large soft stars, rest small; sizes are in world units (attenuated).
-    const hero = rnd() < 0.12;
-    siz[i] = (hero ? rrange(26, 54) : rrange(7, 17)) * sizeScale;
-    bri[i] = hero ? rrange(0.75, 1.0) : rrange(0.35, 0.8);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos,3));
@@ -180,7 +201,7 @@ if (WEA.starfield){
       varying float vPha; varying float vBri; uniform float t;
       void main(){ vPha=aPha; vBri=aBri;
         vec4 mv=modelViewMatrix*vec4(position,1.0);
-        gl_PointSize = clamp(aSize * (240.0 / max(1.0, -mv.z)), 1.0, 72.0);
+        gl_PointSize = clamp(aSize * (${H * 0.5} / max(1.0, -mv.z)), 1.0, 72.0);
         gl_Position=projectionMatrix*mv; }`,
     fragmentShader:`varying float vPha; varying float vBri; uniform float t;
       void main(){
@@ -417,58 +438,89 @@ function makeTree(params){
 // ---- Fox (round low-poly character with a face) ------------------------
 function makeFox(params){
   const s = params.scale ?? 1.0;
-  const col = params.color ?? [0.98,0.58,0.24];
+  const col = params.color ?? [1.0,0.55,0.16];
   const cream = [1.0,0.93,0.82];
   const g = new THREE.Group();
-  // body: plump and rounded
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42,16,12), toonMat(col));
-  body.scale.set(1.25,0.95,0.95); body.position.set(-0.05,0.5,0); body.castShadow=true;
+  const faceFeatures = [];
+  const eyeTargets = [];
+  // Rounded body and oversized head preserve a soft preschool character silhouette.
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.43,20,14), toonMat(col));
+  body.scale.set(1.24,0.98,0.96);
+  body.position.set(-0.06,0.49,0);
+  body.castShadow = true;
   g.add(body);
-  // head: large, round (kid-friendly proportions)
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38,16,14), toonMat(col));
-  head.position.set(0.6,0.72,0); head.castShadow=true; g.add(head);
-  // muzzle
-  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.18,12,10), toonMat(cream));
-  muzzle.scale.set(1.2,0.9,0.9); muzzle.position.set(0.9,0.63,0); g.add(muzzle);
-  // ears
-  for (const z of [-0.17,0.17]){
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.12,0.3,8), toonMat(col));
-    ear.position.set(0.55,1.06,z); g.add(ear);
-    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.06,0.16,8), toonMat([1.0,0.75,0.78]));
-    inner.position.set(0.57,1.04,z*0.85); g.add(inner);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.39,20,16), toonMat(col));
+  head.position.set(0.60,0.73,0);
+  head.castShadow = true;
+  g.add(head);
+  g.userData.faceHead = head;
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.19,14,12), toonMat(cream));
+  muzzle.scale.set(1.18,0.9,0.92);
+  muzzle.position.set(0.91,0.625,0);
+  g.add(muzzle);
+  faceFeatures.push(muzzle);
+  // The local +X axis is the fox's nose/face direction. Every eye is forward
+  // mounted on that plane; pupil and catchlight protrude slightly past the sclera.
+  for (const z of [-0.145,0.145]){
+    const eye = new THREE.Group();
+    eye.position.set(0.925,0.805,z);
+    const white = new THREE.Mesh(new THREE.SphereGeometry(0.105,14,12), toonMat([1,1,1]));
+    white.userData.faceFeature = 'eye';
+    eye.add(white);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.056,12,10), toonMat([0.08,0.055,0.05]));
+    pupil.position.set(0.073,0,0);
+    pupil.userData.faceFeature = 'eye';
+    eye.add(pupil);
+    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.022,8,8), toonMat([1,1,1]));
+    glint.position.set(0.094,0.035,0.022);
+    glint.userData.faceFeature = 'eye';
+    eye.add(glint);
+    g.add(eye);
+    eyeTargets.push(eye);
+    const blush = new THREE.Mesh(new THREE.CircleGeometry(0.067,14), toonMat([1.0,0.48,0.53]));
+    blush.position.set(0.91,0.65,z*1.56);
+    blush.rotation.y = Math.PI/2;
+    blush.userData.faceFeature = 'face';
+    g.add(blush);
+    faceFeatures.push(blush);
   }
-  // eyes: white + dark pupil + catch-light (the IP needs a face)
-  const eyeZ = 0.16;
-  for (const z of [-eyeZ, eyeZ]){
-    const white = new THREE.Mesh(new THREE.SphereGeometry(0.095,12,10), toonMat([1.0,1.0,1.0]));
-    white.position.set(0.86,0.8,z); g.add(white);
-    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.055,10,8), toonMat([0.09,0.07,0.06]));
-    pupil.position.set(0.93,0.8,z); g.add(pupil);
-    const glint = new THREE.Mesh(new THREE.SphereGeometry(0.02,6,6), toonMat([1.0,1.0,1.0]));
-    glint.position.set(0.95,0.83,z+0.02); g.add(glint);
-    // blush
-    const blush = new THREE.Mesh(new THREE.CircleGeometry(0.07,12), toonMat([1.0,0.62,0.6]));
-    blush.position.set(0.87,0.66,z*1.5); blush.lookAt(1.6,0.66,z*1.5); g.add(blush);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.055,10,8), toonMat([0.18,0.09,0.07]));
+  nose.position.set(1.105,0.625,0);
+  nose.userData.faceFeature = 'face';
+  g.add(nose);
+  faceFeatures.push(nose);
+  // Soft, triangular ears with pink inner surfaces.
+  for (const z of [-0.19,0.19]){
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.125,0.31,10), toonMat(col));
+    ear.position.set(0.54,1.065,z);
+    g.add(ear);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.062,0.17,8), toonMat([1.0,0.68,0.72]));
+    inner.position.set(0.565,1.055,z*1.02);
+    g.add(inner);
   }
-  // nose
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), toonMat([0.2,0.13,0.12]));
-  nose.position.set(1.07,0.63,0); g.add(nose);
-  // tail (big bushy) + white tip
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.24,0.8,10), toonMat(col));
-  tail.position.set(-0.62,0.62,0); tail.rotation.z = Math.PI/2.5; g.add(tail);
-  const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.16,10,10), toonMat(cream));
-  tailTip.position.set(-0.95,0.82,0); g.add(tailTip);
-  // legs
-  for (const x of [0.3,-0.35]) for (const z of [-0.18,0.18]){
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.42,8), toonMat([0.34,0.2,0.12]));
-    leg.position.set(x,0.21,z); leg.castShadow=true; g.add(leg);
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.25,0.78,12), toonMat(col));
+  tail.position.set(-0.63,0.59,0);
+  tail.rotation.z = Math.PI/2.5;
+  g.add(tail);
+  const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.16,12,10), toonMat(cream));
+  tailTip.position.set(-0.96,0.80,0);
+  g.add(tailTip);
+  // Short rounded orange-brown paws replace the long dark wooden-looking pillars.
+  for (const x of [0.29,-0.34]) for (const z of [-0.19,0.19]){
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.085,0.15,4,10), toonMat([0.74,0.30,0.075]));
+    leg.position.set(x,0.18,z);
+    leg.castShadow = true;
+    g.add(leg);
   }
   g.scale.setScalar(s);
-  const fx = params.pos?params.pos[0]:0, fz = params.pos?params.pos[2]:0;
-  g.position.set(fx, params.pos?params.pos[1]:0, fz);
-  g.rotation.y = params.rotY ?? 0.4;
+  const fx = params.pos ? params.pos[0] : 0;
+  const fz = params.pos ? params.pos[2] : 0;
+  g.position.set(fx, params.pos ? params.pos[1] : 0, fz);
+  g.rotation.y = params.rotY ?? -Math.PI/2;
+  g.userData.eyeTargets = eyeTargets;
+  g.userData.faceFeatures = faceFeatures;
   g.userData.sit = params.sit ?? false;
-  obstacles.push({x:fx, z:fz, r: 1.15*s});
+  obstacles.push({x:fx, z:fz, r:1.15*s});
   return g;
 }
 
@@ -551,8 +603,12 @@ function setTime(t){
   sampleCam(t);
   for (const d of dynamic){
     if (d.type === 'planet'){ d.obj.userData.spinGroup.rotation.y = curT * d.obj.userData.spin; }
-    else if (d.type === 'fox' && WEA.fox_sway !== false){
-      d.obj.rotation.z = Math.sin(curT*1.5)*0.03;
+    else if (d.type === 'fox'){
+      if (WEA.fox_face_camera || SPEC.name === 'fox_in_wheat'){
+        const toCamera = camera.position.clone().sub(d.obj.position);
+        d.obj.rotation.y = Math.atan2(-toCamera.z, toCamera.x);
+      }
+      d.obj.rotation.z = (WEA.fox_sway !== false) ? Math.sin(curT*1.5)*0.025 : 0;
     }
   }
   if (starField){ starField.material.uniforms.t.value = t; }
@@ -624,6 +680,69 @@ window.__subjectScreenBBox = function(){
   }
   if (!isFinite(x0)) return null;
   return {x0, y0, x1, y1, width:x1-x0, height:y1-y0};
+};
+
+// Scene-grounded visual diagnostics for the R2 independent acceptance tests.
+window.__foxFaceStats = function(times){
+  const rows = [];
+  const projectBox = (obj) => {
+    const bb = new THREE.Box3().setFromObject(obj, true);
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for (const x of [bb.min.x,bb.max.x]) for (const y of [bb.min.y,bb.max.y]) for (const z of [bb.min.z,bb.max.z]){
+      const p = new THREE.Vector3(x,y,z).project(camera);
+      const sx=p.x*0.5+0.5, sy=1-(p.y*0.5+0.5);
+      x0=Math.min(x0,sx); x1=Math.max(x1,sx); y0=Math.min(y0,sy); y1=Math.max(y1,sy);
+    }
+    return {x0,y0,x1,y1,width:x1-x0,height:y1-y0};
+  };
+  for (const t of times){
+    setTime(t);
+    scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+    for (const fox of foxObjs){
+      const forward = new THREE.Vector3(1,0,0).applyQuaternion(fox.quaternion).normalize();
+      const toCam = camera.position.clone().sub(fox.position).normalize();
+      const eyes = fox.userData.eyeTargets.map((eye) => {
+        const center = eye.getWorldPosition(new THREE.Vector3());
+        const ndc = center.clone().project(camera);
+        const rayDir = center.clone().sub(camera.position).normalize();
+        const ray = new THREE.Raycaster(camera.position.clone(), rayDir, camera.near, camera.far);
+        const hits = ray.intersectObjects(scene.children, true);
+        const first = hits.length ? hits[0].object : null;
+        return {
+          x:ndc.x*0.5+0.5, y:1-(ndc.y*0.5+0.5), z:ndc.z,
+          inFrame:ndc.z>=-1 && ndc.z<=1 && Math.abs(ndc.x)<=0.98 && Math.abs(ndc.y)<=0.98,
+          notOccluded:!!first && first.userData.faceFeature==='eye',
+          firstHit:first ? (first.userData.faceFeature || first.type || first.name || 'mesh') : 'none'
+        };
+      });
+      rows.push({time:t, dot:forward.dot(toCam), headBBox:projectBox(fox.userData.faceHead), eyes});
+    }
+  }
+  return rows;
+};
+
+window.__starProximityStats = function(times){
+  const rows=[];
+  const path=activePath();
+  const travel=(path.length>1) ? new THREE.Vector3(...path[path.length-1].pos).distanceTo(new THREE.Vector3(...path[0].pos)) : 0;
+  for (const t of times){
+    setTime(t); scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+    let nearVisible=0, nearestVisible=Infinity, visible=0;
+    if (starPositions){
+      for (let i=0;i<starPositions.length/3;i++){
+        const v=new THREE.Vector3(starPositions[i*3],starPositions[i*3+1],starPositions[i*3+2]);
+        const dist=camera.position.distanceTo(v);
+        const ndc=v.clone().project(camera);
+        if (ndc.z>=-1 && ndc.z<=1 && Math.abs(ndc.x)<=1 && Math.abs(ndc.y)<=1){
+          visible++;
+          if (dist<8){ nearVisible++; nearestVisible=Math.min(nearestVisible,dist); }
+        }
+      }
+    }
+    rows.push({time:t, visible, nearVisible, nearestVisible:nearVisible ? nearestVisible : null});
+  }
+  return {rows, maxVisibleNear:Math.max(0,...rows.map(r=>r.nearVisible)), pathTravel:travel,
+    groundAssets:AST.filter(a=>a.kind==='ground').length, grassAssets:AST.filter(a=>a.kind==='grass').length};
 };
 
 // ---- Collision report (no穿模) -----------------------------------------

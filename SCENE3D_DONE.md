@@ -1,64 +1,38 @@
-# SCENE3D R1B 完成报告
+# SCENE3D R1C completion report
 
-日期：2026-10-14
-工作区：/data/soffy/projects/hevi-scene3d
-分支：feat/scene3d-line
-运行环境：/data/soffy/projects/hevi/.venv/bin/python；JWT_SECRET=test-only；PYTHONPATH=/data/soffy/projects/hevi-scene3d；TMPDIR=.tmp。只在指定 worktree 内工作，CPU SwiftShader 渲染，无付费 API、无磁盘清理、未修改主 checkout。
+## Result
 
-## SCENE3D_FIX.md 项目验收
+All SCENE3D_FIX_R2 blocking items B1–B3 are addressed in this worktree. The full `tests/test_scene3d*.py` acceptance command passes: **45 passed, 1 warning, in 181.66s**. Six R1C MP4s are present, use H.264 at 30 fps, pass the kids visual gate, and each independently re-rendered with the same fixed seed produced an identical SHA-256. Renders ran serially; no paid API was used.
 
-| 项目 | 修复及实测证据 | 结果 |
-|---|---|---|
-| F1 Preview 500 | Preview endpoint 改同步 handler，使同步 Playwright 在线程池执行。真实 TestClient 请求 aspect=9:16、resolution=270，HTTP 200 video/mp4；ffprobe 3.0 秒、90/90 帧。非法画幅 422，未知能力 404。 | PASS |
-| F2 穿模 | 3 个真实预设碰撞探测 violations=[]；field 为狐狸与石块设置排除区，调整环轨及行星布局避开树冠/地面。穿模测试通过。 | PASS |
-| F3 主体安全区 | 3 能力 × 2 画幅，使用实际相机预设，对中间帧和末帧投影包围盒，符合左右各 5%、上下各 10% 安全区，共 12 个点通过。 | PASS |
-| F4 顶点 shader 风摆 | InstancedMesh 叶片按 UV 高度弯曲、根部固定、梢部摆动，时间由 __setTime 驱动。固定相机与狐狸摆动关闭时，风关闭帧逐字节一致、风开启帧有差异。 | PASS |
-| F5 能力完整性 | 检查 supports_aspect；ffprobe count_frames 要求实际帧数等于 ceil(duration × fps)；检查文件存在后再 probe，失败转换为 CapabilityError；jsonschema 不可用时拒绝验证。params.seed 覆盖 seed= 的语义明确并通过测试；59/60 帧变异被拦截。 | PASS |
-| F6 幼儿动画 | 狐狸补眼睛、鼻子、腮红；星海增大星体并增加远近层次，柔和配色。六条实片全部通过儿童门禁，时长 12–13 秒、平均饱和度 <0.85，测量频率/振幅远低于闪烁门禁。 | PASS |
-| F7 ShotSpec 与 lint 报告 | ShotSpec capability bridge 按名字查询统一 registry 并调用能力；未知能力/非法画幅以 422 报告。新增三个测试覆盖名字 dispatch、未知能力 422、非法画幅 422。3O lint 正确记录四项既有基线失败，未声称全过。 | PASS（基线 lint 失败见下） |
+## Root causes and fixes
 
-## 六条正式样片
+- **B1 — fox facing away / wooden legs.** The fox's local forward vector is +X, but the old default Y rotation and static orientation did not track the moving camera path. The fox now turns toward the actual camera during `setTime`; the render-side diagnostics expose the head screen bounding box, forward-to-camera dot product, both eye projections and ray-hit occlusion. Legs were shortened and changed to rounded capsules in a warm orange-brown palette. On both aspects, checks at t=1.2/6.0/10.8s measured dot products between 0.9224 and 0.9611; both eyes were in frame and unobscured for all six sampled checks.
+- **B2 — beige, desaturated palette / yellow fox.** The preset's sky and fog were too close to the wheat's warm neutral colors and washed out the fox. `fox_in_wheat.json` now uses a clear blue sky, golden wheat and orange fox/paws; bloom and fog are tuned not to collapse their contrast. `kids_gate` now fails below mean saturation 0.35, and color-region diagnostics measure hue and saturation specifically inside the projected fox-head box. At the rendered middle frame, the orange target hue's median is 39.53° and mean saturation is 0.5751; the region gate passes.
+- **B3 — “star sea” looked like ground under a distant star wall.** The scene had ground-like assets/composition and too few stars close to the camera's flight volume. The star-sea scene now has no ground or grass assets, a blue-violet nebula palette, and a star field that extends along and around the camera path with visible nearby stars. Camera-path travel measured 37.019 units; at t=0/3.25/6.5/9.75/13s, visible stars within 8 units numbered 184/158/170/171/159 (nearest distance as low as 0.549 units). The rendered portrait frame's green-ground proxy stays under the 0.20 ceiling and the kids gate passes.
+- **Pacing guard.** The capability adapter now rejects direct shot renders shorter than 2.0 seconds with `CapabilityError`; the regression test covers a 1.99-second request. The separate kids gate continues to validate final rendered clip pacing/flicker/saturation.
 
-全部用 seed=1234 渲染，并独立同 seed 复渲；六条主片 SHA-256 均与复渲一致。均为 H.264、30 fps；实际解码帧数匹配期望；每个目录均含 contact_sheet_6f.png 及 PNG 帧序列。
+## R1C render artefacts and media evidence
 
-| 样片目录 | 画幅 | 时长 | 分辨率 | 解码帧数 | SHA-256 | 复渲 |
-|---|---|---:|---:|---:|---|---|
-| planet_orbit_16x9 | 16:9 | 12.0 s | 1920×1080 | 360/360 | 856f38a27621441c0d425883e1084e6214ab748e6be1a252bdfeb095ff0776e0 | 一致 |
-| planet_orbit_9x16 | 9:16 | 12.0 s | 1080×1920 | 360/360 | fcc856e2ca3a88d40c06b4b45432785e914e453f8066abff4971a12678fecf1b | 一致 |
-| fox_wheat_9x16 | 9:16 | 12.0 s | 1080×1920 | 360/360 | 1c1f4e4abf2e18df27ad5026b68e5f73d196df942e3e9313e7dc4e1efb1337e5 | 一致 |
-| fox_wheat_16x9 | 16:9 | 12.0 s | 1920×1080 | 360/360 | a8de1cfe375518fa4517a210d0cd5b16af167704845bcbdb6e2564c24938d3c9 | 一致 |
-| star_sea_9x16 | 9:16 | 13.0 s | 1080×1920 | 390/390 | 0355e0cc7c3a4d62d563a54762e5efbf3b4174841da2a2cd31c404530790a28a | 一致 |
-| star_sea_16x9 | 16:9 | 13.0 s | 1920×1080 | 390/390 | ee4a8eeef29e060a560e8f655b8e54d2c6f5992f43ef857d9f711d3e303fc2fb | 一致 |
+All videos below were checked with `ffprobe` and decoded frame counting; the repeated render SHA matched the deliverable SHA in every row. `output/scene3d_r1c/r1c_render_results.json` is the machine-readable full result, including timings and contact-sheet paths. Each contact sheet contains six evenly spaced frames.
 
-拼图路径：output/scene3d_r1b/<sample>/contact_sheet_6f.png。
+| Shot | Aspect | Duration | Resolution | Codec / FPS | Decoded frames | Mean saturation | SHA-256 | Six-frame contact sheet |
+|---|---|---:|---:|---|---:|---:|---|---|
+| planet_orbit_16x9 | 16:9 | 12.000s | 960×540 | H.264 / 30 | 360 | 0.3616 | `1d4c86e340f42674439b3104f4bae880778788f20d651f0062e29af868879209` | `output/scene3d_r1c/planet_orbit_16x9/contact_sheet_6f.png` |
+| planet_orbit_9x16 | 9:16 | 12.000s | 540×960 | H.264 / 30 | 360 | 0.3673 | `7e07bda3abbd447cadabd6578f89b983ecbed031067d58def41a73a16493084d` | `output/scene3d_r1c/planet_orbit_9x16/contact_sheet_6f.png` |
+| fox_wheat_9x16 | 9:16 | 12.000s | 540×960 | H.264 / 30 | 360 | 0.3936 | `1a05f058c3e39e8ef6d5b5a92cb7e65d30fd3b14537ade3a4a1e1529ac043318` | `output/scene3d_r1c/fox_wheat_9x16/contact_sheet_6f.png` |
+| fox_wheat_16x9 | 16:9 | 12.000s | 960×540 | H.264 / 30 | 360 | 0.4164 | `e4dd68543f05aa4d01516dae313d3de4a6f0f6aa759adc6b3633c474c9cba4b5` | `output/scene3d_r1c/fox_wheat_16x9/contact_sheet_6f.png` |
+| star_sea_9x16 | 9:16 | 13.000s | 540×960 | H.264 / 30 | 390 | 0.5775 | `9462150f053d6ca16420b9f71f8a4c044f76d941e2fd7e785e30081c13ad4e68` | `output/scene3d_r1c/star_sea_9x16/contact_sheet_6f.png` |
+| star_sea_16x9 | 16:9 | 13.000s | 960×540 | H.264 / 30 | 390 | 0.5818 | `ef0936cc6c9931d0a026593049660655b153e6ac141f1975b4193eb8736da42f` | `output/scene3d_r1c/star_sea_16x9/contact_sheet_6f.png` |
 
-## 儿童门禁实测
+Verified artifact invariants: `complete=true`, `failures=[]`; each MP4's recorded hash equals its actual hash and the same-seed verification render's hash; all frame counts, durations and dimensions match `ffprobe`.
 
-从每条真实 PNG 每三帧取一帧（10 fps），先缩放到 64×64，再计算亮度、饱和度与平均亮度 FFT 主峰。六条门禁均 passed=true、failures=[]。
+## Verification
 
-| 样片 | 结果 | 平均亮度 | 平均饱和度 | 主波动频率 | 振幅 |
-|---|---|---:|---:|---:|---:|
-| planet_orbit_16x9 | PASS | 0.57177 | 0.20447 | 0.08333 Hz | 0.001838 |
-| planet_orbit_9x16 | PASS | 0.58229 | 0.21075 | 0.08333 Hz | 0.003752 |
-| fox_wheat_9x16 | PASS | 0.78190 | 0.30523 | 0.08333 Hz | 0.001063 |
-| fox_wheat_16x9 | PASS | 0.76923 | 0.31486 | 0.08333 Hz | 0.001712 |
-| star_sea_9x16 | PASS | 0.64149 | 0.11894 | 0.15385 Hz | 0.000933 |
-| star_sea_16x9 | PASS | 0.64865 | 0.09824 | 0.38462 Hz | 0.002541 |
+1. Targeted R2 regressions: `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-scene3d/.tmp PYTHONPATH=/data/soffy/projects/hevi-scene3d /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_scene3d_r2.py` — **6 passed in 11.75s**.
+2. Required final command: `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-scene3d/.tmp PYTHONPATH=/data/soffy/projects/hevi-scene3d /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_scene3d*.py` — **45 passed, 1 warning in 181.66s**. The only warning is the existing Starlette `TestClient` / `httpx` deprecation notice.
+3. Python compilation and `git diff --check` are run in the final pre-commit verification.
+4. `scripts/ci/run_3o_v3_lint.py` was rerun. It reports the same four accepted pre-existing 3O checks as baseline (`check_no_sibling_call.py`, `check_omodul_signature.py`, `check_enabled_pillars.py`, `check_oprim_keyword_only.py`); other listed 3O checks pass. These failures originate from the shared installed `.venv` package set, not this scene3d worktree; no lint rules were suppressed or modified here.
 
-## pytest 与 3O lint
+Only task-owned source, presets, regression tests, the render/verification script and this completion report will be staged. Existing unrelated/untracked audit and Veya metadata files are intentionally untouched.
 
-验收命令：
-
-    JWT_SECRET=test-only TMPDIR=.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -p no:cacheprovider tests/test_scene3d.py tests/test_scene3d_capability.py tests/test_scene3d_r1b.py
-
-实测：39 passed，0 failed，0 skipped，1 warning，194.72 秒。唯一 warning 是 Starlette 提醒未来的 TestClient/httpx 兼容性迁移，不影响结果。
-
-官方 lint 命令：
-
-    PYTHONPATH=/data/soffy/projects/hevi-scene3d /data/soffy/projects/hevi/.venv/bin/python scripts/ci/run_3o_v3_lint.py
-
-实测退出码 1（FAIL），9 项中 5 PASS、4 FAIL。失败：check_no_sibling_call.py、check_omodul_signature.py、check_enabled_pillars.py、check_oprim_keyword_only.py；通过：check_flat_namespace.py、check_no_project_prefix.py、check_obase_no_reverse_dep.py、check_oservi_injection.py、check_async_contract.py。这四项失败与 SCENE3D_FIX.md 记录的主 .venv 基线一致；没有谎称 lint 全过，也没有为场景任务改动这些 3O 架构规则。
-
-视频、拼图及帧序列位于 output/scene3d_r1b/；复渲与门禁 JSON 位于 .tmp/。未清理磁盘、未删除 worktree 外文件、未 push，未修改主 checkout。
-
-DONE SCENE3D-R1B
+DONE SCENE3D-R1C

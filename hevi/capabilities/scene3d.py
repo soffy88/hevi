@@ -201,6 +201,13 @@ def _render_capability(
         )
     if duration <= 0:
         raise CapabilityError(f"capability {name}: duration must be positive, got {duration}")
+    # These are finished preschool animation shots, not arbitrary micro-clips.
+    # The minimum makes the visual beat readable and keeps API and ShotSpec
+    # capability entry points aligned with the kids line's pacing contract.
+    if duration < 2.0:
+        raise CapabilityError(
+            f"capability {name}: shot duration must be at least 2.0s, got {duration}"
+        )
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

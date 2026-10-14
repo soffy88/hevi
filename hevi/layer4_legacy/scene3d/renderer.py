@@ -206,6 +206,18 @@ class SceneRenderer:
             )
         )
 
+    def probe_fox_face_stats(self, times: list[float]) -> list[dict[str, Any]]:
+        """Measure face-to-camera dot products and eye visibility in real presets."""
+        return self._with_page(
+            lambda page: page.evaluate("(ts) => window.__foxFaceStats(ts)", times)
+        )
+
+    def probe_star_proximity(self, times: list[float]) -> dict[str, Any]:
+        """Count stars within 8 world units and inside the live camera frustum."""
+        return self._with_page(
+            lambda page: page.evaluate("(ts) => window.__starProximityStats(ts)", times)
+        )
+
     def render_frame_at(self, t: float, out: str | Path) -> Path:
         """Render exactly one frame at time ``t`` to ``out`` (no video encode).
 

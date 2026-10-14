@@ -8,48 +8,197 @@
     "aspect": "9:16",
     "fov": 55.0,
     "path": [
-      {"t": 0.0,  "pos": [0.0, 0.8, 48.0], "look": [0.0, 2.4, 0.0]},
-      {"t": 6.5,  "pos": [0.0, 1.4, 22.0], "look": [0.0, 2.6, 0.0]},
-      {"t": 13.0, "pos": [0.0, 2.0, 11.0], "look": [0.0, 2.8, 0.0]}
+      {
+        "t": 0.0,
+        "pos": [
+          0.0,
+          0.8,
+          48.0
+        ],
+        "look": [
+          0.0,
+          2.4,
+          0.0
+        ]
+      },
+      {
+        "t": 6.5,
+        "pos": [
+          0.0,
+          1.4,
+          22.0
+        ],
+        "look": [
+          0.0,
+          2.6,
+          0.0
+        ]
+      },
+      {
+        "t": 13.0,
+        "pos": [
+          0.0,
+          2.0,
+          11.0
+        ],
+        "look": [
+          0.0,
+          2.8,
+          0.0
+        ]
+      }
     ],
     "paths": {
       "16:9": [
-        {"t": 0.0,  "pos": [0.0, 0.8, 46.0], "look": [0.0, 2.4, 0.0]},
-        {"t": 6.5,  "pos": [0.0, 1.4, 21.0], "look": [0.0, 2.6, 0.0]},
-        {"t": 13.0, "pos": [0.0, 1.8, 12.0], "look": [0.0, 2.8, 0.0]}
+        {
+          "t": 0.0,
+          "pos": [
+            0.0,
+            0.8,
+            46.0
+          ],
+          "look": [
+            0.0,
+            2.4,
+            0.0
+          ]
+        },
+        {
+          "t": 6.5,
+          "pos": [
+            0.0,
+            1.4,
+            21.0
+          ],
+          "look": [
+            0.0,
+            2.6,
+            0.0
+          ]
+        },
+        {
+          "t": 13.0,
+          "pos": [
+            0.0,
+            1.8,
+            12.0
+          ],
+          "look": [
+            0.0,
+            2.8,
+            0.0
+          ]
+        }
       ]
     }
   },
   "lights": {
-    "sun_color": [1.0, 0.92, 1.0],
+    "sun_color": [
+      1.0,
+      0.92,
+      1.0
+    ],
     "sun_intensity": 1.3,
-    "sun_pos": [4.0, 10.0, 4.0],
-    "ambient_color": [0.5, 0.58, 0.85],
+    "sun_pos": [
+      4.0,
+      10.0,
+      4.0
+    ],
+    "ambient_color": [
+      0.5,
+      0.58,
+      0.85
+    ],
     "ambient_intensity": 0.85,
-    "rim_color": [0.8, 0.9, 1.0],
+    "rim_color": [
+      0.8,
+      0.9,
+      1.0
+    ],
     "rim_intensity": 0.7
   },
   "weather": {
-    "background_top": [0.10, 0.14, 0.34],
-    "background_bottom": [0.46, 0.34, 0.62],
-    "fog_color": [0.34, 0.34, 0.56],
-    "fog_density": 0.004,
+    "background_top": [
+      0.08,
+      0.1,
+      0.38
+    ],
+    "background_bottom": [
+      0.22,
+      0.1,
+      0.42
+    ],
+    "fog_color": [
+      0.2,
+      0.16,
+      0.45
+    ],
+    "fog_density": 0.0005,
     "wind_strength": 0.5,
     "wind_speed": 1.0,
     "starfield": true,
-    "star_count": 3200,
-    "star_radius": 52.0,
-    "star_size": 1.7,
-    "bloom_strength": 0.95,
-    "bloom_radius": 0.65,
-    "bloom_threshold": 0.68,
+    "star_count": 1500,
+    "star_radius": 56.0,
+    "star_size": 0.85,
+    "bloom_strength": 0.22,
+    "bloom_radius": 0.42,
+    "bloom_threshold": 0.78,
     "shadows": true
   },
   "assets": [
-    {"kind": "planet", "params": {"radius": 2.4, "color": [0.62, 0.72, 0.98], "pos": [0.0, 2.6, 0.0], "spin": 0.2, "ring": false}},
-    {"kind": "planet", "params": {"radius": 1.2, "color": [1.0, 0.76, 0.42], "pos": [-9.0, 9.0, -12.0], "spin": -0.4, "ring": false}},
-    {"kind": "planet", "params": {"radius": 0.9, "color": [0.98, 0.94, 0.66], "pos": [10.0, 7.0, -16.0], "spin": 0.5, "ring": false}},
-    {"kind": "ground", "params": {"color": [0.26, 0.3, 0.24], "radius": 120}},
-    {"kind": "grass", "params": {"count": 500, "area": 36, "color": [0.26, 0.42, 0.24], "height": 0.55}}
+    {
+      "kind": "planet",
+      "params": {
+        "radius": 1.05,
+        "color": [
+          0.78,
+          0.66,
+          0.98
+        ],
+        "pos": [
+          0.0,
+          2.6,
+          0.0
+        ],
+        "spin": 0.2,
+        "ring": false
+      }
+    },
+    {
+      "kind": "planet",
+      "params": {
+        "radius": 0.864,
+        "color": [
+          1.0,
+          0.76,
+          0.42
+        ],
+        "pos": [
+          -9.0,
+          9.0,
+          -12.0
+        ],
+        "spin": -0.4,
+        "ring": false
+      }
+    },
+    {
+      "kind": "planet",
+      "params": {
+        "radius": 0.648,
+        "color": [
+          0.98,
+          0.94,
+          0.66
+        ],
+        "pos": [
+          10.0,
+          7.0,
+          -16.0
+        ],
+        "spin": 0.5,
+        "ring": false
+      }
+    }
   ]
 }

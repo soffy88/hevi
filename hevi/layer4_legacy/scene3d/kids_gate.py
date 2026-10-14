@@ -22,11 +22,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-__all__ = ["KidsGateReport", "evaluate_frames", "extract_frames", "MIN_SHOT_SECONDS"]
+__all__ = ["KidsGateReport", "evaluate_frames", "evaluate_color_region", "extract_frames", "MIN_SHOT_SECONDS"]
 
 # Hard gates (see KIDS_ANIME_DIRECTION.md).
 MIN_SHOT_SECONDS = 2.5
 MAX_FLICKER_HZ = 3.0
+MIN_MEAN_SATURATION = 0.35
 MAX_MEAN_SATURATION = 0.85
 # A tiny bit of headroom so 30 fps sampling noise does not trip the gate.
 _FLICKER_TOLERANCE_HZ = 0.5
@@ -142,6 +143,10 @@ def evaluate_frames(
         failures.append(
             f"brightness flicker {flicker_hz:.2f}Hz exceeds {MAX_FLICKER_HZ}Hz cap"
         )
+    if mean_sat < MIN_MEAN_SATURATION:
+        failures.append(
+            f"mean saturation {mean_sat:.3f} below {MIN_MEAN_SATURATION} floor"
+        )
     if mean_sat > MAX_MEAN_SATURATION:
         failures.append(
             f"mean saturation {mean_sat:.3f} exceeds {MAX_MEAN_SATURATION} cap"
@@ -185,3 +190,49 @@ def extract_frames(video: str | Path, *, fps: float, count: int, out_dir: str | 
 
 def _hz_to_period(hz: float) -> float:
     return math.inf if hz <= 0 else 1.0 / hz
+
+
+def evaluate_color_region(
+    frame: Any,
+    bbox: dict[str, float],
+    *,
+    hue_range_deg: tuple[float, float] = (15.0, 40.0),
+    min_saturation: float = 0.5,
+) -> dict[str, float | int | bool]:
+    """Measure a normalized screen region for a required character palette.
+
+    ``bbox`` uses normalized x0/y0/x1/y1 coordinates with y measured from the
+    top. The target fraction is computed among visibly saturated pixels so
+    white eye highlights and pale muzzle details do not dilute orange fur.
+    """
+    import numpy as np
+    from PIL import Image
+
+    image = frame if hasattr(frame, "convert") else Image.open(frame)
+    rgb = image.convert("RGB")
+    width, height = rgb.size
+    x0 = max(0, min(width - 1, int(round(float(bbox["x0"]) * width))))
+    y0 = max(0, min(height - 1, int(round(float(bbox["y0"]) * height))))
+    x1 = max(x0 + 1, min(width, int(round(float(bbox["x1"]) * width))))
+    y1 = max(y0 + 1, min(height, int(round(float(bbox["y1"]) * height))))
+    hsv = np.asarray(rgb.crop((x0, y0, x1, y1)).convert("HSV"), dtype=np.float32)
+    hue = hsv[..., 0] * (360.0 / 255.0)
+    saturation = hsv[..., 1] / 255.0
+    value = hsv[..., 2] / 255.0
+    visible = (saturation >= min_saturation) & (value >= 0.12)
+    lo, hi = hue_range_deg
+    target = visible & (hue >= lo) & (hue <= hi)
+    count = int(visible.sum())
+    target_count = int(target.sum())
+    total = int(hue.size)
+    return {
+        "pixel_count": total,
+        "saturated_pixel_count": count,
+        "target_hue_pixel_count": target_count,
+        "target_hue_fraction": float(target_count / max(1, count)),
+        "median_hue_deg": float(np.median(hue[visible])) if count else 0.0,
+        "target_median_hue_deg": float(np.median(hue[target])) if target_count else 0.0,
+        "target_mean_saturation": float(saturation[target].mean()) if target_count else 0.0,
+        "mean_saturation": float(saturation.mean()),
+        "passes": bool(count > 0 and target_count / max(1, count) >= 0.25 and target_count > 0 and saturation[target].mean() >= min_saturation),
+    }
