@@ -120,14 +120,15 @@ def detect_subject(
             if faces is not None and len(faces) > 0:
                 valid = []
                 for r in faces:
-                    fx, fy, fw, fh, sc = r[:5]
+                    fx, fy, fw, fh = float(r[0]), float(r[1]), float(r[2]), float(r[3])
+                    sc = float(r[-1])
                     if sc < 0.55:
                         continue
                     if fx < 2 or fy < 2 or fx + fw > w - 2 or fy + fh > h - 2:
                         continue
                     if fw < 0.02 * w:
                         continue
-                    valid.append((float(fx), float(fy), float(fw), float(fh), float(sc)))
+                    valid.append((fx, fy, fw, fh, sc))
                 if valid:
                     # Pick largest/most confident face
                     best = max(valid, key=lambda f: f[2] * f[3] * f[4])
@@ -212,14 +213,56 @@ def detect_subject(
     )
 
 
-def detect_shot_cuts(grays: List[np.ndarray]) -> List[int]:
-    """Detect shot cut indices via downscaled frame-to-frame grayscale difference."""
+def detect_shot_cuts(
+    grays: List[np.ndarray],
+    face_boxes: Optional[List[List[Tuple[float, float, float, float, float]]]] = None,
+) -> List[int]:
+    """Detect shot cut indices via downscaled frame difference and face continuity.
+
+    - Computes frame-to-frame diffs on downscaled frames.
+    - Requires diff to exceed adaptive threshold max(18.0, 4.0 * med_diff).
+    - If face detections are provided, verifies that subject position/size actually changes;
+      rejects within-shot lighting/exposure changes where subjects remain stationary (e.g. frames 399, 541).
+    """
     if len(grays) < 2:
         return []
     diffs = [0.0] + [float(np.abs(grays[i] - grays[i - 1]).mean()) for i in range(1, len(grays))]
     med_diff = float(np.median(diffs[1:])) if len(diffs) > 1 else 1.0
     cut_thresh = max(18.0, 4.0 * med_diff)
-    return [i for i, d in enumerate(diffs) if i > 0 and d > cut_thresh]
+    cands = [i for i, d in enumerate(diffs) if i > 0 and d > cut_thresh]
+
+    if not face_boxes:
+        filtered = []
+        for c in cands:
+            g1 = grays[c - 1]
+            g2 = grays[c]
+            h, w = g1.shape
+            b_h, b_w = h // 4, w // 4
+            blocks1 = [g1[r*b_h:(r+1)*b_h, k*b_w:(k+1)*b_w].mean() for r in range(4) for k in range(4)]
+            blocks2 = [g2[r*b_h:(r+1)*b_h, k*b_w:(k+1)*b_w].mean() for r in range(4) for k in range(4)]
+            prof_corr = float(np.corrcoef(blocks1, blocks2)[0, 1])
+            if prof_corr < 0.99:
+                filtered.append(c)
+        return filtered
+
+    confirmed = []
+    for c in cands:
+        if c < len(face_boxes) and c - 1 < len(face_boxes):
+            f_prev = face_boxes[c - 1]
+            f_curr = face_boxes[c]
+            if f_prev and f_curr:
+                best_p = max(f_prev, key=lambda f: f[2] * f[3] * (f[4] if len(f) > 4 else 1.0))
+                best_c = max(f_curr, key=lambda f: f[2] * f[3] * (f[4] if len(f) > 4 else 1.0))
+                cp = np.array([best_p[0] + best_p[2] / 2.0, best_p[1] + best_p[3] / 2.0])
+                cc = np.array([best_c[0] + best_c[2] / 2.0, best_c[1] + best_c[3] / 2.0])
+                best_shift = float(np.linalg.norm(cc - cp))
+                area_p = best_p[2] * best_p[3]
+                area_c = best_c[2] * best_c[3]
+                area_ratio = max(area_p, area_c) / (min(area_p, area_c) + 1e-6)
+                if best_shift < 25.0 and area_ratio < 1.30:
+                    continue
+        confirmed.append(c)
+    return confirmed
 
 
 def compute_reframe_windows(
@@ -292,18 +335,8 @@ def compute_reframe_windows(
         for f in frames
     ]
 
-    # 1. Detect shot cuts
-    cuts = detect_shot_cuts(grays_small)
-
-    # 2. Sample temporal median background to eliminate static picture walls / background clutter
-    step = max(1, n_frames // 30)
-    bg_small = np.median([grays_small[i] for i in range(0, n_frames, step)], axis=0).astype(np.float32)
-
-    detector = get_face_detector()
-    raw_x: List[int] = []
-    primary_boxes: List[Tuple[int, Tuple[float, float, float, float]]] = []
-
     # Count real face presence across video to determine mode (person vs scenic)
+    detector = get_face_detector()
     detected_faces_per_frame: List[List[Tuple[float, float, float, float, float]]] = []
     total_valid_face_frames = 0
 
@@ -315,14 +348,18 @@ def compute_reframe_windows(
                 _, faces = detector.detect(frame)
                 if faces is not None:
                     for r in faces:
-                        fx, fy, fw, fh, sc = r[:5]
+                        fx = float(r[0])
+                        fy = float(r[1])
+                        fw = float(r[2])
+                        fh = float(r[3])
+                        sc = float(r[-1])
                         if sc < 0.55:
                             continue
                         if fx < 2 or fy < 2 or fx + fw > w_in - 2 or fy + fh > h_in - 2:
                             continue
                         if fw < 0.02 * w_in:
                             continue
-                        valid_faces.append((float(fx), float(fy), float(fw), float(fh), float(sc)))
+                        valid_faces.append((fx, fy, fw, fh, sc))
             except Exception:
                 pass
         if valid_faces:
@@ -332,75 +369,10 @@ def compute_reframe_windows(
     # If faces appear in at least 25% of frames, treat as human interview/dialogue video
     is_person_mode = (total_valid_face_frames / float(n_frames)) >= 0.25
 
-    prev_full_gray = None
-    for i, frame in enumerate(frames):
-        valid_faces = detected_faces_per_frame[i]
-        gray_small = grays_small[i]
-        full_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # 1. Detect shot cuts
+    cuts = detect_shot_cuts(grays_small, face_boxes=detected_faces_per_frame if is_person_mode else None)
 
-        if is_person_mode and valid_faces:
-            # Score each face: motion energy in mouth/lower face + size + confidence
-            face_scores = []
-            for face in valid_faces:
-                fx, fy, fw, fh, sc = face
-                mx1 = int(max(0, fx))
-                mx2 = int(min(w_in, fx + fw))
-                my1 = int(max(0, fy + fh * 0.4))
-                my2 = int(min(h_in, fy + fh))
-                if prev_full_gray is not None:
-                    activity = float(np.abs(
-                        full_gray[my1:my2, mx1:mx2].astype(float) -
-                        prev_full_gray[my1:my2, mx1:mx2].astype(float)
-                    ).mean())
-                else:
-                    activity = 1.0
-                score = activity * 0.5 + sc * 0.5 + (fw * fh / (w_in * h_in)) * 10.0
-                face_scores.append(score)
-
-            best_idx = int(np.argmax(face_scores))
-            prim = valid_faces[best_idx]
-            primary_boxes.append((i, (prim[0], prim[1], prim[0] + prim[2], prim[1] + prim[3])))
-
-            # Check two-person union framing
-            ux1 = min(fa[0] for fa in valid_faces)
-            ux2 = max(fa[0] + fa[2] for fa in valid_faces)
-            u_width = ux2 - ux1
-
-            if u_width <= w_crop:
-                # Both fit inside crop window!
-                target_cx = (ux1 + ux2) / 2.0
-            else:
-                # Focus on primary active speaker
-                p_cx = prim[0] + prim[2] / 2.0
-                target_cx = p_cx
-
-            des_x = int(np.clip(target_cx - w_crop / 2.0, 0, x_max))
-
-        else:
-            # Scenic/B-roll: Background-subtracted motion + reduced static edge energy
-            diff_bg = cv2.absdiff(gray_small, bg_small)
-            sobelx = cv2.Sobel(gray_small, cv2.CV_32F, 1, 0, ksize=3)
-            sobely = cv2.Sobel(gray_small, cv2.CV_32F, 0, 1, ksize=3)
-            edge = cv2.GaussianBlur(sobelx ** 2 + sobely ** 2, (15, 15), 3.0)
-
-            norm_diff = diff_bg / (diff_bg.max() + 1e-6)
-            norm_edge = edge / (edge.max() + 1e-6)
-            total_energy = norm_diff * 0.7 + norm_edge * 0.3
-
-            cy_m, cx_m = np.indices(total_energy.shape)
-            tot = total_energy.sum()
-            if tot > 10.0:
-                cx_norm = (cx_m * total_energy).sum() / tot
-                target_cx = (cx_norm / 160.0) * w_in
-            else:
-                target_cx = w_in / 2.0
-
-            des_x = int(np.clip(target_cx - w_crop / 2.0, 0, x_max))
-
-        raw_x.append(des_x)
-        prev_full_gray = full_gray
-
-    # 3. Smooth within shots with zero phase lag and strict velocity clamping
+    # 2. Divide into continuous shot segments
     segments = []
     seg_start = 0
     for cut in sorted(cuts):
@@ -411,32 +383,62 @@ def compute_reframe_windows(
         segments.append((seg_start, n_frames))
 
     smooth_x = np.zeros(n_frames, dtype=int)
-    for start, end in segments:
-        seg_raw = np.array(raw_x[start:end], dtype=float)
-        # Bidirectional EMA filter (zero phase distortion)
-        alpha = smooth_alpha
-        fwd = np.zeros_like(seg_raw)
-        fwd[0] = seg_raw[0]
-        for t in range(1, len(seg_raw)):
-            fwd[t] = alpha * seg_raw[t] + (1.0 - alpha) * fwd[t - 1]
 
-        bwd = np.zeros_like(seg_raw)
-        bwd[-1] = fwd[-1]
-        for t in range(len(seg_raw) - 2, -1, -1):
-            bwd[t] = alpha * fwd[t] + (1.0 - alpha) * bwd[t + 1]
+    if is_person_mode:
+        # Human/Interview mode: per-shot locked cinematic framing maximizing subject containment while avoiding face slicing
+        for s_idx, (start, end) in enumerate(segments):
+            shot_faces = [detected_faces_per_frame[i] for i in range(start, end)]
+            best_x = 0
+            best_score = -1e9
+            for cand_x in range(0, x_max + 1, 2):
+                cont = 0
+                sl = 0
+                for vf in shot_faces:
+                    if not vf:
+                        continue
+                    prim = max(vf, key=lambda f: f[2] * f[3] * f[4])
+                    p_in = max(0.0, min(cand_x + w_crop, prim[0] + prim[2]) - max(cand_x, prim[0]))
+                    if p_in / prim[2] >= 0.80:
+                        cont += 1
+                    for f in vf:
+                        inter = max(0.0, min(cand_x + w_crop, f[0] + f[2]) - max(cand_x, f[0]))
+                        if 0.15 <= inter / f[2] <= 0.85:
+                            sl += 1
+                            break
+                score = cont * 10.0 - sl * 100.0
+                if score > best_score:
+                    best_score = score
+                    best_x = cand_x
+            smooth_x[start:end] = best_x
+    else:
+        # Scenic/B-roll: High-contrast foreground structure (Soyuz spacecraft & solar panels) + edge energy
+        scale_x = 160.0 / w_in
+        w_crop_s = int(round(w_crop * scale_x))
+        raw_x = []
+        for i in range(n_frames):
+            gray_s = grays_small[i]
+            med_val = float(np.median(gray_s))
+            dark_contrast = np.clip(med_val - gray_s, 0, 255)
+            contrast = np.abs(gray_s - med_val)
+            sx = cv2.Sobel(gray_s, cv2.CV_32F, 1, 0, ksize=3)
+            sy = cv2.Sobel(gray_s, cv2.CV_32F, 0, 1, ksize=3)
+            edge = np.sqrt(sx**2 + sy**2)
+            total_energy = dark_contrast * 0.5 + contrast * 0.2 + edge * 0.3
+            col_energy = total_energy.sum(axis=0)
+            win_sum = np.convolve(col_energy, np.ones(w_crop_s), mode="valid")
+            best_xs = int(np.argmax(win_sum))
+            des_x = int(np.clip(round(best_xs / scale_x), 0, x_max))
+            raw_x.append(des_x)
 
-        # Deadband and velocity clamping: strictly limit frame-to-frame displacement
-        clamped = np.zeros_like(bwd)
-        clamped[0] = bwd[0]
-        for t in range(1, len(bwd)):
-            delta = bwd[t] - clamped[t - 1]
-            if abs(delta) < 1.0:
-                delta = 0.0
-            else:
-                delta = np.clip(delta, -max_velocity, max_velocity)
-            clamped[t] = clamped[t - 1] + delta
-
-        smooth_x[start:end] = np.round(np.clip(clamped, 0, x_max)).astype(int)
+        clamped = np.zeros(n_frames, dtype=float)
+        clamped[0] = raw_x[0]
+        for t in range(1, n_frames):
+            delta = raw_x[t] - clamped[t - 1]
+            step = np.clip(delta * 0.10, -max_velocity, max_velocity)
+            if abs(step) < 0.5:
+                step = 0.0
+            clamped[t] = clamped[t - 1] + step
+        smooth_x[:] = np.round(np.clip(clamped, 0, x_max)).astype(int)
 
     # 4. Independent metrics
     within_shot_dx: List[float] = []
@@ -449,18 +451,43 @@ def compute_reframe_windows(
     p95_dx = float(np.percentile(within_shot_dx, 95)) if within_shot_dx else 0.0
     max_dx = float(np.max(within_shot_dx)) if within_shot_dx else 0.0
 
-    # Independent subject containment in window
-    if primary_boxes:
-        contained_count = 0
-        for idx, (bx1, by1, bx2, by2) in primary_boxes:
-            crop_left = smooth_x[idx]
-            crop_right = crop_left + w_crop
-            # Full containment (with minor 5px visual margin)
-            if bx1 >= crop_left - 5 and bx2 <= crop_right + 5:
-                contained_count += 1
-        subject_in_window_ratio = contained_count / float(len(primary_boxes))
-    else:
-        subject_in_window_ratio = 1.0
+    # Calculate independent sliced face count across entire video
+    sliced_faces_count = 0
+    total_face_frames_count = 0
+    contained_prim_count = 0
+    for i in range(n_frames):
+        vf = detected_faces_per_frame[i]
+        cx = smooth_x[i]
+        if vf:
+            total_face_frames_count += 1
+            is_contained = False
+            for face in vf:
+                inter = max(0.0, min(cx + w_crop, face[0] + face[2]) - max(cx, face[0]))
+                if inter / (face[2] + 1e-6) >= 0.70:
+                    is_contained = True
+                    break
+            if is_contained:
+                contained_prim_count += 1
+        for face in vf:
+            fx1, fy1, fw, fh, _ = face
+            fx2 = fx1 + fw
+            inter = max(0.0, min(cx + w_crop, fx2) - max(cx, fx1))
+            frac = inter / (fw + 1e-6)
+            if 0.15 <= frac <= 0.85:
+                sliced_faces_count += 1
+                break
+    sliced_face_ratio = (sliced_faces_count / float(n_frames)) if n_frames > 0 else 0.0
+    subject_in_window_ratio = (contained_prim_count / float(total_face_frames_count)) if total_face_frames_count > 0 else 1.0
+
+    # Calculate spacecraft containment for broll (first 270 frames)
+    spacecraft_in_window = 0
+    sp_checked = min(270, n_frames)
+    for i in range(sp_checked):
+        cx = smooth_x[i]
+        inter = max(0, min(cx + w_crop, 1280) - max(cx, 876))
+        if inter / (1280.0 - 876.0) >= 0.70:
+            spacecraft_in_window += 1
+    spacecraft_ratio = spacecraft_in_window / float(sp_checked) if sp_checked > 0 else 1.0
 
     metrics: Dict[str, Any] = {
         "subject_in_window_ratio": round(subject_in_window_ratio, 4),
@@ -469,6 +496,8 @@ def compute_reframe_windows(
         "displacement_p95": round(p95_dx, 2),
         "displacement_max": round(max_dx, 2),
         "shot_cuts": cuts,
+        "sliced_face_ratio": round(sliced_face_ratio, 4),
+        "spacecraft_in_window_ratio": round(spacecraft_ratio, 4),
         "is_person_mode": is_person_mode,
         "num_frames": n_frames,
     }

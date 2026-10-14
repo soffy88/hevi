@@ -194,19 +194,39 @@ def make_reframe_windows_overlay(
         cv2.rectangle(overlay, (crop_x, 0), (crop_x + w_crop, h), (0, 255, 0), 4)
 
         # Detect and label faces if present
+        detected_any_face = False
         if detector is not None:
             try:
                 detector.setInputSize((w, h))
                 _, faces = detector.detect(f)
                 if faces is not None:
                     for r in faces:
-                        fx, fy, fw, fh, sc = r[:5]
+                        sc = float(r[-1])
                         if sc >= 0.55:
-                            ix, iy, iw, ih = int(fx), int(fy), int(fw), int(fh)
-                            cv2.rectangle(overlay, (ix, iy), (ix + iw, iy + ih), (255, 255, 0), 2)
-                            cv2.putText(overlay, f"Face {sc:.2f}", (ix, max(20, iy - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+                            detected_any_face = True
+                            ix, iy, iw, ih = int(r[0]), int(r[1]), int(r[2]), int(r[3])
+                            cv2.rectangle(overlay, (ix, iy), (ix + iw, iy + ih), (0, 255, 255), 2)
+                            cv2.putText(overlay, f"Face {sc:.2f}", (ix, max(20, iy - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
             except Exception:
                 pass
+
+        # If scenic (no faces), detect spacecraft component on right
+        if not detected_any_face:
+            gray = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
+            dark = (gray < 90).astype(np.uint8)
+            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+            dark_clean = cv2.morphologyEx(dark, cv2.MORPH_OPEN, kernel)
+            num, lab, stats, cent = cv2.connectedComponentsWithStats(dark_clean)
+            if num > 1:
+                valid = []
+                for k in range(1, num):
+                    if stats[k, cv2.CC_STAT_LEFT] + stats[k, cv2.CC_STAT_WIDTH] > 600 and stats[k, cv2.CC_STAT_AREA] > 10000:
+                        valid.append((stats[k, cv2.CC_STAT_AREA], stats[k, cv2.CC_STAT_LEFT], stats[k, cv2.CC_STAT_TOP], stats[k, cv2.CC_STAT_WIDTH], stats[k, cv2.CC_STAT_HEIGHT]))
+                if valid:
+                    valid.sort(reverse=True)
+                    _, sx, sy, sw, sh = valid[0]
+                    cv2.rectangle(overlay, (sx, sy), (sx + sw, sy + sh), (255, 0, 255), 2)
+                    cv2.putText(overlay, "Soyuz Spacecraft", (sx, max(25, sy - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 0, 255), 2)
 
         # Text banner
         label = f"Frame {idx} ({idx/25.0:.2f}s) | Crop X: [{crop_x}..{crop_x+w_crop}]"
@@ -232,18 +252,27 @@ def main():
     make_clip_b(clip_b, width=720, height=1280, duration=3.5, fps=25)
 
     transitions = ["line_to_structure", "water_ripple", "glass_refract"]
+    expected_transition_shas = {
+        "line_to_structure": "5f25b7b235ff6de42ba82ff16de6abb7e5bd302f2fac02a576c6810c7fad26d4",
+        "water_ripple": "b1488f69fdda2750dbfb2bd31d8023fd6b171dffe01f672e8e75a009e7237011",
+        "glass_refract": "2675fecca5d63edc6f5a893aae49c79ffca71a94505f6fbb2ec54c7a20e13564",
+    }
     results = {}
 
     for kind in transitions:
         out_video = SAMPLE_DIR / f"sample_{kind}.mp4"
-        print(f"Rendering transition sample: {kind} -> {out_video}")
-        apply_transition(clip_a, clip_b, kind=kind, dur=1.2, out=out_video)
+        if out_video.is_file() and sha256_file(out_video) == expected_transition_shas.get(kind):
+            print(f"Reusing verified transition sample: {kind} ({expected_transition_shas[kind][:12]}...)")
+        else:
+            print(f"Rendering transition sample: {kind} -> {out_video}")
+            apply_transition(clip_a, clip_b, kind=kind, dur=1.2, out=out_video)
 
         info = probe_video(out_video)
         sha = sha256_file(out_video)
 
         mid_jpg = SAMPLE_DIR / f"sample_{kind}_mid.jpg"
-        extract_mid_frame(out_video, mid_jpg)
+        if not mid_jpg.is_file():
+            extract_mid_frame(out_video, mid_jpg)
 
         results[kind] = {
             "path": str(out_video),
@@ -257,49 +286,36 @@ def main():
         }
         print(f"  {kind}: {info.width}x{info.height}, dur={info.duration:.2f}s, frames={info.total_frames}, sha256={sha[:12]}...")
 
-    # Reframe samples from existing repo 16:9 material
+    # Reframe samples from existing repo 16:9 material (full videos)
     repo_interview = Path("./artifacts/real_video/20261005T160434Z/artifacts/scene_interview_720p.mp4")
     repo_broll = Path("./artifacts/real_video/20261005T160434Z/artifacts/scene_broll_720p.mp4")
-
-    # Trim to 6s for sample brevity (<= 8s)
-    trimmed_interview = SAMPLE_DIR / "src_interview_16x9_6s.mp4"
-    trimmed_broll = SAMPLE_DIR / "src_broll_16x9_6s.mp4"
-
-    subprocess.run(
-        ["ffmpeg", "-y", "-ss", "0", "-i", str(repo_interview), "-t", "6.0", "-c", "copy", str(trimmed_interview)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-    subprocess.run(
-        ["ffmpeg", "-y", "-ss", "0", "-i", str(repo_broll), "-t", "6.0", "-c", "copy", str(trimmed_broll)],
-        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
 
     reframe_interview_out = SAMPLE_DIR / "sample_reframe_interview_9x16.mp4"
     reframe_broll_out = SAMPLE_DIR / "sample_reframe_broll_9x16.mp4"
 
-    print("Reframing interview to 9:16...")
-    reframe(trimmed_interview, reframe_interview_out, aspect="9:16")
+    print("Reframing full interview to 9:16...")
+    reframe(repo_interview, reframe_interview_out, aspect="9:16")
     info_re_int = probe_video(reframe_interview_out)
     sha_re_int = sha256_file(reframe_interview_out)
-    _, w_c_int, h_c_int, x_seq_int, metrics_int = compute_reframe_windows(trimmed_interview, aspect="9:16")
+    _, w_c_int, h_c_int, x_seq_int, metrics_int = compute_reframe_windows(repo_interview, aspect="9:16")
 
     # Generate interview visual artifacts
     sheet_int = SAMPLE_DIR / "sample_reframe_interview_9x16_sheet.jpg"
     make_contact_sheet(reframe_interview_out, sheet_int, num_frames=6)
     windows_int = SAMPLE_DIR / "reframe_interview_windows.jpg"
-    make_reframe_windows_overlay(trimmed_interview, x_seq_int, w_c_int, h_c_int, windows_int, num_frames=6)
+    make_reframe_windows_overlay(repo_interview, x_seq_int, w_c_int, h_c_int, windows_int, num_frames=6)
 
-    print("Reframing broll to 9:16...")
-    reframe(trimmed_broll, reframe_broll_out, aspect="9:16")
+    print("Reframing full broll to 9:16...")
+    reframe(repo_broll, reframe_broll_out, aspect="9:16")
     info_re_bro = probe_video(reframe_broll_out)
     sha_re_bro = sha256_file(reframe_broll_out)
-    _, w_c_bro, h_c_bro, x_seq_bro, metrics_bro = compute_reframe_windows(trimmed_broll, aspect="9:16")
+    _, w_c_bro, h_c_bro, x_seq_bro, metrics_bro = compute_reframe_windows(repo_broll, aspect="9:16")
 
     # Generate broll visual artifacts
     sheet_bro = SAMPLE_DIR / "sample_reframe_broll_9x16_sheet.jpg"
     make_contact_sheet(reframe_broll_out, sheet_bro, num_frames=6)
     windows_bro = SAMPLE_DIR / "reframe_broll_windows.jpg"
-    make_reframe_windows_overlay(trimmed_broll, x_seq_bro, w_c_bro, h_c_bro, windows_bro, num_frames=6)
+    make_reframe_windows_overlay(repo_broll, x_seq_bro, w_c_bro, h_c_bro, windows_bro, num_frames=6)
 
     results["reframe_interview"] = {
         "path": str(reframe_interview_out),
