@@ -665,7 +665,28 @@ async def _render_longvideo_line(order: dict[str, Any], output_dir: Path) -> dic
     }
 
 
+async def _render_handdraw_line(
+    *, order: dict[str, Any], context: dict[str, Any], output_dir: Path
+) -> dict[str, Any]:
+    """Render a real path-based hand-drawn explainer video with continuous narration."""
+    from hevi.layer4_legacy.handdraw.line import render_handdraw_line
+    res = await render_handdraw_line(order, output_dir)
+    return {
+        "status": "completed",
+        "result_video_path": res["video_path"],
+        "cover_path": res.get("cover_path"),
+        "srt_path": res.get("srt_path"),
+        "script_path": res.get("script_path"),
+        "verification_path": res.get("verification_path"),
+        "line_id": "handdraw",
+        "sha256": res.get("sha256"),
+        "duration": res.get("duration"),
+        "lufs": res.get("lufs"),
+    }
+
+
 _RENDERERS = {
+    "handdraw": _render_handdraw_line,
     "localization_dub": _render_localization_line,
     "shorts_clip": _render_clip_line,
     "podcast_repurpose": _render_clip_line,
