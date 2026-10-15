@@ -119,21 +119,21 @@
   },
   "weather": {
     "background_top": [
-      0.16,
-      0.42,
-      0.98
+      0.06,
+      0.22,
+      0.76
     ],
     "background_bottom": [
-      0.58,
-      0.75,
-      0.98
+      0.28,
+      0.56,
+      0.92
     ],
     "fog_color": [
-      0.4,
-      0.68,
-      0.98
+      0.22,
+      0.43,
+      0.78
     ],
-    "fog_density": 0.0018,
+    "fog_density": 0.001,
     "wind_strength": 1.6,
     "wind_speed": 2.0,
     "starfield": false,

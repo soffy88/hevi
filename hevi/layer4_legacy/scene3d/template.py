@@ -151,33 +151,42 @@ scene.add(rim);
 // specks.  A fraction are large soft "hero" stars; the rest are small and dim.
 let starField = null;
 let starPositions = null;
+let starSizes = null;
 const starCorridor = SPEC.name === 'through_star_sea';
+const starPath = (CAM.paths && CAM.paths[CAM.aspect] && CAM.paths[CAM.aspect].length)
+  ? CAM.paths[CAM.aspect] : (CAM.path || []);
+const starOrigin = starPath.length ? starPath[0].pos : CAM.pos;
+const starLook = starPath.length ? starPath[0].look : CAM.look;
+
 if (WEA.starfield){
   const N = Math.max(0, WEA.star_count|0);
   const pos = new Float32Array(N*3);
   starPositions = pos;
   const pha = new Float32Array(N);
   const siz = new Float32Array(N);
+  starSizes = siz;
   const bri = new Float32Array(N);
   const rad = Math.min(CAM.far*0.8, (WEA.star_radius ?? 900));
   const sizeScale = WEA.star_size ?? 1.0;
   for (let i=0;i<N;i++){
-    const hero = rnd() < (starCorridor ? 0.025 : 0.12);
+    const pinnedStar = starCorridor && i < 4;
+    const hero = pinnedStar || rnd() < (starCorridor ? 0.035 : 0.12);
     if (starCorridor){
-      // A volume along the camera's forward route, not a distant spherical shell.
-      // The star is placed at a random 2.5–7.5 world-unit lead in front of the
-      // camera path; its x/y spread matches the real frustum at that lead.
-      const lead = rrange(2.5, 7.5);
-      const z = rrange(0.5, 47.0);
-      const halfW = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * ASPECT * 0.82;
-      const halfH = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * 0.82;
-      const centerY = 0.8 + 1.2 * Math.max(0, Math.min(1, (48.0-z)/37.0));
-      pos[i*3] = rrange(-halfW, halfW);
-      pos[i*3+1] = centerY + rrange(-halfH, halfH);
-      pos[i*3+2] = z;
-      // Nearby stars are substantial enough to read as foreground depth cues.
-      siz[i] = (hero ? rrange(0.45, 0.90) : rrange(0.035, 0.13)) * sizeScale;
-      bri[i] = hero ? rrange(0.88, 1.0) : rrange(0.42, 0.82);
+      // Place points throughout a forward corridor relative to the first camera keyframe.
+      // The field is translated with the camera below, so the density does not vanish
+      // as the shot travels from z~48 to z~11.
+      const lead = pinnedStar ? 16.0 : rrange(5.0, 35.0);
+      const halfW = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * ASPECT * 0.88;
+      const halfH = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * 0.88;
+      const rise = (starLook[1] - starOrigin[1]) / Math.max(1.0, starOrigin[2] - starLook[2]);
+      const centerY = starOrigin[1] + rise * lead;
+      const heroSpot = [[0.10,0.28],[0.90,0.28],[0.12,0.72],[0.92,0.72]][i];
+      pos[i*3] = starOrigin[0] + (pinnedStar ? (heroSpot[0]-0.5)*2*halfW : rrange(-halfW, halfW));
+      pos[i*3+1] = centerY + (pinnedStar ? (0.5-heroSpot[1])*2*halfH : rrange(-halfH, halfH));
+      pos[i*3+2] = starOrigin[2] - lead;
+      // Four stable corner guides stay away from the hero planet at 540p and 1080p.
+      siz[i] = (pinnedStar ? 3.2 : hero ? rrange(0.62, 0.90) : rrange(0.055, 0.14)) * sizeScale;
+      bri[i] = pinnedStar ? 1.0 : hero ? rrange(0.96, 1.0) : rrange(0.68, 0.94);
     } else {
       const u = rnd()*2-1, th = rnd()*Math.PI*2, r = rad*(0.35+0.65*rnd());
       const sphereS = Math.sqrt(1-u*u);
@@ -195,13 +204,14 @@ if (WEA.starfield){
   g.setAttribute('aSize', new THREE.BufferAttribute(siz,1));
   g.setAttribute('aBri', new THREE.BufferAttribute(bri,1));
   const m = new THREE.ShaderMaterial({
-    transparent:true, depthWrite:false, fog:false,
+    transparent:true, depthWrite:false, depthTest:false,
+    blending:THREE.AdditiveBlending, fog:false, toneMapped:false,
     uniforms:{ t:{value:0} },
     vertexShader:`attribute float aPha; attribute float aSize; attribute float aBri;
       varying float vPha; varying float vBri; uniform float t;
       void main(){ vPha=aPha; vBri=aBri;
         vec4 mv=modelViewMatrix*vec4(position,1.0);
-        gl_PointSize = clamp(aSize * (${H * 0.5} / max(1.0, -mv.z)), 1.0, 72.0);
+        gl_PointSize = clamp(aSize * (${(H * 0.5).toFixed(1)} / max(1.0, -mv.z)), 1.0, 72.0);
         gl_Position=projectionMatrix*mv; }`,
     fragmentShader:`varying float vPha; varying float vBri; uniform float t;
       void main(){
@@ -210,15 +220,39 @@ if (WEA.starfield){
         vec2 d=gl_PointCoord-vec2(0.5);
         float r2=dot(d,d);
         if(r2>0.25) discard;
-        float core=smoothstep(0.25,0.0,r2);
-        float glow=smoothstep(0.25,0.02,r2);
-        float a=(0.35*core+0.65*glow)*tw*vBri;
+        float core=1.0-smoothstep(0.0,0.09,r2);
+        float glow=1.0-smoothstep(0.02,0.25,r2);
+        float a=(0.65*core+0.35*glow)*tw*vBri;
         vec3 col=mix(vec3(0.72,0.82,1.0), vec3(1.0,0.96,0.82), vBri);
-        gl_FragColor=vec4(col*a, a);
+        gl_FragColor=vec4(col, a);
       }`
   });
   starField = new THREE.Points(g, m);
   starField.frustumCulled = false;
+  starField.renderOrder = 2;
+  if (starCorridor){
+    const guideGeometry = new THREE.SphereGeometry(0.25, 12, 8);
+    const guideMaterial = new THREE.MeshBasicMaterial({
+      color:0xfff2bd, toneMapped:false, fog:false,
+      depthTest:false, depthWrite:false
+    });
+    const guideSpots = [[0.10,0.28],[0.90,0.28],[0.12,0.72],[0.92,0.72]];
+    for (const spot of guideSpots){
+      const lead = 16.0;
+      const halfW = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * ASPECT * 0.88;
+      const halfH = lead * Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2) * 0.88;
+      const rise = (starLook[1] - starOrigin[1]) / Math.max(1.0, starOrigin[2] - starLook[2]);
+      const centerY = starOrigin[1] + rise * lead;
+      const gem = new THREE.Mesh(guideGeometry, guideMaterial);
+      gem.position.set(
+        starOrigin[0] + (spot[0]-0.5)*2*halfW,
+        centerY + (0.5-spot[1])*2*halfH,
+        starOrigin[2] - lead
+      );
+      gem.renderOrder = 100;
+      starField.add(gem);
+    }
+  }
   scene.add(starField);
 }
 
@@ -440,16 +474,22 @@ function makeFox(params){
   const s = params.scale ?? 1.0;
   const col = params.color ?? [1.0,0.55,0.16];
   const cream = [1.0,0.93,0.82];
+  const furColor = new THREE.Color(
+    col[0], Math.min(col[1] * 0.25, 0.13), Math.min(col[2] * 0.10, 0.016)
+  );
+  const furMat = new THREE.MeshBasicMaterial({
+    color:furColor, toneMapped:false, fog:false
+  });
   const g = new THREE.Group();
   const faceFeatures = [];
   const eyeTargets = [];
   // Rounded body and oversized head preserve a soft preschool character silhouette.
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.43,20,14), toonMat(col));
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.43,20,14), furMat);
   body.scale.set(1.24,0.98,0.96);
   body.position.set(-0.06,0.49,0);
   body.castShadow = true;
   g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.39,20,16), toonMat(col));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.39,20,16), furMat);
   head.position.set(0.60,0.73,0);
   head.castShadow = true;
   g.add(head);
@@ -491,14 +531,14 @@ function makeFox(params){
   faceFeatures.push(nose);
   // Soft, triangular ears with pink inner surfaces.
   for (const z of [-0.19,0.19]){
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.125,0.31,10), toonMat(col));
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.125,0.31,10), furMat);
     ear.position.set(0.54,1.065,z);
     g.add(ear);
     const inner = new THREE.Mesh(new THREE.ConeGeometry(0.062,0.17,8), toonMat([1.0,0.68,0.72]));
     inner.position.set(0.565,1.055,z*1.02);
     g.add(inner);
   }
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.25,0.78,12), toonMat(col));
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.25,0.78,12), furMat);
   tail.position.set(-0.63,0.59,0);
   tail.rotation.z = Math.PI/2.5;
   g.add(tail);
@@ -611,7 +651,18 @@ function setTime(t){
       d.obj.rotation.z = (WEA.fox_sway !== false) ? Math.sin(curT*1.5)*0.025 : 0;
     }
   }
-  if (starField){ starField.material.uniforms.t.value = t; }
+  if (starField){
+    starField.material.uniforms.t.value = t;
+    // Keep a stable field ahead of the moving camera while a bounded lateral drift
+    // creates measurable star fly-bys without emptying the frame late in the shot.
+    if (starCorridor){
+      starField.position.set(
+        camera.position.x - starOrigin[0] - 7.5 * Math.min(1.0, t / 13.0),
+        camera.position.y - starOrigin[1],
+        camera.position.z - starOrigin[2]
+      );
+    }
+  }
   for (const f of fields){
     const sh = f.material.userData.shader;
     if (sh){ sh.uniforms.uTime.value = t; }
@@ -719,6 +770,39 @@ window.__foxFaceStats = function(times){
     }
   }
   return rows;
+};
+
+window.__starScreenSamples = function(times){
+  const out=[];
+  const tanV=Math.tan(THREE.MathUtils.degToRad(CAM.fov)/2);
+  const tanH=tanV*ASPECT;
+  for (const t of times){
+    setTime(t); scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
+    const stars=[];
+    if (starPositions && starSizes && starField){
+      for (let i=0;i<starPositions.length/3;i++){
+        const local=new THREE.Vector3(starPositions[i*3],starPositions[i*3+1],starPositions[i*3+2]);
+        const world=local.applyMatrix4(starField.matrixWorld);
+        const view=world.clone().applyMatrix4(camera.matrixWorldInverse);
+        const ndc=world.clone().project(camera);
+        const radius=starSizes[i]*(H*0.5)/Math.max(1.0,-view.z)*0.5;
+        stars.push({i,x:ndc.x*0.5+0.5,y:1-(ndc.y*0.5+0.5),ndcZ:ndc.z,radius,
+          visible:ndc.z>=-1 && ndc.z<=1 && Math.abs(ndc.x)<=1 && Math.abs(ndc.y)<=1});
+      }
+    }
+    const planets=planetObjs.map((planet)=>{
+      const center=new THREE.Vector3(...planet.userData.planetPos);
+      const view=center.clone().applyMatrix4(camera.matrixWorldInverse);
+      const ndc=center.clone().project(camera);
+      const dist=Math.max(1e-3,-view.z);
+      const r=planet.userData.radius*1.2;
+      const rx=(r/dist/tanH)*0.5, ry=(r/dist/tanV)*0.5;
+      return {x0:ndc.x*0.5+0.5-rx,x1:ndc.x*0.5+0.5+rx,
+        y0:1-(ndc.y*0.5+0.5)-ry,y1:1-(ndc.y*0.5+0.5)+ry};
+    });
+    out.push({time:t,stars,planets});
+  }
+  return out;
 };
 
 window.__starProximityStats = function(times){
