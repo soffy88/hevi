@@ -60,6 +60,8 @@ class AssetRecord:
     animations: list[dict[str, Any]] = field(default_factory=list)
     double_sided_count: int = 0
     height_p90_fraction: float | None = None
+    bbox_min: list[float] | None = None
+    bbox_max: list[float] | None = None
     bbox_size: list[float] | None = None
     yaw_deg: float = 0.0
     # Pipeline-derived fields (filled by the optimiser, if any).
@@ -91,6 +93,8 @@ class AssetRecord:
             "animations": list(self.animations),
             "double_sided_count": self.double_sided_count,
             "height_p90_fraction": self.height_p90_fraction,
+            "bbox_min": self.bbox_min,
+            "bbox_max": self.bbox_max,
             "bbox_size": self.bbox_size,
             "yaw_deg": self.yaw_deg,
             "optimized": self.optimized,
@@ -203,6 +207,8 @@ def build_record(
             if info.height_p90_fraction is not None
             else None
         ),
+        bbox_min=([round(v, 6) for v in info.bbox_min] if info.bbox_min else None),
+        bbox_max=([round(v, 6) for v in info.bbox_max] if info.bbox_max else None),
         bbox_size=(
             [round(v, 6) for v in info.bbox_size] if info.bbox_size else None
         ),

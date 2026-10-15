@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "asset_count": 8,
-  "digest": "63687bb87c223e1b94acd9f79e936f790e27859dcea35378bfabf7b10d0083c9",
+  "digest": "61449f48a5433e3864e8b645d9e491c6954677566365b9799fbcb8fb0b87e252",
   "assets": [
     {
       "asset_id": "building-03-boulangerie",
@@ -22,6 +22,16 @@
       "animations": [],
       "double_sided_count": 0,
       "height_p90_fraction": 0.787,
+      "bbox_min": [
+        -0.801263,
+        -1.0,
+        -0.830439
+      ],
+      "bbox_max": [
+        0.801263,
+        1.0,
+        0.830439
+      ],
       "bbox_size": [
         1.602527,
         2.0,
@@ -54,6 +64,16 @@
       "animations": [],
       "double_sided_count": 0,
       "height_p90_fraction": 0.7956,
+      "bbox_min": [
+        -0.836665,
+        -1.0,
+        -0.788079
+      ],
+      "bbox_max": [
+        0.836665,
+        1.0,
+        0.788079
+      ],
       "bbox_size": [
         1.67333,
         2.0,
@@ -86,6 +106,16 @@
       "animations": [],
       "double_sided_count": 0,
       "height_p90_fraction": 0.7688,
+      "bbox_min": [
+        -0.522416,
+        -0.569781,
+        -1.0
+      ],
+      "bbox_max": [
+        0.522416,
+        0.569781,
+        1.0
+      ],
       "bbox_size": [
         1.044832,
         1.139561,
@@ -125,6 +155,16 @@
       ],
       "double_sided_count": 0,
       "height_p90_fraction": 0.8953,
+      "bbox_min": [
+        -0.186584,
+        -0.5,
+        -0.11145
+      ],
+      "bbox_max": [
+        0.186584,
+        0.5,
+        0.11145
+      ],
       "bbox_size": [
         0.373169,
         1.0,
@@ -157,6 +197,16 @@
       "animations": [],
       "double_sided_count": 0,
       "height_p90_fraction": 0.821,
+      "bbox_min": [
+        -1.0,
+        -0.54915,
+        -0.413129
+      ],
+      "bbox_max": [
+        1.0,
+        0.54915,
+        0.413129
+      ],
       "bbox_size": [
         2.0,
         1.0983,
@@ -189,6 +239,16 @@
       "animations": [],
       "double_sided_count": 0,
       "height_p90_fraction": 0.7284,
+      "bbox_min": [
+        -0.5,
+        0.0,
+        -0.295136
+      ],
+      "bbox_max": [
+        0.5,
+        0.7948,
+        0.295136
+      ],
       "bbox_size": [
         1.0,
         0.7948,
@@ -221,6 +281,16 @@
       "animations": [],
       "double_sided_count": 0,
       "height_p90_fraction": 0.8843,
+      "bbox_min": [
+        -0.499023,
+        0.0,
+        -0.459381
+      ],
+      "bbox_max": [
+        0.499023,
+        1.0,
+        0.459381
+      ],
       "bbox_size": [
         0.998047,
         1.0,
@@ -253,6 +323,16 @@
       "animations": [],
       "double_sided_count": 0,
       "height_p90_fraction": 0.8798,
+      "bbox_min": [
+        -0.454681,
+        0.0,
+        -0.417877
+      ],
+      "bbox_max": [
+        0.454681,
+        1.0,
+        0.417877
+      ],
       "bbox_size": [
         0.909363,
         1.0,
