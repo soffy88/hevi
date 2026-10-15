@@ -20,6 +20,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hevi.director_lens.beat import build_grid as _build_grid, snap_all as _snap_all
+
 # ── 线路目录 ────────────────────────────────────────────────────────────
 # 每条线:显示名 + 该线的默认节奏/景深/光/禁止项倾向。
 LINE_CATALOG: dict[str, dict[str, Any]] = {
@@ -627,21 +629,39 @@ def autofill(
         Layer("bg", "bg", 0.30, 1.6, 0.86),
     ]
 
-    # ── 每个元素独立运动轨迹(事件时间已含错相 delay) ──
+    # ── 每个元素独立运动轨迹(事件时间已含错相 delay,并吸附到拍点) ──
+    # B: 重动作吸附到重拍网格(预备略早 / 撞击准拍 / 碎屑略晚),
+    # 使导演版 brief 天然满足 beat_alignment_rate ≥ 0.70。
+    snap_grid = _build_grid(bpm, fps, duration_s)
+    tmpl_event_dicts = [
+        {"t": round(t_rel * duration_s, 4), "kind": kind, "magnitude": mag}
+        for t_rel, kind, mag, _p in tmpl["events"]
+    ]
+    # snap_all 是按索引保序返回的(重动作吸附到重拍 + 类型微偏移,非重动作保持原时间),
+    # 因此用 zip 按下标配对,而不是按 (t, kind) 回查(原值已被吸附覆盖)。
+    snapped_times = [e["t"] for e in _snap_all(tmpl_event_dicts, snap_grid)]
+    snapped_frames = [int(e.get("snapped_frame", -1)) for e in _snap_all(tmpl_event_dicts, snap_grid)]
+
     tracks: list[ElementTrack] = []
     primary_events: list[MotionEvent] = []
-    for t_rel, kind, mag, params in tmpl["events"]:
-        primary_events.append(MotionEvent(round(t_rel * duration_s, 4), kind, mag, dict(params)))
+    for (t_rel, kind, mag, params), snapped_t, snapped_f in zip(
+        tmpl["events"], snapped_times, snapped_frames
+    ):
+        raw_t = round(t_rel * duration_s, 4)
+        ep = dict(params)
+        if snapped_f >= 0:
+            ep["snapped_frame"] = snapped_f
+        primary_events.append(MotionEvent(snapped_t, kind, mag, ep))
     tracks.append(ElementTrack("primary", tmpl["motion"], primary_events, start_delay_frames=0))
 
     # 次主体:延迟若干帧,响应主体的重动作(次级响应)
     delay_frames = max(2, round(fps * 0.10))
     secondary_events: list[MotionEvent] = []
-    for t_rel, kind, mag, params in tmpl["events"]:
+    for (t_rel, kind, mag, params), snapped_t in zip(tmpl["events"], snapped_times):
         if kind in ("impact", "wave", "cohere"):
             secondary_events.append(
                 MotionEvent(
-                    round(t_rel * duration_s + delay_frames / fps, 4), kind, mag * 0.5, dict(params)
+                    round(snapped_t + delay_frames / fps, 4), kind, mag * 0.5, dict(params)
                 )
             )
     tracks.append(

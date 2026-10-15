@@ -103,14 +103,15 @@ def director_check_workflow(
     kids_passed = True
     kids_report = {}
     vpath = Path(video_path) if video_path else None
-    if brief.line in ("character_narrative", "scene3d", "explainer") and vpath and vpath.exists():
+    is_anime_line = brief.line in ("character_narrative", "scene3d", "explainer")
+    if is_anime_line and vpath and vpath.exists():
         kids_report = kids_gate_workflow(vpath, srt_path=Path(srt_path) if srt_path else None)
         kids_passed = bool(kids_report.get("passed", True))
         checks["kids_gate"] = kids_report
     else:
         checks["kids_gate"] = {"status": "skipped_or_no_video", "reason": "video path not provided or non-anime line"}
 
-    # 综合判定
+    # 综合判定(完全由真实检查项决定;禁止硬写 passed)
     passed = len(errors) == 0 and kids_passed
     return {
         "passed": passed,
