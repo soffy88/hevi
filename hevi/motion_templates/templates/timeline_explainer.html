@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Hevi Motion Template - Timeline Explainer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #0b0f19;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="../lib/spring.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ------------------------------------------------------------------
+    // Test instrumentation: record every fillText bounding box (canvas
+    // space) only when explicitly enabled. Does not alter draw(t) output.
+    // ------------------------------------------------------------------
+    let __recordText = false;
+    window.__textBoxes = [];
+    window.__containers = [];
+    window.setRecordText = function (v) { __recordText = !!v; };
+
+    function _applyTransform(c, x, y) {
+      const m = c.getTransform();
+      return { x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f };
+    }
+
+    function ft(c, text, x, y, maxW) {
+      const str = String(text == null ? "" : text);
+      if (__recordText && str.trim().length > 0) {
+        const m = c.measureText(str);
+        const left = x - m.actualBoundingBoxLeft;
+        const right = x + m.actualBoundingBoxRight;
+        const top = y - m.actualBoundingBoxAscent;
+        const bottom = y + m.actualBoundingBoxDescent;
+        const p0 = _applyTransform(c, left, top);
+        const p1 = _applyTransform(c, right, bottom);
+        const bx = Math.min(p0.x, p1.x), by = Math.min(p0.y, p1.y);
+        const bw = Math.abs(p1.x - p0.x), bh = Math.abs(p1.y - p0.y);
+        let container = null;
+        const ccx = bx + bw / 2, ccy = by + bh / 2;
+        for (const r of (window.__containers || [])) {
+          if (ccx >= r.x && ccx <= r.x + r.w && ccy >= r.y && ccy <= r.y + r.h) { container = r; break; }
+        }
+        window.__textBoxes.push({ x: bx, y: by, w: bw, h: bh, text: str, alpha: c.globalAlpha, container: container });
+      }
+      if (maxW !== undefined) c.fillText(str, x, y, maxW);
+      else c.fillText(str, x, y);
+    }
+
+    let spec = {
+      title: "AI 视频模型技术演进史",
+      title_en: "Evolution of Generative Video Architecture",
+      duration: 12.0,
+      bpm: 120,
+      milestones: [
+        {
+          index: "01", year: "2023",
+          title_zh: "时空解耦注意力机制突破",
+          title_en: "Spatio-Temporal Decoupled Attention",
+          desc_zh: "在空间自注意力之后引入一维时间注意力，使视频潜空间帧间连贯性获得质的跃升",
+          desc_en: "Introducing 1D temporal attention after spatial layers enabled radical temporal coherence in latent space",
+          accent: "#f59e0b"
+        },
+        {
+          index: "02", year: "2024",
+          title_zh: "扩散变换器跨模态联合建模",
+          title_en: "Diffusion Transformer Joint Scaling",
+          desc_zh: "DiT 架构全面替代 U-Net，参数规模扩展带来逼真的物理世界动力学仿真与长镜头稳定",
+          desc_en: "DiT architecture replaced U-Net, scaling compute to simulate complex physics dynamics across long shots",
+          accent: "#38bdf8"
+        },
+        {
+          index: "03", year: "2025",
+          title_zh: "端到端音画同步与物理常识对齐",
+          title_en: "End-to-End Audio-Visual Synchronization",
+          desc_zh: "多模态大模型直接生成伴随音效与语音口型，彻底摆脱外部后期拼接的漂移误差",
+          desc_en: "Direct generation of synchronized audio, dialogue and sound effects without drifting alignment errors",
+          accent: "#10b981"
+        },
+        {
+          index: "04", year: "2026",
+          title_zh: "纯代码驱动确定性动效引擎",
+          title_en: "Code-Driven Deterministic Motion Engine",
+          desc_zh: "回归单 HTML 与无状态纯函数渲染，实现零幻觉、毫秒级对齐与毫秒级可复现交付",
+          desc_en: "Stateless pure function rendering guaranteeing zero hallucination, sub-frame precision and reproducible delivery",
+          accent: "#f59e0b"
+        }
+      ]
+    };
+
+    let width = 1080;
+    let height = 1920;
+    let fScale = 1.0;
+    let aspectName = "portrait";
+    let L = null;
+    let schedule = [];
+
+    // Per-aspect layout parameters. Fonts are in "1080-basis" design units and
+    // multiplied by the uniform fScale = min(w, h) / 1080, so a font is never
+    // stretched by one axis and squeezed by the other.
+    function layoutFor(w, h) {
+      if (w > h) {
+        return {
+          mode: "horizontal",
+          tag: 16, title: 34, titleEn: 16,
+          year: 18, mTitle: 32, mTitleEn: 14, desc: 28,
+          pad: 20, maxDescLines: 4, gap: 24, cardGap: 24
+        };
+      } else if (Math.abs(w - h) < 50) {
+        return {
+          mode: "vertical",
+          tag: 14, title: 30, titleEn: 14,
+          year: 15, mTitle: 26, mTitleEn: 12, desc: 18,
+          pad: 16, maxDescLines: 2, gap: 10, cardGap: 16
+        };
+      }
+      return {
+        mode: "vertical",
+        tag: 16, title: 44, titleEn: 18,
+        year: 20, mTitle: 44, mTitleEn: 18, desc: 32,
+        pad: 24, maxDescLines: 3, gap: 14, cardGap: 18
+      };
+    }
+
+    function buildSchedule() {
+      schedule = [];
+      const count = spec.milestones.length;
+      const totalDur = spec.duration || 12.0;
+      const stepDur = (totalDur - 1.5) / count;
+      for (let i = 0; i < count; i++) {
+        const tStart = 0.8 + i * stepDur;
+        schedule.push({ index: i, data: spec.milestones[i], tStart: tStart, tSettle: tStart + 0.6 });
+      }
+    }
+
+    window.initTemplate = function (newSpec, w, h) {
+      if (newSpec) spec = Object.assign({}, spec, newSpec);
+      width = w || 1080;
+      height = h || 1920;
+      canvas.width = width;
+      canvas.height = height;
+      fScale = Math.min(width, height) / 1080;
+      aspectName = width > height ? "landscape" : (Math.abs(width - height) < 50 ? "square" : "portrait");
+      L = layoutFor(width, height);
+      buildSchedule();
+    };
+
+    const COMPOUND_WORDS = [
+      "潜空间", "帧间", "连贯性", "物理世界", "动力学", "外部", "后期", "拼接",
+      "零幻觉", "短视频", "自动化", "管线", "基础框架", "严苛", "品控指标",
+      "注意力机制", "时空解耦", "扩散变换器", "跨模态", "确定性", "动效引擎", "纯函数"
+    ];
+
+    const BANNED_LINE_START = new Set(["，", "。", "、", "；", "：", "！", "？", "）", "》", "」", "』", "”", "’", "】", "·", "…"]);
+    const BANNED_LINE_END = new Set(["（", "《", "「", "『", "“", "‘", "【"]);
+
+    function tokenizeWordBoundaries(text, preTokens) {
+      if (preTokens && Array.isArray(preTokens) && preTokens.length > 0) {
+        return preTokens;
+      }
+      const str = String(text == null ? "" : text).replace(/。/g, "");
+      let raw = [];
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        const seg = new Intl.Segmenter("zh", { granularity: "word" });
+        raw = Array.from(seg.segment(str), x => x.segment);
+      } else {
+        let i = 0;
+        while (i < str.length) {
+          const ch = str[i];
+          if (/[A-Za-z0-9]/.test(ch)) {
+            let j = i;
+            while (j < str.length && /[A-Za-z0-9'’\-\.]/.test(str[j])) j++;
+            raw.push(str.slice(i, j)); i = j;
+          } else if (/\s/.test(ch)) {
+            let j = i;
+            while (j < str.length && /\s/.test(str[j])) j++;
+            raw.push(str.slice(i, j)); i = j;
+          } else { raw.push(ch); i++; }
+        }
+      }
+
+      const out = [];
+      let i = 0;
+      while (i < raw.length) {
+        let matched = false;
+        for (const cw of COMPOUND_WORDS) {
+          let comb = "";
+          let j = i;
+          while (j < raw.length && comb.length < cw.length) {
+            comb += raw[j];
+            j++;
+          }
+          if (comb === cw) {
+            out.push(cw);
+            i = j;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          out.push(raw[i]);
+          i++;
+        }
+      }
+      return out;
+    }
+
+    // Wrap on word boundaries with Chinese typesetting prohibition rules.
+    function wrapText(c, text, maxW, preTokens) {
+      const toks = tokenizeWordBoundaries(text, preTokens);
+      const lines = [];
+      let cur = "";
+
+      for (let i = 0; i < toks.length; i++) {
+        const tk = toks[i];
+        if (/^\s+$/.test(tk)) {
+          if (cur) cur += " ";
+          continue;
+        }
+
+        if (BANNED_LINE_START.has(tk)) {
+          cur += tk;
+          continue;
+        }
+
+        const test = cur + tk;
+        if (c.measureText(test).width <= maxW) {
+          cur = test;
+        } else {
+          if (!cur) {
+            let sub = "";
+            for (const ch of tk) {
+              if (c.measureText(sub + ch).width > maxW && sub) {
+                lines.push(sub);
+                sub = ch;
+              } else {
+                sub += ch;
+              }
+            }
+            cur = sub;
+          } else {
+            const lastChar = cur.slice(-1);
+            if (BANNED_LINE_END.has(lastChar)) {
+              lines.push(cur.slice(0, -1));
+              cur = lastChar + tk;
+            } else {
+              lines.push(cur);
+              cur = tk;
+            }
+          }
+        }
+      }
+      if (cur) lines.push(cur);
+      return lines.length ? lines : [""];
+    }
+
+    function drawRoundedRect(c, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.arcTo(x + w, y, x + w, y + r, r);
+      c.lineTo(x + w, y + h - r);
+      c.arcTo(x + w, y + h, x + w - r, y + h, r);
+      c.lineTo(x + r, y + h);
+      c.arcTo(x, y + h, x, y + h - r, r);
+      c.lineTo(x, y + r);
+      c.arcTo(x, y, x + r, y, r);
+      c.closePath();
+    }
+
+    function safe() {
+      const margin = 80 * fScale;
+      return {
+        left: margin,
+        right: width - margin,
+        top: 150 * fScale,
+        bottom: height - 140 * fScale
+      };
+    }
+
+    function drawBackground(c, w, h) {
+      c.fillStyle = "#0b0f19";
+      c.fillRect(0, 0, w, h);
+      c.strokeStyle = "rgba(51, 65, 85, 0.25)";
+      c.lineWidth = 1;
+      const tickStep = 60 * fScale;
+      for (let x = tickStep; x < w; x += tickStep * 2) {
+        c.beginPath();
+        c.moveTo(x, 0); c.lineTo(x, 10 * fScale);
+        c.moveTo(x, h - 10 * fScale); c.lineTo(x, h);
+        c.stroke();
+      }
+    }
+
+    function drawHeader(c) {
+      const s = safe();
+      let y = s.top;
+      c.textAlign = "left";
+      c.textBaseline = "top";
+
+      c.fillStyle = "#f59e0b";
+      c.font = `700 ${Math.round(L.tag * fScale)}px monospace`;
+      ft(c, "TIMELINE EXPLAINER // LINE-ART ARCHITECTURE", s.left, y);
+      y += L.tag * fScale * 1.8;
+
+      c.fillStyle = "#ffffff";
+      c.font = `700 ${Math.round(L.title * fScale)}px -apple-system, sans-serif`;
+      ft(c, String(spec.title || "").replace(/。/g, ""), s.left, y);
+      y += L.title * fScale * 1.4;
+
+      if (spec.title_en) {
+        c.fillStyle = "rgba(148, 163, 184, 0.9)";
+        c.font = `500 ${Math.round(L.titleEn * fScale)}px monospace`;
+        ft(c, String(spec.title_en).replace(/。/g, ""), s.left, y);
+        y += L.titleEn * fScale * 1.6;
+      }
+
+      y += 6 * fScale;
+      c.strokeStyle = "rgba(71, 85, 105, 0.4)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(s.left, y);
+      c.lineTo(s.right, y);
+      c.stroke();
+      return y + 22 * fScale;
+    }
+
+    // Measure card content height and wrapped lines for a given inner width.
+    function measureCard(c, m, innerW) {
+      const out = { titleLines: [], titleEnLines: [], descLines: [] };
+      c.font = `700 ${Math.round(L.mTitle * fScale)}px -apple-system, sans-serif`;
+      out.titleLines = wrapText(c, m.title_zh, innerW, m.title_tokens);
+      if (m.title_en) {
+        c.font = `500 ${Math.round(L.mTitleEn * fScale)}px monospace`;
+        out.titleEnLines = wrapText(c, m.title_en, innerW, m.title_en_tokens);
+      }
+      if (m.desc_zh) {
+        c.font = `400 ${Math.round(L.desc * fScale)}px -apple-system, sans-serif`;
+        out.descLines = wrapText(c, m.desc_zh, innerW, m.desc_tokens).slice(0, L.maxDescLines);
+      }
+      const yearH = L.year * fScale * 1.5;
+      const titleH = out.titleLines.length * L.mTitle * fScale * 1.3;
+      const titleEnH = out.titleEnLines.length * L.mTitleEn * fScale * 1.6;
+      const descH = out.descLines.length * L.desc * fScale * 1.35;
+      out.contentH = yearH + titleH + titleEnH + descH;
+      return out;
+    }
+
+    function drawCard(c, m, idx, cardX, cardY, cardW, cardH, revealP, accent) {
+      window.__containers.push({ x: cardX, y: cardY, w: cardW, h: cardH });
+      const pad = L.pad * fScale;
+      const innerW = cardW - pad * 2;
+
+      c.fillStyle = "rgba(22, 32, 50, 0.85)";
+      c.strokeStyle = revealP < 0.9 ? accent : "rgba(71, 85, 105, 0.55)";
+      c.lineWidth = 1.5 * fScale;
+      drawRoundedRect(c, cardX, cardY, cardW, cardH, 16 * fScale);
+      c.fill();
+      c.stroke();
+
+      // Accent strip
+      c.fillStyle = accent;
+      c.fillRect(cardX, cardY + 14 * fScale, 4 * fScale, Math.max(0, cardH - 28 * fScale));
+
+      const measured = measureCard(c, m, innerW);
+      let y = cardY + pad;
+      c.textAlign = "left";
+      c.textBaseline = "top";
+
+      c.fillStyle = accent;
+      c.font = `700 ${Math.round(L.year * fScale)}px monospace`;
+      ft(c, `[ ${m.year || "MILESTONE"} ]  PHASE ${m.index || String(idx + 1).padStart(2, "0")}`, cardX + pad, y);
+      y += L.year * fScale * 1.8;
+
+      c.fillStyle = "#ffffff";
+      c.font = `700 ${Math.round(L.mTitle * fScale)}px -apple-system, sans-serif`;
+      for (const line of measured.titleLines) {
+        ft(c, line, cardX + pad, y);
+        y += L.mTitle * fScale * 1.35;
+      }
+
+      if (measured.titleEnLines.length) {
+        c.fillStyle = "rgba(148, 163, 184, 0.9)";
+        c.font = `500 ${Math.round(L.mTitleEn * fScale)}px monospace`;
+        for (const line of measured.titleEnLines) {
+          ft(c, line, cardX + pad, y);
+          y += L.mTitleEn * fScale * 1.6;
+        }
+      }
+
+      if (measured.descLines.length) {
+        c.fillStyle = "#cbd5e1";
+        c.font = `400 ${Math.round(L.desc * fScale)}px -apple-system, sans-serif`;
+        for (const line of measured.descLines) {
+          ft(c, line, cardX + pad, y);
+          y += L.desc * fScale * 1.35;
+        }
+      }
+    }
+
+    window.draw = function (t) {
+      ctx.clearRect(0, 0, width, height);
+      if (__recordText) { window.__textBoxes = []; window.__containers = []; }
+      const _s = safe();
+      window.__safeArea = { left: _s.left, top: _s.top, right: _s.right, bottom: _s.bottom };
+
+      drawBackground(ctx, width, height);
+      const timelineTop = drawHeader(ctx);
+
+      const s = safe();
+      const count = schedule.length;
+      const accentOf = (m) => m.accent || "#f59e0b";
+
+      if (L.mode === "horizontal") {
+        const cardW = (s.right - s.left - L.cardGap * (count - 1)) / count;
+        const innerW = cardW - L.pad * 2 * fScale;
+
+        // Measure maximum card height across all milestones so cards fit their actual content
+        let maxCardContentH = 0;
+        for (let i = 0; i < count; i++) {
+          const msd = measureCard(ctx, schedule[i].data, innerW);
+          if (msd.contentH > maxCardContentH) maxCardContentH = msd.contentH;
+        }
+        const cardH = Math.min(s.bottom - timelineTop - 60 * fScale, maxCardContentH + L.pad * 2 * fScale + 18 * fScale);
+        const totalBlockH = 28 * fScale + cardH;
+        const availableH = s.bottom - timelineTop;
+        const offsetY = Math.max(0, (availableH - totalBlockH) / 2);
+
+        const axisY = timelineTop + offsetY + 14 * fScale;
+        const cardTop = axisY + 28 * fScale;
+
+        // Axis line
+        ctx.strokeStyle = "rgba(51, 65, 85, 0.6)";
+        ctx.lineWidth = 2 * fScale;
+        ctx.beginPath();
+        ctx.moveTo(s.left, axisY);
+        ctx.lineTo(s.right, axisY);
+        ctx.stroke();
+
+        const lastT = schedule[count - 1].tStart;
+        const overall = Math.min(1.0, Spring.stepResponse(t - schedule[0].tStart, 10.0, 0.85));
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 3 * fScale;
+        ctx.beginPath();
+        ctx.moveTo(s.left, axisY);
+        ctx.lineTo(s.left + (s.right - s.left) * overall, axisY);
+        ctx.stroke();
+
+        for (let i = 0; i < count; i++) {
+          const item = schedule[i];
+          const m = item.data;
+          const accent = accentOf(m);
+          const cxNode = s.left + cardW / 2 + i * (cardW + L.cardGap);
+          const tau = t - item.tStart;
+          const revealP = Spring.stepResponse(tau, 14.0, 0.82);
+          const reached = tau >= 0;
+
+          ctx.beginPath();
+          ctx.arc(cxNode, axisY, 10 * fScale, 0, Math.PI * 2);
+          ctx.fillStyle = reached ? accent : "#1e293b";
+          ctx.strokeStyle = reached ? "#ffffff" : "#475569";
+          ctx.lineWidth = 2 * fScale;
+          ctx.fill(); ctx.stroke();
+
+          if (revealP > 0.01) {
+            ctx.save();
+            ctx.globalAlpha = Math.min(1.0, revealP);
+            const slide = (1.0 - revealP) * 18 * fScale;
+            drawCard(ctx, m, i, s.left + i * (cardW + L.cardGap), cardTop + slide, cardW, cardH, revealP, accent);
+            ctx.restore();
+          }
+        }
+      } else {
+        const axisX = s.left + 18 * fScale;
+        const cardX = axisX + 40 * fScale;
+        const cardW = s.right - cardX;
+        const available = s.bottom - timelineTop;
+        const spacing = available / count;
+
+        // Axis line
+        ctx.strokeStyle = "rgba(51, 65, 85, 0.6)";
+        ctx.lineWidth = 2 * fScale;
+        ctx.beginPath();
+        ctx.moveTo(axisX, timelineTop);
+        ctx.lineTo(axisX, s.bottom);
+        ctx.stroke();
+
+        const overall = Math.min(1.0, Spring.stepResponse(t - schedule[0].tStart, 10.0, 0.85));
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 3 * fScale;
+        ctx.beginPath();
+        ctx.moveTo(axisX, timelineTop);
+        ctx.lineTo(axisX, timelineTop + available * overall);
+        ctx.stroke();
+
+        for (let i = 0; i < count; i++) {
+          const item = schedule[i];
+          const m = item.data;
+          const accent = accentOf(m);
+          const nodeY = timelineTop + (i + 0.5) * spacing;
+          const tau = t - item.tStart;
+          const revealP = Spring.stepResponse(tau, 14.0, 0.82);
+          const reached = tau >= 0;
+
+          ctx.beginPath();
+          ctx.arc(axisX, nodeY, 10 * fScale, 0, Math.PI * 2);
+          ctx.fillStyle = reached ? accent : "#1e293b";
+          ctx.strokeStyle = reached ? "#ffffff" : "#475569";
+          ctx.lineWidth = 2 * fScale;
+          ctx.fill(); ctx.stroke();
+
+          if (revealP > 0.01) {
+            const innerW = cardW - L.pad * 2 * fScale;
+            const measured = measureCard(ctx, m, innerW);
+            const cardH = Math.min(spacing - L.gap * fScale, measured.contentH + L.pad * 2 * fScale);
+            const cardY = nodeY - cardH / 2;
+            ctx.save();
+            ctx.globalAlpha = Math.min(1.0, revealP);
+            const slide = (1.0 - revealP) * 18 * fScale;
+
+            // Connector
+            ctx.strokeStyle = accent;
+            ctx.lineWidth = 1.5 * fScale;
+            ctx.beginPath();
+            ctx.moveTo(axisX + 10 * fScale, nodeY);
+            ctx.lineTo(cardX, nodeY);
+            ctx.stroke();
+
+            drawCard(ctx, m, i, cardX + slide, cardY, cardW, cardH, revealP, accent);
+            ctx.restore();
+          }
+        }
+      }
+    };
+
+    buildSchedule();
+    L = layoutFor(width, height);
+  })();
+  </script>
+</body>
+</html>

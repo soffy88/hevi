@@ -1,0 +1,12 @@
+id: bpm_grid_alignment
+title: 转场与关键动作对齐 BPM 网格
+category: 音乐与节奏
+trigger:
+  - 分镜切分、关键动效起止点排期、配乐同步
+counter_example: |
+  转场与关键动作时间戳随意漂移，未对齐伴奏节拍点，导致音画重音脱节、视觉节奏迟滞或抢拍。
+correct_approach: |
+  建立基准 BPM 节拍网格（如 120/128 BPM 下的整拍或半拍网格点）。每个转场起点、镜头切换以及关键 UI 命中事件（如敲击、展开、点击）必须精确落在 BPM 网格点上（容差 ≤ 20ms），使顿挫紧贴音乐律动。
+source_case_id: "2103273003555402193"
+source_author: zero (@twoclipping)
+prompt_summary: 所有转场起点、镜头切换与关键打击点必须严格对齐 BPM 网格（如 120 BPM 下的拍点），音画顿挫精准合拍。

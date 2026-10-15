@@ -1,0 +1,13 @@
+id: closed_form_spring
+title: 闭式多目标叠加弹簧
+category: 动效物理
+trigger:
+  - 元素位移、缩放、旋转或多阶段目标过渡
+  - 设计微小过冲质感动画
+counter_example: |
+  使用带强烈振荡的弹性缓动曲线（bouncy easing）、传统 Euler 逐帧步进数值积分模拟弹簧，或在状态改变时重置初速度并带有历史状态，导致计算无法确定性倒回或跳步。
+correct_approach: |
+  使用闭式阻尼阶跃响应弹簧公式（欠阻尼或临界阻尼），只允许极其微小的过冲（tiny overshoot）。当数值多次改变目标时，将其计算为每次目标变化的闭式弹簧阶跃之和（SpringTrack 叠加），保持为纯函数无积分状态。
+source_case_id: "2103273003555402193"
+source_author: zero (@twoclipping)
+prompt_summary: 使用闭式阻尼阶跃弹簧实现动效，最多仅允许微小过冲；多次目标变动通过叠加单次变化的闭式弹簧计算，保持纯函数特性，严禁使用 bouncy easing 或积分模拟。

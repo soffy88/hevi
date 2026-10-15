@@ -1,0 +1,12 @@
+id: real_assets_not_placeholders
+title: 真实素材驱动（杜绝占位假数据）
+category: 资产规范
+trigger:
+  - UI 界面展示、数据图表、演示文案与插图素材准备
+counter_example: |
+  使用 Lorem Ipsum 假文案、灰色占位方块、虚假用户头像、模糊假数据图表，造成浓重的人工 demo 虚假感。
+correct_approach: |
+  一律使用真实产品数据、真实 UI 截图或实拍垂直视频资产。所有展示数据和交互流程有据可查，通过真实光标点击/打字驱动串联，代码仅负责动效编排与视觉演绎。
+source_case_id: "2103483957266268381"
+source_author: Martijn Verbove (@verbove)
+prompt_summary: 坚持使用真实产品资产与真实数据，禁止 Lorem Ipsum、灰块占位与伪造假数据，用真实交互动作串联展示。

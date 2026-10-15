@@ -1,0 +1,254 @@
+{
+  "brief_id": "scene3d-water-570c24a5",
+  "prompt": "水滴落进小水塘",
+  "line": "scene3d",
+  "director_version": {
+    "mp4": "audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4",
+    "sha256": "b6247e293249826ae3640daf2343436800d87ada6ecb254fc0c8fa5d9580b9fa",
+    "duration_s": 9.0,
+    "baseline": false
+  },
+  "baseline_version": {
+    "mp4": "audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_baseline.mp4",
+    "sha256": "4d17926689c8a3f81cc205d48bdfa6c8bc3e76fb37dcadd1debfc8ac705c7475",
+    "duration_s": 9.0,
+    "baseline": true
+  },
+  "director_report": {
+    "passed": false,
+    "brief_id": "scene3d-water-570c24a5",
+    "line": "scene3d",
+    "checks": {
+      "ppt_sync": {
+        "passed": true,
+        "detail": "motion types: ['wave', 'spring_response', 'float'], duplicate count: 0"
+      },
+      "static_freeze": {
+        "passed": true,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 110.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.14285714285714285,
+        "details": [
+          {
+            "kind": "drop",
+            "t": 1.98,
+            "dev_frames": 19,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 3.6,
+            "dev_frames": 12,
+            "aligned": false
+          },
+          {
+            "kind": "wave",
+            "t": 3.96,
+            "dev_frames": 1,
+            "aligned": true
+          },
+          {
+            "kind": "cohere",
+            "t": 5.4,
+            "dev_frames": 2,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 3.7,
+            "dev_frames": 9,
+            "aligned": false
+          },
+          {
+            "kind": "wave",
+            "t": 4.06,
+            "dev_frames": 2,
+            "aligned": false
+          },
+          {
+            "kind": "cohere",
+            "t": 5.5,
+            "dev_frames": 5,
+            "aligned": false
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "red",
+        "verdict": "red",
+        "passed": false,
+        "profile": "kids",
+        "path": "audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4",
+        "violations": [
+          "单镜头最短时长 0.03s < 2.5s 违规"
+        ],
+        "warnings": [
+          "平均镜头时长 0.03s < 3.5s 警告"
+        ],
+        "timecodes": [
+          {
+            "item": "shot_duration",
+            "time": 0.033333,
+            "reason": "shot < 2.5s"
+          }
+        ],
+        "metrics": {
+          "min_shot_duration": 0.033333,
+          "avg_shot_duration": 0.033333,
+          "shot_count": 1,
+          "integrated_lufs": -16.0,
+          "true_peak_dbtp": -1.5,
+          "subtitle_font_px": 64,
+          "is_portrait": false,
+          "forbidden_words_found": []
+        }
+      }
+    },
+    "errors": [
+      "拍点对齐率过低: 0.14 < 0.60"
+    ],
+    "warnings": []
+  },
+  "baseline_report": {
+    "passed": false,
+    "brief_id": "scene3d-water-570c24a5",
+    "line": "scene3d",
+    "checks": {
+      "ppt_sync": {
+        "passed": false,
+        "detail": "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"
+      },
+      "static_freeze": {
+        "passed": false,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 110.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.14285714285714285,
+        "details": [
+          {
+            "kind": "drop",
+            "t": 1.98,
+            "dev_frames": 19,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 3.6,
+            "dev_frames": 12,
+            "aligned": false
+          },
+          {
+            "kind": "wave",
+            "t": 3.96,
+            "dev_frames": 1,
+            "aligned": true
+          },
+          {
+            "kind": "cohere",
+            "t": 5.4,
+            "dev_frames": 2,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 3.7,
+            "dev_frames": 9,
+            "aligned": false
+          },
+          {
+            "kind": "wave",
+            "t": 4.06,
+            "dev_frames": 2,
+            "aligned": false
+          },
+          {
+            "kind": "cohere",
+            "t": 5.5,
+            "dev_frames": 5,
+            "aligned": false
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "red",
+        "verdict": "red",
+        "passed": false,
+        "profile": "kids",
+        "path": "audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_baseline.mp4",
+        "violations": [
+          "单镜头最短时长 0.03s < 2.5s 违规"
+        ],
+        "warnings": [
+          "平均镜头时长 0.03s < 3.5s 警告"
+        ],
+        "timecodes": [
+          {
+            "item": "shot_duration",
+            "time": 0.033333,
+            "reason": "shot < 2.5s"
+          }
+        ],
+        "metrics": {
+          "min_shot_duration": 0.033333,
+          "avg_shot_duration": 0.033333,
+          "shot_count": 1,
+          "integrated_lufs": -16.0,
+          "true_peak_dbtp": -1.5,
+          "subtitle_font_px": 64,
+          "is_portrait": false,
+          "forbidden_words_found": []
+        }
+      }
+    },
+    "errors": [
+      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结",
+      "拍点对齐率过低: 0.14 < 0.60"
+    ],
+    "warnings": []
+  }
+}

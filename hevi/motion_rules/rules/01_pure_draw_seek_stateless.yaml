@@ -1,0 +1,13 @@
+id: pure_draw_seek_stateless
+title: 单一纯时间函数 draw(t)/seek(t) 无状态架构
+category: 架构与渲染
+trigger:
+  - 编写 Canvas / HTML / WebGL 动画逻辑
+  - 定义帧渲染循环与时间驱动控制器
+counter_example: |
+  使用 CSS transitions/animations、requestAnimationFrame 累加递推变量（如 pos += vel），或使用 setInterval/setTimeout 异步计时器，在帧与帧之间残留可变状态。这会导致动画无法任意时间随机 seek、无法逐帧确定性渲染，也无法做多 subframe 运动模糊混合。
+correct_approach: |
+  单 HTML 文件，单一 canvas 或 DOM 容器。所有的视觉样式、位置、尺寸、旋转与透明度均在 seek(t) 或 draw(t) 函数内根据时间纯函数实时计算得出。严格杜绝任何帧间状态累加，任意时刻 t 输入都能精确且恒定地输出完全一致的画面。
+source_case_id: "2103483957266268381"
+source_author: Martijn Verbove (@verbove)
+prompt_summary: 所有动画表现必须是时间 t 的纯函数：单一 draw(t)/seek(t) 接口驱动，禁止 CSS transitions、禁止定时器、帧间禁止保留可变状态，保证任意时刻确定性复现。

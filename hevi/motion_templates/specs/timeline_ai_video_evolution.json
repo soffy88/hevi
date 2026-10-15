@@ -1,0 +1,48 @@
+{
+  "title": "AI 视频模型技术演进史",
+  "title_en": "Evolution of Generative Video Architecture",
+  "duration": 10.0,
+  "bpm": 120,
+  "milestones": [
+    {
+      "index": "01",
+      "year": "2023",
+      "title_zh": "时空解耦注意力机制突破",
+      "title_en": "Spatio-Temporal Decoupled Attention",
+      "desc_zh": "在空间自注意力后引入一维时间注意力，使视频潜空间帧间连贯性获得质的跃升",
+      "desc_tokens": ["在", "空间", "自", "注意力", "后", "引入", "一维", "时间", "注意力", "，", "使", "视频", "潜空间", "帧间", "连贯性", "获得", "质", "的", "跃升"],
+      "desc_en": "Introducing 1D temporal attention enabled radical temporal coherence in latent space",
+      "accent": "#f59e0b"
+    },
+    {
+      "index": "02",
+      "year": "2024",
+      "title_zh": "扩散变换器跨模态联合建模",
+      "title_en": "Diffusion Transformer Joint Scaling",
+      "desc_zh": "DiT 架构全面替代 UNet，参数扩展带来逼真的物理世界动力学仿真与长镜头稳定",
+      "desc_tokens": ["DiT", " ", "架构", "全面", "替代", " ", "UNet", "，", "参数", "扩展", "带来", "逼真", "的", "物理世界", "动力学", "仿真", "与", "长镜头", "稳定"],
+      "desc_en": "DiT replaced UNet, scaling compute to simulate complex physics dynamics across long shots",
+      "accent": "#38bdf8"
+    },
+    {
+      "index": "03",
+      "year": "2025",
+      "title_zh": "端到端音画同步与物理对齐",
+      "title_en": "End-to-End Audio-Visual Synchronization",
+      "desc_zh": "多模态大模型直接生成伴随音效与语音口型，彻底摆脱外部后期拼接的漂移误差",
+      "desc_tokens": ["多模态", "大模型", "直接", "生成", "伴随", "音效", "与", "语音", "口型", "，", "彻底", "摆脱", "外部", "后期", "拼接", "的", "漂移", "误差"],
+      "desc_en": "Direct generation of synchronized audio and dialogue without drifting alignment errors",
+      "accent": "#10b981"
+    },
+    {
+      "index": "04",
+      "year": "2026",
+      "title_zh": "纯代码驱动确定性动效引擎",
+      "title_en": "Code-Driven Deterministic Motion Engine",
+      "desc_zh": "回归单 HTML 与无状态纯函数渲染，实现零幻觉、毫秒级对齐与可复现交付",
+      "desc_tokens": ["回归", "单", " ", "HTML", " ", "与", "无状态", "纯函数", "渲染", "，", "实现", "零幻觉", "、", "毫秒级", "对齐", "与", "可复现", "交付"],
+      "desc_en": "Stateless pure function rendering guaranteeing zero hallucination and sub-frame precision",
+      "accent": "#f59e0b"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "line_to_structure": {
+    "path": "samples/aimotion_fx/sample_line_to_structure.mp4",
+    "sha256": "5f25b7b235ff6de42ba82ff16de6abb7e5bd302f2fac02a576c6810c7fad26d4",
+    "duration": 5.84,
+    "total_frames": 146,
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "mid_jpg": "samples/aimotion_fx/sample_line_to_structure_mid.jpg"
+  },
+  "water_ripple": {
+    "path": "samples/aimotion_fx/sample_water_ripple.mp4",
+    "sha256": "b1488f69fdda2750dbfb2bd31d8023fd6b171dffe01f672e8e75a009e7237011",
+    "duration": 5.84,
+    "total_frames": 146,
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "mid_jpg": "samples/aimotion_fx/sample_water_ripple_mid.jpg"
+  },
+  "glass_refract": {
+    "path": "samples/aimotion_fx/sample_glass_refract.mp4",
+    "sha256": "2675fecca5d63edc6f5a893aae49c79ffca71a94505f6fbb2ec54c7a20e13564",
+    "duration": 5.84,
+    "total_frames": 146,
+    "width": 720,
+    "height": 1280,
+    "fps": 25.0,
+    "mid_jpg": "samples/aimotion_fx/sample_glass_refract_mid.jpg"
+  },
+  "reframe_interview": {
+    "path": "samples/aimotion_fx/sample_reframe_interview_9x16.mp4",
+    "sha256": "94bdfec87a93dea97015417a7aa39dd0eed920b7aa67c93ed92e1f38419587cc",
+    "duration": 22.64,
+    "total_frames": 566,
+    "width": 404,
+    "height": 720,
+    "fps": 25.0,
+    "metrics": {
+      "subject_in_window_ratio": 0.8956,
+      "subject_coverage": 0.8956,
+      "displacement_p50": 0.0,
+      "displacement_p95": 0.0,
+      "displacement_max": 0.0,
+      "shot_cuts": [
+        54,
+        98,
+        116,
+        151,
+        176,
+        186,
+        199,
+        348,
+        354
+      ],
+      "sliced_face_ratio": 0.0141,
+      "spacecraft_in_window_ratio": 0.463,
+      "is_person_mode": true,
+      "num_frames": 566
+    },
+    "contact_sheet": "samples/aimotion_fx/sample_reframe_interview_9x16_sheet.jpg",
+    "windows_overlay": "samples/aimotion_fx/reframe_interview_windows.jpg"
+  },
+  "reframe_broll": {
+    "path": "samples/aimotion_fx/sample_reframe_broll_9x16.mp4",
+    "sha256": "952af5380af26b2ef98dfefa71406883cc17a9b3a2c6a956d01aacbb72788b4a",
+    "duration": 13.96,
+    "total_frames": 349,
+    "width": 404,
+    "height": 720,
+    "fps": 25.0,
+    "metrics": {
+      "subject_in_window_ratio": 0.4286,
+      "subject_coverage": 0.4286,
+      "displacement_p50": 0.0,
+      "displacement_p95": 8.0,
+      "displacement_max": 8.0,
+      "shot_cuts": [],
+      "sliced_face_ratio": 0.0143,
+      "spacecraft_in_window_ratio": 1.0,
+      "is_person_mode": false,
+      "num_frames": 349
+    },
+    "contact_sheet": "samples/aimotion_fx/sample_reframe_broll_9x16_sheet.jpg",
+    "windows_overlay": "samples/aimotion_fx/reframe_broll_windows.jpg"
+  }
+}

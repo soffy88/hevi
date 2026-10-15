@@ -1,0 +1,42 @@
+{
+  "id": "jiang_wen",
+  "display_zh": "姜文",
+  "display_en": "Jiang Wen",
+  "source": {"origin": "article", "upstream_commit": "", "license": "article"},
+  "lens_aspect": {"focal": "25-35mm wide, slight fisheye distortion", "aspect": "2.35:1", "notes": "广角略畸变"},
+  "composition": {"rules": ["dutch angles, tilted horizon", "sudden extreme close-up after wide shot", "asymmetrical push subject to frame edge"], "zh": "倾斜构图 + 突然大特写 + 不对称推边"},
+  "lighting": {"rules": ["hard key with strong directional shadows", "high contrast, near-black vs blazing highlight"], "zh": "硬光强投影 + 高反差"},
+  "color": {"palette": ["#c0392b", "#d4a574", "#f5d76e", "#1a1a1a"], "rules": ["high contrast monochrome or warm gold tones"], "zh": "高反差黑白或浓烈暖金"},
+  "motion": {"rules": ["rapid push/pull with 25-35mm, slight barrel distortion", "handheld whip pan to jump cut"], "zh": "广角快速推拉 + 手持甩镜跳切"},
+  "rhythm": {"avg_shot_s": 2.2, "cut_rule": "extremely fast, jump cuts on action beat", "zh": "节奏极快，跳切"},
+  "signature": [
+    {"en": "fast 25-35mm push-pull with barrel distortion", "zh": "广角快速推拉略畸变", "required": true},
+    {"en": "sudden tilt + extreme close-up", "zh": "倾斜构图 + 突然大特写", "required": true},
+    {"en": "high contrast hard light with strong directional shadow", "zh": "硬光强投影", "required": true}
+  ],
+  "negative": ["static tripod", "soft diffused light", "balanced symmetric composition", "slow dolly", "desaturated palette"],
+  "fits": ["political thriller", "intense dialogue showdown", "action burst"],
+  "avoid": ["quiet romance", "contemplative mood", "documentary"],
+  "anime_safe": {
+    "conflict_words": ["live-action footage", "film grain"],
+    "rewrites": {"barrel distortion": "wide-angle manga splash page layout"},
+    "notes": "夸张的广角畸变在动漫里是表现手法"
+  },
+  "vertical_9x16": {
+    "mode": "recompose",
+    "rules": [
+      "switch to 9:16, keep tilted horizon but center the subject vertically in lower half",
+      "extreme close-up dominates upper third",
+      "do not letterbox — wide-angle distortion is the style"
+    ],
+    "note": "竖版重写倾斜构图，不要信箱"
+  },
+  "grade": {
+    "description": "high contrast, punchy warm gold, slight vignette",
+    "ffmpeg_steps": [
+      {"filter": "eq", "args": "contrast=1.45:saturation=1.30:gamma=0.94:brightness=0.02"},
+      {"filter": "curves", "args": "preset=medium_contrast:master='0/0.08 0.5/0.55 1/1.00'"},
+      {"filter": "geq", "args": "lum_expr='if(lte(sqrt(x*x+y*y),1),1,int((sqrt(x*x+y*y)))*0.75)'"}
+    ]
+  }
+}

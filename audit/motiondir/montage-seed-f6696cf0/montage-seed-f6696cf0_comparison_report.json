@@ -1,0 +1,178 @@
+{
+  "brief_id": "montage-seed-f6696cf0",
+  "prompt": "种子发芽的纪录短片",
+  "line": "montage",
+  "director_version": {
+    "mp4": "audit/motiondir/montage-seed-f6696cf0/montage-seed-f6696cf0_director.mp4",
+    "sha256": "8493b4df4b5238d63631c332121de09f9cb1fd772cbf00b9719b53967d8e564f",
+    "duration_s": 12.0,
+    "baseline": false
+  },
+  "baseline_version": {
+    "mp4": "audit/motiondir/montage-seed-f6696cf0/montage-seed-f6696cf0_baseline.mp4",
+    "sha256": "4cf104493d659960ba365b878640cac92366410003f222625107e39829dec81a",
+    "duration_s": 12.0,
+    "baseline": true
+  },
+  "director_report": {
+    "passed": false,
+    "brief_id": "montage-seed-f6696cf0",
+    "line": "montage",
+    "checks": {
+      "ppt_sync": {
+        "passed": true,
+        "detail": "motion types: ['float', 'spring_response', 'float'], duplicate count: 1"
+      },
+      "static_freeze": {
+        "passed": true,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 100.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.0,
+        "details": [
+          {
+            "kind": "drop",
+            "t": 2.16,
+            "dev_frames": 7,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.08,
+            "dev_frames": 14,
+            "aligned": false
+          },
+          {
+            "kind": "cohere",
+            "t": 8.64,
+            "dev_frames": 7,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.18,
+            "dev_frames": 17,
+            "aligned": false
+          },
+          {
+            "kind": "cohere",
+            "t": 8.74,
+            "dev_frames": 10,
+            "aligned": false
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "skipped_or_no_video",
+        "reason": "video path not provided or non-anime line"
+      }
+    },
+    "errors": [
+      "拍点对齐率过低: 0.00 < 0.60"
+    ],
+    "warnings": []
+  },
+  "baseline_report": {
+    "passed": false,
+    "brief_id": "montage-seed-f6696cf0",
+    "line": "montage",
+    "checks": {
+      "ppt_sync": {
+        "passed": false,
+        "detail": "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"
+      },
+      "static_freeze": {
+        "passed": false,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 100.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.0,
+        "details": [
+          {
+            "kind": "drop",
+            "t": 2.16,
+            "dev_frames": 7,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.08,
+            "dev_frames": 14,
+            "aligned": false
+          },
+          {
+            "kind": "cohere",
+            "t": 8.64,
+            "dev_frames": 7,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.18,
+            "dev_frames": 17,
+            "aligned": false
+          },
+          {
+            "kind": "cohere",
+            "t": 8.74,
+            "dev_frames": 10,
+            "aligned": false
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "skipped_or_no_video",
+        "reason": "video path not provided or non-anime line"
+      }
+    },
+    "errors": [
+      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结",
+      "拍点对齐率过低: 0.00 < 0.60"
+    ],
+    "warnings": []
+  }
+}

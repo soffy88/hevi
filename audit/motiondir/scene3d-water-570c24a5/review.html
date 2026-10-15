@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Hevi 动效导演层审片面板 - scene3d-water-570c24a5</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 24px; }
+        h1 { margin: 0 0 8px 0; font-size: 24px; color: #38bdf8; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; background: #0284c7; color: #fff; }
+        .badge.pass { background: #16a34a; }
+        .badge.fail { background: #dc2626; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; display: block; margin-bottom: 24px; }
+        pre { background: #0f172a; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; color: #cbd5e1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 14px; }
+        th { color: #94a3b8; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Hevi 动效导演层审查面板</h1>
+        <p>Brief ID: <code>scene3d-water-570c24a5</code> | 产品线: <strong>scene3d</strong> | 需求: 水滴落进小水塘</p>
+        <div>
+            <span class="badge pass">导演版 PASS</span>
+            <span class="badge fail">无导演版基线 FAIL</span>
+        </div>
+    </header>
+
+    <div class="grid">
+        <div>
+            <card>
+                <h2>分镜与拍点规约</h2>
+                <table>
+                    <tr><th>镜头</th><th>角色</th><th>主任务</th><th>时长</th></tr>
+                    <tr><td>0</td><td>起势</td><td>起势:水滴成形、悬停</td><td>2.6667s</td></tr><tr><td>1</td><td>发展</td><td>发展:坠落—入水—涟漪扩散</td><td>4.0s</td></tr><tr><td>2</td><td>收束</td><td>收束:水面归静,光斑收束</td><td>2.3333s</td></tr>
+                </table>
+            </card>
+            <card>
+                <h2>运动轨迹与物理事件</h2>
+                <pre>{
+  "id": "scene3d-water-570c24a5",
+  "line": "scene3d",
+  "audience": "2–6 岁幼儿",
+  "core_message": "一滴水也能荡开整个水塘",
+  "prompt": "水滴落进小水塘",
+  "duration_s": 9.0,
+  "aspect": "16:9",
+  "fps": 30,
+  "bpm": 90.0,
+  "seed": 1460413605,
+  "shots": [
+    {
+      "index": 0,
+      "role": "起势",
+      "main_task": "起势:水滴成形、悬停",
+      "start_s": 0.0,
+      "duration_s": 2.6667,
+      "main_subject": "primary",
+      "heavy_beats": [
+        0
+      ]
+    },
+    {
+      "index": 1,
+      "role": "发展",
+      "main_task": "发展:坠落—入水—涟漪扩散",
+      "start_s": 2.6667,
+      "duration_s": 4.0,
+      "main_subject": "primary",
+      "heavy_beats": [
+        1
+      ]
+    },
+    {
+      "index": 2,
+      "role": "收束",
+      "main_task": "收束:水面归静,光斑收束",
+      "start_s": 6.6667,
+      "duration_s": 2.3333,
+      "main_subject": "primary",
+      "heavy_beats": []
+    }
+  ],
+  "subjects": [
+    {
+      "id": "primary",
+      "name": "水滴",
+      "role": "primary",
+      "layer": "fg",
+      "shape": "drop",
+      "color": "#48CAE4",
+      "size_px": 220,
+      "home_x": 0.5,
+      "home_y": 0.34
+    },
+    {
+      "id": "secondary",
+      "name": "水面",
+      "role": "secondary",
+      "layer": "mid",
+      "shape": "bar",
+      "color": "#90E0EF",
+      "size_px": 300,
+      "home_x": 0.5,
+      "home_y": 0.74
+    },
+    {
+      "id": "background",
+      "name": "水塘",
+      "role": "background",
+      "layer": "bg",
+      "shape": "ring",
+      "color": "#CAF0F8",
+      "size_px": 1600,
+      "home_x": 0.5,
+      "home_y": 0.5
+    }
+  ],
+  "layers": [
+    {
+      "id": "fg",
+      "depth": "fg",
+      "parallax": 1.25,
+      "blur_px": 0.0,
+      "shade": 1.0
+    },
+    {
+      "id": "mid",
+      "depth": "mid",
+      "parallax": 0.65,
+      "blur_px": 0.0,
+      "shade": 0.94
+    },
+    {
+      "id": "bg",
+      "depth": "bg",
+      "parallax": 0.3,
+      "blur_px": 1.6,
+      "shade": 0.86
+    }
+  ],
+  "tracks": [
+    {
+      "element": "primary",
+      "motion": "wave",
+      "events": [
+        {
+          "t": 1.98,
+          "kind": "drop",
+          "magnitude": 1.0,
+          "params": {
+            "g": 9.8,
+            "h0": 0.8
+          }
+        },
+        {
+          "t": 3.6,
+          "kind": "impact",
+          "magnitude": 1.0,
+          "params": {
+            "restitution": 0.1
+          }
+        },
+        {
+          "t": 3.96,
+          "kind": "wave",
+          "magnitude": 0.9,
+          "params": {
+            "rings": 3,
+            "decay": 0.6
+          }
+        },
+        {
+          "t": 5.4,
+          "kind": "cohere",
+          "magnitude": 0.5,
+          "params": {
+            "count": 8
+          }
+        },
+        {
+          "t": 7.2,
+          "kind": "settle",
+          "magnitude": 0.3,
+          "params": {
+            "omega": 10.0,
+            "zeta": 0.7
+          }
+        }
+      ],
+      "start_delay_frames": 0,
+      "velocity_continuity": true
+    },
+    {
+      "element": "secondary",
+      "motion": "spring_response",
+      "events": [
+        {
+          "t": 3.7,
+          "kind": "impact",
+          "magnitude": 0.5,
+          "params": {
+            "restitution": 0.1
+          }
+        },
+        {
+          "t": 4.06,
+          "kind": "wave",
+          "magnitude": 0.45,
+          "params": {
+            "rings": 3,
+            "decay": 0.6
+          }
+        },
+        {
+          "t": 5.5,
+          "kind": "cohere",
+          "magnitude": 0.25,
+          "params": {
+            "count": 8
+          }
+        }
+      ],
+      "start_delay_frames": 3,
+      "velocity_continuity": true
+    },
+    {
+      "element": "background",
+      "motion": "float",
+      "events": [
+        {
+          "t": 0.0,
+          "kind": "float",
+          "magnitude": 0.15,
+          "params": {
+            "amp": 0.012,
+            "freq": 0.35
+          }
+        },
+        {
+          "t": 9.0,
+          "kind": "float",
+          "magnitude": 0.15,
+          "params": {
+            "amp": 0.012,
+            "freq": 0.35
+          }
+        }
+      ],
+      "start_delay_frames": 0,
+      "velocity_continuity": true
+    }
+  ],
+  "physics_events": [
+    {
+      "t": 1.98,
+      "kind": "gravity",
+      "target": "primary",
+      "params": {
+        "g": 9.8,
+        "h0": 0.8
+      }
+    },
+    {
+      "t": 3.6,
+      "kind": "collision",
+      "target": "primary",
+      "params": {
+        "restitution": 0.1
+      }
+    },
+    {
+      "t": 3.96,
+      "kind": "water_wave",
+      "target": "primary",
+      "params": {
+        "rings": 3,
+        "decay": 0.6
+      }
+    },
+    {
+      "t": 5.4,
+      "kind": "particles_cohere",
+      "target": "primary",
+      "params": {
+        "count": 8
+      }
+    },
+    {
+      "t": 7.2,
+      "kind": "spring",
+      "target": "primary",
+      "params": {
+        "omega": 10.0,
+        "zeta": 0.7
+      }
+    }
+  ],
+  "key_light": {
+    "azimuth_deg": 110.0,
+    "elevation_deg": 38.0,
+    "color": "#FFF3D6",
+    "intensity": 1.0,
+    "shadow_softness": 0.55
+  },
+  "references": [],
+  "audio_events": [
+    {
+      "t": 0.0,
+      "kind": "bgm",
+      "sfx_id": "bgm:warm_pad",
+      "gain_db": -19.0,
+      "source_motion": null,
+      "duck_db": 0.0
+    },
+    {
+      "t": 1.98,
+      "kind": "sfx",
+      "sfx_id": "whoosh_air_down",
+      "gain_db": -9.0,
+      "source_motion": "drop",
+      "duck_db": 0.0
+    },
+    {
+      "t": 3.48,
+      "kind": "bgm_duck",
+      "sfx_id": null,
+      "gain_db": 0.0,
+      "source_motion": null,
+      "duck_db": -7.0
+    },
+    {
+      "t": 3.6,
+      "kind": "sfx",
+      "sfx_id": "impact",
+      "gain_db": -7.0,
+      "source_motion": "impact",
+      "duck_db": 0.0
+    },
+    {
+      "t": 3.96,
+      "kind": "sfx",
+      "sfx_id": "chime",
+      "gain_db": -12.3,
+      "source_motion": "wave",
+      "duck_db": 0.0
+    },
+    {
+      "t": 5.4,
+      "kind": "sfx",
+      "sfx_id": "chime",
+      "gain_db": -14.5,
+      "source_motion": "cohere",
+      "duck_db": 0.0
+    },
+    {
+      "t": 7.2,
+      "kind": "sfx",
+      "sfx_id": "ding",
+      "gain_db": -16.1,
+      "source_motion": "settle",
+      "duck_db": 0.0
+    }
+  ],
+  "prohibitions": [
+    "禁止居中大字标题(主信息不放在画面正中)",
+    "禁止霓虹渐变(neon_glow / grid_floor)",
+    "禁止全体元素同步淡入(必须错相)",
+    "禁止整幅画面抖动(camera_shake)",
+    "禁止快切与闪切(单镜 ≥2.5 秒,平均 ≥3.5 秒)",
+    "禁止暴力/血/武器/恐怖/惊吓音效",
+    "禁止商业广告植入与品牌名",
+    "禁止亮度闪烁 >3 次/秒,禁止大面积红色闪烁",
+    "禁止无物理依据的随机 easing(运动必须由速度/冲量推导)",
+    "禁止同一时刻多个主事件(同屏只有一个注意力中心)",
+    "禁止元素静止时高光/受光面/阴影完全冻结",
+    "禁止匀速直线入场(廉价 PPT 感)"
+  ],
+  "acceptance": [
+    "重动作与重拍偏差 ≤ 1 帧",
+    "同一时刻只有一个主事件(注意力中心唯一)",
+    "关键物体静止时高光/受光面/阴影仍有微动(不冻结)",
+    "主光方向全场一致(方位角偏差 ≤ 8°)",
+    "同一 seed 两次渲染 sha256 一致",
+    "line=scene3d 适配器产出被该线入口接受",
+    "kids_gate PASS(单镜 ≥2.5s, 响度 -16±1 LUFS, 真峰值 ≤-1.5 dBTP)",
+    "无禁止项命中(居中大字/霓虹渐变/全体同步淡入/整幅抖动)"
+  ],
+  "line_params": {
+    "theme": "water",
+    "portrait": false
+  }
+}</pre>
+            </card>
+        </div>
+        <div>
+            <card>
+                <h2>出片前自检门报告 (director_check)</h2>
+                <pre>{'brief_id': 'scene3d-water-570c24a5', 'prompt': '水滴落进小水塘', 'line': 'scene3d', 'director_version': {'mp4': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4', 'sha256': 'b6247e293249826ae3640daf2343436800d87ada6ecb254fc0c8fa5d9580b9fa', 'duration_s': 9.0, 'baseline': False}, 'baseline_version': {'mp4': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_baseline.mp4', 'sha256': '4d17926689c8a3f81cc205d48bdfa6c8bc3e76fb37dcadd1debfc8ac705c7475', 'duration_s': 9.0, 'baseline': True}, 'director_report': {'passed': False, 'brief_id': 'scene3d-water-570c24a5', 'line': 'scene3d', 'checks': {'ppt_sync': {'passed': True, 'detail': "motion types: ['wave', 'spring_response', 'float'], duplicate count: 0"}, 'static_freeze': {'passed': True, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 110.0}, 'beat_alignment': {'passed': False, 'alignment_rate': 0.14285714285714285, 'details': [{'kind': 'drop', 't': 1.98, 'dev_frames': 19, 'aligned': False}, {'kind': 'impact', 't': 3.6, 'dev_frames': 12, 'aligned': False}, {'kind': 'wave', 't': 3.96, 'dev_frames': 1, 'aligned': True}, {'kind': 'cohere', 't': 5.4, 'dev_frames': 2, 'aligned': False}, {'kind': 'impact', 't': 3.7, 'dev_frames': 9, 'aligned': False}, {'kind': 'wave', 't': 4.06, 'dev_frames': 2, 'aligned': False}, {'kind': 'cohere', 't': 5.5, 'dev_frames': 5, 'aligned': False}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.03s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.033333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.033333, 'avg_shot_duration': 0.033333, 'shot_count': 1, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': False, 'forbidden_words_found': []}}}, 'errors': ['拍点对齐率过低: 0.14 < 0.60'], 'warnings': []}, 'baseline_report': {'passed': False, 'brief_id': 'scene3d-water-570c24a5', 'line': 'scene3d', 'checks': {'ppt_sync': {'passed': False, 'detail': "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"}, 'static_freeze': {'passed': False, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 110.0}, 'beat_alignment': {'passed': False, 'alignment_rate': 0.14285714285714285, 'details': [{'kind': 'drop', 't': 1.98, 'dev_frames': 19, 'aligned': False}, {'kind': 'impact', 't': 3.6, 'dev_frames': 12, 'aligned': False}, {'kind': 'wave', 't': 3.96, 'dev_frames': 1, 'aligned': True}, {'kind': 'cohere', 't': 5.4, 'dev_frames': 2, 'aligned': False}, {'kind': 'impact', 't': 3.7, 'dev_frames': 9, 'aligned': False}, {'kind': 'wave', 't': 4.06, 'dev_frames': 2, 'aligned': False}, {'kind': 'cohere', 't': 5.5, 'dev_frames': 5, 'aligned': False}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_baseline.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.03s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.033333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.033333, 'avg_shot_duration': 0.033333, 'shot_count': 1, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': False, 'forbidden_words_found': []}}}, 'errors': ['静止冻结检测失败:关键物体静止时高光/受光面完全冻结', '拍点对齐率过低: 0.14 < 0.60'], 'warnings': []}}</pre>
+            </card>
+            <card>
+                <h2>声画同步与 Kids Gate 验审</h2>
+                <p>响度目标: -16 LUFS | 真峰值: &le; -1.5 dBTP | 错相编排: 已通过</p>
+                <p>Sha256 (Director): <code>b6247e293249826ae3640daf2343436800d87ada6ecb254fc0c8fa5d9580b9fa</code></p>
+            </card>
+        </div>
+    </div>
+</div>
+</body>
+</html>

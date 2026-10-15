@@ -1,0 +1,194 @@
+{
+  "brief_id": "character_narrative-share-532e8de9",
+  "prompt": "小狐狸学分享",
+  "line": "character_narrative",
+  "director_version": {
+    "mp4": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.mp4",
+    "sha256": "35c0baee5255cd8875febc45d53f694b57f00e0b3522effc15ead32993919e06",
+    "duration_s": 10.0,
+    "baseline": false
+  },
+  "baseline_version": {
+    "mp4": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_baseline.mp4",
+    "sha256": "7384876931d47a9ff1d257ae2c85ed2413dd11a278cc5b58aafc224bf36c0f1c",
+    "duration_s": 10.0,
+    "baseline": true
+  },
+  "director_report": {
+    "passed": false,
+    "brief_id": "character_narrative-share-532e8de9",
+    "line": "character_narrative",
+    "checks": {
+      "ppt_sync": {
+        "passed": true,
+        "detail": "motion types: ['roll', 'spring_response', 'float'], duplicate count: 0"
+      },
+      "static_freeze": {
+        "passed": true,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 120.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.5,
+        "details": [
+          {
+            "kind": "impact",
+            "t": 4.2,
+            "dev_frames": 3,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.3,
+            "dev_frames": 0,
+            "aligned": true
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "red",
+        "verdict": "red",
+        "passed": false,
+        "profile": "kids",
+        "path": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.mp4",
+        "violations": [
+          "单镜头最短时长 0.03s < 2.5s 违规"
+        ],
+        "warnings": [
+          "平均镜头时长 0.03s < 3.5s 警告"
+        ],
+        "timecodes": [
+          {
+            "item": "shot_duration",
+            "time": 0.033333,
+            "reason": "shot < 2.5s"
+          }
+        ],
+        "metrics": {
+          "min_shot_duration": 0.033333,
+          "avg_shot_duration": 0.033333,
+          "shot_count": 1,
+          "integrated_lufs": -16.0,
+          "true_peak_dbtp": -1.5,
+          "subtitle_font_px": 64,
+          "is_portrait": true,
+          "forbidden_words_found": []
+        }
+      }
+    },
+    "errors": [
+      "拍点对齐率过低: 0.50 < 0.60"
+    ],
+    "warnings": []
+  },
+  "baseline_report": {
+    "passed": false,
+    "brief_id": "character_narrative-share-532e8de9",
+    "line": "character_narrative",
+    "checks": {
+      "ppt_sync": {
+        "passed": false,
+        "detail": "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"
+      },
+      "static_freeze": {
+        "passed": false,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 120.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.5,
+        "details": [
+          {
+            "kind": "impact",
+            "t": 4.2,
+            "dev_frames": 3,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.3,
+            "dev_frames": 0,
+            "aligned": true
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "red",
+        "verdict": "red",
+        "passed": false,
+        "profile": "kids",
+        "path": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_baseline.mp4",
+        "violations": [
+          "单镜头最短时长 0.03s < 2.5s 违规"
+        ],
+        "warnings": [
+          "平均镜头时长 0.03s < 3.5s 警告"
+        ],
+        "timecodes": [
+          {
+            "item": "shot_duration",
+            "time": 0.033333,
+            "reason": "shot < 2.5s"
+          }
+        ],
+        "metrics": {
+          "min_shot_duration": 0.033333,
+          "avg_shot_duration": 0.033333,
+          "shot_count": 1,
+          "integrated_lufs": -16.0,
+          "true_peak_dbtp": -1.5,
+          "subtitle_font_px": 64,
+          "is_portrait": true,
+          "forbidden_words_found": []
+        }
+      }
+    },
+    "errors": [
+      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结",
+      "拍点对齐率过低: 0.50 < 0.60"
+    ],
+    "warnings": []
+  }
+}

@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Hevi Motion Template - Kinetic Lyrics</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #0b0f19;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    #canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+  <script src="../lib/spring.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+
+  <script>
+  (function () {
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ------------------------------------------------------------------
+    // Test instrumentation: record every fillText bounding box (canvas
+    // space) only when explicitly enabled. Does not alter draw(t) output.
+    // ------------------------------------------------------------------
+    let __recordText = false;
+    window.__textBoxes = [];
+    window.__containers = [];
+    window.setRecordText = function (v) { __recordText = !!v; };
+
+    function _applyTransform(c, x, y) {
+      const m = c.getTransform();
+      return { x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f };
+    }
+
+    function ft(c, text, x, y, maxW) {
+      const str = String(text == null ? "" : text);
+      if (__recordText && str.trim().length > 0) {
+        const m = c.measureText(str);
+        const left = x - m.actualBoundingBoxLeft;
+        const right = x + m.actualBoundingBoxRight;
+        const top = y - m.actualBoundingBoxAscent;
+        const bottom = y + m.actualBoundingBoxDescent;
+        const p0 = _applyTransform(c, left, top);
+        const p1 = _applyTransform(c, right, bottom);
+        const bx = Math.min(p0.x, p1.x), by = Math.min(p0.y, p1.y);
+        const bw = Math.abs(p1.x - p0.x), bh = Math.abs(p1.y - p0.y);
+        let container = null;
+        const ccx = bx + bw / 2, ccy = by + bh / 2;
+        for (const r of (window.__containers || [])) {
+          if (ccx >= r.x && ccx <= r.x + r.w && ccy >= r.y && ccy <= r.y + r.h) { container = r; break; }
+        }
+        window.__textBoxes.push({ x: bx, y: by, w: bw, h: bh, text: str, alpha: c.globalAlpha, container: container });
+      }
+      if (maxW !== undefined) c.fillText(str, x, y, maxW);
+      else c.fillText(str, x, y);
+    }
+
+    let spec = {
+      title: "代码律动 // 纯函数动效",
+      bpm: 120,
+      duration: 12.0,
+      accent: "#f59e0b",
+      phrases: [
+        {
+          start_beat: 0,
+          beats_count: 4,
+          words: ["灵感", "触发", "毫秒", "对齐"],
+          subtext: "INSTANT INSPIRATION // SUB-FRAME PRECISION",
+          accent: "#f59e0b",
+          layout: "center_punch"
+        },
+        {
+          start_beat: 4,
+          beats_count: 4,
+          words: ["节点", "点亮", "全链", "贯通"],
+          subtext: "NODE ILLUMINATION // PIPELINE ENGAGED",
+          accent: "#10b981",
+          layout: "split_box"
+        },
+        {
+          start_beat: 8,
+          beats_count: 4,
+          words: ["阶跃响应", "纯粹", "函数", "渲染"],
+          subtext: "ZERO ARTIFACTS // PURE FUNCTION RENDER",
+          accent: "#38bdf8",
+          layout: "ticker_stack"
+        },
+        {
+          start_beat: 12,
+          beats_count: 4,
+          words: ["像素", "重构", "瞬时", "定格"],
+          subtext: "PIXEL RECONSTRUCTION // TIMELINE FREEZE",
+          accent: "#f43f5e",
+          layout: "center_punch"
+        },
+        {
+          start_beat: 16,
+          beats_count: 4,
+          words: ["确定", "交付", "成片", "出炉"],
+          subtext: "DETERMINISTIC DELIVERY // FINAL ASSET",
+          accent: "#10b981",
+          layout: "split_box"
+        },
+        {
+          start_beat: 20,
+          beats_count: 4,
+          words: ["何为", "智能", "动效", "新章"],
+          subtext: "HEVI MOTION TEMPLATES // CHAPTER CLOSED",
+          accent: "#f59e0b",
+          layout: "ticker_stack"
+        }
+      ]
+    };
+
+    let width = 1080;
+    let height = 1920;
+    let fScale = 1.0;
+    let beatSchedule = [];
+
+    function buildSchedule() {
+      beatSchedule = [];
+      const bpm = spec.bpm || 120;
+      const beatDur = 60.0 / bpm;
+
+      for (let pIdx = 0; pIdx < spec.phrases.length; pIdx++) {
+        const phrase = spec.phrases[pIdx];
+        const phraseStartT = phrase.start_beat * beatDur;
+        const phraseDur = phrase.beats_count * beatDur;
+
+        const wordList = phrase.words || [];
+        const wordsSched = [];
+        for (let w = 0; w < wordList.length; w++) {
+          const wordBeat = phrase.start_beat + w;
+          const wordStartT = wordBeat * beatDur;
+          wordsSched.push({
+            word: String(wordList[w] || "").replace(/。/g, ""),
+            beat: wordBeat,
+            tStart: wordStartT
+          });
+        }
+
+        beatSchedule.push({
+          phraseIndex: pIdx,
+          data: phrase,
+          tStart: phraseStartT,
+          tEnd: phraseStartT + phraseDur,
+          words: wordsSched
+        });
+      }
+    }
+
+    window.initTemplate = function (newSpec, w, h) {
+      if (newSpec) spec = Object.assign({}, spec, newSpec);
+      width = w || 1080;
+      height = h || 1920;
+      canvas.width = width;
+      canvas.height = height;
+      fScale = Math.min(width, height) / 1080;
+      buildSchedule();
+    };
+
+    function drawRoundedRect(c, x, y, w, h, r) {
+      r = Math.min(r, w / 2, h / 2);
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.arcTo(x + w, y, x + w, y + r, r);
+      c.lineTo(x + w, y + h - r);
+      c.arcTo(x + w, y + h, x + w - r, y + h, r);
+      c.lineTo(x + r, y + h);
+      c.arcTo(x, y + h, x, y + h - r, r);
+      c.lineTo(x, y + r);
+      c.arcTo(x, y, x + r, y, r);
+      c.closePath();
+    }
+
+    function drawBackground(c, w, h, t) {
+      c.fillStyle = "#0a0e17";
+      c.fillRect(0, 0, w, h);
+
+      const bpm = spec.bpm || 120;
+      const beatDur = 60.0 / bpm;
+      const currentBeat = t / beatDur;
+
+      const safeLeft = 80 * fScale;
+      const safeRight = w - 80 * fScale;
+      const safeTop = (w > h ? 60 : 95) * fScale;
+      const headerY = safeTop + 4 * fScale;
+
+      c.save();
+      c.textBaseline = "top";
+      c.fillStyle = "rgba(148, 163, 184, 0.6)";
+      c.font = `700 ${Math.round((w > h ? 14 : 24) * fScale)}px monospace`;
+      c.textAlign = "left";
+      ft(c, `BPM ${bpm} // BEAT ${currentBeat.toFixed(1)}`, safeLeft, headerY);
+
+      c.textAlign = "right";
+      ft(c, String(spec.title || "KINETIC TYPOGRAPHY").replace(/。/g, ""), safeRight, headerY);
+
+      c.strokeStyle = "rgba(51, 65, 85, 0.4)";
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(safeLeft, headerY + (w > h ? 24 : 36) * fScale);
+      c.lineTo(safeRight, headerY + (w > h ? 24 : 36) * fScale);
+      c.stroke();
+      c.restore();
+
+      // Bottom BPM grid
+      c.save();
+      const safeBottom = h - (w > h ? 80 : 120) * fScale;
+      const gridW = safeRight - safeLeft;
+      const beatSlots = 16;
+      const slotW = gridW / beatSlots;
+      const activeSlot = Math.floor(currentBeat) % beatSlots;
+
+      for (let b = 0; b < beatSlots; b++) {
+        const bx = safeLeft + b * slotW;
+        const isCur = b === activeSlot;
+        c.fillStyle = isCur ? (spec.accent || "#f59e0b") : "rgba(51, 65, 85, 0.4)";
+        const barH = isCur ? 14 * fScale : 6 * fScale;
+        c.fillRect(bx + 2, safeBottom - barH, slotW - 4, barH);
+      }
+
+      const headX = safeLeft + ((currentBeat % beatSlots) / beatSlots) * gridW;
+      c.strokeStyle = spec.accent || "#f59e0b";
+      c.lineWidth = 2 * fScale;
+      c.beginPath();
+      c.moveTo(headX, safeBottom - 24 * fScale);
+      c.lineTo(headX, safeBottom + 4 * fScale);
+      c.stroke();
+      c.restore();
+    }
+
+    function _pushContainer(c, x, y, w, h) {
+      const p0 = _applyTransform(c, x, y);
+      const p1 = _applyTransform(c, x + w, y + h);
+      window.__containers.push({
+        x: Math.min(p0.x, p1.x), y: Math.min(p0.y, p1.y),
+        w: Math.abs(p1.x - p0.x), h: Math.abs(p1.y - p0.y)
+      });
+    }
+
+    window.draw = function (t) {
+      ctx.clearRect(0, 0, width, height);
+      if (__recordText) { window.__textBoxes = []; window.__containers = []; }
+      const _top = (width > height ? 60 : 85) * fScale;
+      const _bot = height - (width > height ? 70 : 110) * fScale;
+      window.__safeArea = { left: 80 * fScale, top: _top, right: width - 80 * fScale, bottom: _bot };
+
+      drawBackground(ctx, width, height, t);
+
+      const cx = width / 2;
+      const cy = height / 2;
+      const isLandscape = width > height;
+
+      // Safe area bounds
+      const safeLeft = 80 * fScale;
+      const safeRight = width - 80 * fScale;
+      const safeW = safeRight - safeLeft;
+
+      let curPhraseSched = null;
+      for (let p = 0; p < beatSchedule.length; p++) {
+        const item = beatSchedule[p];
+        if (t >= item.tStart && t < item.tEnd) { curPhraseSched = item; break; }
+      }
+      if (!curPhraseSched && beatSchedule.length > 0) {
+        if (t >= beatSchedule[beatSchedule.length - 1].tEnd) {
+          curPhraseSched = beatSchedule[beatSchedule.length - 1];
+        } else {
+          curPhraseSched = beatSchedule[0];
+        }
+      }
+      if (!curPhraseSched) return;
+
+      const phrase = curPhraseSched.data;
+      const accent = phrase.accent || spec.accent || "#f59e0b";
+      const words = curPhraseSched.words;
+      const pTau = t - curPhraseSched.tStart;
+      const phraseAlpha = Math.min(1.0, Spring.stepResponse(pTau, 16.0, 0.85));
+
+      ctx.save();
+      ctx.globalAlpha = phraseAlpha;
+
+      // -------------------------------------------------------------
+      // Layout 1: Center punch
+      // -------------------------------------------------------------
+      if (phrase.layout === "center_punch") {
+        const baseFontPx = Math.round((isLandscape ? 76 : 84) * fScale);
+        const subtextY = cy - baseFontPx * 1.6;
+
+        if (phrase.subtext) {
+          ctx.fillStyle = accent;
+          ctx.font = `700 ${Math.round(15 * fScale)}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ft(ctx, phrase.subtext.replace(/。/g, ""), cx, subtextY);
+        }
+
+        const landed = [];
+        let latestTau = 0;
+        for (let i = 0; i < words.length; i++) {
+          if (t >= words[i].tStart) {
+            landed.push(words[i].word);
+            latestTau = t - words[i].tStart;
+          }
+        }
+        const fullText = landed.join(" ");
+
+        const hitSpring = Spring.stepResponse(latestTau, 18.0, 0.82);
+        const scale = 1.0 + (1.0 - hitSpring) * 0.12;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+
+        const boxPad = 28 * fScale;
+        const PUNCH_MAX = 1.12;
+        const maxTextW = (safeW / PUNCH_MAX) - boxPad * 2;
+        let fontPx = baseFontPx;
+        ctx.font = `900 ${fontPx}px -apple-system, sans-serif`;
+        let textMetrics = ctx.measureText(fullText);
+        if (textMetrics.width > maxTextW && textMetrics.width > 0) {
+          fontPx = Math.max(20, Math.floor(fontPx * maxTextW / textMetrics.width));
+          ctx.font = `900 ${fontPx}px -apple-system, sans-serif`;
+          textMetrics = ctx.measureText(fullText);
+        }
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const boxW = Math.min(safeW / PUNCH_MAX, textMetrics.width + boxPad * 2);
+        const boxH = Math.round(fontPx * 1.45);
+
+        ctx.fillStyle = "rgba(24, 34, 52, 0.85)";
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 2 * fScale;
+        drawRoundedRect(ctx, -boxW / 2, -boxH / 2, boxW, boxH, 16 * fScale);
+        ctx.fill();
+        ctx.stroke();
+        if (__recordText) _pushContainer(ctx, -boxW / 2, -boxH / 2, boxW, boxH);
+
+        ctx.fillStyle = "#ffffff";
+        ft(ctx, fullText, 0, 0);
+        ctx.restore();
+      }
+
+      // -------------------------------------------------------------
+      // Layout 2: Split contrast box
+      // -------------------------------------------------------------
+      else if (phrase.layout === "split_box") {
+        let fontPx = Math.round((isLandscape ? 68 : 76) * fScale);
+        const SPLIT_MAX = 1.12;
+        const maxLineW = (safeW / SPLIT_MAX) - 20 * fScale;
+        const probe = (text, px) => {
+          ctx.font = `900 ${px}px -apple-system, sans-serif`;
+          return ctx.measureText(text).width;
+        };
+        const topProbe = words.slice(0, 2).map(w => w.word).join(" ");
+        const botProbe = words.slice(2, 4).map(w => w.word).join(" ");
+        const widest = Math.max(probe(topProbe, fontPx), probe(botProbe, fontPx));
+        if (widest > maxLineW && widest > 0) {
+          fontPx = Math.max(20, Math.floor(fontPx * maxLineW / widest));
+        }
+        const lineOffset = Math.round(fontPx * 0.85);
+        const subtextY = cy - lineOffset - fontPx * 0.85;
+
+        if (phrase.subtext) {
+          ctx.fillStyle = accent;
+          ctx.font = `700 ${Math.round(15 * fScale)}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ft(ctx, phrase.subtext.replace(/。/g, ""), cx, subtextY);
+        }
+
+        const topWords = words.slice(0, 2);
+        const botWords = words.slice(2, 4);
+        const topText = topWords.map(w => w.word).join(" ");
+        const botText = botWords.map(w => w.word).join(" ");
+
+        // Top line
+        const topTau = Math.max(0, t - words[0].tStart);
+        const topP = Spring.stepResponse(topTau, 16.0, 0.82);
+        const topScale = 1.0 + (1.0 - topP) * 0.12;
+
+        ctx.save();
+        ctx.translate(cx, cy - lineOffset);
+        ctx.scale(topScale, topScale);
+        ctx.fillStyle = accent;
+        ctx.font = `900 ${fontPx}px -apple-system, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ft(ctx, topText, 0, 0);
+        ctx.restore();
+
+        // Bottom line
+        if (words[2] && t >= words[2].tStart) {
+          const botTau = t - words[2].tStart;
+          const botP = Spring.stepResponse(botTau, 16.0, 0.82);
+          const botScale = 1.0 + (1.0 - botP) * 0.12;
+
+          ctx.save();
+          ctx.translate(cx, cy + lineOffset);
+          ctx.scale(botScale, botScale);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = `900 ${fontPx}px -apple-system, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ft(ctx, botText, 0, 0);
+          ctx.restore();
+        }
+      }
+
+      // -------------------------------------------------------------
+      // Layout 3: Ticker stack
+      // -------------------------------------------------------------
+      else {
+        const baseFontPx = Math.round((isLandscape ? 52 : 58) * fScale);
+        const activeFontPx = Math.round(baseFontPx * 1.15);
+        const stackSpacing = Math.round(activeFontPx * 1.45);
+        const totalStackH = (words.length - 1) * stackSpacing;
+        const stackStartY = cy - totalStackH / 2;
+        const subtextY = stackStartY - 54 * fScale;
+
+        if (phrase.subtext) {
+          ctx.fillStyle = accent;
+          ctx.font = `700 ${Math.round(15 * fScale)}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ft(ctx, phrase.subtext.replace(/。/g, ""), cx, subtextY);
+        }
+
+        for (let i = 0; i < words.length; i++) {
+          const wItem = words[i];
+          if (t < wItem.tStart) continue;
+
+          const wTau = t - wItem.tStart;
+          const wP = Spring.stepResponse(wTau, 18.0, 0.82);
+          const isLatest = (i === words.length - 1) || (i < words.length - 1 && t < words[i + 1].tStart);
+
+          ctx.save();
+          const wordY = stackStartY + i * stackSpacing;
+          const slideX = (1.0 - wP) * 36 * fScale;
+
+          ctx.fillStyle = isLatest ? accent : "rgba(226, 232, 240, 0.75)";
+          ctx.font = `800 ${isLatest ? activeFontPx : baseFontPx}px -apple-system, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ft(ctx, wItem.word, cx + slideX, wordY);
+
+          if (isLatest) {
+            ctx.fillStyle = accent;
+            ctx.beginPath();
+            ctx.arc(cx - 260 * fScale, wordY, 6 * fScale, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      ctx.restore();
+    };
+
+    buildSchedule();
+  })();
+  </script>
+</body>
+</html>
