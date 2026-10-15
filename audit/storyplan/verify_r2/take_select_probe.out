@@ -1,0 +1,5 @@
+AUTOFILL_NONPRESET_NARRATION= 在美丽的森林里，大家都在讨论关于小猫学数数的奇妙故事。 小松鼠遇到了困难，通过仔
+HOOK= 你知道小猫学数数背后藏着什么秘密吗？
+REAL_VIDEO_SCORES= {"t_motion": [66.93, 0.1732625, 1.0], "t_frozen": [40.0, 0.1, 0.2]}
+BEST= t_motion
+DISCRIMINATES= True
