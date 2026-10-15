@@ -342,4 +342,16 @@ The earlier connection refusal was transient: the subsequent GET `/health` retur
 ## Gate variability note (2026-10-15)
 
 The selected pytest gate was run twice after the report/implementation commits: one execution completed `45 passed, 7341 deselected, 1 warning in 35.19s` with no skips; the immediately later repeat completed `44 passed, 1 skipped, 7341 deselected, 1 warning in 12.21s`. Both exact acceptance pipelines exited `0`. A direct `/health` request following the latter again returned HTTP 200 and both required voices. This indicates transient availability around test startup, not a deterministic client regression; the live service was not restarted or modified. The final acceptance command is run once more after this report update.
+
+## Latest continuation regression and artifact audit (2026-10-15)
+
+Re-ran the focused audio, LuxTTS, router-identity, Studio, story-film, renderer, dialogue and Voice Studio regression selection on the current branch:
+
+`JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q tests/test_audio.py tests/test_audio_router_provider_identity.py tests/test_lux_tts_service.py tests/test_lux_studio_entrypoint.py tests/test_lux_tts_alignment.py tests/test_luxapi_entrypoint_defaults.py tests/test_explainer_voiceover.py tests/test_explainer_render.py tests/test_director_echo_dialogue.py tests/test_voice_studio_task.py tests/test_studio_kit.py`
+
+Exact summary: `84 passed in 10.12s`, exit `0`, with no skips or failures. The optional live test was also run directly: `1 passed in 1.58s`, not skipped. GET `/health` returns HTTP 200 and advertises `soffy` and `en_male`.
+
+The preserved live evidence was checked again without re-rendering: Chinese story (4 sentence rows, all `soffy`) and English sample (2 sentence rows, all `en_male`) have parseable metadata with generation timings; the two high-level router outputs are valid 48 kHz mono WAVs; the short toddler-animation output is H.264/AAC, 540×960 at 24 fps, 48 kHz mono audio, 7.938 seconds. Its ffprobe/render JSON and synthesis metadata parse successfully. `LIVE_PROOF_VALIDATION=PASS`.
+
+The required gate's last captured run on this code state completed `45 passed, 7341 deselected, 1 warning in 16.29s`, pipeline exit `0`. The gate is repeated after this report update. The sole warning is the existing Starlette/httpx TestClient deprecation. No renderer was launched during this continuation; there was no need to create another sample, and the existing proof was preserved. No service restart/deploy, push, paid API call, cleanup or changes to the main checkout occurred.
 DONE LUXAPI-R1
