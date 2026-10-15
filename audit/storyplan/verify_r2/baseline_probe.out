@@ -1,0 +1,2 @@
+小水滴去哪儿了 | planned.passed= True | baseline.passed= False | baseline FAILs= ['C1_OPENING_HOOK', 'C2_SHOT_REQUIRED_FIELDS'] | planned FAILs= []
+小熊为什么洗手 | planned.passed= True | baseline.passed= False | baseline FAILs= ['C1_OPENING_HOOK', 'C2_SHOT_REQUIRED_FIELDS'] | planned FAILs= []
