@@ -1,0 +1,156 @@
+{
+  "id": "stickman_1a_light",
+  "kind": "stickman",
+  "display_zh": "火柴人 1A 白底黑线",
+  "display_en": "Stickman 1A Classic Light",
+  "source": {
+    "origin": "stickman-video-director",
+    "upstream_commit": "821a381",
+    "license": "MIT",
+    "absorbed_from": "directing-stickman-videos style-catalog Style 1 Classic Minimalist Light"
+  },
+  "lens_aspect": {
+    "focal": "flat 2D orthographic",
+    "aspect": "9:16 or 16:9",
+    "notes": "纯 2D 正交，无透视景深"
+  },
+  "composition": {
+    "rules": [
+      "16:9: stage action across left, center, and right, lateral tracking, deliberate negative space",
+      "9:16: foreground/background depth, stacked motion, vertical reveals, foreground passes, interface-safe overlay space",
+      "subject placed on vertical center axis or rule-of-thirds grid"
+    ],
+    "zh": "横屏左右调度，竖屏纵深堆叠与竖向揭示"
+  },
+  "lighting": {
+    "rules": [
+      "flat uniform digitally pure-white canvas",
+      "strictly no gray tint, paper texture, gradients, shadows, lighting, bloom, fog, or 3D depth"
+    ],
+    "zh": "纯白平坦画布，禁止任何阴影/渐变/纹理/灰调"
+  },
+  "color": {
+    "palette": [
+      "#000000",
+      "#ffffff",
+      "#dc143c"
+    ],
+    "rules": [
+      "background flat digitally pure white; figure drawn in black line art",
+      "maximum three saturated accent colors named with ordinary words only (e.g. vivid red, electric blue, warm gold)",
+      "no technical color notation (hex, RGB, Pantone) in generation prompts"
+    ],
+    "zh": "白底黑线，最多 3 个普通颜色词强调色，提示词里禁止 hex/RGB"
+  },
+  "motion": {
+    "rules": [
+      "rapid scene changes, kinetic motion-graphic transformations, frequent visual events",
+      "preserve identical stick-figure design, constant line weight, strict temporal consistency",
+      "character-driven actions: leaping, touching glass, drawing luminous lines, opening doors"
+    ],
+    "zh": "快速场景切换 + 角色驱动动作，保持线宽一致"
+  },
+  "rhythm": {
+    "avg_shot_s": 10.0,
+    "cut_rule": "one 10s clip = three timed beats [0-3s][3-7s][7-10s]; visual change every 2-3 seconds; never idle",
+    "zh": "10 秒一段三节拍，每 2-3 秒有视觉变化"
+  },
+  "signature": [
+    {
+      "en": "flat digitally pure-white canvas with black line-art stick figure",
+      "zh": "白底黑线纯平画布",
+      "required": true
+    },
+    {
+      "en": "hollow circular head outline with entirely black empty interior, single-line torso, two line arms, two line legs, all five body lines connected",
+      "zh": "空心圆头黑内腔 + 单线躯干 + 双线手臂双线腿 + 五线相连",
+      "required": true
+    },
+    {
+      "en": "uniform smooth stroke thickness on every line, arms and legs end directly without separate hand or foot shapes",
+      "zh": "线宽均匀 + 四肢末端无手脚形状",
+      "required": true
+    }
+  ],
+  "negative": [
+    "gray tint",
+    "paper texture",
+    "gradients",
+    "shadows",
+    "lighting",
+    "bloom",
+    "fog",
+    "3D depth",
+    "filled head",
+    "facial marks",
+    "body silhouette",
+    "outlined limbs",
+    "detached joints",
+    "separate hand or foot shapes",
+    "changed proportions",
+    "broken line weight",
+    "photorealism",
+    "3D humanoid rendering",
+    "detailed pupils or realistic eyes",
+    "extra limbs",
+    "malformed anatomy",
+    "visible words, letters, numbers, captions, subtitles, interface copy, logos, watermarks",
+    "speech bubbles",
+    "dialogue text boxes",
+    "abstract liquid or shape morphing"
+  ],
+  "fits": [
+    "high-density explainers",
+    "pure logic",
+    "mental models",
+    "fast-paced cognitive concepts",
+    "stick-figure kinetic animation"
+  ],
+  "avoid": [
+    "photorealistic footage",
+    "3D CGI",
+    "detailed faces",
+    "cinematic lighting"
+  ],
+  "anime_safe": {
+    "conflict_words": [
+      "photoreal",
+      "photorealistic",
+      "3d render",
+      "cgi",
+      "realistic"
+    ],
+    "rewrites": {},
+    "notes": "白底黑线是纯 2D 线稿，与任何非写实画风兼容"
+  },
+  "vertical_9x16": {
+    "mode": "recompose",
+    "rules": [
+      "use foreground/background depth instead of left-right staging",
+      "stack motion vertically; reveal downward or upward",
+      "keep overlay text in the interface-safe upper/lower band",
+      "switch the composition axis to the vertical center line"
+    ],
+    "note": "竖屏必须重构构图而非改比例标签"
+  },
+  "grade": {
+    "description": "pure white background, black line figure, no grade needed except contrast lock",
+    "ffmpeg_steps": [
+      {
+        "filter": "eq",
+        "args": "contrast=1.00:saturation=1.00:gamma=1.00"
+      },
+      {
+        "filter": "colorchannelmixer",
+        "args": "rr=1.0:gg=1.0:bb=1.0"
+      }
+    ]
+  },
+  "line_weight": "uniform smooth stroke thickness on every line",
+  "palette_wordlist": [
+    "black line",
+    "white background",
+    "crimson red accent"
+  ],
+  "character_dna": "One classic black line stickman on white. Its head is a black circular outline surrounding an entirely white empty interior. Its torso is a single black line, with two black line arms joined to the upper torso and two black line legs joined to the bottom. All five body lines remain connected during movement. Draw the entire character with the same smooth, uniform stroke thickness. Arms and legs end directly without separate hand or foot shapes. The head interior stays completely white and blank in every frame. Preserve this exact line drawing throughout: no filled head, facial marks, body silhouette, outlined limbs or detached joints."
+}

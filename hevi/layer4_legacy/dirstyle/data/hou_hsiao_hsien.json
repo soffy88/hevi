@@ -1,0 +1,43 @@
+{
+  "id": "hou_hsiao_hsien",
+  "display_zh": "侯孝贤",
+  "display_en": "Hou Hsiao-hsien",
+  "source": {"origin": "article", "upstream_commit": "", "license": "article"},
+  "lens_aspect": {"focal": "50-85mm prime, fixed tripod", "aspect": "1.85:1", "notes": "固定机位中远景"},
+  "composition": {"rules": ["subject enters and exits the frame, frame held static", "large empty negative space", "horizon line high, ground/foreground dominant"], "zh": "人物进出画 + 大片空景 + 固定中远景"},
+  "lighting": {"rules": ["natural window daylight only", "no fill, no reflector", "overcast flat light"], "zh": "自然窗光 + 阴天平光"},
+  "color": {"palette": ["#7d8a7a", "#a8b09a", "#c7c1a6", "#5a6359"], "rules": ["faded green-grey desaturated palette", "low saturation, low contrast"], "zh": "褪色绿灰低饱和"},
+  "motion": {"rules": ["no camera movement", "static tripod locked off", "subject drifts through a still frame"], "zh": "几乎不动，人物在静止画框里移动"},
+  "rhythm": {"avg_shot_s": 9.0, "cut_rule": "cuts only when the frame empties or a new figure enters", "zh": "空帧才切"},
+  "signature": [
+    {"en": "static tripod medium-long shot with subject drifting through", "zh": "固定中远景人物进出画", "required": true},
+    {"en": "large natural negative space occupying most of the frame", "zh": "大片自然留白", "required": true},
+    {"en": "faded green-grey palette with overcast natural window light", "zh": "褪色绿灰 + 自然窗光", "required": true}
+  ],
+  "negative": ["handheld shake", "fast cutting", "saturated primary colors", "dramatic key light", "close-up face filling the frame"],
+  "fits": ["family daily life", "memory & nostalgia", "rural town portrait"],
+  "avoid": ["action scene", "night neon", "music video"],
+  "anime_safe": {
+    "conflict_words": ["photograph", "dslr"],
+    "rewrites": {"film grain": "paper grain"},
+    "notes": "静态+留白在动画里效果最好，配色保留褪色绿灰"
+  },
+  "vertical_9x16": {
+    "mode": "recompose",
+    "rules": [
+      "switch 1.85:1 to native 9:16, no letterbox (aspect already close to vertical)",
+      "subject sits on lower third, empty sky/ceiling in upper third",
+      "keep subject small in the frame, do not push them to center"
+    ],
+    "note": "1.85 接近竖版，直接改写为竖构图"
+  },
+  "grade": {
+    "description": "desaturate to green-grey, lower contrast, gentle grain",
+    "ffmpeg_steps": [
+      {"filter": "hue", "args": "h=8:s=0.55"},
+      {"filter": "eq", "args": "contrast=0.92:saturation=0.60:gamma=1.05:brightness=-0.02"},
+      {"filter": "colorbalance", "args": "gs=0.06:bs=-0.02:gm=0.04"},
+      {"filter": "noise", "args": "alls=6:allf=t"}
+    ]
+  }
+}

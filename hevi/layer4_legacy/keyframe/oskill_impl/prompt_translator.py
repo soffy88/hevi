@@ -154,6 +154,7 @@ def zh_shot_to_sd_prompt(
     *,
     character_cards: list[CharacterCard] | dict[str, CharacterCard] | None = None,
     style: str | None = DEFAULT_KEYFRAME_STYLE,
+    director_style: str | None = None,
 ) -> tuple[str, str]:
     """Convert Chinese shot details into English Stable Diffusion prompt & negative prompt.
 
@@ -186,6 +187,30 @@ def zh_shot_to_sd_prompt(
     full_zh = f"{env} {visual_desc}".strip()
 
     style_prefix, style_tags, style_negative, is_photoreal = _resolve_style(style)
+    
+    # If director_style provided, append director visual language
+    if director_style:
+        from hevi.layer4_legacy.dirstyle.oprim_impl import get_style as _get_dir_style
+        from hevi.layer4_legacy.dirstyle.oskill_impl.compiler import _strip_vague as _strip
+        try:
+            dir_style = _get_dir_style(director_style)
+            # Build director-specific positive tokens
+            dir_pos_parts = [
+                f"{dir_style.lens_aspect['focal']}, {dir_style.lens_aspect['aspect']} frame",
+                "; ".join(dir_style.composition["rules"]),
+                "; ".join(dir_style.lighting["rules"]),
+                "; ".join(dir_style.color["rules"]),
+                "; ".join(dir_style.motion["rules"]),
+            ]
+            dir_pos = _strip(", ".join(dir_pos_parts))
+            # Append to existing positive prompt
+            style_prefix = f"{style_prefix}, {dir_pos}" if style_prefix else dir_pos
+            # Add director's negative to style_negative
+            if dir_style.negative:
+                extra_neg = ", ".join(dir_style.negative)
+                style_negative = f"{style_negative}, {extra_neg}" if style_negative else extra_neg
+        except ValueError:
+            pass  # unknown director style, skip
     base_negative = f"{DEFAULT_NEGATIVE}, {style_negative}" if style_negative else DEFAULT_NEGATIVE
 
     # 1. Resolve character card lookup

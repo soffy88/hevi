@@ -1,0 +1,43 @@
+{
+  "id": "nolan",
+  "display_zh": "诺兰",
+  "display_en": "Christopher Nolan",
+  "source": {"origin": "article", "upstream_commit": "24bbcc2", "license": "MIT", "absorbed_from": "mikefluff nolan-imax-handheld + article"},
+  "lens_aspect": {"focal": "IMAX 65mm 18/25/35mm, plus 85mm close-up", "aspect": "IMAX 1.43:1 or 2.39:1", "notes": "大画幅广角全景与超大特写硬切"},
+  "composition": {"rules": ["horizon strictly level, no dutch tilt", "extreme wide establishing → hard cut to extreme close-up", "high information density in frame", "practical set with scale model"], "zh": "水平稳定 + 广角全景与超大特写硬切 + 高信息密度"},
+  "lighting": {"rules": ["natural or practical motivated light", "low contrast, no dramatic shadow", "hard sunlight practical"], "zh": "自然/实用光，低对比"},
+  "color": {"palette": ["#5a6672", "#3b4a5a", "#8792a0", "#2c3138"], "rules": ["cold grey and steel blue desaturated palette"], "zh": "冷灰钢蓝去饱和"},
+  "motion": {"rules": ["mechanically precise dolly moves on track", "no handheld drift, controlled shake only via IMAX body moves", "hard cut between shot scales"], "zh": "机械精准推进，无手持"},
+  "rhythm": {"avg_shot_s": 4.5, "cut_rule": "hard cut on scale change: extreme wide ↔ extreme close-up", "zh": "尺度硬切"},
+  "signature": [
+    {"en": "IMAX large-format wide establishing + extreme close-up hard cut", "zh": "IMAX 大画幅广角与超大特写硬切", "required": true},
+    {"en": "horizon level, mechanical precision, no dutch", "zh": "水平稳定机械精准", "required": true},
+    {"en": "cold grey steel blue desaturated palette", "zh": "冷灰钢蓝去饱和", "required": true}
+  ],
+  "negative": ["dutch angle", "handheld sway", "warm saturated palette", "film grain photo", "vignette"],
+  "fits": ["sci-fi blockbuster", "heist thriller", "time-bending drama"],
+  "avoid": ["art-house quiet", "comedy", "pastel whimsy"],
+  "anime_safe": {
+    "conflict_words": ["film grain photo", "practical-effects photo"],
+    "rewrites": {"practical set": "model-kit scale set"},
+    "notes": "大画幅尺度感 + 冷灰调色可移植到动画"
+  },
+  "vertical_9x16": {
+    "mode": "letterbox_and_recompose",
+    "rules": [
+      "1.43:1 IMAX band centered in 9:16 canvas, black bars top and bottom",
+      "subtitle in the bottom bar",
+      "keep horizon dead level, subject pushed to center on the 1.43 axis",
+      "extreme close-up frames may break out of the 1.43 band as vertical fill (per-shot choice)"
+    ],
+    "note": "IMAX 画幅严禁硬裁，用信箱；特写可破框"
+  },
+  "grade": {
+    "description": "cold steel blue desaturated, low contrast, clean digital look",
+    "ffmpeg_steps": [
+      {"filter": "hue", "args": "h=0:s=0.65"},
+      {"filter": "eq", "args": "contrast=0.98:saturation=0.68:gamma=1.00:brightness=-0.01"},
+      {"filter": "colorbalance", "args": "bs=0.10:rm=0.05:rs=-0.08:rm=-0.05:gm=0.02:bm=0.05"}
+    ]
+  }
+}
