@@ -15,3 +15,4 @@
 - 遵守 CPU-only，无付费 API，无 mock。
 - 未删除 worktree 以外任何文件，无磁盘清理。
 - 最后一行标记：TOONFLOW-R1
+TOONFLOW-R1
