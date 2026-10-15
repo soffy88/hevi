@@ -45,18 +45,6 @@ class ExecuteRequest(BaseModel):
     expectedRevision: int | None = None
 
 
-def _seed_assets(store: SqliteOperationsStore) -> None:
-    """演示用资产库（真实持久化，可反复 list）。"""
-    store.seed_assets(
-        [
-            {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
-            {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
-            {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
-            {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
-        ]
-    )
-
-
 @router.get("")
 async def list_ops() -> dict[str, Any]:
     """验收 1：返回 8 个描述符且字段齐全。"""

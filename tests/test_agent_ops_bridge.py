@@ -15,9 +15,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from hevi.api.main import app
-from hevi.api.routers.ops import _get_store, _seed_assets
+from hevi.api.routers.ops import _get_store
 from hevi.auth.dependencies import get_current_user
 from hevi.operations.bridge import SqliteOperationsStore
+from hevi.operations.in_memory import InMemorySubjectRepository
 from hevi.operations.registry import clear_idempotency, get_operation_names
 import asyncio
 
@@ -34,15 +35,32 @@ GRAPH_ID_B = str(uuid4())
 @pytest.fixture()
 def store(tmp_path: Path) -> SqliteOperationsStore:
     db = SqliteOperationsStore(tmp_path / "agent_ops.db")
-    _seed_assets(db)
-    # 预置两个画布图（带 script 节点 + revision=0）。
-    for gid in (GRAPH_ID, GRAPH_ID_B):
-        db._conn.execute(
-            "INSERT OR REPLACE INTO agent_graphs (graph_id, nodes_json, edges_json, revision) "
-            "VALUES (?, ?, ?, 0)",
-            (gid, '[{"type":"script","rows":[]},{"type":"image","id":"n1"}]', "[]"),
+    # 正式资产写入：经既有 SubjectRepository（非演示数据）。
+    subject_repo = InMemorySubjectRepository()
+    for i, category in enumerate(("character", "character", "scene", "prop")):
+        asyncio.run(
+            subject_repo.create(
+                {
+                    "id": str(uuid4()),
+                    "subject_type": category,
+                    "name": f"asset-{i}",
+                    "version": i + 1,
+                }
+            )
         )
-        db._conn.commit()
+    # 预置两个画布图（带 script 节点 + revision=0），经既有 GraphRepository 写入。
+    for gid in (GRAPH_ID, GRAPH_ID_B):
+        asyncio.run(
+            db._graph_repo.create(
+                {
+                    "id": gid,
+                    "graph_id": gid,
+                    "nodes": [{"type": "script", "rows": []}, {"type": "image", "id": "n1"}],
+                    "edges": [],
+                    "revision": 0,
+                }
+            )
+        )
     return db
 
 
@@ -280,3 +298,46 @@ def test_asset_list_and_task_get(client: TestClient) -> None:
     # task.get 未知 → 404，不触发生成。
     t = _post(client, "task.get", {"task_id": "missing"})
     assert t.status_code == 404
+
+
+def test_asset_list_reads_existing_subject_repository() -> None:
+    """asset.list 必须读既有 SubjectRepository（无 _seed_assets 也能 list）。"""
+    from hevi.operations.in_memory import InMemoryStore
+
+    dedicated = InMemoryStore()
+    subject_repo = InMemorySubjectRepository(store=dedicated)
+    ids = [str(uuid4()) for _ in range(3)]
+    for i, asset_id in enumerate(ids):
+        asyncio.run(
+            subject_repo.create(
+                {
+                    "id": asset_id,
+                    "subject_type": "character",
+                    "name": f"existing-{i}",
+                    "version": 1,
+                }
+            )
+        )
+    # 经 store.list_assets（同一既有 SubjectRepository）读回同一批。
+    store = _get_store()
+    store._subject_repo = subject_repo
+    assets = asyncio.run(store.list_assets())
+    got = {a["asset_id"] for a in assets}
+    assert set(ids) <= got
+
+    # 再经 /api/ops/asset.list 读回同一批（走真实 HTTP 端点，注入同一 store）。
+    from hevi.api.routers import ops as ops_router
+
+    app.dependency_overrides[get_current_user] = lambda: USER
+    original_get_store = ops_router._get_store
+    ops_router._get_store = lambda: store
+    try:
+        c = TestClient(app)
+        resp = c.post("/api/ops/asset.list?mode=read-write", json={"params": {}})
+        assert resp.status_code == 200, resp.text
+        http_ids = {a["asset_id"] for a in resp.json()["assets"]}
+        assert set(ids) <= http_ids
+    finally:
+        ops_router._get_store = original_get_store
+        app.dependency_overrides.clear()
+        clear_idempotency()
