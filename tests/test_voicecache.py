@@ -6,6 +6,7 @@ fallback, and the live-loop integration seam (a cached hit skips the real TTS).
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +20,20 @@ from hevi.live_host.voicecache import (
 )
 
 N = 768
+
+
+class _FakeEmb:
+    """Query embedder: maps a text to a fixed direction so cosine is
+    deterministic without EG2."""
+
+    def text(self, texts, *, query):
+        out = []
+        for t in texts:
+            if "礼物" in t or "谢谢" in t:
+                out.append([1.0, 0.0] + [0.0] * (N - 2))
+            else:
+                out.append([0.0, 1.0] + [0.0] * (N - 2))
+        return np.asarray(out, dtype=np.float32)
 
 
 def _entry(eid, text, motion="talk_a", category="misc", emb=None, wav_exists=True):
@@ -52,6 +67,61 @@ def test_normalize_is_case_insensitive_for_latin():
     assert normalize("Hello World") == normalize("hello world")
 
 
+# ── loading a real library off disk ───────────────────────────────
+def test_voicecache_loads_library_and_builds_matrix(tmp_path):
+    """VoiceCache(root=...) must actually load manifest+index and pair each id
+    with its own vector.  (A missing audio_emb field on VoiceEntry made every
+    construction raise, and a row-order mismatch would silently misalign them.)"""
+    import numpy as np
+
+    wav_dir = tmp_path / "wav"
+    wav_dir.mkdir()
+    entries = [("a", "欢迎来到小雅的直播间"), ("b", "谢谢哥哥的礼物")]
+    for eid, _ in entries:
+        (wav_dir / f"{eid}.wav").write_bytes(b"RIFF")
+    (tmp_path / "manifest.json").write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {
+                        "id": e,
+                        "text": t,
+                        "wav": f"wav/{e}.wav",
+                        "duration": 1.0,
+                        "motion": "talk_a",
+                        "category": "greeting",
+                    }
+                    for e, t in entries
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    # entry 'a' is a greeting line, entry 'b' the gift line.  Give each the
+    # direction _FakeEmb uses for its topic (col 0 = 谢谢/礼物, col 1 = else).
+    # The npz deliberately lists 'b' FIRST, i.e. NOT the manifest order, so a
+    # row-order bug would hand 'a' the b-vector and vice versa.
+    np.savez_compressed(
+        tmp_path / "index.npz",
+        ids=np.array(["b", "a"]),
+        text=np.asarray([[1.0] + [0.0] * 767, [0.0, 1.0] + [0.0] * 766], dtype=np.float32),
+    )
+
+    vc = VoiceCache(root=tmp_path, threshold=0.99, embedder=_FakeEmb())
+    assert len(vc.entries) == 2
+    assert vc.ready
+    assert vc._text_matrix is not None and vc._text_matrix.shape == (2, 768)
+    # npz order is [b, a] but manifest order is [a, b], and a positional bug
+    # would hand 'a' the col-0 (gift) vector.  Keying by ID keeps it right:
+    # 'a' (greeting) → col 1, 'b' (gift) → col 0.
+    assert vc._text_matrix[0, 1] > 0.9 and vc._text_matrix[0, 0] < 0.1
+    assert vc._text_matrix[1, 0] > 0.9 and vc._text_matrix[1, 1] < 0.1
+    # …and the gift-side paraphrase must retrieve the gift entry, not the greeting
+    hit, score = vc.match("谢谢大哥的礼物")
+    assert hit is not None and hit.id == "b", (hit, score)
+
+
 # ── matching ─────────────────────────────────────────────────
 def test_exact_hit():
     vc = _cache([_entry("a", "谢谢哥哥的礼物。", "g_heart", "gift_thanks")])
@@ -79,23 +149,6 @@ def test_miss_logs_and_counts():
 
 
 # ── cosine path (needs a query embedder) ─────────────────────
-class _FakeEmb:
-    """Query embedder: maps a text to a fixed 2-d-ish direction so cosine is
-    deterministic without EG2."""
-
-    def text(self, texts, *, query):
-        import numpy as np
-
-        # 'same topic' → the library vector; anything else → orthogonal
-        out = []
-        for t in texts:
-            if "礼物" in t or "谢谢" in t:
-                out.append([1.0, 0.0] + [0.0] * (N - 2))
-            else:
-                out.append([0.0, 1.0] + [0.0] * (N - 2))
-        return np.asarray(out, dtype=np.float32)
-
-
 def test_cosine_hit_uses_injected_embedder():
     """A paraphrased reply must be able to score against the library: without a
     query embedder the cosine path is dead and only exact matches ever hit."""

@@ -95,6 +95,7 @@ class VoiceEntry:
     motion: str
     category: str
     text_emb: np.ndarray | None = None
+    audio_emb: np.ndarray | None = None
 
     @property
     def norm(self) -> str:
