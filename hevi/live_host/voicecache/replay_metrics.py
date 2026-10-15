@@ -34,6 +34,18 @@ import numpy as np
 
 os.environ.setdefault("HEVI_VOICECACHE_ROOT", "/data/soffy/voicecache")
 
+# The ollama client uses httpx with the proxy env enabled (unlike the EG2 client,
+# which sets trust_env=False).  A caller that OVERWRITES no_proxy to reach the
+# EG2 tailnet host (e.g. NO_PROXY=100.68.226.13) drops localhost from the exempt
+# list, so http://localhost:11434 gets sent through the http proxy and every
+# reply comes back empty.  Keep localhost exempt regardless of the caller.
+for _k in ("no_proxy", "NO_PROXY"):
+    _parts = [p.strip() for p in os.environ.get(_k, "").split(",") if p.strip()]
+    for _host in ("localhost", "127.0.0.1", "::1"):
+        if _host not in _parts:
+            _parts.append(_host)
+    os.environ[_k] = ",".join(_parts)
+
 from hevi.live_host.voicecache import VoiceCache, normalize  # noqa: E402
 from hevi.live_host.oprim.llm_ollama import OllamaLLM  # noqa: E402
 from hevi.live_host.schemas import EngineConfig  # noqa: E402
@@ -119,6 +131,8 @@ def main() -> None:
     piper_saved = 0.0
     cosy_saved = 0.0
     per_cat_hits: dict[str, list[bool]] = {}
+    empty_replies = 0
+    llm_errors = 0
     # every (sentence, best entry, score) so thresholds can be swept afterwards
     scored: list[dict] = []
     t0_all = time.time()
@@ -127,7 +141,14 @@ def main() -> None:
         if args.no_llm:
             reply = ""
         else:
-            reply = llm.reply(q)
+            try:
+                reply = llm.reply(q)
+            except Exception as e:  # noqa: BLE001 - a transient ollama hiccup must not read as a miss
+                llm_errors += 1
+                print(f"  LLM ERROR on {q!r}: {type(e).__name__}: {e}", flush=True)
+                reply = ""
+            if not reply.strip():
+                empty_replies += 1
         for s in split_sentences(reply):
             total_sentences += 1
             entry, score = cache.match(s)
@@ -167,6 +188,18 @@ def main() -> None:
                 flush=True,
             )
 
+    # A broken LLM path (ollama down / model missing / transient error) used to
+    # surface as a flat 0.0 hit rate over 0 sentences — indistinguishable from a
+    # genuinely bad cache.  Refuse to write metrics in that case.
+    if not args.no_llm and empty_replies > len(danmaku) * 0.5:
+        print(
+            f"ABORT: {empty_replies}/{len(danmaku)} prompts got an empty reply "
+            f"({llm_errors} raised). Is ollama up and the v2 model pulled? "
+            f"Not writing metrics.",
+            flush=True,
+        )
+        raise SystemExit(2)
+
     hit_rate = hits / total_sentences if total_sentences else 0.0
     # threshold sweep: how the hit rate and saved latency move as the cutoff
     # slides.  EG2 cosines for same-intent paraphrases cluster ~0.76-0.9 while
@@ -187,6 +220,8 @@ def main() -> None:
         "n_hits": hits,
         "hit_rate": round(hit_rate, 4),
         "n_misses": total_sentences - hits,
+        "n_empty_replies": empty_replies,
+        "n_llm_errors": llm_errors,
         "piper_time_saved_s": round(piper_saved, 2),
         "cosyvoice_equiv_saved_s": round(cosy_saved, 2),
         "threshold_sweep": sweep,
