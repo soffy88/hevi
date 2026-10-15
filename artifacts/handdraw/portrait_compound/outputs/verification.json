@@ -1,0 +1,422 @@
+{
+  "status": "delivery_review_completed",
+  "engineering": {
+    "duration_seconds": 50.95435416666667,
+    "art_direction": {
+      "dependency_sha256": "fbbfd33d70f729011b6a6bc232851c116cd4a89ead2adea4462888a6ce26fc1a",
+      "reviewed_image_uses": 5,
+      "style": {
+        "mode": "catalog",
+        "name": "极简黑白线条讲解漫画",
+        "resolved_sha256": "d9b7c119f3c88c69dd46a040657eb8af45761787d77b39147826190471c98bf2"
+      },
+      "drawing_plan": {
+        "plan_sha256": "b257c2479703d8f1cbdb0074f0dcf63d7bc9cdbb403d7b5c6e3b39b85b8b740c",
+        "reviewed_illustrations": 3
+      }
+    },
+    "checks": {
+      "full_decode": true,
+      "complete_timeline": true,
+      "paths_and_paint_coverage": true,
+      "narration_controls_drawing_time": true,
+      "canvas_bounds": true,
+      "subtitle_order": true,
+      "loudness": true,
+      "semantic_part_order": true,
+      "glyph_isolation": true,
+      "arm_continues_off_canvas": true,
+      "cover_half_second_still_and_fade": true,
+      "mandatory_art_direction": true
+    },
+    "assets": [
+      {
+        "name": "element-0001",
+        "type": "handwritten_text",
+        "isolated_characters": 12,
+        "maximum_tip_distance_px": 5.000003419376213
+      },
+      {
+        "name": "element-0002",
+        "type": "marker_highlight",
+        "maximum_tip_distance_px": 10.0
+      },
+      {
+        "name": "element-0003",
+        "type": "illustration",
+        "semantic_parts_in_order": [
+          "small_snowball",
+          "medium_snowball",
+          "giant_snowball",
+          "mountain_slope"
+        ],
+        "ink_tip_max_distance_px": 4.472198005706401,
+        "paint_max_overshoot_px": 0.0026852151351519638
+      },
+      {
+        "name": "element-0004",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0005",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0006",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0007",
+        "type": "handwritten_text",
+        "isolated_characters": 8,
+        "maximum_tip_distance_px": 6.708203932499369
+      },
+      {
+        "name": "element-0008",
+        "type": "marker_underline",
+        "maximum_tip_distance_px": 2.498698539684095
+      },
+      {
+        "name": "element-0009",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0010",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0011",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0012",
+        "type": "handwritten_text",
+        "isolated_characters": 12,
+        "maximum_tip_distance_px": 6.403138801379457
+      },
+      {
+        "name": "element-0013",
+        "type": "marker_highlight",
+        "maximum_tip_distance_px": 10.0
+      },
+      {
+        "name": "element-0014",
+        "type": "illustration",
+        "semantic_parts_in_order": [
+          "exponential_surge",
+          "linear_ramp",
+          "axes_frame"
+        ],
+        "ink_tip_max_distance_px": 5.000000000005492,
+        "paint_max_overshoot_px": 4.0388760510268185e-05
+      },
+      {
+        "name": "element-0015",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0016",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0017",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0018",
+        "type": "handwritten_text",
+        "isolated_characters": 8,
+        "maximum_tip_distance_px": 4.472156201627518
+      },
+      {
+        "name": "element-0019",
+        "type": "marker_underline",
+        "maximum_tip_distance_px": 2.498698539684095
+      },
+      {
+        "name": "element-0020",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0021",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0022",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0023",
+        "type": "handwritten_text",
+        "isolated_characters": 13,
+        "maximum_tip_distance_px": 6.708213655396212
+      },
+      {
+        "name": "element-0024",
+        "type": "marker_highlight",
+        "maximum_tip_distance_px": 10.0
+      },
+      {
+        "name": "element-0025",
+        "type": "illustration",
+        "semantic_parts_in_order": [
+          "compounding_star",
+          "coin_stacks"
+        ],
+        "ink_tip_max_distance_px": 4.000000000114935,
+        "paint_max_overshoot_px": 1.8837255915116202e-05
+      },
+      {
+        "name": "element-0026",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0027",
+        "type": "typeset_caption",
+        "lines": 2,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0028",
+        "type": "handwritten_text",
+        "isolated_characters": 8,
+        "maximum_tip_distance_px": 5.3851660255750655
+      },
+      {
+        "name": "element-0029",
+        "type": "marker_underline",
+        "maximum_tip_distance_px": 2.498698539684095
+      },
+      {
+        "name": "element-0030",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0031",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      },
+      {
+        "name": "element-0032",
+        "type": "typeset_caption",
+        "lines": 1,
+        "font": {
+          "path": "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+          "index": 0,
+          "family": "Noto Sans CJK JP",
+          "style": "Regular"
+        },
+        "background": null
+      }
+    ],
+    "pages": [
+      {
+        "page": 1,
+        "duration_seconds": 17.3217,
+        "drawing_completed_before_speech_end_seconds": 1.1403210000000001
+      },
+      {
+        "page": 2,
+        "duration_seconds": 15.649799999999999,
+        "drawing_completed_before_speech_end_seconds": 0.9999600000000015
+      },
+      {
+        "page": 3,
+        "duration_seconds": 16.98285416666667,
+        "drawing_completed_before_speech_end_seconds": 1.1750380199999952
+      }
+    ],
+    "subtitles": {
+      "subtitle_streams": 0,
+      "adjacent_sidecars": 0,
+      "presentation": "burned"
+    },
+    "audio_mix": {
+      "background_music": false,
+      "layers": [],
+      "narration_only": true,
+      "delivery_notice": "默认未添加背景音乐；可自行合成，或在发布平台选择配乐。"
+    },
+    "ending_review": {
+      "last_active_seconds": 49.25,
+      "source_tail_seconds": 0.25435416666666555,
+      "activity_threshold_dbfs": -60,
+      "analysis_window_seconds": 0.01,
+      "hold_seconds": 0.45,
+      "total_tail_seconds": 0.7043541666666655,
+      "closing_text": null,
+      "scope": "Protects samples and pacing; complete pronunciation still needs final-track review",
+      "final_phrase_encoding_correlation": 0.9999804354966445
+    },
+    "audio_track_correlation": 0.9999262722518493,
+    "loudness": {
+      "input_i": "-16.90",
+      "input_tp": "-1.99",
+      "input_lra": "3.60",
+      "input_thresh": "-27.11",
+      "output_i": "-17.11",
+      "output_tp": "-2.00",
+      "output_lra": "3.30",
+      "output_thresh": "-27.30",
+      "normalization_type": "dynamic",
+      "target_offset": "0.11"
+    },
+    "status": "engineering_passed_review_required",
+    "video_sha256": "e196b673a3781fc1070105f5032d500a0abc7ad1c3613177d74786b8eb46ba2f",
+    "cover_sha256": "148c05dec22f3f90b1051c027c25f53e8740dfcdc8a9014e0d8e9de860cb3bd4",
+    "build_fingerprint": "eab8f0743f4399745fbde34fe6069c026160892ad952926f8252903fe3d6058a",
+    "frames": "1529",
+    "bytes": 2639545
+  },
+  "review": {
+    "video_sha256": "e196b673a3781fc1070105f5032d500a0abc7ad1c3613177d74786b8eb46ba2f",
+    "content": {
+      "status": "pass",
+      "evidence": "因果逻辑完整，雪球隐喻到指数曲线与复利金字塔递进清晰。"
+    },
+    "visual": {
+      "status": "pass",
+      "evidence": "逐笔描线与平涂填色无错位，笔尖贴合准确。"
+    },
+    "motion": {
+      "status": "pass",
+      "evidence": "手部轨迹自然平滑，抬笔与书写时序严密。"
+    },
+    "audio": {
+      "status": "pass",
+      "evidence": "全篇旁白母带无破音爆音，响度符合标准。"
+    },
+    "privacy": {
+      "status": "pass",
+      "evidence": "所有插画与手部均为合规本地渲染，无隐私元数据。"
+    },
+    "limitations": [
+      "CPU离线纯代码渲染；未依赖付费云端生图。"
+    ]
+  }
+}

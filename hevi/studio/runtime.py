@@ -7,7 +7,9 @@ from __future__ import annotations
 
 from typing import Any
 
-RUNTIMES = ("remotion", "hyperframes", "hyperframes_styled", "manim", "ffmpeg")
+RUNTIMES = ("remotion", "hyperframes", "hyperframes_styled", "manim", "ffmpeg", "handdraw")
+
+_HANDDRAW_HINTS = ("handdraw", "手绘", "手写", "白板", "简笔画", "口播手绘")
 
 _STYLED_HINTS = ("style", "explainer", "风格", "讲解")
 _HYPER_HINTS = (
@@ -39,6 +41,8 @@ def select_runtime(
     if locked and locked in RUNTIMES:
         return {"runtime": locked, "locked": True, "reason": "recipe.lock"}
     blob = f"{intent} {line_id}".lower()
+    if any(h in blob for h in _HANDDRAW_HINTS):
+        return {"runtime": "handdraw", "locked": False, "reason": "intent.handdraw"}
     if any(h in blob for h in _MANIM_HINTS):
         return {"runtime": "manim", "locked": False, "reason": "intent.manim"}
     if any(h in blob for h in _STYLED_HINTS):

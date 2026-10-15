@@ -56,3 +56,58 @@ entries:
     commercial_restrictions: none
     derived_data: true
     last_verified: 2026-10-14
+  - source: sweety-handdraw-video
+    repository: https://github.com/threerocks/sweety-handdraw-video
+    license: MIT
+    version: "v1.2.3"
+    integration_type: layer4_legacy_vendored_pipeline
+    bundled: true
+    runtime_dependency: true
+    attribution_required: true
+    commercial_restrictions: none
+    derived_data: false
+    last_verified: 2026-10-14
+  - source: omniailab-ai-director
+    repository: https://github.com/tomatoparkdao/omniailab-ai-director
+    license: MIT
+    version: "772a1477cd436dd8d9fdff60e626a0338ff2f682"
+    integration_type: vendored_specification
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    commercial_restrictions: none
+    derived_data: false
+    last_verified: 2026-10-14
+  - source: hand-drawn-styles
+    repository: https://github.com/threerocks/hand-drawn-styles
+    license: MIT
+    version: "4132988b8596bfa36321c970a4472d4e3bb25d96"
+    integration_type: vendored_specification
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    commercial_restrictions: none
+    derived_data: false
+    last_verified: 2026-10-14
+  - source: sweety-image-art-direction
+    repository: https://github.com/threerocks/sweety-image-art-direction
+    license: MIT
+    version: "fbbfd33d70f729011b6a6bc232851c116cd4a89ead2adea4462888a6ce26fc1a"
+    integration_type: vendored_specification
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    commercial_restrictions: none
+    derived_data: false
+    last_verified: 2026-10-14
+  - source: sweety-image-privacy
+    repository: https://github.com/threerocks/sweety-skills
+    license: MIT
+    version: "1.1.0"
+    integration_type: vendored_specification
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    commercial_restrictions: none
+    derived_data: false
+    last_verified: 2026-10-14

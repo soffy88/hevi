@@ -11,11 +11,13 @@ from __future__ import annotations
 from .errors import CapabilityError
 from .registry import (
     Capability,
+    CapabilityResult,
     Registry,
     contains,
     get,
     list,
     list_capabilities,
+    names,
     register,
     resolve,
 )
@@ -27,6 +29,11 @@ from .result import CapabilityResult
 # ``hevi.capabilities.get("scene3d.planet_orbit")``.
 from . import scene3d as _scene3d  # noqa: E402,F401
 _scene3d.register_scene3d_capabilities_once()
+
+# Handdraw line (merged from feat/handdraw-line): importing registers the four
+# handdraw capabilities (handdraw.full / storyboard / narration / illustration)
+# on the unified registry.  Heavy pipeline imports stay inside the render fns.
+from . import handdraw  # noqa: E402,F401
 
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
@@ -42,6 +49,7 @@ __all__ = [
     "resolve",
     "list",
     "list_capabilities",
+    "names",
     "contains",
     "Registry",
 ]

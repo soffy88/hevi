@@ -29,17 +29,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-<<<<<<< HEAD
+from .errors import CapabilityError
+from .result import CapabilityResult
 from hevi.quality.kids_gate import kids_gate_workflow, kids_gate_extended
 from hevi.kids import manifest_adapter
 from hevi.kids import review_sheet as review_sheet_mod
 from hevi.kids import render_local
 from hevi.kids import annotation_revision
-
-=======
-from .errors import CapabilityError
-from .result import CapabilityResult
->>>>>>> 5947249d6b1fb7bf0e9df2d98f89dcd8312efe21
 
 __all__ = [
     "Capability",
@@ -49,6 +45,7 @@ __all__ = [
     "get",
     "list_capabilities",
     "list",
+    "names",
     "resolve",
     "Registry",
 ]
@@ -151,6 +148,11 @@ def list_capabilities(
 
 # Public alias matching the contract's ``list(kind=..., aspect=...)`` signature.
 list = list_capabilities  # noqa: A001 - intentionally mirrors the contract API.
+
+
+def names() -> list[str]:
+    """Return all registered capability names in stable sorted order."""
+    return sorted(_REGISTRY.keys())
 
 
 def Registry() -> dict[str, Capability]:  # noqa: N802 - DDD-style factory per contract.
@@ -323,7 +325,8 @@ register(
 
 
 # ---------------------------------------------------------------------------
-# Kids / anime safety capabilities (merged from feat/kids-manifest)
+# Kids / anime safety capabilities (merged from feat/kids-manifest,
+# feat/review-sheet and feat/agent-ops).
 #
 # These expose the 2–6 岁幼儿 safety gates as first-class capabilities so any
 # product line (and the ShotSpec workbench) can run them by dotted name.
@@ -356,23 +359,23 @@ def _render_kids_gate(
     )
 
 
-<<<<<<< HEAD
-register(Capability(
-    name="qa.kids_gate",
-    kind="line",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object"},
-    cpu_cost_hint=0.1,
-    render=_render_kids_gate,
-    description="幼儿动漫安全与节奏质检闸门",
-    line="anime"
-))
+register(
+    Capability(
+        name="qa.kids_gate",
+        kind="line",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object"},
+        cpu_cost_hint=0.1,
+        render=_render_kids_gate,
+        description="幼儿动漫安全与节奏质检闸门",
+        line="anime",
+    )
+)
 
 
-# ── K2 新增能力注册 ─────────────────────────────────────────────────
-
-
-def _render_kids_gate_extended(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_kids_gate_extended(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     video_path = Path(params.get("video_path", ""))
     srt_path = Path(params.get("srt_path")) if params.get("srt_path") else None
     meta_path = Path(params.get("metadata_path")) if params.get("metadata_path") else None
@@ -389,19 +392,23 @@ def _render_kids_gate_extended(params: dict[str, Any], out_dir: Path, *, duratio
     )
 
 
-register(Capability(
-    name="qa.kids_gate.extended",
-    kind="line",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object"},
-    cpu_cost_hint=0.2,
-    render=_render_kids_gate_extended,
-    description="幼儿动漫安全与节奏质检闸门 + §3.6 续作 QC（连续性/调色/转场/口语语言）",
-    line="anime",
-))
+register(
+    Capability(
+        name="qa.kids_gate.extended",
+        kind="line",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object"},
+        cpu_cost_hint=0.2,
+        render=_render_kids_gate_extended,
+        description="幼儿动漫安全与节奏质检闸门 + §3.6 续作 QC（连续性/调色/转场/口语语言）",
+        line="anime",
+    )
+)
 
 
-def _render_review_sheet(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_review_sheet(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     manifest_path = params.get("manifest_path")
     if not manifest_path:
         raise RuntimeError("review_sheet 需要 manifest_path")
@@ -416,19 +423,23 @@ def _render_review_sheet(params: dict[str, Any], out_dir: Path, *, duration: flo
     )
 
 
-register(Capability(
-    name="kids.review_sheet",
-    kind="overlay",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object", "required": ["manifest_path"]},
-    cpu_cost_hint=0.5,
-    render=_render_review_sheet,
-    description="分镜审稿表网格 PNG 渲染（每格镜号/时长/台词/机位/景别/缩略图）",
-    line="anime",
-))
+register(
+    Capability(
+        name="kids.review_sheet",
+        kind="overlay",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object", "required": ["manifest_path"]},
+        cpu_cost_hint=0.5,
+        render=_render_review_sheet,
+        description="分镜审稿表网格 PNG 渲染（每格镜号/时长/台词/机位/景别/缩略图）",
+        line="anime",
+    )
+)
 
 
-def _render_local_episode(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_local_episode(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     manifest_path = params.get("manifest_path")
     if not manifest_path:
         raise RuntimeError("render_local 需要 manifest_path")
@@ -442,19 +453,23 @@ def _render_local_episode(params: dict[str, Any], out_dir: Path, *, duration: fl
     )
 
 
-register(Capability(
-    name="kids.render_local",
-    kind="shot",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object", "required": ["manifest_path"]},
-    cpu_cost_hint=2.0,
-    render=_render_local_episode,
-    description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）",
-    line="anime",
-))
+register(
+    Capability(
+        name="kids.render_local",
+        kind="shot",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object", "required": ["manifest_path"]},
+        cpu_cost_hint=2.0,
+        render=_render_local_episode,
+        description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）",
+        line="anime",
+    )
+)
 
 
-def _render_annotation_patch(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_annotation_patch(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     """从标注请求构建确定性 ShotSpecPatch（注册点，便于产线按名调用）。"""
     manifest_path = params.get("manifest_path")
     ann = params.get("annotation") or {}
@@ -487,26 +502,15 @@ def _render_annotation_patch(params: dict[str, Any], out_dir: Path, *, duration:
     )
 
 
-register(Capability(
-    name="kids.annotation_revision",
-    kind="line",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object", "required": ["manifest_path"]},
-    cpu_cost_hint=0.1,
-    render=_render_annotation_patch,
-    description="帧标注 → 确定性 ShotSpecPatch（§3.5 映射）",
-    line="anime",
-))
-=======
 register(
     Capability(
-        name="qa.kids_gate",
+        name="kids.annotation_revision",
         kind="line",
         aspects=["16:9", "9:16"],
-        params_schema={"type": "object"},
+        params_schema={"type": "object", "required": ["manifest_path"]},
         cpu_cost_hint=0.1,
-        render=_render_kids_gate,
-        description="幼儿动漫安全与节奏质检闸门",
+        render=_render_annotation_patch,
+        description="帧标注 → 确定性 ShotSpecPatch（§3.5 映射）",
         line="anime",
     )
 )
@@ -618,4 +622,3 @@ register(
 # Anatomy explainer capability (merged from feat/anatomy-explainer).  Importing
 # the module registers ``anatomy.explainer`` via this same registry.
 import hevi.capabilities.anatomy_explainer  # noqa: E402,F401
->>>>>>> 5947249d6b1fb7bf0e9df2d98f89dcd8312efe21
