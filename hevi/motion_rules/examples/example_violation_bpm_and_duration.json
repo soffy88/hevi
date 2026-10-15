@@ -1,0 +1,28 @@
+{
+  "title": "违规示例 2：单镜超长、BPM 网格脱节与循环首尾帧不一致",
+  "bpm": 120.0,
+  "has_contact_sheet": true,
+  "is_loop": true,
+  "first_frame": "frame_alpha",
+  "last_frame": "frame_omega_mismatch",
+  "shots": [
+    {
+      "id": "shot_01_offgrid_and_overlength",
+      "start": 0.0,
+      "dur": 9.5,
+      "transition": {
+        "type": "push_cut",
+        "start": 1.135
+      },
+      "texts": [
+        {
+          "text": "全自动化流水线."
+        }
+      ],
+      "effects": [
+        "camera_shake",
+        "rgb_split"
+      ]
+    }
+  ]
+}

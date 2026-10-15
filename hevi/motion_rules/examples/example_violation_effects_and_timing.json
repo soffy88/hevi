@@ -1,0 +1,32 @@
+{
+  "title": "违规示例 1：命中禁项特效与内容进出时序倒错",
+  "bpm": 120.0,
+  "has_contact_sheet": false,
+  "shots": [
+    {
+      "id": "shot_01_banned_effects_and_timing",
+      "start": 0.0,
+      "dur": 3.0,
+      "transition": {
+        "type": "fade_to_black",
+        "start": 0.0
+      },
+      "container_morph": {
+        "start": 0.5,
+        "next_morph": 2.2
+      },
+      "texts": [
+        {
+          "text": "引领次世代革新。",
+          "in": 0.1,
+          "out": 2.8
+        }
+      ],
+      "effects": [
+        "shockwave_rings",
+        "neon_glow"
+      ],
+      "easing": "bouncy"
+    }
+  ]
+}

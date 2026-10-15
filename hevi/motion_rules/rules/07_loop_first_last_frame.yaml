@@ -1,0 +1,12 @@
+id: loop_first_last_frame
+title: 首尾同帧无缝循环（Loop Integrity）
+category: 循环结构
+trigger:
+  - 社交短动效、背景动效（B-roll）、循环产品展示
+counter_example: |
+  最后一帧与第一帧在物体形态、尺寸、位置或光标速度上存在微小跳跃，导致循环播放时产生瞬间卡顿（loop stutter）或瞬时位移。
+correct_approach: |
+  循环片的最后一帧必须与第一帧像素级吻合（last frame = first frame），包括容器尺寸、圆角、背景色、光标静止位置与速度矢量，让首尾衔接完全无感。
+source_case_id: "2103273003555402193"
+source_author: zero (@twoclipping)
+prompt_summary: 循环动效必须确保首尾同帧（last frame = first frame），容器状态与光标位置速度在首尾完全一致，保证播放无感无缝衔接。
