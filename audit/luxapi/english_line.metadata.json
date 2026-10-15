@@ -1,0 +1,39 @@
+{
+  "provider": "luxtts_http",
+  "endpoint": "http://100.119.113.90:8795/tts",
+  "voice_requested": "auto",
+  "sample_rate": 48000,
+  "channels": 1,
+  "sample_width_bytes": 2,
+  "sentence_gap_ms": 150,
+  "sentence_count": 2,
+  "duration_seconds": 2.3367,
+  "total_gen_seconds": 51.38,
+  "output_path": "/data/soffy/projects/hevi-luxapi/audit/luxapi/english_line.wav",
+  "sentences": [
+    {
+      "index": 1,
+      "text": "Hello, little bunny!",
+      "voice_requested": "auto",
+      "voice": "en_male",
+      "duration_seconds": 0.864,
+      "api_audio_seconds": 0.86,
+      "gen_seconds": 50.65,
+      "http_attempts": 1,
+      "start_seconds": 0.0,
+      "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_87f641856f8f45679d2aa6ac4315c4ad/sentence-001.wav"
+    },
+    {
+      "index": 2,
+      "text": "Let's water the flowers together.",
+      "voice_requested": "auto",
+      "voice": "en_male",
+      "duration_seconds": 1.3227,
+      "api_audio_seconds": 1.32,
+      "gen_seconds": 0.73,
+      "http_attempts": 1,
+      "start_seconds": 1.014,
+      "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_87f641856f8f45679d2aa6ac4315c4ad/sentence-002.wav"
+    }
+  ]
+}

@@ -25,6 +25,8 @@ import asyncio
 import logging
 import os
 import subprocess
+import shutil
+import uuid
 from pathlib import Path
 from typing import Any, Literal
 
@@ -58,11 +60,11 @@ def _identity_envelope(
 
 
 def _formal_requested_provider() -> str:
-    return os.getenv("HEVI_TTS_FORMAL_PROVIDER", "cosyvoice").strip().lower()
+    return os.getenv("HEVI_TTS_FORMAL_PROVIDER", "lux_tts").strip().lower()
 
 
 def _conversational_requested_provider() -> str:
-    return os.getenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "voicebox").strip().lower()
+    return os.getenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "lux_tts").strip().lower()
 
 
 def _infer_audio_style(text: str) -> AudioStyle:
@@ -190,6 +192,16 @@ async def _synthesize_conversational(
     """
     requested = _conversational_requested_provider()
 
+    if requested in {"lux", "lux_tts", "luxtts"}:
+        return await _synthesize_luxtts_with_fallback(
+            text=text,
+            output_path=output_path,
+            voice="auto",
+            instruct=instruct,
+            requested_provider=requested,
+            **_kw,
+        )
+
     if requested == "chattts":
         try:
             from oprim import chattts_call as _chattts_api
@@ -224,6 +236,105 @@ async def _synthesize_conversational(
         actual_provider="voicebox",
         fallback_reason=f"unsupported_conversational_provider:{requested}",
     )
+
+
+async def _synthesize_luxtts_with_fallback(
+    *,
+    text: str,
+    output_path: Path,
+    voice: str,
+    instruct: str | None,
+    requested_provider: str = "lux_tts",
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Use the LuxTTS HTTP service first, then explicitly fall back to Cozy/Piper."""
+    from hevi.audio.lux_tts_service import lux_tts_available, synth_with_luxtts
+
+    lux_error: Exception | None = None
+    cosy_error: Exception | None = None
+    try:
+        if not lux_tts_available():
+            raise RuntimeError("LuxTTS HTTP /health is not ready")
+        remote_voice = os.getenv("HEVI_LUXTTS_VOICE", "auto").strip().lower()
+        if remote_voice not in {"auto", "soffy", "en_male"}:
+            logger.warning("Ignoring unsupported HEVI_LUXTTS_VOICE=%r; using auto", remote_voice)
+            remote_voice = "auto"
+        await synth_with_luxtts(
+            text=text,
+            output_path=output_path,
+            voice=remote_voice,
+            speed=float(kwargs.get("speed") or 1.0),
+            steps=int(kwargs.get("steps") or 4),
+        )
+        return _identity_envelope(
+            output_path, requested_provider=requested_provider, actual_provider="lux_tts"
+        )
+    except Exception as exc:
+        lux_error = exc
+        logger.warning(
+            "LuxTTS HTTP unavailable/failed; falling back to CosyVoice then Piper: %s",
+            lux_error,
+        )
+
+    try:
+        from types import SimpleNamespace
+        from hevi.audio.cosyvoice_service import cosyvoice_synthesize
+
+        mode = os.getenv("HEVI_COSY_INFERENCE_MODE", "").strip() or None
+        celeb = (kwargs.get("celeb") or os.getenv("COSY_CELEB") or "").strip()
+        await cosyvoice_synthesize(
+            config={"strict_voice": bool(celeb)},
+            script=[SimpleNamespace(
+                text=text,
+                inference_mode=mode,
+                instruct_text=instruct,
+                voice_ref=str(kwargs.get("reference_audio") or "") or None,
+                ref_text=str(kwargs.get("reference_text") or "") or None,
+                voice_id=celeb or voice,
+            )],
+            output_path=output_path,
+        )
+        logger.warning("LuxTTS fallback selected CosyVoice after the HTTP service failed")
+        return _identity_envelope(
+            output_path,
+            requested_provider=requested_provider,
+            actual_provider="cosyvoice",
+            fallback_reason=f"luxtts_http_unavailable:{lux_error}",
+        )
+    except Exception as exc:
+        cosy_error = exc
+        logger.warning("CosyVoice fallback failed; attempting Piper: %s", cosy_error)
+
+    temp_root = Path(__file__).resolve().parents[2] / ".tmp"
+    temp_root.mkdir(parents=True, exist_ok=True)
+    piper_output = temp_root / f"piper_fallback_{uuid.uuid4().hex}.wav"
+    try:
+        from hevi.layer4_legacy.talkcraft.omodul_impl._media import piper_tts
+
+        language = "zh" if any("\u4e00" <= ch <= "\u9fff" for ch in text) else "en"
+        await asyncio.to_thread(
+            piper_tts,
+            text=text,
+            out_wav=piper_output,
+            lang=language,
+            length_scale=float(kwargs.get("length_scale") or 1.0),
+        )
+        if not piper_output.is_file() or piper_output.stat().st_size < 100:
+            raise RuntimeError("Piper did not produce a valid WAV")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(piper_output, output_path)
+        logger.warning("LuxTTS and CosyVoice failed; Piper supplied fallback narration")
+        return _identity_envelope(
+            output_path,
+            requested_provider=requested_provider,
+            actual_provider="piper",
+            fallback_reason=f"luxtts_http_unavailable:{lux_error};cosyvoice_unavailable:{cosy_error}",
+        )
+    except Exception as piper_error:
+        raise AudioRoutingError(
+            "LuxTTS HTTP, CosyVoice and Piper all failed: "
+            f"luxtts={lux_error}; cosyvoice={cosy_error}; piper={piper_error}"
+        ) from piper_error
 
 
 async def _synthesize_formal(
@@ -288,22 +399,15 @@ async def _synthesize_formal(
         )
         return _identity_envelope(output_path, requested_provider="f5", actual_provider="f5")
 
-    if provider == "lux":
-        # LuxTTS 轻量克隆档(差距 B8): 低资源(<1GB VRAM/CPU), 需 luxvoice 可用。
-        from hevi.audio.lux_tts_service import lux_tts_available, synth_with_luxvoice
-
-        if not lux_tts_available():
-            raise AudioRoutingError(
-                "HEVI_TTS_FORMAL_PROVIDER=lux 但 luxvoice 不可用"
-                "(pip install luxvoice 或克隆 LuxTTS 后重试)"
-            )
-        ref_audio = os.getenv("F5_TTS_REFERENCE_AUDIO", "").strip()
-        await synth_with_luxvoice(
+    if provider in {"lux", "lux_tts", "luxtts"}:
+        return await _synthesize_luxtts_with_fallback(
             text=text,
             output_path=output_path,
-            reference_audio=ref_audio or None,
+            voice=voice,
+            instruct=instruct,
+            requested_provider=provider,
+            **_kw,
         )
-        return _identity_envelope(output_path, requested_provider="lux", actual_provider="lux")
 
     if provider == "voxcpm":
         from hevi.audio.voxcpm_service import synth_with_voxcpm, voxcpm_available
@@ -452,7 +556,9 @@ async def route_and_stitch_master_audio(
     master_dur = cursor_sec
 
     if len(segment_paths) > 1:
-        concat_list = output_dir / "_concat_list.txt"
+        temp_root = Path(__file__).resolve().parents[2] / ".tmp"
+        temp_root.mkdir(parents=True, exist_ok=True)
+        concat_list = temp_root / f"audio_concat_{uuid.uuid4().hex}.txt"
         lines = [f"file '{sp.resolve()}'" for sp in segment_paths]
         concat_list.write_text("\n".join(lines))
 
@@ -475,10 +581,14 @@ async def route_and_stitch_master_audio(
             "1",
             str(master_path),
         ]
-        await asyncio.create_subprocess_exec(
-            *cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE
         )
-        concat_list.unlink(missing_ok=True)
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise AudioRoutingError(
+                f"ffmpeg failed to stitch master audio: {stderr.decode(errors='replace')[-1000:]}"
+            )
 
     if not master_path.exists() and segment_paths:
         # Copy the single segment as master

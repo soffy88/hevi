@@ -125,7 +125,7 @@ _TTS_SPECS: tuple[dict[str, Any], ...] = (
         "languages": ("zh", "en"),
         "capabilities": ("tts", "zero_shot_clone", "low_resource"),
         "description": "低资源本地克隆档；可在 CPU/小显存环境运行。",
-        "setup": "安装 luxvoice 或提供对应本地模型。",
+        "setup": "配置 HEVI_LUXTTS_URL（默认 http://100.119.113.90:8795）；/health 可用时通过 HTTP 合成，无需本地模型。",
     },
     {
         "id": "edge_tts",

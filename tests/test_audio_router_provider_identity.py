@@ -106,6 +106,7 @@ async def test_route_single_cue_style_fallback_is_not_silent(
             "substituted": False,
         }
 
+    monkeypatch.delenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", raising=False)
     monkeypatch.setattr(audio_router, "_synthesize_conversational", broken)
     monkeypatch.setattr(audio_router, "_synthesize_formal", formal)
     envelope = await audio_router.route_single_cue(
@@ -113,7 +114,43 @@ async def test_route_single_cue_style_fallback_is_not_silent(
     )
     assert envelope["requested_style"] == "conversational"
     assert envelope["actual_style"] == "formal"
-    assert envelope["requested_provider"] == "voicebox"
+    assert envelope["requested_provider"] == "lux_tts"
     assert envelope["actual_provider"] == "cosyvoice"
     assert envelope["substituted"] is True
     assert str(envelope["fallback_reason"]).startswith("style_fallback:")
+
+
+
+def test_luxtts_is_the_default_for_both_audio_styles(monkeypatch: pytest.MonkeyPatch) -> None:
+    from hevi.audio import audio_router
+
+    monkeypatch.delenv("HEVI_TTS_FORMAL_PROVIDER", raising=False)
+    monkeypatch.delenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", raising=False)
+    assert audio_router._formal_requested_provider() == "lux_tts"
+    assert audio_router._conversational_requested_provider() == "lux_tts"
+
+
+@pytest.mark.asyncio
+async def test_luxtts_http_health_failure_falls_back_to_cosyvoice(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.audio import audio_router
+
+    monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "lux_tts")
+    monkeypatch.setattr("hevi.audio.lux_tts_service.lux_tts_available", lambda: False)
+    calls: list[str] = []
+
+    async def fake_cosyvoice(*, config: dict, script: list, output_path: Path) -> None:
+        calls.append(script[0].text)
+        output_path.write_bytes(b"c" * 256)
+
+    monkeypatch.setattr("hevi.audio.cosyvoice_service.cosyvoice_synthesize", fake_cosyvoice)
+    result = await audio_router._synthesize_formal(
+        text="一只小兔子", output_path=tmp_path / "fallback.wav", voice="soffy", instruct=None
+    )
+    assert calls == ["一只小兔子"]
+    assert result["requested_provider"] == "lux_tts"
+    assert result["actual_provider"] == "cosyvoice"
+    assert result["substituted"] is True
+    assert "luxtts_http_unavailable" in result["fallback_reason"]
+    assert (tmp_path / "fallback.wav").stat().st_size == 256
