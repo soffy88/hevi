@@ -132,3 +132,26 @@ Verification:
 The original committed `audit/luxapi/kids_story_sample.mp4` remains the short live-narration toddler-animation sample. This continuation does not alter the external LuxTTS service, install packages, or deploy/restart Hevi.
 
 DONE LUXAPI-R1
+
+## Continuation revalidation — 2026-10-15
+
+Re-ran the required selection gate from the isolated `feat/luxtts-http` worktree:
+
+- `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -k lux tests 2>&1 | tail -3 | grep -q passed` — exit code `0`; exact pytest summary: `27 passed, 7341 deselected, 1 warning in 15.50s`. The warning is the existing Starlette/httpx deprecation warning.
+- Audio/service/story/alignment/history regression group — `45 passed in 5.96s`; includes the optional live LuxTTS integration test, which completed without a skip.
+- Provider/catalog/Studio/task/renderer integration group — `47 passed in 2.58s`.
+- Required WAV/ffprobe/MP4 evidence files are present and non-empty; `git diff --check` passes.
+
+No implementation changes were necessary during this continuation because the acceptance and focused regressions passed. Existing untracked `.trash/`, `.veya-project/`, and `LUXAPI_TASK.md` were not staged or modified.
+
+## Continuation revalidation — 2026-10-15
+
+Re-ran the required selection gate from the isolated `feat/luxtts-http` worktree:
+
+- `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -k lux tests 2>&1 | tail -3 | grep -q passed` — exit code `0`; exact pytest summary: `27 passed, 7341 deselected, 1 warning in 15.50s`. The warning is the existing Starlette/httpx deprecation warning.
+- Audio/service/story/alignment/history regression group — `45 passed in 5.96s`; includes the optional live LuxTTS integration test, which completed without a skip.
+- Provider/catalog/Studio/task/renderer integration group — `47 passed in 2.58s`.
+- Required WAV/ffprobe/MP4 evidence files are present and non-empty; `git diff --check` passes.
+
+No implementation changes were necessary during this continuation because the acceptance and focused regressions passed. Existing untracked `.trash/`, `.veya-project/`, and `LUXAPI_TASK.md` were not staged or modified.
+DONE LUXAPI-R1
