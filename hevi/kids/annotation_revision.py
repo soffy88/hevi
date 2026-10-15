@@ -116,15 +116,16 @@ _ARROW_CAMERA = {
 }
 
 
-def _resolve_shot_time_window(manifest: Any, shot_index: int) -> tuple[float, float]:
-    """返回 (start_ms, end_ms) 该镜在成片时间轴上的区间（按 manifest 累计）。"""
+def _resolve_shot_time_window(manifest: Any, shot_index: int) -> tuple[float, float, bool]:
+    """返回 (start_ms, end_ms, is_last) 该镜在成片时间轴上的区间及是否为最后一镜。"""
     shots = manifest.shots()
     acc = 0.0
-    for s in shots:
+    for idx, s in enumerate(shots):
         start = acc * 1000.0
         end = (acc + s.duration) * 1000.0
+        is_last = (idx == len(shots) - 1)
         if s.shot_index == shot_index:
-            return start, end
+            return start, end, is_last
         acc += s.duration
     raise AnnotationError(f"manifest 无镜 S{shot_index}")
 
@@ -133,16 +134,30 @@ def build_patch(manifest: Any, annotation: AnnotationInput) -> ShotSpecPatch:
     """从标注构建 ShotSpecPatch。确定性，严格按 §3.5 映射。
 
     规则：
+      - 校验输入合法性（坐标 [0,1]，有限数值，from_revision >= 0 等）。
       - ≥2 个时间码锚点 → 抛 AnnotationTemporalClarification（不出 patch）。
-      - 时间码落在镜外 → 抛 AnnotationRejected。
-      - 仅显式映射字段进 changes；未知标注 → advisory，changes 保持为空。
+      - 时间码落在镜外（半开区间 [start, end)，最后一镜含 end） → 抛 AnnotationRejected。
+      - 箭头方向规范化及冲突过滤、effect 冲突降级 advisory。
     """
+    import math
     from .manifest_adapter import ManifestProtocol
 
     if not isinstance(manifest, ManifestProtocol):
         raise AnnotationError("manifest must be loaded via manifest_adapter")
 
-    start_ms, end_ms = _resolve_shot_time_window(manifest, annotation.shot_index)
+    if not isinstance(annotation.from_revision, int) or annotation.from_revision < 0:
+        raise AnnotationError(f"from_revision 必须是非负整数，got {annotation.from_revision}")
+    for t in annotation.source_time_ms:
+        if not (isinstance(t, (int, float)) and math.isfinite(t)):
+            raise AnnotationError(f"时间码必须是有限数值，got {t}")
+    for m in annotation.marks:
+        if not (isinstance(m.nx, (int, float)) and math.isfinite(m.nx) and 0 <= m.nx <= 1 and
+                isinstance(m.ny, (int, float)) and math.isfinite(m.ny) and 0 <= m.ny <= 1 and
+                isinstance(m.nw, (int, float)) and math.isfinite(m.nw) and 0 <= m.nw <= 1 and
+                isinstance(m.nh, (int, float)) and math.isfinite(m.nh) and 0 <= m.nh <= 1):
+            raise AnnotationError(f"标注坐标/宽高越界或非法: nx={m.nx}, ny={m.ny}, nw={m.nw}, nh={m.nh}")
+
+    start_ms, end_ms, is_last = _resolve_shot_time_window(manifest, annotation.shot_index)
 
     anchors = annotation.source_time_ms
     if len(anchors) >= 2:
@@ -150,10 +165,11 @@ def build_patch(manifest: Any, annotation: AnnotationInput) -> ShotSpecPatch:
 
     if anchors:
         t = anchors[0]
-        if not (start_ms - 1e-6 <= t <= end_ms + 1e-6):
+        in_range = (start_ms <= t <= end_ms) if is_last else (start_ms <= t < end_ms)
+        if not in_range:
             raise AnnotationRejected(
                 f"时间码 {t:.1f}ms 落在 S{annotation.shot_index} 镜外 "
-                f"[{start_ms:.1f},{end_ms:.1f}]ms"
+                f"[{start_ms:.1f},{end_ms:.1f})ms"
             )
 
     patch = ShotSpecPatch(
@@ -171,8 +187,12 @@ def build_patch(manifest: Any, annotation: AnnotationInput) -> ShotSpecPatch:
             continue
         if m.kind == "pin":
             camera_actions.append("push_in")
-        elif m.kind == "arrow" and m.direction in _ARROW_CAMERA:
-            camera_actions.append(_ARROW_CAMERA[m.direction])
+        elif m.kind == "arrow":
+            dir_str = m.direction if m.direction in _ARROW_CAMERA else None
+            if dir_str in _ARROW_CAMERA:
+                camera_actions.append(_ARROW_CAMERA[dir_str])
+            else:
+                patch.advisory.append(f"arrow 方向非法或大小写不匹配 ('{m.direction}')，未自动修改")
         elif m.kind == "freehand":
             effect_actions.append("sharpen")
         elif m.kind in ("rect", "ellipse"):
@@ -180,10 +200,25 @@ def build_patch(manifest: Any, annotation: AnnotationInput) -> ShotSpecPatch:
         elif m.kind == "text":
             subtitle_advices.append(m.note or "（空批注）")
 
+    # 检查相机方向矛盾（left+right 或 up+down）
+    unique_cams = sorted(set(camera_actions))
+    if ("pan_left" in unique_cams and "pan_right" in unique_cams) or \
+       ("tilt_up" in unique_cams and "tilt_down" in unique_cams):
+        patch.advisory.append("检测到互相矛盾的机位方向，未自动修改 camera")
+        # 移除矛盾的相机动作
+        camera_actions = [c for c in camera_actions if c not in ("pan_left", "pan_right", "tilt_up", "tilt_down")]
+
     if camera_actions:
         patch.changes["camera"] = "+".join(sorted(set(camera_actions)))
+
     if effect_actions:
-        patch.changes["effect"] = "+".join(sorted(set(effect_actions)))
+        # ShotSpec 的 effect 只能是一个单值（如 vignette 或 sharpen），若有多个，选最高优先级（vignette）并把其余写入 advisory
+        primary_effect = "vignette" if "vignette" in effect_actions else effect_actions[0]
+        patch.changes["effect"] = primary_effect
+        for eff in effect_actions:
+            if eff != primary_effect:
+                patch.advisory.append(f"合并多个 effect 标注：保留 '{primary_effect}'，将 '{eff}' 转入 advisory")
+
     for a in subtitle_advices:
         patch.advisory.append(f"台词/字幕修订建议：{a}")
 
@@ -191,7 +226,9 @@ def build_patch(manifest: Any, annotation: AnnotationInput) -> ShotSpecPatch:
         p = Path(annotation.authoritative_source)
         ref: dict[str, Any] = {"asset": str(p)}
         if p.exists():
-            ref["sha256"] = hashlib.sha256(p.read_bytes()).hexdigest()
+            sha = hashlib.sha256(p.read_bytes()).hexdigest()
+            ref["asset_sha256"] = sha
+            ref["sha256"] = sha
         if anchors:
             ref["time_ms"] = anchors[0]
         patch.source_refs.append(ref)
@@ -199,16 +236,37 @@ def build_patch(manifest: Any, annotation: AnnotationInput) -> ShotSpecPatch:
     return patch
 
 
-def apply_patch(spec: dict[str, Any], patch: ShotSpecPatch) -> dict[str, Any]:
-    """把 patch.changes 应用到 ShotSpec dict（其余字段字节不变）。
+def dry_run_diff(spec: dict[str, Any], patch: ShotSpecPatch) -> dict[str, dict[str, Any]]:
+    """对 spec 应用 patch 前后的字段 diff 比较（dry-run diff API）。"""
+    updated = apply_patch(spec, patch)
+    diff = {}
+    keys = set(spec.keys()) | set(updated.keys())
+    for k in sorted(keys):
+        b = spec.get(k)
+        a = updated.get(k)
+        if b != a:
+            diff[k] = {"before": b, "after": a}
+    return diff
 
-    仅覆盖 patch.changes 显式给出的键；不触碰其它字段。非法映射由 ShotSpec 校验器
-    在下游 ``merge_patch`` 处统一拒绝（这里不重复校验，保证确定性且不静默放行）。
+
+def apply_patch(spec: dict[str, Any], patch: ShotSpecPatch) -> dict[str, Any]:
+    """把 patch.changes 应用到 ShotSpec dict 并通过 ShotSpec 校验。
+
+    若校验失败（如包含非法字段、未知转场、未知 sfx、无效 duration 等）抛 AnnotationError。
     """
-    merged = dict(spec)
-    for k, v in patch.changes.items():
-        merged[k] = v
-    return merged
+    from hevi.production.shot_spec import ShotSpec, merge_patch
+
+    valid_fields = set(ShotSpec.model_fields.keys())
+    for k in patch.changes:
+        if k not in valid_fields:
+            raise AnnotationError(f"未知 ShotSpec 字段 '{k}'")
+
+    try:
+        base = ShotSpec.model_validate(spec)
+        merged = merge_patch(base, patch.changes)
+        return merged.to_dict()
+    except Exception as e:
+        raise AnnotationError(f"apply_patch 失败（ShotSpec 校验不通过）: {e}") from e
 
 
 def render_annotated(
@@ -217,6 +275,11 @@ def render_annotated(
     out_path: str | Path,
 ) -> Path:
     """把标注烧到与源同尺寸的 PNG（annotationGuide 用；不改动 authoritative 原图）。"""
+    src_path = Path(source).resolve()
+    out_p = Path(out_path).resolve()
+    if src_path == out_p:
+        raise AnnotationError("render_annotated 输出路径不得与 authoritative_source 相同（防止覆盖原图）")
+
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     img = Image.open(source).convert("RGB")

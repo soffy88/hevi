@@ -139,8 +139,13 @@ class KidsConsistencyManifestDraft:
             errors.append("manifest 没有 shots")
             return errors
 
-        # 1) duration 约束
-        for s in shots:
+        # 0) 检查镜号唯一性与连续性
+        indices = [s.shot_index for s in shots]
+        if len(set(indices)) != len(indices):
+            errors.append("manifest 包含重复镜号")
+        expected_indices = list(range(1, len(shots) + 1))
+        if sorted(indices) != expected_indices:
+            errors.append(f"manifest 镜号不连续或未从 1 开始: {indices}")
             if s.duration < MIN_SHOT_DURATION:
                 errors.append(
                     f"S{s.shot_index} duration {s.duration}s < {MIN_SHOT_DURATION}s"

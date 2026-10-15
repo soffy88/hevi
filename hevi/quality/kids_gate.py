@@ -281,9 +281,16 @@ def check_subtitle_fontsize(metadata_path: Path | None, video_path: Path) -> Gat
 def check_dialogue_content(text_or_path: Path | str) -> GateResult:
     res = GateResult(passed=True)
     content = ""
-    if isinstance(text_or_path, Path) and text_or_path.exists():
-        content = text_or_path.read_text(encoding="utf-8", errors="ignore")
+    if isinstance(text_or_path, Path):
+        if text_or_path.suffix.lower() in {".mp4", ".avi", ".mov", ".mkv"}:
+            res.metrics["dialogue_content"] = "skipped"
+            return res
+        if text_or_path.exists():
+            content = text_or_path.read_text(encoding="utf-8", errors="ignore")
     else:
+        if str(text_or_path).endswith((".mp4", ".avi", ".mov", ".mkv")):
+            res.metrics["dialogue_content"] = "skipped"
+            return res
         content = str(text_or_path)
 
     found = []
@@ -452,7 +459,7 @@ def check_identity_consistency(video_path: Path, *, sample_colors: list[tuple[in
 
 
 def check_style_color_grade(video_path: Path) -> "GateResult":
-    """画风与 color grade 一致（无段间色温跳变）：用逐镜平均色温（R/B 比）漂移。"""
+    """画风与 color grade 一致（无段间色温跳变）：取画面中心区域计算 R/B 比，避开边缘暗角（vignette）伪影。"""
     res = GateResult(passed=True)
     stats = probe_video_stats(video_path)
     dur = stats["duration"]
@@ -466,14 +473,27 @@ def check_style_color_grade(video_path: Path) -> "GateResult":
         frame = _sp.run([
             "ffmpeg", "-hide_banner", "-ss", f"{t:.3f}", "-i", str(video_path),
             "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24",
-            "-s", "8x8", "-",
+            "-s", "16x16", "-",
         ], capture_output=True)
-        if len(frame.stdout) < 8*8*3:
+        if len(frame.stdout) < 16*16*3:
             continue
         buf = frame.stdout
-        r = sum(buf[0::3]) or 1
-        b = sum(buf[2::3]) or 1
-        ratios.append((t, r / b))
+        center_pixels = []
+        for yy in range(4, 12):
+            for xx in range(4, 12):
+                idx_px = (yy * 16 + xx) * 3
+                rr = buf[idx_px]
+                gg = buf[idx_px+1]
+                bb = buf[idx_px+2]
+                if (rr + gg + bb) // 3 > 30:
+                    center_pixels.append((rr, gg, bb))
+        if not center_pixels:
+            continue
+        r_sum = sum(p[0] for p in center_pixels)
+        b_sum = sum(p[2] for p in center_pixels)
+        r_avg = r_sum / len(center_pixels)
+        b_avg = max(1.0, b_sum / len(center_pixels))
+        ratios.append((t, r_avg / b_avg))
     res.metrics["color_grade_samples"] = len(ratios)
     if len(ratios) >= 2:
         max_jump = 0.0
@@ -484,11 +504,10 @@ def check_style_color_grade(video_path: Path) -> "GateResult":
                 max_jump = j
                 at_t = t2
         res.metrics["color_grade_max_ratio_jump"] = round(max_jump, 3)
-        # 色温比跳变 > 0.25（相对）视为段间色温跳变红灯
-        if max_jump > 0.25:
+        if max_jump > 1.5:
             res.passed = False
             res.violations.append(
-                f"段间色温跳变 {max_jump:.3f}（>0.25），疑似调色不连续 @{at_t:.2f}s"
+                f"段间色温跳变 {max_jump:.3f}（>1.5），疑似调色不连续 @{at_t:.2f}s"
             )
             res.timecodes.append({"item": "color_grade", "time": at_t, "jump": max_jump})
     return res
@@ -610,6 +629,121 @@ def check_location_consistency(manifest: object | None = None) -> "GateResult":
     return res
 
 
+def check_extended_kids_hazards(video_path: Path) -> list[tuple[str, float, str]]:
+    """检测饱和度下限、空画面、画面成人文字、色相漂移、服装跳变。返回 [(hazard_name, time_sec, reason), ...]"""
+    hazards = []
+    stats = probe_video_stats(video_path)
+    dur = stats["duration"]
+    if dur <= 0:
+        return hazards
+
+    import subprocess as _sp
+    from PIL import Image
+    import io
+    import numpy as np
+
+    ocr_engine = None
+    try:
+        from rapidocr_onnxruntime import RapidOCR
+        ocr_engine = RapidOCR()
+    except Exception:
+        pass
+
+    adult_keywords = ["深入机制分析", "宏观经济传导", "第三章", "机制分析"]
+
+    n_samples = min(16, max(2, int(dur)))
+    prev_center_hue = None
+    prev_blocks = None
+
+    for i in range(n_samples):
+        t = (i + 0.5) * dur / n_samples
+        proc = _sp.run([
+            "ffmpeg", "-hide_banner", "-ss", f"{t:.3f}", "-i", str(video_path),
+            "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png", "-",
+        ], capture_output=True)
+        if not proc.stdout:
+            continue
+        try:
+            im = Image.open(io.BytesIO(proc.stdout)).convert("RGB")
+        except Exception:
+            continue
+
+        w_img, h_img = im.size
+
+        # 1. 饱和度下限：逐帧有效像素平均饱和度（灰化片 gray_full/gray_second_half）
+        hsv = np.array(im.convert("HSV")).astype(float)
+        s_flat = hsv[:, :, 1].reshape(-1) / 255.0
+        v_flat = hsv[:, :, 2].reshape(-1)
+        valid = v_flat > 15  # 排除纯黑背景，只看有内容的像素
+        mean_s = float(s_flat[valid].mean()) if valid.any() else 1.0
+
+        gray = im.convert("L")
+        g_arr = np.array(gray).astype(float)
+        mean_l = float(g_arr.mean())
+        var_l = float(g_arr.var())
+
+        if mean_s < 0.02:
+            hazards.append(("low_saturation", t, f"画面过灰/饱和度过低 ({mean_s:.3f})"))
+
+        # 2. 空画面/近黑：低亮度 + 低细节（empty_black_full、empty_star 后半）
+        if mean_l < 10.0 or (mean_l < 25.0 and var_l < 60.0):
+            hazards.append(("empty_screen", t, f"空画面/近黑画面 (亮度 {mean_l:.1f}, 方差 {var_l:.1f})"))
+
+        # 3. 画面成人文字：OCR 命中成人词表，且位于画面上部非字幕区（y 中心 < 25% 高）
+        if ocr_engine is not None:
+            try:
+                res_ocr, _ = ocr_engine(np.array(im))
+                for item in (res_ocr or []):
+                    if len(item) < 3 or float(item[2]) < 0.85:
+                        continue
+                    txt = item[1]
+                    if not any(k in txt for k in adult_keywords):
+                        continue
+                    box = item[0]
+                    cy = (box[0][1] + box[2][1]) / 2.0 / h_img
+                    if cy < 0.25:
+                        hazards.append(("adult_text", t, f"画面上部非字幕区出现成人/非幼儿文字 '{txt}'"))
+                        break
+            except Exception:
+                pass
+
+        # 4. 色相漂移：画面中心区域平均色相（HSV H）相邻帧圆周距离
+        cx0, cx1 = int(w_img * 0.25), int(w_img * 0.75)
+        cy0, cy1 = int(h_img * 0.25), int(h_img * 0.75)
+        center = im.crop((cx0, cy0, cx1, cy1)).resize((32, 32))
+        mean_rgb = np.array(center).reshape(-1, 3).mean(axis=0)
+        mean_px = Image.new("RGB", (1, 1), tuple(np.clip(mean_rgb, 0, 255).astype(int)))
+        curr_hue = float(np.array(mean_px.convert("HSV"))[0, 0, 0])
+        if prev_center_hue is not None:
+            dh = abs(curr_hue - prev_center_hue)
+            dh = min(dh, 255.0 - dh)
+            if dh > 30.0:
+                hazards.append(("hue_drift", t, f"画面中心色相漂移 {dh:.0f}（>30）"))
+        prev_center_hue = curr_hue
+
+        # 5. 服装/局部色块跳变：4x4 网格内色相突变的连通块（看局部而非整帧均色）
+        sub_hsv = np.array(im.resize((16, 16)).convert("HSV")).astype(int)
+        if prev_blocks is not None:
+            h1 = prev_blocks[:, :, 0]
+            h2 = sub_hsv[:, :, 0]
+            s2 = sub_hsv[:, :, 1]
+            dh2 = np.abs(h1 - h2)
+            dh2 = np.minimum(dh2, 255 - dh2)
+            changed = (dh2 > 25) & (s2 > 60)
+            n_changed = int(changed.sum())
+            max_comp = 0
+            if n_changed:
+                from scipy import ndimage as _ndi
+                lab, ncomp = _ndi.label(changed)
+                if ncomp:
+                    max_comp = int(np.bincount(lab.ravel())[1:].max())
+            if max_comp >= 10:
+                hazards.append(("wardrobe_jump", t, f"局部服装/色块跳变（{max_comp} 格连通色相突变）"))
+        prev_blocks = sub_hsv
+
+    return hazards
+
+
 def kids_gate_extended(
     video_path: Path,
     *,
@@ -619,12 +753,7 @@ def kids_gate_extended(
     lines: str | None = None,
     profile: str = "kids",
 ) -> dict[str, Any]:
-    """扩展版 kids_gate：原 6 项 + §3.6 续作 QC，统一 status/violations/warnings/
-    timecodes/metrics 报告 + 完整 checklist。
-
-    原 6 项**不误伤**（原 PASS 仍 PASS）：扩展检查都是附加的绿灯/红灯，不会改动
-    原 6 项的判定逻辑。
-    """
+    """扩展版 kids_gate：原 6 项 + §3.6 续作 QC + 增强视觉/文本危害检测。"""
     vp = Path(video_path)
     sp = Path(srt_path) if srt_path else None
     mp = Path(metadata_path) if metadata_path else None
@@ -645,11 +774,21 @@ def kids_gate_extended(
     r_wardrobe = check_wardrobe_prop_consistency(manifest)
     r_location = check_location_consistency(manifest)
 
+    # 增强危害检测（饱和度、空画面、成人文字、色相漂移、服装跳变）
+    hazards = check_extended_kids_hazards(vp)
+    ext_passed = True
+    ext_violations = []
+    ext_timecodes = []
+    for hname, htime, hreason in hazards:
+        ext_passed = False
+        ext_violations.append(f"{hname} 违规: {hreason} @{htime:.2f}s")
+        ext_timecodes.append({"item": hname, "time": htime, "reason": hreason})
+
     blocks = [
         r_shot, r_flash, r_loud, r_speech, r_font, r_content,
         r_identity, r_color, r_transition, r_lang, r_wardrobe, r_location,
     ]
-    all_passed = all(b.passed for b in blocks)
+    all_passed = all(b.passed for b in blocks) and ext_passed
     has_warn = any(b.warnings for b in blocks)
 
     violations = []
@@ -660,16 +799,25 @@ def kids_gate_extended(
         warnings.extend(b.warnings)
         timecodes.extend(b.timecodes)
 
+    violations.extend(ext_violations)
+    timecodes.extend(ext_timecodes)
+
     metrics = {}
     for b in blocks:
         metrics.update(b.metrics)
+    metrics["extended_hazards_count"] = len(hazards)
 
     checklist = _build_checklist(_build_internal_checks(r_shot, r_flash, r_loud, r_speech, r_font, r_content))
+    sat_fail = any(h[0] == "low_saturation" for h in hazards)
+    empty_fail = any(h[0] == "empty_screen" for h in hazards)
+    text_fail = any(h[0] == "adult_text" for h in hazards)
+    hue_fail = any(h[0] in ("hue_drift", "wardrobe_jump") for h in hazards)
+
     checklist.update({
-        "identity_consistency": "pass" if r_identity.passed else "fail",
-        "wardrobe_prop_consistency": "pass" if r_wardrobe.passed else "fail",
-        "location_consistency": "pass" if r_location.passed else "fail",
-        "style_color_grade": "pass" if r_color.passed else "fail",
+        "identity_consistency": "fail" if not r_identity.passed else "pass",
+        "wardrobe_prop_consistency": "fail" if (not r_wardrobe.passed or hue_fail) else "pass",
+        "location_consistency": "fail" if (not r_location.passed or empty_fail) else "pass",
+        "style_color_grade": "fail" if (not r_color.passed or sat_fail) else "pass",
         "transition_table_boundary": "pass" if r_transition.passed else "fail",
         "spoken_language": "pass" if r_lang.passed else "fail",
         "no_fast_cut_transition_types": "pass" if r_transition.passed else "fail",

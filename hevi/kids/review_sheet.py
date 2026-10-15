@@ -58,14 +58,16 @@ def _truncate(s: str, max_chars: int) -> str:
 
 
 def _draw_panel(
+    canvas_img: Image.Image,
     draw: ImageDraw.ImageDraw,
     box: tuple[int, int, int, int],
     shot: Any,
     *,
     cjk: Any,
-    line_max: int,
 ) -> None:
     x0, y0, x1, y1 = box
+    cell_w = x1 - x0
+    cell_h = y1 - y0
 
     # 面板底
     draw.rectangle(box, fill=PANEL_BG, outline=ACCENT, width=2)
@@ -78,7 +80,7 @@ def _draw_panel(
 
     # 中部：缩略图区域
     thumb_top = y0 + 34
-    thumb_bottom = y1 - 46
+    thumb_bottom = y1 - int(cell_h * 0.35)
     thumb_box = (x0 + 8, thumb_top, x1 - 8, thumb_bottom)
     draw.rectangle(thumb_box, fill=(8, 8, 12))
     kf = shot.keyframe
@@ -87,14 +89,12 @@ def _draw_panel(
         p = Path(kf)
         if p.exists():
             try:
-                img = Image.open(p).convert("RGB")
+                thumb_img = Image.open(p).convert("RGB")
                 tw = thumb_box[2] - thumb_box[0]
                 th = thumb_box[3] - thumb_box[1]
-                img.thumbnail((tw, th))
-                draw.bitmap(
-                    (thumb_box[0] + (tw - img.width) // 2, thumb_box[1] + (th - img.height) // 2),
-                    img,
-                )
+                thumb_img.thumbnail((tw, th))
+                iw, ih = thumb_img.size
+                canvas_img.paste(thumb_img, (thumb_box[0] + (tw - iw) // 2, thumb_box[1] + (th - ih) // 2))
                 pasted = True
             except Exception:
                 pasted = False
@@ -110,14 +110,27 @@ def _draw_panel(
             font=cjk,
         )
 
-    # 下部：台词一行
-    line = _truncate(shot.line or "（无台词）", line_max)
-    draw.text((x0 + 8, y1 - 40), line, fill=TEXT, font=cjk)
+    # 下部：台词一行（按像素宽度量截断）
+    max_w = cell_w - 24
+    line_text = shot.line or "（无台词）"
+    while draw.textlength(line_text, font=cjk) > max_w and len(line_text) > 1:
+        line_text = line_text[:-1]
+    if line_text != (shot.line or "（无台词）") and not line_text.endswith("…"):
+        if len(line_text) > 1:
+            line_text = line_text[:-1] + "…"
+
+    fs = int(min(cell_w, cell_h) * 0.055)
+    line_y = y1 - int(cell_h * 0.28)
+    cam_y = y1 - int(cell_h * 0.14)
+
+    draw.text((x0 + 8, line_y), line_text, fill=TEXT, font=cjk)
     # 机位 / 景别一行
     cam = shot.camera or "—"
     fram = shot.framing or "—"
-    cam_line = _truncate(f"机位:{cam} 景别:{fram}", line_max)
-    draw.text((x0 + 8, y1 - 20), cam_line, fill=MUTED, font=cjk)
+    cam_line = f"机位:{cam} 景别:{fram}"
+    while draw.textlength(cam_line, font=cjk) > max_w and len(cam_line) > 1:
+        cam_line = cam_line[:-1]
+    draw.text((x0 + 8, cam_y), cam_line, fill=MUTED, font=cjk)
 
 
 def render_review_sheet(
@@ -149,18 +162,19 @@ def render_review_sheet(
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    sheet_w, sheet_h = _SHEET_SIZE[aspect]
+    sheet_w, base_sheet_h = _SHEET_SIZE[aspect]
     cols = _SHEET_COLS[aspect]
     rows = (len(shots) + cols - 1) // cols
 
-    # 页脚高度固定，给网格让出空间
+    # 页脚高度固定，动态计算 grid 高度防崩（N=30 适应高网格）
     footer_h = 40
-    grid_h = sheet_h - footer_h
+    min_cell_h = 180 if aspect == ASPECT_PORTRAIT else 160
+    grid_h = max(base_sheet_h - footer_h, rows * min_cell_h)
+    sheet_h = grid_h + footer_h
     cell_w = sheet_w // cols
     cell_h = grid_h // rows
 
-    cjk = cjk_font(int(min(cell_w, cell_h) * 0.07))
-    line_max = max(6, cell_w // max(8, int(cell_w * 0.045)))
+    cjk = cjk_font(int(min(cell_w, cell_h) * 0.06))
 
     img = Image.new("RGB", (sheet_w, sheet_h), BG)
     draw = ImageDraw.Draw(img)
@@ -170,11 +184,11 @@ def render_review_sheet(
         box = (c * cell_w, r * cell_h, (c + 1) * cell_w, (r + 1) * cell_h)
         pad = 4
         _draw_panel(
+            img,
             draw,
             (box[0] + pad, box[1] + pad, box[2] - pad, box[3] - pad),
             shot,
             cjk=cjk,
-            line_max=line_max,
         )
 
     # 页脚
@@ -184,7 +198,12 @@ def render_review_sheet(
         f"第{manifest.episode()}集《{manifest.title()}》｜主题：{theme}"
         f"｜总时长 {manifest.total_duration():.2f}s｜{len(shots)} 镜"
     )
-    draw.text((8, sheet_h - footer_h + 12), _truncate(footer, 200), fill=TEXT, font=cjk)
+    footer_font = cjk
+    while draw.textlength(footer, font=footer_font) > sheet_w - 16 and footer_font.size > 10:
+        footer_font = cjk_font(footer_font.size - 1)
+    if draw.textlength(footer, font=footer_font) > sheet_w - 16:
+        footer = _truncate(footer, int(sheet_w / 12))
+    draw.text((8, sheet_h - footer_h + 12), footer, fill=TEXT, font=footer_font)
 
     img.save(out, "PNG")
     if pdf:

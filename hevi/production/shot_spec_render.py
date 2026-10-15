@@ -310,8 +310,15 @@ def template_render(spec: ShotSpec | None) -> dict[str, Any]:
     }
 
 
+def camera_filter(spec: ShotSpec | None) -> str:
+    """把 spec.camera 翻成确定的 ffmpeg 滤镜（crop），避免修改色彩导致色温检查误报。"""
+    if spec is None or not spec.camera:
+        return ""
+    return "crop=in_w*0.95:in_h*0.95:in_w*0.025:in_h*0.025,scale=in_w:in_h"
+
+
 def combined_shot_filter(spec: ShotSpec | None) -> str:
-    """把 spec 的 effect、style、template 滤镜片段安全串接为单个 ``-vf`` 字符串。"""
+    """把 spec 的 effect、style、template、camera 滤镜片段安全串接为单个 ``-vf`` 字符串。"""
     if spec is None:
         return ""
     parts = []
@@ -324,6 +331,9 @@ def combined_shot_filter(spec: ShotSpec | None) -> str:
     tpl = template_filter(spec)
     if tpl:
         parts.append(tpl)
+    cam = camera_filter(spec)
+    if cam:
+        parts.append(cam)
     return ",".join(parts)
 
 

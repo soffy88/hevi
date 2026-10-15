@@ -172,4 +172,4 @@ a16d0db8  chore(reviewsheet): add REVIEWSHEET_TASK.md + kids direction & capabil
   坏样本可红灯并给时间码；真实渲染片的 identity/色温一致性由 `style_bible` 单一 color_grade 保证（manifest 侧约定）。
 - 所有产物哈希与路径均为 `.tmp/` 下真机重跑所得，确定性已验证（同输入两次 SHA-256 相同）。
 
-DONE REVIEWSHEET-R1
+DONE REVIEWSHEET-R2
