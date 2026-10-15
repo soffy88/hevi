@@ -54,6 +54,62 @@ _CLAUSE_BREAKS = frozenset("，。！？；、,.!?;…\n\r\t “”‘’（）(
 _NEG_GAP = 2
 
 
+def _clause_bounds(text: str, center: int) -> tuple[int, int]:
+    """Return the [start, end) bounds of the clause containing ``center``.
+
+    Only the immediate clause is considered, so a benign context in one clause
+    can never excuse a violation in another clause (keeps the R4/H3 guarantee
+    that "不吃药，把毒药给了小熊" is still blocked).
+    """
+    start = center
+    while start > 0 and text[start - 1] not in _CLAUSE_BREAKS:
+        start -= 1
+    end = center
+    while end < len(text) and text[end] not in _CLAUSE_BREAKS:
+        end += 1
+    return start, end
+
+
+def _is_context_exempt(
+    text: str,
+    phrase_start: int,
+    phrase: str,
+    exemptions: dict[str, Any],
+) -> bool:
+    """True when ``phrase`` is a single character that is only benign here.
+
+    R5/P1: characters such as 刀 / 咬 / 扎 / 绑 / 捆 / 堵 / 塞 / 封 are violent
+    words for kids content, but they also appear in completely normal preschool
+    sentences ("用刀切菜", "咬了一口苹果").  Such a hit is dropped only when the
+    *immediate clause* satisfies every required context group ("刀" needs both a
+    cutting verb and a food/cooking noun) and matches none of the disqualifying
+    harm markers, so a real attack sentence ("拿刀捅小兔") is still blocked.
+
+    ``text`` is the unmasked source text: whitelisted benign words must still
+    count as benign context ("用刀切菜" keeps 切菜 visible as evidence).
+    """
+    spec = exemptions.get(phrase)
+    if not isinstance(spec, dict) or len(phrase) != 1:
+        return False
+
+    start, end = _clause_bounds(text, phrase_start)
+    left = text[start:phrase_start]
+    right = text[phrase_start + len(phrase):end]
+    clause = left + phrase + right
+
+    for marker in spec.get("excludes", []) or []:
+        if marker and marker in clause:
+            return False
+
+    for group in spec.get("requires", []) or []:
+        # A group is an AND-set of alternatives: at least one member must appear
+        # in the clause, on either side of the candidate word.
+        if not any(m and (m in left or m in right) for m in group):
+            return False
+
+    return True
+
+
 def _is_negated(text: str, phrase_start: int, neg_mods: list[str]) -> bool:
     """True only if a negation marker immediately precedes the violation.
 
@@ -83,6 +139,7 @@ def check_content_safety_text(text: str) -> list[str]:
     whitelist = rules.get("whitelist", [])
     categories = rules.get("categories", {})
     neg_mods = rules.get("negative_modifiers", ["不", "没", "别", "不要", "不能"])
+    exemptions = rules.get("context_exemptions", {})
 
     # R4/H1: mask whitelisted compounds (longest first) so a benign word such
     # as "一刀切菜" / "浇浇水" cannot trip a bare single-character rule.
@@ -103,6 +160,12 @@ def check_content_safety_text(text: str) -> list[str]:
             idx = masked.find(phrase)
             while idx != -1:
                 if not _is_negated(masked, idx, neg_mods):
+                    # R5/P1: a bare single-character word that only describes
+                    # violence in a harmful context may be exempted when the
+                    # surrounding clause is unambiguously benign.
+                    if _is_context_exempt(text, idx, phrase, exemptions):
+                        idx = masked.find(phrase, idx + 1)
+                        continue
                     found_violations.append(phrase)
                     break
                 idx = masked.find(phrase, idx + 1)
