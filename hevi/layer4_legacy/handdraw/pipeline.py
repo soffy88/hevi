@@ -623,6 +623,16 @@ def render_handdraw_pipeline(
     logger.info("Building timeline for job %s ...", job_id)
     timeline = FilmBuilder(output_dir).build()
 
+    if preview_duration is None:
+        from independent_caption_alignment import retime_timeline_captions
+
+        independent_alignment = retime_timeline_captions(output_dir, timeline)
+        logger.info(
+            "Retimed %d caption cues with independent local ASR; max shift %.3fs",
+            independent_alignment["cue_count"],
+            independent_alignment["max_absolute_retime_seconds"],
+        )
+
     if preview_duration is not None:
         requested = float(preview_duration)
         if requested > float(timeline["duration"]):

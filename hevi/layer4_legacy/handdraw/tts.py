@@ -44,9 +44,7 @@ CUE_MAX_CHARS = 12
 CUE_TARGET_CHARS = 10
 # KIDS_ANIME_DIRECTION: narration pace must stay at or below 3.5 characters/second.
 MAX_CHARS_PER_SECOND = 3.5
-DEFAULT_LENGTH_SCALE = 2.5
-
-
+DEFAULT_LENGTH_SCALE = 1.2
 def sha256_file(path: Path | str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -129,30 +127,41 @@ def _synth_cosyvoice_batch(texts: list[str], out_dir: Path) -> list[Path] | None
 def _synth_piper(text: str, out_wav: Path, length_scale: float = DEFAULT_LENGTH_SCALE) -> None:
     """Deterministic local CPU piper (noise disabled -> byte-stable output)."""
     raw = out_wav.with_suffix(".raw.wav")
-    proc = subprocess.run(
-        [
-            PIPER_BIN,
-            "-m",
-            PIPER_MODEL,
-            "-f",
-            str(raw),
-            "--length_scale",
-            str(length_scale),
-            "--noise-scale",
-            "0.0",
-            "--noise-w-scale",
-            "0.0",
-            "--sentence_silence",
-            "0.45",
-        ],
-        # Piper treats each line as a sentence. Natural clause pauses prevent
-        # rushed compound lines without relying on extreme length_scale values.
-        input=__import__("re").sub(r"([，。！？；：])", r"\1\n", text),
-        text=True,
-        capture_output=True,
-    )
-    if proc.returncode != 0 or not raw.is_file() or raw.stat().st_size == 0:
-        raise RuntimeError(f"piper failed: {(proc.stderr or '')[-400:]}")
+    prompt = __import__("re").sub(r"([，。！？；：])", r"\1\n", text)
+    proc = None
+    failures = []
+    for attempt in range(3):
+        proc = subprocess.run(
+            [
+                PIPER_BIN,
+                "-m",
+                PIPER_MODEL,
+                "-f",
+                str(raw),
+                "--length_scale",
+                str(length_scale),
+                "--noise-scale",
+                "0.0",
+                "--noise-w-scale",
+                "0.0",
+                "--sentence_silence",
+                "0.45",
+            ],
+            input=prompt,
+            text=True,
+            capture_output=True,
+        )
+        if proc.returncode == 0 and raw.is_file() and raw.stat().st_size > 44:
+            break
+        failures.append(
+            "attempt={} returncode={} raw_bytes={} stderr={}".format(
+                attempt + 1, proc.returncode,
+                raw.stat().st_size if raw.is_file() else 0,
+                (proc.stderr or "")[-240:],
+            )
+        )
+    if proc is None or proc.returncode != 0 or not raw.is_file() or raw.stat().st_size <= 44:
+        raise RuntimeError("piper failed after 3 local retries: " + " | ".join(failures))
     _to_master_format(raw, out_wav, pad=True, tempo=0.8)
     raw.unlink(missing_ok=True)
 
@@ -192,10 +201,10 @@ def read_wav_samples(path: Path) -> np.ndarray:
 
 
 def _cache_key(text: str, engine: str, length_scale: float) -> str:
-    return hashlib.sha256(f"handdraw-r3-pace-v3-tempo-080\x00{engine}\x00{length_scale:.4f}\x00{text}".encode()).hexdigest()[:24]
+    return hashlib.sha256(f"handdraw-r4-measured-pace-v1-tempo-080\x00{engine}\x00{length_scale:.4f}\x00{text}".encode()).hexdigest()[:24]
 
 
-def _synth_with_cache(
+def _synth_with_cache_impl(
     text: str,
     out_wav: Path,
     cache_dir: Path,
@@ -216,6 +225,50 @@ def _synth_with_cache(
         _synth_piper(text, out_wav, length_scale=length_scale)
     cached.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(out_wav, cached)
+
+
+def _synth_with_cache(
+    text: str,
+    out_wav: Path,
+    cache_dir: Path,
+    *,
+    engine: str,
+    length_scale: float,
+    cosy_wav: Path | None,
+) -> None:
+    """Synthesize a beat, separating its child-safety CTA from the question."""
+    cta = "记得告诉身边的大人。"
+    cleaned = text.rstrip()
+    boundary = cleaned.rfind(cta)
+    if boundary <= 0 or boundary + len(cta) != len(cleaned):
+        _synth_with_cache_impl(
+            text, out_wav, cache_dir, engine=engine,
+            length_scale=length_scale, cosy_wav=cosy_wav,
+        )
+        return
+    if engine != "piper":
+        raise ValueError("CTA clause segmentation requires one consistent script-wide Piper voice")
+
+    prefix = cleaned[:boundary].rstrip()
+    if not prefix:
+        raise ValueError("CTA segmentation requires a non-empty preceding clause")
+    prefix_wav = out_wav.with_name(f"{out_wav.stem}-cta-prefix.wav")
+    cta_wav = out_wav.with_name(f"{out_wav.stem}-cta-utterance.wav")
+    _synth_with_cache_impl(
+        prefix, prefix_wav, cache_dir, engine="piper",
+        length_scale=length_scale, cosy_wav=None,
+    )
+    _synth_with_cache_impl(
+        cta, cta_wav, cache_dir, engine="piper",
+        length_scale=length_scale, cosy_wav=None,
+    )
+    prefix_samples = read_wav_samples(prefix_wav)
+    cta_samples = read_wav_samples(cta_wav)
+    pause = np.zeros(round(0.36 * SAMPLE_RATE), dtype=np.int16)
+    combined = np.concatenate((prefix_samples, pause, cta_samples))
+    with wave.open(str(out_wav), "wb") as output:
+        output.setparams((1, 2, SAMPLE_RATE, 0, "NONE", "not compressed"))
+        output.writeframes(combined.astype("<i2", copy=False).tobytes())
 
 
 # ---------------------------------------------------------------------------
@@ -292,9 +345,9 @@ def _caption_tokens(text: str) -> list[str]:
         tokens = [part for part in jieba.lcut(text, cut_all=False, HMM=True) if part]
         if "".join(tokens) == text:
             protected = {
-                "牙齿上", "小小的", "碎屑", "小牙刷", "牙膏", "小狐狸", "小兔子", "小熊", "小猫",
+                "牙齿上", "小小的", "碎屑", "小牙刷", "牙膏", "小狐狸", "小兔子", "小熊", "小猫", "小狗", "小星星",
                 "过马路", "人行横道", "红绿灯", "安全过马路", "洗手", "肥皂", "水龙头",
-                "大家都能", "一个接一个", "身边的大人", "记住啦", "轮流玩", "轻轻刷", "指缝",
+                "大家都能玩", "告诉身边的大人", "朋友们在等", "一个办法", "大家都能", "一个接一个", "身边的大人", "记住啦", "轮流玩", "轻轻刷", "指缝", "不小心", "对不起", "没关系", "信号灯", "点心", "积木",
                 "小朋友", "玩具盒", "积木盒", "小篮子", "怎么办", "告诉", "朋友们", "小球",
             }
             merged: list[str] = []
@@ -319,9 +372,9 @@ def _caption_tokens(text: str) -> list[str]:
     # Offline fallback used only when jieba is absent; long common child-facing
     # compounds are protected, while punctuation remains attached to its phrase.
     lexicon = sorted({
-        "牙齿上", "小小的", "碎屑", "小牙刷", "牙膏", "小狐狸", "小兔子", "小熊", "小猫",
+        "牙齿上", "小小的", "碎屑", "小牙刷", "牙膏", "小狐狸", "小兔子", "小熊", "小猫", "小狗", "小星星",
         "过马路", "人行横道", "红绿灯", "安全过马路", "洗手", "肥皂", "水龙头",
-        "大家都能", "一个接一个", "身边的大人", "记住啦", "轮流玩", "轻轻刷", "指缝",
+        "大家都能玩", "告诉身边的大人", "朋友们在等", "一个办法", "大家都能", "一个接一个", "身边的大人", "记住啦", "轮流玩", "轻轻刷", "指缝", "不小心", "对不起", "没关系", "信号灯", "点心", "积木",
         "小朋友", "玩具盒", "积木盒", "小篮子", "怎么办", "告诉", "朋友们", "小球",
     }, key=len, reverse=True)
     tokens: list[str] = []
@@ -373,11 +426,19 @@ def _group_chars_into_cues(char_times: list[dict[str, Any]], max_chars: int) -> 
             groups[-1].extend(current)
         else:
             groups.append(current)
+    # Keep punctuation with the preceding text if a max-length split landed
+    # immediately before a punctuation token.
+    normalized = []
+    for group in groups:
+        while group and _is_punctuation(str(group[0]["char"])) and normalized:
+            normalized[-1].append(group.pop(0))
+        if group:
+            normalized.append(group)
     return [{
         "text": "".join(item["char"] for item in group),
         "start": min(float(item["start"]) for item in group),
         "end": max(float(item["end"]) for item in group),
-    } for group in groups if group]
+    } for group in normalized if group]
 
 
 def split_text_into_cues(text: str, max_chars: int = CUE_MAX_CHARS) -> list[str]:
@@ -434,21 +495,30 @@ def build_caption_cues(
     if not cues:
         cues = _proportional_cues(text, duration)
         method = "proportional"
-    # Clamp into the measured beat and guarantee strict ordering.
-    clamped = []
-    previous = 0.0
+    # Clamp to the beat while preserving measured caption onsets. Whisper word
+    # intervals may overlap even when words do not; shifting the next cue to the
+    # previous cue end accumulates hundreds of milliseconds of subtitle lag.
+    # Keep the next ASR onset and clip the preceding cue at that boundary.
+    clamped: list[dict[str, Any]] = []
+    previous_start = -1e-3
     for index, cue in enumerate(cues):
         start = min(max(0.0, float(cue["start"])), duration)
         end = min(max(start, float(cue["end"])), duration)
+        start = max(start, previous_start + 1e-3)
         if index == len(cues) - 1:
             end = duration
+        if index and start < float(clamped[-1]["end"]):
+            previous_cue = clamped[-1]
+            previous_cue["end"] = max(
+                float(previous_cue["start"]) + 1e-3,
+                min(float(previous_cue["end"]), start),
+            )
+        end = min(duration, max(end, start + 1e-3))
         if end <= start:
+            start = max(0.0, min(start, duration - 1e-3))
             end = min(duration, start + 1e-3)
-        start = max(start, previous)
-        if end <= start:
-            end = start + 1e-3
         clamped.append({"text": cue["text"], "start": start, "end": end})
-        previous = end
+        previous_start = start
     return clamped, method
 
 
@@ -484,7 +554,16 @@ def build_narration_master(
     scratch.mkdir(parents=True, exist_ok=True)
     cache_dir = output_dir / "_synth_cache"
 
-    engine, cosy_wavs = _resolve_engine(prefer_cosy, beats, scratch)
+    has_child_safety_cta = any(
+        str(beat.get("text", "")).rstrip().endswith("记得告诉身边的大人。")
+        for beat in beats
+    )
+    if has_child_safety_cta:
+        # Keep the whole story in one local voice and avoid a remote synthesizer
+        # for the safety sentence; the CTA is synthesized as its own clause below.
+        engine, cosy_wavs = "piper", None
+    else:
+        engine, cosy_wavs = _resolve_engine(prefer_cosy, beats, scratch)
 
     beat_samples: list[np.ndarray] = []
     for index, beat in enumerate(beats):
@@ -501,13 +580,86 @@ def build_narration_master(
     # which is exactly what the cue builder needs.
     asr_words: list[list[dict[str, Any]] | None] = [None] * len(beats)
     asr_used = False
+    effective_scales = [float(length_scale)] * len(beats)
     if use_asr:
         try:
             from hevi.layer4_legacy.handdraw.asr import transcribe_words
 
-            for index in range(len(beats)):
-                asr_words[index] = transcribe_words(scratch / f"{index:04d}.wav")
+            def transcribe_all() -> list[list[dict[str, Any]] | None]:
+                observed: list[list[dict[str, Any]] | None] = []
+                for beat_index in range(len(beats)):
+                    try:
+                        observed.append(transcribe_words(scratch / f"{beat_index:04d}.wav"))
+                    except Exception as exc:
+                        logger.info("ASR timing unavailable for beat %d: %s", beat_index, exc)
+                        observed.append(None)
+                return observed
+
+            def measured_pace(beat_index: int, words: list[dict[str, Any]] | None) -> float:
+                text = str(beats[beat_index].get("text", ""))
+                if words:
+                    spoken_start = min(float(word["start"]) for word in words)
+                    spoken_end = max(float(word["end"]) for word in words)
+                    spoken_duration = spoken_end - spoken_start
+                    if spoken_duration > 0.05:
+                        return len(text) / spoken_duration
+                # Conservative fallback: remove the known tail pad from the WAV duration.
+                return len(text) / max(0.1, len(beat_samples[beat_index]) / SAMPLE_RATE - 0.55)
+
+            asr_words = transcribe_all()
             asr_used = any(words for words in asr_words)
+            over_pace = [
+                i for i, words in enumerate(asr_words)
+                if measured_pace(i, words) > MAX_CHARS_PER_SECOND
+            ]
+
+            # Never create mixed voices within a master. If CosyVoice is too fast,
+            # re-synthesise the entire script with deterministic local Piper instead.
+            if engine == "cosyvoice" and over_pace:
+                logger.info("CosyVoice exceeds the preschool pace gate; re-synthesising all beats with Piper")
+                engine = "piper"
+                for i, beat in enumerate(beats):
+                    wav = scratch / f"{i:04d}.wav"
+                    _synth_with_cache(
+                        beat["text"], wav, cache_dir, engine="piper",
+                        length_scale=effective_scales[i], cosy_wav=None,
+                    )
+                    beat_samples[i] = read_wav_samples(wav)
+                asr_words = transcribe_all()
+                asr_used = any(words for words in asr_words)
+
+            # Pace is measured per complete beat, not averaged across silent gaps.
+            # Increase Piper length_scale only for an over-fast beat, re-run CPU ASR,
+            # and fail closed if the measured spoken rate cannot meet 3.5 chars/sec.
+            if engine == "piper":
+                for i, beat in enumerate(beats):
+                    for _attempt in range(5):
+                        rate = measured_pace(i, asr_words[i])
+                        if rate <= MAX_CHARS_PER_SECOND:
+                            break
+                        next_scale = min(6.0, max(effective_scales[i] + 0.15, effective_scales[i] * rate / 3.30))
+                        if next_scale <= effective_scales[i] + 1e-6:
+                            break
+                        effective_scales[i] = next_scale
+                        wav = scratch / f"{i:04d}.wav"
+                        _synth_with_cache(
+                            beat["text"], wav, cache_dir, engine="piper",
+                            length_scale=effective_scales[i], cosy_wav=None,
+                        )
+                        beat_samples[i] = read_wav_samples(wav)
+                        try:
+                            asr_words[i] = transcribe_words(wav)
+                        except Exception as exc:
+                            logger.info("ASR timing unavailable after pace retry for beat %d: %s", i, exc)
+                            asr_words[i] = None
+                    final_rate = measured_pace(i, asr_words[i])
+                    if final_rate > MAX_CHARS_PER_SECOND + 1e-6:
+                        raise RuntimeError(
+                            f"preschool narration pace gate failed for beat {beat.get('id', i)}: "
+                            f"{final_rate:.3f} chars/sec after retries"
+                        )
+        except RuntimeError:
+            raise
         except Exception as exc:
             logger.info("ASR alignment unavailable, using proportional cues: %s", exc)
             asr_words = [None] * len(beats)
@@ -534,6 +686,13 @@ def build_narration_master(
                 "start_samples": start_samples,
                 "end_samples": end_samples,
                 "engine": engine,
+                "length_scale": effective_scales[index],
+                "measured_characters_per_second": (
+                    len(str(beat.get("text", "")))
+                    / max(0.05, max(float(word["end"]) for word in asr_words[index])
+                          - min(float(word["start"]) for word in asr_words[index]))
+                    if asr_words[index] else None
+                ),
                 "caption_method": method,
                 "caption_cues": cues,
             }
@@ -589,8 +748,12 @@ def build_narration_master(
         "engines_used": engines,
         "caption_method": methods[0] if len(methods) == 1 else "mixed",
         "caption_methods_used": methods,
+        "asr_used": asr_used,
+        "pace_measurement": "independent_word_timestamps" if asr_used else "wav_duration_fallback",
         "cosyvoice_available": engine == "cosyvoice",
         "length_scale": length_scale,
+        "effective_length_scales": effective_scales,
+        "pace_gate_max_chars_per_second": MAX_CHARS_PER_SECOND,
         "characters_per_second": characters_per_second,
         "max_beat_characters_per_second": characters_per_second,
         "average_characters_per_second": average_characters_per_second,

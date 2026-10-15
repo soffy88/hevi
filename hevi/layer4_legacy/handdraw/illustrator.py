@@ -70,11 +70,11 @@ class _Recipe:
             self.stroke_width = 8.5
             self.jitter = 2.0
             self.taper = 0.55
-            self.bleed = 5.2
-            self.grain = 0.0
-            self.dry_brush = 0.48
-            self.fill_opacity = 0.34
-            self.fill_blur = 5.0
+            self.bleed = 4.0
+            self.grain = 0.28
+            self.dry_brush = 0.14
+            self.fill_opacity = 0.52
+            self.fill_blur = 7.0
         elif self.sid == "10":
             self.stroke_width = 3.2
             self.jitter = 5.5
@@ -305,12 +305,20 @@ def scene_crosswalk() -> dict[str, Any]:
             _e("signal_green", (505, 220, 560, 275), "green", 4),
             _e("adult_head", (145, 130, 245, 230), "warm", 4),
             _p("adult_body", [(155, 235), (235, 235), (260, 420), (130, 420)], "cool", 3),
+            _p("child_ear_left", [(265, 270), (273, 238), (289, 267)], "warm", 6),
+            _p("child_ear_right", [(311, 267), (328, 238), (335, 272)], "warm", 6),
             _e("child_head", (265, 250, 335, 320), "warm", 5),
+            _e("child_eye_left", (279, 276, 286, 285), "cool", 7),
+            _e("child_eye_right", (313, 276, 320, 285), "cool", 7),
+            _e("child_muzzle", (289, 291, 311, 307), "cool", 7),
+            _p("child_nose", [(297, 290), (303, 290), (300, 295)], "accent", 8),
             _p("child_body", [(272, 322), (328, 322), (345, 425), (255, 425)], "accent", 4),
         ],
         "decor": [
             {"host": "adult_body", "kind": "line", "points": [(220, 285), (270, 350)], "scale": 0.65},
             {"host": "child_body", "kind": "line", "points": [(275, 350), (235, 390)], "scale": 0.55},
+            {"host": "child_head", "kind": "line", "points": [(285, 300), (270, 296)], "scale": 0.35},
+            {"host": "child_head", "kind": "line", "points": [(315, 300), (330, 296)], "scale": 0.35},
         ],
     }
 
@@ -328,12 +336,52 @@ def scene_hand_washing() -> dict[str, Any]:
             _e("bubble_a", (220, 265, 255, 300), "cool", 6),
             _e("bubble_b", (375, 250, 405, 280), "accent", 6),
             _e("bubble_c", (415, 280, 438, 303), "cool", 6),
+            _e("bear_ear_left", (220, 86, 266, 132), "warm", 4),
+            _e("bear_ear_right", (334, 86, 380, 132), "warm", 4),
+            _e("bear_inner_ear_left", (231, 97, 255, 121), "cool", 6),
+            _e("bear_inner_ear_right", (345, 97, 369, 121), "cool", 6),
             _e("hero_head", (235, 95, 365, 225), "warm", 3),
-            _p("hero_body", [(225, 225), (375, 225), (410, 360), (190, 360)], "green", 2),
+            _e("bear_eye_left", (263, 140, 278, 157), "cool", 7),
+            _e("bear_eye_right", (322, 140, 337, 157), "cool", 7),
+            _e("bear_muzzle", (270, 163, 330, 200), "cool", 7),
+            _e("bear_nose", (293, 163, 307, 176), "accent", 8),
+            _e("hero_body", (215, 220, 385, 376), "green", 2),
+            _e("bear_paw_left", (193, 324, 246, 367), "warm", 6),
+            _e("bear_paw_right", (354, 324, 407, 367), "warm", 6),
         ],
         "decor": [
             {"host": "hero_head", "kind": "line", "points": [(270, 160), (285, 170)], "scale": 0.35},
             {"host": "hero_head", "kind": "line", "points": [(320, 170), (335, 160)], "scale": 0.35},
+            {"host": "bear_muzzle", "kind": "arc", "box": (294, 179, 14, 10), "start": 15, "end": 165},
+        ],
+    }
+
+
+def scene_bear_night() -> dict[str, Any]:
+    """A calm bedtime scene with an identifiable bear cub and warm night lamp."""
+    return {
+        "shapes": [
+            _e("moon", (55, 70, 190, 205), "accent", 2),
+            _p("star_one", [(235, 85), (247, 111), (276, 114), (254, 133), (261, 161), (235, 145), (210, 161), (216, 133), (194, 114), (223, 111)], "accent", 3),
+            _p("star_two", [(460, 135), (471, 158), (495, 162), (477, 178), (482, 202), (460, 189), (439, 202), (444, 178), (425, 162), (450, 158)], "cool", 3),
+            _e("lamp_base", (390, 475, 520, 510), "warm", 2),
+            _p("lamp_shade", [(405, 335), (505, 335), (527, 400), (383, 400)], "warm", 4),
+            _p("lamp_stand", [(447, 400), (463, 400), (463, 478), (447, 478)], "cool", 3),
+            _e("bear_body", (155, 355, 340, 615), "warm", 3),
+            _e("bear_ear_left", (156, 200, 220, 264), "warm", 4),
+            _e("bear_ear_right", (285, 200, 349, 264), "warm", 4),
+            _e("bear_head", (177, 210, 329, 370), "warm", 5),
+            _e("bear_inner_ear_left", (171, 216, 203, 249), "cool", 6),
+            _e("bear_inner_ear_right", (301, 216, 333, 249), "cool", 6),
+            _e("bear_eye_left", (210, 265, 224, 282), "cool", 7),
+            _e("bear_eye_right", (281, 265, 295, 282), "cool", 7),
+            _e("bear_muzzle", (221, 290, 277, 327), "cool", 7),
+            _e("bear_nose", (242, 289, 256, 302), "accent", 8),
+            _p("ground", [(-10, 600), (630, 600), (630, 700), (-10, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "bear_muzzle", "kind": "arc", "box": (245, 306, 17, 13), "start": 15, "end": 165},
+            {"host": "bear_body", "kind": "line", "points": [(217, 480), (280, 480)], "scale": 0.55},
         ],
     }
 
@@ -351,6 +399,109 @@ def _e(shape_id: str, box: tuple[float, float, float, float], role: str = "warm"
     return {"id": shape_id, "kind": "ellipse", "box": box, "role": role, "z": z}
 
 
+
+def scene_puppy_gratitude() -> dict[str, Any]:
+    """Friendly puppy with drooping ears, broad muzzle and a thank-you card."""
+    return {
+        "shapes": [
+            _e("puppy_body", (160, 360, 340, 625), "warm", 3),
+            _e("puppy_ear_left", (138, 195, 204, 340), "warm", 4),
+            _e("puppy_ear_right", (296, 195, 362, 340), "warm", 4),
+            _e("puppy_head", (168, 195, 332, 372), "warm", 5),
+            _e("puppy_patch", (273, 224, 320, 278), "accent", 6),
+            _e("puppy_eye_left", (208, 258, 224, 278), "cool", 7),
+            _e("puppy_eye_right", (274, 258, 290, 278), "cool", 7),
+            _e("puppy_muzzle", (220, 288, 282, 332), "paper", 7),
+            _e("puppy_nose", (242, 290, 260, 306), "cool", 8),
+            _p("thank_you_card", [(405, 315), (560, 315), (560, 500), (405, 500)], "paper", 3),
+            _p("card_fold", [(405, 315), (482, 370), (560, 315)], "warm", 4),
+            _e("card_heart", (457, 390, 508, 441), "accent", 5),
+            _p("ground", [(-20, 620), (630, 620), (630, 700), (-20, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "puppy_muzzle", "kind": "arc", "box": (238, 309, 18, 12), "start": 15, "end": 165},
+        ],
+    }
+
+
+def scene_rabbit_sadness() -> dict[str, Any]:
+    """Rabbit with long ears beside a friendly and repairable block tower."""
+    return {
+        "shapes": [
+            _e("rabbit_body", (150, 365, 330, 625), "warm", 3),
+            _p("rabbit_ear_left", [(185, 240), (173, 95), (224, 214)], "warm", 4),
+            _p("rabbit_ear_right", [(261, 214), (306, 95), (299, 244)], "warm", 4),
+            _p("rabbit_inner_ear_left", [(188, 202), (184, 128), (208, 205)], "accent", 5),
+            _p("rabbit_inner_ear_right", [(273, 203), (293, 130), (287, 215)], "accent", 5),
+            _e("rabbit_head", (162, 192, 324, 372), "warm", 5),
+            _e("rabbit_eye_left", (202, 258, 218, 277), "cool", 7),
+            _e("rabbit_eye_right", (268, 258, 284, 277), "cool", 7),
+            _e("rabbit_muzzle", (218, 290, 270, 326), "paper", 7),
+            _p("rabbit_nose", [(238, 294), (251, 294), (245, 304)], "accent", 8),
+            _p("block_one", [(370, 480), (432, 480), (432, 540), (370, 540)], "accent", 4),
+            _p("block_two", [(432, 540), (494, 540), (494, 600), (432, 600)], "green", 4),
+            _p("block_three", [(494, 480), (556, 480), (556, 540), (494, 540)], "cool", 4),
+            _e("comfort_heart", (420, 365, 470, 415), "accent", 3),
+            _p("ground", [(-20, 620), (630, 620), (630, 700), (-20, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "rabbit_muzzle", "kind": "arc", "box": (232, 311, 23, 12), "start": 200, "end": 340},
+        ],
+    }
+
+
+def scene_cat_courage() -> dict[str, Any]:
+    """Cat cub with triangle ears, whiskers and colourful stepping stones."""
+    return {
+        "shapes": [
+            _e("cat_body", (150, 360, 335, 622), "warm", 3),
+            _p("cat_ear_left", [(157, 250), (170, 170), (224, 220)], "warm", 5),
+            _p("cat_ear_right", [(270, 220), (324, 170), (333, 256)], "warm", 5),
+            _p("cat_inner_ear_left", [(174, 225), (180, 192), (207, 220)], "accent", 6),
+            _p("cat_inner_ear_right", [(284, 220), (315, 193), (316, 231)], "accent", 6),
+            _e("cat_head", (164, 205, 328, 370), "warm", 5),
+            _e("cat_eye_left", (202, 255, 218, 276), "cool", 7),
+            _e("cat_eye_right", (274, 255, 290, 276), "cool", 7),
+            _p("cat_nose", [(239, 290), (253, 290), (246, 301)], "accent", 8),
+            _p("whisker_left_top", [(205, 302), (165, 293)], "cool", 5),
+            _p("whisker_left_bottom", [(207, 313), (169, 322)], "cool", 5),
+            _p("whisker_right_top", [(284, 302), (324, 293)], "cool", 5),
+            _p("whisker_right_bottom", [(282, 313), (320, 322)], "cool", 5),
+            _p("step_one", [(358, 565), (424, 565), (424, 610), (358, 610)], "accent", 4),
+            _p("step_two", [(424, 515), (490, 515), (490, 560), (424, 560)], "green", 4),
+            _p("step_three", [(490, 465), (556, 465), (556, 510), (490, 510)], "cool", 4),
+            _p("ground", [(-20, 620), (630, 620), (630, 700), (-20, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "cat_body", "kind": "line", "points": [(216, 490), (274, 490)], "scale": 0.6},
+        ],
+    }
+
+
+def scene_seed_growth() -> dict[str, Any]:
+    """A visible seedling, soil-filled pot and rabbit gardener."""
+    return {
+        "shapes": [
+            _e("rabbit_body", (100, 410, 252, 630), "warm", 3),
+            _p("rabbit_ear_left", [(132, 285), (124, 150), (163, 280)], "warm", 4),
+            _p("rabbit_ear_right", [(177, 280), (220, 155), (211, 300)], "warm", 4),
+            _e("rabbit_head", (108, 255, 229, 390), "warm", 5),
+            _e("rabbit_eye_left", (140, 302, 152, 319), "cool", 7),
+            _e("rabbit_eye_right", (186, 302, 198, 319), "cool", 7),
+            _e("plant_pot", (350, 495, 535, 620), "accent", 3),
+            _p("soil", [(350, 510), (535, 510), (520, 535), (365, 535)], "cool", 5),
+            _p("stem", [(443, 510), (443, 395), (451, 350)], "green", 6),
+            _e("leaf_left", (388, 390, 447, 435), "green", 5),
+            _e("leaf_right", (444, 356, 500, 402), "green", 5),
+            _e("sun", (455, 95, 545, 185), "accent", 3),
+            _p("ground", [(-20, 620), (630, 620), (630, 700), (-20, 700)], "cool", 0),
+        ],
+        "decor": [
+            {"host": "rabbit_head", "kind": "arc", "box": (153, 346, 28, 13), "start": 15, "end": 165},
+        ],
+    }
+
+
 def scene_fox_share() -> dict[str, Any]:
     return {
         "shapes": [
@@ -358,7 +509,16 @@ def scene_fox_share() -> dict[str, Any]:
             _e("fox_head", (110, 180, 330, 400), "warm", 4),
             _p("fox_ear_a", [(140, 200), (185, 120), (225, 200)], "warm", 5),
             _p("fox_ear_b", [(235, 200), (280, 120), (315, 205)], "warm", 5),
+            _p("fox_inner_ear_a", [(158, 187), (185, 145), (210, 190)], "cool", 6),
+            _p("fox_inner_ear_b", [(250, 190), (278, 145), (298, 190)], "cool", 6),
+            _e("fox_eye_left", (163, 260, 184, 283), "cool", 7),
+            _e("fox_eye_right", (256, 260, 277, 283), "cool", 7),
+            _e("fox_muzzle_left", (174, 300, 226, 344), "cool", 6),
+            _e("fox_muzzle_right", (215, 300, 267, 344), "cool", 6),
+            _p("fox_nose", [(211, 303), (230, 303), (220, 316)], "accent", 8),
             _p("fox_tail", [(430, 430), (560, 330), (600, 470), (470, 540)], "accent", 2),
+            _e("fox_paw_left", (210, 535, 275, 590), "warm", 5),
+            _e("fox_paw_right", (345, 535, 410, 590), "warm", 5),
             _e("apple", (470, 470, 590, 590), "green", 6),
             _p("apple_leaf", [(525, 470), (585, 430), (555, 480)], "green", 7),
             _p("ground", [(-20, 600), (620, 600), (620, 680), (-20, 680)], "cool", 0),
@@ -571,6 +731,11 @@ ILLUSTRATION_BUILDERS = {
     "tidy_up": scene_tidy_up,
     "crosswalk": scene_crosswalk,
     "hand_washing": scene_hand_washing,
+    "bear_night": scene_bear_night,
+    "seed_growth": scene_seed_growth,
+    "cat_courage": scene_cat_courage,
+    "rabbit_sadness": scene_rabbit_sadness,
+    "puppy_gratitude": scene_puppy_gratitude,
     # legacy explainer
     "anger_brain": scene_anger_brain,
     "balance_scale": scene_balance_scale,
@@ -710,15 +875,54 @@ def _render_scene(
     for decor in scaled_decor:
         ink_mask |= _decor_outline(decor, big, recipe)
 
-    if recipe.bleed:
-        blurred = ndimage.gaussian_filter(ink_mask.astype(np.float32), recipe.bleed * scale)
-        ink_mask = blurred > 0.28
-    ink_rgba = np.zeros((big[1], big[0], 4), dtype=np.uint8)
-    ink_rgba[..., 0], ink_rgba[..., 1], ink_rgba[..., 2] = recipe.ink
-    ink_rgba[..., 3] = np.where(ink_mask, 255, 0).astype(np.uint8)
-
     composed = Image.fromarray(fill_rgba)
-    composed.alpha_composite(Image.fromarray(ink_rgba))
+    if recipe.sid == "8":
+        # Keep the core brush edge dark, and render the water-soluble edge as
+        # a separate semitransparent grey wash. Thresholding the blur made the
+        # old result simply look like a wider, heavy black outline.
+        ink_float = ink_mask.astype(np.float32)
+        halo = ndimage.gaussian_filter(ink_float, recipe.bleed * scale)
+        wash = np.zeros((big[1], big[0], 4), dtype=np.uint8)
+        wash[..., :3] = (67, 70, 69)
+        wash[..., 3] = np.clip(halo * 95, 0, 105).astype(np.uint8)
+        composed.alpha_composite(Image.fromarray(wash))
+
+        core = np.zeros((big[1], big[0], 4), dtype=np.uint8)
+        core[..., :3] = recipe.ink
+        core[..., 3] = np.where(ink_mask, 218, 0).astype(np.uint8)
+        composed.alpha_composite(Image.fromarray(core))
+
+        # Dry-brush fly-white: short fibers cut into nearby ink, repeatable for
+        # a fixed seed and clipped to the dilated contour so they cannot mark
+        # unrelated clean paper or create flashing visual noise.
+        ys, xs = np.where(ink_mask)
+        if len(xs):
+            scratch = Image.new("L", big, 0)
+            scratch_draw = ImageDraw.Draw(scratch)
+            for _ in range(max(18, len(xs) // 2100)):
+                chosen = recipe.rng.randrange(len(xs))
+                cx, cy = int(xs[chosen]), int(ys[chosen])
+                angle = recipe.rng.uniform(-0.8, 0.8)
+                length = recipe.rng.uniform(4.0, 15.0) * scale
+                dx, dy = math.cos(angle) * length / 2, math.sin(angle) * length / 2
+                scratch_draw.line(
+                    (cx - dx, cy - dy, cx + dx, cy + dy),
+                    fill=255, width=max(1, round(recipe.rng.uniform(0.35, 0.9) * scale)),
+                )
+            scratch_mask = np.asarray(scratch, dtype=np.uint8) > 0
+            scratch_mask &= ndimage.binary_dilation(ink_mask, iterations=max(2, 3 * scale))
+            fly_white = np.zeros((big[1], big[0], 4), dtype=np.uint8)
+            fly_white[..., :3] = (249, 244, 236)
+            fly_white[..., 3] = np.where(scratch_mask, 210, 0).astype(np.uint8)
+            composed.alpha_composite(Image.fromarray(fly_white))
+    else:
+        if recipe.bleed:
+            blurred = ndimage.gaussian_filter(ink_mask.astype(np.float32), recipe.bleed * scale)
+            ink_mask = blurred > 0.28
+        ink_rgba = np.zeros((big[1], big[0], 4), dtype=np.uint8)
+        ink_rgba[..., 0], ink_rgba[..., 1], ink_rgba[..., 2] = recipe.ink
+        ink_rgba[..., 3] = np.where(ink_mask, 255, 0).astype(np.uint8)
+        composed.alpha_composite(Image.fromarray(ink_rgba))
 
     # 3. Style 8: a red seal stamp as the signature accent.
     if cfg.style_id == "8":

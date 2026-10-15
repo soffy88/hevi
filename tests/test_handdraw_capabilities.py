@@ -412,7 +412,7 @@ def test_caption_groups_preserve_chinese_words_and_punctuation() -> None:
     tokens = tts._caption_tokens(text)
     assert "小小的" in tokens
     assert "碎屑" in tokens
-    assert "大家都能" in tokens
+    assert "大家都能玩" in tokens
     char_times = [
         {"char": char, "start": index * 0.1, "end": (index + 1) * 0.1}
         for index, char in enumerate(text)
@@ -474,3 +474,246 @@ def test_all_preschool_caption_cues_align_to_real_asr_including_final_question(
     assert p95 <= 0.25, {"cue_count": len(errors), "p95_seconds": p95, "max_seconds": max(errors)}
     assert len(final_question_errors) == 1
     assert final_question_errors[0] <= 0.25, final_question_errors
+
+
+@pytest.mark.parametrize(
+    ("topic", "expected_key", "theme_word"),
+    [
+        ("小兔子学会分享", "fox_turn_taking", "轮流"),
+        ("小猫学会过马路", "crosswalk", "过马路"),
+        ("为什么要洗手", "wash_hands", "洗手"),
+        ("小熊不怕黑", "fear_night", "怕黑"),
+        ("小星星睡前故事", "bedtime", "睡前"),
+        ("小狗学会说谢谢", "gratitude", "谢谢"),
+        ("小狐狸生气了怎么办", "emotion", "生气"),
+        ("小兔子观察种子", "nature", "种子"),
+        ("小猫勇敢试一试", "courage", "勇敢"),
+        ("小狐狸和家人朋友", "friendship", "朋友"),
+        ("小兔子难过了", "sadness", "难过"),
+        ("小狐狸学会说对不起", "apology", "对不起"),
+    ],
+)
+def test_r4_storyboard_routes_topics_and_preserves_child_safe_eight_beat_arc(
+    topic: str, expected_key: str, theme_word: str,
+) -> None:
+    storyboard = select_kids_storyboard(topic)
+    beats = [beat for page in storyboard["pages"] for beat in page["beats"]]
+    narration = "".join(beat["text"] for beat in beats)
+
+    assert storyboard["topic_key"] == expected_key
+    assert len(beats) == 8
+    assert [beat["stage"] for beat in beats] == list(storyboard["stages"])
+    assert storyboard["hero"] in narration
+    assert theme_word in narration
+    report = validate_kids_script(
+        storyboard["title"], storyboard["pages"], aspect="16:9",
+        caption_font_size=56, characters_per_second=3.0, preview=True,
+    )
+    assert report["passed"], report["checks"]
+
+
+@pytest.mark.parametrize("topic", [
+    "复利效应与巴菲特", "玩武器的冒险", "广告里的可口可乐",
+])
+def test_r4_adult_danger_and_advertising_topics_remain_rejected(topic: str) -> None:
+    with pytest.raises(UnsupportedKidsTopicError):
+        select_kids_storyboard(topic)
+
+
+def test_r4_caption_cues_keep_final_interaction_question_and_do_not_start_with_punctuation() -> None:
+    text = "下次你想和谁一起玩球呢？记得告诉身边的大人。"
+    words = [
+        {"text": char, "start": index * 0.12, "end": (index + 1) * 0.12}
+        for index, char in enumerate(text)
+    ]
+    cues, method = tts.build_caption_cues(text, len(text) * 0.12, words, max_chars=12)
+
+    assert method == "asr"
+    assert "".join(cue["text"] for cue in cues) == text
+    assert all(cue["text"] and cue["text"][0] not in "，。！？；：、,.!?;:…—·" for cue in cues)
+    assert cues[-1]["text"].endswith(("！", "。"))
+    assert any(cue["text"].endswith("呢？") for cue in cues)
+    assert any(cue["text"].startswith("记得告诉身边的大人") for cue in cues)
+
+
+def test_r4_actual_piper_narration_pace_is_measured_for_sharing_and_tidy_toys(tmp_path: Path) -> None:
+    """Exercise real local Piper synthesis and the actual local-ASR pace gate."""
+    for topic in ("小兔子学会分享", "收拾玩具"):
+        storyboard = select_kids_storyboard(topic)
+        beats = [beat for page in storyboard["pages"] for beat in page["beats"]]
+        out_dir = tmp_path / ("story-" + str(len(topic)))
+        out_dir.mkdir()
+        master, alignment_path, duration = tts.build_narration_master(
+            [{"id": f"{topic}-{index:02d}", "text": beat["text"]} for index, beat in enumerate(beats)],
+            out_dir,
+            prefer_cosy=False,
+            use_asr=True,
+        )
+        alignment = json.loads(alignment_path.read_text(encoding="utf-8"))
+        assert master.is_file() and master.stat().st_size > 44
+        assert len(alignment["beats"]) == 8
+        assert duration > 10.0
+        assert alignment["engine"] == "piper"
+        assert alignment["asr_used"] is True
+        assert alignment["pace_gate_max_chars_per_second"] == pytest.approx(3.5)
+        for index, beat in enumerate(alignment["beats"]):
+            measured = beat["measured_characters_per_second"]
+            assert measured is not None, {"topic": topic, "beat": index}
+            assert 0.1 <= float(measured) <= 3.5, {
+                "topic": topic, "beat": index, "chars_per_second": measured,
+                "length_scale": beat.get("length_scale"),
+            }
+
+
+def test_r4_style_eight_has_translucent_ink_wash_and_friendly_bear_details() -> None:
+    import numpy as np
+
+    from hevi.layer4_legacy.handdraw.illustrator import _render_scene
+    from hevi.layer4_legacy.handdraw.styles import get_style_config
+
+    image, parts = _render_scene(
+        "bear_night", get_style_config("8"), (480, 270), seed=8108,
+    )
+    alpha = np.asarray(image.getchannel("A"), dtype=np.uint8)
+    intermediate_alpha = int(np.count_nonzero((alpha > 0) & (alpha < 255)))
+
+    assert image.size == (480, 270)
+    assert len(parts) >= 15
+    assert intermediate_alpha > 1_000
+
+
+def test_r4_caption_overlapping_asr_word_intervals_keep_next_cue_onset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tts, "_caption_tokens", lambda value: list(value))
+    text = "ABCDEFGHIJKLMNOPQRSTUVWX"
+    words = [
+        {"text": char, "start": index * 0.1, "end": index * 0.1 + 0.5}
+        for index, char in enumerate(text)
+    ]
+    cues, method = tts.build_caption_cues(text, 4.0, words, max_chars=6)
+
+    assert method == "asr"
+    assert len(cues) == 4
+    assert cues[1]["start"] == pytest.approx(0.6)
+    assert all(cues[index]["end"] <= cues[index + 1]["start"] for index in range(len(cues) - 1))
+    assert "".join(cue["text"] for cue in cues) == text
+
+
+@pytest.mark.parametrize(
+    ("topic", "expected_key", "theme_word"),
+    [
+        ("小兔子难过了怎么办", "sadness", "难过"),
+        ("小狐狸学会说对不起", "apology", "对不起"),
+        ("小熊和小狐狸学会合作", "friendship", "朋友"),
+    ],
+)
+def test_r4_extended_social_emotional_topics_keep_eight_safe_beats(
+    topic: str, expected_key: str, theme_word: str,
+) -> None:
+    storyboard = select_kids_storyboard(topic)
+    beats = [beat for page in storyboard["pages"] for beat in page["beats"]]
+    narration = "".join(beat["text"] for beat in beats)
+    assert storyboard["topic_key"] == expected_key
+    assert len(beats) == 8
+    assert [beat["stage"] for beat in beats] == ["greeting", "problem", "try", "solve", "recap", "action", "goodbye", "interaction"]
+    assert storyboard["hero"] in narration
+    assert theme_word in narration
+    report = validate_kids_script(
+        storyboard["title"], storyboard["pages"], aspect="16:9",
+        caption_font_size=56, characters_per_second=3.0, preview=True,
+    )
+    assert report["passed"], report["checks"]
+
+
+def test_r4_caption_builder_keeps_common_chinese_compounds_and_interaction_intact() -> None:
+    text = "小兔子先抱着球，朋友们在等，它想到了一个办法。大家都能玩。下次你想和谁一起玩呢？记得告诉身边的大人。"
+    words = [
+        {"text": char, "start": index * 0.09, "end": (index + 1) * 0.09}
+        for index, char in enumerate(text)
+    ]
+    cues, method = tts.build_caption_cues(text, len(text) * 0.09, words, max_chars=12)
+    cue_text = [cue["text"] for cue in cues]
+    assert method == "asr"
+    assert "".join(cue_text) == text
+    assert not any(cue.startswith(("，", "。", "？", "！")) for cue in cue_text)
+    assert any("朋友们在等" in cue for cue in cue_text)
+    assert any("大家都能玩" in cue for cue in cue_text)
+    assert cue_text[-1] == "记得告诉身边的大人。"
+
+
+def test_r4_character_selection_uses_first_character_named_in_topic() -> None:
+    storyboard = select_kids_storyboard("小猫陪小熊学会不怕黑")
+    assert storyboard["hero"] == "小猫"
+    narration = "".join(beat["text"] for page in storyboard["pages"] for beat in page["beats"])
+    assert "小猫" in narration
+
+
+def test_r4_independent_large_v3_turbo_caption_timing_on_two_full_films(tmp_path: Path) -> None:
+    """Slow acceptance: audit the final SRTs against a separately installed CPU ASR."""
+    import os
+
+    base = REPO_ROOT / ".tmp" / "r5" / "runs"
+    names = ("R5_L8_wash", "R5_P8_fear")
+    pairs = []
+    for name in names:
+        folder = base / name / "outputs"
+        video = folder / "film.mp4"
+        subtitles = folder / "editing" / "transcript.srt"
+        assert video.is_file(), f"missing full R4 film: {video}"
+        assert subtitles.is_file(), f"missing film subtitles: {subtitles}"
+        pairs.append(f"{video},{subtitles}")
+
+    report_path = tmp_path / "independent-asr-r4.json"
+    audit = REPO_ROOT / "audit" / "handdraw" / "verify_r4" / "independent_asr_audit.py"
+    environment = os.environ.copy()
+    environment.update({
+        "JWT_SECRET": "test-only",
+        "TMPDIR": str(REPO_ROOT / ".tmp"),
+        "PYTHONPATH": str(REPO_ROOT),
+    })
+    completed = subprocess.run(
+        [
+            sys.executable, str(audit), *pairs,
+            "--out", str(report_path),
+        ],
+        cwd=REPO_ROOT,
+        env=environment,
+        text=True,
+        capture_output=True,
+        timeout=1800,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + "\n" + completed.stderr
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["device"] == "cpu"
+    assert report["compute_type"] == "int8"
+    assert len(report["pairs"]) == 2
+    for result in report["pairs"]:
+        assert result["matching_coverage"] >= 0.95, result
+        # HANDDRAW_FIX_R5 tightened this back to the FIX_R4 acceptance target of
+        # 0.25s. The previous 0.90s assertion was a relaxed gate, not a PASS.
+        assert result["p95_absolute_error_seconds"] <= 0.25, result
+        assert result["max_absolute_error_seconds"] <= 0.25, result
+        assert not result["unmatched_cue_indices_1based"], result
+        assert not result["leading_punctuation_cue_indices_1based"], result
+
+
+def test_r4_every_storyboard_scene_key_is_registered_and_renderable() -> None:
+    from hevi.layer4_legacy.handdraw.illustrator import ILLUSTRATION_BUILDERS, _render_scene
+    from hevi.layer4_legacy.handdraw.styles import get_style_config
+
+    topics = [
+        "小兔子学会分享", "小猫学会过马路", "为什么要洗手",
+        "小熊不怕黑", "小星星睡前故事", "小狗学会说谢谢",
+        "小狐狸生气了怎么办", "小兔子观察种子", "小猫勇敢试一试",
+        "小兔子难过了怎么办", "小狐狸学会说对不起",
+    ]
+    keys = {
+        page["scene_key"]
+        for topic in topics
+        for page in select_kids_storyboard(topic)["pages"]
+    }
+    assert keys <= set(ILLUSTRATION_BUILDERS), sorted(keys - set(ILLUSTRATION_BUILDERS))
+    for key in sorted(keys):
+        image, parts = _render_scene(key, get_style_config("8"), (320, 180), seed=8108)
+        assert image.size == (320, 180)
+        assert len(parts) > 0, (key, len(parts))
