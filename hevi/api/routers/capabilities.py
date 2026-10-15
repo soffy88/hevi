@@ -195,16 +195,16 @@ def render_capability_preview(name: str, body: CapabilityPreviewRequest) -> File
                 aspect=body.aspect,
                 seed=body.seed,
             )
-        if result.mp4 is None or not result.mp4.is_file() or result.duration is None:
+        if result.mp4 is None or not result.mp4.is_file() or result.duration_s is None:
             raise CapabilityError("preview renderer returned no MP4")
-        if abs(float(result.duration) - 3.0) > 0.1:
-            raise CapabilityError(f"preview duration is {result.duration}, expected 3 seconds")
+        if abs(float(result.duration_s) - 3.0) > 0.1:
+            raise CapabilityError(f"preview duration is {result.duration_s}, expected 3 seconds")
         return FileResponse(
             str(result.mp4),
             media_type="video/mp4",
             filename="handdraw-preview.mp4",
             headers={
-                "X-Capability-Duration": f"{float(result.duration):.3f}",
+                "X-Capability-Duration": f"{float(result.duration_s):.3f}",
                 "X-Capability-SHA256": str(result.sha256 or ""),
                 "X-Capability-Name": name,
             },
