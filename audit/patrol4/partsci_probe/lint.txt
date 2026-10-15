@@ -1,0 +1,9 @@
+Running as unit: patrol4_ps_lint.scope; invocation ID: bb2e4d3ecbcb48b3936115169326f789
+/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/text.py:479:estimate_cost positional=2
+/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/vector_db/lancedb.py:184:open_vector_db positional=4
+/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/verify_step.py:168:build_solve_result_with_checks positional=4
+[PASS] check_obase_no_reverse_dep.py
+[PASS] check_oservi_injection.py
+[PASS] check_async_contract.py
+3O_V3_LINT=FAIL
+failed: check_no_sibling_call.py, check_omodul_signature.py, check_enabled_pillars.py, check_oprim_keyword_only.py
