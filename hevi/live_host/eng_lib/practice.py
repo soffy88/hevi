@@ -161,7 +161,8 @@ class PracticeSession:
         if self.embed is None:
             it = self.unit.items[0]
         else:
-            vec = self.embed(query, query=False)
+            # EG2 is asymmetric: a query must be embedded in query mode
+            vec = self.embed(query, query=True)
             it, _ = self.unit.nearest(vec)
         return self._present(it)
 

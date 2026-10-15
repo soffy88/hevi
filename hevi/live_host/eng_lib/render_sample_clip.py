@@ -23,7 +23,15 @@ from pathlib import Path
 
 import numpy as np
 
-from hevi.live_host.avatar.halfbody import FPS, SR, HalfBodyAvatar, Segment, encoder, load_wav16k
+from hevi.live_host.avatar.halfbody import (
+    FFMPEG,
+    FPS,
+    SR,
+    HalfBodyAvatar,
+    Segment,
+    encoder,
+    load_wav16k,
+)
 
 
 def render_one(av: HalfBodyAvatar, item: dict, unit_dir: Path, out_path: Path) -> float:
@@ -51,7 +59,7 @@ def render_one(av: HalfBodyAvatar, item: dict, unit_dir: Path, out_path: Path) -
     audio = out_path.with_suffix(".wav")
     subprocess.run(
         [
-            av.FFMPEG,
+            FFMPEG,
             "-y",
             "-v",
             "error",

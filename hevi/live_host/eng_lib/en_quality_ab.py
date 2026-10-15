@@ -113,12 +113,19 @@ def main() -> None:
         except Exception as e:  # noqa: BLE001
             row["methods"]["B_cross_lingual"] = {"error": f"{type(e).__name__}: {e}"[:160]}
 
-        # C: cross-lingual -> voice conversion into Xiaoya's voice
+        # C: cross-lingual -> voice conversion into Xiaoya's voice.
+        # inference_vc takes a *path*, so write B's English source to disk first
+        # (that wav is also what the final unit build would convert in place).
         if b is not None:
             try:
                 t0 = time.time()
+                src = OUT / f"B_{sid}.wav"
                 c = torch.cat(
-                    [j["tts_speech"] for j in m.inference_vc(b, ZH_PROMPT_WAV, stream=False)], 1
+                    [
+                        j["tts_speech"]
+                        for j in m.inference_vc(str(src), ZH_PROMPT_WAV, stream=False)
+                    ],
+                    1,
                 )
                 _save("C", sid, t0, c, row)
             except Exception as e:  # noqa: BLE001
