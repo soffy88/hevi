@@ -1,0 +1,85 @@
+{
+  "results": [
+    {
+      "check": "story gate: compliant -> must PASS",
+      "ok": true,
+      "detail": "got=PASS causal_ratio=0.8 fails=[]"
+    },
+    {
+      "check": "story gate: all AND-THEN -> must FAIL",
+      "ok": true,
+      "detail": "got=FAIL causal_ratio=0.0 fails=['R3_CAUSAL_RATIO', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R9_FAREWELL_QUESTION', 'R5_RECAP_THEME']"
+    },
+    {
+      "check": "story gate: adjacent same emotion -> must FAIL",
+      "ok": true,
+      "detail": "got=FAIL causal_ratio=0.8 fails=['R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION']"
+    },
+    {
+      "check": "story gate: missing theme -> must FAIL",
+      "ok": true,
+      "detail": "got=FAIL causal_ratio=0.8 fails=['R5_SINGLE_THEME', 'R5_RECAP_THEME']"
+    },
+    {
+      "check": "story gate: missing fixed character -> must FAIL",
+      "ok": true,
+      "detail": "got=FAIL causal_ratio=0.8 fails=['R6_FIXED_CHARACTER']"
+    },
+    {
+      "check": "story gate: deterministic (2 runs identical sha256)",
+      "ok": true,
+      "detail": "0c8418b63fbc9fa88e14bc92"
+    }
+  ],
+  "gate": [
+    {
+      "name": "compliant -> must PASS",
+      "status": "PASS",
+      "fails": [],
+      "causal_ratio": 0.8
+    },
+    {
+      "name": "all AND-THEN -> must FAIL",
+      "status": "FAIL",
+      "fails": [
+        "R3_CAUSAL_RATIO",
+        "R4_ADJACENT_EMOTION",
+        "R4_ADJACENT_EMOTION",
+        "R4_ADJACENT_EMOTION",
+        "R4_ADJACENT_EMOTION",
+        "R9_FAREWELL_QUESTION",
+        "R5_RECAP_THEME"
+      ],
+      "causal_ratio": 0.0
+    },
+    {
+      "name": "adjacent same emotion -> must FAIL",
+      "status": "FAIL",
+      "fails": [
+        "R4_ADJACENT_EMOTION",
+        "R4_ADJACENT_EMOTION",
+        "R4_ADJACENT_EMOTION"
+      ],
+      "causal_ratio": 0.8
+    },
+    {
+      "name": "missing theme -> must FAIL",
+      "status": "FAIL",
+      "fails": [
+        "R5_SINGLE_THEME",
+        "R5_RECAP_THEME"
+      ],
+      "causal_ratio": 0.8
+    },
+    {
+      "name": "missing fixed character -> must FAIL",
+      "status": "FAIL",
+      "fails": [
+        "R6_FIXED_CHARACTER"
+      ],
+      "causal_ratio": 0.8
+    }
+  ],
+  "pass": 6,
+  "total": 6
+}
