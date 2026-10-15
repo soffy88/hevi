@@ -2,7 +2,9 @@
 
 /* Backlot 看板页面(已落实 B7) */
 
+import ContactSheetPanel from "@/components/backlot/ContactSheetPanel";
 import DashboardPanel from "@/components/backlot/DashboardPanel";
+import PlaybackPanel from "@/components/backlot/PlaybackPanel";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -31,7 +33,11 @@ function BacklotContent() {
           运行 ID: <code className="bg-gray-100 px-2 py-1 rounded">{run_id}</code>
         </p>
       </header>
-      <DashboardPanel run_id={run_id} />
+      <div className="space-y-6">
+        <DashboardPanel run_id={run_id} />
+        <ContactSheetPanel run_id={run_id} />
+        <PlaybackPanel run_id={run_id} />
+      </div>
     </div>
   );
 }

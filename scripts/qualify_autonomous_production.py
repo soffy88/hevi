@@ -245,7 +245,7 @@ def main() -> int:
     evidence["blocker_matrix"] = [_blocker_matrix_row(item["line"], item) for item in evidence["lines"]]
     evidence["blocked_lines"] = [item["line"] for item in evidence["lines"] if item["status"] != "completed"]
     evidence["blockers"] = {item["line"]: item.get("blocker") for item in evidence["lines"] if item.get("blocker")}
-    evidence["classification"] = "FULL_ALL_LINES_PRODUCTION_COMPLETE" if evidence["full_auto_verified"] == 13 else "SOFTWARE_QUALIFIED_ENV_BLOCKED"
+    evidence["classification"] = "FULL_ALL_LINES_PRODUCTION_COMPLETE" if evidence["full_auto_verified"] == len(CANONICAL_LINES) else "SOFTWARE_QUALIFIED_ENV_BLOCKED"
     (root / "summary.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = ["# HEVI Autonomous Production Qualification", "", f"HEAD: `{head}`", "", "| LINE | PRODUCT_ENTRY | FINAL_MP4 | QA | FRESH | STATUS | BLOCKER |", "|---|---|---:|---:|---:|---|---|"]
     lines.extend(f"| {row['line']} | {row['entrypoint']} | {row.get('final_mp4', False)} | {row.get('quality_gate', False)} | {row.get('fresh', False)} | {row['status']} | {row.get('blocker') or ''} |" for row in evidence["lines"])

@@ -186,6 +186,19 @@
         174
       ],
       "transcript": "NASA “Earth Views from the International Space Station”: cloud decks over the ocean, deserts and coastlines passing below, the station robotic arm capturing a cargo spacecraft, an orbital sunrise over the horizon, and the thin blue limb of the atmosphere."
+    },
+    "comic_narration": {
+      "title": "为什么猫总爱把东西推下桌？",
+      "topic": "为什么猫总爱把东西推下桌？猫咪的重力实验",
+      "style": "comic_color",
+      "script_lines": [
+        "你有没有发现，猫总喜欢把桌上的杯子推下去？",
+        "其实，这并不是猫在故意捣蛋，而是捕猎本能。",
+        "在野外，猫会用爪子触碰物体，试探猎物是否还会动。",
+        "每一次东西掉落，都会发出声音，给猫带来即时反馈。",
+        "久而久之，猫就发现推东西能吸引主人的注意。",
+        "所以下一次看到猫推杯子，收起贵重物品才是正解。"
+      ]
     }
   }
 }

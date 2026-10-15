@@ -37,10 +37,10 @@ HAVE_FFMPEG = Path(FFMPEG).exists()
 
 
 # ---------------------------------------------------------------- policy
-def test_eleven_zero_lines_and_two_legacy_only() -> None:
+def test_twelve_zero_lines_and_two_legacy_only() -> None:
     from hevi.studio.production_catalog import CANONICAL_LINES
 
-    assert len(ZERO_LINES) == 11 and set(ZERO_LINES) == set(LINE_SPECS)
+    assert len(ZERO_LINES) == 12 and set(ZERO_LINES) == set(LINE_SPECS)
     assert set(ZERO_LINES) | set(LEGACY_ONLY_LINES) == set(CANONICAL_LINES)
     assert not set(ZERO_LINES) & set(LEGACY_ONLY_LINES)
 

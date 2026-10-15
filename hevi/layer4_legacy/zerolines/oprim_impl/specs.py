@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-#: the 11 canonical Studio lines that have a zero-cost (CPU, no paid API) engine
+#: the 12 canonical Studio lines that have a zero-cost (CPU, no paid API) engine
 ZERO_LINES: tuple[str, ...] = (
     "kinetic_promo",
     "explainer",
@@ -23,6 +23,7 @@ ZERO_LINES: tuple[str, ...] = (
     "shorts_clip",
     "podcast_repurpose",
     "reference_adapt",
+    "comic_narration",
 )
 
 #: canonical lines that intentionally keep their original implementation only
@@ -116,6 +117,11 @@ LINE_SPECS: dict[str, ZeroLineSpec] = {
         qa=QAThresholds(max_black_ratio=0.35),
         description="re-structured reference segments + new narration, grade, moves, transitions",
     ),
+    "comic_narration": ZeroLineSpec(
+        "comic_narration", 1080, 1920, ("topic",),
+        qa=QAThresholds(min_motion=0.5, min_duration_s=10.0),
+        description="Pixelle-style comic narration: prompt/story -> script -> per-sentence AI keyframes + TTS + BGM + Ken Burns + subtitles",
+    ),
 }
 
 
@@ -139,6 +145,8 @@ class ZeroLineRequest:
         errors: list[str] = []
         for name in spec.inputs:
             if not getattr(self, name):
+                if self.line_id == "comic_narration" and name == "topic" and self.texts:
+                    continue
                 errors.append(f"{self.line_id}: missing required input {name!r}")
         if "queries" in spec.inputs and self.texts and self.queries and self.line_id not in {
             "kinetic_promo", "avatar_spokesperson"

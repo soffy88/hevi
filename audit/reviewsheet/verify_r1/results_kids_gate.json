@@ -1,0 +1,735 @@
+[
+ {
+  "sample": "handdraw_P1_9x16",
+  "path": "/data/soffy/projects/hevi-handdraw/.tmp/vr2/runs/P_1/outputs/film.mp4",
+  "kind": "good_real",
+  "bad_window_s": null,
+  "secs": {
+   "orig": 29.5,
+   "ext": 43.3
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 7,
+   "color_grade_max_ratio_jump": 0.006,
+   "detected_cuts": 1,
+   "min_shot_duration": 56.566667,
+   "integrated_lufs": -15.7,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "sample": "handdraw_L1_16x9",
+  "path": "/data/soffy/projects/hevi-handdraw/.tmp/vr2/runs/L_1/outputs/film.mp4",
+  "kind": "good_real",
+  "bad_window_s": null,
+  "secs": {
+   "orig": 27.7,
+   "ext": 37.3
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 36,
+   "color_grade_max_ratio_jump": 0.009,
+   "detected_cuts": 1,
+   "min_shot_duration": 48.433333,
+   "integrated_lufs": -15.7,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "sample": "scene3d_fox_wheat_9x16",
+  "path": "/data/soffy/projects/hevi-scene3d/output/scene3d_r1b/fox_wheat_9x16/fox_in_wheat.mp4",
+  "kind": "good_real",
+  "bad_window_s": null,
+  "secs": {
+   "orig": 8.2,
+   "ext": 20.4
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 2,
+   "color_grade_max_ratio_jump": 0.01,
+   "detected_cuts": 1,
+   "min_shot_duration": 12.0,
+   "integrated_lufs": -16.0,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "sample": "control_base16",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/base16.mp4",
+  "kind": "control",
+  "bad_window_s": null,
+  "secs": {
+   "orig": 2.6,
+   "ext": 6.5
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 4,
+   "color_grade_max_ratio_jump": 0.007,
+   "detected_cuts": 1,
+   "min_shot_duration": 16.0,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "sample": "gray_full",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/gray_full.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   0,
+   16
+  ],
+  "secs": {
+   "orig": 2.4,
+   "ext": 6.8
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 5,
+   "color_grade_max_ratio_jump": 0.002,
+   "detected_cuts": 1,
+   "min_shot_duration": 16.0,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "LEAK",
+  "problems": [
+   "坏样本扩展项未红灯（漏放）"
+  ]
+ },
+ {
+  "sample": "gray_second_half",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/gray_second_half.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   8,
+   16
+  ],
+  "secs": {
+   "orig": 2.6,
+   "ext": 7.2
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 7,
+   "color_grade_max_ratio_jump": 0.021,
+   "detected_cuts": 1,
+   "min_shot_duration": 16.04,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "LEAK",
+  "problems": [
+   "坏样本扩展项未红灯（漏放）"
+  ]
+ },
+ {
+  "sample": "temp_jump",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/temp_jump.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   7.5,
+   9
+  ],
+  "secs": {
+   "orig": 5.6,
+   "ext": 12.0
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "red",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "fail",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "fail",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [
+   "跨镜主色漂移 123（>120），疑似服装/配色不连续 @8.69s",
+   "段间色温跳变 0.599（>0.25），疑似调色不连续 @8.69s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "identity",
+    "time": 8.688333333333333,
+    "diff": 123
+   },
+   {
+    "item": "color_grade",
+    "time": 8.688333333333333,
+    "jump": 0.5986136758429136
+   }
+  ],
+  "ext_metrics": {
+   "identity_max_color_diff": 123,
+   "color_grade_max_ratio_jump": 0.599,
+   "detected_cuts": 1,
+   "min_shot_duration": 16.04,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [
+   "identity_consistency",
+   "style_color_grade"
+  ],
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "sample": "hue_drift_half",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/hue_drift_half.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   7.5,
+   9
+  ],
+  "secs": {
+   "orig": 2.6,
+   "ext": 7.5
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 10,
+   "color_grade_max_ratio_jump": 0.032,
+   "detected_cuts": 1,
+   "min_shot_duration": 16.04,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "LEAK",
+  "problems": [
+   "坏样本扩展项未红灯（漏放）"
+  ]
+ },
+ {
+  "sample": "adult_text_4_12",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/adult_text.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   4,
+   12
+  ],
+  "secs": {
+   "orig": 3.1,
+   "ext": 6.6
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 40,
+   "color_grade_max_ratio_jump": 0.006,
+   "detected_cuts": 1,
+   "min_shot_duration": 16.0,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "LEAK",
+  "problems": [
+   "坏样本扩展项未红灯（漏放）"
+  ]
+ },
+ {
+  "sample": "empty_star_8_16",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/empty_star_second_half.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   8,
+   16
+  ],
+  "secs": {
+   "orig": 2.3,
+   "ext": 6.1
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "red",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "fail",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "fail",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [
+   "跨镜主色漂移 705（>120），疑似服装/配色不连续 @8.67s",
+   "段间色温跳变 0.799（>0.25），疑似调色不连续 @8.67s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "identity",
+    "time": 8.666666666666666,
+    "diff": 705
+   },
+   {
+    "item": "color_grade",
+    "time": 8.666666666666666,
+    "jump": 0.7986151306622077
+   }
+  ],
+  "ext_metrics": {
+   "identity_max_color_diff": 705,
+   "color_grade_max_ratio_jump": 0.799,
+   "detected_cuts": 2,
+   "min_shot_duration": 8.0,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [
+   "identity_consistency",
+   "style_color_grade"
+  ],
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "sample": "empty_black_full",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/empty_black_full.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   0,
+   16
+  ],
+  "secs": {
+   "orig": 2.4,
+   "ext": 6.3
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 0,
+   "color_grade_max_ratio_jump": 0.0,
+   "detected_cuts": 1,
+   "min_shot_duration": 16.0,
+   "integrated_lufs": -15.2,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "LEAK",
+  "problems": [
+   "坏样本扩展项未红灯（漏放）"
+  ]
+ },
+ {
+  "sample": "wardrobe_jump_8",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/wardrobe_jump.mp4",
+  "kind": "bad",
+  "bad_window_s": [
+   7,
+   9
+  ],
+  "secs": {
+   "orig": 4.4,
+   "ext": 9.5
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 20,
+   "color_grade_max_ratio_jump": 0.052,
+   "detected_cuts": 1,
+   "min_shot_duration": 15.52,
+   "integrated_lufs": -15.3,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "LEAK",
+  "problems": [
+   "坏样本扩展项未红灯（漏放）"
+  ]
+ },
+ {
+  "sample": "scene3d_star_sea_9x16",
+  "path": "/data/soffy/projects/hevi-scene3d/output/scene3d_r1b/star_sea_9x16/through_star_sea.mp4",
+  "kind": "observe",
+  "bad_window_s": null,
+  "secs": {
+   "orig": 7.1,
+   "ext": 21.5
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 4,
+   "color_grade_max_ratio_jump": 0.008,
+   "detected_cuts": 1,
+   "min_shot_duration": 13.0,
+   "integrated_lufs": -16.0,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "OBSERVE",
+  "problems": []
+ }
+]

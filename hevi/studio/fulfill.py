@@ -708,6 +708,7 @@ _RENDERERS = {
     "reference_adapt": _render_explainer_line,
     "talking_head": _render_explainer_line,
     "avatar_spokesperson": _render_explainer_line,
+    "comic_narration": _render_explainer_line,
 }
 
 for _zero_line in ZERO_LINES:
@@ -817,6 +818,7 @@ async def fulfill_order(
                 "director_pipeline",
                 "talking_head",
                 "avatar_spokesperson",
+                "comic_narration",
             }:
                 from hevi.resilience import RetryPolicy, with_retry_evidence
                 from hevi.resilience.errors import RetryableError

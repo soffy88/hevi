@@ -1,0 +1,10 @@
+{
+  "shot_index": 3,
+  "from_revision": 0,
+  "changes": {
+    "camera": "push_in"
+  },
+  "advisory": [],
+  "source_refs": [],
+  "requires_temporal_range_clarification": false
+}

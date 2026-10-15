@@ -108,6 +108,7 @@ _SCREENPLAY_PROMPT = """你是电影编剧。把下面的素材(常是文言小�
 
 立意约束:主题「{theme}」,基调「{tone}」,风格「{style}」。
 
+{craft_knowledge}
 分场时把每场的文字拆成两块:
 - narration:**可拍的画面描述**(白话)——环境 + 谁在哪朝向谁 + 做什么动作 + 什么表情
   (可含镜头感),不是情节概要
@@ -194,6 +195,22 @@ def _resolve_llm(llm: Any) -> Any:
     return resolve_text_llm(llm)
 
 
+def _craft_knowledge() -> str:
+    """剧本阶段的中文手艺手册,截到 7000 字拼进 prompt。
+
+    fail-open 但 loud:知识库目录缺失/文件读不动时只打 warning 并退化成空串,
+    **绝不因为知识库问题让剧本出不来**;warning 把"没注入手艺"留在日志里,
+    避免静默空串让人以为已经加载。
+    """
+    from hevi.production.craft_knowledge import load_stage
+
+    try:
+        return load_stage("screenplay", max_chars=7000)
+    except Exception as e:
+        logger.warning("剧本阶段手艺知识库加载失败,本次不注入(不影响剧本产出): %s", e)
+        return ""
+
+
 async def generate_screenplay_draft(
     *,
     concept: Concept,
@@ -219,6 +236,7 @@ async def generate_screenplay_draft(
             tone=concept.tone or "(未定)",
             style=concept.style or "(未定)",
             material_text=material_text,
+            craft_knowledge=_craft_knowledge(),
         )
         + tail
     )

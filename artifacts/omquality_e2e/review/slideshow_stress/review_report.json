@@ -1,0 +1,172 @@
+{
+  "status": "ok",
+  "op": "review",
+  "input": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress_case.mp4",
+  "sha256": "c527eab83d81ebb0db42063b087c74b3381e463e3b501cde5494314c583f1c14",
+  "duration_s": 12.0,
+  "resolution": "640x360",
+  "fps": 12.0,
+  "has_audio": true,
+  "verdict": "red",
+  "allows_compose": false,
+  "violations": [
+    "幻灯片风险判红 (risk=0.70): 重复度分量 1.00 超标; 运动强度分量 1.00 超标; 文字依赖分量 1.00 超标",
+    "交付承诺未兑现 [motion_led]: 运动比 0% 低于 motion_led 下限 70%; 0/6 切点有真实运动 (0 为动效幻灯片, 不计入 motion)。",
+    "交付承诺未兑现 [motion_led]: motion_led 不允许静帧降级, 但 6/6 切点是非运动(静帧 + 动效幻灯片)。须用户批准 'still_led' 或补运动内容。"
+  ],
+  "warnings": [],
+  "unmeasured": [],
+  "metrics": {
+    "probe": {
+      "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress_case.mp4",
+      "kind": "video",
+      "width": 640,
+      "height": 360,
+      "duration_s": 12.0,
+      "fps": 12.0,
+      "has_audio": true,
+      "size_bytes": 380081,
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "nb_frames": 144,
+      "sha256": "c527eab83d81ebb0db42063b087c74b3381e463e3b501cde5494314c583f1c14"
+    },
+    "contact_sheet": {
+      "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/contact_sheet.png",
+      "width": 1280,
+      "height": 206,
+      "frames": 4,
+      "columns": 4,
+      "rows": 1
+    },
+    "frames": {
+      "count": 4,
+      "checks": [
+        {
+          "index": 0,
+          "timestamp_s": 1.5,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_00_001.50s.png",
+          "mean_luma": 132.387,
+          "stdev_luma": 52.84,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 1,
+          "timestamp_s": 4.5,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_01_004.50s.png",
+          "mean_luma": 113.365,
+          "stdev_luma": 54.015,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 2,
+          "timestamp_s": 7.5,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_02_007.50s.png",
+          "mean_luma": 109.255,
+          "stdev_luma": 55.055,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        },
+        {
+          "index": 3,
+          "timestamp_s": 10.5,
+          "path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_03_010.50s.png",
+          "mean_luma": 112.857,
+          "stdev_luma": 48.096,
+          "is_black": false,
+          "is_flat": false,
+          "is_broken": false,
+          "notes": []
+        }
+      ],
+      "black": 0,
+      "broken": 0,
+      "flat": 0
+    },
+    "audio": {
+      "has_audio": true,
+      "loudness_lufs": -18.6,
+      "silence_ratio": 0.0
+    },
+    "subtitle": {
+      "cues": 6,
+      "past_end": 0,
+      "before_start": 0,
+      "too_short": 0,
+      "overlapping": 0,
+      "bounds_measured": true,
+      "violations": [],
+      "coverage": 0.975,
+      "subtitle_path": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress_case.srt",
+      "video_duration_s": 12.0
+    },
+    "slideshow": {
+      "risk": 0.7,
+      "verdict": "red",
+      "components": {
+        "repeat": 1.0,
+        "static": 0.0,
+        "weak_motion": 1.0,
+        "text_dependent": 1.0
+      },
+      "measured": {
+        "segment_count": 6,
+        "cut_count": 5,
+        "dense_frame_count": 24,
+        "mean_frame_delta": 10.2498,
+        "max_frame_delta": 56.2029,
+        "short_segment_share": 1.0,
+        "subtitle_coverage": 0.975
+      },
+      "missing": [],
+      "reasons": [
+        "重复度分量 1.00 超标",
+        "运动强度分量 1.00 超标",
+        "文字依赖分量 1.00 超标"
+      ],
+      "weights": {
+        "repeat": 0.25,
+        "static": 0.3,
+        "weak_motion": 0.25,
+        "text_dependent": 0.2
+      },
+      "is_red": true
+    },
+    "promise": {
+      "evidence": {
+        "cuts": 6,
+        "motion_cuts": 0,
+        "still_cuts": 6,
+        "motion_ratio": 0.0,
+        "still_ratio": 1.0
+      },
+      "promise_type": "motion_led",
+      "motion_required": true,
+      "verdict": "violation",
+      "valid": false,
+      "motion_ratio": 0.0,
+      "violations": [
+        "运动比 0% 低于 motion_led 下限 70%; 0/6 切点有真实运动 (0 为动效幻灯片, 不计入 motion)。",
+        "motion_led 不允许静帧降级, 但 6/6 切点是非运动(静帧 + 动效幻灯片)。须用户批准 'still_led' 或补运动内容。"
+      ]
+    }
+  },
+  "output_dir": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress",
+  "artifacts": {
+    "contact_sheet": "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/contact_sheet.png",
+    "frames": [
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_00_001.50s.png",
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_01_004.50s.png",
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_02_007.50s.png",
+      "/data/soffy/projects/hevi-omquality/output/om_quality_e2e/B_review/slideshow_stress/frames/frame_03_010.50s.png"
+    ]
+  }
+}

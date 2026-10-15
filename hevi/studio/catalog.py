@@ -410,6 +410,14 @@ CATALOG: list[Row] = [
         ("prompt",),
         "craft_shot_prompt",
     ),
+    _row(
+        "craft.knowledge",
+        "craft",
+        "制作手艺知识库(按阶段)",
+        ("stage",),
+        ("title", "files", "text"),
+        "craft_knowledge",
+    ),
     _row("daily.tick", "daily", "日更排产一拍", (), ("jobs",), "daily_tick"),
     _row("veya.produce", "veya", "Veya 调成品", ("line_id",), ("job",), "veya_produce"),
 ]
@@ -463,6 +471,74 @@ def _extra_domain_tools() -> list[Row]:
     extras.extend(
         _row(f"qc.gate.{gate}", "delivery", f"{gate} 闸", ("shots",), ("ok",), "qc_gate")
         for gate in ("black", "identity", "wardrobe", "lip", "canon")
+    )
+    extras.extend(
+        [
+            _row(
+                "review.finished_video",
+                "delivery",
+                "渲染后自检(审片门)",
+                ("input_path",),
+                ("verdict",),
+                "review_finished_video",
+            ),
+            _row(
+                "qc.slideshow_risk",
+                "delivery",
+                "幻灯片风险评分(纯算法)",
+                ("dense_frames", "subtitle_coverage"),
+                ("risk",),
+                "qc_slideshow_risk",
+            ),
+            _row(
+                "qc.frame_check",
+                "delivery",
+                "单帧黑帧/平帧/破图",
+                ("frame_path",),
+                ("check",),
+                "qc_frame_check",
+            ),
+            _row(
+                "enhance.matte",
+                "enhance",
+                "抠像(rembg u2net, CPU)",
+                ("input_path",),
+                ("output_path", "metrics"),
+                "enhance_matte",
+            ),
+            _row(
+                "enhance.upscale",
+                "enhance",
+                "Real-ESRGAN 2x/4x 超分(CPU)",
+                ("input_path",),
+                ("output_path", "metrics"),
+                "enhance_upscale",
+            ),
+            _row(
+                "enhance.face_restore",
+                "enhance",
+                "GFPGAN 人脸修复(默认关闭,需 opt-in)",
+                ("input_path",),
+                ("output_path", "metrics"),
+                "enhance_face_restore",
+            ),
+            _row(
+                "enhance.lut",
+                "enhance",
+                "ffmpeg lut3d 调色(中性/水墨/橙青/夜/暖)",
+                ("input_path",),
+                ("output_path", "metrics"),
+                "enhance_lut",
+            ),
+            _row(
+                "enhance.compare_sheet",
+                "enhance",
+                "前后对比联络表",
+                ("before", "after"),
+                ("sheet_path",),
+                "enhance_compare_sheet",
+            ),
+        ]
     )
     extras.extend(
         _row(

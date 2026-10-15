@@ -1,0 +1,28 @@
+{
+  "status": "ok",
+  "op": "matte",
+  "input": ".qual-scratch/t/frame.png",
+  "input_kind": "image",
+  "output_dir": ".qual-scratch/t/matte",
+  "results": [
+    {
+      "op": "matte",
+      "input_path": ".qual-scratch/t/frame.png",
+      "output_path": ".qual-scratch/t/matte/matte_frame.png",
+      "backend": "rembg:u2net",
+      "model": "rembg:u2net",
+      "license": "commercial-ok",
+      "commercial_ok": true,
+      "metrics": {
+        "width": 1280,
+        "height": 720,
+        "model": "u2net",
+        "has_alpha": true,
+        "transparent_ratio": 0.9284,
+        "mask_path": ".qual-scratch/t/matte/matte_frame_mask.png"
+      },
+      "notes": []
+    }
+  ],
+  "notes": []
+}

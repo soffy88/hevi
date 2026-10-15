@@ -24,6 +24,25 @@ logger = logging.getLogger(__name__)
 _SHOT_INDEX_RE = re.compile(r"shot[_-]?(\d+)")
 
 
+def _fallback_specs_without_templates(specs: list[Any] | None) -> list[Any] | None:
+    """兜底硬切路径专用: 剥除 template/transition_in/style/sfx 等重滤镜, 只保留 duration/effect。
+
+    如果首次装配失败由 spec 滤镜引起, 兜底必须不再重复同一滤镜, 否则兜底也会失败。
+    ``None`` 原样返回 (保持旧调用行为逐字不变)。
+    """
+    if specs is None:
+        return None
+    from hevi.production.shot_spec import ShotSpec
+
+    out: list[Any] = []
+    for s in specs:
+        if s is None:
+            out.append(None)
+        else:
+            out.append(ShotSpec(duration=s.duration, effect=s.effect))
+    return out
+
+
 def _safe_size(p: Path) -> int:
     try:
         return p.stat().st_size
@@ -176,6 +195,9 @@ async def orchestrate_longvideo(
     story_relationships: list[dict[str, Any]] | None = None,
     story_characters: list[dict[str, Any]] | None = None,
     episode_plan: dict[str, Any] | None = None,
+    # ShotSpec (GAP_PLAN §2 W1 / R2 FIX P4): 任务存储规格读取入口参数
+    task_id: Any | None = None,
+    repository: Any = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Orchestrate long video generation using omodul agentic pipeline.
@@ -425,15 +447,44 @@ async def orchestrate_longvideo(
     )
 
     async with track_video_generation(video_provider, duration_archetype):
-        # 3O 迁移 §2 Task 2.1:oskill ≥4.5.0 已修复 Pydantic 赋值校验 bug
-        # (storyboard_planner B7:dict scene 不再无条件调 .model_dump()),
-        # ScriptWrapper 代理类与 patched_storyboard_fn 已废除 —— 非锁定路径直接调
-        # oskill 原生 storyboard_planner(保留逐阶段进度上报)。
+        _is_short = duration_archetype == "short"
+        _target_duration_s = float(getattr(lv_config, "target_duration_s", 0.0) or 0.0)
+        if not _is_short and _target_duration_s <= 0.0:
+            from hevi.video.duration_mapper import DURATION_ARCHETYPES
+
+            if duration_archetype in DURATION_ARCHETYPES:
+                _target_duration_s = float(
+                    DURATION_ARCHETYPES[duration_archetype].get("target_s", 0.0) or 0.0
+                )
+
+        _duration_budget_per_chapter = 0
+        if not _is_short and locked_shot_list is None and _target_duration_s > 0:
+            from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import (
+                expected_chapters_for_duration,
+                shot_budget_per_chapter,
+            )
+
+            _duration_budget_per_chapter = shot_budget_per_chapter(_target_duration_s)
+            logger.info(
+                "shot budget: target_duration_s=%.1f → 每章≤%d 镜(共 %d 章)",
+                _target_duration_s,
+                _duration_budget_per_chapter,
+                expected_chapters_for_duration(_target_duration_s),
+            )
+
+        # 3O 迁移 §2 Task 2.1:oskill ≥4.5.0 已修复 Pydantic 校验
+        # 非锁定路径直接调 oskill 原生 storyboard_planner(保留逐阶段进度上报)。
         from oskill.storyboard_planner import storyboard_planner
 
         async def storyboard_fn(*, script: Any, llm: Any) -> Any:
             await _report("规划分镜脚本", 15.0)
-            return await storyboard_planner(script=script, llm=llm)
+            kwargs: dict[str, Any] = {}
+            if _duration_budget_per_chapter > 0:
+                kwargs["shots_per_scene_min"] = max(1, _duration_budget_per_chapter // 2)
+                kwargs["shots_per_scene_max"] = max(
+                    kwargs["shots_per_scene_min"], _duration_budget_per_chapter
+                )
+            return await storyboard_planner(script=script, llm=llm, **kwargs)
 
         # SPEC-003(主线导演流水线):locked_shot_list 存在时,①-④级已经在
         # hevi/api/routers/director_pipeline.py 走完人审核锁定,不需要 oskill 自己的
@@ -979,6 +1030,26 @@ async def orchestrate_longvideo(
             intro_seg = [ShotSegment(_intro_path)] if _intro_path is not None else []
             outro_seg = [ShotSegment(_outro_path)] if _outro_path is not None else []
 
+            # ShotSpec (GAP_PLAN §2 W1 / R2 FIX P4): 从任务存储读取各镜规格
+            _shot_specs: list[Any] | None = None
+            if repository is not None and task_id is not None:
+                try:
+                    from hevi.production.shot_spec import load_shot_specs_for_task
+
+                    _shot_specs = await load_shot_specs_for_task(
+                        repo=repository,
+                        task_id=task_id,
+                        ordered_paths=valid_shots,
+                    )
+                except Exception as _tse:
+                    logger.warning("failed to load shot_specs for task %s: %s", task_id, _tse)
+
+            _full_specs = (
+                ([None] * len(intro_seg) + _shot_specs + [None] * len(outro_seg))
+                if _shot_specs is not None
+                else None
+            )
+
             # 免费程序化 BGM 兜底:素材库空缺时在此生成(时长取预估成片长,
             # 装配器 -shortest 裁到实际视频长度;拍点 JSON 供 beat-sync 消费)。
             if _procedural_bgm_mood:
@@ -1016,10 +1087,13 @@ async def orchestrate_longvideo(
                     height=_target_h,
                     fps=_target_fps,
                     transition=transition,
+                    shot_specs=_full_specs,
                 )
             except Exception as ae:
                 # 装配失败兜底: 统一规格硬切(仍重编码,不用 -c:v copy 防花屏)。
+                # 兜底路径剥除转场与模板滤镜(避免再次触发失败且确保 transition="cut" 生效), 仅保留时长与基础调色。
                 logger.error(f"hevi assembler failed, fallback to hard-cut: {ae}")
+                _fallback_specs = _fallback_specs_without_templates(_full_specs)
                 await assemble_longvideo(
                     shots=[*intro_seg, *[ShotSegment(p) for p in valid_shots], *outro_seg],
                     output_path=output_path,
@@ -1030,6 +1104,7 @@ async def orchestrate_longvideo(
                     height=_target_h,
                     fps=_target_fps,
                     transition="cut",
+                    shot_specs=_fallback_specs,
                 )
 
             # RFC-002 item 11: 数字人讲解接入 —— 提供肖像图且有旁白时,用 Duix 由旁白
@@ -1100,7 +1175,6 @@ async def orchestrate_longvideo(
         # 计数 shot 生成器(所有档位):预统计总镜头数 → total_shots + 逐镜头百分比,
         # 修复"停在 75%"的显示问题。short 档另叠加:真·单镜头 + 免逐镜头
         # select_reference / consistency 视觉-LLM 调用(单镜头无跨镜一致性可言)。
-        _is_short = duration_archetype == "short"
         _shot_budget = {"left": 1}  # short 跨章节总镜头预算(真·单镜头)
         # SPEC-001 §5:旁路收集每个 shot_plan 的台词/旁白文本(oskill.ShotPlan.tts_text),
         # 供生成完成后跑 Tier0 跨集关系一致性守护——consistency_fn 那条管线只拿得到渲染完的
@@ -1125,6 +1199,18 @@ async def orchestrate_longvideo(
                         return []
                     plans = plans[: _shot_budget["left"]] if plans else plans
                     _shot_budget["left"] -= len(plans) if plans else 0
+                elif _duration_budget_per_chapter and plans:
+                    from hevi.layer4_legacy.script2video.oskill_impl.shot_budget import (
+                        adjust_shot_plans_to_budget,
+                    )
+
+                    if len(plans) != _duration_budget_per_chapter:
+                        logger.info(
+                            "shot budget: 本章 %d 镜 → 适配到 %d 镜",
+                            len(plans),
+                            _duration_budget_per_chapter,
+                        )
+                    plans = adjust_shot_plans_to_budget(plans, _duration_budget_per_chapter)
             _shot_stats["total"] += len(plans) if plans else 0
             await _report("规划分镜脚本", 20.0, completed=0, total=_shot_stats["total"] or None)
             for p in plans or []:

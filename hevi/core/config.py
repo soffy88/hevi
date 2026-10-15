@@ -220,10 +220,23 @@ class Settings(BaseSettings):
     # L3 体检闭环(§7-4):确定性体检/评分卡不及格 → 定向返工的封顶轮数(0=关,只 log 不返工)。
     # 只在不合格时触发,合格片零额外开销;可用 task config_json["auto_rework_rounds"] 覆盖。
     auto_rework_max_rounds: int = 1
-    rework_consistency_floor: float = 0.75
+    # 返工一致性门槛。**注意尺度**:shot_states.consistency_score = scorecard 的
+    # identity_score(候选帧 CLIP 向量 vs 角色参考图的余弦),scorecard 自己的通过阈
+    # 是 identity_floor=0.2(只拦全废)。此前这里默认 0.75 是**另一个尺度**上的值,
+    # 与 scorecard 完全不匹配:2026-07-11 G1 真跑实测 10 镜 mean identity 0.591 /
+    # min 0.454、全部 passed=True,却被 0.75 判成 100% “参考图角色错配” → 整轮重烧。
+    # 改为与 scorecard 尺度对齐的 0.35(略高于 identity_floor,只拦明显偏低的镜)。
+    rework_consistency_floor: float = 0.35
     # G1 实测身份匹配系统性偏低,零星 1-2 镜错配直接返工 = 每任务白付 2× 云费。
     # 错配镜头数低于该门槛时只记录诊断不返工(全废/大面积错配仍返工)。
     rework_min_shots: int = 2
+    # 显式“整轮重做”:默认 False = 只重生成未通过/诊断命中的镜头,已通过镜头原样复用。
+    # True = 无视镜头级判定,整片所有镜头重烧(旧行为,保留给人工兜底/换风格场景)。
+    rework_full_round: bool = False
+    # DRAMAPLAN:短剧规划层(storygraph 抽取 / season_planner 分集 / 三层审稿)的文本 LLM
+    # 通道。默认 auto = 只走免费/本地通道(见 hevi/providers/free_llm.py),绝不落到
+    # qwen_cloud 等付费端点。
+    dramaplan_llm_channel: str = "auto"
     # 设计文档 §4.3:单个镜头的重试次数硬上限——跟 auto_rework_max_rounds(整任务返工
     # 轮数)是两个维度:一轮返工可能同时点名好几个镜头,这个上限管的是"这一个镜头"
     # 累计被重烧了几次,超限即视为该镜头降级交付,不再消耗算力空转。

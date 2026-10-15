@@ -1,0 +1,429 @@
+[
+ {
+  "case": "S3 pin+arrow 只改 camera",
+  "expect": "patch_only:camera",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "camera": "pan_right+push_in"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "case": "未知标注 → advisory",
+  "expect": "advisory_only",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {},
+   "advisory": [
+    "未知标注类型 'mystery_glyph'，未自动修改"
+   ],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "case": "时间码在镜外(S3 给 S1 时间)",
+  "expect": "reject",
+  "raised": "AnnotationRejected: 时间码 1000.0ms 落在 S3 镜外 [8000.0,12000.0]ms",
+  "verdict": "PASS"
+ },
+ {
+  "case": "2 个时间码锚点",
+  "expect": "clarify",
+  "raised": "AnnotationTemporalClarification: 2 个时间码锚点，语义未确认前不自动生成区间 patch",
+  "verdict": "PASS"
+ },
+ {
+  "case": "3 个时间码锚点",
+  "expect": "clarify",
+  "raised": "AnnotationTemporalClarification: 3 个时间码锚点，语义未确认前不自动生成区间 patch",
+  "verdict": "PASS"
+ },
+ {
+  "case": "2 个相同时间码(重叠锚点)",
+  "expect": "clarify",
+  "raised": "AnnotationTemporalClarification: 2 个时间码锚点，语义未确认前不自动生成区间 patch",
+  "verdict": "PASS"
+ },
+ {
+  "case": "负时间码 -1ms 于 S1",
+  "expect": "reject",
+  "raised": "AnnotationRejected: 时间码 -1.0ms 落在 S1 镜外 [0.0,4000.0]ms",
+  "verdict": "PASS"
+ },
+ {
+  "case": "NaN 时间码",
+  "expect": "reject",
+  "raised": "AnnotationRejected: 时间码 nanms 落在 S3 镜外 [8000.0,12000.0]ms",
+  "verdict": "PASS"
+ },
+ {
+  "case": "inf 时间码",
+  "expect": "reject",
+  "raised": "AnnotationRejected: 时间码 infms 落在 S3 镜外 [8000.0,12000.0]ms",
+  "verdict": "PASS"
+ },
+ {
+  "case": "时间码=S3 起点 8000（也是 S2 终点）归 S2 也被接受→歧义",
+  "expect": "reject",
+  "patch": {
+   "shot_index": 2,
+   "from_revision": 0,
+   "changes": {
+    "camera": "push_in"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "期望 reject，实际出了 patch"
+  ]
+ },
+ {
+  "case": "时间码是字符串 '9000'",
+  "expect": "reject",
+  "raised": "TypeError: '<=' not supported between instances of 'float' and 'str'",
+  "verdict": "PASS"
+ },
+ {
+  "case": "不存在的镜 S9",
+  "expect": "reject",
+  "raised": "AnnotationError: manifest 无镜 S9",
+  "verdict": "PASS"
+ },
+ {
+  "case": "负镜号 S-1",
+  "expect": "reject",
+  "raised": "AnnotationError: manifest 无镜 S-1",
+  "verdict": "PASS"
+ },
+ {
+  "case": "arrow 无方向 → 应进 advisory 而不是静默丢弃",
+  "expect": "advisory_only",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {},
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "advisory 应非空（静默丢弃了标注）"
+  ]
+ },
+ {
+  "case": "arrow 方向 'diagonal' → advisory",
+  "expect": "advisory_only",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {},
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "advisory 应非空（静默丢弃了标注）"
+  ]
+ },
+ {
+  "case": "arrow 方向 'RIGHT'(大写) → advisory 或映射，不可静默丢",
+  "expect": "advisory_only",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {},
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "advisory 应非空（静默丢弃了标注）"
+  ]
+ },
+ {
+  "case": "坐标越界 nx=-5 ny=7",
+  "expect": "reject",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "camera": "push_in"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "期望 reject，实际出了 patch"
+  ]
+ },
+ {
+  "case": "负宽高 rect nw=-0.3",
+  "expect": "reject",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "effect": "vignette"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "期望 reject，实际出了 patch"
+  ]
+ },
+ {
+  "case": "坐标 NaN",
+  "expect": "reject",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "camera": "push_in"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "期望 reject，实际出了 patch"
+  ]
+ },
+ {
+  "case": "from_revision=-3",
+  "expect": "reject",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": -3,
+   "changes": {
+    "camera": "push_in"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "期望 reject，实际出了 patch"
+  ]
+ },
+ {
+  "case": "kind=None",
+  "expect": "advisory_only",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {},
+   "advisory": [
+    "未知标注类型 'None'，未自动修改"
+   ],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "case": "arrow 左+右 冲突 → 应 advisory，不应合成 pan_left+pan_right",
+  "expect": "advisory_only",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "camera": "pan_left+pan_right"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "changes 应为空，实际 {'camera': 'pan_left+pan_right'}",
+   "advisory 应非空（静默丢弃了标注）"
+  ]
+ },
+ {
+  "case": "freehand + rect 同镜 → effect 合成值必须合法",
+  "expect": "patch_only:effect",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "effect": "sharpen+vignette"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "patch 产出的 ShotSpec 非法却未被 build/apply 拒绝: ValidationError: 1 validation error for ShotSpec\neffect\n  Value error, unknown effect 'sharpen+vignette' (must be one of ['cool', 'mono', 'sharpen', 'vignette', 'warm'] or a reg"
+  ]
+ },
+ {
+  "case": "rect 单独 → effect=vignette 合法",
+  "expect": "patch_only:effect",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "effect": "vignette"
+   },
+   "advisory": [],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "case": "text 批注 → 只 advisory",
+  "expect": "advisory_only",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {},
+   "advisory": [
+    "台词/字幕修订建议：台词改短一点"
+   ],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "case": "pin + 未知 → camera + advisory",
+  "expect": "patch_only:camera",
+  "patch": {
+   "shot_index": 3,
+   "from_revision": 0,
+   "changes": {
+    "camera": "push_in"
+   },
+   "advisory": [
+    "未知标注类型 'lasso'，未自动修改"
+   ],
+   "source_refs": [],
+   "requires_temporal_range_clarification": false
+  },
+  "verdict": "PASS",
+  "problems": []
+ },
+ {
+  "case": "apply duration=-1",
+  "expect": "reject",
+  "applied": {
+   "duration": -1
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "apply_patch 接受了让 ShotSpec 非法/越权的 patch"
+  ]
+ },
+ {
+  "case": "apply effect='explode'",
+  "expect": "reject",
+  "applied": {
+   "effect": "explode"
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "apply_patch 接受了让 ShotSpec 非法/越权的 patch"
+  ]
+ },
+ {
+  "case": "apply 未知字段 foo",
+  "expect": "reject",
+  "applied": {
+   "foo": 1
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "apply_patch 接受了让 ShotSpec 非法/越权的 patch"
+  ]
+ },
+ {
+  "case": "apply transition_in='zzz'",
+  "expect": "reject",
+  "applied": {
+   "transition_in": "zzz"
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "apply_patch 接受了让 ShotSpec 非法/越权的 patch"
+  ]
+ },
+ {
+  "case": "apply sfx=[{id:'nope'}]",
+  "expect": "reject",
+  "applied": {
+   "sfx": [
+    {
+     "id": "nope",
+     "offset": 0
+    }
+   ]
+  },
+  "verdict": "LEAK",
+  "problems": [
+   "apply_patch 接受了让 ShotSpec 非法/越权的 patch"
+  ]
+ },
+ {
+  "case": "manifest 两个 S3（时间区间重叠/歧义）必须在 load_manifest 被拒",
+  "expect": "reject",
+  "verdict": "LEAK",
+  "problems": [
+   "load_manifest 接受重复镜号；第二个 S3 实际区间 [12000,16000] 内 13000ms 的标注 -> AnnotationRejected: 时间码 13000.0ms 落在 S3 镜外 [8000.0,12000.0]ms"
+  ]
+ },
+ {
+  "case": "确定性/顺序无关",
+  "expect": "same sha",
+  "sha_a": "e4f0dda14637128f3767bfe5cac893a16c32ab428767fe03abbc9394bf245fd8",
+  "sha_b": "e4f0dda14637128f3767bfe5cac893a16c32ab428767fe03abbc9394bf245fd8",
+  "verdict": "PASS"
+ },
+ {
+  "case": "dry-run diff API 存在（§3.5/任务书交付物）",
+  "expect": "exists",
+  "found": [],
+  "verdict": "LEAK"
+ },
+ {
+  "case": "render_annotated(out==source) 不得覆盖干净原图",
+  "expect": "reject or source unchanged",
+  "verdict": "LEAK",
+  "problems": [
+   "原图被标注覆盖"
+  ]
+ },
+ {
+  "case": "render_annotated 正常分离",
+  "expect": "source unchanged",
+  "verdict": "PASS"
+ }
+]
