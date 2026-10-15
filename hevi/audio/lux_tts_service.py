@@ -176,9 +176,18 @@ async def synth_with_luxtts(
 
     # Fail early before creating a partial artifact. Calls remain strictly serial.
     health = await asyncio.to_thread(_get_health_payload)
-    service_voices = set(health.get("voices") or ())
-    if service_voices and not service_voices.intersection({"soffy", "en_male"}):
-        raise RuntimeError(f"LuxTTS service exposes no supported voice: {sorted(service_voices)}")
+    service_voices = {
+        str(item).strip().lower()
+        for item in health.get("voices", [])
+        if isinstance(item, str) and item.strip()
+    }
+    required_voices = {"soffy", "en_male"} if selected_voice == "auto" else {selected_voice}
+    missing_voices = required_voices - service_voices
+    if missing_voices:
+        raise RuntimeError(
+            "LuxTTS service is missing required voice(s): "
+            f"{sorted(missing_voices)}; reported voices: {sorted(service_voices)}"
+        )
 
     _TEMP_ROOT.mkdir(parents=True, exist_ok=True)
     temp_dir = _TEMP_ROOT / f"lux_tts_{uuid.uuid4().hex}"

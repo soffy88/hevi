@@ -104,6 +104,35 @@ def test_bad_voice_is_rejected_before_http(monkeypatch: pytest.MonkeyPatch, tmp_
         asyncio.run(lux.synth_with_luxtts("hello", tmp_path / "bad.wav", voice="unknown"))
 
 
+@pytest.mark.parametrize(
+    ("voice", "service_voices"),
+    [("en_male", ["soffy"]), ("auto", ["soffy"])],
+)
+def test_missing_service_voice_fails_before_synthesis(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    voice: str,
+    service_voices: list[str],
+) -> None:
+    monkeypatch.setattr(
+        lux,
+        "_get_health_payload",
+        lambda: {"ok": True, "voices": service_voices},
+    )
+    requests: list[httpx.Request] = []
+    _mock_http(
+        monkeypatch,
+        lambda request: requests.append(request) or httpx.Response(500, request=request),
+    )
+    out = tmp_path / "unavailable-voice.wav"
+
+    with pytest.raises(RuntimeError, match="missing required voice"):
+        asyncio.run(lux.synth_with_luxtts("hello, little bunny", out, voice=voice))
+
+    assert requests == []
+    assert not out.exists()
+
+
 def test_live_luxtts_http_integration_or_skip(tmp_path: Path) -> None:
     if not lux.lux_tts_available():
         pytest.skip("LuxTTS /health unreachable; live integration is optional in offline CI")

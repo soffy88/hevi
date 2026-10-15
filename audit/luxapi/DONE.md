@@ -264,4 +264,20 @@ A further regression pass covered adjacent audio providers and production alignm
 - The targeted LuxTTS/LuxAPI regression sweep remains `239 passed, 34 warnings in 8.93s` after the style-only corrections.
 
 No Edge-TTS fallback or network behavior was changed to mask the external dependency skip. The task-specific endpoint was still live and healthy in the preceding check; required sample files and metadata remained valid. The complete user-required acceptance gate is re-run after this report commit. `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` are not present anywhere inside this worktree. No files outside this workspace were accessed or changed, and the existing untracked items remain untouched.
+
+## Continuation — advertised voice capability validation (2026-10-15)
+
+A fresh contract review found a genuine edge case in `synth_with_luxtts()`: health validation previously accepted any non-empty intersection with the supported voices. For example, a service advertising only `soffy` could pass preflight for an explicit `en_male` request, or for `auto` despite the auto policy requiring both Chinese `soffy` and non-Chinese `en_male`. The request would then reach the server with a voice the health response did not advertise.
+
+The client now normalizes the advertised voice list and verifies the exact capability set before creating temp files or sending synthesis requests: an explicit voice must be present, while `auto` requires both `soffy` and `en_male`. Added parameterized HTTP-mock regressions proving an unavailable explicit voice and incomplete `auto` capability fail before any `/tts` request and leave no output file.
+
+Verification after the change:
+
+- `tests/test_lux_tts_service.py`: `8 passed in 1.63s`, including live HTTP integration (not skipped).
+- Full task-relevant audio/LuxTTS/LuxAPI/explainer/dialogue/Studio/history/coverage sweep: `241 passed, 34 warnings in 9.39s`, exit `0`.
+- Exact acceptance pipeline before this report commit: `30 passed, 7341 deselected, 1 warning in 7.18s`, pipeline exit `0`.
+- Ruff and `py_compile` on modified modules: passed; `git diff --check`: passed.
+- Live `/health`: HTTP 200, advertised voices `soffy` and `en_male`.
+
+The 34 warnings are existing `datetime.utcnow()` deprecations in unrelated coverage-contract/schema/checkpoint paths. No product contract document (`KIDS_ANIME_DIRECTION.md` or `CAPABILITY_CONTRACT.md`) exists in this authorized worktree; paths outside the worktree were not inspected. No external service changes, deploy, restart, paid API, or cleanup occurred. The exact acceptance gate is repeated after this commit.
 DONE LUXAPI-R1
