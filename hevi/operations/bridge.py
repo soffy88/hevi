@@ -87,30 +87,6 @@ class OperationsStore:
 
 
 _SCHEMA = """
-CREATE TABLE IF NOT EXISTS agent_graphs (
-  graph_id TEXT PRIMARY KEY,
-  nodes_json TEXT NOT NULL DEFAULT '[]',
-  edges_json TEXT NOT NULL DEFAULT '[]',
-  revision INTEGER NOT NULL DEFAULT 0,
-  updated_at TEXT NOT NULL DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS agent_assets (
-  asset_id TEXT PRIMARY KEY,
-  category TEXT NOT NULL DEFAULT '',
-  name TEXT NOT NULL DEFAULT '',
-  version TEXT NOT NULL DEFAULT '1',
-  meta_json TEXT NOT NULL DEFAULT '{}'
-);
-CREATE TABLE IF NOT EXISTS agent_tasks (
-  task_id TEXT PRIMARY KEY,
-  payload_json TEXT NOT NULL DEFAULT '{}',
-  created_at TEXT NOT NULL DEFAULT ''
-);
-CREATE TABLE IF NOT EXISTS agent_proposals (
-  proposal_id TEXT PRIMARY KEY,
-  payload_json TEXT NOT NULL DEFAULT '{}',
-  created_at TEXT NOT NULL DEFAULT ''
-);
 CREATE TABLE IF NOT EXISTS agent_op_receipts (
   op_id TEXT PRIMARY KEY,
   operation TEXT NOT NULL,
@@ -139,21 +115,23 @@ class SqliteOperationsStore(OperationsStore):
             "INSERT OR IGNORE INTO agent_schema_version (store, version) VALUES ('agent_ops', 1)"
         )
         self._conn.commit()
+        from hevi.operations.in_memory import InMemoryGraphRepository, InMemoryTaskRepository, InMemorySubjectRepository
+        self._graph_repo = InMemoryGraphRepository()
+        self._task_repo = InMemoryTaskRepository()
+        self._subject_repo = InMemorySubjectRepository()
 
     # -- graph --------------------------------------------------------------
     async def get_graph(self, graph_id: str) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT graph_id, nodes_json, edges_json, revision FROM agent_graphs WHERE graph_id = ?",
-            (graph_id,),
-        ).fetchone()
-        if row is None:
-            return None
-        return {
-            "graph_id": row["graph_id"],
-            "nodes": json.loads(row["nodes_json"]),
-            "edges": json.loads(row["edges_json"]),
-            "revision": row["revision"],
-        }
+        return await self._graph_repo.get(graph_id)
+
+    async def save_graph(
+        self, graph_id: str, nodes: list[dict[str, Any]], edges: list[dict[str, Any]], revision: int
+    ) -> None:
+        existing = await self._graph_repo.get(graph_id)
+        if existing:
+            await self._graph_repo.update(graph_id, {"nodes": nodes, "edges": edges, "revision": revision})
+        else:
+            await self._graph_repo.create({"id": graph_id, "graph_id": graph_id, "nodes": nodes, "edges": edges, "revision": revision})
 
     async def save_graph_with_receipt(
         self,
@@ -166,21 +144,9 @@ class SqliteOperationsStore(OperationsStore):
         fingerprint: str,
         receipt: dict[str, Any],
     ) -> None:
-        with self._conn:
-            self._conn.execute(
-                "INSERT INTO agent_graphs (graph_id, nodes_json, edges_json, revision, updated_at) "
-                "VALUES (?, ?, ?, ?, datetime('now')) "
-                "ON CONFLICT(graph_id) DO UPDATE SET "
-                "nodes_json=excluded.nodes_json, edges_json=excluded.edges_json, "
-                "revision=excluded.revision, updated_at=datetime('now')",
-                (graph_id, json.dumps(nodes, ensure_ascii=False), json.dumps(edges, ensure_ascii=False), revision),
-            )
-            if op_id:
-                self._conn.execute(
-                    "INSERT OR REPLACE INTO agent_op_receipts (op_id, operation, params_fingerprint, receipt_json, created_at) "
-                    "VALUES (?, ?, ?, ?, datetime('now'))",
-                    (op_id, operation, fingerprint, json.dumps(receipt, ensure_ascii=False)),
-                )
+        await self.save_graph(graph_id, nodes, edges, revision)
+        if op_id:
+            await self.record_receipt(op_id, params={}, receipt=receipt, operation=operation, fingerprint=fingerprint)
 
     async def lookup_receipt(self, op_id: str, params: dict[str, Any], operation: str) -> dict[str, Any] | None:
         from hevi.operations.registry import _fingerprint
@@ -197,9 +163,9 @@ class SqliteOperationsStore(OperationsStore):
         receipt["replayed"] = True
         return receipt
 
-    async def record_receipt(self, op_id: str, params: dict[str, Any], receipt: dict[str, Any], operation: str) -> None:
+    async def record_receipt(self, op_id: str, params: dict[str, Any], receipt: dict[str, Any], operation: str, fingerprint: str | None = None) -> None:
         from hevi.operations.registry import _fingerprint
-        fp = _fingerprint(params)
+        fp = fingerprint or _fingerprint(params)
         with self._conn:
             self._conn.execute(
                 "INSERT OR REPLACE INTO agent_op_receipts (op_id, operation, params_fingerprint, receipt_json, created_at) "
@@ -209,88 +175,46 @@ class SqliteOperationsStore(OperationsStore):
 
     # -- assets -------------------------------------------------------------
     async def list_assets(self, category: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
-        if category:
-            rows = self._conn.execute(
-                "SELECT asset_id, category, name, version, meta_json FROM agent_assets "
-                "WHERE category = ? ORDER BY name LIMIT ?",
-                (category, limit),
-            ).fetchall()
-        else:
-            rows = self._conn.execute(
-                "SELECT asset_id, category, name, version, meta_json FROM agent_assets "
-                "ORDER BY category, name LIMIT ?",
-                (limit,),
-            ).fetchall()
+        rows = await self._subject_repo.list_subjects(kind=category, limit=limit)
         return [
             {
-                "asset_id": r["asset_id"],
-                "category": r["category"],
-                "name": r["name"],
-                "version": r["version"],
-                "meta": json.loads(r["meta_json"]),
+                "asset_id": str(r.get("id")),
+                "category": r.get("subject_type", "character"),
+                "name": r.get("name", ""),
+                "version": r.get("version", 1),
+                "meta": r,
             }
             for r in rows
         ]
 
     # -- tasks --------------------------------------------------------------
     async def get_task(self, task_id: str) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT task_id, payload_json, created_at FROM agent_tasks WHERE task_id = ?",
-            (task_id,),
-        ).fetchone()
-        if row is None:
+        t = await self._task_repo.get_task(task_id)
+        if t is None:
             return None
         return {
-            "task_id": row["task_id"],
-            "payload": json.loads(row["payload_json"]),
-            "created_at": row["created_at"],
+            "task_id": str(t.get("id") or task_id),
+            "payload": t,
+            "created_at": str(t.get("created_at", "")),
         }
 
     async def count_tasks(self) -> int:
-        return int(self._conn.execute("SELECT COUNT(*) AS c FROM agent_tasks").fetchone()["c"])
+        tasks = await self._task_repo.list_tasks()
+        return len(tasks)
 
     async def create_task(self, task_id: str, payload: dict[str, Any]) -> None:
-        self._conn.execute(
-            "INSERT INTO agent_tasks (task_id, payload_json, created_at) VALUES (?, ?, datetime('now'))",
-            (task_id, json.dumps(payload, ensure_ascii=False)),
-        )
-        self._conn.commit()
+        await self._task_repo.create_task({"id": task_id, **payload})
 
-    # -- proposals ----------------------------------------------------------
     async def save_proposal(self, proposal_id: str, payload: dict[str, Any]) -> None:
-        self._conn.execute(
-            "INSERT INTO agent_proposals (proposal_id, payload_json, created_at) VALUES (?, ?, datetime('now'))",
-            (proposal_id, json.dumps(payload, ensure_ascii=False)),
-        )
-        self._conn.commit()
+        from hevi.operations.in_memory import _GLOBAL_STORE
+        _GLOBAL_STORE.proposals[proposal_id] = payload
 
     async def get_proposal(self, proposal_id: str) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT proposal_id, payload_json, created_at FROM agent_proposals WHERE proposal_id = ?",
-            (proposal_id,),
-        ).fetchone()
-        if row is None:
+        from hevi.operations.in_memory import _GLOBAL_STORE
+        p = _GLOBAL_STORE.proposals.get(proposal_id)
+        if p is None:
             return None
-        return {
-            "proposal_id": row["proposal_id"],
-            "payload": json.loads(row["payload_json"]),
-            "created_at": row["created_at"],
-        }
-
-    def seed_assets(self, assets: list[dict[str, Any]]) -> None:
-        for a in assets:
-            self._conn.execute(
-                "INSERT OR IGNORE INTO agent_assets (asset_id, category, name, version, meta_json) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (
-                    a["asset_id"],
-                    a.get("category", ""),
-                    a.get("name", ""),
-                    a.get("version", "1"),
-                    json.dumps(a.get("meta", {}), ensure_ascii=False),
-                ),
-            )
-        self._conn.commit()
+        return {"proposal_id": proposal_id, "payload": p}
 
     def close(self) -> None:
         self._conn.close()
@@ -380,6 +304,7 @@ class OperationBridge:
             if envelope is not None:
                 if isinstance(envelope, dict) and envelope.get("conflict"):
                     raise OperationError(409, "idempotency_conflict", "same opId with different params is not allowed")
+                envelope.setdefault("operation", name)
                 return envelope
 
         handler = {
