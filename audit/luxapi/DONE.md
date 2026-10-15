@@ -202,4 +202,15 @@ Re-ran the complete relevant suite as one pytest process, including audio, LuxTT
 Exact result on this continuation: `238 passed, 34 warnings in 21.40s`; exit code 0. Warnings are deprecations (`datetime.utcnow`) in Pydantic validation and unrelated covered schema/checkpoint paths. No tests failed.
 
 Both task direction documents (`KIDS_ANIME_DIRECTION.md`, `CAPABILITY_CONTRACT.md`) were searched for within this worktree and are not present. I did not inspect paths outside the authorized worktree to recover them; the toddler sample continues to be bounded by the task's explicit ages 2–6 requirement and existing report artifacts.
+
+## Continuation — final live and acceptance recheck (2026-10-15)
+
+After the repeated related-suite run, re-ran the dedicated live integration test and the exact acceptance pipeline:
+
+- Live HTTP integration: `1 passed in 2.21s` (service reachable; no skip).
+- Required command `/data/soffy/projects/hevi/.venv/bin/python -m pytest -q -k lux tests 2>&1 | tail -3 | grep -q passed`: pipeline exit code `0`; captured pytest summary `27 passed, 7341 deselected, 1 warning in 6.72s`.
+- Required final line checked as `DONE LUXAPI-R1`; `git diff --check` passed.
+- Endpoint health returned HTTP 200 and voices `soffy` and `en_male`.
+
+No further product-code changes were indicated by this verification. Existing unrelated untracked paths remain untouched and unstaged.
 DONE LUXAPI-R1
