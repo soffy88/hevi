@@ -167,6 +167,144 @@ def export_catalogue(path: str | Path | None = None) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# agent.ops_bridge (merged from feat/agent-ops)
+#
+# Exposes the Agent canvas operation bridge (read + CAS/idempotent write +
+# paid-propose gate) as a first-class capability.  ``hevi.operations`` remains
+# the single authority for the operations and the CAS/idempotency rules.
+# ---------------------------------------------------------------------------
+
+import hashlib  # noqa: E402
+import subprocess  # noqa: E402
+
+from hevi.operations.bridge import (  # noqa: E402
+    OperationBridge,
+    OperationError,
+    SqliteOperationsStore,
+)
+from hevi.operations.registry import list_operations as _list_operations  # noqa: E402
+from hevi.renderers.ffmpeg import resolve_ffmpeg_bin  # noqa: E402
+
+
+class _OperationCapabilityResult(CapabilityResult):
+    """Capability result that also carries the operation inventory."""
+
+    def __init__(self, **kwargs: Any) -> None:
+        operations = kwargs.pop("operations", [])
+        super().__init__(**kwargs)
+        self.operations = operations
+
+
+def _render_ops_bridge(
+    params: dict[str, Any],
+    out_dir: Path,
+    *,
+    duration: float,
+    aspect: str,
+    seed: int,
+) -> CapabilityResult:
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    ops = [d.to_dict() for d in _list_operations()]
+    report_file = out_path / "ops_bridge_inventory.json"
+    report_file.write_text(json.dumps(ops, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    op_receipt: dict[str, Any] = {}
+    op_name = params.get("operation")
+    if op_name:
+        import asyncio
+
+        db_path = params.get("db_path", "data/agent_ops.db")
+        bridge = SqliteOperationsStore(db_path)
+        br = OperationBridge(bridge, read_only=(params.get("mode") == "read-only"))
+        try:
+            op_params = params.get("params", {})
+            op_id = params.get("opId")
+            if params.get("expectedRevision") is not None:
+                op_params.setdefault("expectedRevision", params["expectedRevision"])
+            op_receipt = asyncio.run(br.execute(op_name, op_params, op_id=op_id))
+        except OperationError as exc:
+            op_receipt = {"operation": op_name, "error": exc.code, "detail": exc.detail}
+        except Exception as exc:
+            op_receipt = {"operation": op_name, "error": "execution_failed", "detail": str(exc)}
+        (out_path / "ops_receipt.json").write_text(
+            json.dumps(op_receipt, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+    mp4_file: Path | None = None
+    sha256_val = ""
+    dur = float(duration) if duration > 0 else 2.0
+
+    # 2 秒预览产物（lavfi 纯 CPU 合成：无云 API / 零网络）
+    res = "320x568" if aspect == "9:16" else "568x320"
+    mp4_path = out_path / "ops_bridge_preview.mp4"
+    ffmpeg_bin = resolve_ffmpeg_bin()
+    cmd = [
+        ffmpeg_bin,
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c=indigo:s={res}:d={dur}:rate=24",
+        "-f",
+        "lavfi",
+        "-i",
+        f"sine=f=440:r=48000:d={dur}",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-shortest",
+        str(mp4_path),
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+    sha256_val = hashlib.sha256(mp4_path.read_bytes()).hexdigest()
+    mp4_file = mp4_path
+
+    result = _OperationCapabilityResult(
+        mp4=str(mp4_file),
+        duration_s=dur,
+        sha256=sha256_val,
+        operations=ops,
+        qa={
+            "count": len(ops),
+            "names": [o["name"] for o in ops],
+            "report_file": str(report_file),
+            "op_receipt": op_receipt,
+        },
+    )
+    return result
+
+
+register(
+    Capability(
+        name="agent.ops_bridge",
+        kind="line",
+        aspects=["16:9", "9:16"],
+        params_schema={
+            "type": "object",
+            "properties": {
+                "operation": {"type": "string"},
+                "opId": {"type": "string"},
+                "expectedRevision": {"type": "integer"},
+                "mode": {"type": "string", "enum": ["read-only", "write"]},
+                "db_path": {"type": "string"},
+                "params": {"type": "object"},
+                "format": {"type": "string", "enum": ["summary", "preview"]},
+            },
+        },
+        cpu_cost_hint=0.05,
+        render=_render_ops_bridge,
+        description="Agent 画布操作桥：只读 + 写(CAS/幂等) + 付费 propose 闸",
+        line="agent",
+    )
+)
+
+
+# ---------------------------------------------------------------------------
 # Kids / anime safety capabilities (merged from feat/kids-manifest)
 #
 # These expose the 2–6 岁幼儿 safety gates as first-class capabilities so any
@@ -175,9 +313,9 @@ def export_catalogue(path: str | Path | None = None) -> list[dict[str, Any]]:
 # ``hevi.kids.consistency_manifest`` stay the single authority for the checks.
 # ---------------------------------------------------------------------------
 
-from hevi.quality.kids_gate import kids_gate_workflow  # noqa: E402
-from hevi.kids.story_gate import kids_story_gate  # noqa: E402
 from hevi.kids.consistency_manifest import validate_manifest  # noqa: E402
+from hevi.kids.story_gate import kids_story_gate  # noqa: E402
+from hevi.quality.kids_gate import kids_gate_workflow  # noqa: E402
 
 
 def _render_kids_gate(
@@ -188,9 +326,7 @@ def _render_kids_gate(
     srt_path = Path(params.get("srt_path")) if params.get("srt_path") else None
     meta_path = Path(params.get("metadata_path")) if params.get("metadata_path") else None
 
-    report = kids_gate_workflow(
-        video_path, srt_path=srt_path, metadata_path=meta_path
-    )
+    report = kids_gate_workflow(video_path, srt_path=srt_path, metadata_path=meta_path)
     out_dir.mkdir(parents=True, exist_ok=True)
     report_path = out_dir / "kids_gate_report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

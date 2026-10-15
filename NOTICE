@@ -22,12 +22,7 @@ Offline-vendored JavaScript
   hevi/providers/hyperframes/lanshu_assets/node_modules/ so renders work
   without network access.
 
-No OpenMontage code, text or data is included in this worktree; the OpenMontage
-project was used only as a read-only design reference.
-=======
-This project includes software derived from:
-
-## native-subtitle-quote-image
+native-subtitle-quote-image
 - Source: /data/soffy/projects/vendor/chengyi-ai__native-subtitle-quote-image
 - Original Author: 程意 (chengyi-ai)
 - License: MIT License (see third_party/native-subtitle-quote-image/LICENSE)
@@ -36,3 +31,27 @@ This project includes software derived from:
   is adapted from `skills/native-subtitle-quote-image/scripts/native_subtitle_stitch.py`.
   Modifications include adaptation to Hevi 3O architectural standards, enhanced subtitle band
   detection, strip clutter cleaning, robust font sizing, and integration with quality gates.
+
+Hevi — 第三方署名 / NOTICE
+========================
+
+本仓库的 Agent 画布操作桥（单元 C：`hevi/operations/`、HTTP `/api/ops`、
+MCP `hevi.agent.ops.*`）借鉴了 BeefTV（MIT License）的操作注册表契约设计
+（op 描述符 / 权限模式 read-only·canvas·full-access / CAS expectedRevision /
+opId 幂等重放 / 付费生成 propose 三段式「提议—确认—执行」）。
+
+BeefTV 代码为 Go + Wails + React，与 Hevi 的 Python(FastAPI) + Next.js 栈不兼容，
+故本单元为 **reimplement（契约级借鉴，无代码 vendor）**，未复制 BeefTV 任何源文件。
+
+BeefTV 版权声明（依据其 MIT License 要求保留）：
+  Copyright (c) 2026 @beefnoode and BeefTV contributors
+
+许可：MIT
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction... (见 BeefTV 仓库 LICENSE 全文)
+
+其余第三方依赖的许可遵循各自 LICENSE，详见各子模块与 pyproject.toml。
+
+No OpenMontage code, text or data is included in this worktree; the OpenMontage
+project was used only as a read-only design reference.

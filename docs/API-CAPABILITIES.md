@@ -3,6 +3,14 @@
 > 由 `scripts/export_api_inventory.py` 从 FastAPI OpenAPI 自动生成；不要手工编辑。
 > `⚠️ 兼容` 表示仍可调用但新客户端不应使用的弃用入口。
 
+## agent-ops
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/ops` | List Ops |
+| POST | `/api/ops/{name}` | Execute Op |
+| POST | `/api/ops/{name}/confirm` | ⚠️ 兼容 · Confirm Proposal |
+
 ## audio_library
 
 | 方法 | 路径 | 说明 |
@@ -56,8 +64,15 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/api/backlot/media/{run_id}/{name}` | Get Board Media |
+| GET | `/api/backlot/runs/{run_id}/contact-sheet` | Get Contact Sheet |
 | GET | `/api/backlot/runs/{run_id}/events` | Get Run Events |
 | POST | `/api/backlot/runs/{run_id}/events` | Emit Run Event |
+| GET | `/api/backlot/runs/{run_id}/replay` | Get Replay |
+| POST | `/api/backlot/runs/{run_id}/replay/render` | Render Replay |
+| GET | `/api/backlot/runs/{run_id}/shots` | List Shots |
+| POST | `/api/backlot/runs/{run_id}/shots` | Upsert Shot |
+| POST | `/api/backlot/runs/{run_id}/shots/{scene_id}/decision` | Decide Shot |
 | GET | `/api/backlot/runs/{run_id}/status` | Get Run Status |
 
 ## capabilities
@@ -222,6 +237,15 @@
 | POST | `/api/freezone/graphs` | Create Graph |
 | GET | `/api/freezone/graphs/{graph_id}` | Get Graph |
 | POST | `/api/freezone/graphs/{graph_id}/run` | Run Graph |
+
+## fx
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/fx/templates` | List Templates |
+| GET | `/api/fx/templates/{template_id}` | Get Template |
+| GET | `/api/fx/templates/{template_id}/preview` | Get Template Preview |
+| GET | `/api/fx/templates/{template_id}/thumbnail` | Get Template Thumbnail |
 
 ## gallery
 
@@ -463,6 +487,14 @@
 | GET | `/api/shortdrama/writer/capabilities` | Capabilities |
 | POST | `/api/shortdrama/writer/draft` | Draft |
 | POST | `/api/shortdrama/writer/review` | Review |
+
+## shot-spec
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| PUT | `/api/tasks/{task_id}/shots/spec` | Put Shot Specs |
+| GET | `/api/tasks/{task_id}/shots/{shot_index}/spec` | Get Shot Spec |
+| PATCH | `/api/tasks/{task_id}/shots/{shot_index}/spec` | Patch Shot Spec |
 
 ## stream-edit
 

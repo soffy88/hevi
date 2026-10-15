@@ -1,0 +1,474 @@
+EEEEEEEEEEEEEEEE                                                         [100%]
+==================================== ERRORS ====================================
+_______________ ERROR at setup of test_ops_list_fields_complete ________________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_ops_list_fields_complete0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81a1e510>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+___________________ ERROR at setup of test_ops_readonly_set ____________________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_ops_readonly_set0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81984b90>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+________ ERROR at setup of test_idempotent_append_replays_same_receipt _________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_idempotent_append_replays0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add819860d0>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+_________ ERROR at setup of test_idempotent_conflict_different_params __________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_idempotent_conflict_diffe0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81987250>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+____________ ERROR at setup of test_cas_stale_revision_returns_409 _____________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_cas_stale_revision_return0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81987c50>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+_____________ ERROR at setup of test_readonly_session_denies_write _____________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_readonly_session_denies_w0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add819e0690>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+___________ ERROR at setup of test_propose_returns_only_proposal_id ____________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_propose_returns_only_prop0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81987d90>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+____________ ERROR at setup of test_propose_records_intent_not_task ____________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_propose_records_intent_no0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81987390>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+_______ ERROR at setup of test_confirm_submits_via_local_stub_zero_cost ________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_confirm_submits_via_local0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81986710>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+____ ERROR at setup of test_invalid_template_rejected_by_existing_validator ____
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_invalid_template_rejected0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add819856d0>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+___ ERROR at setup of test_invalid_transition_rejected_by_existing_validator ___
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_invalid_transition_reject0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81984f50>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+______ ERROR at setup of test_invalid_sfx_rejected_by_existing_validator _______
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_invalid_sfx_rejected_by_e0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81b3fd90>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+_____________ ERROR at setup of test_update_with_bad_row_rejected ______________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_update_with_bad_row_rejec0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add81b3e710>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+_______ ERROR at setup of test_bind_asset_requires_cas_and_returns_bound _______
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_bind_asset_requires_cas_a0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add819e0050>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+______________________ ERROR at setup of test_remove_row _______________________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_remove_row0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add819e1950>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+________________ ERROR at setup of test_asset_list_and_task_get ________________
+
+tmp_path = PosixPath('/data/soffy/projects/hevi-agentops/.tmp/pytest-of-soffy/pytest-36/test_asset_list_and_task_get0')
+
+    @pytest.fixture()
+    def store(tmp_path: Path) -> SqliteOperationsStore:
+        db = SqliteOperationsStore(tmp_path / "agent_ops.db")
+>       _seed_assets(db)
+
+tests/test_agent_ops_bridge.py:37: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+store = <hevi.operations.bridge.SqliteOperationsStore object at 0x7add819e2350>
+
+    def _seed_assets(store: SqliteOperationsStore) -> None:
+        """演示用资产库（真实持久化，可反复 list）。"""
+>       store.seed_assets(
+        ^^^^^^^^^^^^^^^^^
+            [
+                {"asset_id": "asset-fox", "category": "character", "name": "小狐狸", "version": "1"},
+                {"asset_id": "asset-star", "category": "character", "name": "小星星", "version": "2"},
+                {"asset_id": "asset-room", "category": "scene", "name": "森林小屋", "version": "1"},
+                {"asset_id": "asset-brush", "category": "prop", "name": "牙刷", "version": "1"},
+            ]
+        )
+E       AttributeError: 'SqliteOperationsStore' object has no attribute 'seed_assets'. Did you mean: 'list_assets'?
+
+hevi/api/routers/ops.py:50: AttributeError
+=============================== warnings summary ===============================
+../hevi/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/test_agent_ops_bridge.py::test_ops_list_fields_complete - Attribu...
+ERROR tests/test_agent_ops_bridge.py::test_ops_readonly_set - AttributeError:...
+ERROR tests/test_agent_ops_bridge.py::test_idempotent_append_replays_same_receipt
+ERROR tests/test_agent_ops_bridge.py::test_idempotent_conflict_different_params
+ERROR tests/test_agent_ops_bridge.py::test_cas_stale_revision_returns_409 - A...
+ERROR tests/test_agent_ops_bridge.py::test_readonly_session_denies_write - At...
+ERROR tests/test_agent_ops_bridge.py::test_propose_returns_only_proposal_id
+ERROR tests/test_agent_ops_bridge.py::test_propose_records_intent_not_task - ...
+ERROR tests/test_agent_ops_bridge.py::test_confirm_submits_via_local_stub_zero_cost
+ERROR tests/test_agent_ops_bridge.py::test_invalid_template_rejected_by_existing_validator
+ERROR tests/test_agent_ops_bridge.py::test_invalid_transition_rejected_by_existing_validator
+ERROR tests/test_agent_ops_bridge.py::test_invalid_sfx_rejected_by_existing_validator
+ERROR tests/test_agent_ops_bridge.py::test_update_with_bad_row_rejected - Att...
+ERROR tests/test_agent_ops_bridge.py::test_bind_asset_requires_cas_and_returns_bound
+ERROR tests/test_agent_ops_bridge.py::test_remove_row - AttributeError: 'Sqli...
+ERROR tests/test_agent_ops_bridge.py::test_asset_list_and_task_get - Attribut...
+1 warning, 16 errors in 0.84s
