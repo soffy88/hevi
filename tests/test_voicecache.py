@@ -21,6 +21,12 @@ from hevi.live_host.voicecache import (
 
 N = 768
 
+# scratch dir for stub wavs / throwaway libraries — never the real one
+import tempfile  # noqa: E402
+
+_TMP = Path(tempfile.mkdtemp(prefix="vc-test-"))
+_TMP_WAV = _TMP / "wav"
+
 
 class _FakeEmb:
     """Query embedder: maps a text to a fixed direction so cosine is
@@ -37,7 +43,10 @@ class _FakeEmb:
 
 
 def _entry(eid, text, motion="talk_a", category="misc", emb=None, wav_exists=True):
-    p = Path(f"/data/soffy/voicecache/wav/{eid}.wav")
+    # stub wavs go to a temp dir, NOT the live library: writing into
+    # /data/soffy/voicecache/wav left a bogus RIFF header inside the real
+    # library that made soundfile.info() raise for it.
+    p = _TMP_WAV / f"{eid}.wav"
     if wav_exists:
         p.parent.mkdir(parents=True, exist_ok=True)
         if not p.exists():
@@ -48,7 +57,7 @@ def _entry(eid, text, motion="talk_a", category="misc", emb=None, wav_exists=Tru
 
 
 def _cache(entries, with_matrix=True):
-    vc = VoiceCache(root=Path("/data/soffy/voicecache"), threshold=0.82)
+    vc = VoiceCache(root=_TMP_WAV.parent, threshold=0.82)
     vc.entries = entries
     vc._by_norm = {e.norm: e for e in entries}
     if with_matrix and all(e.text_emb is not None for e in entries):
@@ -195,36 +204,33 @@ def test_cachedtts_hit_skips_real_tts():
     entries = [_entry("a", "谢谢哥哥的礼物。", "g_heart", "gift_thanks")]
     vc = _cache(entries)
     backend = _FakeTTS()
-    wrap = CachedTTS(backend, root=Path("/data/soffy/voicecache"))
+    wrap = CachedTTS(backend, root=_TMP)
     wrap.cache = vc  # inject the in-memory cache
     wrap.enabled = True
-    out = wrap.synthesize("谢谢哥哥的礼物。", "/tmp/vc_hit_out.wav")
+    out = wrap.synthesize("谢谢哥哥的礼物。", _TMP / "vc_hit_out.wav")
     assert out.exists()
     assert backend.calls == 0  # real TTS skipped on a hit
 
 
 def test_cachedtts_miss_uses_real_tts_and_logs():
-    import tempfile
-
     entries = [_entry("a", "完全不相关的缓存句xyz", emb=None)]
     vc = _cache(entries, with_matrix=False)
     backend = _FakeTTS()
-    wrap = CachedTTS(backend, root=Path("/data/soffy/voicecache"))
+    wrap = CachedTTS(backend, root=_TMP)
     wrap.cache = vc
     wrap.enabled = True
-    tmp = tempfile.mkdtemp()
-    wrap.synthesize("一句全新的话", Path(tmp) / "out.wav")
+    wrap.synthesize("一句全新的话", _TMP / "out.wav")
     assert backend.calls == 1
     # a miss was logged to the queue
-    q = Path("/data/soffy/voicecache/miss_queue.jsonl")
+    q = _TMP / "miss_queue.jsonl"
     assert q.exists() and "一句全新的话" in q.read_text(encoding="utf-8")
 
 
 def test_cachedtts_disabled_falls_back():
     backend = _FakeTTS()
-    wrap = CachedTTS(backend, root=Path("/data/soffy/voicecache"))
+    wrap = CachedTTS(backend, root=_TMP)
     wrap.enabled = False  # no library loaded
-    wrap.synthesize("任意的话", "/tmp/vc_fallback.wav")
+    wrap.synthesize("任意的话", _TMP / "vc_fallback.wav")
     assert backend.calls == 1
 
 
