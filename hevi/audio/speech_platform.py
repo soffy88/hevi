@@ -120,12 +120,12 @@ _TTS_SPECS: tuple[dict[str, Any], ...] = (
     {
         "id": "lux_tts",
         "name": "LuxTTS",
-        "mode": "local",
+        "mode": "network",
         "requires_gpu": False,
         "languages": ("zh", "en"),
         "capabilities": ("tts", "zero_shot_clone", "low_resource"),
-        "description": "低资源本地克隆档；可在 CPU/小显存环境运行。",
-        "setup": "配置 HEVI_LUXTTS_URL（默认 http://100.119.113.90:8795）；/health 可用时通过 HTTP 合成，无需本地模型。",
+        "description": "远程 LuxTTS HTTP 语音服务；按中文/英文输入选择 soffy 或 en_male，Hevi 本机不加载模型。",
+        "setup": "配置 HEVI_LUXTTS_URL（默认 http://100.119.113.90:8795），并确保 /health 可用。",
     },
     {
         "id": "edge_tts",
@@ -343,14 +343,19 @@ def build_batch_plan(items: list[dict[str, Any]]) -> dict[str, Any]:
         if engine is None:
             errors.append(f"items[{index}].engine 未知: {engine_id}")
             continue
-        if not engine.available:
+        fallback_enabled = engine.id == "lux_tts"
+        provider_available = engine.available
+        can_execute = provider_available or fallback_enabled
+        if not can_execute:
             errors.append(f"items[{index}].engine 不可用: {engine_id}")
         jobs.append(
             {
                 "index": index,
                 "text": text,
                 "engine": engine.id,
-                "available": engine.available,
+                "available": can_execute,
+                "provider_available": provider_available,
+                "fallback_enabled": fallback_enabled,
                 "voice": str(item.get("voice") or ""),
                 "language": str(item.get("language") or "zh"),
             }

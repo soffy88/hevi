@@ -8,12 +8,20 @@ LuxTTS HTTP is now the default for formal narration, conversational dialogue, st
 
 - `hevi/audio/lux_tts_service.py`: HTTP client for the dedicated LuxTTS service; configurable URL; `/health` readiness; `/tts` JSON payload; long request timeout and bounded retries; Chinese/English sentence splitting; mono 48 kHz WAV validation and joining with 150 ms sentence gaps; per-sentence metadata including resolved voice, duration, generation time and attempt count. Temporary chunks stay in `.tmp/`.
 - `hevi/audio/audio_router.py`: formal and conversational provider defaults; shared LuxTTS call path; explicit warning logs and provider identity when LuxTTS fails; CosyVoice then Piper fallback; ffmpeg concat diagnostics and temporary concat list in `.tmp/`.
-- `hevi/audio/speech_platform.py`: LuxTTS engine registration and readiness reporting based on the remote HTTP service.
+- `hevi/audio/speech_platform.py`: LuxTTS engine registration and readiness reporting; batch plans remain executable via fallback when LuxTTS health is down, while catalog metadata distinguishes provider availability from fallback-enabled executability.
+- `hevi/api/routers/voice_platform.py`: OpenAI-compatible speech requests default to lux_tts; batch execution accepts fallback-enabled LuxTTS jobs even when its health probe is down.
+- `hevi/layer4_legacy/voicepro/omodul_impl/openai_audio.py`: OpenAI-compatible speech now routes LuxTTS requests through shared CosyVoice/Piper fallback when health or synthesis fails, and returns actual-provider/substitution metadata.
+- `hevi/studio/kit.py`: Studio auto TTS uses the shared LuxTTS → CosyVoice → Piper route; it no longer bypasses configured fallback with Edge TTS.
+- `hevi/api/routers/voice_studio.py`: queued voice tasks and compare requests are not rejected solely because LuxTTS health is down; catalog routing metadata declares the automatic fallback chain.
+- `hevi/audio/task_adapter.py`: direct LuxTTS task dispatch now uses the shared LuxTTS → CosyVoice → Piper fallback route and persists actual provider/substitution identity into task configuration.
 - `hevi/explainer/voiceover.py`: story-film narration defaults to LuxTTS and routes through the shared fallback-capable router; retains explicit legacy provider overrides; creates a WAV manifest and duration-based captions; logs the actual provider/fallback identity.
 - `hevi/digital_human/line_tts.py`: dialogue defaults to the shared LuxTTS router rather than bypassing it; retains explicit provider overrides and emits substitution identity when fallback is used.
 - `tests/test_lux_tts_service.py`: mocked HTTP contract, retries, sentence splitting/joining, voice validation and optional live integration test.
 - `tests/test_audio_router_provider_identity.py`: provider identity and health-failure→CosyVoice/Piper fallback coverage, including explicit warning assertions.
 - `tests/test_explainer_voiceover.py`: story-film default-provider, router dispatch, WAV manifest/caption, and digital-human default-provider regressions.
+- `tests/test_luxapi_entrypoint_defaults.py`: checks OpenAI speech defaults/fallback, remote-service catalog metadata, Studio fallback routing, batch fallback availability, task-adapter dispatch, Voice Studio validation, and catalog fallback metadata.
+- `tests/test_runtime_edge_coverage.py`: updates the Studio auto-route regression to assert the fallback provider identity.
+- `tests/test_voice_studio_task.py`: checks that the persisted task result reports the actual fallback provider and reason.
 
 ## Configuration
 
@@ -60,13 +68,21 @@ Exact required selection command:
 
 `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -k lux tests`
 
-Exact summary: `11 passed, 7341 deselected, 1 warning in 7.37s`.
+Exact summary: `20 passed, 7341 deselected, 1 warning in 3.81s`. The exact required pipe was executed after these final routing/adapter changes and exited 0.
 
 Audio/story/dialogue regression suite:
 
 `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q tests/test_audio.py tests/test_audio_router_provider_identity.py tests/test_lux_tts_service.py tests/test_explainer_voiceover.py tests/test_director_echo_dialogue.py`
 
 Exact summary: `35 passed in 4.96s`.
+
+## Final additional revalidation
+
+After fixing the final task-adapter, batch-plan, and Voice Studio health-gate bypasses, the expanded focused audio/interface/task regression suite passed:
+
+`JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q tests/test_audio.py tests/test_audio_router_provider_identity.py tests/test_lux_tts_service.py tests/test_explainer_voiceover.py tests/test_cosyvoice_contract.py tests/test_luxapi_entrypoint_defaults.py tests/test_studio_kit.py tests/test_runtime_edge_coverage.py::test_studio_kit_delegates_and_preserves_cross_line_contracts tests/test_voice_studio_task.py`
+
+Earlier checkpoints were 64 and 65 passing tests. Final expanded suite summary after the task-adapter/batch/Voice Studio fallback fixes: `74 passed in 19.26s`.
 
 ## Scope and deployment
 

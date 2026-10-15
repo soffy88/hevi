@@ -47,13 +47,25 @@ async def execute_voice_studio_task(task: dict[str, Any], pool: PgPool) -> dict[
         )
     fallback: dict[str, str] | None = None
     try:
-        await _synthesize_with_engine(
+        synthesis_result = await _synthesize_with_engine(
             requested,
             line=line,
             output_path=output_path,
             config=config,
             emotion=emotion,
         )
+        if isinstance(synthesis_result, dict):
+            output_path = Path(str(synthesis_result.get("path") or output_path))
+            actual_provider = str(synthesis_result.get("actual_provider") or requested)
+            provider_used = actual_provider
+            if bool(synthesis_result.get("substituted")) or actual_provider != requested:
+                fallback = {
+                    "from": requested,
+                    "to": actual_provider,
+                    "reason": str(
+                        synthesis_result.get("fallback_reason") or "provider_substitution"
+                    )[:500],
+                }
     except VoiceboxError as exc:
         if requested != "voicebox" or not _allow_edge_fallback():
             raise
@@ -143,7 +155,7 @@ async def _synthesize_with_engine(
     output_path: Path,
     config: dict[str, Any],
     emotion: str | None,
-) -> None:
+) -> dict[str, Any] | None:
     """Dispatch one catalog engine without silently changing the requested one."""
     if engine == "voicebox":
         await voicebox_synthesize(script=[line], output_path=output_path, emotion=emotion)
@@ -204,15 +216,34 @@ async def _synthesize_with_engine(
         )
         return
     if engine == "lux_tts":
-        from hevi.audio.lux_tts_service import synth_with_luxvoice
+        from hevi.audio.audio_router import _synthesize_luxtts_with_fallback
 
-        await synth_with_luxvoice(
-            line.text,
-            output_path,
-            reference_audio=str(config.get("reference_audio") or "") or None,
-            speed=float(config.get("speed") or 1.0),
+        requested_voice = str(config.get("voice") or "").strip().lower()
+        remote_voice = (
+            requested_voice
+            if requested_voice in {"auto", "soffy", "en_male"}
+            else os.getenv("HEVI_LUXTTS_VOICE", "auto").strip().lower()
         )
-        return
+        fallback_voice = str(config.get("fallback_voice") or "").strip()
+        if not fallback_voice:
+            fallback_voice = (
+                requested_voice
+                if requested_voice and requested_voice not in {"auto", "soffy", "en_male"}
+                else "zh-CN-XiaoxiaoNeural"
+            )
+        return await _synthesize_luxtts_with_fallback(
+            text=line.text,
+            output_path=output_path,
+            voice=fallback_voice,
+            instruct=str(config.get("instruct") or emotion or "") or None,
+            requested_provider="lux_tts",
+            remote_voice=remote_voice,
+            reference_audio=str(config.get("reference_audio") or "") or None,
+            reference_text=str(config.get("reference_text") or "") or None,
+            speed=float(config.get("speed") or 1.0),
+            steps=int(config.get("steps") or 4),
+            celeb=str(config.get("celeb") or "") or None,
+        )
     if engine == "voxcpm":
         from hevi.audio.voxcpm_service import synth_with_voxcpm
 

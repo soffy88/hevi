@@ -102,7 +102,7 @@ class BatchRequest(BaseModel):
 
 
 class OpenAISpeechRequest(BaseModel):
-    model: str = "edge_tts"
+    model: str = "lux_tts"
     input: str = Field(min_length=1, max_length=100_000)
     voice: str = ""
     response_format: str = "wav"

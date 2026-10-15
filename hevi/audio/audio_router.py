@@ -255,7 +255,7 @@ async def _synthesize_luxtts_with_fallback(
     try:
         if not lux_tts_available():
             raise RuntimeError("LuxTTS HTTP /health is not ready")
-        remote_voice = os.getenv("HEVI_LUXTTS_VOICE", "auto").strip().lower()
+        remote_voice = str(kwargs.get("remote_voice") or os.getenv("HEVI_LUXTTS_VOICE", "auto")).strip().lower()
         if remote_voice not in {"auto", "soffy", "en_male"}:
             logger.warning("Ignoring unsupported HEVI_LUXTTS_VOICE=%r; using auto", remote_voice)
             remote_voice = "auto"

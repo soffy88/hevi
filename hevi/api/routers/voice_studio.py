@@ -174,7 +174,10 @@ async def speech_catalog(_: Annotated[dict[str, Any], Depends(get_current_user)]
         "asr": [item for item in engines if item["kind"] == "asr"],
         "voices": [item.to_dict() for item in list_voice_profiles()],
         "workflows": _WORKFLOWS,
-        "routing": {"policy": "local-first", "fallback": "explicit-only"},
+        "routing": {
+            "policy": "lux_tts-first",
+            "fallback": "lux_tts-health-or-synthesis-failure-to-cosyvoice-then-piper",
+        },
     }
 
 
@@ -271,7 +274,9 @@ async def _validate_synthesis_engine(engine_id: str) -> None:
     engine = get_engine(engine_id)
     if engine is None:
         raise HTTPException(status_code=422, detail=f"未知语音引擎: {engine_id}")
-    if not engine.available:
+    # LuxTTS has a deliberate fallback route; health failure must not prevent
+    # the task from reaching CosyVoice/Piper.
+    if not engine.available and engine.id != "lux_tts":
         raise HTTPException(
             status_code=503,
             detail={
