@@ -1,0 +1,928 @@
+[
+ {
+  "tag": "1.list",
+  "method": "GET",
+  "url": "/api/ops",
+  "request": null,
+  "status": 200,
+  "response": {
+   "count": 8,
+   "read_only_operations": [
+    "asset.list",
+    "canvas.generation.propose",
+    "canvas.get",
+    "task.get"
+   ],
+   "operations": [
+    {
+     "name": "canvas.get",
+     "readOnly": true,
+     "scope": "canvas",
+     "params": {
+      "type": "object",
+      "properties": {
+       "graph_id": {
+        "type": "string",
+        "description": "画布图 UUID"
+       }
+      },
+      "required": [
+       "graph_id"
+      ]
+     },
+     "replay": "safe",
+     "summary": "读取画布图（节点/边/当前 revision）"
+    },
+    {
+     "name": "canvas.script.rows.append",
+     "readOnly": false,
+     "scope": "canvas",
+     "params": {
+      "type": "object",
+      "properties": {
+       "graph_id": {
+        "type": "string"
+       },
+       "row": {
+        "type": "object",
+        "description": "单行 ShotSpec（沿用既有 pydantic 校验器，未知 template/transition/sfx 等被拒）",
+        "properties": {
+         "template": {
+          "type": "string"
+         },
+         "transition_in": {
+          "type": "string"
+         },
+         "effect": {
+          "type": "string"
+         },
+         "style": {
+          "type": "string"
+         },
+         "sfx": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "id": {
+             "type": "string"
+            },
+            "offset": {
+             "type": "number"
+            }
+           },
+           "required": [
+            "id"
+           ]
+          }
+         },
+         "camera": {
+          "type": "string"
+         },
+         "subtitle_style": {
+          "type": "string"
+         },
+         "duration": {
+          "type": "number"
+         }
+        },
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "graph_id",
+       "row"
+      ]
+     },
+     "replay": "unsafe",
+     "summary": "在 ShotSpec 分镜表末尾追加一行（CAS + 幂等）"
+    },
+    {
+     "name": "canvas.script.rows.update",
+     "readOnly": false,
+     "scope": "canvas",
+     "params": {
+      "type": "object",
+      "properties": {
+       "graph_id": {
+        "type": "string"
+       },
+       "row_index": {
+        "type": "integer",
+        "minimum": 0
+       },
+       "row": {
+        "type": "object",
+        "description": "单行 ShotSpec（沿用既有 pydantic 校验器，未知 template/transition/sfx 等被拒）",
+        "properties": {
+         "template": {
+          "type": "string"
+         },
+         "transition_in": {
+          "type": "string"
+         },
+         "effect": {
+          "type": "string"
+         },
+         "style": {
+          "type": "string"
+         },
+         "sfx": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "id": {
+             "type": "string"
+            },
+            "offset": {
+             "type": "number"
+            }
+           },
+           "required": [
+            "id"
+           ]
+          }
+         },
+         "camera": {
+          "type": "string"
+         },
+         "subtitle_style": {
+          "type": "string"
+         },
+         "duration": {
+          "type": "number"
+         }
+        },
+        "additionalProperties": false
+       }
+      },
+      "required": [
+       "graph_id",
+       "row_index",
+       "row"
+      ]
+     },
+     "replay": "unsafe",
+     "summary": "更新 ShotSpec 分镜表指定行（CAS + 幂等）"
+    },
+    {
+     "name": "canvas.script.rows.remove",
+     "readOnly": false,
+     "scope": "canvas",
+     "params": {
+      "type": "object",
+      "properties": {
+       "graph_id": {
+        "type": "string"
+       },
+       "row_index": {
+        "type": "integer",
+        "minimum": 0
+       }
+      },
+      "required": [
+       "graph_id",
+       "row_index"
+      ]
+     },
+     "replay": "unsafe",
+     "summary": "删除 ShotSpec 分镜表指定行（CAS + 幂等）"
+    },
+    {
+     "name": "canvas.node.bind_asset",
+     "readOnly": false,
+     "scope": "canvas",
+     "params": {
+      "type": "object",
+      "properties": {
+       "graph_id": {
+        "type": "string"
+       },
+       "node_id": {
+        "type": "string"
+       },
+       "asset_id": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "graph_id",
+       "node_id",
+       "asset_id"
+      ]
+     },
+     "replay": "unsafe",
+     "summary": "把资产（asset_id）绑定到画布节点（CAS + 幂等）"
+    },
+    {
+     "name": "canvas.generation.propose",
+     "readOnly": true,
+     "scope": "canvas",
+     "params": {
+      "type": "object",
+      "properties": {
+       "graph_id": {
+        "type": "string"
+       },
+       "prompt": {
+        "type": "string"
+       },
+       "rows": {
+        "type": "array",
+        "items": {
+         "type": "integer"
+        },
+        "description": "拟生成的分镜行号（仅记录意图，不触发生成）"
+       }
+      },
+      "required": [
+       "graph_id"
+      ]
+     },
+     "replay": "safe",
+     "summary": "付费闸：只生成 proposalId，不建任务、不调 provider（确认后由既有任务接口提交）"
+    },
+    {
+     "name": "asset.list",
+     "readOnly": true,
+     "scope": "asset",
+     "params": {
+      "type": "object",
+      "properties": {
+       "category": {
+        "type": "string"
+       },
+       "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 200,
+        "default": 50
+       }
+      }
+     },
+     "replay": "safe",
+     "summary": "列出可复用资产库条目（分类/版本）"
+    },
+    {
+     "name": "task.get",
+     "readOnly": true,
+     "scope": "task",
+     "params": {
+      "type": "object",
+      "properties": {
+       "task_id": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "task_id"
+      ]
+     },
+     "replay": "safe",
+     "summary": "读取既有生成任务状态/产物（任务表只读，不触发生成）"
+    }
+   ]
+  }
+ },
+ {
+  "tag": "probe.canvas.get",
+  "method": "POST",
+  "url": "/api/ops/canvas.get",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3"
+   }
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 0,
+   "graph": {
+    "id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "nodes": [
+     {
+      "type": "script",
+      "rows": []
+     },
+     {
+      "type": "image",
+      "id": "n1"
+     }
+    ],
+    "edges": [],
+    "revision": 0,
+    "created_at": "2026-10-15T04:35:54.136623",
+    "updated_at": "2026-10-15T04:35:54.136623"
+   },
+   "operation": "canvas.get"
+  }
+ },
+ {
+  "tag": "2.first",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "effect": "warm",
+     "transition_in": "fade",
+     "duration": 3.0
+    }
+   },
+   "opId": "op-A",
+   "expectedRevision": 0
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "row_index": 0,
+   "row_count": 1,
+   "row": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": null,
+    "sfx": [],
+    "camera": null,
+    "subtitle_style": null,
+    "duration": 3.0
+   },
+   "operation": "canvas.script.rows.append"
+  }
+ },
+ {
+  "tag": "2.replay",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "effect": "warm",
+     "transition_in": "fade",
+     "duration": 3.0
+    }
+   },
+   "opId": "op-A",
+   "expectedRevision": 0
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "row_index": 0,
+   "row_count": 1,
+   "row": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": null,
+    "sfx": [],
+    "camera": null,
+    "subtitle_style": null,
+    "duration": 3.0
+   },
+   "replayed": true,
+   "operation": "canvas.script.rows.append"
+  }
+ },
+ {
+  "tag": "2.replay2",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "effect": "warm",
+     "transition_in": "fade",
+     "duration": 3.0
+    }
+   },
+   "opId": "op-A",
+   "expectedRevision": 0
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "row_index": 0,
+   "row_count": 1,
+   "row": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": null,
+    "sfx": [],
+    "camera": null,
+    "subtitle_style": null,
+    "duration": 3.0
+   },
+   "replayed": true,
+   "operation": "canvas.script.rows.append"
+  }
+ },
+ {
+  "tag": "probe.canvas.get",
+  "method": "POST",
+  "url": "/api/ops/canvas.get",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3"
+   }
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "graph": {
+    "id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "nodes": [
+     {
+      "type": "script",
+      "rows": [
+       {
+        "template": null,
+        "transition_in": "fade",
+        "effect": "warm",
+        "style": null,
+        "sfx": [],
+        "camera": null,
+        "subtitle_style": null,
+        "duration": 3.0
+       }
+      ]
+     },
+     {
+      "type": "image",
+      "id": "n1"
+     }
+    ],
+    "edges": [],
+    "revision": 1,
+    "created_at": "2026-10-15T04:35:54.136623",
+    "updated_at": "2026-10-15T04:35:54.214874"
+   },
+   "operation": "canvas.get"
+  }
+ },
+ {
+  "tag": "2.conflict",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "effect": "warm",
+     "transition_in": "fade",
+     "duration": 5.0
+    }
+   },
+   "opId": "op-A",
+   "expectedRevision": 1
+  },
+  "status": 409,
+  "response": {
+   "detail": {
+    "error": "idempotency_conflict",
+    "detail": "same opId with different params is not allowed"
+   }
+  }
+ },
+ {
+  "tag": "probe.canvas.get",
+  "method": "POST",
+  "url": "/api/ops/canvas.get",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3"
+   }
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "graph": {
+    "id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "nodes": [
+     {
+      "type": "script",
+      "rows": [
+       {
+        "template": null,
+        "transition_in": "fade",
+        "effect": "warm",
+        "style": null,
+        "sfx": [],
+        "camera": null,
+        "subtitle_style": null,
+        "duration": 3.0
+       }
+      ]
+     },
+     {
+      "type": "image",
+      "id": "n1"
+     }
+    ],
+    "edges": [],
+    "revision": 1,
+    "created_at": "2026-10-15T04:35:54.136623",
+    "updated_at": "2026-10-15T04:35:54.214874"
+   },
+   "operation": "canvas.get"
+  }
+ },
+ {
+  "tag": "2.no_opid",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "effect": "warm",
+     "transition_in": "fade",
+     "duration": 3.0
+    }
+   },
+   "expectedRevision": 1
+  },
+  "status": 400,
+  "response": {
+   "detail": {
+    "error": "opid_required",
+    "detail": "write operations require 'opId'"
+   }
+  }
+ },
+ {
+  "tag": "probe.canvas.get",
+  "method": "POST",
+  "url": "/api/ops/canvas.get",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3"
+   }
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "graph": {
+    "id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "nodes": [
+     {
+      "type": "script",
+      "rows": [
+       {
+        "template": null,
+        "transition_in": "fade",
+        "effect": "warm",
+        "style": null,
+        "sfx": [],
+        "camera": null,
+        "subtitle_style": null,
+        "duration": 3.0
+       }
+      ]
+     },
+     {
+      "type": "image",
+      "id": "n1"
+     }
+    ],
+    "edges": [],
+    "revision": 1,
+    "created_at": "2026-10-15T04:35:54.136623",
+    "updated_at": "2026-10-15T04:35:54.214874"
+   },
+   "operation": "canvas.get"
+  }
+ },
+ {
+  "tag": "3.stale",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "effect": "warm",
+     "transition_in": "fade",
+     "duration": 3.0
+    }
+   },
+   "opId": "op-C",
+   "expectedRevision": 0
+  },
+  "status": 409,
+  "response": {
+   "detail": {
+    "expected": 0,
+    "current": 1,
+    "operation": "canvas.script.rows.append",
+    "detail": "canvas revision mismatch; no modification applied",
+    "error": "revision_conflict"
+   }
+  }
+ },
+ {
+  "tag": "probe.canvas.get",
+  "method": "POST",
+  "url": "/api/ops/canvas.get",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3"
+   }
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "graph": {
+    "id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "nodes": [
+     {
+      "type": "script",
+      "rows": [
+       {
+        "template": null,
+        "transition_in": "fade",
+        "effect": "warm",
+        "style": null,
+        "sfx": [],
+        "camera": null,
+        "subtitle_style": null,
+        "duration": 3.0
+       }
+      ]
+     },
+     {
+      "type": "image",
+      "id": "n1"
+     }
+    ],
+    "edges": [],
+    "revision": 1,
+    "created_at": "2026-10-15T04:35:54.136623",
+    "updated_at": "2026-10-15T04:35:54.214874"
+   },
+   "operation": "canvas.get"
+  }
+ },
+ {
+  "tag": "4.readonly",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append?mode=read-only",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "effect": "warm",
+     "transition_in": "fade",
+     "duration": 3.0
+    }
+   },
+   "opId": "op-D",
+   "expectedRevision": 1
+  },
+  "status": 403,
+  "response": {
+   "detail": {
+    "operation": "canvas.script.rows.append",
+    "error": "scope_denied",
+    "detail": "read-only session may not perform write operations"
+   }
+  }
+ },
+ {
+  "tag": "probe.canvas.get",
+  "method": "POST",
+  "url": "/api/ops/canvas.get",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3"
+   }
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "graph": {
+    "id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "nodes": [
+     {
+      "type": "script",
+      "rows": [
+       {
+        "template": null,
+        "transition_in": "fade",
+        "effect": "warm",
+        "style": null,
+        "sfx": [],
+        "camera": null,
+        "subtitle_style": null,
+        "duration": 3.0
+       }
+      ]
+     },
+     {
+      "type": "image",
+      "id": "n1"
+     }
+    ],
+    "edges": [],
+    "revision": 1,
+    "created_at": "2026-10-15T04:35:54.136623",
+    "updated_at": "2026-10-15T04:35:54.214874"
+   },
+   "operation": "canvas.get"
+  }
+ },
+ {
+  "tag": "5.propose",
+  "method": "POST",
+  "url": "/api/ops/canvas.generation.propose",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "prompt": "小狐狸刷牙",
+    "rows": [
+     0
+    ]
+   }
+  },
+  "status": 200,
+  "response": {
+   "proposalId": "349d013d-afa1-4e47-b5e0-25ea0e176d8c",
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "operation": "canvas.generation.propose"
+  }
+ },
+ {
+  "tag": "5.confirm",
+  "method": "POST",
+  "url": "/api/ops/canvas.generation.propose/confirm",
+  "request": {
+   "params": {
+    "proposalId": "349d013d-afa1-4e47-b5e0-25ea0e176d8c"
+   }
+  },
+  "status": 200,
+  "response": {
+   "task_id": "ad1ea46a860b4a4b992078c2dbfdf977",
+   "status": "submitted",
+   "provider": "local_stub",
+   "cost_usd": 0.0
+  }
+ },
+ {
+  "tag": "6.bad0",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "template": "no_such_tpl"
+    }
+   },
+   "opId": "op-bad0",
+   "expectedRevision": 1
+  },
+  "status": 422,
+  "response": {
+   "detail": {
+    "error": "invalid_request",
+    "detail": "1 validation error for ShotSpec\ntemplate\n  Value error, unknown template id 'no_such_tpl' (not in FX registry) [type=value_error, input_value='no_such_tpl', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+   }
+  }
+ },
+ {
+  "tag": "6.bad1",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "transition_in": "no_such_tr"
+    }
+   },
+   "opId": "op-bad1",
+   "expectedRevision": 1
+  },
+  "status": 422,
+  "response": {
+   "detail": {
+    "error": "invalid_request",
+    "detail": "1 validation error for ShotSpec\ntransition_in\n  Value error, unknown transition id 'no_such_tr' (not in xfade registry) [type=value_error, input_value='no_such_tr', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+   }
+  }
+ },
+ {
+  "tag": "6.bad2",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.append",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row": {
+     "sfx": [
+      {
+       "id": "no_such_sfx"
+      }
+     ]
+    }
+   },
+   "opId": "op-bad2",
+   "expectedRevision": 1
+  },
+  "status": 422,
+  "response": {
+   "detail": {
+    "error": "invalid_request",
+    "detail": "1 validation error for ShotSpec\n  Value error, unknown sfx id 'no_such_sfx' (not in sfx manifest/registry) [type=value_error, input_value={'sfx': [{'id': 'no_such_sfx'}]}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+   }
+  }
+ },
+ {
+  "tag": "probe.canvas.get",
+  "method": "POST",
+  "url": "/api/ops/canvas.get",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3"
+   }
+  },
+  "status": 200,
+  "response": {
+   "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+   "revision": 1,
+   "graph": {
+    "id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "nodes": [
+     {
+      "type": "script",
+      "rows": [
+       {
+        "template": null,
+        "transition_in": "fade",
+        "effect": "warm",
+        "style": null,
+        "sfx": [],
+        "camera": null,
+        "subtitle_style": null,
+        "duration": 3.0
+       }
+      ]
+     },
+     {
+      "type": "image",
+      "id": "n1"
+     }
+    ],
+    "edges": [],
+    "revision": 1,
+    "created_at": "2026-10-15T04:35:54.136623",
+    "updated_at": "2026-10-15T04:35:54.214874"
+   },
+   "operation": "canvas.get"
+  }
+ },
+ {
+  "tag": "6.bad_update",
+  "method": "POST",
+  "url": "/api/ops/canvas.script.rows.update",
+  "request": {
+   "params": {
+    "graph_id": "a0dfe052-8a0b-427c-9099-6e76f76708c3",
+    "row_index": 0,
+    "row": {
+     "transition_in": "nope"
+    }
+   },
+   "opId": "op-bu",
+   "expectedRevision": 1
+  },
+  "status": 422,
+  "response": {
+   "detail": {
+    "error": "invalid_request",
+    "detail": "1 validation error for ShotSpec\ntransition_in\n  Value error, unknown transition id 'nope' (not in xfade registry) [type=value_error, input_value='nope', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+   }
+  }
+ }
+]

@@ -60,6 +60,30 @@ async def _render_talkcraft_storyboard(
     return await render_storyboard_talkcraft(storyboard_data, output_dir, config)
 
 
+async def _render_whiteboard_storyboard(
+    storyboard_data: dict[str, Any], output_dir: Path, config: dict[str, Any]
+) -> dict[str, Any]:
+    """Injected whiteboard renderer: hand-drawn whiteboard explainer."""
+
+    from hevi.layer4_legacy.whiteboard.omodul_impl.produce import produce_whiteboard
+
+    res = await asyncio.to_thread(produce_whiteboard, storyboard_data, output_dir, config)
+    return {
+        "portrait_path": str(res["portrait_path"]),
+        "landscape_path": str(res["landscape_path"]),
+    }
+
+
+async def _render_artmotion_storyboard(
+    storyboard_data: dict[str, Any], output_dir: Path, config: dict[str, Any]
+) -> dict[str, Any]:
+    """Injected artmotion renderer: style + grammar on CPU + local TTS."""
+
+    from hevi.artmotion.adapter import render_storyboard_artmotion
+
+    return await render_storyboard_artmotion(storyboard_data, output_dir, config)
+
+
 def _path_from_artifact(result: dict[str, Any], *, primary: bool) -> Path | None:
     artifacts = result.get("artifacts")
     if not isinstance(artifacts, list):
@@ -93,7 +117,7 @@ async def render_narrated_storyboard(
     """
 
     renderer = (renderer or os.environ.get("HEVI_EXPLAINER_RENDERER") or "hevi-remotion").strip()
-    if renderer not in {"hevi-remotion", "talkcraft"}:
+    if renderer not in {"hevi-remotion", "talkcraft", "whiteboard", "artmotion"}:
         raise NarratedProductionError(f"UNKNOWN_RENDERER: {renderer}")
     if talkcraft_avatar not in (None, False) and renderer != "talkcraft":
         raise NarratedProductionError("AVATAR_REQUIRES_TALKCRAFT: avatar option needs renderer=talkcraft")
@@ -107,12 +131,19 @@ async def render_narrated_storyboard(
         "schema_version": 1,
         "require_landscape": True,
     }
+    if renderer == "talkcraft":
+        renderer_func = _render_talkcraft_storyboard
+    elif renderer == "whiteboard":
+        renderer_func = _render_whiteboard_storyboard
+    elif renderer == "artmotion":
+        renderer_func = _render_artmotion_storyboard
+    else:
+        renderer_func = _render_remotion_storyboard
+
     input_data = {
         "schema_version": 1,
         "storyboard": storyboard.model_dump(mode="json"),
-        "renderer": (
-            _render_talkcraft_storyboard if renderer == "talkcraft" else _render_remotion_storyboard
-        ),
+        "renderer": renderer_func,
     }
 
     async def narrated_step(*, input_data: dict[str, Any], step_no: int) -> dict[str, Any]:

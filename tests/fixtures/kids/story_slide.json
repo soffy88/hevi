@@ -1,0 +1,14 @@
+{
+  "logline": "小熊学会排队玩滑梯，懂得了轮流和耐心。",
+  "theme": "轮流玩更开心",
+  "spoken_language": "zh-CN",
+  "fixed_characters": ["char_bear"],
+  "beats": [
+    {"kind": "greeting", "text": "小朋友你好，今天我们去玩滑梯！", "emotion": "excited", "transition": "AND"},
+    {"kind": "problem", "text": "大家都想第一个滑，挤在一起谁也滑不了。", "emotion": "anxious", "transition": "BUT"},
+    {"kind": "attempt", "text": "小熊抢着要先滑，结果摔倒了，滑梯也停了。", "emotion": "frustrated", "transition": "THEREFORE"},
+    {"kind": "solution", "text": "小熊排到队尾，一个接一个，大家轮流滑得真开心。", "emotion": "calm", "transition": "THEREFORE"},
+    {"kind": "recap", "text": "轮流玩更开心，我们排队一个接一个。", "emotion": "proud", "transition": "AND"},
+    {"kind": "farewell", "text": "你愿意排队等一等吗？", "emotion": "warm", "transition": null}
+  ]
+}

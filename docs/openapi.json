@@ -3238,6 +3238,408 @@
         }
       }
     },
+    "/api/backlot/runs/{run_id}/shots": {
+      "post": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Upsert Shot",
+        "description": "登记/更新一格分镜。给了 source_path 就自己抽代表帧、实测质量分。",
+        "operationId": "upsert_shot_api_backlot_runs__run_id__shots_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShotRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Upsert Shot Api Backlot Runs  Run Id  Shots Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "List Shots",
+        "description": "联系表数据: 每格的缩略图 / 提示词 / 成本 / 质量分 / 审批状态。",
+        "operationId": "list_shots_api_backlot_runs__run_id__shots_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Shots Api Backlot Runs  Run Id  Shots Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlot/runs/{run_id}/contact-sheet": {
+      "get": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Get Contact Sheet",
+        "description": "审批板: 联系表 PNG + 逐格决策 + 汇总(未批完则 gate=blocked)。",
+        "operationId": "get_contact_sheet_api_backlot_runs__run_id__contact_sheet_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Contact Sheet Api Backlot Runs  Run Id  Contact Sheet Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlot/runs/{run_id}/shots/{scene_id}/decision": {
+      "post": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Decide Shot",
+        "description": "approve / reject 写回状态, 并落一条不可变的 shot_decision 事件。",
+        "operationId": "decide_shot_api_backlot_runs__run_id__shots__scene_id__decision_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "scene_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scene Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShotDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Decide Shot Api Backlot Runs  Run Id  Shots  Scene Id  Decision Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlot/runs/{run_id}/replay": {
+      "get": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Get Replay",
+        "description": "回放清单: 每段时长都由 ffprobe 实测, 没媒体的段落显式记 unmeasured。",
+        "operationId": "get_replay_api_backlot_runs__run_id__replay_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "approved",
+              "title": "Include"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Replay Api Backlot Runs  Run Id  Replay Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlot/runs/{run_id}/replay/render": {
+      "post": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Render Replay",
+        "description": "真 ffmpeg 拼接回放片; 不可渲染时如实返回 ok=False 而不是给占位视频。",
+        "operationId": "render_replay_api_backlot_runs__run_id__replay_render_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "approved",
+              "title": "Include"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Render Replay Api Backlot Runs  Run Id  Replay Render Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlot/media/{run_id}/{name}": {
+      "get": {
+        "tags": [
+          "backlot"
+        ],
+        "summary": "Get Board Media",
+        "description": "板面媒体(缩略图/联络表/回放片)。路径锁死在 backlot 目录内。",
+        "operationId": "get_board_media_api_backlot_media__run_id___name__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/studio/tools": {
       "get": {
         "tags": [
@@ -6732,6 +7134,195 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Task Checkpoint Api Tasks  Task Id  Checkpoint Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/shots/{shot_index}/spec": {
+      "get": {
+        "tags": [
+          "shot-spec"
+        ],
+        "summary": "Get Shot Spec",
+        "description": "读一镜规格;未设置时 ``spec`` 为 null。",
+        "operationId": "get_shot_spec_api_tasks__task_id__shots__shot_index__spec_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "shot_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Shot Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Shot Spec Api Tasks  Task Id  Shots  Shot Index  Spec Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "shot-spec"
+        ],
+        "summary": "Patch Shot Spec",
+        "description": "部分更新一镜规格。只覆盖请求体里显式给出的字段;校验失败 422。",
+        "operationId": "patch_shot_spec_api_tasks__task_id__shots__shot_index__spec_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          },
+          {
+            "name": "shot_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Shot Index"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShotSpecPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Patch Shot Spec Api Tasks  Task Id  Shots  Shot Index  Spec Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tasks/{task_id}/shots/spec": {
+      "put": {
+        "tags": [
+          "shot-spec"
+        ],
+        "summary": "Put Shot Specs",
+        "description": "批量整组替换:逐条校验(任一非法整体 422,不落任何一条),列出的镜号替换,\n未列出的镜号规格清空。",
+        "operationId": "put_shot_specs_api_tasks__task_id__shots_spec_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShotSpecBatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Put Shot Specs Api Tasks  Task Id  Shots Spec Put"
                 }
               }
             }
@@ -14984,6 +15575,215 @@
         }
       }
     },
+    "/api/fx/templates": {
+      "get": {
+        "tags": [
+          "fx"
+        ],
+        "summary": "List Templates",
+        "description": "List FX templates with optional filtering.\n\nReturns:\n    JSON with ``total``, per-category / per-source breakdowns, and the\n    filtered ``templates`` list.",
+        "operationId": "list_templates_api_fx_templates_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category"
+            },
+            "description": "Filter by category"
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source",
+              "title": "Source"
+            },
+            "description": "Filter by source"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Case-insensitive search on id, name_zh, tags",
+              "title": "Q"
+            },
+            "description": "Case-insensitive search on id, name_zh, tags"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fx/templates/{template_id}": {
+      "get": {
+        "tags": [
+          "fx"
+        ],
+        "summary": "Get Template",
+        "description": "Get a single FX template by id (e.g. ``tc:focus-dim-spotlight``).",
+        "operationId": "get_template_api_fx_templates__template_id__get",
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fx/templates/{template_id}/preview": {
+      "get": {
+        "tags": [
+          "fx"
+        ],
+        "summary": "Get Template Preview",
+        "description": "Return the template's preview MP4, or 404 if it has not been rendered.\n\nPreviews are 2s / 540x960 / 30fps files written by ``scripts/fx_preview.py``\ninto ``output/fx_previews/``. A 404 here is honest — no placeholder is served.",
+        "operationId": "get_template_preview_api_fx_templates__template_id__preview_get",
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/fx/templates/{template_id}/thumbnail": {
+      "get": {
+        "tags": [
+          "fx"
+        ],
+        "summary": "Get Template Thumbnail",
+        "description": "Return the template's thumbnail JPG, or 404 if it has not been rendered.",
+        "operationId": "get_template_thumbnail_api_fx_templates__template_id__thumbnail_get",
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/mpt/production": {
       "post": {
         "tags": [
@@ -18234,6 +19034,162 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/api/ops": {
+      "get": {
+        "tags": [
+          "agent-ops"
+        ],
+        "summary": "List Ops",
+        "description": "验收 1：返回 8 个描述符且字段齐全。",
+        "operationId": "list_ops_api_ops_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Ops Api Ops Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ops/{name}": {
+      "post": {
+        "tags": [
+          "agent-ops"
+        ],
+        "summary": "Execute Op",
+        "operationId": "execute_op_api_ops__name__post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "会话模式: read-only | read-write",
+              "default": "read-write",
+              "title": "Mode"
+            },
+            "description": "会话模式: read-only | read-write"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Execute Op Api Ops  Name  Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ops/{name}/confirm": {
+      "post": {
+        "tags": [
+          "agent-ops"
+        ],
+        "summary": "Confirm Proposal",
+        "description": "确认 propose 的本地 stub 提交（零费用、不调云 provider）。\n\n仅 ``canvas.generation.propose`` 的确认路径：把 proposalId 交给既有任务接口\n（``SqliteOperationsStore.create_task`` 即本地 stub provider 落库），验证可提交。",
+        "operationId": "confirm_proposal_api_ops__name__confirm_post",
+        "deprecated": true,
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Proposal Api Ops  Name  Confirm Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/freezone/graphs": {
@@ -22037,6 +22993,40 @@
         },
         "type": "object",
         "title": "ExecuteGraphRequest"
+      },
+      "ExecuteRequest": {
+        "properties": {
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "opId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opid"
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          }
+        },
+        "type": "object",
+        "title": "ExecuteRequest",
+        "description": "操作执行请求体。写操作需 ``expectedRevision``(CAS) + ``opId``(幂等)。"
       },
       "ExplainerAssemblyAccepted": {
         "properties": {
@@ -25882,6 +26872,25 @@
         "type": "object",
         "title": "RunBody"
       },
+      "SFXCue": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "offset": {
+            "type": "number",
+            "title": "Offset",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "SFXCue",
+        "description": "一条音效提示:音效 id + 相对本镜起点的偏移秒数。"
+      },
       "SampleBody": {
         "properties": {
           "raw_response": {
@@ -26821,6 +27830,29 @@
         "title": "ShotBlocking",
         "description": "占位/走位——这镜头里这个角色站哪、朝向哪(§2 ④ 的\"占位\"字段,机位驱动渲染用)。"
       },
+      "ShotDecisionRequest": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "title": "Decision"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "default": ""
+          },
+          "reviewer": {
+            "type": "string",
+            "title": "Reviewer",
+            "default": "anonymous"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "ShotDecisionRequest"
+      },
       "ShotList": {
         "properties": {
           "shots": {
@@ -27037,6 +28069,290 @@
           "scene_no"
         ],
         "title": "ShotListItem"
+      },
+      "ShotRequest": {
+        "properties": {
+          "scene_id": {
+            "type": "string",
+            "title": "Scene Id"
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "default": 0
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": ""
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path",
+            "default": ""
+          },
+          "duration_s": {
+            "type": "number",
+            "title": "Duration S",
+            "default": 0.0
+          },
+          "cost_usd": {
+            "type": "number",
+            "title": "Cost Usd",
+            "default": 0.0
+          },
+          "declared_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Score"
+          },
+          "measure": {
+            "type": "boolean",
+            "title": "Measure",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "scene_id"
+        ],
+        "title": "ShotRequest"
+      },
+      "ShotSpec": {
+        "properties": {
+          "template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template"
+          },
+          "transition_in": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition In"
+          },
+          "effect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "sfx": {
+            "items": {
+              "$ref": "#/components/schemas/SFXCue"
+            },
+            "type": "array",
+            "title": "Sfx"
+          },
+          "camera": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Camera"
+          },
+          "subtitle_style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Style"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          }
+        },
+        "type": "object",
+        "title": "ShotSpec",
+        "description": "单镜规格。所有字段可选;未知取值由校验器拒绝(→ 422)。"
+      },
+      "ShotSpecBatch": {
+        "properties": {
+          "specs": {
+            "items": {
+              "$ref": "#/components/schemas/ShotSpecEntry"
+            },
+            "type": "array",
+            "title": "Specs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "specs"
+        ],
+        "title": "ShotSpecBatch",
+        "description": "PUT 请求体:整组规格。列出的镜号按 spec 替换,未列出的镜号清空规格。"
+      },
+      "ShotSpecEntry": {
+        "properties": {
+          "shot_index": {
+            "type": "integer",
+            "title": "Shot Index"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/ShotSpec"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shot_index",
+          "spec"
+        ],
+        "title": "ShotSpecEntry",
+        "description": "批量里的单条:镜号 + 完整规格。"
+      },
+      "ShotSpecPatch": {
+        "properties": {
+          "template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template"
+          },
+          "transition_in": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transition In"
+          },
+          "effect": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effect"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style"
+          },
+          "sfx": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SFXCue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sfx"
+          },
+          "camera": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Camera"
+          },
+          "subtitle_style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Style"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ShotSpecPatch",
+        "description": "PATCH 请求体:全部字段可选。只更新显式给出的键(``exclude_unset``)。\n\n这里不做逐字段校验——单字段单独看未必合法(如只改 ``sfx`` 而 duration 由旧值\n提供),校验放到合并后的完整规格上做。"
       },
       "Sightline": {
         "properties": {

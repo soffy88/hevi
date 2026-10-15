@@ -1,0 +1,151 @@
+/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+  from starlette.testclient import TestClient as TestClient  # noqa
+[10/15/26 04:35:54] INFO     HTTP Request: GET                   _client.py:1025
+                             http://testserver/api/ops "HTTP/1.1                
+                             200 OK"                                            
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             t "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 200 OK"                 
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 200 OK"                 
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 200 OK"                 
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             t "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 409                     
+                             Conflict"                                          
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             t "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 400 Bad                 
+                             Request"                                           
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             t "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 409                     
+                             Conflict"                                          
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             t "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append?mode=read-only                    
+                             "HTTP/1.1 403 Forbidden"                           
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             t "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             neration.propose "HTTP/1.1 200 OK"                 
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             neration.propose/confirm "HTTP/1.1                 
+                             200 OK"                                            
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 422                     
+                             Unprocessable Entity"                              
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 422                     
+                             Unprocessable Entity"                              
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.append "HTTP/1.1 422                     
+                             Unprocessable Entity"                              
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.ge                
+                             t "HTTP/1.1 200 OK"                                
+                    INFO     HTTP Request: POST                  _client.py:1025
+                             http://testserver/api/ops/canvas.sc                
+                             ript.rows.update "HTTP/1.1 422                     
+                             Unprocessable Entity"                              
+{
+ "1": {
+  "status": 200,
+  "count": 8,
+  "all_fields": true,
+  "readonly": [
+   "asset.list",
+   "canvas.generation.propose",
+   "canvas.get",
+   "task.get"
+  ],
+  "pass_": true
+ },
+ "2": {
+  "delta": 1,
+  "replayed": true,
+  "receipt_equal": true,
+  "conflict_status": 409,
+  "rows_after_conflict": 1,
+  "no_opid_status": 400,
+  "no_opid_row_added": 0,
+  "pass_": true,
+  "opid_required": true
+ },
+ "3": {
+  "status": 409,
+  "unchanged": true,
+  "pass_": true
+ },
+ "4": {
+  "status": 403,
+  "error": "scope_denied",
+  "unchanged": true,
+  "pass_": true
+ },
+ "5": {
+  "propose_status": 200,
+  "keys": [
+   "graph_id",
+   "operation",
+   "proposalId"
+  ],
+  "agent_tasks_delta_propose": 0,
+  "provider_calls": [],
+  "confirm_status": 200,
+  "confirm": {
+   "task_id": "ad1ea46a860b4a4b992078c2dbfdf977",
+   "status": "submitted",
+   "provider": "local_stub",
+   "cost_usd": 0.0
+  },
+  "agent_tasks_delta_confirm": 1,
+  "note": "confirm creates task via TaskRepository / local stub; propose leaves task repository unchanged"
+ },
+ "6": {
+  "results": [
+   [
+    422,
+    "{'detail': {'error': 'invalid_request', 'detail': \"1 validation error for ShotSpec\\ntemplate\\n  Value error, unknown template id 'no_such_tpl' (not in FX registry) [type=value_error, input_value='no_such_tpl', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.13/v/valu"
+   ],
+   [
+    422,
+    "{'detail': {'error': 'invalid_request', 'detail': \"1 validation error for ShotSpec\\ntransition_in\\n  Value error, unknown transition id 'no_such_tr' (not in xfade registry) [type=value_error, input_value='no_such_tr', input_type=str]\\n    For further information visit https://errors.pydantic.dev/2.1"
+   ],
+   [
+    422,
+    "{'detail': {'error': 'invalid_request', 'detail': \"1 validation error for ShotSpec\\n  Value error, unknown sfx id 'no_such_sfx' (not in sfx manifest/registry) [type=value_error, input_value={'sfx': [{'id': 'no_such_sfx'}]}, input_type=dict]\\n    For further information visit https://errors.pydantic."
+   ]
+  ],
+  "update_status": 422,
+  "unchanged": true,
+  "direct_validator": "1 validation error for ShotSpec\ntransition_in\n  Value error, unknown transition id 'no_such_tr' (not in xfade registry) [type=value_error, input_value='no_such_tr', input_type=str]\n    For further inf",
+  "pass_": true
+ },
+ "regression_openshorts_mounted": false,
+ "network_attempts": []
+}

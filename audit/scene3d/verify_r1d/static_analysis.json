@@ -1,0 +1,296 @@
+{
+ "star_sea": {
+  "9x16": {
+   "1.3": {
+    "path": "output/scene3d_r1d/star_sea_9x16/frames/frame_00040.png",
+    "shape": [
+     1920,
+     1080
+    ],
+    "star_like": 591,
+    "big_blobs(planets)": 0,
+    "total_components": 1161,
+    "max_delta": 0.516
+   },
+   "6.5": {
+    "path": "output/scene3d_r1d/star_sea_9x16/frames/frame_00196.png",
+    "shape": [
+     1920,
+     1080
+    ],
+    "star_like": 348,
+    "big_blobs(planets)": 0,
+    "total_components": 784,
+    "max_delta": 0.504
+   },
+   "11.7": {
+    "path": "output/scene3d_r1d/star_sea_9x16/frames/frame_00352.png",
+    "shape": [
+     1920,
+     1080
+    ],
+    "star_like": 160,
+    "big_blobs(planets)": 0,
+    "total_components": 458,
+    "max_delta": 0.492
+   },
+   "mask_iou_t1.3_vs_t6.5": 0.0,
+   "bright_px_t1.3": 4075,
+   "bright_px_t6.5": 2361
+  },
+  "16x9": {
+   "1.3": {
+    "path": "output/scene3d_r1d/star_sea_16x9/frames/frame_00040.png",
+    "shape": [
+     1080,
+     1920
+    ],
+    "star_like": 304,
+    "big_blobs(planets)": 0,
+    "total_components": 1079,
+    "max_delta": 0.481
+   },
+   "6.5": {
+    "path": "output/scene3d_r1d/star_sea_16x9/frames/frame_00196.png",
+    "shape": [
+     1080,
+     1920
+    ],
+    "star_like": 256,
+    "big_blobs(planets)": 0,
+    "total_components": 980,
+    "max_delta": 0.481
+   },
+   "11.7": {
+    "path": "output/scene3d_r1d/star_sea_16x9/frames/frame_00352.png",
+    "shape": [
+     1080,
+     1920
+    ],
+    "star_like": 216,
+    "big_blobs(planets)": 0,
+    "total_components": 816,
+    "max_delta": 0.503
+   },
+   "mask_iou_t1.3_vs_t6.5": 0.0,
+   "bright_px_t1.3": 2653,
+   "bright_px_t6.5": 2221
+  }
+ },
+ "fox_wheat": {
+  "9x16": {
+   "1.2": {
+    "path": "output/scene3d_r1d/fox_wheat_9x16/frames/frame_00037.png",
+    "forehead": {
+     "rgb": [
+      240,
+      115,
+      41
+     ],
+     "hue": 21.2,
+     "sat": 0.827
+    },
+    "wheat": {
+     "rgb": [
+      210,
+      182,
+      108
+     ],
+     "hue": 42.4,
+     "sat": 0.482
+    },
+    "sky": {
+     "rgb": [
+      159,
+      194,
+      219
+     ],
+     "hue": 204.7,
+     "sat": 0.27
+    },
+    "orange_px_center": 69875,
+    "orange_hue_median": 21.2,
+    "orange_sat_mean": 0.801,
+    "top_sky_sat_mean": 0.27,
+    "top_sky_hue_median": 204.7
+   },
+   "6.0": {
+    "path": "output/scene3d_r1d/fox_wheat_9x16/frames/frame_00181.png",
+    "forehead": {
+     "rgb": [
+      240,
+      115,
+      41
+     ],
+     "hue": 21.2,
+     "sat": 0.827
+    },
+    "wheat": {
+     "rgb": [
+      210,
+      182,
+      107
+     ],
+     "hue": 42.4,
+     "sat": 0.49
+    },
+    "sky": {
+     "rgb": [
+      162,
+      195,
+      219
+     ],
+     "hue": 204.7,
+     "sat": 0.259
+    },
+    "orange_px_center": 73198,
+    "orange_hue_median": 21.2,
+    "orange_sat_mean": 0.805,
+    "top_sky_sat_mean": 0.261,
+    "top_sky_hue_median": 204.7
+   },
+   "10.8": {
+    "path": "output/scene3d_r1d/fox_wheat_9x16/frames/frame_00325.png",
+    "forehead": {
+     "rgb": [
+      240,
+      115,
+      41
+     ],
+     "hue": 21.2,
+     "sat": 0.827
+    },
+    "wheat": {
+     "rgb": [
+      210,
+      182,
+      108
+     ],
+     "hue": 42.4,
+     "sat": 0.482
+    },
+    "sky": {
+     "rgb": [
+      159,
+      194,
+      219
+     ],
+     "hue": 204.7,
+     "sat": 0.27
+    },
+    "orange_px_center": 66400,
+    "orange_hue_median": 21.2,
+    "orange_sat_mean": 0.806,
+    "top_sky_sat_mean": 0.27,
+    "top_sky_hue_median": 204.7
+   }
+  },
+  "16x9": {
+   "1.2": {
+    "path": "output/scene3d_r1d/fox_wheat_16x9/frames/frame_00037.png",
+    "forehead": {
+     "rgb": [
+      240,
+      115,
+      41
+     ],
+     "hue": 21.2,
+     "sat": 0.827
+    },
+    "wheat": {
+     "rgb": [
+      201,
+      179,
+      112
+     ],
+     "hue": 42.4,
+     "sat": 0.436
+    },
+    "sky": {
+     "rgb": [
+      164,
+      197,
+      219
+     ],
+     "hue": 203.3,
+     "sat": 0.251
+    },
+    "orange_px_center": 39665,
+    "orange_hue_median": 21.2,
+    "orange_sat_mean": 0.802,
+    "top_sky_sat_mean": 0.257,
+    "top_sky_hue_median": 203.3
+   },
+   "6.0": {
+    "path": "output/scene3d_r1d/fox_wheat_16x9/frames/frame_00181.png",
+    "forehead": {
+     "rgb": [
+      240,
+      115,
+      41
+     ],
+     "hue": 21.2,
+     "sat": 0.827
+    },
+    "wheat": {
+     "rgb": [
+      211,
+      182,
+      107
+     ],
+     "hue": 42.4,
+     "sat": 0.49
+    },
+    "sky": {
+     "rgb": [
+      167,
+      198,
+      220
+     ],
+     "hue": 204.7,
+     "sat": 0.239
+    },
+    "orange_px_center": 43107,
+    "orange_hue_median": 21.2,
+    "orange_sat_mean": 0.804,
+    "top_sky_sat_mean": 0.317,
+    "top_sky_hue_median": 203.3
+   },
+   "10.8": {
+    "path": "output/scene3d_r1d/fox_wheat_16x9/frames/frame_00325.png",
+    "forehead": {
+     "rgb": [
+      240,
+      115,
+      41
+     ],
+     "hue": 21.2,
+     "sat": 0.827
+    },
+    "wheat": {
+     "rgb": [
+      211,
+      182,
+      107
+     ],
+     "hue": 42.4,
+     "sat": 0.49
+    },
+    "sky": {
+     "rgb": [
+      164,
+      197,
+      219
+     ],
+     "hue": 203.3,
+     "sat": 0.251
+    },
+    "orange_px_center": 38478,
+    "orange_hue_median": 21.2,
+    "orange_sat_mean": 0.805,
+    "top_sky_sat_mean": 0.259,
+    "top_sky_hue_median": 203.3
+   }
+  }
+ }
+}

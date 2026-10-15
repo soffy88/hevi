@@ -66,9 +66,12 @@ def detect_hyperframes_bin() -> str | None:
         if path.exists():
             return configured
     for name in ("hyperframes", "hf"):
-        found = shutil.which(name)
+        found = shutil.which(name) or shutil.which(name, path=f"/home/soffy/.nvm/versions/node/v26.4.0/bin:{os.environ.get('PATH','')}")
         if found:
             return found
+    cand = Path("/home/soffy/.nvm/versions/node/v26.4.0/bin/hyperframes")
+    if cand.is_file():
+        return str(cand)
     return None
 
 
@@ -177,6 +180,54 @@ async def hyperframes_generate(
     payload.setdefault("width", width or 1920)
     payload.setdefault("height", height or 1080)
     payload.setdefault("fps", fps)
+
+    kind = payload.get("kind") or kwargs.get("kind")
+    if kind == "kinetic_typography":
+        from hevi.providers.hyperframes.kinetic import render_kinetic_typography
+
+        lines = payload.get("lines")
+        if not lines:
+            # 没给 lines 时从 prompt/topic 文本切句生成（不使用任何内置文案）
+            import re as _re
+
+            src = str(payload.get("script") or payload.get("text") or payload.get("topic") or "").strip()
+            clauses = [c.strip() for c in _re.split(r"[。！？!?\n]+", src) if c.strip()]
+            lines = []
+            for c in clauses[:8]:
+                head, _, tail = c.partition("，")
+                lines.append((head, tail, ""))
+        if not lines:
+            raise HyperframesRenderError("kinetic_typography 需要 lines 或 prompt 文本")
+        return await asyncio.to_thread(
+            render_kinetic_typography,
+            output_path=outp,
+            title=str(payload.get("title") or payload.get("topic") or ""),
+            lines=[tuple(x) if not isinstance(x, str) else (x, "", "") for x in lines],
+            aspect_ratio=str(payload.get("aspect_ratio") or "16:9"),
+            width=width,
+            height=height,
+            fps=fps,
+            with_audio=payload.get("with_audio", True),
+            product_image=payload.get("image_path") or payload.get("product_image"),
+        )
+    if kind == "product_promo":
+        from hevi.providers.hyperframes.kinetic import render_product_promo
+
+        name = str(payload.get("product_name") or "").strip()
+        highlights = payload.get("highlights") or []
+        if not name or not highlights:
+            raise HyperframesRenderError("product_promo 需要 product_name 与 highlights（不提供默认卖点）")
+        return await asyncio.to_thread(
+            render_product_promo,
+            output_path=outp,
+            product_name=name,
+            slogan=str(payload.get("slogan") or ""),
+            highlights=highlights,
+            cta=str(payload.get("cta") or ""),
+            product_image=payload.get("product_image") or payload.get("image_path"),
+            aspect_ratio=str(payload.get("aspect_ratio") or "16:9"),
+            fps=fps,
+        )
     try:
         comp = compile_composition(payload)
     except Exception as exc:
@@ -212,6 +263,64 @@ async def hyperframes_generate(
     return outp
 
 
+
+HYPERFRAMES_STYLED_CAPABILITY = {
+    "id": "hyperframes_styled",
+    "capabilities": ["t2v", "styled_explainer", "zh_prompt"],
+    "prompt_language": "zh",
+    "max_duration_sec": 90,
+    "resolution": ["1080"],
+    "ref_image": False,
+    "cost_per_sec": 0,
+    "health": "local_cli",
+    "entrypoint": "hyperframes_styled",
+    "vram_profile": "cpu",
+    "notes": "Lanshu styled explainer wrapper.",
+}
+
+async def hyperframes_styled_generate(*, prompt="", output_path, config=None, **kwargs):
+    """Render one lanshu style from a locally voiced story.
+
+    ``prompt`` may be a topic string or a dict with ``topic`` / ``script_lines``.
+    ``config`` selects the style and the story directory:
+
+        {"style": "v8-chalkboard", "story_dir": "third_party/lanshu_explainer/stories/kv-cache"}
+
+    The film itself is the upstream MIT reference film (real performed beats)
+    for that style; the story is synced and voiced locally (piper + whisper).
+    """
+    from hevi.providers.hyperframes import styled as _styled
+
+    cfg = dict(config or {})
+    style = str(cfg.get("style") or "v8-chalkboard")
+    if style not in _styled.STYLES:
+        raise HyperframesRenderError(f"unknown styled explainer style: {style!r}")
+
+    story_dir = cfg.get("story_dir")
+    if story_dir is None:
+        raise HyperframesRenderError(
+            "hyperframes_styled requires config['story_dir'] (a folder with story.json + audio/narration.wav); "
+            "build it with third_party/lanshu_explainer/tools/story.py"
+        )
+    story_dir = Path(story_dir)
+    if not story_dir.is_absolute():
+        story_dir = _styled.repo_root() / story_dir
+    if not (story_dir / "story.json").is_file():
+        raise HyperframesRenderError(f"no story.json in {story_dir}")
+
+    fps = int(cfg.get("fps") or 30)
+    quality = str(cfg.get("quality") or "looks")
+    timeout_s = float(cfg.get("timeout_s") or kwargs.get("timeout_s") or 1800.0)
+    return await _styled.render_styled_film(
+        style=style,
+        output_path=output_path,
+        story_dir=story_dir,
+        fps=fps,
+        quality=quality,
+        timeout_s=timeout_s,
+    )
+
 def register_hyperframes() -> None:
     ProviderRegistry.register("video", "hyperframes", hyperframes_generate, replace=True)
+    ProviderRegistry.register("video", "hyperframes_styled", hyperframes_styled_generate, replace=True)
     logger.info("Registered video: hyperframes (HTML composition + ffmpeg fallback)")

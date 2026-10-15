@@ -5,3 +5,8 @@ dist
 
 # Ignore the output video from Git but not videos you import into src/.
 out
+
+# Runtime-generated render inputs (written by hevi/explainer/render.py and
+# hevi/layer4_legacy/talkcraft/omodul_impl/produce.py at render time).
+# Never commit: these are per-job artifacts.
+public/runs/

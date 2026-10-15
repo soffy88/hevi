@@ -1,0 +1,54 @@
+{
+  "status": "FAIL",
+  "findings": [
+    {
+      "rule": "R1_LOG_LINE",
+      "severity": "PASS",
+      "message": "logline 存在且格式合理",
+      "location": "logline"
+    },
+    {
+      "rule": "R2_SIX_BEATS",
+      "severity": "PASS",
+      "message": "6 节拍齐全且顺序正确",
+      "location": "beats"
+    },
+    {
+      "rule": "R3_CAUSAL_RATIO",
+      "severity": "PASS",
+      "message": "THEREFORE/BUT 因果转场比 0.60（要求 ≥0.30，3/5）",
+      "location": "beats[transition]"
+    },
+    {
+      "rule": "R4_ADJACENT_EMOTION",
+      "severity": "FAIL",
+      "message": "相邻节拍情绪重复：第 1 与第 2 拍均为「happy」",
+      "location": "beats[0..1].emotion"
+    },
+    {
+      "rule": "R5_SINGLE_THEME",
+      "severity": "PASS",
+      "message": "主题明确：好朋友一起玩",
+      "location": "theme"
+    },
+    {
+      "rule": "R6_FIXED_CHARACTER",
+      "severity": "PASS",
+      "message": "固定 IP 角色 1 个：['char_bear']",
+      "location": "fixed_characters"
+    },
+    {
+      "rule": "R7_SPOKEN_LANGUAGE",
+      "severity": "PASS",
+      "message": "口语语言已锁定：zh-CN",
+      "location": "spoken_language"
+    }
+  ],
+  "metrics": {
+    "beat_count": 6,
+    "causal_ratio": 0.6,
+    "theme": "好朋友一起玩",
+    "fixed_character_count": 1,
+    "spoken_language": "zh-CN"
+  }
+}

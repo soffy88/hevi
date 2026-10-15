@@ -25,7 +25,7 @@ async def stage_intake(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
 
 async def stage_research(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
     result = await invoke_tool(
-        "research.brief" if data.get("caller") else "research.plan",
+        "research.brief",
         {
             "topic": data.get("topic"),
             "angles": data.get("angles"),

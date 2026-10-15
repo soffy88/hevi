@@ -101,13 +101,60 @@ def test_to_english_fallback_on_unavailable(monkeypatch):
     assert _to_english("洞内火光") == "洞内火光"
 
 
-def test_add_local_video_reindexes(tmp_path: Path):
-
-    # 造一个最小可被 ffmpeg 抽帧的素材太贵 —— 验证文件复制 + 元数据(嵌入失败降级)
+def test_add_local_video_rejects_truncated_file(tmp_path: Path):
+    """假字节/截断文件不得收录（防止空壳 mp4 以零向量混入语料）。"""
     c = Corpus(root=tmp_path)
     src = tmp_path / "src.mp4"
     src.write_bytes(b"fake-video-bytes")
+    with pytest.raises(ValueError):
+        c.add_local_video(src, title="T", query="q")
+    assert c._embeddings == [] or len(c._embeddings) == 0
+
+
+def test_add_local_video_indexes_real_clip(tmp_path: Path):
+    import shutil as _sh
+    import subprocess as _sp
+
+    ff = _sh.which("ffmpeg") or "/home/soffy/.local/bin/ffmpeg"
+    if not Path(ff).exists() and not _sh.which("ffmpeg"):
+        pytest.skip("ffmpeg not available")
+    src = tmp_path / "real.mp4"
+    _sp.run([ff, "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=6",
+             "-pix_fmt", "yuv420p", str(src)], check=True)
+    c = Corpus(root=tmp_path)
     rec = c.add_local_video(src, title="T", query="q")
     assert rec.clip_id.startswith("local_")
     assert (tmp_path / rec.local_path).exists()
-    assert len(c._embeddings) == 1  # 嵌入失败 → 零向量,但收录成功
+    assert len(c._embeddings) == 1
+
+
+def test_best_for_slot_deduplication_and_min_score(tmp_path: Path):
+    c = Corpus(root=tmp_path)
+    (tmp_path / "clips").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "clips" / "f1.mp4").write_bytes(b"1")
+    (tmp_path / "clips" / "f2.mp4").write_bytes(b"2")
+
+    r1 = ClipRecord(clip_id="c1", source="local", source_id="1", source_url="", local_path="clips/f1.mp4", degraded=False)
+    r2 = ClipRecord(clip_id="c2", source="local", source_id="2", source_url="", local_path="clips/f2.mp4", degraded=False)
+    c.records = [r1, r2]
+
+    # Mock embeddings: c1 has 0.9 similarity, c2 has 0.7 similarity
+    e1 = [1.0] + [0.0] * 511
+    e2 = [0.8] + [0.6] + [0.0] * 510
+    c._embeddings = [e1, e2]
+    c._text_emb = lambda q: [1.0] + [0.0] * 511
+
+    # First hit should be c1
+    hit1 = c.best_for_slot("query", min_score=0.5, exclude_clip_ids=set())
+    assert hit1 is not None
+    assert hit1["clip_id"] == "c1"
+
+    # With c1 excluded, should pick c2
+    hit2 = c.best_for_slot("query", min_score=0.5, exclude_clip_ids={"c1"})
+    assert hit2 is not None
+    assert hit2["clip_id"] == "c2"
+
+    # With high min_score, should return None when excluded
+    hit3 = c.best_for_slot("query", min_score=0.95, exclude_clip_ids={"c1"})
+    assert hit3 is None
+

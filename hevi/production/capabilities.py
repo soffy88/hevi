@@ -81,6 +81,13 @@ def _talkcraft_ready() -> bool:
 
 
 _CATALOG: dict[str, CapabilityDescriptor] = {
+    "quote_image": CapabilityDescriptor(
+        "quote_image",
+        "字幕金句长图",
+        ("/api/quoteimage/run",),
+        True,
+        "为成片或本地视频生成带有字幕金句的 3:4 长图。",
+    ),
     "longvideo": CapabilityDescriptor(
         "longvideo",
         "统一长视频生产",
@@ -111,6 +118,23 @@ _CATALOG: dict[str, CapabilityDescriptor] = {
         if _talkcraft_ready()
         else "talkcraft 本地依赖未就绪（Remotion 子工程 / Piper / Whisper 模型）。",
         None if _talkcraft_ready() else "在 hevi-remotion-talkcraft 执行 npm ci，并配置 HEVI_TALKCRAFT_PIPER / VOICES / WHISPER。",
+    ),
+    "whiteboard_explainer": CapabilityDescriptor(
+        "whiteboard_explainer",
+        "白板手绘解说（whiteboard）",
+        ("/api/explainer/run",),
+        _talkcraft_ready(),
+        "手绘白板逐笔动画，CPU 本地渲染，零付费调用；explainer 以 renderer=whiteboard 调用。"
+        if _talkcraft_ready()
+        else "whiteboard 本地依赖未就绪（Playwright 运行时 / Piper / Whisper 模型）。",
+        None if _talkcraft_ready() else "配置 HEVI_TALKCRAFT_PIPER / VOICES / WHISPER 及 hevi-remotion-whiteboard 依赖。",
+    ),
+    "artmotion_explainer": CapabilityDescriptor(
+        "artmotion_explainer",
+        "艺术史速通风格解说动画",
+        ("/api/explainer/run",),
+        True,
+        "支持 35 种艺术风格 + 9 种解说动画语法，纯代码绘制；explainer 以 renderer=artmotion 调用。",
     ),
     "tongjian": CapabilityDescriptor(
         "tongjian",

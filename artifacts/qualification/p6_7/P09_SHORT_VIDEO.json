@@ -26,10 +26,7 @@
   "product_type": "P10_SHORT_FORM",
   "profile": "P09_SHORT_VIDEO",
   "provider": {
-    "credentials_present": [
-      "OPENAI_API_KEY",
-      "DASHSCOPE_API_KEY"
-    ],
+    "credentials_present": [],
     "gpu_available": false,
     "mock_used": false,
     "real_render_qualification": "BLOCKED_BY_PROVIDER",

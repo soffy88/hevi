@@ -1,0 +1,6 @@
+{'sample': 'windmill_16_9', 'frames': 120, 'size': [1080, 1920], 'fg_frac': 0.26, 'fg_frac_excl_top220': 0.227, 'meanΔ_0_mid': 0.616, 'px_moved_0_mid(>12)': 12741, 'meanΔ_mid_end': 0.616}
+{'sample': 'windmill_9_16', 'frames': 120, 'size': [1920, 1080], 'fg_frac': 0.796, 'fg_frac_excl_top220': 0.787, 'meanΔ_0_mid': 0.381, 'px_moved_0_mid(>12)': 6997, 'meanΔ_mid_end': 0.381}
+{'sample': 'waterwheel_16_9', 'frames': 120, 'size': [1080, 1920], 'fg_frac': 0.15, 'fg_frac_excl_top220': 0.155, 'meanΔ_0_mid': 1.149, 'px_moved_0_mid(>12)': 21669, 'meanΔ_mid_end': 1.149}
+{'sample': 'soap_pump_16_9', 'frames': 120, 'size': [1080, 1920], 'fg_frac': 0.352, 'fg_frac_excl_top220': 0.364, 'meanΔ_0_mid': 0.042, 'px_moved_0_mid(>12)': 1793, 'meanΔ_mid_end': 0.042}
+{'sample': 'soap_pump_9_16', 'frames': 120, 'size': [1920, 1080], 'fg_frac': 0.918, 'fg_frac_excl_top220': 0.953, 'meanΔ_0_mid': 0.056, 'px_moved_0_mid(>12)': 2756, 'meanΔ_mid_end': 0.056}
+{'sample': 'clock_gear_16_9', 'frames': 120, 'size': [1080, 1920], 'fg_frac': 0.229, 'fg_frac_excl_top220': 0.255, 'meanΔ_0_mid': 1.648, 'px_moved_0_mid(>12)': 33260, 'meanΔ_mid_end': 1.648}

@@ -89,4 +89,26 @@ async def run_longvideo_composer(
     )
     cleaned = sanitize_input_data(dict(input_data), user_id=user_id)
     out: Any = await engine.run(input_data=cleaned, output_dir=output_dir, on_step=on_step)
-    return out if isinstance(out, dict) else {"results": out}
+    result = out if isinstance(out, dict) else {"results": out}
+
+    if config and config.get("enable_quote_image"):
+        from hevi.quoteimage.adapter import render_quote_image
+        from pathlib import Path
+
+        video_path = None
+        if "video_path" in result:
+            video_path = result["video_path"]
+        elif result.get("results") and isinstance(result["results"], list) and "video_path" in result["results"][-1]:
+            video_path = result["results"][-1]["video_path"]
+        
+        if video_path and Path(video_path).exists():
+            qi_out = Path(output_dir) / "quote_image" if output_dir else Path(video_path).parent / "quote_image"
+            qi_res = await render_quote_image(
+                video_path=video_path,
+                mode=config.get("quote_image_mode", "script"),
+                strategy=config.get("quote_image_strategy", "auto"),
+                output_dir=qi_out
+            )
+            result["quote_image"] = qi_res
+
+    return result

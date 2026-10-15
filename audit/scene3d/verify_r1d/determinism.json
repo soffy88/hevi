@@ -1,0 +1,15 @@
+{
+ "clip": "star_sea_9x16",
+ "resolution": "1080x1920",
+ "render_s": 224.6,
+ "verifier_sha256": "0d3ee86bb4bd97c9f4f1b8eb7b9fc3c1d62ab8973f68808498e507a89ae981b9",
+ "shipped_sha256": "0d3ee86bb4bd97c9f4f1b8eb7b9fc3c1d62ab8973f68808498e507a89ae981b9",
+ "match": true,
+ "ffprobe": {
+  "nb_read_frames": 390,
+  "duration": 13.0,
+  "width": 1080,
+  "height": 1920,
+  "r_frame_rate": "30/1"
+ }
+}

@@ -74,6 +74,8 @@ data/explainer_cache/
 .claude/
 data/workspace/
 data/hevi_tasks.db
+data/agent_ops.db
+data/agent_ops/
 data/lite_runs/
 *.deb
 data/cinematic_output/
@@ -99,3 +101,5 @@ artifacts/real_video/*/work/
 artifacts/real_video/*/artifacts/*_finecut.mp4
 artifacts/real_video/*/artifacts/scene_*.mp4
 artifacts/real_video/*/final/concat.txt
+.venv-scene3d/
+output/

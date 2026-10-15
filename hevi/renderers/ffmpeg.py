@@ -44,8 +44,39 @@ def plan_requires_semantic_motion(plan: RenderPlan) -> list[str]:
     return sorted(set(plan.motion_purposes) & _SEMANTIC_MOTION_PURPOSES)
 
 
+_FALLBACK_DIRS = ("/usr/local/bin", "/home/soffy/.local/bin", "/usr/bin", "/bin")
+
+
+def resolve_ffmpeg_bin() -> str:
+    env = os.getenv("FFMPEG_BIN")
+    if env and shutil.which(env):
+        return env
+    p = shutil.which("ffmpeg")
+    if p:
+        return p
+    for d in _FALLBACK_DIRS:
+        cand = Path(d).expanduser() / "ffmpeg"
+        if cand.is_file():
+            return str(cand)
+    return "ffmpeg"
+
+
+def resolve_ffprobe_bin() -> str:
+    env = os.getenv("FFPROBE_BIN")
+    if env and shutil.which(env):
+        return env
+    p = shutil.which("ffprobe")
+    if p:
+        return p
+    for d in _FALLBACK_DIRS:
+        cand = Path(d).expanduser() / "ffprobe"
+        if cand.is_file():
+            return str(cand)
+    return "ffprobe"
+
+
 def _ffmpeg() -> str:
-    return os.getenv("FFMPEG_BIN", "ffmpeg")
+    return resolve_ffmpeg_bin()
 
 
 class FfmpegRenderer(RendererBackend):

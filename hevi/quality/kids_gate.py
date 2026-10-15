@@ -20,11 +20,95 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-FORBIDDEN_WORDS = [
-    "打", "杀", "死", "刀", "枪", "血",
-    "恐吓", "吓唬", "笨", "蠢", "丑", "废物",
-    "玩火", "爬窗", "独自外出", "可口可乐", "麦当劳", "nike"
-]
+def load_safety_rules() -> dict[str, Any]:
+    try:
+        path = Path(__file__).parent.parent / "kids" / "data" / "kids_safety_rules.json"
+        if not path.exists():
+            path = Path("hevi/kids/data/kids_safety_rules.json")
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {"whitelist": [], "categories": {}, "negative_modifiers": ["不", "没", "别", "不要", "不能"]}
+
+
+def _load_forbidden_words_flat() -> list[str]:
+    rules = load_safety_rules()
+    words = []
+    for cat, plist in rules.get("categories", {}).items():
+        words.extend(plist)
+    if not words:
+        words = ["杀", "死", "毒药", "炸弹"]
+    return words
+
+
+FORBIDDEN_WORDS = _load_forbidden_words_flat()
+
+
+# Characters that separate clauses. A negation marker separated from a
+# candidate violation by any of these does NOT excuse it (R4/H3).
+_CLAUSE_BREAKS = frozenset("，。！？；、,.!?;…\n\r\t “”‘’（）()【】\u3000")
+
+# Max number of characters allowed between a negation marker and the word it
+# negates. "不可以下毒" / "不打人" -> 0; "不吃药，…毒药" -> too far (R4/H3).
+_NEG_GAP = 2
+
+
+def _is_negated(text: str, phrase_start: int, neg_mods: list[str]) -> bool:
+    """True only if a negation marker immediately precedes the violation.
+
+    R4/H3: negation must directly modify the forbidden word. A negation that is
+    far away or in a previous clause must not excuse the violation.
+    """
+    for neg in neg_mods:
+        if not neg:
+            continue
+        start = 0
+        while True:
+            p = text.find(neg, start)
+            if p == -1:
+                break
+            end = p + len(neg)
+            gap = phrase_start - end
+            if 0 <= gap <= _NEG_GAP:
+                between = text[end:phrase_start]
+                if not any(c in _CLAUSE_BREAKS for c in between):
+                    return True
+            start = p + 1
+    return False
+
+
+def check_content_safety_text(text: str) -> list[str]:
+    rules = load_safety_rules()
+    whitelist = rules.get("whitelist", [])
+    categories = rules.get("categories", {})
+    neg_mods = rules.get("negative_modifiers", ["不", "没", "别", "不要", "不能"])
+
+    # R4/H1: mask whitelisted compounds (longest first) so a benign word such
+    # as "一刀切菜" / "浇浇水" cannot trip a bare single-character rule.
+    masked = text
+    for w in sorted(whitelist, key=len, reverse=True):
+        if w and w in masked:
+            masked = masked.replace(w, "\u3000" * len(w))
+
+    found_violations = []
+
+    for _cat_name, phrases in categories.items():
+        for phrase in phrases:
+            if not phrase:
+                continue
+            if phrase in whitelist:
+                continue
+
+            idx = masked.find(phrase)
+            while idx != -1:
+                if not _is_negated(masked, idx, neg_mods):
+                    found_violations.append(phrase)
+                    break
+                idx = masked.find(phrase, idx + 1)
+
+    return sorted(set(found_violations))
+
 
 
 @dataclass
@@ -293,11 +377,7 @@ def check_dialogue_content(text_or_path: Path | str) -> GateResult:
             return res
         content = str(text_or_path)
 
-    found = []
-    for w in FORBIDDEN_WORDS:
-        if w in content:
-            found.append(w)
-
+    found = check_content_safety_text(content)
     res.metrics["forbidden_words_found"] = found
     if found:
         res.passed = False
