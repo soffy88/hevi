@@ -103,16 +103,48 @@ def render_and_measure(name: str, capability: str, aspect: str, preset_file: str
     if not gate.passed:
         raise RuntimeError(f"{name}: kids_gate failed: {gate.as_dict()}")
 
-    # Render the exact same spec again, serially in .tmp, then compare encoded bytes.
-    det_dir = TEMP / name
-    det_dir.mkdir(parents=True, exist_ok=True)
-    det_renderer = R.SceneRenderer(spec, det_dir)
-    det_metrics = det_renderer.render()
-    det_video = Path(det_metrics["video"])
-    det_hash = sha256(det_video)
     main_hash = sha256(video)
-    if det_hash != main_hash:
-        raise RuntimeError(f"{name}: deterministic SHA mismatch {main_hash} != {det_hash}")
+    verify_mode = os.environ.get("SCENE3D_R1D_DETERMINISM", "full").strip().lower()
+    det_video = None
+    det_hash = None
+    sampled_determinism = None
+    if verify_mode == "full":
+        # Strict mode re-renders the complete video and verifies exact MP4 bytes.
+        det_dir = TEMP / name
+        det_dir.mkdir(parents=True, exist_ok=True)
+        det_renderer = R.SceneRenderer(spec, det_dir)
+        det_metrics = det_renderer.render()
+        det_video = Path(det_metrics["video"])
+        det_hash = sha256(det_video)
+        if det_hash != main_hash:
+            raise RuntimeError(f"{name}: deterministic SHA mismatch {main_hash} != {det_hash}")
+        deterministic_match = True
+    elif verify_mode == "sampled":
+        # Time-bounded mode checks six same-seed, full-resolution keyframes.
+        # This is deliberately NOT equivalent to proving full-video SHA identity.
+        det_dir = TEMP / name / "sampled_keyframes"
+        det_dir.mkdir(parents=True, exist_ok=True)
+        sample_indices = [0, round(2.4 * spec.fps), round(4.8 * spec.fps),
+                          round(7.2 * spec.fps), round(9.6 * spec.fps), len(all_frames) - 1]
+        sample_times = [0.0, 2.4, 4.8, 7.2, 9.6, float(spec.duration_s)]
+        rows = []
+        sample_renderer = R.SceneRenderer(spec, det_dir)
+        for index, timestamp in zip(sample_indices, sample_times):
+            candidate = det_dir / f"frame_t{timestamp:.3f}.png"
+            sample_renderer.render_frame_at(timestamp, candidate)
+            expected_hash = sha256(all_frames[index])
+            actual_hash = sha256(candidate)
+            rows.append({"time_s": timestamp, "source_frame": str(all_frames[index].relative_to(ROOT)),
+                         "repeat_frame": str(candidate.relative_to(ROOT)),
+                         "source_sha256": expected_hash, "repeat_sha256": actual_hash,
+                         "match": expected_hash == actual_hash})
+        sampled_determinism = {"scope": "six full-resolution keyframes only; full MP4 identity not checked",
+                               "match": all(row["match"] for row in rows), "frames": rows}
+        if not sampled_determinism["match"]:
+            raise RuntimeError(f"{name}: sampled same-seed frame SHA mismatch")
+        deterministic_match = None
+    else:
+        raise ValueError("SCENE3D_R1D_DETERMINISM must be 'full' or 'sampled'")
     result = {
         "name": name,
         "capability": capability,
@@ -127,7 +159,9 @@ def render_and_measure(name: str, capability: str, aspect: str, preset_file: str
         "nb_read_frames": counted_probe["nb_read_frames"],
         "sha256": main_hash,
         "deterministic_sha256": det_hash,
-        "deterministic_match": True,
+        "deterministic_match": deterministic_match,
+        "sampled_determinism": sampled_determinism,
+        "determinism_scope": "full_video_sha256" if verify_mode == "full" else "six_keyframe_sha256_only",
         "size_bytes": raw_probe["size_bytes"],
         "render_elapsed_s": round(time.perf_counter() - start, 2),
         "per_frame_s": metrics["per_frame_s"],
@@ -136,7 +170,7 @@ def render_and_measure(name: str, capability: str, aspect: str, preset_file: str
         "contact_frames": selected,
         "kids_gate": gate.as_dict(),
         "video": str(video.relative_to(ROOT)),
-        "determinism_video": str(det_video.relative_to(ROOT)),
+        "determinism_video": str(det_video.relative_to(ROOT)) if det_video else None,
     }
     (out_dir / "r1d_metrics.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     return result
@@ -147,7 +181,15 @@ def main() -> int:
     TEMP.mkdir(parents=True, exist_ok=True)
     result_path = OUTPUT / "r1d_render_results.json"
     previous = json.loads(result_path.read_text(encoding="utf-8")) if result_path.is_file() else {}
-    prior_rows = {row["name"]: row for row in previous.get("clips", [])}
+    # Never promote partial/sample-only rows from an interrupted run into the
+    # final six-clip report. R1D acceptance requires complete-video SHA equality.
+    prior_rows = {
+        row["name"]: row
+        for row in previous.get("clips", [])
+        if row.get("deterministic_match") is True
+        and row.get("sha256") == row.get("deterministic_sha256")
+        and row.get("determinism_scope", "full_video_sha256") == "full_video_sha256"
+    }
     prior_failures = {row["name"]: row for row in previous.get("failures", [])}
     only = {part.strip() for part in os.environ.get("SCENE3D_R1D_ONLY", "").split(",") if part.strip()}
     selected_clips = [clip for clip in CLIPS if not only or clip[0] in only]
