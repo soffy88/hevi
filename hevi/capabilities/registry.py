@@ -463,3 +463,7 @@ register(
         line="anime",
     )
 )
+
+# Anatomy explainer capability (merged from feat/anatomy-explainer).  Importing
+# the module registers ``anatomy.explainer`` via this same registry.
+import hevi.capabilities.anatomy_explainer  # noqa: E402,F401

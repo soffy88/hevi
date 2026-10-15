@@ -1,0 +1,28 @@
+Anatomy kit vendored into third_party/anatomy.
+
+Upstream: https://github.com/wheresryan22/anatomy
+License: MIT (see LICENSE)
+Copyright (c) 2026 Ryan
+
+Vendored files:
+- kit/iso-kit.mjs   (isometric SVG geometry + shading)
+- kit/lathe.mjs     (profile / curve math used by audit.mjs)
+- kit/tube.mjs      (tube path math used by audit.mjs)
+- kit/audit.mjs     (geometry audit: no clipping, every endpoint supported, draw order)
+- kit/gl.mjs        (optional WebGL shader camera — unused by Hevi render path)
+- kit/canvas-painter.mjs (turning 3D painter — unused by Hevi render path)
+- scripts/capture.mjs  (headless Chrome screenshot)
+- scripts/drive.mjs    (headless Chrome driver: wait, shot, lines, slow-motion)
+- scripts/lines.mjs    (floating-line check, wraps drive.mjs)
+- scripts/chrome-port.mjs
+- scripts/inline-kit.mjs (embeds kit source into a standalone page)
+- scripts/line-ends.mjs (floating-line detection used by drive.mjs lines action)
+
+Hevi uses these only to build static isometric SVG figures, run the upstream
+geometry audit (audit.mjs) and the floating-line check (lines.mjs), and to
+drive headless Chrome (CPU / SwiftShader) for frame-by-frame video rendering.
+No changes were made to the vendored logic; only relative imports are kept
+intact. The 3D beta mode and WebGL shaders are intentionally out of scope.
+
+This product bundles the Anatomy kit (MIT). The rest of the Hevi worktree is
+governed by its own license.
