@@ -1,0 +1,49 @@
+{
+  "title": "代码律动 // 纯函数动效",
+  "bpm": 120,
+  "duration": 10.0,
+  "accent": "#f59e0b",
+  "audio": "assets/audio/beat_120bpm_click.wav",
+  "phrases": [
+    {
+      "start_beat": 0,
+      "beats_count": 4,
+      "words": ["灵感", "触发", "毫秒", "对齐"],
+      "subtext": "INSTANT INSPIRATION // SUB-FRAME PRECISION",
+      "accent": "#f59e0b",
+      "layout": "center_punch"
+    },
+    {
+      "start_beat": 4,
+      "beats_count": 4,
+      "words": ["节点", "点亮", "全链", "贯通"],
+      "subtext": "NODE ILLUMINATION // PIPELINE ENGAGED",
+      "accent": "#10b981",
+      "layout": "split_box"
+    },
+    {
+      "start_beat": 8,
+      "beats_count": 4,
+      "words": ["阶跃响应", "纯粹", "函数", "渲染"],
+      "subtext": "ZERO ARTIFACTS // PURE FUNCTION RENDER",
+      "accent": "#38bdf8",
+      "layout": "ticker_stack"
+    },
+    {
+      "start_beat": 12,
+      "beats_count": 4,
+      "words": ["像素", "重构", "瞬时", "定格"],
+      "subtext": "PIXEL RECONSTRUCTION // TIMELINE FREEZE",
+      "accent": "#f43f5e",
+      "layout": "center_punch"
+    },
+    {
+      "start_beat": 16,
+      "beats_count": 4,
+      "words": ["确定", "交付", "成片", "出炉"],
+      "subtext": "DETERMINISTIC DELIVERY // FINAL ASSET",
+      "accent": "#10b981",
+      "layout": "split_box"
+    }
+  ]
+}

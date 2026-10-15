@@ -1,0 +1,40 @@
+{
+  "title": "分布式推理集群分层架构",
+  "title_en": "Distributed Inference Cluster Topology",
+  "duration": 10.0,
+  "bpm": 120,
+  "layers": [
+    {
+      "id": "net",
+      "name_zh": "高速互联与任务输入路由",
+      "name_en": "L1: Input Bus & Edge Router",
+      "tag": "ROUTER",
+      "accent": "#f59e0b",
+      "stat": "Ingress Throughput 10 Gbps"
+    },
+    {
+      "id": "weight",
+      "name_zh": "模型权重视图与分布式显存",
+      "name_en": "L2: Model Weights & Memory Pool",
+      "tag": "POOL",
+      "accent": "#38bdf8",
+      "stat": "Paged Attention Zero Copy"
+    },
+    {
+      "id": "worker",
+      "name_zh": "算力节点并行流水线调度",
+      "name_en": "L3: Compute Workers & Dispatch",
+      "tag": "COMPUTE",
+      "accent": "#10b981",
+      "stat": "Linear Scale Up to 128 Nodes"
+    },
+    {
+      "id": "out",
+      "name_zh": "成品聚合与零丢帧流式分发",
+      "name_en": "L4: Asset Stream & Egress",
+      "tag": "EGRESS",
+      "accent": "#f59e0b",
+      "stat": "Bitrate Verified 1080P"
+    }
+  ]
+}
