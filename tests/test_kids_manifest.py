@@ -292,3 +292,58 @@ def test_determinism_via_subprocesses() -> None:
     r2 = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
     assert r1 == r2
     assert len(r1) > 20
+
+
+# ── R4 (KIDSMANIFEST_FIX_R4) 回归/漏杀/否定窗口 ──
+@pytest.mark.parametrize(
+    "text",
+    [
+        "小狐狸被划伤了，到处都是血。",
+        "小狐狸拿起刀和枪。",
+        "小狐狸用刀砍伤了小兔。",
+    ],
+)
+def test_r4_h1_blood_weapon_hard_redline_fails(text: str) -> None:
+    """H1: 血 / 武器类硬红线必须拦截（R3 回归）。"""
+    story = _load("story_fox_star.json")
+    story["beats"][3]["text"] = text
+    report = kids_story_gate(story)
+    r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+    assert len(r8_fails) > 0, f"Expected FAIL for '{text}', got {report.findings}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "坏孩子把小熊掐得哇哇叫，还把他推下楼梯。",
+        "他们用石头砸小兔，把小兔的头划破了直流血。",
+        "大家把小刺猬关进小黑屋，一整天都不给他饭吃。",
+        "小狐狸把一壶开水浇在小猫身上，小猫疼得直哭。",
+    ],
+)
+def test_r4_h2_common_harm_words_fail(text: str) -> None:
+    """H2: 常见伤害词漏杀（掐/推下楼梯/砸/划破/关小黑屋/烫/浇）必须拦截。"""
+    story = _load("story_fox_star.json")
+    story["beats"][3]["text"] = text
+    report = kids_story_gate(story)
+    r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+    assert len(r8_fails) > 0, f"Expected FAIL for '{text}', got {report.findings}"
+
+
+def test_r4_h3_negation_window_is_narrow() -> None:
+    """H3: 否定只对紧随其后的词生效，不能整条豁免。"""
+    story = _load("story_fox_star.json")
+    story["beats"][3]["text"] = "小狐狸不吃药，把毒药给了小熊。"
+    report = kids_story_gate(story)
+    r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+    assert len(r8_fails) > 0, f"Expected FAIL for negation-window bypass, got {report.findings}"
+
+
+@pytest.mark.parametrize("text", ["不可以下毒", "小狐狸不打人"])
+def test_r4_h3_negated_forms_not_fail(text: str) -> None:
+    """H3: 直接否定的教育语境不得误杀。"""
+    story = _load("story_fox_star.json")
+    story["beats"][3]["text"] = text
+    report = kids_story_gate(story)
+    r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+    assert len(r8_fails) == 0, f"Expected non-FAIL for negated '{text}', got {report.findings}"
