@@ -1,0 +1,35 @@
+{
+ "F2a_canvas_get_reads_repo": {
+  "status": 200,
+  "revision": 0,
+  "same_id": true
+ },
+ "F2b_propose_no_task": {
+  "propose_status": 200,
+  "delta_propose": 0
+ },
+ "F2b_confirm_task_via_repo": {
+  "confirm_status": 200,
+  "delta_confirm": 1,
+  "readable": true
+ },
+ "F2c_create_tables": {
+  "tables": [
+   "agent_op_receipts",
+   "agent_schema_version"
+  ],
+  "ok": true
+ },
+ "F2c_pkg_tables": {
+  "tables": [
+   "agent_op_receipts",
+   "agent_schema_version"
+  ],
+  "ok": true
+ },
+ "F9_replay_equal": {
+  "replayed": true,
+  "equal": true
+ },
+ "network_attempts": []
+}
