@@ -45,6 +45,7 @@ class RenderResult:
     manifest: list[ManifestSegment]
     portrait_path: Path
     landscape_path: Path
+    render_runtime: str = "remotion"
 
 
 def _manifest_payload(manifest: list[ManifestSegment]) -> list[dict[str, Any]]:
@@ -228,10 +229,27 @@ async def render_storyboard(
 
     portrait_path = output_dir / "portrait.mp4"
     landscape_path = output_dir / "landscape.mp4"
+    render_runtime = "remotion"
     async with _REMOTION_LOCK:
-        _write_manifest(manifest)
-        await _run_remotion_render("Explainer-Portrait", portrait_path)
-        await _run_remotion_render("Explainer-Landscape", landscape_path)
+        if _HEVI_REMOTION_DIR.is_dir() and _REMOTION_BIN.is_file():
+            _write_manifest(manifest)
+            await _run_remotion_render("Explainer-Portrait", portrait_path)
+            await _run_remotion_render("Explainer-Landscape", landscape_path)
+        else:
+            from hevi.explainer.cpu_fallback import render_storyboard_cpu_fallback
+
+            logger.warning(
+                "Remotion CLI unavailable; using FFmpeg/Pillow CPU fallback with synthesized cue audio"
+            )
+            await asyncio.to_thread(
+                render_storyboard_cpu_fallback,
+                manifest,
+                _PUBLIC_DIR,
+                output_dir,
+                topic=storyboard.topic,
+                temp_root=(Path(__file__).resolve().parents[2] / ".tmp" / "explainer_render_jobs" / job_id),
+            )
+            render_runtime = "ffmpeg"
 
     expected = _expected_duration_s(manifest)
     try:
@@ -267,5 +285,8 @@ async def render_storyboard(
             raise ComposeGateError(f"数字人叠片失败: {exc}") from exc
 
     return RenderResult(
-        manifest=manifest, portrait_path=portrait_path, landscape_path=landscape_path
+        manifest=manifest,
+        portrait_path=portrait_path,
+        landscape_path=landscape_path,
+        render_runtime=render_runtime,
     )

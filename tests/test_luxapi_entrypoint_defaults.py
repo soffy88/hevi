@@ -209,3 +209,65 @@ async def test_voice_studio_catalog_describes_lux_fallback_chain() -> None:
         "policy": "lux_tts-first",
         "fallback": "lux_tts-health-or-synthesis-failure-to-cosyvoice-then-piper",
     }
+
+
+@pytest.mark.asyncio
+async def test_canonical_explainer_line_defaults_to_lux_tts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.explainer import assembly
+    from hevi.studio import fulfill
+
+    observed: dict[str, object] = {}
+
+    class StopAfterProviderSelected(Exception):
+        pass
+
+    async def capture_provider(*_args: object, **kwargs: object) -> object:
+        observed.update(kwargs)
+        raise StopAfterProviderSelected
+
+    monkeypatch.delenv("HEVI_EXPLAINER_TTS_PROVIDER", raising=False)
+    monkeypatch.delenv("HEVI_TTS_FORMAL_PROVIDER", raising=False)
+    monkeypatch.setattr(assembly, "assemble_explainer_cues", capture_provider)
+
+    with pytest.raises(StopAfterProviderSelected):
+        await fulfill._render_explainer_line(
+            {"line_id": "explainer", "target": "explainer", "topic": "小兔子", "script_lines": ["小兔子你好呀。"]},
+            tmp_path,
+        )
+
+    assert observed["tts_provider"] == "lux_tts"
+
+
+@pytest.mark.asyncio
+async def test_canonical_explainer_line_respects_explicit_tts_provider(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from hevi.explainer import assembly
+    from hevi.studio import fulfill
+
+    observed: dict[str, object] = {}
+
+    class StopAfterProviderSelected(Exception):
+        pass
+
+    async def capture_provider(*_args: object, **kwargs: object) -> object:
+        observed.update(kwargs)
+        raise StopAfterProviderSelected
+
+    monkeypatch.setattr(assembly, "assemble_explainer_cues", capture_provider)
+
+    with pytest.raises(StopAfterProviderSelected):
+        await fulfill._render_explainer_line(
+            {
+                "line_id": "explainer",
+                "target": "explainer",
+                "topic": "小兔子",
+                "script_lines": ["小兔子你好呀。"],
+                "slots": {"tts_engine": "edge_tts"},
+            },
+            tmp_path,
+        )
+
+    assert observed["tts_provider"] == "edge_tts"

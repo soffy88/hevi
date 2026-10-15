@@ -88,4 +88,24 @@ Earlier checkpoints were 64 and 65 passing tests. Final expanded suite summary a
 
 All implementation changes and audit artifacts are within `/data/soffy/projects/hevi-luxapi`, branch `feat/luxtts-http`. The main `/data/soffy/projects/hevi` checkout was not changed by this task. Nothing was pushed and no Hevi service/container was restarted or redeployed.
 
+
+## Continuation — canonical Studio render path and renderer fallback
+
+The wider Studio integration run exposed two failures after the voice provider was corrected: the canonical explainer render path still selected Edge TTS unless its task had a provider override, and its rendering step failed outright when the Remotion CLI was absent. Both are now addressed:
+
+- `hevi/studio/fulfill.py`: the canonical explainer line selects the task's explicit `tts_engine` first, then `HEVI_EXPLAINER_TTS_PROVIDER`, then `HEVI_TTS_FORMAL_PROVIDER`, and defaults to `lux_tts`. The actual renderer identity is returned instead of always claiming Remotion.
+- `hevi/explainer/render.py`: retains Remotion whenever its project and CLI exist. If the CLI is absent, it uses the local Pillow/FFmpeg CPU fallback and reports the supported `ffmpeg` runtime identifier.
+- `hevi/explainer/cpu_fallback.py`: creates gentle pastel bunny-garden cue cards in both 540×960 portrait and 960×540 landscape layouts; muxes the same synthesized cue-level audio at the appropriate timeline offsets after the three-second title card; validates missing/unsafe audio paths; and writes per-render metadata. Frames and intermediates stay under `.tmp/`. It adds no dependency and calls no paid service.
+- `tests/test_explainer_render.py`: exercises the real CPU fallback render orchestration and checks both MP4s have the correct dimensions and both audio/video streams.
+- `tests/test_luxapi_entrypoint_defaults.py`: verifies that the canonical explainer route defaults to LuxTTS but honors an explicit task provider override.
+
+Verification after this continuation:
+
+- Targeted render/provider/Studio regressions: `25 passed in 21.52s`.
+- Expanded audio/explainer/voice-studio integration suite (35 test files/paths): `306 passed, 1 warning in 50.55s`. The one warning is a Starlette deprecation warning about `httpx` with `starlette.testclient`; tests passed.
+- Required acceptance pipe: `23 passed, 7341 deselected, 1 warning in 4.97s`; the exact `tail -3 | grep -q passed` gate exited `0`.
+- `python -m py_compile` passed for the CPU fallback, explainer renderer and Studio fulfiller. `git diff --check` passed.
+
+The tracked shared Remotion manifest was restored to its committed baseline after tests; test-generated changes to that manifest are not included. Existing untracked `.veya-project/` and `LUXAPI_TASK.md` were left untouched and unstaged.
+
 DONE LUXAPI-R1
