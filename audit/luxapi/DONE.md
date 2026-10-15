@@ -253,4 +253,15 @@ Verification after these fixes:
 - Warnings are existing `datetime.utcnow()` deprecations in coverage-contract/schema/checkpoint paths; no test failures.
 
 `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` are still absent from this worktree. All edits remained inside `/data/soffy/projects/hevi-luxapi`; existing untracked files/artifacts were not staged. No deployment or external service modification occurred, and no paid API was used. The exact user acceptance gate is run once more after committing this entry.
+
+## Continuation — provider-adapter and wider audio regression sweep (2026-10-15)
+
+A further regression pass covered adjacent audio providers and production alignment tests beyond the LuxTTS-specific gate. No additional reproducible LuxAPI code failure was found.
+
+- Provider-adapter / speech / Studio / alignment sweep (`test_cosyvoice_contract.py`, `test_edge_tts_custom.py`, `test_f5_tts_service.py`, `test_openvoice_provider.py`, `test_studio_kit.py`, `test_studio_voices.py`, `test_studio_catalog.py`, `test_voice_platform_joyai.py`, `test_voice_studio_task.py`, `tests/p10/test_a4_tts_alignment_production.py`, `test_tongjian_voiceover.py`): `95 passed, 1 skipped in 23.61s`, exit `0`.
+- The single skip was separately confirmed in `tests/p10/test_a4_tts_alignment_production.py:55`: its optional external Edge-TTS-dependent case skipped because Edge TTS was unreachable (`synthesize_with_voice_control: all segments failed`). This is not a LuxTTS HTTP integration failure; the dedicated live LuxTTS test passes.
+- Broader Ruff check across the touched TTS/audio/router/task/story/dialogue modules and related tests: `All checks passed!` after correcting nine style findings in `audio_router.py` and `task_adapter.py`.
+- The targeted LuxTTS/LuxAPI regression sweep remains `239 passed, 34 warnings in 8.93s` after the style-only corrections.
+
+No Edge-TTS fallback or network behavior was changed to mask the external dependency skip. The task-specific endpoint was still live and healthy in the preceding check; required sample files and metadata remained valid. The complete user-required acceptance gate is re-run after this report commit. `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` are not present anywhere inside this worktree. No files outside this workspace were accessed or changed, and the existing untracked items remain untouched.
 DONE LUXAPI-R1
