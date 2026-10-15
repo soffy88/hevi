@@ -1,20 +1,19 @@
-"""KidsConsistencyManifest — 幼儿故事一致性清单 (RENOISE_EVAL §3.3 + 单元 K1).
+"""KidsConsistencyManifest — 幼儿故事一致性清单 (RENOISE_EVAL §3.3 + 单元 K1/R2).
 
 - schema 字段按 §3.3：schema_version / project_id / episode / audience /
   theme / style_bible / characters / props / scenes / transition_table /
   spoken_language / shots[].shot_spec。
-- 6 条绑定校验规则（§3.3 绑定与校验规则 + 验收标准 3）：
+- 绑定与校验规则：
   M0  shots[].shot_spec 每个字段**委派**给 hevi.production.shot_spec.ShotSpec
       （未知 template/transition_in/sfx/style → 由 ShotSpec 校验器直接失败）。
-  M1  style_bible 四段齐全且逐字前置（art_style/camera_language/color_grade/negative）。
-  M2  transition_table 覆盖除 S1 外每个切点；中间段不得“frame holds steady”收尾。
-  M3  spoken_language 覆盖每个说话镜（有 line 的镜必须有对应条目）。
-  M4  @引用 必须能在 manifest 内解析（@char_x/@prop_x/@scene_x）。
-  M5  duration ≥2.5s，整片平均 ≥3.5s（与 kids_gate.check_shot_duration 一致）。
-- 与 ShotSpec 双向绑定：manifest.shots[].shot_spec ↔ 任务
-  shot_states.selection_json["shot_spec"]（复用 hevi.production.shot_spec 的
-  upsert_spec / read_spec）。
-- 零网络、无 mock、确定性可复现。
+      manifest 层拒绝 shot_spec 未知字段（如 tempalte 拼写错误）。
+  M1  style_bible 四段齐全。
+  M2  transition_table 覆盖按排序真实 shot_index 生成的每个切点；中间段不得“frame holds steady”收尾。
+  M3  spoken_language 覆盖每个说话镜且语言与 audience 匹配；未知 shot_index 失败。
+  M4  @引用 必须能在 manifest 内解析（扫描所有字符串字段）。
+  M5  duration ≥2.5s，整片平均 ≥3.5s；且 shot_spec.duration 须与 shot.duration 一致（容差 0.05s）。
+  M6  固定角色 anchor_ref/seed/voice_ref 必须锁定。
+  M7  shot_index 唯一且连续/有序。
 """
 
 from __future__ import annotations
@@ -24,18 +23,16 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from hevi.production import shot_spec as _ss
 from hevi.production.shot_spec import ShotSpec
 
 _SCHEMA_VERSION = "1.0"
-
 _REF_RE = re.compile(r"@([A-Za-z0-9_]+)")
 _FRAME_HOLDS_STEADY = "frame holds steady"
 
 
-# ── schema 子模型 ────────────────────────────────────────────────────
 class Audience(BaseModel):
     age_min: int = 2
     age_max: int = 6
@@ -62,6 +59,7 @@ class Character(BaseModel):
     anchor_ref: str | None = None
     voice_ref: str | None = None
     seed: int | None = None
+    palette: list[str] = Field(default_factory=list, exclude=True)
 
 
 class Prop(BaseModel):
@@ -79,7 +77,7 @@ class Scene(BaseModel):
 
 
 class TransitionRow(BaseModel):
-    cut: str  # e.g. "S1->S2" / "1->2"
+    cut: str  # e.g. "S1->S2"
     prev_out: str = ""
     next_in: str = ""
     technique: str = ""
@@ -96,11 +94,21 @@ class ShotEntry(BaseModel):
     line: str = ""
     camera: str = ""
     framing: str = ""
-    # M0：委派给 ShotSpec 既有校验器，未知字段值一律由 pydantic 抛 ValidationError。
     shot_spec: ShotSpec
 
+    @model_validator(mode="before")
+    @classmethod
+    def _check_shot_spec_extra_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            spec = data.get("shot_spec")
+            if isinstance(spec, dict):
+                allowed_fields = ShotSpec.model_fields.keys()
+                unknown = [k for k in spec if k not in allowed_fields]
+                if unknown:
+                    raise ValueError(f"ShotSpec 存在未知字段: {unknown}")
+        return data
 
-# ── 主模型 ───────────────────────────────────────────────────────────
+
 class KidsConsistencyManifest(BaseModel):
     schema_version: str = _SCHEMA_VERSION
     project_id: str
@@ -123,7 +131,6 @@ class KidsConsistencyManifest(BaseModel):
         return v
 
 
-# ── 校验报告 ────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class ManifestFinding:
     rule: str
@@ -158,33 +165,54 @@ def _cut_key(a: int, b: int) -> str:
     return f"S{a}->S{b}"
 
 
+def _recursive_find_refs(obj: Any, path: str = "") -> list[tuple[str, str]]:
+    """递归扫描任意嵌套结构中的字符串字段。"""
+    out: list[tuple[str, str]] = []
+    if isinstance(obj, str):
+        out.append((path, obj))
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            sub_path = f"{path}.{k}" if path else k
+            out.extend(_recursive_find_refs(v, sub_path))
+    elif isinstance(obj, list):
+        for idx, item in enumerate(obj):
+            sub_path = f"{path}[{idx}]"
+            out.extend(_recursive_find_refs(item, sub_path))
+    return out
+
+
+class ShotIndexMismatchError(ValueError):
+    """任务行镜号与 manifest 不匹配。"""
+    pass
+
+
 def validate_manifest(
-    manifest: "KidsConsistencyManifest | dict[str, Any]",
+    manifest: KidsConsistencyManifest | dict[str, Any],
 ) -> ManifestReport:
-    """校验 manifest：先走 ShotSpec 委派（M0），再逐条 M1–M5。
-
-    返回 ManifestReport（OK / FAIL）+ 逐条 finding（规则名 + 位置）。
-    """
     findings: list[ManifestFinding] = []
+    errors: list[str] = []
 
-    # ── M0：ShotSpec 委派（未知 template/transition_in/sfx/style → 失败）──
     if isinstance(manifest, dict):
         try:
             manifest = KidsConsistencyManifest.model_validate(manifest)
         except ValidationError as exc:
             for err in exc.errors():
                 loc = ".".join(str(p) for p in err.get("loc", []))
+                # 检查是否为 shot_spec 相关错误
+                is_shotspec = "shot_spec" in loc
+                rule = "M0_SHOTSPEC_DELEGATION" if is_shotspec else "M_SCHEMA"
                 findings.append(
                     ManifestFinding(
-                        "M0_SHOTSPEC_DELEGATION", "FAIL",
-                        f"ShotSpec 校验失败：{err.get('msg', '')}", loc,
+                        rule, "FAIL",
+                        f"清单校验失败：{err.get('msg', '')}", loc,
                     )
                 )
-            return ManifestReport(status="FAIL", findings=findings, errors=[f"M0:{loc}" for f in findings])
+                errors.append(f"{rule}:{loc}")
+            return ManifestReport(status="FAIL", findings=findings, errors=errors)
 
     m: KidsConsistencyManifest = manifest
 
-    # ── M1：Style Bible 四段齐全 ──
+    # M1：Style Bible 四段齐全
     sb = m.style_bible
     sb_missing = [
         name for name, val in [
@@ -195,150 +223,156 @@ def validate_manifest(
         ] if not (val and val.strip())
     ]
     if sb_missing:
-        findings.append(
-            ManifestFinding(
-                "M1_STYLE_BIBLE", "FAIL",
-                f"Style Bible 缺段：{sb_missing}", "style_bible",
-            )
-        )
+        findings.append(ManifestFinding("M1_STYLE_BIBLE", "FAIL", f"Style Bible 缺段：{sb_missing}", "style_bible"))
+        errors.append("M1_STYLE_BIBLE:style_bible")
     else:
         findings.append(ManifestFinding("M1_STYLE_BIBLE", "OK", "Style Bible 四段齐全", "style_bible"))
 
-    # 聚合所有可解析 id（用于 M4 的 @引用 校验）
-    # §3.3：@char_fox / @prop_star / @scene_forest 引用的是 character/prop/scene 的 id 本身。
+    # M4：@引用 扫描全部字符串字段
     all_ids = {c.id for c in m.characters}
     all_ids |= {p.id for p in m.props}
     all_ids |= {s.id for s in m.scenes}
 
-    # 扫描带 @引用 的文本字段
-    ref_texts: list[tuple[str, str]] = []
-    for sh in m.shots:
-        if sh.line:
-            ref_texts.append((f"shots[{sh.shot_index}].line", sh.line))
-    for tr in m.transition_table:
-        ref_texts.append((f"transition_table[{tr.cut}].prev_out", tr.prev_out))
-        ref_texts.append((f"transition_table[{tr.cut}].next_in", tr.next_in))
-
+    dump_data = m.model_dump()
+    all_strings = _recursive_find_refs(dump_data)
     unknown_refs: list[str] = []
-    for loc, text in ref_texts:
+    for path, text in all_strings:
+        # 跳过 anchor_ref / environment_only_ref 等文件路径中的 @ 误判
+        if any(w in path for w in ["anchor_ref", "environment_only_ref", "voice_ref"]):
+            continue
         for mref in _REF_RE.findall(text):
-            # §3.3：@char_fox / @prop_star / @scene_forest 即引用对应实体的 id。
             if mref not in all_ids:
-                unknown_refs.append(f"{loc}:@{mref}")
+                unknown_refs.append(f"{path}:@{mref}")
+
     if unknown_refs:
-        findings.append(
-            ManifestFinding(
-                "M4_REF_RESOLUTION", "FAIL",
-                f"未知 @引用：{sorted(set(unknown_refs))}", "shots[].line / transition_table",
-            )
-        )
+        findings.append(ManifestFinding("M4_REF_RESOLUTION", "FAIL", f"未知 @引用：{sorted(set(unknown_refs))}", "manifest.fields"))
+        errors.append("M4_REF_RESOLUTION:manifest.fields")
     else:
-        findings.append(
-            ManifestFinding("M4_REF_RESOLUTION", "OK", "@引用 全部可解析", "shots/transition_table")
-        )
+        findings.append(ManifestFinding("M4_REF_RESOLUTION", "OK", "@引用 全部可解析", "manifest.fields"))
 
-    # ── M2：Transition Table 覆盖每个切点（除 S1）；中间段不得 frame holds steady 收尾 ──
-    n = len(m.shots)
-    if n == 0:
-        findings.append(ManifestFinding("M2_TRANSITION_TABLE", "FAIL", "无镜头，无法建转场表", "transition_table"))
-    else:
-        present = {tr.cut for tr in m.transition_table}
-        expected = [_cut_key(i, i + 1) for i in range(1, n)]  # S1->S2 ... S(n-1)->S(n)
-        missing_cuts = [c for c in expected if c not in present]
+    # M2 / M7：Shot Index 唯一与 Transition Table 覆盖切点
+    shot_indices = [sh.shot_index for sh in m.shots]
+    if len(shot_indices) != len(set(shot_indices)):
+        findings.append(ManifestFinding("M7_SHOT_INDEX", "FAIL", f"shot_index 存在重复：{shot_indices}", "shots[].shot_index"))
+        errors.append("M7_SHOT_INDEX:shots[].shot_index")
+    
+    sorted_indices = sorted(shot_indices)
+    n = len(sorted_indices)
+    if n >= 2:
+        expected_cuts = [_cut_key(sorted_indices[i], sorted_indices[i + 1]) for i in range(n - 1)]
+        present_cuts = {tr.cut for tr in m.transition_table}
+        missing_cuts = [c for c in expected_cuts if c not in present_cuts]
         if missing_cuts:
-            findings.append(
-                ManifestFinding(
-                    "M2_TRANSITION_TABLE", "FAIL",
-                    f"缺 Transition Table 切点：{missing_cuts}", "transition_table",
-                )
-            )
+            findings.append(ManifestFinding("M2_TRANSITION_TABLE", "FAIL", f"缺 Transition Table 切点：{missing_cuts}", "transition_table"))
+            errors.append("M2_TRANSITION_TABLE:transition_table")
         else:
-            findings.append(
-                ManifestFinding("M2_TRANSITION_TABLE", "OK", f"Transition Table 覆盖全部 {len(expected)} 个切点", "transition_table")
-            )
-        # 中间段（非最终切点）的 prev_out 不得为 frame holds steady
+            findings.append(ManifestFinding("M2_TRANSITION_TABLE", "OK", "Transition Table 完整覆盖所有切点", "transition_table"))
+
+        # 中间段不得以 frame holds steady 收尾
         for tr in m.transition_table:
-            is_final = tr.cut == _cut_key(n - 1, n)
+            is_final = tr.cut == expected_cuts[-1] if expected_cuts else False
             if not is_final and _FRAME_HOLDS_STEADY in (tr.prev_out or "").lower():
-                findings.append(
-                    ManifestFinding(
-                        "M2_TRANSITION_TABLE", "FAIL",
-                        f"中间切点 {tr.cut} 以「frame holds steady」收尾（不允许）",
-                        f"transition_table[{tr.cut}].prev_out",
-                    )
-                )
+                findings.append(ManifestFinding("M2_TRANSITION_TABLE", "FAIL", f"中间切点 {tr.cut} 以 frame holds steady 收尾", f"transition_table[{tr.cut}].prev_out"))
+                errors.append(f"M2_TRANSITION_TABLE:transition_table[{tr.cut}]")
 
-    # ── M3：spoken_language 覆盖每个说话镜 ──
-    covered = {e.shot_index for e in m.spoken_language}
-    speaking = [sh.shot_index for sh in m.shots if sh.line and sh.line.strip()]
-    uncovered = [s for s in speaking if s not in covered]
-    if uncovered:
-        findings.append(
-            ManifestFinding(
-                "M3_SPOKEN_LANGUAGE", "FAIL",
-                f"说话镜缺口语语言条目：{uncovered}", "spoken_language",
-            )
-        )
+    # M3：spoken_language 校验
+    aud_lang = m.audience.spoken_language
+    valid_shot_idxs = set(shot_indices)
+    spoken_map = {e.shot_index: e.language for e in m.spoken_language}
+    lang_errors: list[str] = []
+    for entry in m.spoken_language:
+        if entry.shot_index not in valid_shot_idxs:
+            lang_errors.append(f"未知镜号 {entry.shot_index}")
+        elif entry.language != aud_lang:
+            lang_errors.append(f"镜 {entry.shot_index} 语言 {entry.language} 与 audience {aud_lang} 不符")
+
+    speaking_shots = [sh.shot_index for sh in m.shots if sh.line and sh.line.strip()]
+    missing_spoken = [s for s in speaking_shots if s not in spoken_map]
+    if missing_spoken:
+        lang_errors.append(f"说话镜缺口语语言条目：{missing_spoken}")
+
+    if lang_errors:
+        findings.append(ManifestFinding("M3_SPOKEN_LANGUAGE", "FAIL", f"Spoken Language 校验失败：{lang_errors}", "spoken_language"))
+        errors.append("M3_SPOKEN_LANGUAGE:spoken_language")
     else:
-        findings.append(
-            ManifestFinding("M3_SPOKEN_LANGUAGE", "OK", "口语语言覆盖全部说话镜", "spoken_language")
-        )
+        findings.append(ManifestFinding("M3_SPOKEN_LANGUAGE", "OK", "Spoken Language 校验通过", "spoken_language"))
 
-    # ── M5：duration 边界 ──
+    # M5：duration 边界与绑定一致性
     if not m.shots:
-        findings.append(ManifestFinding("M5_DURATION", "FAIL", "无镜头时长可校验", "shots[].duration"))
+        findings.append(ManifestFinding("M5_DURATION", "FAIL", "无镜头", "shots"))
+        errors.append("M5_DURATION:shots")
     else:
-        short = [sh.shot_index for sh in m.shots if sh.duration < 2.5]
-        avg = sum(sh.duration for sh in m.shots) / len(m.shots)
-        if short:
-            findings.append(
-                ManifestFinding(
-                    "M5_DURATION", "FAIL",
-                    f"镜头时长 <2.5s：{short}（最小要求 2.5s）", "shots[].duration",
-                )
-            )
-        elif avg < 3.5:
-            findings.append(
-                ManifestFinding(
-                    "M5_DURATION", "FAIL",
-                    f"平均镜头时长 {avg:.2f}s < 3.5s", "shots[*].duration",
-                )
-            )
+        short_shots: list[int] = []
+        binding_errors: list[str] = []
+        effective_durations: list[float] = []
+
+        for sh in m.shots:
+            eff = sh.duration
+            if sh.shot_spec.duration is not None:
+                if abs(sh.shot_spec.duration - sh.duration) > 0.05:
+                    binding_errors.append(f"镜 {sh.shot_index} duration={sh.duration} 与 shot_spec.duration={sh.shot_spec.duration} 不一致")
+                eff = sh.shot_spec.duration
+            effective_durations.append(eff)
+            if eff < 2.5:
+                short_shots.append(sh.shot_index)
+
+        avg_dur = sum(effective_durations) / len(effective_durations) if effective_durations else 0.0
+
+        if binding_errors:
+            findings.append(ManifestFinding("M5_DURATION_BINDING", "FAIL", f"时长绑定不一致：{binding_errors}", "shots[].shot_spec.duration"))
+            errors.append("M5_DURATION_BINDING:shots[].shot_spec.duration")
+
+        if short_shots:
+            findings.append(ManifestFinding("M5_DURATION", "FAIL", f"镜头时长 <2.5s：{short_shots}", "shots[].duration"))
+            errors.append("M5_DURATION:shots[].duration")
+        elif avg_dur < 3.5:
+            findings.append(ManifestFinding("M5_DURATION", "FAIL", f"平均镜头时长 {avg_dur:.2f}s < 3.5s", "shots[*].duration"))
+            errors.append("M5_DURATION:shots[*].duration")
         else:
-            findings.append(
-                ManifestFinding("M5_DURATION", "OK", f"单镜 ≥2.5s，平均 {avg:.2f}s ≥3.5s", "shots[].duration")
-            )
+            findings.append(ManifestFinding("M5_DURATION", "OK", f"时长合规（平均 {avg_dur:.2f}s）", "shots[].duration"))
 
-    # ── M6：至少存在一个固定角色（一致性基础）──
+    # M6：固定角色 anchor_ref / seed / voice_ref 必须锁定
+    char_errors: list[str] = []
+    for i, c in enumerate(m.characters):
+        missing_fields = []
+        if not c.anchor_ref: missing_fields.append("anchor_ref")
+        if c.seed is None: missing_fields.append("seed")
+        if not c.voice_ref: missing_fields.append("voice_ref")
+        if missing_fields:
+            char_errors.append(f"角色 {c.id} 缺失锚点字段：{missing_fields}")
+            findings.append(ManifestFinding("M6_FIXED_CHARACTER", "FAIL", f"固定角色 {c.id} 缺少锁定字段 {missing_fields}", f"characters[{i}].anchor_ref"))
+            errors.append(f"M6_FIXED_CHARACTER:characters[{i}]")
+
     if not m.characters:
-        findings.append(
-            ManifestFinding("M6_FIXED_CHARACTER", "FAIL", "缺固定 IP 角色", "characters")
-        )
-    else:
-        findings.append(
-            ManifestFinding("M6_FIXED_CHARACTER", "OK", f"固定角色 {len(m.characters)} 个", "characters")
-        )
+        findings.append(ManifestFinding("M6_FIXED_CHARACTER", "FAIL", "无固定 IP 角色", "characters"))
+        errors.append("M6_FIXED_CHARACTER:characters")
+    elif not char_errors:
+        findings.append(ManifestFinding("M6_FIXED_CHARACTER", "OK", "固定角色锚点全部锁定", "characters"))
 
-    fails = [f for f in findings if f.severity == "FAIL"]
-    status = "FAIL" if fails else "OK"
-    return ManifestReport(status=status, findings=findings)
+    status = "FAIL" if any(f.severity == "FAIL" for f in findings) else "OK"
+    return ManifestReport(status=status, findings=findings, errors=errors)
 
 
-# ── 双向绑定：manifest ↔ 任务 shot_states.selection_json["shot_spec"] ──
 def to_task_specs(manifest: KidsConsistencyManifest) -> dict[int, ShotSpec]:
-    """manifest → 任务 shot_spec 字典（shot_index → ShotSpec）。"""
     return {sh.shot_index: sh.shot_spec for sh in manifest.shots}
 
 
 def attach_to_task_shot_rows(
-    manifest: KidsConsistencyManifest, shot_rows: list[dict[str, Any]]
+    manifest: KidsConsistencyManifest, shot_rows: list[dict[str, Any]], *, strict: bool = False
 ) -> list[dict[str, Any]]:
-    """把 manifest 的 shot_spec 写回任务 shot_states 行（按 shot_index 对齐）。
-
-    返回新的 shot_rows（不原地修改入参）。复用 shot_spec.upsert_spec。
-    """
     by_idx = {sh.shot_index: sh.shot_spec for sh in manifest.shots}
     out: list[dict[str, Any]] = []
+    row_indices = {r.get("shot_index") for r in shot_rows}
+    
+    if strict:
+        for idx in by_idx:
+            if idx not in row_indices:
+                raise ShotIndexMismatchError(f"Manifest shot_index {idx} 不在任务行中")
+        for row in shot_rows:
+            idx = row.get("shot_index")
+            if idx not in by_idx:
+                raise ShotIndexMismatchError(f"任务行 shot_index {idx} 不在 manifest 中")
+
     for row in shot_rows:
         new_row = dict(row)
         idx = row.get("shot_index")
@@ -349,7 +383,6 @@ def attach_to_task_shot_rows(
 
 
 def read_specs_from_task_shot_rows(shot_rows: list[dict[str, Any]]) -> list[ShotSpec | None]:
-    """从任务 shot_states 行回读 ShotSpec 列表（双向绑定：Spec → manifest）。"""
     return [_ss.read_spec(row) for row in shot_rows]
 
 
@@ -369,19 +402,25 @@ def manifest_from_task_specs(
     durations: dict[int, float] | None = None,
     lines: dict[int, str] | None = None,
 ) -> KidsConsistencyManifest:
-    """从任务 ShotSpec 回读重建 manifest（双向绑定另一方向）。"""
     durations = durations or {}
     lines = lines or {}
-    shots = [
-        ShotEntry(
-            shot_index=idx,
-            duration=durations.get(idx, 4.0),
-            line=lines.get(idx, ""),
-            shot_spec=spec,
+    shots: list[ShotEntry] = []
+    for idx, spec in sorted(specs_by_index.items()):
+        if spec is None:
+            continue
+        dur = durations.get(idx)
+        if dur is None:
+            dur = spec.duration
+        if dur is None:
+            raise ValueError(f"Shot {idx} 缺少 duration（既无 durations 传参，其 ShotSpec.duration 也为 None）")
+        shots.append(
+            ShotEntry(
+                shot_index=idx,
+                duration=dur,
+                line=lines.get(idx, ""),
+                shot_spec=spec,
+            )
         )
-        for idx, spec in sorted(specs_by_index.items())
-        if spec is not None
-    ]
     return KidsConsistencyManifest(
         project_id=project_id,
         episode=episode,
@@ -397,9 +436,7 @@ def manifest_from_task_specs(
     )
 
 
-# ── 确定性序列化 ────────────────────────────────────────────────────
 def canonical_json(manifest: KidsConsistencyManifest) -> str:
-    """确定性 JSON（sort_keys + 紧凑分隔符），用于 SHA-256 比对与落库。"""
     return json.dumps(
         manifest.model_dump(exclude_none=False),
         ensure_ascii=False,

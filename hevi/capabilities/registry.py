@@ -10,9 +10,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import jsonschema
+
 from hevi.quality.kids_gate import kids_gate_workflow
 from hevi.kids.story_gate import kids_story_gate, gate_json
 from hevi.kids.consistency_manifest import validate_manifest, canonical_json
+
+
+class CapabilityError(RuntimeError):
+    """能力参数非法或渲染失败时抛出的明确异常。"""
+    pass
+
 
 @dataclass
 class CapabilityResult:
@@ -36,6 +44,10 @@ class Capability:
     line: str = ""
 
     def validate_params(self, params: dict[str, Any]) -> dict[str, Any]:
+        try:
+            jsonschema.validate(instance=params, schema=self.params_schema)
+        except jsonschema.ValidationError as exc:
+            raise CapabilityError(f"Capability '{self.name}' params validation failed: {exc.message} at {list(exc.path)}") from exc
         return params
 
 
@@ -43,6 +55,12 @@ _REGISTRY: dict[str, Capability] = {}
 
 
 def register(cap: Capability) -> Capability:
+    # 包装 render 函数，使其在执行前自动校验参数
+    orig_render = cap.render
+    def wrapped_render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+        cap.validate_params(params)
+        return orig_render(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+    cap.render = wrapped_render
     _REGISTRY[cap.name] = cap
     return cap
 
@@ -50,7 +68,7 @@ def register(cap: Capability) -> Capability:
 def get(name: str) -> Capability:
     cap = _REGISTRY.get(name)
     if not cap:
-        raise RuntimeError(f"Unknown capability: {name}")
+        raise CapabilityError(f"Unknown capability: {name}")
     return cap
 
 
@@ -102,7 +120,7 @@ register(Capability(
 ))
 
 
-# Register narrative.kids_story_gate
+# Register kids.story_gate
 _STORY_GATE_PARAMS = {
     "type": "object",
     "properties": {
@@ -127,6 +145,7 @@ _STORY_GATE_PARAMS = {
                     },
                 },
             },
+            "required": ["beats"],
         },
     },
     "required": ["story"],
