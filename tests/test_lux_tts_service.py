@@ -98,6 +98,52 @@ def test_http_payload_retry_and_wav_join(monkeypatch: pytest.MonkeyPatch, tmp_pa
     assert metadata["sentence_gap_ms"] == 150
 
 
+def test_non_finite_timing_headers_use_safe_fallbacks(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(
+        lux,
+        "_get_health_payload",
+        lambda: {"ok": True, "voices": ["soffy", "en_male"]},
+    )
+    wav_data = _wav_bytes()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            request=request,
+            content=wav_data,
+            headers={
+                "Content-Type": "audio/wav",
+                "X-Voice": "en_male",
+                "X-Gen-Seconds": "inf",
+                "X-Audio-Seconds": "Infinity",
+            },
+        )
+
+    _mock_http(monkeypatch, handler)
+    out = tmp_path / "finite-metadata.wav"
+    metadata_path = tmp_path / "finite-metadata.json"
+    asyncio.run(
+        lux.synth_with_luxtts(
+            "Hello, little bunny!",
+            out,
+            voice="auto",
+            metadata_path=metadata_path,
+        )
+    )
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    row = metadata["sentences"][0]
+    assert row["voice"] == "en_male"
+    assert row["gen_seconds"] >= 0
+    assert row["api_audio_seconds"] == pytest.approx(0.1)
+    assert all(
+        isinstance(value, (int, float)) and value != float("inf") and value == value
+        for value in (row["gen_seconds"], row["api_audio_seconds"], metadata["duration_seconds"])
+    )
+
+
 def test_bad_voice_is_rejected_before_http(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(lux, "_get_health_payload", lambda: {"ok": True, "voices": ["soffy", "en_male"]})
     with pytest.raises(ValueError, match="Unsupported LuxTTS voice"):

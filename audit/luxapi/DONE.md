@@ -292,4 +292,18 @@ A second voice-contract edge case was found during the same review: successful W
 - Ruff: `All checks passed!`; `git diff --check`: passed.
 
 The external service health remains HTTP 200 with `soffy` and `en_male`. Existing warnings are `datetime.utcnow()` deprecations in adjacent schema/checkpoint coverage. Required direction/capability docs are absent inside the authorized worktree. No external files were accessed or modified, and no deployment, restart, paid API, or cleanup occurred. The exact acceptance gate is repeated after this commit.
+
+## Continuation — finite timing metadata and entrypoint recheck (2026-10-15)
+
+One further external-response robustness defect was found: `_float_header()` accepted positive infinity because `inf >= 0` is true. A malformed `X-Gen-Seconds: inf` or `X-Audio-Seconds: Infinity` could consequently place non-finite values into per-sentence JSON metadata. The parser now accepts only finite, non-negative numbers and uses the established fallback value for invalid timing headers. A mocked-HTTP regression verifies such headers result in valid finite timing metadata while preserving the expected `en_male` voice identity.
+
+Verification:
+
+- `tests/test_lux_tts_service.py`: `11 passed in 76.41s`; the live LuxTTS test ran rather than skipping. The longer wall time occurred during the live HTTP call, while the other checks completed.
+- Expanded audio/LuxTTS/LuxAPI/explainer/dialogue/Studio/history/coverage regression: `244 passed, 34 warnings in 10.91s`, exit `0`.
+- Entry-point/provider-routing checks across `test_audio_router_provider_identity.py`, `test_luxapi_entrypoint_defaults.py`, voice platform, voice Studio, Studio kit/catalog: `43 passed in 4.26s`, exit `0`.
+- Ruff, Python compilation and `git diff --check`: all passed.
+- Required acceptance gate before this report commit: `33 passed, 7341 deselected, 1 warning in 7.68s`; pipeline exit code `0`.
+
+The 34 expanded-suite warnings remain existing `datetime.utcnow()` deprecations outside the LuxTTS client. Live `/health` continues to report `soffy` and `en_male`. No direction/capability documentation was found inside the authorized worktree. No files outside `/data/soffy/projects/hevi-luxapi` were accessed or changed; external services were not changed, no paid API was called, and no deployment or cleanup occurred. The exact required acceptance gate is repeated after this commit.
 DONE LUXAPI-R1

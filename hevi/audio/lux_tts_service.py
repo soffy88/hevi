@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import shutil
@@ -124,7 +125,7 @@ async def _post_sentence(
 def _float_header(value: str | None, default: float) -> float:
     try:
         parsed = float(value or "")
-        return parsed if parsed >= 0 else default
+        return parsed if math.isfinite(parsed) and parsed >= 0 else default
     except (TypeError, ValueError):
         return default
 
