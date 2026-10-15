@@ -154,3 +154,60 @@ async def test_luxtts_http_health_failure_falls_back_to_cosyvoice(
     assert result["substituted"] is True
     assert "luxtts_http_unavailable" in result["fallback_reason"]
     assert (tmp_path / "fallback.wav").stat().st_size == 256
+
+
+@pytest.mark.asyncio
+async def test_luxtts_health_and_cosyvoice_failure_falls_back_to_piper(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import sys
+    from types import ModuleType
+
+    from hevi.audio import audio_router
+
+    monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "lux_tts")
+    monkeypatch.setattr("hevi.audio.lux_tts_service.lux_tts_available", lambda: False)
+
+    async def failed_cosyvoice(**_kwargs: object) -> None:
+        raise RuntimeError("cosyvoice offline")
+
+    monkeypatch.setattr(
+        "hevi.audio.cosyvoice_service.cosyvoice_synthesize",
+        failed_cosyvoice,
+    )
+    media = ModuleType("hevi.layer4_legacy.talkcraft.omodul_impl._media")
+    piper_calls: list[dict[str, object]] = []
+
+    def fake_piper_tts(*, text: str, out_wav: Path, lang: str, length_scale: float) -> None:
+        piper_calls.append(
+            {"text": text, "lang": lang, "length_scale": length_scale}
+        )
+        Path(out_wav).write_bytes(b"p" * 256)
+
+    media.piper_tts = fake_piper_tts  # type: ignore[attr-defined]
+    monkeypatch.setitem(
+        sys.modules,
+        "hevi.layer4_legacy.talkcraft.omodul_impl._media",
+        media,
+    )
+
+    with caplog.at_level("WARNING"):
+        result = await audio_router._synthesize_formal(
+            text="小兔子来啦。",
+            output_path=tmp_path / "piper-fallback.wav",
+            voice="soffy",
+            instruct=None,
+        )
+
+    assert piper_calls == [{"text": "小兔子来啦。", "lang": "zh", "length_scale": 1.0}]
+    assert result["requested_provider"] == "lux_tts"
+    assert result["actual_provider"] == "piper"
+    assert result["substituted"] is True
+    assert "luxtts_http_unavailable" in result["fallback_reason"]
+    assert "cosyvoice_unavailable" in result["fallback_reason"]
+    assert "LuxTTS HTTP unavailable/failed" in caplog.text
+    assert "CosyVoice fallback failed; attempting Piper" in caplog.text
+    assert "Piper supplied fallback narration" in caplog.text
+    assert (tmp_path / "piper-fallback.wav").stat().st_size == 256

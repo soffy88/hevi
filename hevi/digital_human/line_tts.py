@@ -19,7 +19,7 @@ def _provider() -> str:
         (
             os.getenv("HEVI_TTS_FORMAL_PROVIDER")
             or os.getenv("HEVI_EXPLAINER_TTS_PROVIDER")
-            or "voicebox"
+            or "lux_tts"
         )
         .strip()
         .lower()
@@ -47,6 +47,27 @@ async def synthesize_line(text: str, output_path: Path) -> Path:
                 script=[SimpleNamespace(text=spoken)],
                 output_path=output_path,
             )
+        elif requested in {"lux", "lux_tts", "luxtts"}:
+            from hevi.audio.audio_router import _synthesize_formal
+
+            envelope = await _synthesize_formal(
+                text=spoken,
+                output_path=output_path,
+                voice="zh-CN-XiaoxiaoNeural",
+                instruct="gentle, warm, clear dialogue for children aged 2-6",
+            )
+            output_path = Path(envelope["path"])
+            actual = str(envelope.get("actual_provider") or requested)
+            if actual != requested:
+                logger.warning(
+                    "line_tts_identity %s",
+                    {
+                        "requested_provider": requested,
+                        "actual_provider": actual,
+                        "substituted": True,
+                        "fallback_reason": envelope.get("fallback_reason"),
+                    },
+                )
         else:
             from oprim import edge_tts_word_boundary
 

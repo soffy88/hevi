@@ -1,0 +1,20 @@
+{
+  "task": "LUXAPI-R1",
+  "renderer": "one local FFmpeg render process; procedural sprite frames generated serially before muxing",
+  "age_direction": "2-6 toddler animation: pastel garden, smiling bunny and flower, gentle bunny hops, blinking, slow sun-ray motion, watering droplets",
+  "video_path": "/data/soffy/projects/hevi-luxapi/audit/luxapi/kids_story_sample.mp4",
+  "audio_source": "/data/soffy/projects/hevi-luxapi/audit/luxapi/chinese_story.wav",
+  "audio_metadata": "/data/soffy/projects/hevi-luxapi/audit/luxapi/chinese_story.metadata.json",
+  "duration_seconds": 7.938,
+  "width": 540,
+  "height": 960,
+  "frame_rate": "24/1",
+  "video_codec": "h264",
+  "audio_codec": "aac",
+  "audio_sample_rate": 48000,
+  "audio_channels": 1,
+  "voice": "soffy",
+  "narration_sentences": 4,
+  "bytes": 277637,
+  "remotion_status": "The existing Remotion entrypoint is not runnable in this worktree because hevi-remotion/node_modules/.bin/remotion is absent. No dependency was installed and the Remotion pipeline was not changed. The short sample was rendered with the existing local FFmpeg binary using Hevi LuxTTS narration."
+}
