@@ -192,4 +192,14 @@ Verification after the test fix:
 A separate non-gating full-repository diagnostic was not clean: `132 failed, 6669 passed, 77 skipped, 46 xfailed, 122 warnings, 444 errors in 603.51s`, with 461 occurrences of `OSError: [Errno 24] Too many open files` and PostgreSQL pool/database setup errors. Multiple full-suite commands remained running after shell-interface errors, so that run was resource-contended and not a reliable clean baseline. The one reproducible LuxAPI-adjacent test failure was fixed above; the focused task-related suites pass. Unrelated database, video, and creative-runtime subsystems were not changed.
 
 `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` are absent from this authorized worktree. No files outside `/data/soffy/projects/hevi-luxapi` were inspected or changed. Existing untracked `.trash/`, `.veya-project/`, `LUXAPI_TASK.md`, and qualification artifacts remain untouched and unstaged.
+
+## Continuation — repeated task-relevant regression sweep (2026-10-15)
+
+Re-ran the complete relevant suite as one pytest process, including audio, LuxTTS, LuxTTS alignment, LuxAPI entrypoint defaults, all explainer tests, dialogue, Studio, Voice Studio tasks, the history fixture, and the audio-router coverage contract:
+
+`JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q tests/test_audio*.py tests/test_lux*.py tests/test_luxapi*.py tests/test_explainer*.py tests/test_director_echo_dialogue.py tests/test_voice_studio_task.py tests/test_studio_kit.py tests/test_history_arc_adapter.py tests/test_coverage_contracts.py`
+
+Exact result on this continuation: `238 passed, 34 warnings in 21.40s`; exit code 0. Warnings are deprecations (`datetime.utcnow`) in Pydantic validation and unrelated covered schema/checkpoint paths. No tests failed.
+
+Both task direction documents (`KIDS_ANIME_DIRECTION.md`, `CAPABILITY_CONTRACT.md`) were searched for within this worktree and are not present. I did not inspect paths outside the authorized worktree to recover them; the toddler sample continues to be bounded by the task's explicit ages 2–6 requirement and existing report artifacts.
 DONE LUXAPI-R1
