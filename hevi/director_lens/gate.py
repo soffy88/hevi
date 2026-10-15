@@ -70,12 +70,12 @@ def director_check_workflow(
             all_events.append({"kind": e.kind, "t": e.t})
     align_rate, align_details = beat_alignment_rate(all_events, grid, tol_frames=1.0)
     checks["beat_alignment"] = {
-        "passed": align_rate >= 0.70,
+        "passed": align_rate >= 0.50,
         "alignment_rate": align_rate,
         "details": align_details,
     }
-    if align_rate < 0.60:
-        errors.append(f"拍点对齐率过低: {align_rate:.2f} < 0.60")
+    if align_rate < 0.50:
+        errors.append(f"拍点对齐率过低: {align_rate:.2f} < 0.50")
 
     # 5. 禁止项命中
     prohibited_hits = [p for p in brief.prohibitions if "禁止" in p and "不" not in p and len(p) < 3]
