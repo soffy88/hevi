@@ -29,17 +29,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-<<<<<<< HEAD
+from .errors import CapabilityError
+from .result import CapabilityResult
 from hevi.quality.kids_gate import kids_gate_workflow, kids_gate_extended
 from hevi.kids import manifest_adapter
 from hevi.kids import review_sheet as review_sheet_mod
 from hevi.kids import render_local
 from hevi.kids import annotation_revision
-
-=======
-from .errors import CapabilityError
-from .result import CapabilityResult
->>>>>>> 5947249d6b1fb7bf0e9df2d98f89dcd8312efe21
 
 __all__ = [
     "Capability",
@@ -356,7 +352,6 @@ def _render_kids_gate(
     )
 
 
-<<<<<<< HEAD
 register(Capability(
     name="qa.kids_gate",
     kind="line",
@@ -497,19 +492,6 @@ register(Capability(
     description="帧标注 → 确定性 ShotSpecPatch（§3.5 映射）",
     line="anime",
 ))
-=======
-register(
-    Capability(
-        name="qa.kids_gate",
-        kind="line",
-        aspects=["16:9", "9:16"],
-        params_schema={"type": "object"},
-        cpu_cost_hint=0.1,
-        render=_render_kids_gate,
-        description="幼儿动漫安全与节奏质检闸门",
-        line="anime",
-    )
-)
 
 
 _STORY_GATE_PARAMS: dict[str, Any] = {
@@ -618,4 +600,4 @@ register(
 # Anatomy explainer capability (merged from feat/anatomy-explainer).  Importing
 # the module registers ``anatomy.explainer`` via this same registry.
 import hevi.capabilities.anatomy_explainer  # noqa: E402,F401
->>>>>>> 5947249d6b1fb7bf0e9df2d98f89dcd8312efe21
+
