@@ -347,6 +347,12 @@
 | POST | `/api/narrator/run` | Run |
 | GET | `/api/narrator/status` | Status |
 
+## openshorts
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/openshorts/ai-short/run` | Run Ai Short |
+
 ## payment
 
 | 方法 | 路径 | 说明 |

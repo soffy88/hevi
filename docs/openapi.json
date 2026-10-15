@@ -19305,6 +19305,54 @@
         ]
       }
     },
+    "/api/openshorts/ai-short/run": {
+      "post": {
+        "tags": [
+          "openshorts"
+        ],
+        "summary": "Run Ai Short",
+        "operationId": "run_ai_short_api_openshorts_ai_short_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIShortRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Run Ai Short Api Openshorts Ai Short Run Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/ops": {
       "get": {
         "tags": [
@@ -20325,6 +20373,117 @@
   },
   "components": {
     "schemas": {
+      "AIShortRunRequest": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,80}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "default": ""
+          },
+          "cost_mode": {
+            "type": "string",
+            "title": "Cost Mode",
+            "default": "low_cost"
+          },
+          "with_voiceover": {
+            "type": "boolean",
+            "title": "With Voiceover",
+            "default": true
+          },
+          "language": {
+            "type": "string",
+            "title": "Language",
+            "default": ""
+          },
+          "voice": {
+            "type": "string",
+            "title": "Voice",
+            "default": ""
+          },
+          "voice_engine": {
+            "type": "string",
+            "title": "Voice Engine",
+            "default": "native"
+          },
+          "voice_design": {
+            "type": "string",
+            "title": "Voice Design",
+            "default": ""
+          },
+          "voiceover_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voiceover Path"
+          },
+          "talking_head_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Talking Head Path"
+          },
+          "actor_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Image"
+          },
+          "b_roll_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "B Roll Paths"
+          },
+          "publish_to": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Publish To"
+          },
+          "estimated_cost_usd": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Estimated Cost Usd",
+            "default": 0.65
+          }
+        },
+        "type": "object",
+        "title": "AIShortRunRequest"
+      },
       "Act": {
         "properties": {
           "act": {

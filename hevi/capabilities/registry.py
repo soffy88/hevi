@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from hevi.renderers.ffmpeg import resolve_ffmpeg_bin
+from hevi.operations.bridge import OperationBridge, SqliteOperationsStore, OperationError
 from hevi.operations.registry import list_operations as _list_operations
 from hevi.quality.kids_gate import kids_gate_workflow
 
@@ -112,6 +114,25 @@ def _render_ops_bridge(
     report_file = out_path / "ops_bridge_inventory.json"
     report_file.write_text(json.dumps(ops, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    op_receipt: dict[str, Any] = {}
+    op_name = params.get("operation")
+    if op_name:
+        import asyncio
+        db_path = params.get("db_path", "data/agent_ops.db")
+        bridge = SqliteOperationsStore(db_path)
+        br = OperationBridge(bridge, read_only=(params.get("mode") == "read-only"))
+        try:
+            op_params = params.get("params", {})
+            op_id = params.get("opId")
+            if params.get("expectedRevision") is not None:
+                op_params.setdefault("expectedRevision", params["expectedRevision"])
+            op_receipt = asyncio.run(br.execute(op_name, op_params, op_id=op_id))
+        except OperationError as exc:
+            op_receipt = {"operation": op_name, "error": exc.code, "detail": exc.detail}
+        except Exception as exc:
+            op_receipt = {"operation": op_name, "error": "execution_failed", "detail": str(exc)}
+        (out_path / "ops_receipt.json").write_text(json.dumps(op_receipt, ensure_ascii=False, indent=2), encoding="utf-8")
+
     mp4_file: Path | None = None
     sha256_val = ""
     dur = float(duration) if duration > 0 else 2.0
@@ -119,8 +140,9 @@ def _render_ops_bridge(
     # 生成 2 秒演示视频产物（lavfi 纯 CPU 合成，遵守无云 API / 零网络）
     res = "320x568" if aspect == "9:16" else "568x320"
     mp4_path = out_path / "ops_bridge_preview.mp4"
+    ffmpeg_bin = resolve_ffmpeg_bin()
     cmd = [
-        "ffmpeg",
+        ffmpeg_bin,
         "-y",
         "-f",
         "lavfi",
@@ -148,7 +170,7 @@ def _render_ops_bridge(
         duration_s=dur,
         sha256=sha256_val,
         operations=ops,
-        qa={"count": len(ops), "names": [o["name"] for o in ops], "report_file": str(report_file)},
+        qa={"count": len(ops), "names": [o["name"] for o in ops], "report_file": str(report_file), "op_receipt": op_receipt},
     )
 
 

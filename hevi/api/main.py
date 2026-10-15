@@ -215,6 +215,7 @@ app.include_router(distribution_router, prefix="/api")
 app.include_router(lite_router, prefix="/api")  # 本地零费用:选题→veya-loop→确认→HTML 出片
 app.include_router(longcat_router, prefix="/api")
 app.include_router(montage_router, prefix="/api")
+app.include_router(openshorts_router, prefix="/api")  #AI 短片执行端点(勿卸载,见 AGENTOPS_FIX F1)
 app.include_router(ops_router)  # 单元 C:Agent 画布操作桥 (router 自带 /api/ops 前缀)
 app.include_router(ws_router)  # WebSocket 路由自带 /api/ws 前缀
 app.include_router(freezone_router, prefix="/api")

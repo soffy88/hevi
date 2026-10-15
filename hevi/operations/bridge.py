@@ -111,6 +111,13 @@ CREATE TABLE IF NOT EXISTS agent_proposals (
   payload_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS agent_op_receipts (
+  op_id TEXT PRIMARY KEY,
+  operation TEXT NOT NULL,
+  params_fingerprint TEXT NOT NULL,
+  receipt_json TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE IF NOT EXISTS agent_schema_version (
   store TEXT PRIMARY KEY,
   version INTEGER NOT NULL
@@ -148,18 +155,57 @@ class SqliteOperationsStore(OperationsStore):
             "revision": row["revision"],
         }
 
-    async def save_graph(
-        self, graph_id: str, nodes: list[dict[str, Any]], edges: list[dict[str, Any]], revision: int
+    async def save_graph_with_receipt(
+        self,
+        graph_id: str,
+        nodes: list[dict[str, Any]],
+        edges: list[dict[str, Any]],
+        revision: int,
+        op_id: str | None,
+        operation: str,
+        fingerprint: str,
+        receipt: dict[str, Any],
     ) -> None:
-        self._conn.execute(
-            "INSERT INTO agent_graphs (graph_id, nodes_json, edges_json, revision, updated_at) "
-            "VALUES (?, ?, ?, ?, datetime('now')) "
-            "ON CONFLICT(graph_id) DO UPDATE SET "
-            "nodes_json=excluded.nodes_json, edges_json=excluded.edges_json, "
-            "revision=excluded.revision, updated_at=datetime('now')",
-            (graph_id, json.dumps(nodes, ensure_ascii=False), json.dumps(edges, ensure_ascii=False), revision),
-        )
-        self._conn.commit()
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO agent_graphs (graph_id, nodes_json, edges_json, revision, updated_at) "
+                "VALUES (?, ?, ?, ?, datetime('now')) "
+                "ON CONFLICT(graph_id) DO UPDATE SET "
+                "nodes_json=excluded.nodes_json, edges_json=excluded.edges_json, "
+                "revision=excluded.revision, updated_at=datetime('now')",
+                (graph_id, json.dumps(nodes, ensure_ascii=False), json.dumps(edges, ensure_ascii=False), revision),
+            )
+            if op_id:
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO agent_op_receipts (op_id, operation, params_fingerprint, receipt_json, created_at) "
+                    "VALUES (?, ?, ?, ?, datetime('now'))",
+                    (op_id, operation, fingerprint, json.dumps(receipt, ensure_ascii=False)),
+                )
+
+    async def lookup_receipt(self, op_id: str, params: dict[str, Any], operation: str) -> dict[str, Any] | None:
+        from hevi.operations.registry import _fingerprint
+        row = self._conn.execute(
+            "SELECT params_fingerprint, receipt_json FROM agent_op_receipts WHERE op_id = ?",
+            (op_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        fp = _fingerprint(params)
+        if row["params_fingerprint"] != fp:
+            return {"conflict": True}
+        receipt = json.loads(row["receipt_json"])
+        receipt["replayed"] = True
+        return receipt
+
+    async def record_receipt(self, op_id: str, params: dict[str, Any], receipt: dict[str, Any], operation: str) -> None:
+        from hevi.operations.registry import _fingerprint
+        fp = _fingerprint(params)
+        with self._conn:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO agent_op_receipts (op_id, operation, params_fingerprint, receipt_json, created_at) "
+                "VALUES (?, ?, ?, ?, datetime('now'))",
+                (op_id, operation, fp, json.dumps(receipt, ensure_ascii=False)),
+            )
 
     # -- assets -------------------------------------------------------------
     async def list_assets(self, category: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
@@ -294,6 +340,8 @@ class OperationBridge:
     def __init__(self, store: OperationsStore, *, read_only: bool = False) -> None:
         self._store = store
         self._read_only = read_only
+        self._current_op_id: str | None = None
+        self._current_op_fp: str | None = None
 
     @property
     def read_only(self) -> bool:
@@ -310,13 +358,29 @@ class OperationBridge:
         if not desc.read_only and self._read_only:
             return self._denied(name)
 
-        # 写操作：先处理幂等（同 opId 重放 / 冲突）。
-        # 注意：expectedRevision(CAS) 属于并发控制字段，不计入幂等指纹，
-        # 否则同一逻辑操作的重放会因 revision 推进而被误判为 conflict。
-        if not desc.read_only:
-            envelope = await self._resolve_idempotency(op_id, params, name)
+        # F3：写操作强制要求 opId
+        if not desc.read_only and not op_id:
+            raise OperationError(400, "opid_required", "write operations require 'opId'")
+
+        # F6：执行前按描述符 params JSON Schema 校验
+        if desc.params:
+            try:
+                import jsonschema
+                jsonschema.validate(instance=params, schema=desc.params)
+            except jsonschema.ValidationError as exc:
+                raise OperationError(422, "invalid_params", str(exc)) from exc
+
+        # 写操作：处理幂等（持久化存储层 lookup）
+        if not desc.read_only and op_id:
+            from hevi.operations.registry import _fingerprint
+            fp = _fingerprint(params)
+            self._current_op_id = op_id
+            self._current_op_fp = fp
+            envelope = await self._store.lookup_receipt(op_id, params, name)
             if envelope is not None:
-                return envelope  # 重放原回执 或 冲突拒绝
+                if isinstance(envelope, dict) and envelope.get("conflict"):
+                    raise OperationError(409, "idempotency_conflict", "same opId with different params is not allowed")
+                return envelope
 
         handler = {
             "canvas.get": self._op_canvas_get,
@@ -331,6 +395,7 @@ class OperationBridge:
         if handler is None:
             raise OperationError(501, "not_implemented", f"operation not implemented: {name}")
 
+        self._current_op_id = op_id
         try:
             result = await handler(params)
         except OperationError:
@@ -338,8 +403,8 @@ class OperationBridge:
         except Exception as exc:  # 既有校验器/存储异常统一为 422
             raise OperationError(422, "invalid_request", str(exc)) from exc
 
-        # 写操作成功 → 记录首次回执供幂等重放。
-        if not desc.read_only and op_id:
+        # 写操作成功 → 持久化记录回执与写入同一事务
+        if not desc.read_only and op_id and hasattr(self._store, "save_graph_with_receipt") == False:
             record_receipt(op_id, params, result)
 
         result.setdefault("operation", name)
@@ -428,6 +493,17 @@ class OperationBridge:
             raise OperationError(404, "graph_not_found", "graph not found")
         return graph
 
+    async def _save_graph_txn(
+        self, graph_id: str, nodes: list[dict[str, Any]], edges: list[dict[str, Any]], revision: int, operation: str, result: dict[str, Any]
+    ) -> None:
+        if self._current_op_id and hasattr(self._store, "save_graph_with_receipt"):
+            fp = self._current_op_fp or _fingerprint({})
+            await self._store.save_graph_with_receipt(
+                graph_id, nodes, edges, revision, self._current_op_id, operation, fp, result
+            )
+        else:
+            await self._store.save_graph(graph_id, nodes, edges, revision)
+
     async def _op_rows_append(self, params: dict[str, Any]) -> dict[str, Any]:
         graph = await self._load_graph_or_404(params["graph_id"])
         new_revision = self._check_cas(graph, params, "canvas.script.rows.append")
@@ -436,16 +512,15 @@ class OperationBridge:
         rows = list((_locate_script_node(graph) or {}).get("rows", []))
         rows.append(valid)
         updated = _set_script_rows(graph, rows)
-        await self._store.save_graph(
-            params["graph_id"], updated["nodes"], graph.get("edges", []), new_revision
-        )
-        return {
+        res = {
             "graph_id": params["graph_id"],
             "revision": new_revision,
             "row_index": len(rows) - 1,
             "row_count": len(rows),
             "row": valid,
         }
+        await self._save_graph_txn(params["graph_id"], updated["nodes"], graph.get("edges", []), new_revision, "canvas.script.rows.append", res)
+        return res
 
     async def _op_rows_update(self, params: dict[str, Any]) -> dict[str, Any]:
         graph = await self._load_graph_or_404(params["graph_id"])
@@ -460,16 +535,15 @@ class OperationBridge:
         valid = _validate_row(params["row"])
         rows[idx] = valid
         updated = _set_script_rows(graph, rows)
-        await self._store.save_graph(
-            params["graph_id"], updated["nodes"], graph.get("edges", []), new_revision
-        )
-        return {
+        res = {
             "graph_id": params["graph_id"],
             "revision": new_revision,
             "row_index": idx,
             "row_count": len(rows),
             "row": valid,
         }
+        await self._save_graph_txn(params["graph_id"], updated["nodes"], graph.get("edges", []), new_revision, "canvas.script.rows.update", res)
+        return res
 
     async def _op_rows_remove(self, params: dict[str, Any]) -> dict[str, Any]:
         graph = await self._load_graph_or_404(params["graph_id"])
@@ -483,16 +557,15 @@ class OperationBridge:
             raise OperationError(404, "row_not_found", f"row {idx} not found")
         removed = rows.pop(idx)
         updated = _set_script_rows(graph, rows)
-        await self._store.save_graph(
-            params["graph_id"], updated["nodes"], graph.get("edges", []), new_revision
-        )
-        return {
+        res = {
             "graph_id": params["graph_id"],
             "revision": new_revision,
             "row_index": idx,
             "row_count": len(rows),
             "removed": removed,
         }
+        await self._save_graph_txn(params["graph_id"], updated["nodes"], graph.get("edges", []), new_revision, "canvas.script.rows.remove", res)
+        return res
 
     async def _op_bind_asset(self, params: dict[str, Any]) -> dict[str, Any]:
         graph = await self._load_graph_or_404(params["graph_id"])
@@ -510,14 +583,15 @@ class OperationBridge:
         bound.append(params["asset_id"])
         node["bound_assets"] = bound
         nodes[target] = node
-        await self._store.save_graph(params["graph_id"], nodes, graph.get("edges", []), new_revision)
-        return {
+        res = {
             "graph_id": params["graph_id"],
             "revision": new_revision,
             "node_id": params["node_id"],
             "asset_id": params["asset_id"],
             "bound_assets": bound,
         }
+        await self._save_graph_txn(params["graph_id"], nodes, graph.get("edges", []), new_revision, "canvas.node.bind_asset", res)
+        return res
 
     # -- 付费闸 propose ------------------------------------------------------
 

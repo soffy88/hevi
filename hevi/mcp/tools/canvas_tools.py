@@ -12,6 +12,7 @@ from typing import Any
 
 from obase.mcp_server import SkillDef
 
+from hevi.mcp.schemas import EXECUTE_CANVAS_INPUT, EXECUTE_CANVAS_OUTPUT
 from hevi.operations.bridge import OperationBridge, SqliteOperationsStore
 from hevi.operations.registry import list_operations
 
@@ -99,15 +100,8 @@ def build_canvas_skills(executor_svc: Any = None) -> list[SkillDef]:
         SkillDef(
             name="hevi.execute_canvas",
             description="AI执行画布工作流，运行有向图节点管线并返回每节点结果",
-            input_schema={
-                "type": "object",
-                "properties": {
-                    "graph_id": {"type": "string"},
-                    "on_error": {"type": "string", "enum": ["rollback", "continue"], "default": "rollback"},
-                },
-                "required": ["graph_id"],
-            },
-            output_schema={"type": "object", "properties": {"status": {"type": "string"}}},
+            input_schema=EXECUTE_CANVAS_INPUT,
+            output_schema=EXECUTE_CANVAS_OUTPUT,
             handler=_execute_canvas,
         ),
     ]
