@@ -217,3 +217,80 @@ def test_final_cue_hold_is_failing_closed_when_no_room_remains() -> None:
 
     with pytest.raises(RuntimeError, match="final caption cannot fit"):
         _clamp_final_cue_hold(planned, media_end=65.913)
+
+
+def _write_lead_in_then_syllable(path, *, blip_frames, syllable_start, syllable_frames=13):
+    """Synthesise a WAV with a short lead-in burst and then a real syllable."""
+    import array
+    import wave
+
+    rate = 16_000
+    total_samples = int(50.0 * rate)
+    pcm = [0] * total_samples
+
+    def frames(start_s, count):
+        start_idx = int(start_s * rate)
+        for index in range(start_idx, start_idx + count * 320):
+            if index < len(pcm):
+                pcm[index] = 1
+
+    frames(40.12, blip_frames)
+    frames(syllable_start, syllable_frames)
+
+    samples = array.array("h", [4000 if flag else 0 for flag in pcm])
+    with wave.open(str(path), "wb") as target:
+        target.setnchannels(1)
+        target.setsampwidth(2)
+        target.setframerate(rate)
+        target.writeframes(samples.tobytes())
+    return rate, 320
+
+
+def test_short_lead_in_burst_does_not_anchor_the_caption_onset(tmp_path) -> None:
+    """R5 regression: Piper lead-in bursts must not fix the subtitle too early.
+
+    On the 9:16 gratitude run the caption "请你和身边的大人一起练习" was placed at
+    40.12s, while the audible syllable starts at 40.44s (rms 0.033 vs 0.007).
+    The 20 ms gap is far below the observer's tolerance and the independent ASR
+    therefore measured a 0.3s early cue.
+    """
+    from hevi.layer4_legacy.handdraw.scripts.independent_caption_alignment import (
+        _adjust_word_starts_for_silence,
+    )
+
+    audio = tmp_path / "lead-in.wav"
+    rate, _frame = _write_lead_in_then_syllable(audio, blip_frames=2, syllable_start=40.44)
+    words = [{"text": "请", "start": 40.12, "end": 40.70}]
+
+    adjusted = _adjust_word_starts_for_silence(words, audio)
+
+    assert adjusted == 1
+    assert words[0]["start"] == pytest.approx(40.44, abs=rate / 320 + 1e-6)
+
+
+def test_genuine_syllable_onset_is_preserved(tmp_path) -> None:
+    """A real sustained syllable must not be pushed later by the new branch."""
+    import array
+    import wave
+
+    from hevi.layer4_legacy.handdraw.scripts.independent_caption_alignment import (
+        _adjust_word_starts_for_silence,
+    )
+
+    rate = 16_000
+    frame = 320
+    audio = tmp_path / "single-syllable.wav"
+    samples = array.array("h", [0] * int(3.0 * rate))
+    for index in range(int(1.00 * rate), int(1.60 * rate)):
+        samples[index] = 4000
+    with wave.open(str(audio), "wb") as target:
+        target.setnchannels(1)
+        target.setsampwidth(2)
+        target.setframerate(rate)
+        target.writeframes(samples.tobytes())
+
+    words = [{"text": "谢谢", "start": 1.00, "end": 1.60}]
+
+    assert _adjust_word_starts_for_silence(words, audio) == 0
+    assert words[0]["start"] == 1.00
+    assert frame > 0

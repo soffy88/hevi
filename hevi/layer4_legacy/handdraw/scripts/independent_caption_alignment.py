@@ -97,6 +97,33 @@ def _match_cue(
     return start, end, score
 
 
+def _sustained_clusters(
+    clusters: list[list[int]], pcm: list[int], rate: int,
+) -> list[list[int]]:
+    """Filter out lead-in bursts that are too short to be the syllable at all.
+
+    Piper sometimes emits a very soft lead-in (a breath or consonant attack)
+    tens of milliseconds before the syllable an ASR token was recognised for.
+    A genuine Chinese syllable at the preschool pace gate (<=3.5 chars/s) lasts
+    at least ~120 ms, i.e. several consecutive 20 ms frames above threshold.
+    Only clusters with a minimum run of active frames are onset candidates.
+    """
+    minimum_samples = int(0.08 * rate)  # 80 ms of continuous energy
+    sustained: list[list[int]] = []
+    for cluster in clusters:
+        run = 0
+        longest = 0
+        for index in range(cluster[0], cluster[1] + 1):
+            if index < len(pcm) and pcm[index]:
+                run += 1
+                longest = max(longest, run)
+            else:
+                run = 0
+        if longest >= minimum_samples:
+            sustained.append(cluster)
+    return sustained
+
+
 def _adjust_word_starts_for_silence(
     words: list[dict[str, Any]], audio_path: Path | str, *, threshold: float = 0.005,
 ) -> int:
@@ -116,37 +143,36 @@ def _adjust_word_starts_for_silence(
             raise ValueError(f"caption silence gate expects 16-bit PCM WAV, got {width * 8}-bit")
         if rate <= 0 or channels <= 0:
             raise ValueError("caption silence gate received invalid WAV format")
-        frame_samples = max(1, round(rate * 0.02))
-        samples_per_frame = frame_samples * channels
+        block_frames = max(1, round(rate * 0.02))
         pcm = array("h")
         while True:
-            chunk = source.readframes(frame_samples)
+            chunk = source.readframes(block_frames)
             if not chunk:
                 break
             values = array("h")
             values.frombytes(chunk)
-            if len(values) < samples_per_frame:
-                values.extend([0] * (samples_per_frame - len(values)))
-            energy = sum(int(value) * int(value) for value in values)
-            rms = (energy / max(1, len(values))) ** 0.5 / 32768.0
-            pcm.append(1 if rms >= threshold else 0)
+            if not values:
+                break
+            for v in values:
+                rms = abs(int(v)) / 32768.0
+                pcm.append(1 if rms >= threshold else 0)
     if not pcm:
         raise ValueError(f"caption silence gate received empty WAV: {audio_path}")
 
     adjusted = 0
-    duration = len(pcm) * frame_samples / rate
-    frame_seconds = frame_samples / rate
+    duration = len(pcm) / rate
+    gap_samples = round(0.24 * rate)
     for word in words:
         start = max(0.0, float(word["start"]))
         end = min(duration, max(start, float(word["end"])))
-        first = min(len(pcm) - 1, int(start * rate / frame_samples))
-        last = min(len(pcm), max(first + 1, int(end * rate / frame_samples) + 1))
+        first = min(len(pcm) - 1, int(start * rate))
+        last = min(len(pcm), max(first + 1, int(end * rate) + 1))
         active_indices = [index for index in range(first, last) if pcm[index]]
         if not active_indices:
             continue
         clusters: list[list[int]] = []
         for index in active_indices:
-            if not clusters or (index - clusters[-1][-1] - 1) * frame_seconds >= 0.24:
+            if not clusters or index - clusters[-1][-1] - 1 >= gap_samples:
                 clusters.append([index, index])
             else:
                 clusters[-1][-1] = index
@@ -164,12 +190,16 @@ def _adjust_word_starts_for_silence(
             and token_characters <= 2
             and span >= 0.70
             and len(clusters) > 1
-            and (clusters[-1][0] - clusters[-2][1] - 1) * frame_seconds >= 0.24
-            and end - clusters[-1][0] * frame_seconds <= 0.50
+            and (clusters[-1][0] - clusters[-2][1] - 1) / rate >= 0.24
+            and end - clusters[-1][0] / rate <= 0.50
         ):
-            next_start = clusters[-1][0] * frame_seconds
+            next_start = clusters[-1][0] / rate
         elif not start_is_active:
-            next_start = clusters[0][0] * frame_seconds
+            next_start = clusters[0][0] / rate
+        elif start_is_active and len(clusters) > 1:
+            sustained = _sustained_clusters(clusters, pcm, rate)
+            if sustained and sustained[0] is not clusters[0]:
+                next_start = sustained[0][0] / rate
         if next_start is not None and next_start > start:
             word["start"] = round(next_start, 6)
             adjusted += 1
