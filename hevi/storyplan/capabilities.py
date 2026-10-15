@@ -35,6 +35,25 @@ class Capability:
     line: str = "storyplan"
 
     def validate_params(self, params: dict[str, Any]) -> dict[str, Any]:
+        """严格校验输入参数，非法参数抛出 ValueError 拒绝。"""
+        if not isinstance(params, dict):
+            raise ValueError("params must be a dictionary")
+        if self.name == "story_plan":
+            topic = params.get("topic")
+            if topic is not None and not isinstance(topic, str):
+                raise ValueError("topic must be a string")
+        elif self.name == "story_check":
+            plan = params.get("plan")
+            if plan is not None and not isinstance(plan, dict):
+                raise ValueError("plan must be a dictionary")
+        elif self.name == "take_select":
+            cands = params.get("candidates")
+            if cands is not None:
+                if not isinstance(cands, list):
+                    raise ValueError("candidates must be a list")
+                for c in cands:
+                    if not isinstance(c, dict) or "take_id" not in c or "video_path" not in c:
+                        raise ValueError("each candidate must be a dict with take_id and video_path")
         return params
 
 

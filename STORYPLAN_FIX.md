@@ -102,3 +102,6 @@ JWT_SECRET=test-only PYTHONPATH=/data/soffy/projects/hevi-storyplan TMPDIR=.tmp 
   /data/soffy/projects/hevi/.venv/bin/python audit/storyplan/verify_r1/counter.py
 # 修复目标：末行 "未达预期 0"（当前 6）
 ```
+
+## 安全规则
+只改本 worktree；不删 worktree 外任何文件；不清理磁盘（/data <5G 写 DISK_FULL_NOTE.md 停止）；所有 python 设 PYTHONPATH=/data/soffy/projects/hevi-storyplan；不 push；不调付费 API；不要把 lint 日志提交进仓库。完成后在 STORYPLAN_DONE.md 最后一行写 DONE STORYPLAN-R2。

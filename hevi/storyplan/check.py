@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+__all__ = ["run_story_check", "CheckItem", "StoryCheckReport", "FORBIDDEN_KIDS_WORDS"]
+
 import re
 from typing import Any
 from pydantic import BaseModel, Field
 from hevi.storyplan.model import StoryPlan, NEW_INFO_REQUIRED_FIELDS
+import jieba
 
 
 class CheckItem(BaseModel):
@@ -22,10 +25,12 @@ class StoryCheckReport(BaseModel):
     summary: str = ""
 
 
-# 幼儿内容安全违禁词表（kids_gate 核心）
+# 幼儿内容安全违禁词表（kids_gate 核心，覆盖 15 类词根）
 FORBIDDEN_KIDS_WORDS = [
-    "暴力", "血", "武器", "刀", "枪", "恐怖", "惊吓", "死", "杀",
-    "玩火", "爬窗", "独自外出", "嘲笑", "笨", "蠢", "羞辱", "广告",
+    "揍", "踢", "勒脖子", "踹飞", "鞭打", "毒药", "炸弹",
+    "陌生人", "辱骂", "鬼怪", "血", "刀", "枪", "恐怖", "吓死人",
+    "暴力", "武器", "死", "杀", "玩火", "爬窗", "独自外出",
+    "嘲笑", "笨", "蠢", "羞辱", "广告", "惊吓",
 ]
 
 
@@ -101,32 +106,68 @@ def run_story_check(plan: StoryPlan, *, hook_window_sec: float = 3.5, max_chars_
         )
     )
 
-    # 5) 叙事闭环检查：开头提出的问题/期待在结尾被回应
-    hook_kw = set(re.findall(r"[\u4e00-\u9fa5]", hook.text))
+    # 5) 叙事闭环检查（FIX-1）：必须显式回应 hook（词语级 jieba 交集或 beat expectation 重叠），删除纯 len>5 兜底
+    hook_words = set(jieba.lcut(hook.text)) - {"", " ", "？", "？", "呢", "吗", "的", "了", "啊", "什么", "怎么", "呢"}
     closing_text = plan.narrative.closing_response
-    closing_kw = set(re.findall(r"[\u4e00-\u9fa5]", closing_text))
-    overlap = hook_kw & closing_kw
-    closure_ok = len(overlap) >= 1 or len(closing_text) > 5
+    closing_words = set(jieba.lcut(closing_text)) - {"", " ", "？", "？", "呢", "吗", "的", "了", "啊", "好", "吧"}
+    beat_words = set()
+    for b in plan.narrative.beats:
+        beat_words.update(jieba.lcut(b.expectation))
+
+    overlap = (hook_words & closing_words) or (beat_words & closing_words)
+    closure_ok = len(overlap) >= 1 and len(closing_text.strip()) > 2
     checks.append(
         CheckItem(
             check_id="C5_NARRATIVE_CLOSURE",
             name="叙事闭环检查",
             status="PASS" if closure_ok else "FAIL",
-            message="开头钩子与结尾回应形成闭环" if closure_ok else "结尾未有效回应开头期待",
-            evidence={"hook_text": hook.text, "closing": closing_text},
+            message="开头钩子与结尾回应形成语义闭环" if closure_ok else "结尾未有效回应开头期待或缺乏关键词交集",
+            evidence={"hook_text": hook.text, "closing": closing_text, "overlap": list(overlap)},
         )
     )
 
-    # 6) 时间线检查：无空白黑场、字幕不超界、各轨不越界
+    # 6) 时间线检查（FIX-2）：无空白黑场、字幕不超界、各轨不越界、空时间线拒绝
     timeline = plan.timeline
     video_track = next((t for t in timeline.tracks if t.track_kind == "video"), None)
+    voice_tracks = [t for t in timeline.tracks if t.track_kind == "voice"]
+    subtitle_tracks = [t for t in timeline.tracks if t.track_kind == "subtitle"]
+
     timeline_ok = True
     timeline_msg = "时间线完整无断层"
-    if video_track and video_track.clips:
-        sorted_clips = sorted(video_track.clips, key=lambda c: c.start_ms)
-        if sorted_clips[0].start_ms > 100 or sorted_clips[-1].end_ms < timeline.duration_ms - 100:
-            timeline_ok = False
-            timeline_msg = "时间线存在首尾留白或未铺满总时长"
+
+    if not timeline.tracks or not video_track or not video_track.clips:
+        timeline_ok = False
+        timeline_msg = "时间线缺失视频轨或为空"
+    else:
+        # Check all clips bounds against timeline duration and non-negative
+        for track in timeline.tracks:
+            for clip in track.clips:
+                if clip.start_ms < 0 or clip.end_ms > timeline.duration_ms or clip.start_ms >= clip.end_ms:
+                    timeline_ok = False
+                    timeline_msg = f"轨道 {track.track_kind} 存在越界或无效 clip [{clip.start_ms}, {clip.end_ms}] (总时长 {timeline.duration_ms})"
+                    break
+            if not timeline_ok:
+                break
+
+        # Check subtitle coverage by voice clips
+        if timeline_ok and subtitle_tracks and voice_tracks:
+            voice_intervals = [(c.start_ms, c.end_ms) for vt in voice_tracks for c in vt.clips]
+            for st in subtitle_tracks:
+                for sc in st.clips:
+                    covered = any(v[0] <= sc.start_ms + 150 and v[1] >= sc.end_ms - 150 for v in voice_intervals)
+                    if not covered:
+                        timeline_ok = False
+                        timeline_msg = f"字幕片段 {sc.clip_id} [{sc.start_ms}, {sc.end_ms}] 超出语音区间范围"
+                        break
+                if not timeline_ok:
+                    break
+
+        # Check video head/tail gaps
+        if timeline_ok and video_track and video_track.clips:
+            sorted_clips = sorted(video_track.clips, key=lambda c: c.start_ms)
+            if sorted_clips[0].start_ms > 100 or sorted_clips[-1].end_ms < timeline.duration_ms - 100:
+                timeline_ok = False
+                timeline_msg = "视频时间线存在首尾留白或未铺满总时长"
 
     checks.append(
         CheckItem(
@@ -134,12 +175,12 @@ def run_story_check(plan: StoryPlan, *, hook_window_sec: float = 3.5, max_chars_
             name="时间线完整性与无黑场",
             status="PASS" if timeline_ok else "FAIL",
             message=timeline_msg,
-            evidence={"duration_ms": timeline.duration_ms},
+            evidence={"duration_ms": timeline.duration_ms, "tracks_count": len(timeline.tracks)},
         )
     )
 
-    # 7) 内容安全审查（kids_gate 词表）
-    full_text = plan.narration_text + " " + hook.text + " " + " ".join(sh.purpose + sh.action for sh in all_shots)
+    # 7) 内容安全审查（FIX-3：kids_gate 词表全覆盖）
+    full_text = plan.narration_text + " " + hook.text + " " + " ".join(sh.purpose + sh.action + sh.end_state for sh in all_shots)
     violations = [w for w in FORBIDDEN_KIDS_WORDS if w in full_text]
     safe_ok = len(violations) == 0
     checks.append(

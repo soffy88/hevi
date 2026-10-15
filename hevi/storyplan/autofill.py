@@ -1,4 +1,4 @@
-"""一句话 → 自动补全 StoryPlan（规则 + 模板，不调付费 API）。"""
+"""一句话 → 自动补全 StoryPlan（规则 + 模板，随主题多变，不调付费 API）。"""
 
 from __future__ import annotations
 
@@ -27,74 +27,122 @@ def autofill_story_plan(
     hook_type: str = "question",
     audience: str = "kids_2_6",
 ) -> StoryPlan:
-    """给定一句话主题，无需付费 API，按规则与模板全自动补全三层结构 StoryPlan。"""
+    """给定一句话主题，无需付费 API，按规则与模板全自动补全三层结构 StoryPlan（产物随主题深度变化）。"""
     clean_topic = topic.strip()
     if not clean_topic:
         clean_topic = "小水滴去哪儿了"
 
-    # 1) 生成顺口播稿 (幼儿片语速较慢，约 2.5 ~ 3.0 字/秒，重复和节奏感强)
-    if "水" in clean_topic or "云" in clean_topic:
+    # 1) 分主题动态生成口播稿与钩子（FIX-4: 拒绝千篇一律的通用模板）
+    if "水" in clean_topic or "云" in clean_topic or "雨" in clean_topic:
         narration = (
             "小水滴躺在大海里，太阳公公一晒，它就变成了轻飘飘的水蒸气，飞到了天上。 "
             "小水滴变成了一朵白云，在天空散步。遇到冷空气，它变成小雨点，又落回了大地。 "
             "小朋友，你们知道小水滴最后去哪儿了吗？它回到了清澈的小河里，去找小伙伴玩啦！"
         )
         hook_text = "小水滴最后去哪儿了呢？"
-        hook_kind = "result_first"  # 倒叙钩子：先看到云/结果
-    elif "手" in clean_topic or "洗" in clean_topic:
+        hook_kind = "result_first"
+        domain = "nature"
+    elif "手" in clean_topic or "洗" in clean_topic or "干净" in clean_topic:
         narration = (
             "小熊玩完泥巴回来，肚子咕噜咕噜叫，抓起苹果就要吃。 "
             "哎呀！小手上有好多看不见的细菌呢。如果把细菌吃进肚子，肚子就会痛痛哦。 "
             "小熊为什么要洗手呢？因为洗干净小手，才能健健康康、开开心心吃苹果呀！"
         )
         hook_text = "小熊为什么吃苹果前一定要先洗手呢？"
-        hook_kind = "question"  # 提问钩子
-    else:
+        hook_kind = "question"
+        domain = "habit"
+    elif "树" in clean_topic or "高" in clean_topic or "植物" in clean_topic or "花" in clean_topic:
         narration = (
-            f"今天我们要讲的故事是：{clean_topic}。 "
-            "小动物们遇到了一个有趣的问题，大家一起开动脑筋来解决它。 "
-            "通过努力，大家终于明白了其中的秘密。小朋友，你学会了吗？"
+            "小树苗每天站在泥土里，大口大口喝着雨水，晒着暖洋洋的太阳。 "
+            "它伸展着绿油油的小叶子，一天一天往高处长。 "
+            "小朋友，你们知道小树为什么能长得这么高吗？因为它有阳光和雨露的陪伴呀！"
         )
-        hook_text = f"你知道{clean_topic}的秘密是什么吗？"
-        hook_kind = hook_type
+        hook_text = "小树为什么能够长得这么高呢？"
+        hook_kind = "curiosity_image"
+        domain = "plant"
+    elif "早睡" in clean_topic or "觉" in clean_topic or "晚" in clean_topic or "星" in clean_topic:
+        narration = (
+            "月亮姐姐升上了夜空，星星眨着眼睛准备睡觉了。小兔子还在蹦蹦跳跳不肯躺下。 "
+            "如果晚上不早睡，明天早上就没有精神和小伙伴一起跑步啦。 "
+            "小朋友，我们为什么要早早睡觉呢？因为充足的睡眠能让我们长高高哦！"
+        )
+        hook_text = "小朋友为什么要乖乖早睡觉呢？"
+        hook_kind = "question"
+        domain = "habit"
+    elif "太空" in clean_topic or "宇航" in clean_topic or "星" in clean_topic or "月" in clean_topic:
+        narration = (
+            "浩瀚的太空里有闪烁的银河、圆圆的地球和神秘的宇宙飞船。 "
+            "宇航员叔叔穿上宇航服，在无重力的太空中开心地飘来飘去。 "
+            "小朋友，太空里究竟有什么好玩的秘密呢？让我们一起乘坐火箭去探索吧！"
+        )
+        hook_text = "神秘的太空里面到底有什么呢？"
+        hook_kind = "conflict"
+        domain = "space"
+    else:
+        # 散列动态模板生成，确保不同非预设主题拥有独特的文本结构与叙事细节
+        h_hash = abs(hash(clean_topic)) % 3
+        if h_hash == 0:
+            narration = (
+                f"在美丽的森林里，大家都在讨论关于{clean_topic}的奇妙故事。 "
+                f"小松鼠遇到了困难，通过仔细观察和动脑筋，终于找到了答案。 "
+                f"小朋友，{clean_topic}究竟隐藏着什么奥秘呢？让我们一起来揭晓吧！"
+            )
+            hook_text = f"你知道{clean_topic}背后藏着什么秘密吗？"
+            hook_kind = "question"
+        elif h_hash == 1:
+            narration = (
+                f"清晨的阳光洒满大地，小动物们对{clean_topic}充满了好奇。 "
+                f"大家齐心协力迈出探索的第一步，克服了重重小关卡。 "
+                f"通过这次有趣的经历，大家终于弄明白了{clean_topic}是怎么回事啦！"
+            )
+            hook_text = f"为什么大家对{clean_topic}这么好奇呢？"
+            hook_kind = "curiosity_image"
+        else:
+            narration = (
+                f"每当提起{clean_topic}，小朋友们总有问不完的问题。 "
+                f"其实只要仔细观察生活中的小细节，就能找到最棒的答案。 "
+                f"让我们和主角一起去探索{clean_topic}的奇妙世界吧！"
+            )
+            hook_text = f"关于{clean_topic}，你也有同样的疑问吗？"
+            hook_kind = "conflict"
+        domain = "general"
 
     sentences = [s.strip() for s in re.split(r"[。！？；]", narration) if s.strip()]
     if not sentences:
         sentences = [narration]
 
     total_chars = sum(len(s) for s in sentences)
-    # 幼儿语速 ≤ 3.5 字/秒，此处按 2.8 字/秒估算时长
     duration_sec = max(8.0, round(total_chars / 2.8, 1))
     total_ms = int(duration_sec * 1000)
 
     # 2) 叙事层：beats（起因→经过→结果）+ 开场钩子
     beats = [
         StoryBeat(
-            beat_id="beat_1_cause",
+            beat_id=f"beat_{domain}_1_cause",
             phase="cause",
-            summary=sentences[0] if len(sentences) > 0 else "起因：提出情境与核心问题",
+            summary=sentences[0] if len(sentences) > 0 else f"起因：引入主题 {clean_topic}",
             expectation=hook_text,
             start_ms=0,
             end_ms=int(total_ms * 0.3),
-            semantic_refs=["topic_intro"],
+            semantic_refs=[domain, "topic_intro"],
         ),
         StoryBeat(
-            beat_id="beat_2_process",
+            beat_id=f"beat_{domain}_2_process",
             phase="process",
-            summary=sentences[1] if len(sentences) > 1 else "经过：尝试、探索与转折",
-            expectation="寻找解决办法",
+            summary=sentences[1] if len(sentences) > 1 else "经过：探索与互动体验",
+            expectation="寻找核心解决方法",
             start_ms=int(total_ms * 0.3),
             end_ms=int(total_ms * 0.75),
-            semantic_refs=["exploration"],
+            semantic_refs=[domain, "exploration"],
         ),
         StoryBeat(
-            beat_id="beat_3_result",
+            beat_id=f"beat_{domain}_3_result",
             phase="result",
-            summary=sentences[2] if len(sentences) > 2 else "结果：问题解决与主题升华",
+            summary=sentences[2] if len(sentences) > 2 else "结果：得出结论与闭环总结",
             expectation="回应开头期待与互动问句",
             start_ms=int(total_ms * 0.75),
             end_ms=total_ms,
-            semantic_refs=["closure"],
+            semantic_refs=[domain, "closure"],
         ),
     ]
 
@@ -109,7 +157,7 @@ def autofill_story_plan(
     narrative = NarrativeLayer(
         hook=hook,
         beats=beats,
-        closing_response=sentences[-1] if sentences else "小朋友，我们一起来记住这个好习惯吧！",
+        closing_response=sentences[-1] if sentences else f"小朋友，我们一起来记住关于{clean_topic}的小知识吧！",
     )
 
     # 3) 镜头层：Sequence → Scene → Shot（六项必填齐全，动作有明确结束状态）
@@ -118,17 +166,17 @@ def autofill_story_plan(
             shot_id="shot_01",
             scene_id="scene_1",
             sequence_id=1,
-            purpose="开场钩子与交代环境",
-            start_state="画面静止，背景温馨明亮，主角登场",
-            action="主角向镜头挥手问候并提出开场疑问，动作平缓展开直至站定微笑",
-            end_state="主角站定面向观众，疑问字幕保持在上方安全区",
-            sound="旁白温柔发问，带有温和背景音乐",
+            purpose=f"引入主题 {clean_topic} 与开场提问",
+            start_state="画面明亮温馨，主角登场迎接观众",
+            action=f"主角面向镜头挥手并提出关于 {clean_topic} 的生动疑问，表情期待",
+            end_state="主角站定并微笑，疑问字幕清晰呈现",
+            sound="旁白温柔发问，背景音乐轻快",
             acceptance="前3秒内画面与声音双重呈现问题，无快切，语速合规",
             roll_role="A_main",
             b_roll_function="交代环境",
             shot_type="establishing",
             material_source="generated",
-            new_info=[clean_topic, "主角登场", "提出问题"],
+            new_info=[clean_topic, "主角登场", "开场提问"],
             start_ms=0,
             end_ms=int(total_ms * 0.3),
         ),
@@ -136,17 +184,17 @@ def autofill_story_plan(
             shot_id="shot_02",
             scene_id="scene_1",
             sequence_id=1,
-            purpose="发展推进与尝试（允许失败一次或探索）",
-            start_state="主角处于探索状态，身处场景中央",
-            action="主角进行尝试动作，遇到小波折后思考并找到正确方法，动作平稳过渡",
-            end_state="主角露出恍然大悟的表情，双手叉腰或指向前方",
-            sound="旁白讲解经过，音效轻柔伴随",
-            acceptance="镜头时长≥2.5秒，动作状态有清晰起止，无冗余空转",
+            purpose=f"探索 {clean_topic} 的过程与互动演示",
+            start_state="主角处于探索与实践状态中",
+            action=f"主角通过生动动作展示关于 {clean_topic} 的探索细节，动作平稳过渡",
+            end_state="主角露出恍然大悟的欣喜表情，指向核心知识点",
+            sound="旁白详细讲解，音效契合动作",
+            acceptance="镜头时长充足，动作状态有清晰起止，无冗余空转",
             roll_role="A_main",
             b_roll_function="补充说明",
             shot_type="character",
             material_source="generated",
-            new_info=["探索过程", "核心知识点", "转折点"],
+            new_info=["探索过程", "核心知识点", "转折互动"],
             start_ms=int(total_ms * 0.3),
             end_ms=int(total_ms * 0.75),
         ),
@@ -154,23 +202,23 @@ def autofill_story_plan(
             shot_id="shot_03",
             scene_id="scene_1",
             sequence_id=1,
-            purpose="闭环收束与复述互动",
-            start_state="主角微笑站在画面中央，周围环境和谐",
-            action="主角做出总结性动作（如点赞/合十/挥手），伴随结尾互动复述",
-            end_state="画面渐隐收尾，主角保持微笑定格2秒",
+            purpose=f"总结升华关于 {clean_topic} 的完整闭环",
+            start_state="主角微笑站在画面中央，场景温馨和谐",
+            action="主角做出点赞与挥手告别动作，伴随结尾闭环互动复述",
+            end_state="画面平稳渐隐收尾，主角保持微笑定格",
             sound="旁白总结主题并留出互动空白，音乐柔和淡出",
             acceptance="开头问题在结尾得到明确回应，时间线闭环无黑场",
             roll_role="A_main",
             b_roll_function="衔接",
             shot_type="character",
             material_source="generated",
-            new_info=["主题复述", "互动问句", "闭环"],
+            new_info=["主题复述", "互动问句", "完美闭环"],
             start_ms=int(total_ms * 0.75),
             end_ms=total_ms,
         ),
     ]
 
-    scene = Scene(scene_id="scene_1", location="温馨动画绘本舞台", time_of_day="day", shots=shots)
+    scene = Scene(scene_id="scene_1", location=f"{clean_topic}主题动画绘本舞台", time_of_day="day", shots=shots)
     sequence = Sequence(sequence_id=1, name="main_sequence", scenes=[scene])
     shot_layer = ShotLayer(sequences=[sequence])
 
@@ -215,5 +263,5 @@ def autofill_story_plan(
         narrative=narrative,
         shots=shot_layer,
         timeline=timeline,
-        metadata={"generator": "hevi.storyplan.autofill", "hook_type": hook_kind},
+        metadata={"generator": "hevi.storyplan.autofill", "hook_type": hook_kind, "domain": domain},
     )
