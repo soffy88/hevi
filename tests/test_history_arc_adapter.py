@@ -14,17 +14,20 @@ import pytest
 from hevi.history_series.arc_adapter import assemble_run_request, dump_g1a_report
 
 _FIXTURE = (
-    Path(__file__).resolve().parents[2] / "history_series" / "fixtures" / "sample.sanjiafenjin.json"
+    Path(__file__).resolve().parents[1]
+    / "hevi"
+    / "history_series"
+    / "fixtures"
+    / "sample.sanjiafenjin.json"
 )
 
 
 @pytest.fixture()
 def contract() -> dict:
-    """把 stratum 冻结契约样例复制进 hevi 测试 fixtures（单点留痕）。"""
-    src = Path("/data/soffy/projects/stratum/docs/history/contracts/sample.sanjiafenjin.json")
-    if not src.exists():
-        pytest.skip("stratum 契约样例缺失")
-    return json.loads(src.read_text())
+    """读取仓库内冻结的三家分晋契约样例，避免测试依赖其他 worktree。"""
+    if not _FIXTURE.is_file():
+        pytest.skip("仓库内三家分晋契约样例缺失")
+    return json.loads(_FIXTURE.read_text(encoding="utf-8"))
 
 
 def test_assemble_source_name_and_raw_text(contract):

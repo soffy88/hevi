@@ -1,0 +1,42 @@
+{
+  "contract_version": "1.0",
+  "event": {
+    "event_id": "ev:jinyang-zhizhan",
+    "title": "晋阳之战（智伯之亡）",
+    "mainline_account_ref": "ac:jinyang-shiji"
+  },
+  "accounts": [
+    {
+      "account_id": "ac:jinyang-shiji",
+      "source_id": "src:shiji",
+      "locator": {"book": "史记", "chapter": "赵世家"}
+    },
+    {
+      "account_id": "ac:jinyang-zizhitongjian",
+      "source_id": "src:zztj",
+      "locator": {"book": "资治通鉴", "chapter": "周纪一"}
+    },
+    {
+      "account_id": "ac:jinyang-zhanguoce",
+      "source_id": "src:zhanguoce",
+      "locator": {"book": "战国策", "chapter": "赵策一"}
+    }
+  ],
+  "conflicts": [
+    {
+      "conflict_id": "conflict:jinyang-account-independence",
+      "presentation_hint": "主线+角标",
+      "independence_analysis": {
+        "reasoning": "独立见证：不同文献的记载互相补充，不应被合并成单一叙述。"
+      }
+    }
+  ],
+  "registry_bundle": {
+    "persons": [
+      {"person_id": "per:zhibo", "names_by_source": {"智伯": "智伯", "知伯": "知伯"}},
+      {"person_id": "per:zhaoxiangzi", "names_by_source": {"赵襄子": "赵襄子"}},
+      {"person_id": "per:hankangzi", "names_by_source": {"韩康子": "韩康子"}},
+      {"person_id": "per:weihuanzi", "names_by_source": {"魏桓子": "魏桓子"}}
+    ]
+  }
+}
