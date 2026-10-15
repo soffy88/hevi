@@ -22,3 +22,6 @@ Hevi 产品定位：2–6 岁幼儿教育动画故事片，规则见本 worktree
 - CPU-only；渲染单进程；所有 python 设 PYTHONPATH=本 worktree；pytest 用 JWT_SECRET=test-only，Python /data/soffy/projects/hevi/.venv/bin/python；ffmpeg 在 ~/.local/bin。
 - 禁止 mock/占位产物/硬编码 passed=True；每步 commit；不 push；不要把日志、.tmp 提交进仓库。
 - 完成后写 ANATOMY_DONE.md（实测数字 + 复现命令），最后一行 `DONE ANATOMY-R1`，commit。
+
+## 安全规则
+只改本 worktree；不删 worktree 外任何文件；不清理磁盘（/data <5G 写 DISK_FULL_NOTE.md 停止）；所有 python 设 PYTHONPATH=/data/soffy/projects/hevi-anatomy；不 push；不调付费 API；不要把 lint 日志提交进仓库。完成后在 ANATOMY_DONE.md 最后一行写 DONE ANATOMY-R1。

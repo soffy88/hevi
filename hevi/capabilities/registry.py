@@ -97,3 +97,5 @@ register(Capability(
     description="幼儿动漫安全与节奏质检闸门",
     line="anime"
 ))
+
+import hevi.capabilities.anatomy_explainer

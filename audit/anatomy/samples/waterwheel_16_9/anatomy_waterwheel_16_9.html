@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>快乐转水车</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 1920px;
+    height: 1080px;
+    background-color: #2563eb !important;
+    background: #2563eb !important;
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .title-label {
+    position: absolute;
+    top: 60px;
+    font-size: 64px;
+    font-weight: bold;
+    color: #ffffff;
+    background: #dc2626;
+    padding: 16px 40px;
+    border-radius: 36px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    letter-spacing: 2px;
+    z-index: 10;
+  }
+  svg {
+    width: 1920px;
+    height: 1080px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  }
+  .color-red {
+    --anatomy-paper: #ef4444; --anatomy-top: #f87171;
+    --anatomy-shade-0: #b91c1c; --anatomy-shade-1: #dc2626; --anatomy-shade-2: #ef4444; --anatomy-shade-3: #f87171;
+    --anatomy-hi: #991b1b; --anatomy-lo: #7f1d1d; --anatomy-face: #ef4444; --anatomy-lit-top: #f87171; --anatomy-lit-shade: #dc2626;
+  }
+  .color-green {
+    --anatomy-paper: #22c55e; --anatomy-top: #4ade80;
+    --anatomy-shade-0: #15803d; --anatomy-shade-1: #16a34a; --anatomy-shade-2: #22c55e; --anatomy-shade-3: #4ade80;
+    --anatomy-hi: #166534; --anatomy-lo: #14532d; --anatomy-face: #22c55e; --anatomy-lit-top: #4ade80; --anatomy-lit-shade: #16a34a;
+  }
+  .color-yellow {
+    --anatomy-paper: #eab308; --anatomy-top: #facc15;
+    --anatomy-shade-0: #a16207; --anatomy-shade-1: #ca8a04; --anatomy-shade-2: #eab308; --anatomy-shade-3: #facc15;
+    --anatomy-hi: #854d0e; --anatomy-lo: #713f12; --anatomy-face: #eab308; --anatomy-lit-top: #facc15; --anatomy-lit-shade: #ca8a04;
+  }
+  .color-blue {
+    --anatomy-paper: #3b82f6; --anatomy-top: #60a5fa;
+    --anatomy-shade-0: #1d4ed8; --anatomy-shade-1: #2563eb; --anatomy-shade-2: #3b82f6; --anatomy-shade-3: #60a5fa;
+    --anatomy-hi: #1e40af; --anatomy-lo: #1e3a8a; --anatomy-face: #3b82f6; --anatomy-lit-top: #60a5fa; --anatomy-lit-shade: #2563eb;
+  }
+  
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+</style>
+</head>
+<body>
+  <div class="title-label" data-readout>快乐转水车</div>
+  <svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1920" height="1080" fill="#2563eb"/>
+    <g transform="translate(960, 590)">
+      <g class="color-yellow"><g class="iso-solid"><path class="iso-fill" d="M-449.2 898L-446.1 882.4L-436.9 867.3L-422.1 853.4L-402.1 841.3L506 387.2L530.3 377.2L558 369.8L588.1 365.3L619.5 363.7L650.8 365.3L680.9 369.8L708.7 377.2L733 387.2L2322.1 1181.8L2342.1 1194L2356.9 1207.8L2366.1 1222.9L2369.2 1238.6L2369.2 1405.4L2366.1 1421L2356.9 1436.1L2342.1 1450L2322.1 1462.1L1414 1916.2L1389.7 1926.2L1362 1933.6L1331.9 1938.1L1300.5 1939.7L1269.2 1938.1L1239.1 1933.6L1211.3 1926.2L1187 1916.2L-402.1 1121.6L-422.1 1109.4L-436.9 1095.6L-446.1 1080.5L-449.2 1064.8Z"/><path class="iso-shade" data-shade="0" d="M2369.2 1405.4L2366.1 1421L2366.1 1254.2L2369.2 1238.6ZM2366.1 1421L2356.9 1436.1L2356.9 1269.3L2366.1 1254.2ZM2356.9 1436.1L2342.1 1450L2342.1 1283.1L2356.9 1269.3ZM2342.1 1450L2322.1 1462.1L2322.1 1295.3L2342.1 1283.1ZM2322.1 1462.1L1414 1916.2L1414 1749.3L2322.1 1295.3ZM1414 1916.2L1389.7 1926.2L1389.7 1759.3L1414 1749.3Z"/><path class="iso-shade" data-shade="1" d="M1389.7 1926.2L1362 1933.6L1362 1766.7L1389.7 1759.3ZM1362 1933.6L1331.9 1938.1L1331.9 1771.3L1362 1766.7ZM1331.9 1938.1L1300.5 1939.7L1300.5 1772.9L1331.9 1771.3Z"/><path class="iso-shade" data-shade="2" d="M1300.5 1939.7L1269.2 1938.1L1269.2 1771.3L1300.5 1772.9ZM1269.2 1938.1L1239.1 1933.6L1239.1 1766.7L1269.2 1771.3ZM1239.1 1933.6L1211.3 1926.2L1211.3 1759.3L1239.1 1766.7Z"/><path class="iso-shade" data-shade="3" d="M1211.3 1926.2L1187 1916.2L1187 1749.3L1211.3 1759.3ZM1187 1916.2L-402.1 1121.6L-402.1 954.8L1187 1749.3ZM-402.1 1121.6L-422.1 1109.4L-422.1 942.6L-402.1 954.8ZM-422.1 1109.4L-436.9 1095.6L-436.9 928.7L-422.1 942.6ZM-436.9 1095.6L-446.1 1080.5L-446.1 913.7L-436.9 928.7ZM-446.1 1080.5L-449.2 1064.8L-449.2 898L-446.1 913.7Z"/><path class="iso-top" d="M2322.1 1181.8L2342.1 1194L2356.9 1207.8L2366.1 1222.9L2369.2 1238.6L2366.1 1254.2L2356.9 1269.3L2342.1 1283.1L2322.1 1295.3L1414 1749.3L1389.7 1759.3L1362 1766.7L1331.9 1771.3L1300.5 1772.9L1269.2 1771.3L1239.1 1766.7L1211.3 1759.3L1187 1749.3L-402.1 954.8L-422.1 942.6L-436.9 928.7L-446.1 913.7L-449.2 898L-446.1 882.4L-436.9 867.3L-422.1 853.4L-402.1 841.3L506 387.2L530.3 377.2L558 369.8L588.1 365.3L619.5 363.7L650.8 365.3L680.9 369.8L708.7 377.2L733 387.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M2369.2 1238.6L2366.1 1254.2L2356.9 1269.3L2342.1 1283.1L2322.1 1295.3L1414 1749.3L1389.7 1759.3L1362 1766.7L1331.9 1771.3L1300.5 1772.9L1269.2 1771.3L1239.1 1766.7L1211.3 1759.3L1187 1749.3L-402.1 954.8L-422.1 942.6L-436.9 928.7L-446.1 913.7L-449.2 898"/><path class="iso-line iso-bevel" data-tone="faint" d="M2369.2 1238.6L2334.6 1251.1L2327.3 1263.1L2315.4 1274.2L2298.3 1284.5L1392.5 1737.5L1371.9 1746L1349.7 1751.9L1325.6 1755.6L1300.5 1756.8L1275.5 1755.6L1251.4 1751.9L1229.2 1746L1208.6 1737.5L-378.3 944L-395.4 933.7L-407.3 922.6L-414.6 910.5L-449.2 898"/><path class="iso-line iso-edge" data-tone="hi" d="M-449.2 898L-446.1 882.4L-436.9 867.3L-422.1 853.4L-402.1 841.3L506 387.2L530.3 377.2L558 369.8L588.1 365.3L619.5 363.7L650.8 365.3L680.9 369.8L708.7 377.2L733 387.2L2322.1 1181.8L2342.1 1194L2356.9 1207.8L2366.1 1222.9L2369.2 1238.6M2369.2 1405.4L2366.1 1421L2356.9 1436.1L2342.1 1450L2322.1 1462.1L1414 1916.2L1389.7 1926.2L1362 1933.6L1331.9 1938.1L1300.5 1939.7L1269.2 1938.1L1239.1 1933.6L1211.3 1926.2L1187 1916.2L-402.1 1121.6L-422.1 1109.4L-436.9 1095.6L-446.1 1080.5L-449.2 1064.8M2369.2 1238.6L2369.2 1405.4M-449.2 898L-449.2 1064.8"/></g></g><g class="color-blue"><g class="iso-solid"><path class="iso-fill" d="M105.1 398.7L109.5 382.1L122.3 366.6L142.7 353.3L642.2 103.6L668.8 93.4L699.7 86.9L733 84.7L766.2 86.9L797.2 93.4L823.8 103.6L1777.3 580.3L1797.7 593.6L1810.5 609.1L1814.9 625.7L1814.9 1181.8L1810.5 1198.4L1797.7 1213.9L1777.3 1227.2L1277.8 1476.9L1251.2 1487.1L1220.3 1493.5L1187 1495.7L1153.8 1493.5L1122.8 1487.1L1096.2 1476.9L142.7 1000.2L122.3 986.9L109.5 971.4L105.1 954.8Z"/><path class="iso-shade" data-shade="0" d="M1814.9 1181.8L1810.5 1198.4L1810.5 642.3L1814.9 625.7ZM1810.5 1198.4L1797.7 1213.9L1797.7 657.8L1810.5 642.3ZM1797.7 1213.9L1777.3 1227.2L1777.3 671.1L1797.7 657.8ZM1777.3 1227.2L1277.8 1476.9L1277.8 920.8L1777.3 671.1ZM1277.8 1476.9L1251.2 1487.1L1251.2 931L1277.8 920.8Z"/><path class="iso-shade" data-shade="1" d="M1251.2 1487.1L1220.3 1493.5L1220.3 937.5L1251.2 931ZM1220.3 1493.5L1187 1495.7L1187 939.6L1220.3 937.5Z"/><path class="iso-shade" data-shade="2" d="M1187 1495.7L1153.8 1493.5L1153.8 937.5L1187 939.6ZM1153.8 1493.5L1122.8 1487.1L1122.8 931L1153.8 937.5Z"/><path class="iso-shade" data-shade="3" d="M1122.8 1487.1L1096.2 1476.9L1096.2 920.8L1122.8 931ZM1096.2 1476.9L142.7 1000.2L142.7 444.1L1096.2 920.8ZM142.7 1000.2L122.3 986.9L122.3 430.8L142.7 444.1ZM122.3 986.9L109.5 971.4L109.5 415.3L122.3 430.8ZM109.5 971.4L105.1 954.8L105.1 398.7L109.5 415.3Z"/><path class="iso-top" d="M1777.3 580.3L1797.7 593.6L1810.5 609.1L1814.9 625.7L1810.5 642.3L1797.7 657.8L1777.3 671.1L1277.8 920.8L1251.2 931L1220.3 937.5L1187 939.6L1153.8 937.5L1122.8 931L1096.2 920.8L142.7 444.1L122.3 430.8L109.5 415.3L105.1 398.7L109.5 382.1L122.3 366.6L142.7 353.3L642.2 103.6L668.8 93.4L699.7 86.9L733 84.7L766.2 86.9L797.2 93.4L823.8 103.6Z"/><path class="iso-line iso-crease" data-tone="faint" d="M1814.9 625.7L1810.5 642.3L1797.7 657.8L1777.3 671.1L1277.8 920.8L1251.2 931L1220.3 937.5L1187 939.6L1153.8 937.5L1122.8 931L1096.2 920.8L142.7 444.1L122.3 430.8L109.5 415.3L105.1 398.7"/><path class="iso-line iso-bevel" data-tone="faint" d="M1814.9 625.7L1779.5 638.2L1769.9 649.8L1753.1 660.5L1256.7 908.8L1235.2 917.1L1212 921.9L1187 923.6L1162.1 921.9L1138.9 917.1L1117.4 908.8L166.9 433.5L150.1 422.8L140.5 411.1L105.1 398.7"/><path class="iso-line iso-edge" data-tone="mid" d="M105.1 398.7L109.5 382.1L122.3 366.6L142.7 353.3L642.2 103.6L668.8 93.4L699.7 86.9L733 84.7L766.2 86.9L797.2 93.4L823.8 103.6L1777.3 580.3L1797.7 593.6L1810.5 609.1L1814.9 625.7M1814.9 1181.8L1810.5 1198.4L1797.7 1213.9L1777.3 1227.2L1277.8 1476.9L1251.2 1487.1L1220.3 1493.5L1187 1495.7L1153.8 1493.5L1122.8 1487.1L1096.2 1476.9L142.7 1000.2L122.3 986.9L109.5 971.4L105.1 954.8M1814.9 625.7L1814.9 1181.8M105.1 398.7L105.1 954.8"/></g></g><g data-part="wheel" class="color-red"><g class="iso-solid"><path class="iso-fill" d="M126.9 634.8L148.7 572.8L191.8 513.6L254.8 459.1L335.7 410.9L432.1 370.4L541.2 338.9L659.5 317.4L783.5 306.5L909.4 306.5L1033.5 317.4L1151.8 338.9L1260.8 370.4L1357.3 410.9L1438.2 459.1L1501.2 513.6L1544.3 572.8L1566.1 634.8L1566.1 906.3L1544.3 968.3L1501.2 1027.4L1438.2 1082L1357.3 1130.2L1260.8 1170.7L1151.8 1202.1L1033.5 1223.7L909.4 1234.6L783.5 1234.6L659.5 1223.7L541.2 1202.1L432.1 1170.7L335.7 1130.2L254.8 1082L191.8 1027.4L148.7 968.3L126.9 906.3Z"/><path class="iso-shade" data-shade="0" d="M1357.3 1130.2L1260.8 1170.7L1260.8 962.1L1357.3 921.7ZM1260.8 1170.7L1151.8 1202.1L1151.8 993.6L1260.8 962.1ZM1566.1 906.3L1544.3 968.3L1544.3 759.7L1566.1 697.7ZM1544.3 968.3L1501.2 1027.4L1501.2 818.9L1544.3 759.7ZM1501.2 1027.4L1438.2 1082L1438.2 873.4L1501.2 818.9ZM1438.2 1082L1357.3 1130.2L1357.3 921.7L1438.2 873.4Z"/><path class="iso-shade" data-shade="1" d="M1151.8 1202.1L1033.5 1223.7L1033.5 1015.1L1151.8 993.6ZM1033.5 1223.7L909.4 1234.6L909.4 1026.1L1033.5 1015.1ZM909.4 1234.6L783.5 1234.6L783.5 1026.1L909.4 1026.1Z"/><path class="iso-shade" data-shade="2" d="M783.5 1234.6L659.5 1223.7L659.5 1015.1L783.5 1026.1ZM659.5 1223.7L541.2 1202.1L541.2 993.6L659.5 1015.1Z"/><path class="iso-shade" data-shade="3" d="M541.2 1202.1L432.1 1170.7L432.1 962.1L541.2 993.6ZM432.1 1170.7L335.7 1130.2L335.7 921.7L432.1 962.1ZM335.7 1130.2L254.8 1082L254.8 873.4L335.7 921.7ZM254.8 1082L191.8 1027.4L191.8 818.9L254.8 873.4ZM191.8 1027.4L148.7 968.3L148.7 759.7L191.8 818.9ZM148.7 968.3L126.9 906.3L126.9 697.7L148.7 759.7Z"/><path class="iso-top" d="M1357.3 921.7L1260.8 962.1L1151.8 993.6L1033.5 1015.1L909.4 1026.1L783.5 1026.1L659.5 1015.1L541.2 993.6L432.1 962.1L335.7 921.7L254.8 873.4L191.8 818.9L148.7 759.7L126.9 697.7L126.9 634.8L148.7 572.8L191.8 513.6L254.8 459.1L335.7 410.9L432.1 370.4L541.2 338.9L659.5 317.4L783.5 306.5L909.4 306.5L1033.5 317.4L1151.8 338.9L1260.8 370.4L1357.3 410.9L1438.2 459.1L1501.2 513.6L1544.3 572.8L1566.1 634.8L1566.1 697.7L1544.3 759.7L1501.2 818.9L1438.2 873.4Z"/><path class="iso-line iso-crease" data-tone="faint" d="M1566.1 697.7L1544.3 759.7L1501.2 818.9L1438.2 873.4L1357.3 921.7L1260.8 962.1L1151.8 993.6L1033.5 1015.1L909.4 1026.1L783.5 1026.1L659.5 1015.1L541.2 993.6L432.1 962.1L335.7 921.7L254.8 873.4L191.8 818.9L148.7 759.7L126.9 697.7"/><path class="iso-line iso-bevel" data-tone="faint" d="M1566.1 697.7L1513.2 755.6L1472.1 812.1L1411.9 864.2L1334.6 910.3L1242.4 949L1138.2 979.1L1025.1 999.6L906.7 1010.1L786.3 1010.1L667.8 999.6L554.8 979.1L450.6 949L358.4 910.3L281 864.2L220.9 812.1L179.7 755.6L126.9 697.7"/><path class="iso-line iso-edge" data-tone="hi" d="M126.9 697.7L126.9 634.8L148.7 572.8L191.8 513.6L254.8 459.1L335.7 410.9L432.1 370.4L541.2 338.9L659.5 317.4L783.5 306.5L909.4 306.5L1033.5 317.4L1151.8 338.9L1260.8 370.4L1357.3 410.9L1438.2 459.1L1501.2 513.6L1544.3 572.8L1566.1 634.8L1566.1 697.7M1566.1 906.3L1544.3 968.3L1501.2 1027.4L1438.2 1082L1357.3 1130.2L1260.8 1170.7L1151.8 1202.1L1033.5 1223.7L909.4 1234.6L783.5 1234.6L659.5 1223.7L541.2 1202.1L432.1 1170.7L335.7 1130.2L254.8 1082L191.8 1027.4L148.7 968.3L126.9 906.3M126.9 697.7L126.9 906.3M1566.1 697.7L1566.1 906.3"/></g></g>
+    </g>
+  </svg>
+<script>
+  window.__heviSeek = function(t) {
+    const obj = "waterwheel";
+    if (obj === "windmill") {
+      const blades = document.querySelector('[data-part="blades"]');
+      if (blades) {
+        const deg = t * 360 * 3;
+        blades.setAttribute("transform", "translate(0, 20) rotate(" + deg + ")");
+      }
+    } else if (obj === "waterwheel") {
+      const wheel = document.querySelector('[data-part="wheel"]');
+      if (wheel) {
+        const deg = t * 360 * 2;
+        wheel.setAttribute("transform", "rotate(" + deg + ")");
+      }
+    } else if (obj === "soap_pump") {
+      const head = document.querySelector('[data-part="pumpHead"]');
+      if (head) {
+        const dy = Math.sin(t * Math.PI * 4) * 15;
+        head.setAttribute("transform", "translate(0, " + dy + ")");
+      }
+    } else if (obj === "clock_gear") {
+      const gMain = document.querySelector('[data-part="gearMain"]');
+      const gSub = document.querySelector('[data-part="gearSub"]');
+      if (gMain && gSub) {
+        const deg1 = t * 360 * 2;
+        const deg2 = -t * 360 * 4;
+        gMain.setAttribute("transform", "rotate(" + deg1 + ")");
+        gSub.setAttribute("transform", "rotate(" + deg2 + ")");
+      }
+    }
+  };
+  window.__heviSeek(0);
+</script>
+</body>
+</html>

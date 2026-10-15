@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>按压洗手液</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 1080px;
+    height: 1920px;
+    background-color: #2563eb !important;
+    background: #2563eb !important;
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .title-label {
+    position: absolute;
+    top: 120px;
+    font-size: 72px;
+    font-weight: bold;
+    color: #ffffff;
+    background: #dc2626;
+    padding: 16px 40px;
+    border-radius: 36px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    letter-spacing: 2px;
+    z-index: 10;
+  }
+  svg {
+    width: 1080px;
+    height: 1920px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  }
+  .color-red {
+    --anatomy-paper: #ef4444; --anatomy-top: #f87171;
+    --anatomy-shade-0: #b91c1c; --anatomy-shade-1: #dc2626; --anatomy-shade-2: #ef4444; --anatomy-shade-3: #f87171;
+    --anatomy-hi: #991b1b; --anatomy-lo: #7f1d1d; --anatomy-face: #ef4444; --anatomy-lit-top: #f87171; --anatomy-lit-shade: #dc2626;
+  }
+  .color-green {
+    --anatomy-paper: #22c55e; --anatomy-top: #4ade80;
+    --anatomy-shade-0: #15803d; --anatomy-shade-1: #16a34a; --anatomy-shade-2: #22c55e; --anatomy-shade-3: #4ade80;
+    --anatomy-hi: #166534; --anatomy-lo: #14532d; --anatomy-face: #22c55e; --anatomy-lit-top: #4ade80; --anatomy-lit-shade: #16a34a;
+  }
+  .color-yellow {
+    --anatomy-paper: #eab308; --anatomy-top: #facc15;
+    --anatomy-shade-0: #a16207; --anatomy-shade-1: #ca8a04; --anatomy-shade-2: #eab308; --anatomy-shade-3: #facc15;
+    --anatomy-hi: #854d0e; --anatomy-lo: #713f12; --anatomy-face: #eab308; --anatomy-lit-top: #facc15; --anatomy-lit-shade: #ca8a04;
+  }
+  .color-blue {
+    --anatomy-paper: #3b82f6; --anatomy-top: #60a5fa;
+    --anatomy-shade-0: #1d4ed8; --anatomy-shade-1: #2563eb; --anatomy-shade-2: #3b82f6; --anatomy-shade-3: #60a5fa;
+    --anatomy-hi: #1e40af; --anatomy-lo: #1e3a8a; --anatomy-face: #3b82f6; --anatomy-lit-top: #60a5fa; --anatomy-lit-shade: #2563eb;
+  }
+  
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+</style>
+</head>
+<body>
+  <div class="title-label" data-readout>按压洗手液</div>
+  <svg viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1080" height="1920" fill="#2563eb"/>
+    <g transform="translate(540, 1010)">
+      <g class="color-green"><g class="iso-solid"><path class="iso-fill" d="M-1027 -126.9L-1022.7 -159.7L-1009.9 -191.9L-988.7 -223L-959.7 -252.4L-923.2 -279.7L-879.9 -304.4L185 -836.9L234.4 -858.5L289 -876.7L347.9 -891.3L410.1 -901.8L474.5 -908.2L540 -910.4L605.5 -908.2L669.9 -901.8L732.1 -891.3L791 -876.7L845.6 -858.5L895 -836.9L1959.9 -304.4L2003.2 -279.7L2039.7 -252.4L2068.7 -223L2089.9 -191.9L2102.7 -159.7L2107 -126.9L2107 2318.6L2102.7 2351.4L2089.9 2383.6L2068.7 2414.7L2039.7 2444.1L2003.2 2471.4L1959.9 2496.1L895 3028.6L845.6 3050.2L791 3068.5L732.1 3083L669.9 3093.6L605.5 3100L540 3102.1L474.5 3100L410.1 3093.6L347.9 3083L289 3068.5L234.4 3050.2L185 3028.6L-879.9 2496.1L-923.2 2471.4L-959.7 2444.1L-988.7 2414.7L-1009.9 2383.6L-1022.7 2351.4L-1027 2318.6Z"/><path class="iso-shade" data-shade="0" d="M2107 2318.6L2102.7 2351.4L2102.7 -94.1L2107 -126.9ZM2102.7 2351.4L2089.9 2383.6L2089.9 -61.9L2102.7 -94.1ZM2089.9 2383.6L2068.7 2414.7L2068.7 -30.8L2089.9 -61.9ZM2068.7 2414.7L2039.7 2444.1L2039.7 -1.4L2068.7 -30.8ZM2039.7 2444.1L2003.2 2471.4L2003.2 25.9L2039.7 -1.4ZM2003.2 2471.4L1959.9 2496.1L1959.9 50.6L2003.2 25.9ZM1959.9 2496.1L895 3028.6L895 583.1L1959.9 50.6ZM895 3028.6L845.6 3050.2L845.6 604.7L895 583.1ZM845.6 3050.2L791 3068.5L791 623L845.6 604.7Z"/><path class="iso-shade" data-shade="1" d="M791 3068.5L732.1 3083L732.1 637.5L791 623ZM732.1 3083L669.9 3093.6L669.9 648L732.1 637.5ZM669.9 3093.6L605.5 3100L605.5 654.4L669.9 648ZM605.5 3100L540 3102.1L540 656.6L605.5 654.4Z"/><path class="iso-shade" data-shade="2" d="M540 3102.1L474.5 3100L474.5 654.4L540 656.6ZM474.5 3100L410.1 3093.6L410.1 648L474.5 654.4ZM410.1 3093.6L347.9 3083L347.9 637.5L410.1 648ZM347.9 3083L289 3068.5L289 623L347.9 637.5Z"/><path class="iso-shade" data-shade="3" d="M289 3068.5L234.4 3050.2L234.4 604.7L289 623ZM234.4 3050.2L185 3028.6L185 583.1L234.4 604.7ZM185 3028.6L-879.9 2496.1L-879.9 50.6L185 583.1ZM-879.9 2496.1L-923.2 2471.4L-923.2 25.9L-879.9 50.6ZM-923.2 2471.4L-959.7 2444.1L-959.7 -1.4L-923.2 25.9ZM-959.7 2444.1L-988.7 2414.7L-988.7 -30.8L-959.7 -1.4ZM-988.7 2414.7L-1009.9 2383.6L-1009.9 -61.9L-988.7 -30.8ZM-1009.9 2383.6L-1022.7 2351.4L-1022.7 -94.1L-1009.9 -61.9ZM-1022.7 2351.4L-1027 2318.6L-1027 -126.9L-1022.7 -94.1Z"/><path class="iso-top" d="M1959.9 -304.4L2003.2 -279.7L2039.7 -252.4L2068.7 -223L2089.9 -191.9L2102.7 -159.7L2107 -126.9L2102.7 -94.1L2089.9 -61.9L2068.7 -30.8L2039.7 -1.4L2003.2 25.9L1959.9 50.6L895 583.1L845.6 604.7L791 623L732.1 637.5L669.9 648L605.5 654.4L540 656.6L474.5 654.4L410.1 648L347.9 637.5L289 623L234.4 604.7L185 583.1L-879.9 50.6L-923.2 25.9L-959.7 -1.4L-988.7 -30.8L-1009.9 -61.9L-1022.7 -94.1L-1027 -126.9L-1022.7 -159.7L-1009.9 -191.9L-988.7 -223L-959.7 -252.4L-923.2 -279.7L-879.9 -304.4L185 -836.9L234.4 -858.5L289 -876.7L347.9 -891.3L410.1 -901.8L474.5 -908.2L540 -910.4L605.5 -908.2L669.9 -901.8L732.1 -891.3L791 -876.7L845.6 -858.5L895 -836.9Z"/><path class="iso-line iso-crease" data-tone="faint" d="M2107 -126.9L2102.7 -94.1L2089.9 -61.9L2068.7 -30.8L2039.7 -1.4L2003.2 25.9L1959.9 50.6L895 583.1L845.6 604.7L791 623L732.1 637.5L669.9 648L605.5 654.4L540 656.6L474.5 654.4L410.1 648L347.9 637.5L289 623L234.4 604.7L185 583.1L-879.9 50.6L-923.2 25.9L-959.7 -1.4L-988.7 -30.8L-1009.9 -61.9L-1022.7 -94.1L-1027 -126.9"/><path class="iso-line iso-bevel" data-tone="faint" d="M2107 -126.9L1978.2 -102.3L1968.6 -78.2L1952.8 -54.9L1931 -32.8L1903.6 -12.3L1868.3 7.7L809.2 537.3L769.2 554.9L728.3 568.6L684.1 579.5L637.4 587.4L589.1 592.2L540 593.8L490.9 592.2L442.6 587.4L395.9 579.5L351.7 568.6L310.8 554.9L270.8 537.3L-788.3 7.7L-823.6 -12.3L-851 -32.8L-872.8 -54.9L-888.6 -78.2L-898.2 -102.3L-1027 -126.9"/><path class="iso-line iso-edge" data-tone="hi" d="M-1027 -126.9L-1022.7 -159.7L-1009.9 -191.9L-988.7 -223L-959.7 -252.4L-923.2 -279.7L-879.9 -304.4L185 -836.9L234.4 -858.5L289 -876.7L347.9 -891.3L410.1 -901.8L474.5 -908.2L540 -910.4L605.5 -908.2L669.9 -901.8L732.1 -891.3L791 -876.7L845.6 -858.5L895 -836.9L1959.9 -304.4L2003.2 -279.7L2039.7 -252.4L2068.7 -223L2089.9 -191.9L2102.7 -159.7L2107 -126.9M2107 2318.6L2102.7 2351.4L2089.9 2383.6L2068.7 2414.7L2039.7 2444.1L2003.2 2471.4L1959.9 2496.1L895 3028.6L845.6 3050.2L791 3068.5L732.1 3083L669.9 3093.6L605.5 3100L540 3102.1L474.5 3100L410.1 3093.6L347.9 3083L289 3068.5L234.4 3050.2L185 3028.6L-879.9 2496.1L-923.2 2471.4L-959.7 2444.1L-988.7 2414.7L-1009.9 2383.6L-1022.7 2351.4L-1027 2318.6M2107 -126.9L2107 2318.6M-1027 -126.9L-1027 2318.6"/></g></g><g data-part="pumpHead" transform="translate(0, 0)"><g class="color-red"><g class="iso-solid"><path class="iso-fill" d="M-24.8 -806.2L-5.5 -879.3L50.9 -947.4L140.6 -1005.9L257.6 -1050.8L393.8 -1079L540 -1088.6L686.2 -1079L822.4 -1050.8L939.4 -1005.9L1029.1 -947.4L1085.5 -879.3L1104.8 -806.2L1104.8 -126.9L1085.5 -53.8L1029.1 14.3L939.4 72.8L822.4 117.7L686.2 145.9L540 155.5L393.8 145.9L257.6 117.7L140.6 72.8L50.9 14.3L-5.5 -53.8L-24.8 -126.9Z"/><path class="iso-shade" data-shade="0" d="M939.4 72.8L822.4 117.7L822.4 -561.7L939.4 -606.5ZM1104.8 -126.9L1085.5 -53.8L1085.5 -733.1L1104.8 -806.2ZM1085.5 -53.8L1029.1 14.3L1029.1 -665L1085.5 -733.1ZM1029.1 14.3L939.4 72.8L939.4 -606.5L1029.1 -665Z"/><path class="iso-shade" data-shade="1" d="M822.4 117.7L686.2 145.9L686.2 -533.4L822.4 -561.7ZM686.2 145.9L540 155.5L540 -523.8L686.2 -533.4Z"/><path class="iso-shade" data-shade="2" d="M540 155.5L393.8 145.9L393.8 -533.4L540 -523.8ZM393.8 145.9L257.6 117.7L257.6 -561.7L393.8 -533.4Z"/><path class="iso-shade" data-shade="3" d="M257.6 117.7L140.6 72.8L140.6 -606.5L257.6 -561.7ZM140.6 72.8L50.9 14.3L50.9 -665L140.6 -606.5ZM50.9 14.3L-5.5 -53.8L-5.5 -733.1L50.9 -665ZM-5.5 -53.8L-24.8 -126.9L-24.8 -806.2L-5.5 -733.1Z"/><path class="iso-top" d="M939.4 -606.5L822.4 -561.7L686.2 -533.4L540 -523.8L393.8 -533.4L257.6 -561.7L140.6 -606.5L50.9 -665L-5.5 -733.1L-24.8 -806.2L-5.5 -879.3L50.9 -947.4L140.6 -1005.9L257.6 -1050.8L393.8 -1079L540 -1088.6L686.2 -1079L822.4 -1050.8L939.4 -1005.9L1029.1 -947.4L1085.5 -879.3L1104.8 -806.2L1085.5 -733.1L1029.1 -665Z"/><path class="iso-line iso-crease" data-tone="faint" d="M1104.8 -806.2L1085.5 -733.1L1029.1 -665L939.4 -606.5L822.4 -561.7L686.2 -533.4L540 -523.8L393.8 -533.4L257.6 -561.7L140.6 -606.5L50.9 -665L-5.5 -733.1L-24.8 -806.2"/><path class="iso-line iso-bevel" data-tone="faint" d="M1104.8 -806.2L1024.9 -741.2L974.8 -680.7L895 -628.7L791 -588.8L669.9 -563.8L540 -555.2L410.1 -563.8L289 -588.8L185 -628.7L105.2 -680.7L55.1 -741.2L-24.8 -806.2"/><path class="iso-line iso-edge" data-tone="mid" d="M-24.8 -806.2L-5.5 -879.3L50.9 -947.4L140.6 -1005.9L257.6 -1050.8L393.8 -1079L540 -1088.6L686.2 -1079L822.4 -1050.8L939.4 -1005.9L1029.1 -947.4L1085.5 -879.3L1104.8 -806.2M1104.8 -126.9L1085.5 -53.8L1029.1 14.3L939.4 72.8L822.4 117.7L686.2 145.9L540 155.5L393.8 145.9L257.6 117.7L140.6 72.8L50.9 14.3L-5.5 -53.8L-24.8 -126.9M-24.8 -806.2L-24.8 -126.9M1104.8 -806.2L1104.8 -126.9"/></g></g><g class="color-yellow"><g class="iso-solid"><path class="iso-fill" d="M-114.2 -1185L-99.8 -1221L-59 -1251.6L29.7 -1295.9L90.8 -1316.3L162.8 -1323.5L234.9 -1316.3L296 -1295.9L806.2 -1040.8L847 -1010.3L861.4 -974.2L861.4 -648.2L847 -612.1L806.2 -581.6L717.5 -537.2L656.4 -516.8L584.4 -509.7L512.3 -516.8L451.3 -537.2L-59 -792.4L-99.8 -822.9L-114.2 -858.9Z"/><path class="iso-shade" data-shade="0" d="M861.4 -648.2L847 -612.1L847 -938.2L861.4 -974.2ZM847 -612.1L806.2 -581.6L806.2 -907.7L847 -938.2ZM806.2 -581.6L717.5 -537.2L717.5 -863.3L806.2 -907.7ZM717.5 -537.2L656.4 -516.8L656.4 -842.9L717.5 -863.3Z"/><path class="iso-shade" data-shade="1" d="M656.4 -516.8L584.4 -509.7L584.4 -835.7L656.4 -842.9Z"/><path class="iso-shade" data-shade="2" d="M584.4 -509.7L512.3 -516.8L512.3 -842.9L584.4 -835.7Z"/><path class="iso-shade" data-shade="3" d="M512.3 -516.8L451.3 -537.2L451.3 -863.3L512.3 -842.9ZM451.3 -537.2L-59 -792.4L-59 -1118.4L451.3 -863.3ZM-59 -792.4L-99.8 -822.9L-99.8 -1149L-59 -1118.4ZM-99.8 -822.9L-114.2 -858.9L-114.2 -1185L-99.8 -1149Z"/><path class="iso-top" d="M806.2 -1040.8L847 -1010.3L861.4 -974.2L847 -938.2L806.2 -907.7L717.5 -863.3L656.4 -842.9L584.4 -835.7L512.3 -842.9L451.3 -863.3L-59 -1118.4L-99.8 -1149L-114.2 -1185L-99.8 -1221L-59 -1251.6L29.7 -1295.9L90.8 -1316.3L162.8 -1323.5L234.9 -1316.3L296 -1295.9Z"/><path class="iso-line iso-crease" data-tone="faint" d="M861.4 -974.2L847 -938.2L806.2 -907.7L717.5 -863.3L656.4 -842.9L584.4 -835.7L512.3 -842.9L451.3 -863.3L-59 -1118.4L-99.8 -1149L-114.2 -1185"/><path class="iso-line iso-edge" data-tone="hi" d="M-114.2 -1185L-99.8 -1221L-59 -1251.6L29.7 -1295.9L90.8 -1316.3L162.8 -1323.5L234.9 -1316.3L296 -1295.9L806.2 -1040.8L847 -1010.3L861.4 -974.2M861.4 -648.2L847 -612.1L806.2 -581.6L717.5 -537.2L656.4 -516.8L584.4 -509.7L512.3 -516.8L451.3 -537.2L-59 -792.4L-99.8 -822.9L-114.2 -858.9M861.4 -974.2L861.4 -648.2M-114.2 -1185L-114.2 -858.9"/></g></g></g>
+    </g>
+  </svg>
+<script>
+  window.__heviSeek = function(t) {
+    const obj = "soap_pump";
+    if (obj === "windmill") {
+      const blades = document.querySelector('[data-part="blades"]');
+      if (blades) {
+        const deg = t * 360 * 3;
+        blades.setAttribute("transform", "translate(0, 20) rotate(" + deg + ")");
+      }
+    } else if (obj === "waterwheel") {
+      const wheel = document.querySelector('[data-part="wheel"]');
+      if (wheel) {
+        const deg = t * 360 * 2;
+        wheel.setAttribute("transform", "rotate(" + deg + ")");
+      }
+    } else if (obj === "soap_pump") {
+      const head = document.querySelector('[data-part="pumpHead"]');
+      if (head) {
+        const dy = Math.sin(t * Math.PI * 4) * 15;
+        head.setAttribute("transform", "translate(0, " + dy + ")");
+      }
+    } else if (obj === "clock_gear") {
+      const gMain = document.querySelector('[data-part="gearMain"]');
+      const gSub = document.querySelector('[data-part="gearSub"]');
+      if (gMain && gSub) {
+        const deg1 = t * 360 * 2;
+        const deg2 = -t * 360 * 4;
+        gMain.setAttribute("transform", "rotate(" + deg1 + ")");
+        gSub.setAttribute("transform", "rotate(" + deg2 + ")");
+      }
+    }
+  };
+  window.__heviSeek(0);
+</script>
+</body>
+</html>

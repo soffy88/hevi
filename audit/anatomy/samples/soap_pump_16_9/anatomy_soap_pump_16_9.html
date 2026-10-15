@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>按压洗手液</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 1920px;
+    height: 1080px;
+    background-color: #2563eb !important;
+    background: #2563eb !important;
+    font-family: system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .title-label {
+    position: absolute;
+    top: 60px;
+    font-size: 64px;
+    font-weight: bold;
+    color: #ffffff;
+    background: #dc2626;
+    padding: 16px 40px;
+    border-radius: 36px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    letter-spacing: 2px;
+    z-index: 10;
+  }
+  svg {
+    width: 1920px;
+    height: 1080px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  }
+  .color-red {
+    --anatomy-paper: #ef4444; --anatomy-top: #f87171;
+    --anatomy-shade-0: #b91c1c; --anatomy-shade-1: #dc2626; --anatomy-shade-2: #ef4444; --anatomy-shade-3: #f87171;
+    --anatomy-hi: #991b1b; --anatomy-lo: #7f1d1d; --anatomy-face: #ef4444; --anatomy-lit-top: #f87171; --anatomy-lit-shade: #dc2626;
+  }
+  .color-green {
+    --anatomy-paper: #22c55e; --anatomy-top: #4ade80;
+    --anatomy-shade-0: #15803d; --anatomy-shade-1: #16a34a; --anatomy-shade-2: #22c55e; --anatomy-shade-3: #4ade80;
+    --anatomy-hi: #166534; --anatomy-lo: #14532d; --anatomy-face: #22c55e; --anatomy-lit-top: #4ade80; --anatomy-lit-shade: #16a34a;
+  }
+  .color-yellow {
+    --anatomy-paper: #eab308; --anatomy-top: #facc15;
+    --anatomy-shade-0: #a16207; --anatomy-shade-1: #ca8a04; --anatomy-shade-2: #eab308; --anatomy-shade-3: #facc15;
+    --anatomy-hi: #854d0e; --anatomy-lo: #713f12; --anatomy-face: #eab308; --anatomy-lit-top: #facc15; --anatomy-lit-shade: #ca8a04;
+  }
+  .color-blue {
+    --anatomy-paper: #3b82f6; --anatomy-top: #60a5fa;
+    --anatomy-shade-0: #1d4ed8; --anatomy-shade-1: #2563eb; --anatomy-shade-2: #3b82f6; --anatomy-shade-3: #60a5fa;
+    --anatomy-hi: #1e40af; --anatomy-lo: #1e3a8a; --anatomy-face: #3b82f6; --anatomy-lit-top: #60a5fa; --anatomy-lit-shade: #2563eb;
+  }
+  
+.iso{
+  --anatomy-page:#0b0b0b;--anatomy-card:#131313;--anatomy-text:#a3a3a3;--anatomy-strong:#e6e6e6;--anatomy-muted:#6e6e6e;
+  --anatomy-paper:#131313;--anatomy-face:#1b1b1b;--anatomy-top:#1c1c1c;
+  --anatomy-shade-0:#0f0f0f;--anatomy-shade-1:#121212;--anatomy-shade-2:#151515;--anatomy-shade-3:#181818;
+  --anatomy-lit-top:#262626;--anatomy-lit-shade:#1d1d1d;
+  --anatomy-hi:#d4d4d4;--anatomy-mid:#6a6a6a;--anatomy-lo:#3e3e3e;--anatomy-faint:#2a2a2a;--anatomy-lit:#ffffff;
+  --anatomy-halo:#050505;--anatomy-halo-opacity:.9;--anatomy-dot:#e6e6e6;
+  --anatomy-red:#ff6b6b;--anatomy-green:#6be0a0;--anatomy-blue:#6b9bff;
+  --anatomy-weight:.6px;--anatomy-ease:cubic-bezier(.32,.72,0,1);
+  --anatomy-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff0a,inset 0 0 0 1px #ffffff06,0 0 0 1px #00000026,0 1px 1px -.5px #00000014,0 3px 3px -1.5px #00000014,0 6px 6px -3px #00000014,0 12px 12px -6px #00000014;
+}
+.iso[data-theme="light"]{
+  --anatomy-page:#f2f2ef;--anatomy-card:#fbfbfa;--anatomy-text:#57575a;--anatomy-strong:#18181a;--anatomy-muted:#8c8c90;
+  --anatomy-paper:#fbfbfa;--anatomy-face:#ffffff;--anatomy-top:#ffffff;
+  --anatomy-shade-0:#dcdcd9;--anatomy-shade-1:#e5e5e2;--anatomy-shade-2:#ededea;--anatomy-shade-3:#f4f4f1;
+  --anatomy-lit-top:#ffffff;--anatomy-lit-shade:#eeeeeb;
+  --anatomy-hi:#26262a;--anatomy-mid:#8a8a8f;--anatomy-lo:#b4b4b8;--anatomy-faint:#d4d4d6;--anatomy-lit:#000000;
+  --anatomy-halo:#8a8a80;--anatomy-halo-opacity:.32;--anatomy-dot:#3a3a3e;
+  --anatomy-red:#e5484d;--anatomy-green:#30a46c;--anatomy-blue:#3e63dd;
+  --anatomy-lift:inset 0 1px 0 0 #ffffff,0 0 0 1px #0000000f,0 1px 1px -.5px #0000000a,0 3px 3px -1.5px #0000000a,0 6px 6px -3px #0000000a,0 12px 12px -6px #0000000a;
+}
+.iso-svg{display:block;width:100%;height:auto;overflow:visible}
+.iso-svg path,.iso-svg circle{vector-effect:non-scaling-stroke}
+.iso-fill{fill:var(--anatomy-paper);stroke:none}
+.iso-solid[data-lit]>.iso-fill{fill:var(--anatomy-face)}
+.iso-shade,.iso-top{stroke:none}
+.iso-shade[data-shade="0"]{fill:var(--anatomy-shade-0)}
+.iso-shade[data-shade="1"]{fill:var(--anatomy-shade-1)}
+.iso-shade[data-shade="2"]{fill:var(--anatomy-shade-2)}
+.iso-shade[data-shade="3"]{fill:var(--anatomy-shade-3)}
+.iso-top{fill:var(--anatomy-top)}
+.iso-solid[data-lit]>.iso-top{fill:var(--anatomy-lit-top)}
+.iso-solid[data-lit]>.iso-shade{fill:var(--anatomy-lit-shade)}
+.iso-solid[data-seamless]>.iso-shade,.iso-solid[data-seamless]>.iso-top{stroke-width:.4;stroke-linejoin:round}
+.iso-solid[data-seamless]>.iso-shade[data-shade="0"]{stroke:var(--anatomy-shade-0)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="1"]{stroke:var(--anatomy-shade-1)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="2"]{stroke:var(--anatomy-shade-2)}
+.iso-solid[data-seamless]>.iso-shade[data-shade="3"]{stroke:var(--anatomy-shade-3)}
+.iso-solid[data-seamless]>.iso-top{stroke:var(--anatomy-top)}
+.iso-solid[data-seamless][data-lit]>.iso-top{stroke:var(--anatomy-lit-top)}
+.iso-solid[data-seamless][data-lit]>.iso-shade{stroke:var(--anatomy-lit-shade)}
+.iso-solid[data-lit]>.iso-edge{stroke:var(--anatomy-lit)}
+.iso-halo{fill:var(--anatomy-halo);stroke:none;filter:blur(9px);opacity:var(--anatomy-halo-opacity);transform:translateY(3px)}
+.iso-line{fill:none;stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight);stroke-linecap:round;stroke-linejoin:round}
+.iso-line[data-tone="hi"]{stroke:var(--anatomy-hi)}
+.iso-line[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.iso-line[data-tone="lo"]{stroke:var(--anatomy-lo)}
+.iso-line[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.iso-line[data-tone="lit"]{stroke:var(--anatomy-lit)}
+.iso-line[data-tone="red"]{stroke:var(--anatomy-red)}
+.iso-line[data-tone="green"]{stroke:var(--anatomy-green)}
+.iso-line[data-tone="blue"]{stroke:var(--anatomy-blue)}
+.iso-line[data-dotted]{stroke-dasharray:.01 3.5;stroke-width:1}
+.iso-line[data-dashed]{stroke-dasharray:3 3}
+.iso-line[data-flow]{stroke-dasharray:2 6}
+.iso-wire-end{fill:var(--anatomy-paper);stroke:var(--anatomy-lo);stroke-width:var(--anatomy-weight)}
+.iso-wire[data-tone="hi"] .iso-wire-end{stroke:var(--anatomy-hi)}
+.iso-wire[data-tone="mid"] .iso-wire-end{stroke:var(--anatomy-mid)}
+.iso-wire[data-tone="faint"] .iso-wire-end{stroke:var(--anatomy-faint)}
+.iso-wire[data-tone="lit"] .iso-wire-end{stroke:var(--anatomy-lit)}
+.iso-dots circle{fill:var(--anatomy-dot);stroke:none;opacity:.32}
+.iso-dots[data-tone="hi"] circle{opacity:.85}
+.iso-dots[data-tone="mid"] circle{opacity:.45}
+.iso-dots[data-tone="lo"] circle{opacity:.22}
+.iso-dots[data-tone="faint"] circle{opacity:.12}
+.iso-face-text{fill:var(--anatomy-mid);font-family:var(--anatomy-mono);letter-spacing:.04em}
+.iso-face-text[data-tone="hi"]{fill:var(--anatomy-hi)}
+.iso-face-text[data-tone="lo"]{fill:var(--anatomy-lo)}
+.iso-face-text[data-tone="faint"]{fill:var(--anatomy-faint)}
+.tb-body{fill:var(--anatomy-shade-2);stroke:none}
+.tb-shine{fill:var(--anatomy-top);stroke:none}
+.tb-shade{fill:var(--anatomy-shade-0);stroke:none}
+.tb-ring{fill:none;stroke:var(--anatomy-lo);stroke-width:.45;stroke-linecap:butt;stroke-linejoin:round}
+.tb-ring[data-tone="mid"]{stroke:var(--anatomy-mid)}
+.tb-ring[data-tone="faint"]{stroke:var(--anatomy-faint)}
+.tb-ring[data-tone="hi"]{stroke:var(--anatomy-hi)}
+@keyframes iso-flow{to{stroke-dashoffset:-32}}
+@keyframes iso-pulse{0%,100%{opacity:.18}12%{opacity:1}40%{opacity:.18}}
+.iso-line[data-flow]{animation:iso-flow 1600ms linear infinite}
+.iso-dots circle[data-pulse]{animation:iso-pulse 1600ms steps(1,end) infinite;animation-delay:var(--pulse-at,0ms)}
+.iso-figure{margin:32px 0 36px}
+.iso-plate{position:relative;padding:52px 24px;border-radius:0;background:var(--anatomy-card);box-shadow:0 0 0 1px var(--anatomy-mid);--anatomy-paper:var(--anatomy-card)}
+.iso-plate-corners{position:absolute;inset:18px 20px;pointer-events:none}
+.iso-plate-corner{position:absolute;color:var(--anatomy-muted);font-family:var(--anatomy-mono);font-size:10.5px;line-height:1;letter-spacing:.04em;white-space:nowrap}
+.iso-plate-corner[data-corner="fig"]{top:0;left:0;color:var(--anatomy-text)}
+.iso-plate-corner[data-corner="title"]{top:0;right:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="hint"]{bottom:0;left:0;text-transform:uppercase;letter-spacing:.1em}
+.iso-plate-corner[data-corner="readout"]{right:0;bottom:0;color:var(--anatomy-text);font-variant-numeric:tabular-nums}
+.iso-plate .iso-svg{margin:0 auto}
+.iso-legend{display:grid;gap:8px;margin-top:12px;color:var(--anatomy-muted);font-size:13px;line-height:1.55}
+.iso-keys{display:flex;flex-wrap:wrap;gap:6px 18px}
+.iso-key{display:inline-flex;align-items:center;gap:7px}
+.iso-swatch{width:16px;height:10px;flex:none;overflow:visible}
+.iso-swatch path{fill:none;stroke:var(--anatomy-hi);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+.iso-swatch[data-mark="raised"] path,.iso-swatch[data-mark="flat"] path{stroke:var(--anatomy-mid)}
+.iso-swatch[data-mark="lit"] path{stroke:var(--anatomy-lit)}
+.iso-swatch[data-mark="dim"] path{stroke:var(--anatomy-lo)}
+.iso-swatch[data-mark="dotted"] path{stroke-dasharray:.01 3;stroke-width:1.4}
+.iso-swatch[data-mark="dashed"] path{stroke-dasharray:3 2.5}
+.iso-swatch[data-mark="red"] path{stroke:var(--anatomy-red)}
+.iso-swatch[data-mark="green"] path{stroke:var(--anatomy-green)}
+.iso-swatch[data-mark="blue"] path{stroke:var(--anatomy-blue)}
+.iso-swatch-crease{stroke:var(--anatomy-lo)!important}
+@media (max-width:560px){.iso-plate{padding:48px 12px 70px}.iso-plate-corner[data-corner="hint"]{bottom:18px}}
+@media (prefers-reduced-motion:reduce){.iso-line[data-flow],.iso-dots circle[data-pulse]{animation:none}}
+
+</style>
+</head>
+<body>
+  <div class="title-label" data-readout>按压洗手液</div>
+  <svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1920" height="1080" fill="#2563eb"/>
+    <g transform="translate(960, 590)">
+      <g class="color-green"><g class="iso-solid"><path class="iso-fill" d="M158.3 -16.1L160.5 -32.9L167.1 -49.3L177.9 -65.2L192.7 -80.3L211.4 -94.3L233.5 -106.9L778.4 -379.3L803.6 -390.4L831.6 -399.7L861.7 -407.2L893.5 -412.6L926.5 -415.8L960 -416.9L993.5 -415.8L1026.5 -412.6L1058.3 -407.2L1088.4 -399.7L1116.4 -390.4L1141.6 -379.3L1686.5 -106.9L1708.6 -94.3L1727.3 -80.3L1742.1 -65.2L1752.9 -49.3L1759.5 -32.9L1761.7 -16.1L1761.7 1235.1L1759.5 1251.9L1752.9 1268.3L1742.1 1284.3L1727.3 1299.3L1708.6 1313.3L1686.5 1325.9L1141.6 1598.3L1116.4 1609.4L1088.4 1618.8L1058.3 1626.2L1026.5 1631.6L993.5 1634.9L960 1636L926.5 1634.9L893.5 1631.6L861.7 1626.2L831.6 1618.8L803.6 1609.4L778.4 1598.3L233.5 1325.9L211.4 1313.3L192.7 1299.3L177.9 1284.3L167.1 1268.3L160.5 1251.9L158.3 1235.1Z"/><path class="iso-shade" data-shade="0" d="M1761.7 1235.1L1759.5 1251.9L1759.5 0.7L1761.7 -16.1ZM1759.5 1251.9L1752.9 1268.3L1752.9 17.2L1759.5 0.7ZM1752.9 1268.3L1742.1 1284.3L1742.1 33.1L1752.9 17.2ZM1742.1 1284.3L1727.3 1299.3L1727.3 48.1L1742.1 33.1ZM1727.3 1299.3L1708.6 1313.3L1708.6 62.1L1727.3 48.1ZM1708.6 1313.3L1686.5 1325.9L1686.5 74.7L1708.6 62.1ZM1686.5 1325.9L1141.6 1598.3L1141.6 347.1L1686.5 74.7ZM1141.6 1598.3L1116.4 1609.4L1116.4 358.2L1141.6 347.1ZM1116.4 1609.4L1088.4 1618.8L1088.4 367.6L1116.4 358.2Z"/><path class="iso-shade" data-shade="1" d="M1088.4 1618.8L1058.3 1626.2L1058.3 375L1088.4 367.6ZM1058.3 1626.2L1026.5 1631.6L1026.5 380.4L1058.3 375ZM1026.5 1631.6L993.5 1634.9L993.5 383.7L1026.5 380.4ZM993.5 1634.9L960 1636L960 384.8L993.5 383.7Z"/><path class="iso-shade" data-shade="2" d="M960 1636L926.5 1634.9L926.5 383.7L960 384.8ZM926.5 1634.9L893.5 1631.6L893.5 380.4L926.5 383.7ZM893.5 1631.6L861.7 1626.2L861.7 375L893.5 380.4ZM861.7 1626.2L831.6 1618.8L831.6 367.6L861.7 375Z"/><path class="iso-shade" data-shade="3" d="M831.6 1618.8L803.6 1609.4L803.6 358.2L831.6 367.6ZM803.6 1609.4L778.4 1598.3L778.4 347.1L803.6 358.2ZM778.4 1598.3L233.5 1325.9L233.5 74.7L778.4 347.1ZM233.5 1325.9L211.4 1313.3L211.4 62.1L233.5 74.7ZM211.4 1313.3L192.7 1299.3L192.7 48.1L211.4 62.1ZM192.7 1299.3L177.9 1284.3L177.9 33.1L192.7 48.1ZM177.9 1284.3L167.1 1268.3L167.1 17.2L177.9 33.1ZM167.1 1268.3L160.5 1251.9L160.5 0.7L167.1 17.2ZM160.5 1251.9L158.3 1235.1L158.3 -16.1L160.5 0.7Z"/><path class="iso-top" d="M1686.5 -106.9L1708.6 -94.3L1727.3 -80.3L1742.1 -65.2L1752.9 -49.3L1759.5 -32.9L1761.7 -16.1L1759.5 0.7L1752.9 17.2L1742.1 33.1L1727.3 48.1L1708.6 62.1L1686.5 74.7L1141.6 347.1L1116.4 358.2L1088.4 367.6L1058.3 375L1026.5 380.4L993.5 383.7L960 384.8L926.5 383.7L893.5 380.4L861.7 375L831.6 367.6L803.6 358.2L778.4 347.1L233.5 74.7L211.4 62.1L192.7 48.1L177.9 33.1L167.1 17.2L160.5 0.7L158.3 -16.1L160.5 -32.9L167.1 -49.3L177.9 -65.2L192.7 -80.3L211.4 -94.3L233.5 -106.9L778.4 -379.3L803.6 -390.4L831.6 -399.7L861.7 -407.2L893.5 -412.6L926.5 -415.8L960 -416.9L993.5 -415.8L1026.5 -412.6L1058.3 -407.2L1088.4 -399.7L1116.4 -390.4L1141.6 -379.3Z"/><path class="iso-line iso-crease" data-tone="faint" d="M1761.7 -16.1L1759.5 0.7L1752.9 17.2L1742.1 33.1L1727.3 48.1L1708.6 62.1L1686.5 74.7L1141.6 347.1L1116.4 358.2L1088.4 367.6L1058.3 375L1026.5 380.4L993.5 383.7L960 384.8L926.5 383.7L893.5 380.4L861.7 375L831.6 367.6L803.6 358.2L778.4 347.1L233.5 74.7L211.4 62.1L192.7 48.1L177.9 33.1L167.1 17.2L160.5 0.7L158.3 -16.1"/><path class="iso-line iso-bevel" data-tone="faint" d="M1761.7 -16.1L1695.8 -3.5L1690.9 8.8L1682.8 20.8L1671.7 32.1L1657.7 42.5L1639.6 52.8L1097.7 323.7L1077.3 332.8L1056.3 339.8L1033.7 345.3L1009.9 349.4L985.1 351.8L960 352.7L934.9 351.8L910.1 349.4L886.3 345.3L863.7 339.8L842.7 332.8L822.3 323.7L280.4 52.8L262.3 42.5L248.3 32.1L237.2 20.8L229.1 8.8L224.2 -3.5L158.3 -16.1"/><path class="iso-line iso-edge" data-tone="hi" d="M158.3 -16.1L160.5 -32.9L167.1 -49.3L177.9 -65.2L192.7 -80.3L211.4 -94.3L233.5 -106.9L778.4 -379.3L803.6 -390.4L831.6 -399.7L861.7 -407.2L893.5 -412.6L926.5 -415.8L960 -416.9L993.5 -415.8L1026.5 -412.6L1058.3 -407.2L1088.4 -399.7L1116.4 -390.4L1141.6 -379.3L1686.5 -106.9L1708.6 -94.3L1727.3 -80.3L1742.1 -65.2L1752.9 -49.3L1759.5 -32.9L1761.7 -16.1M1761.7 1235.1L1759.5 1251.9L1752.9 1268.3L1742.1 1284.3L1727.3 1299.3L1708.6 1313.3L1686.5 1325.9L1141.6 1598.3L1116.4 1609.4L1088.4 1618.8L1058.3 1626.2L1026.5 1631.6L993.5 1634.9L960 1636L926.5 1634.9L893.5 1631.6L861.7 1626.2L831.6 1618.8L803.6 1609.4L778.4 1598.3L233.5 1325.9L211.4 1313.3L192.7 1299.3L177.9 1284.3L167.1 1268.3L160.5 1251.9L158.3 1235.1M1761.7 -16.1L1761.7 1235.1M158.3 -16.1L158.3 1235.1"/></g></g><g data-part="pumpHead" transform="translate(0, 0)"><g class="color-red"><g class="iso-solid"><path class="iso-fill" d="M671 -363.6L680.9 -401L709.8 -435.9L755.7 -465.8L815.5 -488.8L885.2 -503.2L960 -508.1L1034.8 -503.2L1104.5 -488.8L1164.3 -465.8L1210.2 -435.9L1239.1 -401L1249 -363.6L1249 -16.1L1239.1 21.3L1210.2 56.1L1164.3 86.1L1104.5 109L1034.8 123.5L960 128.4L885.2 123.5L815.5 109L755.7 86.1L709.8 56.1L680.9 21.3L671 -16.1Z"/><path class="iso-shade" data-shade="0" d="M1164.3 86.1L1104.5 109L1104.5 -238.5L1164.3 -261.5ZM1249 -16.1L1239.1 21.3L1239.1 -326.3L1249 -363.6ZM1239.1 21.3L1210.2 56.1L1210.2 -291.4L1239.1 -326.3ZM1210.2 56.1L1164.3 86.1L1164.3 -261.5L1210.2 -291.4Z"/><path class="iso-shade" data-shade="1" d="M1104.5 109L1034.8 123.5L1034.8 -224.1L1104.5 -238.5ZM1034.8 123.5L960 128.4L960 -219.2L1034.8 -224.1Z"/><path class="iso-shade" data-shade="2" d="M960 128.4L885.2 123.5L885.2 -224.1L960 -219.2ZM885.2 123.5L815.5 109L815.5 -238.5L885.2 -224.1Z"/><path class="iso-shade" data-shade="3" d="M815.5 109L755.7 86.1L755.7 -261.5L815.5 -238.5ZM755.7 86.1L709.8 56.1L709.8 -291.4L755.7 -261.5ZM709.8 56.1L680.9 21.3L680.9 -326.3L709.8 -291.4ZM680.9 21.3L671 -16.1L671 -363.6L680.9 -326.3Z"/><path class="iso-top" d="M1164.3 -261.5L1104.5 -238.5L1034.8 -224.1L960 -219.2L885.2 -224.1L815.5 -238.5L755.7 -261.5L709.8 -291.4L680.9 -326.3L671 -363.6L680.9 -401L709.8 -435.9L755.7 -465.8L815.5 -488.8L885.2 -503.2L960 -508.1L1034.8 -503.2L1104.5 -488.8L1164.3 -465.8L1210.2 -435.9L1239.1 -401L1249 -363.6L1239.1 -326.3L1210.2 -291.4Z"/><path class="iso-line iso-crease" data-tone="faint" d="M1249 -363.6L1239.1 -326.3L1210.2 -291.4L1164.3 -261.5L1104.5 -238.5L1034.8 -224.1L960 -219.2L885.2 -224.1L815.5 -238.5L755.7 -261.5L709.8 -291.4L680.9 -326.3L671 -363.6"/><path class="iso-line iso-bevel" data-tone="faint" d="M1249 -363.6L1208.1 -330.4L1182.4 -299.4L1141.6 -272.8L1088.4 -252.4L1026.5 -239.6L960 -235.2L893.5 -239.6L831.6 -252.4L778.4 -272.8L737.6 -299.4L711.9 -330.4L671 -363.6"/><path class="iso-line iso-edge" data-tone="mid" d="M671 -363.6L680.9 -401L709.8 -435.9L755.7 -465.8L815.5 -488.8L885.2 -503.2L960 -508.1L1034.8 -503.2L1104.5 -488.8L1164.3 -465.8L1210.2 -435.9L1239.1 -401L1249 -363.6M1249 -16.1L1239.1 21.3L1210.2 56.1L1164.3 86.1L1104.5 109L1034.8 123.5L960 128.4L885.2 123.5L815.5 109L755.7 86.1L709.8 56.1L680.9 21.3L671 -16.1M671 -363.6L671 -16.1M1249 -363.6L1249 -16.1"/></g></g><g class="color-yellow"><g class="iso-solid"><path class="iso-fill" d="M625.3 -557.4L632.6 -575.9L653.5 -591.5L698.9 -614.2L730.2 -624.6L767 -628.3L803.9 -624.6L835.1 -614.2L1096.2 -483.7L1117.1 -468L1124.4 -449.6L1124.4 -282.8L1117.1 -264.4L1096.2 -248.7L1050.8 -226L1019.6 -215.6L982.7 -211.9L945.8 -215.6L914.6 -226L653.5 -356.6L632.6 -372.2L625.3 -390.6Z"/><path class="iso-shade" data-shade="0" d="M1124.4 -282.8L1117.1 -264.4L1117.1 -431.2L1124.4 -449.6ZM1117.1 -264.4L1096.2 -248.7L1096.2 -415.6L1117.1 -431.2ZM1096.2 -248.7L1050.8 -226L1050.8 -392.9L1096.2 -415.6ZM1050.8 -226L1019.6 -215.6L1019.6 -382.4L1050.8 -392.9Z"/><path class="iso-shade" data-shade="1" d="M1019.6 -215.6L982.7 -211.9L982.7 -378.7L1019.6 -382.4Z"/><path class="iso-shade" data-shade="2" d="M982.7 -211.9L945.8 -215.6L945.8 -382.4L982.7 -378.7Z"/><path class="iso-shade" data-shade="3" d="M945.8 -215.6L914.6 -226L914.6 -392.9L945.8 -382.4ZM914.6 -226L653.5 -356.6L653.5 -523.4L914.6 -392.9ZM653.5 -356.6L632.6 -372.2L632.6 -539L653.5 -523.4ZM632.6 -372.2L625.3 -390.6L625.3 -557.4L632.6 -539Z"/><path class="iso-top" d="M1096.2 -483.7L1117.1 -468L1124.4 -449.6L1117.1 -431.2L1096.2 -415.6L1050.8 -392.9L1019.6 -382.4L982.7 -378.7L945.8 -382.4L914.6 -392.9L653.5 -523.4L632.6 -539L625.3 -557.4L632.6 -575.9L653.5 -591.5L698.9 -614.2L730.2 -624.6L767 -628.3L803.9 -624.6L835.1 -614.2Z"/><path class="iso-line iso-crease" data-tone="faint" d="M1124.4 -449.6L1117.1 -431.2L1096.2 -415.6L1050.8 -392.9L1019.6 -382.4L982.7 -378.7L945.8 -382.4L914.6 -392.9L653.5 -523.4L632.6 -539L625.3 -557.4"/><path class="iso-line iso-edge" data-tone="hi" d="M625.3 -557.4L632.6 -575.9L653.5 -591.5L698.9 -614.2L730.2 -624.6L767 -628.3L803.9 -624.6L835.1 -614.2L1096.2 -483.7L1117.1 -468L1124.4 -449.6M1124.4 -282.8L1117.1 -264.4L1096.2 -248.7L1050.8 -226L1019.6 -215.6L982.7 -211.9L945.8 -215.6L914.6 -226L653.5 -356.6L632.6 -372.2L625.3 -390.6M1124.4 -449.6L1124.4 -282.8M625.3 -557.4L625.3 -390.6"/></g></g></g>
+    </g>
+  </svg>
+<script>
+  window.__heviSeek = function(t) {
+    const obj = "soap_pump";
+    if (obj === "windmill") {
+      const blades = document.querySelector('[data-part="blades"]');
+      if (blades) {
+        const deg = t * 360 * 3;
+        blades.setAttribute("transform", "translate(0, 20) rotate(" + deg + ")");
+      }
+    } else if (obj === "waterwheel") {
+      const wheel = document.querySelector('[data-part="wheel"]');
+      if (wheel) {
+        const deg = t * 360 * 2;
+        wheel.setAttribute("transform", "rotate(" + deg + ")");
+      }
+    } else if (obj === "soap_pump") {
+      const head = document.querySelector('[data-part="pumpHead"]');
+      if (head) {
+        const dy = Math.sin(t * Math.PI * 4) * 15;
+        head.setAttribute("transform", "translate(0, " + dy + ")");
+      }
+    } else if (obj === "clock_gear") {
+      const gMain = document.querySelector('[data-part="gearMain"]');
+      const gSub = document.querySelector('[data-part="gearSub"]');
+      if (gMain && gSub) {
+        const deg1 = t * 360 * 2;
+        const deg2 = -t * 360 * 4;
+        gMain.setAttribute("transform", "rotate(" + deg1 + ")");
+        gSub.setAttribute("transform", "rotate(" + deg2 + ")");
+      }
+    }
+  };
+  window.__heviSeek(0);
+</script>
+</body>
+</html>
