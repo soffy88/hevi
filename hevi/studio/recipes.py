@@ -25,7 +25,11 @@ class Recipe(BaseModel):
     id: str
     product: str
     summary: str
-    handoff: str = "none"  # tongjian | shortdrama | explainer | none
+    # tongjian | shortdrama | explainer | scene3d | none
+    # A line may hand a work order off to another line (explainer / shortdrama /
+    # tongjian) or to itself (``scene3d`` — the scene3d line renders its own
+    # order through its pipeline) or to nothing (``none``).
+    handoff: str = "none"
     slots: list[SlotSpec] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
     render_runtime: str = "remotion"  # remotion | hyperframes | ffmpeg — proposal 期锁定
@@ -34,7 +38,7 @@ class Recipe(BaseModel):
     @field_validator("handoff")
     @classmethod
     def _known_handoff(cls, v: str) -> str:
-        allowed = {"tongjian", "shortdrama", "explainer", "none"}
+        allowed = {"tongjian", "shortdrama", "explainer", "scene3d", "none"}
         if v not in allowed:
             raise ValueError(f"handoff must be one of {sorted(allowed)}")
         return v

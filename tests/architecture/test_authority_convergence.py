@@ -169,7 +169,10 @@ def test_provider_registry_is_unique_in_holding_capabilities() -> None:
                      p.read_text(encoding="utf-8", errors="ignore"), re.M)
     })
     # Documented count so an unrelated registry addition is noticed in review.
-    assert len(registry_defs) <= 18, f"registry classes grew: {len(registry_defs)}"
+    # 18 before MERGE-1015; 19 after merging feat/kids-manifest, which brings the
+    # FX template catalogue (``hevi/fx/registry.py::FXRegistry``) in with the
+    # kids-gate / shot-spec side chain.
+    assert len(registry_defs) <= 19, f"registry classes grew: {len(registry_defs)}"
 
     prod, _ = _importers_of("hevi.providers.registry")
     assert prod, "the provider registry must stay reachable from production"

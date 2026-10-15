@@ -11,6 +11,7 @@
       "motion",
       "narrator",
       "presenter",
+      "quote_image",
       "world"
     ],
     "missing": [],
@@ -60,6 +61,7 @@
         "motion",
         "narrator",
         "presenter",
+        "quote_image",
         "world"
       ],
       "missing": [],

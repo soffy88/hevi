@@ -299,28 +299,13 @@ async def produce(
         )
     if publish and (platforms or []):
         from hevi.studio.packaging import pack_queue, write_pack_tickets
-        from hevi.studio.tools import invoke_tool
 
-        media = artifact or ""
         queue = pack_queue(
             str(filled.get("topic") or rec.product),
             list(platforms or []),
-            media_path=media,
+            media_path=artifact or "",
         )
         write_pack_tickets(queue, dest_root / "pack")
-        for variant in queue.variants:
-            res = await invoke_tool(
-                "publish.matrix",
-                {
-                    "platform": variant.platform,
-                    "media_path": media or "pending",
-                    "title": variant.title,
-                    "description": variant.description,
-                    "tags": variant.tags,
-                    "account": variant.account,
-                    "cover_hint": variant.cover_hint,
-                },
-            )
-            job.publish.append(res.to_dict())
+        job.pack = [variant.to_dict() for variant in queue.variants]
     _JOBS[job.job_id] = job
     return job
