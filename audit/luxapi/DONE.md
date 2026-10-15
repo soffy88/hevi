@@ -166,3 +166,14 @@ Exact result: `203 passed in 6.96s`, with no failures or skips. This sweep inclu
 
 The suite created untracked qualification artifacts at `artifacts/qualification/hevi_p6_8_final.json` and `artifacts/qualification/p6_7/`; these were not staged, modified, or removed. They are outside the LuxAPI deliverable. No product-code changes were required because the relevant suite passed.
 DONE LUXAPI-R1
+
+## Continuation — latest acceptance and live-service check (2026-10-15)
+
+Re-ran the exact user-required gate with the required environment:
+
+`JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -k lux tests 2>&1 | tail -3 | grep -q passed`
+
+Result: pipeline exit code `0`; exact captured pytest summary: `27 passed, 7341 deselected, 1 warning in 11.07s`. The warning remains the existing Starlette/httpx deprecation warning. The live LuxTTS `/health` check returned HTTP 200 and reported `soffy` and `en_male`. Required Chinese/English WAVs, metadata, ffprobe JSON, and the toddler-animation MP4/probe are all present and non-empty. `git diff --check` passed.
+
+The complete relevant regression sweep remains `203 passed in 6.96s`. No LuxAPI code changes were necessary after these checks. The KIDS_ANIME_DIRECTION.md and CAPABILITY_CONTRACT.md references remain absent from this isolated worktree; no files outside this worktree were read or changed.
+DONE LUXAPI-R1
