@@ -88,9 +88,9 @@ def _render_handdraw(
         mp4=mp4,
         png=png,
         wav=Path(output_dir / "inputs" / "narration" / "master.wav"),
-        duration=result["duration"],
+        duration_s=float(result["duration"]),
         sha256=result["sha256"],
-        qa_report={
+        qa={
             "lufs": result["lufs"],
             "canvas": result["canvas"],
             "style_id": result["style_id"],
@@ -115,18 +115,28 @@ def _render_canvas(
     prefer_cosy: bool = True,
     duration: float = 0.0,
 ) -> CapabilityResult:
+    if not topic or not str(topic).strip():
+        raise CapabilityError("handdraw capability requires a non-empty 'topic'")
+    from hevi.layer4_legacy.handdraw.kids_storyboards import UnsupportedKidsTopicError
     out_dir = Path(out_dir).resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    return _render_handdraw(
-        topic=topic,
-        style_id=style_id,
-        hand_preset=hand_preset,
-        canvas_size=canvas_size,
-        output_dir=out_dir,
-        seed=seed,
-        prefer_cosy=prefer_cosy,
-        duration=duration,
-    )
+    try:
+        return _render_handdraw(
+            topic=topic,
+            style_id=style_id,
+            hand_preset=hand_preset,
+            canvas_size=canvas_size,
+            output_dir=out_dir,
+            seed=seed,
+            prefer_cosy=prefer_cosy,
+            duration=duration,
+        )
+    except UnsupportedKidsTopicError as exc:
+        raise CapabilityError(str(exc)) from exc
+    except Exception as exc:
+        if isinstance(exc, CapabilityError):
+            raise
+        raise CapabilityError(f"handdraw render failed: {type(exc).__name__}: {exc}") from exc
 
 
 _PARAMS = {
@@ -151,9 +161,9 @@ def _register() -> None:
             params_schema=dict(_PARAMS, required=["topic", "aspect"]),
             cpu_cost_hint=120.0,
             render=lambda params, out_dir, *, duration=0.0, aspect="16:9", seed=0: _render_canvas(
-                topic=str(params["topic"]),
-                style_id=str(params.get("style_id") or "8"),
-                hand_preset=str(params.get("hand_preset") or "navy"),
+                topic=str((params or {}).get("topic") or ""),
+                style_id=str((params or {}).get("style_id") or "8"),
+                hand_preset=str((params or {}).get("hand_preset") or "navy"),
                 canvas_size=(1920, 1080) if aspect == "16:9" else (1080, 1920),
                 out_dir=out_dir,
                 seed=int(seed),
@@ -240,9 +250,9 @@ def _render_storyboard(topic: str, style_id: str, out_dir: Path, *, seed: int) -
     )
     return CapabilityResult(
         png=pngs[0],
-        duration=None,
+        duration_s=0.0,
         sha256=_sha256_file(pngs[0]),
-        qa_report={
+        qa={
             "scenes": [str(p) for p in pngs],
             "script": str(script_path),
             "style_id": style_id,
@@ -270,9 +280,9 @@ def _render_narration(topic: str, out_dir: Path, *, seed: int) -> CapabilityResu
         raise CapabilityError("narration master not produced")
     return CapabilityResult(
         wav=master,
-        duration=dur,
+        duration_s=float(dur),
         sha256=_sha256_file(master),
-        qa_report={
+        qa={
             "alignment": str(alignment),
             "beats": len(beats),
             "seed": seed,
@@ -302,9 +312,9 @@ def _render_illustration(topic: str, style_id: str, out_dir: Path, *, seed: int)
         raise CapabilityError(f"illustration not produced: {path}")
     return CapabilityResult(
         png=path,
-        duration=None,
+        duration_s=0.0,
         sha256=_sha256_file(path),
-        qa_report={
+        qa={
             "scene_key": scene_key,
             "style_id": style_id,
             "seed": seed,
