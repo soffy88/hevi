@@ -306,4 +306,20 @@ Verification:
 - Required acceptance gate before this report commit: `33 passed, 7341 deselected, 1 warning in 7.68s`; pipeline exit code `0`.
 
 The 34 expanded-suite warnings remain existing `datetime.utcnow()` deprecations outside the LuxTTS client. Live `/health` continues to report `soffy` and `en_male`. No direction/capability documentation was found inside the authorized worktree. No files outside `/data/soffy/projects/hevi-luxapi` were accessed or changed; external services were not changed, no paid API was called, and no deployment or cleanup occurred. The exact required acceptance gate is repeated after this commit.
+
+## Continuation — request validation and Studio alias routing (2026-10-15)
+
+Two additional contract gaps were fixed in this pass.
+
+1. `synth_with_luxtts()` used comparisons such as `speed <= 0`, which do not reject NaN and positive infinity. `sample_rate` and `gap_ms` also accepted non-integer/bool values that could fail later while building WAV frames. The client now requires finite positive speed and typed integer fields (`sample_rate > 0`, `steps > 0`, `gap_ms >= 0`) before probing `/health` or making network calls. Nine parameterized invalid-option cases assert early `ValueError` and no health/network request.
+2. Studio `tts_synth` sent `provider="lux"` down a direct path that returned failure if `/health` was unavailable, bypassing the established LuxTTS → CosyVoice → Piper fallback. The direct path also did not pass explicit `soffy`/`en_male` selections consistently for aliases. `auto`, `lux`, `lux_tts`, and `luxtts` now share the centralized router path, propagate recognized remote voices, and retain the routed fallback/provider metadata. A new test module covers all three alias/voice cases, including reporting a CosyVoice fallback.
+
+Verification:
+
+- Invalid request-parameter and Studio alias regression selection (`tests/test_lux_tts_service.py` excluding the optional live test plus `tests/test_lux_studio_entrypoint.py`): `22 passed, 1 deselected in 1.89s`.
+- Expanded task-related audio/LuxTTS/LuxAPI/explainer/dialogue/Studio/history/coverage sweep: `256 passed, 34 warnings in 10.65s`, exit `0`.
+- Required pytest gate before this report commit: `44 passed, 1 skipped, 7341 deselected, 1 warning in 12.92s`; the `tail -3 | grep -q passed` pipeline exit code was `0`. The skipped test is the known optional live test selected by pytest's Lux keyword group; the dedicated live LuxTTS integration test passed in the expanded sweep.
+- Ruff, Python compilation, `git diff --check`: all passed.
+
+Warnings in the expanded sweep are existing `datetime.utcnow()` deprecations in adjacent schema/checkpoint coverage. External `/health` remains HTTP 200 with `soffy` and `en_male`. `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` remain absent from this authorized worktree and were not read outside it. No external files/services were changed, no paid API was called, and there was no deployment, restart, or cleanup. The required acceptance gate is repeated after this commit.
 DONE LUXAPI-R1

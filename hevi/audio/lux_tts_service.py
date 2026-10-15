@@ -182,8 +182,18 @@ async def synth_with_luxtts(
     sentences = split_sentences(text)
     if not sentences:
         raise ValueError("LuxTTS synthesis text must not be empty")
-    if sample_rate <= 0 or gap_ms < 0 or steps <= 0 or speed <= 0:
-        raise ValueError("sample_rate/steps/speed must be positive and gap_ms non-negative")
+    if not isinstance(sample_rate, int) or isinstance(sample_rate, bool) or sample_rate <= 0:
+        raise ValueError("sample_rate must be a positive integer")
+    if not isinstance(gap_ms, int) or isinstance(gap_ms, bool) or gap_ms < 0:
+        raise ValueError("gap_ms must be a non-negative integer")
+    if not isinstance(steps, int) or isinstance(steps, bool) or steps <= 0:
+        raise ValueError("steps must be a positive integer")
+    try:
+        selected_speed = float(speed)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("speed must be a finite positive number") from exc
+    if not math.isfinite(selected_speed) or selected_speed <= 0:
+        raise ValueError("speed must be a finite positive number")
     selected_voice = (voice or os.getenv("HEVI_LUXTTS_VOICE", "auto")).strip().lower()
     if selected_voice not in _ALLOWED_VOICES:
         raise ValueError(f"Unsupported LuxTTS voice {selected_voice!r}; use auto, soffy or en_male")

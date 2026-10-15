@@ -144,6 +144,41 @@ def test_non_finite_timing_headers_use_safe_fallbacks(
     )
 
 
+@pytest.mark.parametrize(
+    ("option", "value", "message"),
+    [
+        ("speed", float("nan"), "finite positive"),
+        ("speed", float("inf"), "finite positive"),
+        ("speed", float("-inf"), "finite positive"),
+        ("sample_rate", float("nan"), "positive integer"),
+        ("sample_rate", True, "positive integer"),
+        ("gap_ms", float("inf"), "non-negative integer"),
+        ("gap_ms", True, "non-negative integer"),
+        ("steps", 1.5, "positive integer"),
+        ("steps", True, "positive integer"),
+    ],
+)
+def test_invalid_numeric_options_are_rejected_before_health_probe(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    option: str,
+    value: object,
+    message: str,
+) -> None:
+    def forbidden_health_probe() -> dict[str, object]:
+        raise AssertionError("invalid numeric options must be rejected before network access")
+
+    monkeypatch.setattr(lux, "_get_health_payload", forbidden_health_probe)
+    with pytest.raises(ValueError, match=message):
+        asyncio.run(
+            lux.synth_with_luxtts(
+                "hello, little bunny!",
+                tmp_path / "invalid-options.wav",
+                **{option: value},
+            )
+        )
+
+
 def test_bad_voice_is_rejected_before_http(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(lux, "_get_health_payload", lambda: {"ok": True, "voices": ["soffy", "en_male"]})
     with pytest.raises(ValueError, match="Unsupported LuxTTS voice"):
