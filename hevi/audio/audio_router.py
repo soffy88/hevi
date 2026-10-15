@@ -24,8 +24,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import subprocess
 import shutil
+import subprocess
 import uuid
 from pathlib import Path
 from typing import Any, Literal
@@ -278,6 +278,7 @@ async def _synthesize_luxtts_with_fallback(
 
     try:
         from types import SimpleNamespace
+
         from hevi.audio.cosyvoice_service import cosyvoice_synthesize
 
         mode = os.getenv("HEVI_COSY_INFERENCE_MODE", "").strip() or None

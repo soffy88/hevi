@@ -238,4 +238,19 @@ No new reproducible LuxAPI defect was found in this pass; the edge-case health-p
 - `git diff --check`: passed.
 
 The warnings in the expanded suite are existing `datetime.utcnow()` deprecations in covered validation/schema/checkpoint paths; there were no failures. This pass required no product-code changes. `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` remain absent from the authorized worktree and were not read from outside it. Existing unrelated untracked paths remain unstaged and untouched. The main checkout, live service configuration, and deployment state were not modified; no paid API was called.
+
+## Continuation — lint correction and acceptance re-run (2026-10-15)
+
+A fresh broader Ruff check across the LuxTTS HTTP client and entrypoint/router/task/story/dialogue integration files exposed nine style diagnostics in two already-touched files. Fixed the import ordering/spacing in `hevi/audio/audio_router.py` and made the existing `None` returns explicit in `hevi/audio/task_adapter.py`; these are behavior-preserving cleanups. No other lint changes were required.
+
+Verification after these fixes:
+
+- Ruff across the touched LuxTTS/audio/router/task/story/dialogue code and related regression tests: `All checks passed!`.
+- Python compilation for the associated production modules: exit `0`.
+- Task-relevant audio/LuxTTS/LuxAPI/explainer/dialogue/Studio/history/coverage suite: `239 passed, 34 warnings in 8.93s`, exit `0`.
+- Dedicated live LuxTTS HTTP integration test: `1 passed in 1.23s`, not skipped.
+- Exact required pytest gate before report commit: `28 passed, 7341 deselected, 1 warning in 6.26s`; the requested `tail -3 | grep -q passed` pipeline exit code was `0`.
+- Warnings are existing `datetime.utcnow()` deprecations in coverage-contract/schema/checkpoint paths; no test failures.
+
+`KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` are still absent from this worktree. All edits remained inside `/data/soffy/projects/hevi-luxapi`; existing untracked files/artifacts were not staged. No deployment or external service modification occurred, and no paid API was used. The exact user acceptance gate is run once more after committing this entry.
 DONE LUXAPI-R1

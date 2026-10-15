@@ -159,7 +159,7 @@ async def _synthesize_with_engine(
     """Dispatch one catalog engine without silently changing the requested one."""
     if engine == "voicebox":
         await voicebox_synthesize(script=[line], output_path=output_path, emotion=emotion)
-        return
+        return None
     if engine == "openvoice":
         reference = Path(
             str(config.get("reference_audio") or os.getenv("OPENVOICE_REFERENCE_AUDIO", ""))
@@ -173,7 +173,7 @@ async def _synthesize_with_engine(
             reference_audio=reference,
             options={"speaker": config.get("speaker"), "prosody": config.get("prosody")},
         )
-        return
+        return None
     if engine == "edge_tts":
         await synthesize_with_voice_control(
             script=[line],
@@ -182,7 +182,7 @@ async def _synthesize_with_engine(
             emotion=emotion,
             config=config,
         )
-        return
+        return None
     if engine == "cosyvoice":
         from hevi.audio.cosyvoice_service import cosyvoice_synthesize
 
@@ -198,7 +198,7 @@ async def _synthesize_with_engine(
             script=[line],
             output_path=output_path,
         )
-        return
+        return None
     if engine == "f5_tts":
         from hevi.audio.f5_tts_service import f5_tts_synthesize
 
@@ -214,7 +214,7 @@ async def _synthesize_with_engine(
             speed=float(config.get("speed") or 1.0),
             language=str(config.get("language") or "") or None,
         )
-        return
+        return None
     if engine == "lux_tts":
         from hevi.audio.audio_router import _synthesize_luxtts_with_fallback
 
@@ -255,7 +255,7 @@ async def _synthesize_with_engine(
             voice_design=str(config.get("voice_design") or ""),
             speed=float(config.get("speed") or 1.0),
         )
-        return
+        return None
     if engine == "pocket_tts":
         from hevi.audio.pocket_tts_service import synth_with_pocket_tts
 
@@ -269,7 +269,7 @@ async def _synthesize_with_engine(
             speed=float(config.get("speed") or 1.0),
             config=str(config.get("model_config") or "") or None,
         )
-        return
+        return None
     raise ValueError(f"unsupported speech engine: {engine}")
 
 
