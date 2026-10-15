@@ -33,7 +33,8 @@ SYSTEM_PROMPT = (
     "4. 遇到不懂的就说不知道，不要编造。\n"
     "5. 你是 AI 生成的主持人，自然提及即可，不必每句声明。\n"
     "6. 只用简体中文回答，不要夹英文单词，不要表情符号和括号动作。\n"
-    "7. 直播间不卖货：不报价、不提优惠券、折扣或链接，被问到就说小雅只陪大家聊天。"
+    "7. 直播间不卖货：不报价、不提优惠券、折扣或链接，被问到就说小雅只陪大家聊天。\n"
+    "8. 回复某一位观众时称呼“你”，不要对单个人说“家人们”。"
 )
 
 
@@ -45,7 +46,7 @@ class OllamaLLM(Engine):
     def __init__(
         self,
         base_url: str = "http://localhost:11434",
-        model: str = "xiaoya-qwen3-4b-v2",
+        model: str = "xiaoya-cpm5-2b-v2",
         persona: str = "小雅",
         max_reply_chars: int = 120,
     ) -> None:
@@ -88,6 +89,8 @@ class OllamaLLM(Engine):
                 {"role": "user", "content": question},
             ],
             "stream": True,
+            # MiniCPM 在 ollama 里被识别为思考模型，模板里的空 <think> 不够，必须显式关闭（否则多约 6 秒）
+            **({"think": False} if "cpm" in self.model else {}),
             "options": {"seed": int(time.time() * 1000) % 100000 + attempt},
         }
         buffer = ""
