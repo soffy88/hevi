@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from hevi.kids.story_gate import kids_story_gate, gate_json, StoryInput, StoryBeat, cross_check_story_manifest, generate_logline
+from hevi.quality.kids_gate import FORBIDDEN_WORDS, check_content_safety_text, load_safety_rules
 from hevi.kids.consistency_manifest import (
     KidsConsistencyManifest,
     validate_manifest,
@@ -347,3 +348,161 @@ def test_r4_h3_negated_forms_not_fail(text: str) -> None:
     report = kids_story_gate(story)
     r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
     assert len(r8_fails) == 0, f"Expected non-FAIL for negated '{text}', got {report.findings}"
+
+
+# ── R5 (KIDSMANIFEST_FIX_R5) patrol4 独立核验 P0/P1 ──
+# P0: GOLIVE-1016 A.2 点名的 6 类暴力行为及其同义/改写必须全部拦截。
+R5_MANDATED_GROUPS: list[str] = [
+    "勒脖子", "踹飞", "针扎", "绑树堵嘴", "鞭打", "狗咬",
+]
+
+R5_P0_ADVERSARIAL: list[str] = [
+    # 勒脖子
+    "大灰狼勒住了小兔的脖子。",
+    "坏人用手臂紧紧箍住小熊的喉咙，让他喘不过气。",
+    "小狐狸被掐住了脖子，脸都红了。",
+    # 踹飞
+    "大熊一脚把小兔踹飞到墙上。",
+    "他用力踢过去，小朋友整个人飞了出去。",
+    "大灰狼猛踢一脚，小羊被踢得远远飞走。",
+    # 针扎
+    "坏巫婆拿针扎小兔的手指。",
+    "她用尖尖的注射器刺进小熊的手臂。",
+    "小狐狸被缝衣针刺了很多下，疼得大哭。",
+    # 绑树堵嘴
+    "坏人把小兔绑在树上，还用布堵住他的嘴。",
+    "他们把小朋友捆在树干上，用毛巾塞住嘴巴不让他叫。",
+    "小狐狸被绳索绑住手脚，封住了嘴，说不出话。",
+    # 鞭打
+    "大灰狼用鞭子抽打小马。",
+    "他举起皮带使劲抽小朋友的背。",
+    "坏国王用棍子反复抽打小仆人。",
+    # 狗咬
+    "大狗咬住了小兔的腿。",
+    "恶犬张开嘴撕咬小朋友的手臂。",
+    "那只狗用牙齿死死咬住小熊不放。",
+    # 额外扩展同义（R5 词表覆盖，不能回退）
+    "他死死捂住小熊的嘴，小熊快喘不过气来了。",
+    "坏人把小朋友绑在椅子上，用胶带封住他的嘴。",
+    "小狗咬住绳子不放。",
+    "他用藤条一下下抽打小狗。",
+]
+
+# R5/P1: 幼儿高频正常词不得误报（over-blocking 会让产线不可用）。
+R5_P1_BENIGN: list[str] = [
+    "小刺猬背上有苹果，真可爱。",
+    "妈妈在厨房用刀切菜，一刀切菜真整齐。",
+    "小兔咬了一口胡萝卜，真好吃。",
+    "小狐狸给妈妈扎头发。",
+    "小朋友自己绑鞋带。",
+    "他们把绳子捆好，装进书包里。",
+    "小汽车堵住了路口，大家都排队等着。",
+    "小兔把玩具塞进箱子。",
+    "妈妈把饼干封进罐子里。",
+    "小刺猬的苹果滚到了桌子底下。",
+]
+
+R5_HARD_REDLINE: list[str] = [
+    "小兔被划伤了，到处都是血。",
+    "小狐狸拿起刀和枪。",
+    "小狐狸用刀砍伤了小兔。",
+    "小狐狸不吃药，把毒药给了小熊。",
+    "房间里有一颗炸弹。",
+    "小熊死了，大家都哭了。",
+]
+
+
+@pytest.mark.parametrize("text", R5_P0_ADVERSARIAL)
+def test_r5_p0_mandated_violent_words_blocked(text: str) -> None:
+    """R5/P0: 6 类点名暴力行为 + 同义/改写全部命中违规词表。"""
+    hits = check_content_safety_text(text)
+    assert hits, f"Expected violation for '{text}', got {hits}"
+
+
+def test_r5_p0_all_six_groups_covered_by_rules() -> None:
+    """R5/P0: 6 个点名词组的字面词与核心同义词必须真实存在于规则表 category。"""
+    rules = load_safety_rules()
+    categories = rules.get("categories", {})
+    flat = {w for words in categories.values() for w in words}
+    for word in [
+        "勒", "勒住", "箍住", "喉咙", "喘不过气",        # 勒脖子
+        "踹", "踹飞", "踢飞", "踢倒",                      # 踹飞
+        "针", "针扎", "刺进", "注射器" if "注射器" in flat else "刺穿",  # 针扎
+        "绑", "绑住", "捆", "捆绑", "堵", "堵嘴", "塞", "封住嘴",           # 绑树堵嘴
+        "鞭子", "鞭打", "抽打", "皮带", "棍子",            # 鞭打
+        "咬", "咬住", "撕咬", "恶犬",                      # 狗咬
+    ]:
+        assert word in flat, f"'{word}' missing from kids_safety_rules categories"
+    # 新增的 6 个 category（或并入 violence）中至少有 strangulation 级覆盖
+    assert "strangulation" in categories, "expected new 'strangulation' category"
+
+
+@pytest.mark.parametrize("text", R5_P1_BENIGN)
+def test_r5_p1_benign_preschool_words_not_blocked(text: str) -> None:
+    """R5/P1: 幼儿正常用词不得误报。"""
+    hits = check_content_safety_text(text)
+    assert not hits, f"Unexpected false positive for '{text}': {hits}"
+
+
+def test_r5_p1_apple_no_longer_a_brand_violation() -> None:
+    """R5/P1: 「苹果」在幼儿内容里首先是水果，不得再当作品牌名误报。"""
+    rules = load_safety_rules()
+    assert "苹果" not in rules.get("categories", {}).get("brand", [])
+    assert not check_content_safety_text("小猴咬了一口苹果。")
+
+
+def test_r5_p1_knife_cutting_context_exempt_but_attack_still_blocked() -> None:
+    """R5/P1: 「刀 + 厨事语境」豁免，但「刀 + 攻击语境」仍拦截。"""
+    assert not check_content_safety_text("妈妈在厨房用刀切菜。")
+    assert not check_content_safety_text("爷爷用刀削苹果皮。")
+    assert check_content_safety_text("坏人用刀刺伤了小熊。")
+    assert check_content_safety_text("他拿起刀捅了过去，血流了出来。")
+    assert check_content_safety_text("小狐狸拿起刀和枪。")
+
+
+def test_r5_p1_negation_still_not_over_blocked() -> None:
+    """R5/P1: 直接否定教育语境不得误报（R4/H3 不回退）。"""
+    for text in ["小朋友不可以打人，我们要友好相处。",
+                 "小狐狸不会下毒，他是好孩子。",
+                 "小狐狸没有带刀，他带的是小铲子。"]:
+        assert not check_content_safety_text(text), text
+
+
+@pytest.mark.parametrize("text", R5_HARD_REDLINE)
+def test_r5_hard_redlines_still_blocked(text: str) -> None:
+    """R5: 血/武器/毒/炸/死 硬红线必须保持拦截（不得回退）。"""
+    assert check_content_safety_text(text), text
+
+
+def test_r5_cross_clause_evasion_still_blocked() -> None:
+    """R5: 跨句规避仍被拦截（R4/H3 窄否定窗口不回退）。"""
+    hits = check_content_safety_text("小狐狸不吃药，把毒药给了小熊。")
+    assert "毒药" in hits
+
+
+def test_r5_story_gate_blocks_mandated_violence() -> None:
+    """R5: story gate 端到端对点名暴力行为必须 FAIL。"""
+    story = _load("story_fox_star.json")
+    story["beats"][3]["text"] = "坏人把小兔绑在树上，还用布堵住他的嘴。"
+    report = kids_story_gate(story)
+    r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+    assert len(r8_fails) > 0, report.findings
+
+
+def test_r5_story_gate_allows_benign_preschool_text() -> None:
+    """R5: story gate 端到端对幼儿正常内容不得 FAIL。"""
+    story = _load("story_fox_star.json")
+    story["beats"][3]["text"] = "妈妈在厨房用刀切菜，一刀切菜真整齐，小刺猬背上有苹果。"
+    report = kids_story_gate(story)
+    r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+    assert len(r8_fails) == 0, report.findings
+
+
+def test_r5_determinism_of_content_safety_verdict() -> None:
+    """R5: 判定确定性——两次调用结果一致（sha256 相同）。"""
+    payload = R5_P0_ADVERSARIAL + R5_P1_BENIGN + R5_HARD_REDLINE
+    h1 = hashlib.sha256(json.dumps([check_content_safety_text(t) for t in payload],
+                                   ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    h2 = hashlib.sha256(json.dumps([check_content_safety_text(t) for t in payload],
+                                   ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    assert h1 == h2 and len(h1) == 64
