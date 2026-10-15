@@ -280,4 +280,16 @@ Verification after the change:
 - Live `/health`: HTTP 200, advertised voices `soffy` and `en_male`.
 
 The 34 warnings are existing `datetime.utcnow()` deprecations in unrelated coverage-contract/schema/checkpoint paths. No product contract document (`KIDS_ANIME_DIRECTION.md` or `CAPABILITY_CONTRACT.md`) exists in this authorized worktree; paths outside the worktree were not inspected. No external service changes, deploy, restart, paid API, or cleanup occurred. The exact acceptance gate is repeated after this commit.
+
+## Continuation — response voice identity enforcement (2026-10-15)
+
+A second voice-contract edge case was found during the same review: successful WAV responses previously accepted a missing or incorrect `X-Voice` response header and recorded `unknown` or the wrong identity, even when `voice=auto` should resolve Chinese to `soffy` and English to `en_male`. The HTTP client now validates the response voice against the explicit request or the per-sentence `auto` resolution rule. A missing/mismatched identity is treated as a retryable contract error and fails rather than silently returning audio with misleading provenance.
+
+- Added mock regressions for an English `auto` request returning the wrong voice and for a response missing `X-Voice`. Both verify three serial attempts, final error, and no final audio artifact.
+- LuxTTS service unit/live integration tests: `10 passed in 2.97s`; live test passed, not skipped.
+- Expanded task-relevant audio/LuxTTS/LuxAPI/explainer/dialogue/Studio/history/coverage sweep: `243 passed, 34 warnings in 12.51s`, exit `0`.
+- Exact required gate before this report commit: `32 passed, 7341 deselected, 1 warning in 11.97s`; pipeline exit `0`.
+- Ruff: `All checks passed!`; `git diff --check`: passed.
+
+The external service health remains HTTP 200 with `soffy` and `en_male`. Existing warnings are `datetime.utcnow()` deprecations in adjacent schema/checkpoint coverage. Required direction/capability docs are absent inside the authorized worktree. No external files were accessed or modified, and no deployment, restart, paid API, or cleanup occurred. The exact acceptance gate is repeated after this commit.
 DONE LUXAPI-R1

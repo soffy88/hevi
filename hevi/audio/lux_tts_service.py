@@ -90,9 +90,22 @@ async def _post_sentence(
             if len(content) < 44 or not content.startswith(b"RIFF") or b"WAVE" not in content[:16]:
                 raise RuntimeError("LuxTTS /tts returned a non-WAV or empty response")
             headers = response.headers
+            actual_voice = headers.get("X-Voice", "").strip().lower()
+            expected_voice = voice
+            if voice == "auto":
+                expected_voice = (
+                    "soffy"
+                    if re.search(r"[\u4e00-\u9fff]", sentence)
+                    else "en_male"
+                )
+            if actual_voice != expected_voice:
+                raise RuntimeError(
+                    "LuxTTS /tts returned unexpected X-Voice="
+                    f"{actual_voice!r}; expected {expected_voice!r}"
+                )
             elapsed = time.monotonic() - started
             meta = {
-                "voice": headers.get("X-Voice", "unknown"),
+                "voice": actual_voice,
                 "gen_seconds": _float_header(headers.get("X-Gen-Seconds"), elapsed),
                 "api_audio_seconds": _float_header(headers.get("X-Audio-Seconds"), 0.0),
                 "http_attempts": attempt + 1,
