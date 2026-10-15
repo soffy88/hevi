@@ -1,0 +1,10 @@
+[PASS] story gate: compliant -> must PASS got=PASS causal_ratio=0.8 fails=[]
+[PASS] story gate: all AND-THEN -> must FAIL got=FAIL causal_ratio=0.0 fails=['R3_CAUSAL_RATIO', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R9_FAREWELL_QUESTION', 'R5_RECAP_THEME']
+[PASS] story gate: adjacent same emotion -> must FAIL got=FAIL causal_ratio=0.8 fails=['R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION', 'R4_ADJACENT_EMOTION']
+[PASS] story gate: missing theme -> must FAIL got=FAIL causal_ratio=0.8 fails=['R5_SINGLE_THEME', 'R5_RECAP_THEME']
+[PASS] story gate: missing fixed character -> must FAIL got=FAIL causal_ratio=0.8 fails=['R6_FIXED_CHARACTER']
+[PASS] story gate: deterministic (2 runs identical sha256) 0c8418b63fbc9fa88e14bc92
+
+==== PATROL4 STORY GATE SUMMARY ====
+6/6 checks passed
+VERDICT: PASS
