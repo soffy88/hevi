@@ -155,3 +155,14 @@ Re-ran the required selection gate from the isolated `feat/luxtts-http` worktree
 
 No implementation changes were necessary during this continuation because the acceptance and focused regressions passed. Existing untracked `.trash/`, `.veya-project/`, and `LUXAPI_TASK.md` were not staged or modified.
 DONE LUXAPI-R1
+
+## Continuation — complete relevant story/audio regression sweep (2026-10-15)
+
+Ran the combined relevant test set covering audio, LuxTTS, LuxTTS alignment, all `test_explainer*.py` tests, LuxAPI entrypoint defaults, dialogue, Studio, Voice Studio task behavior, and the local history-arc fixture:
+
+`JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q tests/test_audio*.py tests/test_lux*.py tests/test_luxapi*.py tests/test_explainer*.py tests/test_director_echo_dialogue.py tests/test_voice_studio_task.py tests/test_studio_kit.py tests/test_history_arc_adapter.py`
+
+Exact result: `203 passed in 6.96s`, with no failures or skips. This sweep includes the optional live LuxTTS integration test, which completed rather than skipping. The existing live proof remains valid: the four-sentence Chinese sample uses `soffy`, the English sample uses `en_male`, and the toddler animation is 7.938 seconds at 540×960/24 fps with H.264 video and 48 kHz mono AAC audio.
+
+The suite created untracked qualification artifacts at `artifacts/qualification/hevi_p6_8_final.json` and `artifacts/qualification/p6_7/`; these were not staged, modified, or removed. They are outside the LuxAPI deliverable. No product-code changes were required because the relevant suite passed.
+DONE LUXAPI-R1
