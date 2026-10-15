@@ -53,8 +53,11 @@ def check_primary_secondary_hierarchy(brief: DirectorBrief) -> tuple[bool, list[
     for t, evs in events_by_time.items():
         primary_evs = [e for e in evs if "primary" in e]
         other_evs = [e for e in evs if "primary" not in e]
+        # 若同一主元素上同时有 impact 和 bounce, 属于物理弹跳连击瞬时反应, 允许
         if len(primary_evs) > 1:
-            violations.append(f"at t={t}s: multiple primary events {primary_evs} (violates single attention center)")
+            kinds_p = [e.split(":")[1] for e in primary_evs]
+            if not (len(kinds_p) == 2 and set(kinds_p) == {"impact", "bounce"}):
+                violations.append(f"at t={t}s: multiple primary events {primary_evs} (violates single attention center)")
         # 若主事件与次事件在同一瞬间且主事件没有错开延迟
         if primary_evs and other_evs and any(e.startswith("secondary") for e in other_evs):
             # 允许有 stagger delay

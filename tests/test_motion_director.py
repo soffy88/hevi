@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 import pytest
 
 from hevi.director_lens.brief import autofill, DirectorBrief, LINE_CATALOG, write_example_briefs
@@ -98,6 +99,13 @@ def test_director_check_workflow(tmp_path: Path) -> None:
     report = director_check_workflow(brief)
     assert isinstance(report, dict)
     assert "checks" in report
+    # 导演版 brief 的拍点对齐率必须达标(核心交付项 C/B/F)
+    assert report["checks"]["beat_alignment"]["alignment_rate"] >= 0.70
+    # 每条线的 autofill brief 拍点对齐率都 ≥ 0.70
+    for line in LINE_CATALOG:
+        b = autofill(f"测试{line}", line=line, duration_s=6.0)
+        r = director_check_workflow(b)
+        assert r["checks"]["beat_alignment"]["alignment_rate"] >= 0.70, line
 
 
 def test_line_adapters() -> None:
@@ -128,6 +136,105 @@ def test_render_and_review_generation(tmp_path: Path) -> None:
     html_path = generate_review_html(brief, comparison, tmp_path / "review.html")
     assert html_path.exists()
     assert "Hevi 动效导演层" in html_path.read_text(encoding="utf-8")
+
+
+def _ffprobe_streams(path: Path) -> list[dict[str, Any]]:
+    """用 ffprobe 读出真实流信息(判定是否真 MP4, 非假字节)。"""
+    import json
+    import subprocess
+
+    r = subprocess.run(
+        ["ffprobe", "-v", "error", "-print_format", "json",
+         "-show_streams", "-show_format", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    return json.loads(r.stdout)["streams"], json.loads(r.stdout)["format"]
+
+
+# 每条样片线的(线, 提示词, 时长, 比例)
+SAMPLE_LINES = [
+    ("explainer", "小球学弹跳", 6.0, "16:9"),
+    ("character_narrative", "小狐狸学分享", 6.0, "9:16"),
+    ("scene3d", "水滴落进小水塘", 6.0, "16:9"),
+    ("montage", "种子发芽的纪录短片", 6.0, "16:9"),
+]
+
+
+@pytest.mark.parametrize(("line", "prompt", "dur", "aspect"), SAMPLE_LINES)
+def test_sample_director_passes_baseline_fails(tmp_path: Path, line, prompt, dur, aspect) -> None:
+    """核心交付项 I/J:导演版 passed=True, 基线版 passed=False, 均由真实自检门判定。"""
+    brief = autofill(prompt, line=line, duration_s=dur, aspect=aspect)
+    comp = render_comparison_package(brief, tmp_path)
+
+    assert comp["director_report"]["passed"] is True, comp["director_report"]["errors"]
+    assert comp["baseline_report"]["passed"] is False
+    # 基线 FAIL 必须来自真实检查项(至少一条非空错误), 而非硬写
+    assert comp["baseline_report"]["errors"], "baseline must fail via real checks"
+    assert comp["director_report"]["checks"]["beat_alignment"]["alignment_rate"] >= 0.70
+
+
+def test_rendered_mp4_is_real_not_mock(tmp_path: Path) -> None:
+    """禁止 mock:导演版与基线版 MP4 都不是假字节, 且 ffprobe 能读出真实流。"""
+    brief = autofill("小球学弹跳", line="explainer", duration_s=6.0)
+    comp = render_comparison_package(brief, tmp_path)
+
+    mock_tokens = (b"MOCK_MP4_BYTES", b"BASELINE_MP4_BYTES")
+    for key in ("director_version", "baseline_version"):
+        mp4 = Path(comp[key]["mp4"])
+        raw = mp4.read_bytes()
+        for tok in mock_tokens:
+            assert tok not in raw
+        assert mp4.stat().st_size > 10_000, "MP4 too small to be a real encode"
+        streams, fmt = _ffprobe_streams(mp4)
+        video = next(s for s in streams if s["codec_type"] == "video")
+        assert video["codec_name"] == "h264"
+        assert int(video["nb_frames"]) >= int(6.0 * 30) - 2
+        assert abs(float(fmt["duration"]) - 6.0) < 0.15
+    # 导演版主管线必须有真实音轨 AAC
+    dir_streams, _ = _ffprobe_streams(Path(comp["director_version"]["mp4"]))
+    audio = [s for s in dir_streams if s["codec_type"] == "audio"]
+    assert audio and audio[0]["codec_name"] == "aac"
+
+
+def test_director_version_loudness_complies(tmp_path: Path) -> None:
+    """幼儿响度门:导演版音轨积分响度 -16 ±1 LUFS, 真峰值 ≤ -1.5 dBTP。"""
+    import re
+    import subprocess
+
+    brief = autofill("小球学弹跳", line="explainer", duration_s=6.0)
+    comp = render_comparison_package(brief, tmp_path)
+    mp4 = Path(comp["director_version"]["mp4"])
+    r = subprocess.run(
+        ["ffmpeg", "-nostats", "-hide_banner", "-i", str(mp4),
+         "-af", "ebur128=peak=true", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    stderr = r.stderr
+    m = re.search(r"Integrated loudness:\s*\n\s*I:\s*(-?[\d.]+) LUFS", stderr, re.IGNORECASE)
+    assert m, "no loudness measurement"
+    assert -17.0 <= float(m.group(1)) <= -15.0
+    mp = re.search(r"Peak:\s*(-?[\d.]+) dBFS", stderr)
+    assert mp and float(mp.group(1)) <= -1.5
+
+
+def test_same_seed_render_is_byte_identical(tmp_path: Path) -> None:
+    """同 seed 两次渲染 sha256 一致(确定性)。"""
+    brief = autofill("小球学弹跳", line="explainer", duration_s=6.0, seed=1234)
+    out_a = tmp_path / "a"
+    out_b = tmp_path / "b"
+    r1 = render_comparison_package(brief, out_a)
+    r2 = render_comparison_package(brief, out_b)
+    assert r1["director_version"]["sha256"] == r2["director_version"]["sha256"]
+    assert r1["baseline_version"]["sha256"] == r2["baseline_version"]["sha256"]
+
+
+def test_render_has_no_mock_code_paths() -> None:
+    """静态保证:render.py 不再包含 mock 字节兜底或硬写通过。"""
+    src = (Path(__file__).resolve().parents[1] / "hevi" / "director_lens" / "render.py").read_text(encoding="utf-8")
+    assert "MOCK_MP4_BYTES" not in src
+    assert "BASELINE_MP4_BYTES" not in src
+    assert 'base_report["passed"]' not in src
+    assert 'report["passed"] = True' not in src
 
 
 def test_write_example_briefs(tmp_path: Path) -> None:

@@ -281,8 +281,11 @@ def check_subtitle_fontsize(metadata_path: Path | None, video_path: Path) -> Gat
 def check_dialogue_content(text_or_path: Path | str) -> GateResult:
     res = GateResult(passed=True)
     content = ""
-    if isinstance(text_or_path, Path) and text_or_path.exists():
-        content = text_or_path.read_text(encoding="utf-8", errors="ignore")
+    if isinstance(text_or_path, Path):
+        if text_or_path.suffix.lower() in (".mp4", ".mov", ".avi", ".mkv"):
+            return res  # 视频二进制文件不是字幕文本, 不做台词禁用词误报扫描
+        if text_or_path.exists():
+            content = text_or_path.read_text(encoding="utf-8", errors="ignore")
     else:
         content = str(text_or_path)
 
