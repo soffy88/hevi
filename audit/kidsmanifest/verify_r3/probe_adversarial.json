@@ -1,0 +1,196 @@
+[
+ {
+  "id": "m_fp_open",
+  "expect": "PASS",
+  "got": "PASS",
+  "ok": true,
+  "text": "小狐狸打开了门，向大家打招呼。",
+  "rules": []
+ },
+ {
+  "id": "m_fp_sweep",
+  "expect": "PASS",
+  "got": "PASS",
+  "ok": true,
+  "text": "大家一起打扫房间，把玩具放回篮子里。",
+  "rules": []
+ },
+ {
+  "id": "m_fp_umbrella",
+  "expect": "PASS",
+  "got": "PASS",
+  "ok": true,
+  "text": "小狐狸打着小雨伞，走过彩色的小路。",
+  "rules": []
+ },
+ {
+  "id": "m_ok_hot",
+  "expect": "PASS",
+  "got": "PASS",
+  "ok": true,
+  "text": "太阳公公出来啦，小狐狸热得出汗，喝了一大口水。",
+  "rules": []
+ },
+ {
+  "id": "m_fn_hit",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "小狐狸狠狠地揍了小兔子一顿，小兔子疼得大哭。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "m_fn_kick",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "大家一起踢小松鼠，推他摔进泥坑里嘲弄他。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "m_fn_monster",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "夜里怪兽把小朋友一口吞进肚子里，再也没有出来。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "m_fn_poison",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "小熊偷偷在水里放了毒药，想让朋友们肚子疼。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "m_fn_bomb",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "小狐狸点燃炸弹，轰的一声把房子炸飞了。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "m_fn_stranger",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "陌生叔叔说跟我走吧，小狐狸没告诉爸爸妈妈就自己跟着他走了。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "m_fn_insult",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "大家都骂小刺猬是傻瓜、胖子，没人愿意理他。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "m_neg_hit",
+  "expect": "PASS",
+  "got": "PASS",
+  "ok": true,
+  "text": "小狐狸不打人，也不骂人。",
+  "rules": []
+ },
+ {
+  "id": "m_neg_stranger",
+  "expect": "PASS",
+  "got": "PASS",
+  "ok": true,
+  "text": "妈妈说不能跟陌生人走。",
+  "rules": []
+ },
+ {
+  "id": "n_pinch",
+  "expect": "FAIL",
+  "got": "PASS",
+  "ok": false,
+  "text": "坏孩子把小熊掐得哇哇叫，还把他推下楼梯。",
+  "rules": []
+ },
+ {
+  "id": "n_knife",
+  "expect": "FAIL",
+  "got": "PASS",
+  "ok": false,
+  "text": "他们用石头砸小兔，把小兔的头划破了直流血。",
+  "rules": []
+ },
+ {
+  "id": "n_lockup",
+  "expect": "FAIL",
+  "got": "PASS",
+  "ok": false,
+  "text": "大家把小刺猬关进小黑屋，一整天都不给他饭吃。",
+  "rules": []
+ },
+ {
+  "id": "n_shove",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "大灰狼抢走了小熊的蛋糕，把他推倒摔在地上。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "n_scald",
+  "expect": "FAIL",
+  "got": "PASS",
+  "ok": false,
+  "text": "小狐狸把一壶开水浇在小猫身上，小猫疼得直哭。",
+  "rules": []
+ },
+ {
+  "id": "w_drug",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "小狐狸说不吃糖，然后偷偷给小兔下毒，小兔倒在地上。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "w_beat",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "老师说不能打人，可是小熊回家殴打了小兔。",
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
+ },
+ {
+  "id": "B4_default_strict",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "ok": true,
+  "text": "ShotIndexMismatchError"
+ },
+ {
+  "id": "B4_explicit_lax",
+  "expect": "OK",
+  "got": "OK",
+  "ok": true,
+  "text": "strict=False skips"
+ }
+]

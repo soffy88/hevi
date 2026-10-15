@@ -24,6 +24,25 @@ logger = logging.getLogger(__name__)
 _SHOT_INDEX_RE = re.compile(r"shot[_-]?(\d+)")
 
 
+def _fallback_specs_without_templates(specs: list[Any] | None) -> list[Any] | None:
+    """兜底硬切路径专用: 剥除 template/transition_in/style/sfx 等重滤镜, 只保留 duration/effect。
+
+    如果首次装配失败由 spec 滤镜引起, 兜底必须不再重复同一滤镜, 否则兜底也会失败。
+    ``None`` 原样返回 (保持旧调用行为逐字不变)。
+    """
+    if specs is None:
+        return None
+    from hevi.production.shot_spec import ShotSpec
+
+    out: list[Any] = []
+    for s in specs:
+        if s is None:
+            out.append(None)
+        else:
+            out.append(ShotSpec(duration=s.duration, effect=s.effect))
+    return out
+
+
 def _safe_size(p: Path) -> int:
     try:
         return p.stat().st_size
@@ -176,6 +195,9 @@ async def orchestrate_longvideo(
     story_relationships: list[dict[str, Any]] | None = None,
     story_characters: list[dict[str, Any]] | None = None,
     episode_plan: dict[str, Any] | None = None,
+    # ShotSpec (GAP_PLAN §2 W1 / R2 FIX P4): 任务存储规格读取入口参数
+    task_id: Any | None = None,
+    repository: Any = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Orchestrate long video generation using omodul agentic pipeline.
@@ -1008,6 +1030,26 @@ async def orchestrate_longvideo(
             intro_seg = [ShotSegment(_intro_path)] if _intro_path is not None else []
             outro_seg = [ShotSegment(_outro_path)] if _outro_path is not None else []
 
+            # ShotSpec (GAP_PLAN §2 W1 / R2 FIX P4): 从任务存储读取各镜规格
+            _shot_specs: list[Any] | None = None
+            if repository is not None and task_id is not None:
+                try:
+                    from hevi.production.shot_spec import load_shot_specs_for_task
+
+                    _shot_specs = await load_shot_specs_for_task(
+                        repo=repository,
+                        task_id=task_id,
+                        ordered_paths=valid_shots,
+                    )
+                except Exception as _tse:
+                    logger.warning("failed to load shot_specs for task %s: %s", task_id, _tse)
+
+            _full_specs = (
+                ([None] * len(intro_seg) + _shot_specs + [None] * len(outro_seg))
+                if _shot_specs is not None
+                else None
+            )
+
             # 免费程序化 BGM 兜底:素材库空缺时在此生成(时长取预估成片长,
             # 装配器 -shortest 裁到实际视频长度;拍点 JSON 供 beat-sync 消费)。
             if _procedural_bgm_mood:
@@ -1045,10 +1087,13 @@ async def orchestrate_longvideo(
                     height=_target_h,
                     fps=_target_fps,
                     transition=transition,
+                    shot_specs=_full_specs,
                 )
             except Exception as ae:
                 # 装配失败兜底: 统一规格硬切(仍重编码,不用 -c:v copy 防花屏)。
+                # 兜底路径剥除转场与模板滤镜(避免再次触发失败且确保 transition="cut" 生效), 仅保留时长与基础调色。
                 logger.error(f"hevi assembler failed, fallback to hard-cut: {ae}")
+                _fallback_specs = _fallback_specs_without_templates(_full_specs)
                 await assemble_longvideo(
                     shots=[*intro_seg, *[ShotSegment(p) for p in valid_shots], *outro_seg],
                     output_path=output_path,
@@ -1059,6 +1104,7 @@ async def orchestrate_longvideo(
                     height=_target_h,
                     fps=_target_fps,
                     transition="cut",
+                    shot_specs=_fallback_specs,
                 )
 
             # RFC-002 item 11: 数字人讲解接入 —— 提供肖像图且有旁白时,用 Duix 由旁白

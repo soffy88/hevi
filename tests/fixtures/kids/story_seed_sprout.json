@@ -1,0 +1,14 @@
+{
+  "logline": "小豆子种进土里，耐心等待长成了一棵绿芽。",
+  "theme": "耐心等待会发芽",
+  "spoken_language": "zh-CN",
+  "fixed_characters": ["char_seed"],
+  "beats": [
+    {"kind": "greeting", "text": "小朋友你好，我是一颗小种子！", "emotion": "happy", "transition": "AND"},
+    {"kind": "problem", "text": "小种子埋在土里，黑黑的什么也看不见，很孤单。", "emotion": "lonely", "transition": "BUT"},
+    {"kind": "attempt", "text": "它急着长高，拼命顶土，却只累得发抖。", "emotion": "restless", "transition": "THEREFORE"},
+    {"kind": "solution", "text": "它喝饱水、晒暖阳，一天天安静地往上长。", "emotion": "calm", "transition": "THEREFORE"},
+    {"kind": "recap", "text": "耐心等待会发芽，我们轻轻浇浇水。", "emotion": "proud", "transition": "AND"},
+    {"kind": "farewell", "text": "你想种一颗什么小种子呀？", "emotion": "warm", "transition": null}
+  ]
+}

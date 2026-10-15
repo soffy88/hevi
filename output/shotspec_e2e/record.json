@@ -1,0 +1,558 @@
+{
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "shot_duration": 3.0,
+  "transition_duration": 0.5,
+  "clip_sources": [
+    "gradients=s=1080x1920:c0=0x1a237e:c1=0xff6f00:d=3:rate=30",
+    "smptehdbars=s=1080x1920:d=3:rate=30",
+    "rgbtestsrc=s=1080x1920:d=3:rate=30",
+    "testsrc2=s=1080x1920:d=3:rate=30"
+  ],
+  "specs": [
+    {
+      "template": null,
+      "transition_in": null,
+      "effect": "warm",
+      "style": null,
+      "sfx": [
+        {
+          "id": "whoosh_air_up",
+          "offset": 1.0
+        }
+      ],
+      "camera": null,
+      "subtitle_style": null,
+      "duration": 3.0
+    },
+    {
+      "template": null,
+      "transition_in": "dissolve",
+      "effect": "mono",
+      "style": null,
+      "sfx": [
+        {
+          "id": "impact_hard",
+          "offset": 0.5
+        },
+        {
+          "id": "ding_bell",
+          "offset": 2.0
+        }
+      ],
+      "camera": null,
+      "subtitle_style": null,
+      "duration": 3.0
+    },
+    {
+      "template": null,
+      "transition_in": "whip",
+      "effect": "cool",
+      "style": null,
+      "sfx": [
+        {
+          "id": "pop_dry",
+          "offset": 1.5
+        }
+      ],
+      "camera": null,
+      "subtitle_style": null,
+      "duration": 3.0
+    },
+    null
+  ],
+  "shotspec": {
+    "path": "output/shotspec_e2e/shotspec.mp4",
+    "ffprobe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1080,
+          "height": 1920,
+          "r_frame_rate": "30/1",
+          "nb_frames": "315"
+        },
+        {
+          "codec_name": "aac",
+          "r_frame_rate": "0/0",
+          "nb_frames": "453"
+        }
+      ],
+      "format": {
+        "duration": "10.500000",
+        "size": "7914091"
+      }
+    },
+    "sha256": "03963a6a54f9d9eb252f236a929b438449aede6b822f1e54beb346eb31d18dd4",
+    "ffmpeg_calls": [
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot0.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=4000,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0000.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_hyy5a9bo/norm_0000.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot1.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,hue=s=0,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0001.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_hyy5a9bo/norm_0001.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot2.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=9500,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0002.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_hyy5a9bo/norm_0002.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot3.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0003.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_hyy5a9bo/norm_0003.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0000.mp4",
+          "-i",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0001.mp4",
+          "-i",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0002.mp4",
+          "-i",
+          "/tmp/hevi_assemble_hyy5a9bo/norm_0003.mp4",
+          "-filter_complex",
+          "[0:v][1:v]xfade=transition=dissolve:duration=0.5:offset=2.500[vx1];[vx1][2:v]xfade=transition=custom:expr=if(lt(X\\,W-(1-P)*W)\\,(if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3\\,(if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3):duration=0.5:offset=5.000[vx2];[vx2][3:v]xfade=transition=fade:duration=0.5:offset=7.500[vout]",
+          "-map",
+          "[vout]",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_hyy5a9bo/video_silent.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_hyy5a9bo/video_silent.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/tmp/hevi_assemble_hyy5a9bo/video_silent.mp4",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/whoosh/whoosh_air_up.wav",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/impact/impact_hard.wav",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/ding/ding_bell.wav",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/pop/pop_dry.wav",
+          "-filter_complex",
+          "[1:a]adelay=1000:all=1,volume=-3.0dB[s1];[2:a]adelay=3000:all=1,volume=-3.0dB[s2];[3:a]adelay=4500:all=1,volume=-3.0dB[s3];[4:a]adelay=6500:all=1,volume=-3.0dB[s4];[s1][s2][s3][s4]amix=inputs=4:normalize=0:duration=longest,apad=whole_dur=11.000,aformat=sample_rates=44100[specsfx];[specsfx]amix=inputs=1:duration=longest:dropout_transition=2[aout]",
+          "-map",
+          "0:v",
+          "-map",
+          "[aout]",
+          "-c:v",
+          "copy",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "192k",
+          "-shortest",
+          "/tmp/hevi_assemble_hyy5a9bo/muxed.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_hyy5a9bo/muxed.mp4"
+      }
+    ]
+  },
+  "baseline": {
+    "path": "output/shotspec_e2e/baseline.mp4",
+    "ffprobe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1080,
+          "height": 1920,
+          "r_frame_rate": "30/1",
+          "nb_frames": "315"
+        }
+      ],
+      "format": {
+        "duration": "10.500000",
+        "size": "2742439"
+      }
+    },
+    "sha256": "33d66226bd027956e311f436c6d980b987f6f6ad0755ba9fd887520dc62a956e",
+    "ffmpeg_calls": [
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot0.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0000.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_6kdrbk1w/norm_0000.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot1.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0001.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_6kdrbk1w/norm_0001.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot2.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0002.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_6kdrbk1w/norm_0002.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot3.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0003.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_6kdrbk1w/norm_0003.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0000.mp4",
+          "-i",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0001.mp4",
+          "-i",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0002.mp4",
+          "-i",
+          "/tmp/hevi_assemble_6kdrbk1w/norm_0003.mp4",
+          "-filter_complex",
+          "[0:v][1:v]xfade=transition=fade:duration=0.5:offset=2.500[vx1];[vx1][2:v]xfade=transition=fade:duration=0.5:offset=5.000[vx2];[vx2][3:v]xfade=transition=fade:duration=0.5:offset=7.500[vout]",
+          "-map",
+          "[vout]",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_6kdrbk1w/video_silent.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_6kdrbk1w/video_silent.mp4"
+      }
+    ]
+  },
+  "repatch": {
+    "patch": {
+      "shot_index": 0,
+      "effect": "vignette"
+    },
+    "spec_after": {
+      "template": null,
+      "transition_in": null,
+      "effect": "vignette",
+      "style": null,
+      "sfx": [
+        {
+          "id": "whoosh_air_up",
+          "offset": 1.0
+        }
+      ],
+      "camera": null,
+      "subtitle_style": null,
+      "duration": 3.0
+    }
+  },
+  "shotspec_repatch": {
+    "path": "output/shotspec_e2e/shotspec_repatch.mp4",
+    "ffprobe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1080,
+          "height": 1920,
+          "r_frame_rate": "30/1",
+          "nb_frames": "315"
+        },
+        {
+          "codec_name": "aac",
+          "r_frame_rate": "0/0",
+          "nb_frames": "453"
+        }
+      ],
+      "format": {
+        "duration": "10.500000",
+        "size": "7783008"
+      }
+    },
+    "sha256": "aeef6c958febb9585128b28cf5f4e810d817ef7e86803e0987c4cb817b1dc54f",
+    "ffmpeg_calls": [
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot0.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,vignette=PI/5,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_s2fz154q/norm_0000.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_s2fz154q/norm_0000.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot1.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,hue=s=0,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_s2fz154q/norm_0001.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_s2fz154q/norm_0001.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot2.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,colortemperature=temperature=9500,scale=1080:1920,setsar=1",
+          "-t",
+          "3.000",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_s2fz154q/norm_0002.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_s2fz154q/norm_0002.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/output/shotspec_e2e/clips/shot3.mp4",
+          "-vf",
+          "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_s2fz154q/norm_0003.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_s2fz154q/norm_0003.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/tmp/hevi_assemble_s2fz154q/norm_0000.mp4",
+          "-i",
+          "/tmp/hevi_assemble_s2fz154q/norm_0001.mp4",
+          "-i",
+          "/tmp/hevi_assemble_s2fz154q/norm_0002.mp4",
+          "-i",
+          "/tmp/hevi_assemble_s2fz154q/norm_0003.mp4",
+          "-filter_complex",
+          "[0:v][1:v]xfade=transition=dissolve:duration=0.5:offset=2.500[vx1];[vx1][2:v]xfade=transition=custom:expr=if(lt(X\\,W-(1-P)*W)\\,(if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,a0(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,a1(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,a2(clip(X+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3\\,(if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W-(1-P)*14\\,0\\,W-1)\\,Y)))+if(eq(PLANE\\,0)\\,b0(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,if(eq(PLANE\\,1)\\,b1(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y)\\,b2(clip(X-W+(1-P)*W+(1-P)*14\\,0\\,W-1)\\,Y))))/3):duration=0.5:offset=5.000[vx2];[vx2][3:v]xfade=transition=fade:duration=0.5:offset=7.500[vout]",
+          "-map",
+          "[vout]",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-pix_fmt",
+          "yuv420p",
+          "/tmp/hevi_assemble_s2fz154q/video_silent.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_s2fz154q/video_silent.mp4"
+      },
+      {
+        "args": [
+          "-y",
+          "-i",
+          "/tmp/hevi_assemble_s2fz154q/video_silent.mp4",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/whoosh/whoosh_air_up.wav",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/impact/impact_hard.wav",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/ding/ding_bell.wav",
+          "-i",
+          "/data/soffy/projects/hevi-shotspec/assets/audio/sfx/library/pop/pop_dry.wav",
+          "-filter_complex",
+          "[1:a]adelay=1000:all=1,volume=-3.0dB[s1];[2:a]adelay=3000:all=1,volume=-3.0dB[s2];[3:a]adelay=4500:all=1,volume=-3.0dB[s3];[4:a]adelay=6500:all=1,volume=-3.0dB[s4];[s1][s2][s3][s4]amix=inputs=4:normalize=0:duration=longest,apad=whole_dur=11.000,aformat=sample_rates=44100[specsfx];[specsfx]amix=inputs=1:duration=longest:dropout_transition=2[aout]",
+          "-map",
+          "0:v",
+          "-map",
+          "[aout]",
+          "-c:v",
+          "copy",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "192k",
+          "-shortest",
+          "/tmp/hevi_assemble_s2fz154q/muxed.mp4"
+        ],
+        "expected_output": "/tmp/hevi_assemble_s2fz154q/muxed.mp4"
+      }
+    ]
+  }
+}

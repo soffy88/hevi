@@ -1,0 +1,14 @@
+{
+  "logline": "小怪兽怕刷牙，最后发现刷牙能赶走牙虫变勇敢。",
+  "theme": "刷牙保护小白牙",
+  "spoken_language": "zh-CN",
+  "fixed_characters": ["char_monster"],
+  "beats": [
+    {"kind": "greeting", "text": "小朋友晚上好，我是小怪兽！", "emotion": "happy", "transition": "AND"},
+    {"kind": "problem", "text": "小怪兽的牙齿里住进了痒痒的牙虫，疼得他直哼哼。", "emotion": "worried", "transition": "BUT"},
+    {"kind": "attempt", "text": "他躲着牙刷不张嘴，牙虫反而越来越多。", "emotion": "scared", "transition": "THEREFORE"},
+    {"kind": "solution", "text": "他鼓起勇气拿起小牙刷，上下刷刷，牙虫全跑光。", "emotion": "brave", "transition": "THEREFORE"},
+    {"kind": "recap", "text": "刷牙保护小白牙，我们举起牙刷刷刷刷。", "emotion": "proud", "transition": "AND"},
+    {"kind": "farewell", "text": "你今天刷牙了吗？", "emotion": "warm", "transition": null}
+  ]
+}

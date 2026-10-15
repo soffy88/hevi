@@ -1,0 +1,14 @@
+{
+  "logline": "小狐狸想把天上的星星分给朋友，于是学会了分享。",
+  "theme": "分享让快乐变大",
+  "spoken_language": "zh-CN",
+  "fixed_characters": ["char_fox"],
+  "beats": [
+    {"kind": "greeting", "text": "小朋友你好呀，我是小狐狸！", "emotion": "happy", "transition": "AND"},
+    {"kind": "problem", "text": "小狐狸想摘下高高的星星送给朋友，可是够不着。", "emotion": "curious", "transition": "BUT"},
+    {"kind": "attempt", "text": "它踮起脚尖、搬来小石头去够，还是差一点点。", "emotion": "trying", "transition": "THEREFORE"},
+    {"kind": "solution", "text": "它请朋友一起抬，大家一起看到了满天的星星。", "emotion": "joyful", "transition": "THEREFORE"},
+    {"kind": "recap", "text": "分享让快乐变大，我们一起把温暖递出去。", "emotion": "proud", "transition": "AND"},
+    {"kind": "farewell", "text": "你会把玩具分给好朋友吗？", "emotion": "warm", "transition": null}
+  ]
+}

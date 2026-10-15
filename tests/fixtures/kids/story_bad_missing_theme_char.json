@@ -1,0 +1,13 @@
+{
+  "logline": "缺主题或缺固定角色，结构也不对。",
+  "spoken_language": "",
+  "fixed_characters": [],
+  "beats": [
+    {"kind": "greeting", "text": "嗨。", "emotion": "happy", "transition": "AND"},
+    {"kind": "problem", "text": "有问题。", "emotion": "curious", "transition": "BUT"},
+    {"kind": "attempt", "text": "试试看。", "emotion": "trying", "transition": "THEREFORE"},
+    {"kind": "solution", "text": "解决了。", "emotion": "happy", "transition": "THEREFORE"},
+    {"kind": "recap", "text": "完事。", "emotion": "proud", "transition": "AND"},
+    {"kind": "farewell", "text": "拜拜。", "emotion": "warm", "transition": null}
+  ]
+}

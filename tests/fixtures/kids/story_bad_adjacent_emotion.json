@@ -1,0 +1,14 @@
+{
+  "logline": "相邻两拍情绪相同，节奏平板。",
+  "theme": "好朋友一起玩",
+  "spoken_language": "zh-CN",
+  "fixed_characters": ["char_bear"],
+  "beats": [
+    {"kind": "greeting", "text": "小朋友你好。", "emotion": "happy", "transition": "AND"},
+    {"kind": "problem", "text": "小熊想玩滑梯。", "emotion": "happy", "transition": "BUT"},
+    {"kind": "attempt", "text": "他跑过去。", "emotion": "trying", "transition": "THEREFORE"},
+    {"kind": "solution", "text": "他排好队。", "emotion": "calm", "transition": "THEREFORE"},
+    {"kind": "recap", "text": "轮流真好。", "emotion": "proud", "transition": "AND"},
+    {"kind": "farewell", "text": "再见。", "emotion": "warm", "transition": null}
+  ]
+}

@@ -47,19 +47,25 @@ def _summary(name: str) -> dict[str, Any]:
 
 
 @router.get("")
-async def list_capabilities_endpoint() -> list[dict[str, Any]]:
-    """List every registered capability (name, kind, aspects, line, cost hint)."""
-    return [
-        {
-            "name": c.name,
-            "kind": c.kind,
-            "aspects": c.aspects,
-            "line": c.line,
-            "cpu_cost_hint": c.cpu_cost_hint,
-            "description": c.description,
-        }
-        for c in list_capabilities()
-    ]
+async def list_capabilities_endpoint() -> dict[str, list[dict[str, Any]]]:
+    """List every registered capability (name, kind, aspects, line, cost hint).
+
+    The payload is wrapped in a ``capabilities`` key so consumers can extend the
+    envelope later without breaking the list itself.
+    """
+    return {
+        "capabilities": [
+            {
+                "name": c.name,
+                "kind": c.kind,
+                "aspects": c.aspects,
+                "line": c.line,
+                "cpu_cost_hint": c.cpu_cost_hint,
+                "description": c.description,
+            }
+            for c in list_capabilities()
+        ]
+    }
 
 
 @router.get("/{name}")

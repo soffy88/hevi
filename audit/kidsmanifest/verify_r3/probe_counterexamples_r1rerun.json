@@ -1,0 +1,460 @@
+[
+ {
+  "id": "G0_story_fox_star.json",
+  "desc": "合法试点 story",
+  "expect": "PASS",
+  "got": "PASS",
+  "verdict": "OK",
+  "detail": []
+ },
+ {
+  "id": "G0_story_slide.json",
+  "desc": "合法试点 story",
+  "expect": "PASS",
+  "got": "PASS",
+  "verdict": "OK",
+  "detail": []
+ },
+ {
+  "id": "G0_story_brush_monster.json",
+  "desc": "合法试点 story",
+  "expect": "PASS",
+  "got": "PASS",
+  "verdict": "OK",
+  "detail": []
+ },
+ {
+  "id": "G0_story_seed_sprout.json",
+  "desc": "合法试点 story",
+  "expect": "PASS",
+  "got": "PASS",
+  "verdict": "OK",
+  "detail": []
+ },
+ {
+  "id": "G1_scary",
+  "desc": "惊吓/暴力主题（怪兽吃人/血/刀枪/死亡）",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R5_SINGLE_THEME@theme",
+   "R8_CONTENT_SAFETY@logline",
+   "R8_CONTENT_SAFETY@theme",
+   "R8_CONTENT_SAFETY@beats[3].text",
+   "R5_RECAP_THEME@beats[4].text"
+  ]
+ },
+ {
+  "id": "G2_adult",
+  "desc": "成人主题（喝酒/抽烟/恋爱）",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R5_SINGLE_THEME@theme",
+   "R8_CONTENT_SAFETY@logline",
+   "R8_CONTENT_SAFETY@theme",
+   "R8_CONTENT_SAFETY@beats[3].text",
+   "R5_RECAP_THEME@beats[4].text"
+  ]
+ },
+ {
+  "id": "G3_no_question",
+  "desc": "告别拍缺互动问句",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R9_FAREWELL_QUESTION@beats[5].text"
+  ]
+ },
+ {
+  "id": "G4_lang_mismatch",
+  "desc": "声明 zh-CN 但台词全英文（口语语言锁）",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R7_SPOKEN_LANGUAGE@beats[0].text",
+   "R9_FAREWELL_QUESTION@beats[5].text",
+   "R5_RECAP_THEME@beats[4].text"
+  ]
+ },
+ {
+  "id": "G5_no_emotion",
+  "desc": "全部节拍情绪为空（R4 无法判定）",
+  "expect": "FAIL_OR_WARN",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R4_BEAT_EMOTION@beats[].emotion"
+  ]
+ },
+ {
+  "id": "G6_char_not_in_story",
+  "desc": "固定角色 char_bear 但全文只有小狐狸（角色一致性）",
+  "expect": "FAIL_OR_WARN",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R6_FIXED_CHARACTER@fixed_characters"
+  ]
+ },
+ {
+  "id": "G7_multi_theme",
+  "desc": "多主题（单集单主题）",
+  "expect": "FAIL_OR_WARN",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R5_SINGLE_THEME@theme"
+  ]
+ },
+ {
+  "id": "G8_recap_no_theme",
+  "desc": "复述拍未复述主题、无动作",
+  "expect": "FAIL_OR_WARN",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "R5_RECAP_THEME@beats[4].text"
+  ]
+ },
+ {
+  "id": "M0_ok",
+  "desc": "合法 manifest_fox_star",
+  "expect": "OK",
+  "got": "OK",
+  "verdict": "OK",
+  "detail": []
+ },
+ {
+  "id": "M0_ok2",
+  "desc": "合法 manifest_slide",
+  "expect": "OK",
+  "got": "OK",
+  "verdict": "OK",
+  "detail": []
+ },
+ {
+  "id": "M1_tpl",
+  "desc": "未知 template",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M0_SHOTSPEC_DELEGATION@shots.0.shot_spec.template:清单校验失败：Value error, unknown template id 'no_such_template' (not in FX registry)"
+  ]
+ },
+ {
+  "id": "M2_sfx",
+  "desc": "未知 sfx",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M0_SHOTSPEC_DELEGATION@shots.0.shot_spec:清单校验失败：Value error, unknown sfx id 'no_such_sfx' (not in sfx manifest/registry)"
+  ]
+ },
+ {
+  "id": "M3_tr",
+  "desc": "未知 transition_in",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M0_SHOTSPEC_DELEGATION@shots.0.shot_spec.transition_in:清单校验失败：Value error, unknown transition id 'no_such_tr' (not in xfade registry)"
+  ]
+ },
+ {
+  "id": "M4_style",
+  "desc": "未知 style",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M0_SHOTSPEC_DELEGATION@shots.0.shot_spec.style:清单校验失败：Value error, unknown style 'no_such_style' (dirstyle unmerged: must be one of ['blu"
+  ]
+ },
+ {
+  "id": "M5_sb",
+  "desc": "Style Bible 缺 negative",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M1_STYLE_BIBLE@style_bible:Style Bible 缺段：['negative']"
+  ]
+ },
+ {
+  "id": "M5b_sb_absent",
+  "desc": "完全缺 style_bible 字段",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M1_STYLE_BIBLE@style_bible:Style Bible 缺段：['art_style', 'camera_language', 'color_grade', 'negative']"
+  ]
+ },
+ {
+  "id": "M6_tt",
+  "desc": "缺 S1->S2 切点",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M2_TRANSITION_TABLE@transition_table:缺 Transition Table 切点：['S1->S2']"
+  ]
+ },
+ {
+  "id": "M6b_hold",
+  "desc": "中间切点 frame holds steady",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M2_TRANSITION_TABLE@transition_table[S2->S3].prev_out:中间切点 S2->S3 以 frame holds steady 收尾"
+  ]
+ },
+ {
+  "id": "M7_ref",
+  "desc": "line 引用不存在的角色 @char_bear",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M4_REF_RESOLUTION@manifest.fields:未知 @引用：['shots[2].line:@char_bear']"
+  ]
+ },
+ {
+  "id": "M7b_ref_camera",
+  "desc": "镜头 camera 字段引用不存在角色 @char_bear",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M4_REF_RESOLUTION@manifest.fields:未知 @引用：['shots[2].camera:@char_bear']"
+  ]
+ },
+ {
+  "id": "M7c_ref_theme",
+  "desc": "theme.closing_action 引用不存在角色",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M4_REF_RESOLUTION@manifest.fields:未知 @引用：['theme.closing_action:@char_bear']"
+  ]
+ },
+ {
+  "id": "M8_avg",
+  "desc": "单镜≥2.5 但平均 2.6<3.5",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M5_DURATION@shots[*].duration:平均镜头时长 2.60s < 3.5s"
+  ]
+ },
+ {
+  "id": "M8b_short",
+  "desc": "duration 2.4<2.5",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M5_DURATION@shots[].duration:镜头时长 <2.5s：[1]"
+  ]
+ },
+ {
+  "id": "M9_dur_mismatch",
+  "desc": "shot.duration=4.0 但 shot_spec.duration=1.0（绑定不一致，实际渲染 1s）",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M5_DURATION_BINDING@shots[].shot_spec.duration:时长绑定不一致：['镜 1 duration=4.0 与 shot_spec.duration=1.0 不一致']",
+   "M5_DURATION@shots[].duration:镜头时长 <2.5s：[1]"
+  ]
+ },
+ {
+  "id": "M10_no_anchor",
+  "desc": "固定角色缺 anchor_ref/seed/voice_ref（缺角色锚点）",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M6_FIXED_CHARACTER@characters[0].anchor_ref:固定角色 char_fox 缺少锁定字段 ['anchor_ref', 'seed', 'voice_ref']"
+  ]
+ },
+ {
+  "id": "M11_lang",
+  "desc": "说话镜语言 en-US 与 audience zh-CN 冲突",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M3_SPOKEN_LANGUAGE@spoken_language:Spoken Language 校验失败：['镜 3 语言 en-US 与 audience zh-CN 不符']"
+  ]
+ },
+ {
+  "id": "M11b_lang_missing",
+  "desc": "说话镜 S6 缺口语语言条目",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M3_SPOKEN_LANGUAGE@spoken_language:Spoken Language 校验失败：['说话镜缺口语语言条目：[6]']"
+  ]
+ },
+ {
+  "id": "M12_dup_idx",
+  "desc": "shot_index 重复（两个 S1）",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M7_SHOT_INDEX@shots[].shot_index:shot_index 存在重复：[1, 1, 3, 4, 5, 6]",
+   "M2_TRANSITION_TABLE@transition_table:缺 Transition Table 切点：['S1->S1', 'S1->S3']",
+   "M3_SPOKEN_LANGUAGE@spoken_language:Spoken Language 校验失败：['未知镜号 2']"
+  ]
+ },
+ {
+  "id": "M13_palette",
+  "desc": "场景色板黑红与 color_grade 马卡龙冲突（K1 未要求，参考）",
+  "expect": "FAIL_OR_WARN",
+  "got": "OK",
+  "verdict": "MISS",
+  "detail": []
+ },
+ {
+  "id": "M14_typo_field",
+  "desc": "shot_spec 未知字段 tempalte（拼写错误静默忽略?）",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": [
+   "M_SCHEMA@shots.0:清单校验失败：Value error, ShotSpec 存在未知字段: ['tempalte']"
+  ]
+ },
+ {
+  "id": "M15_age",
+  "desc": "audience age_max=18（非幼儿）",
+  "expect": "FAIL_OR_WARN",
+  "got": "OK",
+  "verdict": "MISS",
+  "detail": []
+ },
+ {
+  "id": "B1_roundtrip",
+  "desc": "manifest→shot_states.selection_json→回读一致",
+  "expect": true,
+  "got": true,
+  "verdict": "OK",
+  "detail": {
+   "shot_spec": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": "soft",
+    "sfx": [
+     {
+      "id": "chime_soft",
+      "offset": 0.0
+     }
+    ],
+    "camera": "slow_push_in",
+    "subtitle_style": "kids_large",
+    "duration": 4.0
+   }
+  }
+ },
+ {
+  "id": "B2_change_propagates",
+  "desc": "改 manifest effect 后写回行随之改变",
+  "expect": true,
+  "got": true,
+  "verdict": "OK",
+  "detail": "vignette"
+ },
+ {
+  "id": "B3_bad_row",
+  "desc": "行内非法 spec 回读须拒",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": "ValidationError"
+ },
+ {
+  "id": "B4_orphan_row",
+  "desc": "任务行 shot_index=99 不在 manifest（默认 strict 应报错）",
+  "expect": "FAIL_OR_WARN",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": "ShotIndexMismatchError"
+ },
+ {
+  "id": "R1_registry_manifest",
+  "desc": "registry 调 manifest：合法 OK / 改坏 FAIL",
+  "expect": "OK/FAIL",
+  "got": "OK/FAIL",
+  "verdict": "OK",
+  "detail": ""
+ },
+ {
+  "id": "R2_illegal_params",
+  "desc": "registry 非法参数（缺 manifest）须报错",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": "CapabilityError"
+ },
+ {
+  "id": "R3_illegal_story",
+  "desc": "story_gate 非法参数 story=str",
+  "expect": "FAIL",
+  "got": "FAIL",
+  "verdict": "OK",
+  "detail": "CapabilityError:Capability 'kids.story_gate' params validation failed: 'not a dict' is not of type 'object' at []"
+ },
+ {
+  "id": "A1_api_route",
+  "desc": "GET /api/capabilities 路由存在",
+  "expect": true,
+  "got": true,
+  "verdict": "OK",
+  "detail": [
+   "/api/agent/longcat/capabilities",
+   "/api/authorities/endpoints/{name}/check-capability",
+   "/api/authorities/providers/{provider}/capabilities",
+   "/api/capabilities",
+   "/api/creative/capabilities",
+   "/api/pipeline/capabilities",
+   "/api/pro/livestream/capabilities",
+   "/api/pro/livetalking/webrtc/capabilities",
+   "/api/shortdrama/writer/capabilities",
+   "/api/stream-edit/capabilities",
+   "/api/studio/veya/capabilities"
+  ]
+ },
+ {
+  "id": "D1_determinism_xproc",
+  "desc": "两个独立进程哈希一致",
+  "expect": true,
+  "got": true,
+  "verdict": "OK",
+  "detail": [
+   "e149599cf6bcf2d492f085e45bd01373c99d58538d25bb80fd0c432e59297a98 720b84d8aa3b0136a6fb9b703dda757808d4274cea0ce5d73883a5c6dfb7c84c",
+   "e149599cf6bcf2d492f085e45bd01373c99d58538d25bb80fd0c432e59297a98 720b84d8aa3b0136a6fb9b703dda757808d4274cea0ce5d73883a5c6dfb7c84c"
+  ]
+ },
+ {
+  "id": "D2_docs_hash",
+  "desc": "docs manifest_fox_star.json 哈希 = DONE 所贴 720b84d8…",
+  "expect": true,
+  "got": true,
+  "verdict": "OK",
+  "detail": "720b84d8aa3b0136a6fb9b703dda757808d4274cea0ce5d73883a5c6dfb7c84c"
+ }
+]
