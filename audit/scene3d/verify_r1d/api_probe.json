@@ -1,0 +1,72 @@
+{
+ "valid_9x16": {
+  "status": 200,
+  "ctype": "video/mp4",
+  "secs": 17.0,
+  "/home/soffy/.local/bin/ffprobe": {
+   "programs": [],
+   "stream_groups": [],
+   "streams": [
+    {
+     "width": 270,
+     "height": 480,
+     "r_frame_rate": "30/1",
+     "nb_read_frames": "90"
+    }
+   ],
+   "format": {
+    "duration": "3.000000"
+   }
+  }
+ },
+ "bad_aspect_4x3": {
+  "status": 422,
+  "ctype": "application/json",
+  "secs": 0.0,
+  "body": "{\"detail\":\"capability scene3d.fox_wheat does not support aspect '4:3' (supported: ['9:16', '16:9'])\"}"
+ },
+ "unsupported_1x1": {
+  "status": 422,
+  "ctype": "application/json",
+  "secs": 0.0,
+  "body": "{\"detail\":\"capability scene3d.fox_wheat does not support aspect '1:1' (supported: ['9:16', '16:9'])\"}"
+ },
+ "bad_aspect_garbage": {
+  "status": 422,
+  "ctype": "application/json",
+  "secs": 0.0,
+  "body": "{\"detail\":\"capability scene3d.fox_wheat does not support aspect 'abc' (supported: ['9:16', '16:9'])\"}"
+ },
+ "short_duration_param": {
+  "status": 422,
+  "ctype": "application/json",
+  "secs": 0.0,
+  "body": "{\"detail\":\"capability scene3d.fox_wheat: invalid params: Additional properties are not allowed ('duration' was unexpected)\\n\\nFailed validating 'additionalProperties' in schema:\\n    {'type': 'object',\\n     'additionalProperties': False,\\n     'properties': {'seed': {'type': 'integer'},\\n                    'resolution': {'type': 'integer',\\n                                   'minimum': 64,\\n    "
+ },
+ "short_duration_s_param": {
+  "status": 422,
+  "ctype": "application/json",
+  "secs": 0.0,
+  "body": "{\"detail\":\"capability scene3d.fox_wheat: invalid params: Additional properties are not allowed ('duration_s' was unexpected)\\n\\nFailed validating 'additionalProperties' in schema:\\n    {'type': 'object',\\n     'additionalProperties': False,\\n     'properties': {'seed': {'type': 'integer'},\\n                    'resolution': {'type': 'integer',\\n                                   'minimum': 64,\\n  "
+ },
+ "bad_param_type": {
+  "status": 422,
+  "ctype": "application/json",
+  "secs": 0.0,
+  "body": "{\"detail\":\"capability scene3d.fox_wheat: invalid params: 'x' is not of type 'integer'\\n\\nFailed validating 'type' in schema['properties']['resolution']:\\n    {'type': 'integer', 'minimum': 64, 'maximum': 4320}\\n\\nOn instance['resolution']:\\n    'x'\"}"
+ },
+ "unknown_cap": {
+  "status": 404,
+  "ctype": "application/json",
+  "secs": 0.0,
+  "body": "{\"detail\":\"unknown capability: 'scene3d.nope'\"}"
+ },
+ "cap_duration_1.0": {
+  "result": "CapabilityError",
+  "msg": "capability scene3d.fox_wheat: shot duration must be at least 2.0s, got 1.0"
+ },
+ "cap_duration_1.99": {
+  "result": "CapabilityError",
+  "msg": "capability scene3d.fox_wheat: shot duration must be at least 2.0s, got 1.99"
+ }
+}

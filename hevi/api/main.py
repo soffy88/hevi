@@ -67,6 +67,7 @@ from hevi.api.routers.voice_platform import router as voice_platform_router
 from hevi.api.routers.stream_edit import router as stream_edit_router
 from hevi.api.routers.screenshot_studio import router as screenshot_studio_router
 from hevi.api.routers.ws import router as ws_router
+from hevi.api.routers.capabilities import router as capabilities_router
 from hevi.core.config import settings
 from hevi.core.ws_manager import connection_manager
 from hevi.events import EventConsumer, EventGateway
@@ -197,6 +198,7 @@ app.include_router(history_series_router, prefix="/api")  # P2 历史现场每�
 app.include_router(shortdrama_router, prefix="/api")
 app.include_router(shortdrama_writer_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
+app.include_router(capabilities_router, prefix="/api")  # unified capability registry
 app.include_router(mpt_router, prefix="/api")
 app.include_router(narrator_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")

@@ -60,6 +60,14 @@
 | POST | `/api/backlot/runs/{run_id}/events` | Emit Run Event |
 | GET | `/api/backlot/runs/{run_id}/status` | Get Run Status |
 
+## capabilities
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/capabilities` | List every registered capability (name, kind, aspects, line, cost hint) |
+| GET | `/api/capabilities/{name}` | Describe a single capability by name (422-equivalent via 404 on miss) |
+| POST | `/api/capabilities/{name}/preview` | Render a 3-second preview clip for `name` and return it as an MP4 |
+
 ## canvas
 
 | 方法 | 路径 | 说明 |

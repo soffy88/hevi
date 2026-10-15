@@ -1,0 +1,30 @@
+id: scene3d
+product: 3D 风格化场景镜头
+summary: 数据驱动的 Three.js 镜头线 —— 漂浮小星球 / 麦田 / 狐狸 / 星空 + UnrealBloom，
+  CPU+SwiftShader 离线渲染，9:16 / 16:9 / 1:1 / 21:9 任选一画幅逐帧确定出片。
+handoff: scene3d
+render_runtime: scene3d
+slots:
+  - name: scene
+    required: true
+    description: 场景 JSON 路径（hevi/layer4_legacy/scene3d/examples/*.json）
+  - name: out
+    required: true
+    description: 渲染输出目录
+tools:
+  - scene3d.render
+  - scene3d.validate
+  - scene3d.contact_sheet
+pipeline:
+  name: scene3d
+  stages:
+    - name: load
+      fn: hevi.layer4_legacy.scene3d.stages:stage_load
+    - name: render_frames
+      fn: hevi.layer4_legacy.scene3d.stages:stage_render
+    - name: encode
+      fn: hevi.layer4_legacy.scene3d.stages:stage_encode
+    - name: contact_sheet
+      fn: hevi.layer4_legacy.scene3d.stages:stage_contact_sheet
+    - name: report
+      fn: hevi.layer4_legacy.scene3d.stages:stage_report
