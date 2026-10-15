@@ -1,0 +1,128 @@
+{
+  "a1_no_hook": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C1=FAIL, plan.passed=False"
+  },
+  "a2_hook_late": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C1=FAIL, plan.passed=False"
+  },
+  "a3_hook_start_800": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C1=FAIL, plan.passed=False"
+  },
+  "b1_missing_sound_acc": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C2=FAIL, plan.passed=False"
+  },
+  "b2_no_end_state": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C2=FAIL, plan.passed=False"
+  },
+  "c_speed_over_3_5": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C4=FAIL, plan.passed=False"
+  },
+  "d1_no_closing": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C5=FAIL, plan.passed=False"
+  },
+  "d2_closing_no_overlap": {
+    "expect_reject": true,
+    "satisfied": false,
+    "verdict": "FAIL",
+    "detail": "C5=PASS, plan.passed=True (宽松 length>5 漏洞)"
+  },
+  "e1_video_gap_head": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C6=FAIL, plan.passed=False"
+  },
+  "e2_tail_black": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "C6=FAIL, plan.passed=False"
+  },
+  "e3_no_tracks": {
+    "expect_reject": true,
+    "satisfied": false,
+    "verdict": "FAIL",
+    "detail": "C6=PASS, plan.passed=True (漏洞：空时间线不拒)"
+  },
+  "e4_subtitle_over_voice": {
+    "expect_reject": true,
+    "satisfied": false,
+    "verdict": "FAIL",
+    "detail": "C6=PASS, plan.passed=True (漏洞：越界不查)"
+  },
+  "f_harmful_15_rejected": {
+    "expect_reject": true,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "rejected 15/15; not-rejected=[]"
+  },
+  "f_normal_10_kept": {
+    "expect_reject": false,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "误杀 0/10; killed=[]"
+  },
+  "g_take_select_picks_best": {
+    "expect_reject": false,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "best=t_target score=96.1; 期望 t_target(非首条 t_long); reasons=['运动完整度评分 1.00 (时长 5.0s vs 目标 5.0s)', '首尾稳定度 0.92，无冗余尾巴得分 0.95', '选中最优子区间 [0.0s, 5.0s]，完美契合验收点: 动作完整且稳定']"
+  },
+  "g2_take_select_tie": {
+    "expect_reject": false,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "并列时 best=t_last（信号无关，确定性回退，非随机）"
+  },
+  "g3_take_select_no_frame_inspection": {
+    "expect_reject": true,
+    "satisfied": false,
+    "verdict": "FAIL",
+    "detail": "同分=True; 实现仅按 duration 评分，未做帧差/SSIM，无法区分破损镜头与完整镜头（偏离规格 D）"
+  },
+  "h_autofill_varies": {
+    "expect_reject": false,
+    "satisfied": false,
+    "verdict": "FAIL",
+    "detail": "distinct hashes 5/5; 非预设主题同模板换名=True"
+  },
+  "i_capabilities_registered": {
+    "expect_reject": false,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "registered=['story_check', 'story_plan', 'take_select']; missing=[]; director=found:DirectorBrief"
+  },
+  "i_capabilities_in_catalog": {
+    "expect_reject": true,
+    "satisfied": false,
+    "verdict": "FAIL",
+    "detail": "GET /api/capabilities catalog 含 story_*=False (ids=[]); /story-plan 路由未挂载到 app.include_router（对外不可调用）"
+  },
+  "j_e2e_hardcoded_mock_grep": {
+    "expect_reject": false,
+    "satisfied": true,
+    "verdict": "PASS",
+    "detail": "命中 1 处（1 处为 capabilities.py 默认 dummy.mp4 回退参数，可接受）；无 mock 渲染/自检/选段结果硬写；problematic=[]"
+  }
+}
