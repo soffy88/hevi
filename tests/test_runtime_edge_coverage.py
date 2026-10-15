@@ -555,6 +555,8 @@ async def test_audio_router_routes_backends_and_stitches_successful_segments(
     monkeypatch.setattr(audio_router, "probe_duration", lambda _path: 1.25)
 
     class Process:
+        returncode = 0
+
         async def communicate(self) -> tuple[bytes, bytes]:
             return b"", b""
 
@@ -627,8 +629,24 @@ async def test_audio_router_provider_specific_paths_and_empty_fallback(
         await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None)
     monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "lux")
     monkeypatch.setattr("hevi.audio.lux_tts_service.lux_tts_available", lambda: False)
-    with pytest.raises(audio_router.AudioRoutingError, match="luxvoice"):
-        await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None)
+
+    async def cosyvoice_down(**_kwargs: object) -> None:
+        raise RuntimeError("mock CosyVoice outage")
+
+    def piper_stub(*, text: str, out_wav: Path, lang: str, length_scale: float) -> None:
+        out_wav.write_bytes(b"P" * 128)
+
+    monkeypatch.setattr("hevi.audio.cosyvoice_service.cosyvoice_synthesize", cosyvoice_down)
+    monkeypatch.setattr("hevi.layer4_legacy.talkcraft.omodul_impl._media.piper_tts", piper_stub)
+    lux_fallback = await audio_router._synthesize_formal(
+        text="x", output_path=out, voice="v", instruct=None
+    )
+    assert Path(lux_fallback["path"]) == out
+    assert lux_fallback["requested_provider"] == "lux"
+    assert lux_fallback["actual_provider"] == "piper"
+    assert lux_fallback["substituted"] is True
+    assert "luxtts_http_unavailable" in str(lux_fallback["fallback_reason"])
+    assert "cosyvoice_unavailable" in str(lux_fallback["fallback_reason"])
 
     async def missing(**_kwargs: object) -> dict[str, object]:
         missing_path = tmp_path / "missing.wav"

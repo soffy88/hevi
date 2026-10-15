@@ -162,9 +162,16 @@ def _render_one(
         filters.append(f"[{index + 1}:a]aformat=sample_rates=48000:channel_layouts=stereo,adelay={delay}|{delay}[a{index}]")
     filters.append("".join(f"[a{index}]" for index in range(len(audio_paths))) +
                    f"amix=inputs={len(audio_paths)}:duration=longest:normalize=0:dropout_transition=0,aresample=48000[aout]")
+    video_filter = (
+        f"fps={_FPS},"
+        # Image-concat timestamps can end short of the final cue on CFR output.
+        # Clone the final card so the video never cuts narration off early.
+        f"tpad=stop_mode=clone:stop_duration=2,trim=duration={audio_duration:.6f},"
+        "setpts=PTS-STARTPTS"
+    )
     args += [
         "-filter_complex", ";".join(filters), "-map", "0:v", "-map", "[aout]",
-        "-r", str(_FPS), "-t", f"{audio_duration:.6f}", "-c:v", "libx264",
+        "-vf", video_filter, "-r", str(_FPS), "-t", f"{audio_duration:.6f}", "-c:v", "libx264",
         "-preset", "veryfast", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart", str(output),
     ]
@@ -172,7 +179,27 @@ def _render_one(
     proc = subprocess.run(args, capture_output=True, text=True, check=False, timeout=300)
     if proc.returncode != 0 or not output.is_file() or output.stat().st_size <= 0:
         raise RuntimeError(f"CPU explainer render failed ({proc.returncode}): {(proc.stderr or '')[-2000:]}")
-    return {"path": str(output), "width": width, "height": height, "fps": _FPS, "duration_s": audio_duration, "renderer": "ffmpeg-pillow-cpu-fallback"}
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,duration", "-of", "json", str(output)],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    if probe.returncode != 0:
+        raise RuntimeError(f"cannot probe CPU explainer render duration: {(probe.stderr or '')[-1000:]}")
+    try:
+        probe_payload = json.loads(probe.stdout)
+        video_stream = next(item for item in probe_payload["streams"] if item.get("codec_type") == "video")
+        actual_duration = float(video_stream["duration"])
+    except (KeyError, StopIteration, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"ffprobe returned no video duration: {exc}") from exc
+    if abs(actual_duration - audio_duration) > (2 / _FPS):
+        raise RuntimeError(
+            f"CPU explainer video duration drifted from narration: "
+            f"video={actual_duration:.3f}s audio={audio_duration:.3f}s"
+        )
+    return {"path": str(output), "width": width, "height": height, "fps": _FPS, "duration_s": actual_duration, "renderer": "ffmpeg-pillow-cpu-fallback"}
 
 
 def render_storyboard_cpu_fallback(

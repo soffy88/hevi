@@ -79,7 +79,6 @@ async def test_lux_narration_renders_with_cpu_fallback_when_remotion_cli_missing
     monkeypatch.setattr(render, "_PUBLIC_DIR", public)
     monkeypatch.setattr(render, "_HEVI_REMOTION_DIR", root / "missing-remotion")
     monkeypatch.setattr(render, "_REMOTION_BIN", root / "missing-remotion" / "node_modules" / ".bin" / "remotion")
-    monkeypatch.setattr(render, "_attach_procedural_bgm", lambda *_args, **_kwargs: None)
 
     async def fake_synthesize_storyboard(
         storyboard, audio_dir, *, voice, rate, audio_public_prefix, provider
@@ -130,7 +129,7 @@ async def test_lux_narration_renders_with_cpu_fallback_when_remotion_cli_missing
     assert result.landscape_path.is_file() and result.landscape_path.stat().st_size > 0
     for path, expected_size in ((result.portrait_path, (540, 960)), (result.landscape_path, (960, 540))):
         probe = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height", "-of", "json", str(path)],
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height,avg_frame_rate", "-of", "json", str(path)],
             capture_output=True,
             text=True,
             check=True,
@@ -140,5 +139,8 @@ async def test_lux_narration_renders_with_cpu_fallback_when_remotion_cli_missing
         streams = payload["streams"]
         video = next(stream for stream in streams if stream["codec_type"] == "video")
         assert (video["width"], video["height"]) == expected_size
+        assert video["avg_frame_rate"] == "24/1"
         assert any(stream["codec_type"] == "audio" for stream in streams)
-        assert 3.6 <= float(payload["format"]["duration"]) <= 4.4
+        # Video and narration must stay within two frames of the requested 3s + 1s.
+        assert abs(float(payload["format"]["duration"]) - 4.0) <= (2 / 24)
+        assert abs(float(video.get("duration", payload["format"]["duration"])) - 4.0) <= (2 / 24)

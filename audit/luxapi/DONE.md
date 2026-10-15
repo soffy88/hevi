@@ -108,4 +108,25 @@ Verification after this continuation:
 
 The tracked shared Remotion manifest was restored to its committed baseline after tests; test-generated changes to that manifest are not included. Existing untracked `.veya-project/` and `LUXAPI_TASK.md` were left untouched and unstaged.
 
+
+## Continuation — alignment provider identity and production-path regression fixes
+
+This pass closed the remaining integration gaps found while exercising the broader audio/story pipeline:
+
+- `hevi/audio/tts_alignment.py`: the alignment entrypoint now synthesizes through Hevi's shared LuxTTS-first router by default, so the alignment API and narration use the same service/fallback route. As LuxTTS does not provide native word-boundary times, generated word intervals are explicitly marked as duration-weighted estimates. The recorded `alignment_source` now follows the actual engine (`lux_tts`, `cosyvoice`, or `piper`) rather than incorrectly always claiming LuxTTS. `HEVI_TTS_ALIGNMENT_PROVIDER=edge_tts` remains an explicit opt-in for native Edge boundary data.
+- `tests/test_lux_tts_alignment.py` and `tests/p10/spike/test_tts_alignment.py`: coverage for Lux-default alignment, fallback engine identity, explicit Edge boundary identity, estimated-timestamp metadata, ordered word times, and duration bounds.
+- `tests/test_runtime_edge_coverage.py`: fixed a mocked subprocess return code and replaced an obsolete strict-Lux failure expectation with assertions proving the documented LuxTTS → CosyVoice → Piper recovery path, including `requested_provider`, `actual_provider`, and `fallback_reason`.
+- `hevi/explainer/cpu_fallback.py` and `tests/test_explainer_render.py`: the CPU fallback clones the final card to cover the narration tail, probes the produced video stream, and rejects video/audio duration drift beyond two frames. The output frame rate is explicitly pinned at 24 fps and checked by the render regression test.
+
+Verification:
+
+- Focused routing/alignment regressions: `10 passed in 18.82s`.
+- CPU fallback render check after the final frame-rate change: `1 passed in 1.84s`.
+- Expanded audio/explainer/voice/Studio suite, excluding the unrelated `tests/test_history_arc_adapter.py`: `353 passed, 1 skipped, 10 warnings in 106.29s`. Warnings are existing `httpx`/Starlette and `datetime.utcnow()` deprecations.
+- The wider run including `tests/test_history_arc_adapter.py` reported `357 passed, 2 failed, 1 skipped, 10 warnings in 102.84s`. The two failures are `test_conflict_corner_note` and `test_g1a_report` in that unrelated history-arc module; no history-arc source or test was modified as part of LuxTTS.
+- The final required Lux selection gate, rerun after the alignment and frame-rate changes, passed with `27 passed, 7341 deselected, 1 warning in 8.35s`; the exact required pipe exited `0`.
+- Python compilation and `git diff --check` passed after the alignment and renderer changes.
+
+The previously committed `audit/luxapi/kids_story_sample.mp4` remains the original live-narration sample; this continuation does not change the external LuxTTS service, install packages, or deploy/restart Hevi.
+
 DONE LUXAPI-R1
