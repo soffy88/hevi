@@ -16,6 +16,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from obase.ffmpeg import run as ffmpeg_run
 
@@ -158,16 +159,22 @@ async def _normalize_shot(
     fps: int,
     *,
     brightness: float = 0.0,
+    extra_vf: str = "",
+    target_duration: float | None = None,
 ) -> tuple[Path, float]:
     """把单镜头归一化到统一规格 + 目标时长 + 亮度修正,返回(归一化文件, 实际时长)。
 
     时长策略: target 比视频短→裁(-t);比视频长→末帧保持(tpad clone)补足。
+    ``extra_vf``(ShotSpec effect 滤镜)在归一化之后、tpad 之前拼入,不改动原有
+    归一化链(不传时逐字不变)。
     """
     src_dur = await probe_duration(shot.video_path)
     out = tmp_dir / f"norm_{idx:04d}.mp4"
     vf = _normalize_vf(width, height, fps, brightness=brightness)
+    if extra_vf:
+        vf += f",{extra_vf},scale={width}:{height},setsar=1"
 
-    target = shot.target_duration
+    target = target_duration if target_duration is not None else shot.target_duration
     args = ["-y", "-i", str(shot.video_path)]
     if target and target > 0:
         if target > src_dur + 0.05:
@@ -287,7 +294,7 @@ def _probe_sync(path: Path) -> float:
 
 def build_xfade_chain(
     durations: list[float],
-    transition: str,
+    transition: str | list[str],
     xfade_d: float | list[float],
 ) -> tuple[str, str, float]:
     """构造 N 段 xfade 链 filter_complex。
@@ -296,10 +303,21 @@ def build_xfade_chain(
     offset_i = (已合并总时长) - xfade_d_i。每次 xfade 重叠 xfade_d_i,故总时长
     = sum(durations) - sum(xfade_d_i)。
 
+    `transition` 可以是单个转场 id(str, 所有接缝同一种)或逐接缝的 id 列表
+    (长度 n-1, 每个元素为 xfade_transitions 注册表中的 id, 未知 id 抛 ValueError)。
     `xfade_d` 可以是单一值(所有转场同一重叠时长,原有行为)或逐转场的列表——
     BGM 节拍对齐(HEVI 路线图 Phase2 #37)按节拍点微调每处转场的重叠时长,不是
     整条链统一一个数,故需要这个泛化。
+
+    逐接缝列表里的元素还可以是特殊值 `"cut"`(硬切):该接缝用 concat 直接拼接
+    (d 记为 0),其余接缝仍走 xfade,总时长公式随之正确
+    (总时长 = sum(durations) - sum(非 cut 接缝的 d))。str 形式传 `"cut"` 等价于
+    全部接缝硬切。空列表抛 ValueError(无法对应任何接缝)。
     """
+    from hevi.assembly.xfade_transitions import resolve
+
+    if isinstance(transition, list) and not transition:
+        raise ValueError("transition list must not be empty")
     n = len(durations)
     if n == 1:
         return "", "0:v", durations[0]
@@ -308,17 +326,51 @@ def build_xfade_chain(
         raise ValueError(
             f"xfade_d list must have {n - 1} entries for {n} shots, got {len(xfade_ds)}"
         )
-    parts: list[str] = []
-    prev = "[0:v]"
+    # 归一化 transition 为逐接缝的 token 列表(str → 同一种铺满所有接缝)
+    if isinstance(transition, str):
+        seam_tokens = [transition] * (n - 1)
+    else:
+        if len(transition) != n - 1:
+            raise ValueError(
+                f"transition list must have {n - 1} entries for {n} shots, got {len(transition)}"
+            )
+        seam_tokens = list(transition)
+
+    # 无 cut 接缝 → 保持原路径(filter_complex 逐字不变,向后兼容 golden)。
+    if "cut" not in seam_tokens:
+        transition_values = [resolve(t) for t in seam_tokens]
+        parts: list[str] = []
+        prev = "[0:v]"
+        merged = durations[0]
+        for i in range(1, n):
+            d = xfade_ds[i - 1]
+            offset = merged - d
+            out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
+            parts.append(
+                f"{prev}[{i}:v]xfade=transition={transition_values[i - 1]}:duration={d}:offset={offset:.3f}{out_label}"
+            )
+            merged = merged + durations[i] - d
+            prev = out_label
+        return ";".join(parts), "[vout]", merged
+
+    # 含 cut 接缝:cut 用 concat 直拼,其余走 xfade。concat 与 xfade 混用时各输入
+    # 时基不一致会 "Error reinitializing filters",故先给每个输入统一 settb=AVTB。
+    parts = [f"[{i}:v]settb=AVTB[vs{i}]" for i in range(n)]
+    prev = "[vs0]"
     merged = durations[0]
     for i in range(1, n):
-        d = xfade_ds[i - 1]
-        offset = merged - d
-        out_label = f"[vx{i}]" if i < n - 1 else "[vout]"
-        parts.append(
-            f"{prev}[{i}:v]xfade=transition={transition}:duration={d}:offset={offset:.3f}{out_label}"
-        )
-        merged = merged + durations[i] - d
+        token = seam_tokens[i - 1]
+        out_label = f"[vc{i}]" if i < n - 1 else "[vout]"
+        if token == "cut":
+            parts.append(f"{prev}[vs{i}]concat=n=2:v=1:a=0{out_label}")
+            merged = merged + durations[i]
+        else:
+            d = xfade_ds[i - 1]
+            offset = merged - d
+            parts.append(
+                f"{prev}[vs{i}]xfade=transition={resolve(token)}:duration={d}:offset={offset:.3f}{out_label}"
+            )
+            merged = merged + durations[i] - d
         prev = out_label
     return ";".join(parts), "[vout]", merged
 
@@ -338,36 +390,43 @@ def build_audio_filter(
     has_sfx: bool = False,
     sfx_idx: int = -1,
     sfx_gain_db: float = -6.0,
+    extra_sfx_filter: str = "",
 ) -> tuple[str, str | None]:
     """构造音频 filter_complex: 旁白 loudnorm + BGM 侧链闪避(+可选音效)+ amix。
 
     音效(sfx)是一次性提示音,不参与旁白侧链闪避(非持续底噪,闪避无意义),只按固定
     电平叠加进混音;有旁白时随旁白轨一起 amix,无旁白时随 BGM(若有)一起 amix。
+    ``extra_sfx_filter`` 是 ShotSpec 逐镜 sfx 的整段 filter(输入索引 + 末尾
+    ``[specsfx]`` 标签,由 shot_spec_render 生成),作为额外独立轨并入 amix。
     返回 (filter_complex_片段, 末级音频标签或 None)。
     """
-    if not has_narration and not has_bgm and not has_sfx:
+    if not has_narration and not has_bgm and not has_sfx and not extra_sfx_filter:
         return "", None
 
-    # 单轨情形(其余两轨都无):narration 走 loudnorm+apad;bgm/sfx 走 volume+fade。
-    if has_narration and not has_bgm and not has_sfx:
+    # 单轨情形(其余两轨都无,且无 ShotSpec 逐镜 sfx):narration 走 loudnorm+apad;
+    # bgm/sfx 走 volume+fade。有 extra_sfx_filter 时必须落到多轨 amix 分支。
+    if has_narration and not has_bgm and not has_sfx and not extra_sfx_filter:
         return (
             f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,"
             f"apad=whole_dur={max(total_dur, 0.1):.3f}[aout]",
             "[aout]",
         )
-    if has_bgm and not has_narration and not has_sfx:
+    if has_bgm and not has_narration and not has_sfx and not extra_sfx_filter:
         return (
             f"[{bgm_idx}:a]volume={bgm_gain_db}dB,"
             f"afade=t=out:st={max(0, total_dur - 2):.2f}:d=2[aout]",
             "[aout]",
         )
-    if has_sfx and not has_narration and not has_bgm:
+    if has_sfx and not has_narration and not has_bgm and not extra_sfx_filter:
         return (f"[{sfx_idx}:a]volume={sfx_gain_db}dB[aout]", "[aout]")
 
     # 多轨:旁白(若有)归一 + 侧链压 BGM;音效独立轨,最后统一 amix。asplit 仅在确实
-    # 要喂侧链时才用(否则会留一个没人接的 output pad)。
+    # 要喂侧链时才用(否则会留一个没人接的 output pad)。ShotSpec 逐镜 sfx 作为额外
+    # 独立轨并入(其 filter 片段由 shot_spec_render 预先算好,这里只挂标签)。
     parts: list[str] = []
     mix_inputs: list[str] = []
+    if extra_sfx_filter:
+        parts.append(extra_sfx_filter)
     if has_narration:
         if has_bgm:
             parts.append(f"[{narr_idx}:a]loudnorm=I={lufs}:TP=-1.5:LRA=11,asplit=2[narr][narrsc]")
@@ -391,6 +450,8 @@ def build_audio_filter(
     if has_sfx:
         parts.append(f"[{sfx_idx}:a]volume={sfx_gain_db}dB[sfxv]")
         mix_inputs.append("[sfxv]")
+    if extra_sfx_filter:
+        mix_inputs.append("[specsfx]")
 
     n = len(mix_inputs)
     parts.append(
@@ -464,13 +525,14 @@ async def assemble_longvideo(
     width: int = 832,
     height: int = 480,
     fps: int = 24,
-    transition: str = "fade",
+    transition: str | list[str] = "fade",
     transition_duration: float = 0.5,
     loudness_lufs: float = -14.0,
     bgm_gain_db: float = -18.0,
     sfx_gain_db: float = -6.0,
     color_normalize: bool = True,
     bgm_beat_align: bool = True,
+    shot_specs: list[Any] | None = None,
 ) -> Path:
     """装配长视频成片。返回 output_path。
 
@@ -484,11 +546,22 @@ async def assemble_longvideo(
     没有跨 provider 校准数据支撑更激进的调色,不该编造。
     `bgm_beat_align`:有 BGM 时用 librosa 检测节拍,转场点贴最近节拍(±0.3s 内),
     检测失败/无 BGM 时静默回退成原有的统一转场时长,不阻断装配。
+
+    `shot_specs`(GAP_PLAN §2 W1):逐镜 ``ShotSpec`` 列表(可为 None 元素)。
+    提供时,每镜 effect 并入归一化滤镜链、每镜 ``transition_in`` 逐接缝覆盖
+    ``transition``、各镜 sfx 按(镜头起点+offset)混成一条音轨并入音频。缺省
+    (None/全 None)时行为与不传逐字一致。
     """
     import tempfile
 
     if not shots:
         raise ValueError("assemble_longvideo: no shots")
+
+    if shot_specs and len(shot_specs) != len(shots):
+        raise ValueError(
+            f"shot_specs must have {len(shots)} entries for {len(shots)} shots, "
+            f"got {len(shot_specs)}"
+        )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="hevi_assemble_") as td:
@@ -511,12 +584,36 @@ async def assemble_longvideo(
                     for lm in lumas
                 ]
 
+        # ShotSpec(GAP_PLAN §2 W1 / R2 FIX): 逐镜滤镜 (effect/style/template) + 逐镜接缝转场。
+        # 未提供 spec 时 spec_effects 全空、transition 原样透传,行为与旧路径一致。
+        spec_effects: list[str] = [""] * len(shots)
+        if shot_specs:
+            from hevi.production.shot_spec_render import combined_shot_filter, seam_transitions
+
+            spec_effects = [combined_shot_filter(s) for s in shot_specs]
+            transition = seam_transitions(shot_specs, len(shots), transition)
+
         # ① 归一化每个镜头
         norm: list[tuple[Path, float]] = []
         for i, shot in enumerate(shots):
+            spec = shot_specs[i] if shot_specs and i < len(shot_specs) else None
+            # 规格中若显式指定 duration,覆盖 ShotSegment 默认时长 (裁剪或补帧)
+            shot_target_dur = (
+                spec.duration
+                if (spec is not None and spec.duration is not None)
+                else shot.target_duration
+            )
             norm.append(
                 await _normalize_shot(
-                    shot, i, tmp_dir, width, height, fps, brightness=brightness_by_shot[i]
+                    shot,
+                    i,
+                    tmp_dir,
+                    width,
+                    height,
+                    fps,
+                    brightness=brightness_by_shot[i],
+                    extra_vf=spec_effects[i],
+                    target_duration=shot_target_dur,
                 )
             )
         durations = [d for _, d in norm]
@@ -524,7 +621,13 @@ async def assemble_longvideo(
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
         xfade_d: float = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
-        use_xfade = transition != "cut" and len(durations) > 1 and xfade_d > 0.05
+        # 逐接缝转场列表里可能混有 "cut";只要有任一接缝不是 cut 就必须走 xfade 链
+        # (cut 接缝由 build_xfade_chain 用 concat 直拼)。空列表是非法输入,直接报错,
+        # 不要让它走到 transition[0] 触发 IndexError。
+        if isinstance(transition, list) and not transition:
+            raise ValueError("assemble_longvideo: transition list must not be empty")
+        seam_tokens = [transition] if isinstance(transition, str) else list(transition)
+        use_xfade = any(t != "cut" for t in seam_tokens) and len(durations) > 1 and xfade_d > 0.05
 
         if use_xfade and bgm_beat_align and bgm_path is not None and bgm_path.exists():
             import asyncio
@@ -583,17 +686,45 @@ async def assemble_longvideo(
 
         video_dur = await probe_duration(silent)
 
+        # ShotSpec(GAP_PLAN §2 W1):各镜 sfx 按(镜头起点+offset)混成一条独立音轨,
+        # 并入下面的总混音。起点用与 build_xfade_chain 一致的 offset 公式(扣重叠)。
+        spec_sfx_filter = ""
+        spec_sfx_paths: list[Path] = []
+        if shot_specs:
+            from hevi.production.shot_spec_render import (
+                build_sfx_mixdown_filter,
+                shot_start_times,
+                spec_sfx_cues,
+            )
+            from hevi.production.shot_spec_render import (
+                seam_transitions as _seam_transitions,
+            )
+
+            starts = shot_start_times(
+                durations, xfade_d, _seam_transitions(shot_specs, len(shots), transition)
+            )
+            spec_cues = spec_sfx_cues(shot_specs, starts)
+            if spec_cues:
+                # 输入 0 是 silent 视频,spec sfx 文件从索引 1 起追加。
+                spec_sfx_filter, spec_sfx_paths = build_sfx_mixdown_filter(
+                    spec_cues, base_input_index=1, total_dur=video_dur
+                )
+
         # ③ 音频混音
         has_narr = narration_audio is not None and narration_audio.exists()
         has_bgm = bgm_path is not None and bgm_path.exists()
         has_sfx = sfx_path is not None and sfx_path.exists()
-        if not has_narr and not has_bgm and not has_sfx:
+        if not has_narr and not has_bgm and not has_sfx and not spec_sfx_filter:
             muxed = silent
         else:
             muxed = tmp_dir / "muxed.mp4"
             args = ["-y", "-i", str(silent)]
+            # spec sfx 文件先入,占输入索引 1..n(其 filter 里的编号据此,见
+            # build_sfx_mixdown_filter 的 base_input_index=0)。
+            for p in spec_sfx_paths:
+                args += ["-i", str(p)]
             narr_idx = bgm_idx = sfx_idx = -1
-            nxt = 1
+            nxt = 1 + len(spec_sfx_paths)
             if has_narr:
                 args += ["-i", str(narration_audio)]
                 narr_idx = nxt
@@ -617,8 +748,9 @@ async def assemble_longvideo(
                 has_sfx=has_sfx,
                 sfx_idx=sfx_idx,
                 sfx_gain_db=sfx_gain_db,
+                extra_sfx_filter=spec_sfx_filter,
             )
-            assert alabel is not None  # has_narr/has_bgm/has_sfx 任一 → 必非空
+            assert alabel is not None  # 任一音轨存在 → 必非空
             args += [
                 "-filter_complex",
                 af,

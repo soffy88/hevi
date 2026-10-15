@@ -27,6 +27,7 @@ from hevi.api.routers.distribution import router as distribution_router
 from hevi.api.routers.director import router as director_router
 from hevi.api.routers.director_pipeline import router as director_pipeline_router
 from hevi.api.routers.explainer import router as explainer_router
+from hevi.api.routers.fx import router as fx_router
 from hevi.api.routers.gallery import router as gallery_router
 from hevi.api.routers.cinematic import router as cinematic_router
 from hevi.api.routers.history_series import router as history_series_router
@@ -48,6 +49,7 @@ from hevi.api.routers.style import router as style_router
 from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.subjects import router as subjects_router
 from hevi.api.routers.tasks import router as tasks_router
+from hevi.api.routers.shot_spec import router as shot_spec_router
 from hevi.api.routers.templates import router as templates_router
 from hevi.api.routers.tongjian import router as tongjian_router
 from hevi.api.routers.freezone import router as freezone_router
@@ -177,6 +179,7 @@ app.include_router(studio_router, prefix="/api")
 app.include_router(production_tools_v2_router, prefix="/api")
 app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
+app.include_router(shot_spec_router, prefix="/api")
 app.include_router(subjects_router, prefix="/api")
 app.include_router(identities_router, prefix="/api")
 app.include_router(continuity_router, prefix="/api")
@@ -197,6 +200,7 @@ app.include_router(history_series_router, prefix="/api")  # P2 历史现场每�
 app.include_router(shortdrama_router, prefix="/api")
 app.include_router(shortdrama_writer_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
+app.include_router(fx_router, prefix="/api")
 app.include_router(mpt_router, prefix="/api")
 app.include_router(narrator_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
@@ -256,9 +260,7 @@ async def health_ready() -> JSONResponse:
     if database_ok and not settings.local_mode and pool is not None:
         dependencies = await production_readiness_dependencies(pool=pool)
     report = readiness_report(database_ok=database_ok, dependencies=dependencies)
-    return JSONResponse(
-        status_code=200 if report["status"] == "ready" else 503, content=report
-    )
+    return JSONResponse(status_code=200 if report["status"] == "ready" else 503, content=report)
 
 
 @app.get("/api/health/qualification")
