@@ -297,6 +297,28 @@ def _reconcile_page_boundaries(timeline: dict[str, Any]) -> list[dict[str, float
     return report
 
 
+def _clamp_final_cue_hold(planned: list[dict[str, Any]], media_end: float) -> float:
+    """Keep the last reading hold inside the film when ASR moved its onset later.
+
+    The final interaction cue keeps its original beat span even when the
+    independent word timestamps move its onset closer to the end. Without this
+    clamp its reading hold ran past the end of the narration, and the subtitle
+    contract (every cue inside its page) rejected the whole render. Returns the
+    number of seconds removed from the final hold.
+    """
+    final_entry = planned[-1]
+    overflow = float(final_entry["end"]) - media_end
+    if overflow <= 0.0:
+        return 0.0
+    if media_end <= float(final_entry["start"]) + 0.20:
+        raise RuntimeError(
+            "final caption cannot fit before the end of narration: "
+            f"start={float(final_entry['start']):.3f}s media_end={media_end:.3f}s"
+        )
+    final_entry["end"] = media_end
+    return round(overflow, 6)
+
+
 def retime_timeline_captions(root: Path | str, timeline: dict[str, Any]) -> dict[str, Any]:
     """Apply independent word-level timings to timeline cues and visual events."""
     from faster_whisper import WhisperModel
@@ -385,6 +407,20 @@ def retime_timeline_captions(root: Path | str, timeline: dict[str, Any]) -> dict
             raise RuntimeError(f"caption {index + 1} cannot fit between independently timed neighboring cues")
         entry["end"] = end
 
+    # The final cue keeps its original beat span even when the independent ASR
+    # moved its onset later, so its reading hold can run past the end of the
+    # narration. The subtitle contract also requires every cue to stay inside
+    # its page, and the last page ends with the media, so clamp the final hold
+    # to the measured end of the film instead of failing the whole render.
+    final_entry = planned[-1]
+    final_overflow_seconds = _clamp_final_cue_hold(
+        planned,
+        max(
+            float(timeline.get("duration", final_entry["end"])),
+            float(timeline["pages"][-1]["end"]),
+        ),
+    )
+
     for cue, event, entry in zip(cues, caption_events, planned, strict=True):
         cue["start"] = round(entry["start"], 6)
         cue["end"] = round(entry["end"], 6)
@@ -429,6 +465,7 @@ def retime_timeline_captions(root: Path | str, timeline: dict[str, Any]) -> dict
         "source": str(narration),
         "source_sha256": hashlib.sha256(narration.read_bytes()).hexdigest(),
         "cue_count": len(cues),
+        "final_cue_hold_clamped_seconds": round(final_overflow_seconds, 6),
         "silence_adjusted_word_count": silence_adjusted_word_count,
         "page_boundaries": page_boundary_report,
         "max_absolute_retime_seconds": round(max(

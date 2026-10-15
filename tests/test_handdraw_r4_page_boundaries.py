@@ -1,5 +1,7 @@
 """Regression tests for page clocks after independent caption alignment."""
 
+import pytest
+
 from hevi.layer4_legacy.handdraw.scripts.independent_caption_alignment import (
     _reconcile_page_boundaries,
 )
@@ -54,7 +56,10 @@ def test_independent_caption_retime_moves_page_cut_to_real_speech_gap() -> None:
     assert timeline["pages"][1]["events"][0]["start"] == 14.7
     assert timeline["pages"][1]["events"][1]["start"] == 14.6
     assert timeline["pages"][1]["speech_end"] == 17.2
-    assert timeline["pages"][1]["last_drawing_end"] == 27.6
+    # The drawing clock is compressed so the last stroke still finishes 0.45s
+    # before the measured end of speech (17.2 - 0.45 = 16.75).
+    assert timeline["pages"][1]["last_drawing_end"] == 16.75
+    assert timeline["pages"][1]["last_drawing_end"] == pytest.approx(17.2 - 0.45)
     assert len(report) == 3
     for page in timeline["pages"]:
         for event in page["events"]:
@@ -159,3 +164,56 @@ def test_independent_audit_corrects_word_span_with_internal_silence(tmp_path) ->
 
     assert adjusted == 1
     assert words[0]['start'] == 0.90
+
+
+def test_final_caption_reading_hold_is_clamped_to_media_end() -> None:
+    """R5 regression: a late ASR onset must not push the last cue past the film.
+
+    The final interaction cue keeps its original beat span even when independent
+    word timestamps move its onset later. Without the clamp the reading hold ran
+    past the end of the narration and the subtitle contract rejected the page.
+    """
+    from hevi.layer4_legacy.handdraw.scripts.independent_caption_alignment import (
+        _clamp_final_cue_hold,
+    )
+
+    planned = [
+        {"start": 1.0, "end": 3.2},
+        {"start": 3.4, "end": 7.7},
+        # Independent ASR moved the final onset to 63.38s but the original beat
+        # span kept a 2.662s hold, so it ended at 66.042s in a 65.913s film.
+        {"start": 63.38, "end": 66.042},
+    ]
+
+    removed = _clamp_final_cue_hold(planned, media_end=65.913)
+
+    assert removed == round(66.042 - 65.913, 6)
+    assert planned[-1]["start"] == 63.38
+    assert planned[-1]["end"] == 65.913
+    assert planned[-1]["start"] + 0.20 < planned[-1]["end"]
+
+
+def test_final_cue_hold_inside_media_is_left_untouched() -> None:
+    from hevi.layer4_legacy.handdraw.scripts.independent_caption_alignment import (
+        _clamp_final_cue_hold,
+    )
+
+    planned = [
+        {"start": 1.0, "end": 3.2},
+        {"start": 53.10, "end": 57.715},
+    ]
+
+    assert _clamp_final_cue_hold(planned, media_end=57.988) == 0.0
+    assert planned[-1]["end"] == 57.715
+
+
+def test_final_cue_hold_is_failing_closed_when_no_room_remains() -> None:
+
+    from hevi.layer4_legacy.handdraw.scripts.independent_caption_alignment import (
+        _clamp_final_cue_hold,
+    )
+
+    planned = [{"start": 65.90, "end": 66.042}]
+
+    with pytest.raises(RuntimeError, match="final caption cannot fit"):
+        _clamp_final_cue_hold(planned, media_end=65.913)
