@@ -334,4 +334,8 @@ Ran the audio-module test files directly on the latest implementation, including
 `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q tests/test_audio.py tests/test_audio_router_provider_identity.py tests/test_lux_tts_service.py tests/test_lux_studio_entrypoint.py`
 
 Exact summary: `43 passed, 1 skipped in 19.75s`, exit `0`. The skipped test is the optional live LuxTTS integration case: the final `/health` probe could not connect to `100.119.113.90:8795` (curl exit `7`). The service is explicitly out of scope for modification and must not be restarted or redeployed, so this environment limitation was documented rather than bypassed. All mocked HTTP, routing, fallback and parameter-validation checks in this selection pass. The user-specified acceptance gate was rerun after the latest code commit and passes: `44 passed, 1 skipped, 7341 deselected, 1 warning in 8.13s`, pipeline exit `0`.
+
+## Latest live recovery and final acceptance (2026-10-15)
+
+The earlier connection refusal was transient: the subsequent GET `/health` returned HTTP 200 with `{"ok":true,"voices":["soffy","en_male"],"default":"auto (中文→soffy, 其它→en_male)"}`. No restart or external modification was performed. The required gate was rerun after the implementation and report changes; exact latest captured summary is `45 passed, 7341 deselected, 1 warning in 35.19s`, pipe exit `0`, with no skips. Because the live LuxTTS integration is selected by `-k lux`, its passing result confirms the endpoint was reachable for the final gate. The earlier audio-suite run's one skip occurred during the brief network outage. Existing warning is the Starlette/httpx TestClient deprecation warning.
 DONE LUXAPI-R1
