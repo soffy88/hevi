@@ -82,7 +82,15 @@ class Capability:
             ) from exc
         try:
             jsonschema.validate(instance=params, schema=self.params_schema)
-        except Exception as exc:  # jsonschema.ValidationError subclasses Exception.
+        except jsonschema.ValidationError as exc:
+            # ``CapabilityError`` subclasses ``RuntimeError``; it is deliberately
+            # *not* a ``ValueError`` so callers cannot swallow it by accident.
+            # The message repeats jsonschema's own wording so parameter names
+            # (e.g. "format") and rejections ("unsupported") stay greppable.
+            raise CapabilityError(
+                f"capability {self.name}: invalid params: {exc.message}"
+            ) from exc
+        except Exception as exc:  # jsonschema.SchemaError and friends.
             raise CapabilityError(
                 f"capability {self.name}: invalid params: {exc}"
             ) from exc
@@ -295,6 +303,7 @@ register(
                 "params": {"type": "object"},
                 "format": {"type": "string", "enum": ["summary", "preview"]},
             },
+            "additionalProperties": False,
         },
         cpu_cost_hint=0.05,
         render=_render_ops_bridge,

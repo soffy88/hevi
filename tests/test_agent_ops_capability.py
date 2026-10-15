@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from hevi.capabilities.registry import get, list_capabilities, resolve
+from hevi.capabilities.registry import CapabilityError, get, list_capabilities, resolve
 from hevi.renderers.ffmpeg import resolve_ffprobe_bin
 from hevi.operations.in_memory import InMemoryGraphRepository, InMemoryTaskRepository
 from hevi.operations.bridge import OperationBridge, SqliteOperationsStore
@@ -43,12 +43,12 @@ def test_capability_schema_validation_rejects_invalid_params() -> None:
     assert cap.validate_params({"format": "preview"}) == {"format": "preview"}
     assert cap.validate_params({}) == {}
 
-    # 非法枚举值报错
-    with pytest.raises(ValueError, match="format"):
+    # 非法枚举值报错（统一 registry 契约：失败抛 CapabilityError，绝不返回假成功）
+    with pytest.raises(CapabilityError, match="format"):
         cap.validate_params({"format": "invalid_format"})
 
     # 多余未知参数报错
-    with pytest.raises(ValueError, match="unsupported"):
+    with pytest.raises(CapabilityError, match="Additional properties are not allowed"):
         cap.validate_params({"bogus_key": 123})
 
 
