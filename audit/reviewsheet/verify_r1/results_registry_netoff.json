@@ -1,0 +1,18 @@
+{
+ "network": "unreachable: [Errno 101] Network is unreachable",
+ "registered": [
+  "kids.annotation_revision",
+  "kids.render_local",
+  "kids.review_sheet",
+  "qa.kids_gate",
+  "qa.kids_gate.extended"
+ ],
+ "kids.review_sheet": {
+  "ok": true,
+  "res": "CapabilityResult(mp4=None, png='/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/registry_call/kids.review_sheet/review_sheet_9x16.png', wav=None, duration_s=4.0, sha256='', qa={'paths': {'9:16': '/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/registry_call/kids.review_sheet/review_sheet_9x16.png', '16:9': '/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet"
+ },
+ "kids.annotation_revision": {
+  "ok": true,
+  "res": "CapabilityResult(mp4=None, png=None, wav=None, duration_s=4.0, sha256='5b257ec19796fa9a83d6d1cc89e7f2b7acdd111d966558036051e93889aa3eb7', qa={'patch': {'shot_index': 3, 'from_revision': 0, 'changes': {'camera': 'push_in'}, 'advisory': [], 'source_refs': [], 'requires_temporal_range_clarification': False}, 'path': '/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/registry_call/kids"
+ }
+}

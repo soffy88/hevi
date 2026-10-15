@@ -1,0 +1,188 @@
+{
+ "schema_version": "1.0",
+ "project_id": "kids_fox_star",
+ "episode": 1,
+ "title": "小狐狸与星星",
+ "theme": {
+  "one_line": "分享让快乐变大"
+ },
+ "style_bible": {
+  "art_style": "圆润绘本",
+  "camera_language": "缓慢推近",
+  "color_grade": "暖色马卡龙",
+  "negative": "无暴力无快切"
+ },
+ "characters": [
+  {
+   "id": "char_fox",
+   "name": "小狐狸"
+  }
+ ],
+ "props": [
+  {
+   "id": "prop_star",
+   "fixed_description": "暖黄五角星",
+   "state": "constant"
+  }
+ ],
+ "scenes": [
+  {
+   "id": "scene_forest",
+   "palette": [
+    "#F7D774"
+   ]
+  }
+ ],
+ "transition_table": [
+  {
+   "cut": "S1->S2",
+   "technique": "fade"
+  },
+  {
+   "cut": "S2->S3",
+   "technique": "fade"
+  },
+  {
+   "cut": "S3->S4",
+   "technique": "fade"
+  },
+  {
+   "cut": "S4->S5",
+   "technique": "fade"
+  },
+  {
+   "cut": "S5->S6",
+   "technique": "fade"
+  }
+ ],
+ "spoken_language": [
+  {
+   "shot_index": 1,
+   "language": "zh-CN"
+  },
+  {
+   "shot_index": 2,
+   "language": "zh-CN"
+  },
+  {
+   "shot_index": 3,
+   "language": "zh-CN"
+  },
+  {
+   "shot_index": 4,
+   "language": "zh-CN"
+  },
+  {
+   "shot_index": 5,
+   "language": "zh-CN"
+  },
+  {
+   "shot_index": 6,
+   "language": "zh-CN"
+  }
+ ],
+ "shots": [
+  {
+   "shot_index": 1,
+   "duration": 4.0,
+   "line": "小狐狸抬头看夜空",
+   "camera": "缓慢推近",
+   "framing": "中景",
+   "shot_spec": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": "soft",
+    "sfx": [],
+    "camera": "slow_push_in",
+    "subtitle_style": "kids_large",
+    "duration": 4.0
+   }
+  },
+  {
+   "shot_index": 2,
+   "duration": 4.0,
+   "line": "星星眨眨眼睛",
+   "camera": "缓慢推近",
+   "framing": "中景",
+   "shot_spec": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": "soft",
+    "sfx": [],
+    "camera": "slow_push_in",
+    "subtitle_style": "kids_large",
+    "duration": 4.0
+   }
+  },
+  {
+   "shot_index": 3,
+   "duration": 4.0,
+   "line": "小狐狸找到一颗小星星",
+   "camera": "缓慢推近",
+   "framing": "中景",
+   "shot_spec": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": "soft",
+    "sfx": [],
+    "camera": "slow_push_in",
+    "subtitle_style": "kids_large",
+    "duration": 4.0
+   }
+  },
+  {
+   "shot_index": 4,
+   "duration": 4.0,
+   "line": "它把星星送给小兔子",
+   "camera": "缓慢推近",
+   "framing": "中景",
+   "shot_spec": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": "soft",
+    "sfx": [],
+    "camera": "slow_push_in",
+    "subtitle_style": "kids_large",
+    "duration": 4.0
+   }
+  },
+  {
+   "shot_index": 5,
+   "duration": 4.0,
+   "line": "大家一起笑了",
+   "camera": "缓慢推近",
+   "framing": "中景",
+   "shot_spec": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": "soft",
+    "sfx": [],
+    "camera": "slow_push_in",
+    "subtitle_style": "kids_large",
+    "duration": 4.0
+   }
+  },
+  {
+   "shot_index": 6,
+   "duration": 4.0,
+   "line": "分享让快乐变大",
+   "camera": "缓慢推近",
+   "framing": "中景",
+   "shot_spec": {
+    "template": null,
+    "transition_in": "fade",
+    "effect": "warm",
+    "style": "soft",
+    "sfx": [],
+    "camera": "slow_push_in",
+    "subtitle_style": "kids_large",
+    "duration": 4.0
+   }
+  }
+ ]
+}

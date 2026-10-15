@@ -1,0 +1,141 @@
+{
+ "render_v1": {
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/ep_v1.mp4",
+  "sha256": "8a29d05c3f0f0c75731676879c9e36828c7ec55d082db830f3447b12e5c573f6",
+  "shot_count": 6,
+  "total_duration": 24.0,
+  "width": 540,
+  "height": 960,
+  "probe": {
+   "programs": [],
+   "stream_groups": [],
+   "streams": [
+    {
+     "codec_name": "h264",
+     "codec_type": "video",
+     "width": 540,
+     "height": 960,
+     "r_frame_rate": "25/1"
+    },
+    {
+     "codec_name": "aac",
+     "codec_type": "audio",
+     "r_frame_rate": "0/0"
+    }
+   ],
+   "format": {
+    "duration": "24.000000"
+   }
+  }
+ },
+ "frames_v1": [
+  "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v1_t02.00.png",
+  "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v1_t09.00.png",
+  "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v1_t21.00.png"
+ ],
+ "sheets_v1": {
+  "9:16": {
+   "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/sheet_v1_9x16.png",
+   "sha256": "6da612153883a39aafaedafea8e5d8b4abfb2e6c3834e705ea81d9decb8508a6"
+  },
+  "16:9": {
+   "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/sheet_v1_16x9.png",
+   "sha256": "c521963a0040e9e7ea6e850b36fc87380e63f0893d6896d48a4e76cbea21799f"
+  }
+ },
+ "patch": {
+  "shot_index": 3,
+  "from_revision": 0,
+  "changes": {
+   "camera": "pan_right+push_in",
+   "effect": "vignette"
+  },
+  "advisory": [],
+  "source_refs": [
+   {
+    "asset": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v1_t09.00.png",
+    "sha256": "93cf6bb8f851aa55add96ad41d8c02b2058248e84582c7a8a058a4fe11b4cd6e",
+    "time_ms": 9500.0
+   }
+  ],
+  "requires_temporal_range_clarification": false
+ },
+ "patch_unmapped_fields_byte_equal": true,
+ "render_v2": {
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/ep_v2.mp4",
+  "sha256": "d428577cabf8f4b7a0b6b40d482f8cbff85d063173880855e9255d23eda43846",
+  "shot_count": 6,
+  "total_duration": 24.0,
+  "width": 540,
+  "height": 960,
+  "probe": {
+   "programs": [],
+   "stream_groups": [],
+   "streams": [
+    {
+     "codec_name": "h264",
+     "codec_type": "video",
+     "width": 540,
+     "height": 960,
+     "r_frame_rate": "25/1"
+    },
+    {
+     "codec_name": "aac",
+     "codec_type": "audio",
+     "r_frame_rate": "0/0"
+    }
+   ],
+   "format": {
+    "duration": "24.000000"
+   }
+  }
+ },
+ "frames_v2": [
+  "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v2_t02.00.png",
+  "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v2_t09.00.png",
+  "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v2_t21.00.png"
+ ],
+ "v1_v2_video_differs": true,
+ "s3_frame_mean_absdiff": 32.1147762345679,
+ "s3_corner_luma_v1_v2": [
+  145.0,
+  69.0075
+ ],
+ "s1_frame_mean_absdiff": 0.0,
+ "camera_only_patch_changes_render": false,
+ "render_deterministic": true,
+ "gate_ext": {
+  "status": "red",
+  "violations": [
+   "段间色温跳变 0.841（>0.25），疑似调色不连续 @9.00s"
+  ],
+  "warnings": [],
+  "timecodes": [
+   {
+    "item": "color_grade",
+    "time": 9.0,
+    "jump": 0.841132566822202
+   }
+  ],
+  "checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "fail",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  }
+ },
+ "gate_orig": {
+  "status": "ok",
+  "violations": []
+ }
+}
