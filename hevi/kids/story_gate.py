@@ -15,7 +15,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-from hevi.quality.kids_gate import FORBIDDEN_WORDS
+from hevi.quality.kids_gate import FORBIDDEN_WORDS, check_content_safety_text
 from hevi.narrative.continuity import ContinuityEngine
 from hevi.narrative.models import StoryBible, SceneBlueprint, SceneObjective, SceneObstacle, SceneTurn, SceneOutcome, Character as NarrativeCharacter
 
@@ -296,11 +296,11 @@ def _check_content_safety(story: StoryInput) -> list[Finding]:
     for loc, text in fields_to_check:
         if not text:
             continue
-        hits = [w for w in FORBIDDEN_WORDS if w in text]
+        hits = check_content_safety_text(text)
         if hits:
             findings.append(Finding(
                 "R8_CONTENT_SAFETY", "FAIL",
-                f"命中违规词表/安全红线：{sorted(set(hits))}",
+                f"命中违规词表/安全红线：{hits}",
                 loc,
             ))
     if not findings:

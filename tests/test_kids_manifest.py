@@ -209,6 +209,48 @@ def test_attach_to_task_shot_rows_strict_error() -> None:
         attach_to_task_shot_rows(manifest, [{"task_id": "t1", "shot_index": 99, "selection_json": {}}], strict=True)
 
 
+@pytest.mark.parametrize(
+    "text,expected_action",
+    [
+        ("小狐狸打开了门，向大家打招呼。", "PASS"),
+        ("大家一起打扫房间，把玩具放回篮子里。", "PASS"),
+        ("小狐狸打着小雨伞，走过彩色的小路。", "PASS"),
+        ("太阳公公出来啦，小狐狸热得出汗，喝了一大口水。", "PASS"),
+        ("小狐狸狠狠地揍了小兔子一顿，小兔子疼得大哭。", "FAIL"),
+        ("大家一起踢小松鼠，推他摔进泥坑里嘲弄他。", "FAIL"),
+        ("夜里怪兽把小朋友一口吞进肚子里，再也没有出来。", "FAIL"),
+        ("小熊偷偷在水里放了毒药，想让朋友们肚子疼。", "FAIL"),
+        ("小狐狸点燃炸弹，轰的一声把房子炸飞了。", "FAIL"),
+        ("陌生叔叔说跟我走吧，小狐狸没告诉爸爸妈妈就自己跟着他走了。", "FAIL"),
+        ("大家都骂小刺猬是傻瓜、胖子，没人愿意理他。", "FAIL"),
+        ("小狐狸不打人，也不骂人", "NON_FAIL"),
+        ("妈妈说不能跟陌生人走", "NON_FAIL"),
+    ],
+)
+def test_content_safety_parameterized(text: str, expected_action: str) -> None:
+    story = _load("story_fox_star.json")
+    story["beats"][3]["text"] = text
+    report = kids_story_gate(story)
+    if expected_action == "PASS":
+        r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+        assert len(r8_fails) == 0, f"Expected PASS for '{text}', got findings: {report.findings}"
+    elif expected_action == "FAIL":
+        r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+        assert len(r8_fails) > 0, f"Expected FAIL for '{text}', status was {report.status}"
+    else:  # NON_FAIL
+        r8_fails = [f for f in report.findings if f.rule == "R8_CONTENT_SAFETY" and f.severity == "FAIL"]
+        assert len(r8_fails) == 0, f"Expected NON_FAIL for negative context '{text}', got FAIL"
+
+
+def test_attach_to_task_shot_rows_strict_modes() -> None:
+    manifest = KidsConsistencyManifest.model_validate(_load("manifest_fox_star.json"))
+    with pytest.raises(ShotIndexMismatchError):
+        attach_to_task_shot_rows(manifest, [{"task_id": "t1", "shot_index": 99, "selection_json": {}}], strict=True)
+
+    res = attach_to_task_shot_rows(manifest, [{"task_id": "t1", "shot_index": 99, "selection_json": {}}], strict=False)
+    assert len(res) == 1
+
+
 def test_manifest_from_task_specs_missing_duration_raises() -> None:
     spec = to_task_specs(KidsConsistencyManifest.model_validate(_load("manifest_fox_star.json")))[1]
     spec.duration = None

@@ -358,7 +358,7 @@ def to_task_specs(manifest: KidsConsistencyManifest) -> dict[int, ShotSpec]:
 
 
 def attach_to_task_shot_rows(
-    manifest: KidsConsistencyManifest, shot_rows: list[dict[str, Any]], *, strict: bool = False
+    manifest: KidsConsistencyManifest, shot_rows: list[dict[str, Any]], *, strict: bool = True
 ) -> list[dict[str, Any]]:
     by_idx = {sh.shot_index: sh.shot_spec for sh in manifest.shots}
     out: list[dict[str, Any]] = []

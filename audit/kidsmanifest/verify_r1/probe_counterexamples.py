@@ -154,10 +154,11 @@ try:
     read_specs_from_task_shot_rows([bad_row]); rec("B3_bad_row", "行内非法 spec 回读须拒", "FAIL", "OK", "accepted")
 except Exception as e:
     rec("B3_bad_row", "行内非法 spec 回读须拒", "FAIL", "FAIL", type(e).__name__)
-# rows whose shot_index not in manifest get silently skipped?
-orphan = attach_to_task_shot_rows(mobj, [{"task_id": "verify", "shot_index": 99, "selection_json": {}}])
-rec("B4_orphan_row", "任务行 shot_index=99 不在 manifest（应报错/告警）", "FAIL_OR_WARN",
-    "OK" if orphan[0]["selection_json"] == {} else "?", "silently skipped" if orphan[0]["selection_json"] == {} else orphan)
+try:
+    attach_to_task_shot_rows(mobj, [{"task_id": "verify", "shot_index": 99, "selection_json": {}}], strict=True)
+    rec("B4_orphan_row", "任务行 shot_index=99 不在 manifest（默认 strict 应报错）", "FAIL_OR_WARN", "OK", "silently skipped")
+except Exception as e:
+    rec("B4_orphan_row", "任务行 shot_index=99 不在 manifest（默认 strict 应报错）", "FAIL_OR_WARN", "FAIL", type(e).__name__)
 
 # ---- registry ----
 cap = get("kids.consistency_manifest")

@@ -20,14 +20,71 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-FORBIDDEN_WORDS = [
-    "打", "杀", "死", "刀", "枪", "血", "血腥", "尸体", "杀死", "杀害",
-    "恐吓", "吓唬", "恐怖", "吓人", "噩梦",
-    "笨", "蠢", "丑", "废物", "嘲笑", "羞辱",
-    "玩火", "爬窗", "独自外出",
-    "可口可乐", "麦当劳", "nike", "肯德基",
-    "喝酒", "啤酒", "白酒", "抽烟", "香烟", "烟草", "恋爱", "谈恋爱", "亲嘴", "亲吻", "赌博"
-]
+def load_safety_rules() -> dict[str, Any]:
+    try:
+        path = Path(__file__).parent.parent / "kids" / "data" / "kids_safety_rules.json"
+        if not path.exists():
+            path = Path("hevi/kids/data/kids_safety_rules.json")
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {"whitelist": [], "categories": {}, "negative_modifiers": ["不", "没", "别", "不要", "不能"]}
+
+
+def _load_forbidden_words_flat() -> list[str]:
+    rules = load_safety_rules()
+    words = []
+    for cat, plist in rules.get("categories", {}).items():
+        words.extend(plist)
+    if not words:
+        words = ["杀", "死", "毒药", "炸弹"]
+    return words
+
+
+FORBIDDEN_WORDS = _load_forbidden_words_flat()
+
+
+def check_content_safety_text(text: str) -> list[str]:
+    rules = load_safety_rules()
+    whitelist = rules.get("whitelist", [])
+    categories = rules.get("categories", {})
+    neg_mods = rules.get("negative_modifiers", ["不", "没", "别", "不要", "不能"])
+
+    found_violations = []
+
+    for cat_name, phrases in categories.items():
+        for phrase in phrases:
+            if phrase in text:
+                if phrase in whitelist:
+                    continue
+                
+                is_whitelisted = False
+                for w in whitelist:
+                    if phrase in w and w in text:
+                        is_whitelisted = True
+                        break
+                if is_whitelisted:
+                    continue
+
+                has_negative = False
+                idx = text.find(phrase)
+                while idx != -1:
+                    window_start = max(0, idx - 6)
+                    window_end = min(len(text), idx + len(phrase) + 6)
+                    window_text = text[window_start:window_end]
+                    if any(neg in window_text for neg in neg_mods):
+                        has_negative = True
+                        break
+                    idx = text.find(phrase, idx + 1)
+                
+                if has_negative:
+                    continue
+
+                found_violations.append(phrase)
+
+    return sorted(set(found_violations))
+
 
 
 @dataclass
@@ -289,11 +346,7 @@ def check_dialogue_content(text_or_path: Path | str) -> GateResult:
     else:
         content = str(text_or_path)
 
-    found = []
-    for w in FORBIDDEN_WORDS:
-        if w in content:
-            found.append(w)
-
+    found = check_content_safety_text(content)
     res.metrics["forbidden_words_found"] = found
     if found:
         res.passed = False
