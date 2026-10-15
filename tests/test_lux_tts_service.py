@@ -124,3 +124,10 @@ def test_live_luxtts_http_integration_or_skip(tmp_path: Path) -> None:
     info = json.loads(metadata.read_text(encoding="utf-8"))
     assert info["sentences"][0]["voice"] == "soffy"
     assert info["sentences"][0]["gen_seconds"] >= 0
+
+
+def test_health_probe_invalid_url_returns_false_for_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HEVI_LUXTTS_URL", "file:///not-an-http-endpoint")
+    assert lux.lux_tts_available() is False

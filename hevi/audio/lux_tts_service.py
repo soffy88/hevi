@@ -55,7 +55,10 @@ def lux_tts_available() -> bool:
         _get_health_payload()
         return True
     except Exception as exc:
-        logger.warning("LuxTTS HTTP health unavailable at %s: %s", _base_url(), exc)
+        # Do not re-validate the URL while handling a URL-validation error. A bad
+        # HEVI_LUXTTS_URL must be treated like an unavailable service so callers
+        # can reliably take their configured fallback path.
+        logger.warning("LuxTTS HTTP health unavailable: %s", exc)
         return False
 
 
@@ -215,7 +218,7 @@ async def synth_with_luxtts(
         if index < len(sentences):
             cursor += gap_ms / 1000.0
 
-    silence = b"\x00\x00" * int(round(sample_rate * gap_ms / 1000.0))
+    silence = b"\x00\x00" * round(sample_rate * gap_ms / 1000.0)
     with wave.open(str(output_path), "wb") as output:
         output.setnchannels(1)
         output.setsampwidth(2)

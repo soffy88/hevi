@@ -213,4 +213,17 @@ After the repeated related-suite run, re-ran the dedicated live integration test
 - Endpoint health returned HTTP 200 and voices `soffy` and `en_male`.
 
 No further product-code changes were indicated by this verification. Existing unrelated untracked paths remain untouched and unstaged.
+
+## Continuation — endpoint-configuration fallback hardening (2026-10-15)
+
+A fresh edge-case review found that `lux_tts_available()` could raise instead of returning `False` when `HEVI_LUXTTS_URL` was malformed: its exception handler called `_base_url()` again while trying to log the original validation error. This could disrupt callers that rely on the health probe to choose the configured fallback. The logger now reports the health failure without re-validating the URL; an invalid-URL regression test confirms the probe reliably returns `False`. Also removed a redundant `int()` around `round()` identified by Ruff (`RUF046`) in the same client module.
+
+Verification after these changes:
+
+- Health-probe tests: `2 passed, 4 deselected in 0.05s`.
+- Complete task-relevant audio/LuxTTS/entrypoint/explainer/dialogue/Studio/history/coverage regression: `239 passed, 34 warnings in 7.91s`, exit code 0. The live LuxTTS integration test ran in this suite without skipping.
+- Ruff check for `hevi/audio/lux_tts_service.py` and `tests/test_lux_tts_service.py`: `All checks passed!`.
+- `git diff --check`: passed.
+
+The warnings are existing deprecations in Pydantic validation and covered schema/checkpoint paths. No changes were made outside the LuxAPI client and its tests. The required final acceptance command is executed again after committing this continuation.
 DONE LUXAPI-R1
