@@ -181,6 +181,8 @@ async def test_run_task_success(task_service, repository, tmp_path: Path):
             character_reference=ANY,  # 角色库:按 subject_id 解析的参考图(此处 None)
             subject_version=ANY,  # shot_verdict 版本快照(此处 None,无 subject_id)
             workspace_id="test-tenant",  # P0-4.1:tenant,由 admission seam 读取
+            task_id=ANY,
+            repository=ANY,
         )
 
 
