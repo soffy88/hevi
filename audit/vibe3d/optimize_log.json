@@ -1,0 +1,185 @@
+{
+  "count": 8,
+  "total_before_bytes": 8456432,
+  "total_after_bytes": 3612988,
+  "total_before_triangles": 145200,
+  "total_after_triangles": 76066,
+  "results": [
+    {
+      "asset_id": "building-03-boulangerie",
+      "source_path": "assets/scene3d/source/building-03-boulangerie.glb",
+      "output_path": "assets/scene3d/cache/building-03-boulangerie-fe63dd410fdd4e26.glb",
+      "ratio": 0.45,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 16696,
+        "vertices": 16723,
+        "size_bytes": 581320,
+        "max_texture_dim": 512
+      },
+      "after": {
+        "triangles": 7504,
+        "vertices": 10286,
+        "size_bytes": 397384,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.5506,
+      "optimized_sha256": "3e7571d15e9ba4aa5cf1437f297a7996f0e620767a7d5bd8643975ceada652b4"
+    },
+    {
+      "asset_id": "building-08-metro",
+      "source_path": "assets/scene3d/source/building-08-metro.glb",
+      "output_path": "assets/scene3d/cache/building-08-metro-f61770e794b520c6.glb",
+      "ratio": 0.45,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 17849,
+        "vertices": 16679,
+        "size_bytes": 580524,
+        "max_texture_dim": 512
+      },
+      "after": {
+        "triangles": 7989,
+        "vertices": 9962,
+        "size_bytes": 386916,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.5524,
+      "optimized_sha256": "bb69629da5ee2b47e99c1e3d17e630fc43880facec55eb1d12654775e4476720"
+    },
+    {
+      "asset_id": "car-01-taxi",
+      "source_path": "assets/scene3d/source/car-01-taxi.glb",
+      "output_path": "assets/scene3d/cache/car-01-taxi-ac05e2c14d1efc84.glb",
+      "ratio": 0.25,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 18083,
+        "vertices": 12555,
+        "size_bytes": 499388,
+        "max_texture_dim": 512
+      },
+      "after": {
+        "triangles": 4451,
+        "vertices": 4267,
+        "size_bytes": 251756,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.7539,
+      "optimized_sha256": "9a28882b7582525adc9cc4aa2713ee3acd1fa6103d8f0508a252ae51947f2eb9"
+    },
+    {
+      "asset_id": "pedestrian-01-walk-anim",
+      "source_path": "assets/scene3d/source/pedestrian-01-walk-anim.glb",
+      "output_path": "assets/scene3d/cache/pedestrian-01-walk-anim-c0c50a36f05082d8.glb",
+      "ratio": 0.25,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 19594,
+        "vertices": 12043,
+        "size_bytes": 1385128,
+        "max_texture_dim": 1024
+      },
+      "after": {
+        "triangles": 19594,
+        "vertices": 12043,
+        "size_bytes": 897128,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.0,
+      "optimized_sha256": "d2c611e8dba305e4264bb7ac88a5d825562a27acb97601f55da763071cfb1cd7"
+    },
+    {
+      "asset_id": "prop-02-bench",
+      "source_path": "assets/scene3d/source/prop-02-bench.glb",
+      "output_path": "assets/scene3d/cache/prop-02-bench-7a56557b83f38cc3.glb",
+      "ratio": 0.25,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 16320,
+        "vertices": 11545,
+        "size_bytes": 462508,
+        "max_texture_dim": 512
+      },
+      "after": {
+        "triangles": 4038,
+        "vertices": 3964,
+        "size_bytes": 237216,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.7526,
+      "optimized_sha256": "88508bf48ae89b4d86922dc490f4c85c99e2bfaee05da2161419f81ceca684ae"
+    },
+    {
+      "asset_id": "prop-06-pigeon-flock",
+      "source_path": "assets/scene3d/source/prop-06-pigeon-flock.glb",
+      "output_path": "assets/scene3d/cache/prop-06-pigeon-flock-0cdcbffb8375beec.glb",
+      "ratio": 0.25,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 19864,
+        "vertices": 13885,
+        "size_bytes": 1373904,
+        "max_texture_dim": 1024
+      },
+      "after": {
+        "triangles": 4953,
+        "vertices": 4973,
+        "size_bytes": 269552,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.7507,
+      "optimized_sha256": "28e3abfe96af64be68abc29603f21578a7bc694abf51671a08b1fc00c48e4cdf"
+    },
+    {
+      "asset_id": "tree-01-plane-green",
+      "source_path": "assets/scene3d/source/tree-01-plane-green.glb",
+      "output_path": "assets/scene3d/cache/tree-01-plane-green-1baa77050c6cc67f.glb",
+      "ratio": 0.75,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 18414,
+        "vertices": 20490,
+        "size_bytes": 1642488,
+        "max_texture_dim": 1024
+      },
+      "after": {
+        "triangles": 13787,
+        "vertices": 17533,
+        "size_bytes": 551644,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.2513,
+      "optimized_sha256": "9c3c3ee4457786a59a1b20559bccbe3df77bf89380eeb8110f1cb0e79bd44858"
+    },
+    {
+      "asset_id": "tree-02-plane-autumn",
+      "source_path": "assets/scene3d/source/tree-02-plane-autumn.glb",
+      "output_path": "assets/scene3d/cache/tree-02-plane-autumn-ef1d6dd177ba11e1.glb",
+      "ratio": 0.75,
+      "texture_target": 512,
+      "cache_hit": false,
+      "before": {
+        "triangles": 18380,
+        "vertices": 21663,
+        "size_bytes": 1931172,
+        "max_texture_dim": 1024
+      },
+      "after": {
+        "triangles": 13750,
+        "vertices": 18599,
+        "size_bytes": 621392,
+        "max_texture_dim": 512
+      },
+      "triangle_reduction": 0.2519,
+      "optimized_sha256": "01c9bbafbeb39d8a6032c6de1ea62e9c5388bfc313bd59e06f35b9f2b20ff127"
+    }
+  ]
+}

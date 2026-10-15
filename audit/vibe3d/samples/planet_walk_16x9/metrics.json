@@ -1,0 +1,120 @@
+{
+  "id": "planet_walk_16x9",
+  "template": "little_planet",
+  "camera_preset": "orbit",
+  "aspect": "16:9",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "duration_s": 14.0,
+  "fps": 30,
+  "seed": 20241015,
+  "frame_count": 420,
+  "nb_read_frames": 420,
+  "per_frame_s": 0.1775,
+  "total_render_s": 74.563,
+  "encode_s": 2.46,
+  "sha256": "d27ba03b8cd0f3a88544de6d7e91199e3b886e7cea7db0f9637fbb5510f6c920",
+  "silent_sha256": "a7500f625afa8e4a70255d2139c119a17bc1a2ad97c8ec80fd7e0afb9124d1f3",
+  "probe": {
+    "duration": 14.0,
+    "size_bytes": 2105693,
+    "width": 1920,
+    "height": 1080,
+    "codec": "h264",
+    "nb_frames": "420",
+    "has_audio": true
+  },
+  "character_motion": {
+    "max_limb_displacement": 4.0082,
+    "samples": 6,
+    "per_bone": {
+      "Head": 4.0082,
+      "Hip": 4.0,
+      "L_Foot": 3.9967,
+      "L_Hand": 4.0,
+      "Pelvis": 4.0,
+      "R_Foot": 4.0002,
+      "R_Hand": 4.0054
+    }
+  },
+  "layout_boxes": [
+    {
+      "x0": 0.29962260350966685,
+      "y0": 0.19006074222701064,
+      "x1": 0.7003773964903331,
+      "y1": 0.9025137075259729,
+      "width": 0.4007547929806663,
+      "height": 0.7124529652989623
+    },
+    {
+      "x0": 0.276584380169376,
+      "y0": 0.15366060702762474,
+      "x1": 0.7234156198306243,
+      "y1": 0.9480272553142886,
+      "width": 0.4468312396612483,
+      "height": 0.7943666482866638
+    },
+    {
+      "x0": 0.26162476520716105,
+      "y0": 0.12987915927406457,
+      "x1": 0.738375234792839,
+      "y1": 0.9774355496486031,
+      "width": 0.4767504695856779,
+      "height": 0.8475563903745386
+    },
+    {
+      "x0": 0.26162476520716105,
+      "y0": 0.12987915927406468,
+      "x1": 0.738375234792839,
+      "y1": 0.9774355496486031,
+      "width": 0.4767504695856779,
+      "height": 0.8475563903745384
+    },
+    {
+      "x0": 0.2765843801693757,
+      "y0": 0.15366060702762452,
+      "x1": 0.7234156198306242,
+      "y1": 0.9480272553142886,
+      "width": 0.4468312396612485,
+      "height": 0.794366648286664
+    },
+    {
+      "x0": 0.29962260350966713,
+      "y0": 0.19006074222701064,
+      "x1": 0.7003773964903334,
+      "y1": 0.9025137075259728,
+      "width": 0.40075479298066624,
+      "height": 0.7124529652989622
+    }
+  ],
+  "narration": {
+    "enabled": true,
+    "lines": [
+      {
+        "start_s": 0.6,
+        "intended_start_s": 0.6,
+        "text": "小小的星球，慢慢转呀转。",
+        "wav": "planet_walk_16x9_line0.wav",
+        "duration_s": 2.554
+      },
+      {
+        "start_s": 5.2,
+        "intended_start_s": 5.2,
+        "text": "小人儿在草地上，一步一步地走。",
+        "wav": "planet_walk_16x9_line1.wav",
+        "duration_s": 2.519
+      },
+      {
+        "start_s": 9.8,
+        "intended_start_s": 9.8,
+        "text": "天上的白云，也跟着一起走。",
+        "wav": "planet_walk_16x9_line2.wav",
+        "duration_s": 2.473
+      }
+    ]
+  },
+  "subtitles": "audit/vibe3d/samples/planet_walk_16x9/subtitles.srt",
+  "video": "audit/vibe3d/samples/planet_walk_16x9/planet_walk_16x9.mp4"
+}

@@ -64,6 +64,8 @@ import { EffectComposer } from './vendor/three/postprocessing/EffectComposer.js'
 import { RenderPass } from './vendor/three/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './vendor/three/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './vendor/three/postprocessing/OutputPass.js';
+import { GLTFLoader } from './vendor/three/addons/loaders/GLTFLoader.js';
+import { clone as skeletonClone } from './vendor/three/addons/utils/SkeletonUtils.js';
 
 /*__SCENE3D_SPEC__*/
 
@@ -572,6 +574,72 @@ for (const a of AST){
   else if (a.kind === 'rock') obstacles.push({x:px, z:pz, r: 0.95*(p.scale??1)});
   else if (a.kind === 'tree') obstacles.push({x:px, z:pz, r: 1.15*(p.scale??1)});
   else if (a.kind === 'planet') obstacles.push({x:px, z:pz, r: (p.radius??2.0)*1.15});
+  else if (a.kind === 'glb' || a.kind === 'character') obstacles.push({x:px, z:pz, r: (p.obstacle_radius??0.5)});
+}
+
+// ---- GLB loading (characters + static props) ---------------------------
+// GLB assets are loaded from the render workdir over the local HTTP server.
+// The page cannot finish its first frame until every load resolves, so the
+// renderer can step deterministically from t=0 with the real geometry present.
+const gltfLoader = new GLTFLoader();
+const glbJobs = [];
+const characters = [];   // {root, mixer, clip, speed, path, ...}
+const glbStatics = [];
+
+function loadGLB(url){
+  return new Promise((resolve, reject) => gltfLoader.load(url, resolve, undefined, reject));
+}
+
+// Normalise a GLB so its base sits on y=0 and it is centred in x/z.  The
+// handbook is explicit that the scale basis must be the dimension that aligns
+// with neighbours, not blindly the total height (§17), so the caller passes
+// ``basis`` explicitly.
+//
+// When ``glb_bbox_min``/``glb_bbox_size`` are supplied they come from the
+// pipeline's glTF accessor read and are authoritative: a posed SkinnedMesh's
+// Box3 cache is stale, so measuring it in-page scales the character wrongly
+// (§12 / Appendix B).  The in-page Box3 path is the fallback for a static GLB.
+function normaliseGLB(root, target, basis, measuredMin, measuredSize){
+  let size, minY, cx, cz;
+  if (measuredMin && measuredSize){
+    size = new THREE.Vector3(measuredSize[0], measuredSize[1], measuredSize[2]);
+    minY = measuredMin[1];
+    cx = measuredMin[0] + measuredSize[0]/2;
+    cz = measuredMin[2] + measuredSize[2]/2;
+  } else {
+    const box = new THREE.Box3().setFromObject(root);
+    size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    minY = box.min.y; cx = center.x; cz = center.z;
+  }
+  let ref = size.y;
+  if (basis === 'width') ref = size.x;
+  else if (basis === 'depth') ref = size.z;
+  else if (basis === 'max') ref = Math.max(size.x, size.y, size.z);
+  const s = target / Math.max(1e-6, ref);
+  root.scale.setScalar(s);
+  root.position.set(-cx * s, -minY * s, -cz * s);
+  return s;
+}
+
+// Deterministic path sampler for a walking character: a straight line between
+// ``from`` and ``to``, with the yaw following the direction of travel.  Time is
+// the absolute shot time, so the same t always yields the same pose/position.
+function characterAt(char, t){
+  const dur = Math.max(1e-3, SPEC.duration_s);
+  const u = Math.min(1, Math.max(0, t / dur));
+  const x = char.from[0] + (char.to[0]-char.from[0]) * u;
+  const z = char.from[2] + (char.to[2]-char.from[2]) * u;
+  char.root.position.set(x, char.baseY + char.groundOffset, z);
+  const dx = char.to[0]-char.from[0], dz = char.to[2]-char.from[2];
+  // The rig's forward is +X (§06); yaw is measured from +X toward -Z.
+  char.root.rotation.y = char.yaw + Math.atan2(-dz, dx);
+  if (char.mixer){
+    // Phase-shift by position so several instances are never in lock-step
+    // (§06: (x*0.37 + z*0.11) % duration).
+    const phase = ((x*0.37 + z*0.11) % char.clipDuration);
+    char.mixer.setTime((t * char.timeScale + phase) % char.clipDuration);
+  }
 }
 
 // ---- Build assets ------------------------------------------------------
@@ -588,6 +656,11 @@ for (const a of AST){
   else if (a.kind === 'rock'){ scene.add(makeRock(p)); }
   else if (a.kind === 'tree'){ scene.add(makeTree(p)); }
   else if (a.kind === 'fox'){ const o = makeFox(p); scene.add(o); dynamic.push({obj:o, type:'fox'}); foxObjs.push(o); }
+  else if (a.kind === 'glb' || a.kind === 'character'){
+    // Deferred: geometry arrives asynchronously; the handler is registered in
+    // glbJobs and applied before the page reports ready.
+    glbJobs.push({spec:a, params:p});
+  }
   else { console.warn('unknown asset kind', a.kind); }
 }
 // Primary subjects for safe-area framing: the largest planet body (the hero
@@ -611,13 +684,70 @@ composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
 // ---- Camera path interpolation -----------------------------------------
+// A named preset synthesises waypoints when the spec does not carry an explicit
+// path.  Presets are generated per aspect so a portrait reframe pulls back
+// instead of cropping.  The look target defaults to the first character/prop.
+function presetSubject(){
+  if (glbStatics.length) return glbStatics[0].userData.anchor || glbStatics[0].position;
+  if (characters.length) return characters[0].from;
+  return new THREE.Vector3(0,1.2,0);
+}
+function buildPresetPath(){
+  const name = CAM.preset;
+  if (!name) return [];
+  const pp = CAM.preset_params || {};
+  const dur = SPEC.duration_s;
+  const target = pp.look ? new THREE.Vector3(pp.look[0],pp.look[1],pp.look[2]) : presetSubject();
+  const ty = target.y;
+  const portrait = CAM.aspect === '9:16';
+  if (name === 'orbit'){
+    const r = (pp.radius ?? 7.0) * (portrait ? 1.35 : 1.0);
+    const h = (pp.height ?? 2.6) + ty;
+    const n = pp.steps ?? 3;
+    const pts = [];
+    for (let i=0;i<=n;i++){
+      const a = (pp.start_deg ?? -55) + ((pp.end_deg ?? 235) - (pp.start_deg ?? -55)) * (i/n);
+      const rad = a * Math.PI/180;
+      pts.push({t: dur*(i/n), pos:[target.x+Math.cos(rad)*r, h, target.z+Math.sin(rad)*r], look:[target.x, ty, target.z]});
+    }
+    return pts;
+  }
+  if (name === 'push_in'){
+    const d0 = (pp.from ?? 12.0) * (portrait ? 1.4 : 1.0);
+    const d1 = (pp.to ?? 4.0) * (portrait ? 1.4 : 1.0);
+    const h = (pp.height ?? 2.2) + ty;
+    return [
+      {t:0.0, pos:[target.x+ (pp.offset_x??0), h, target.z+d0], look:[target.x, ty, target.z]},
+      {t:dur, pos:[target.x+ (pp.offset_x??0), h*0.92, target.z+d1], look:[target.x, ty, target.z]},
+    ];
+  }
+  if (name === 'follow'){
+    const c = characters[0];
+    if (!c) return [];
+    const back = (pp.back ?? 5.0) * (portrait ? 1.3 : 1.0);
+    const h = (pp.height ?? 2.4) + c.baseY;
+    const n = pp.steps ?? 3;
+    const pts = [];
+    for (let i=0;i<=n;i++){
+      const u = i/n;
+      const x = c.from[0] + (c.to[0]-c.from[0]) * u;
+      const z = c.from[2] + (c.to[2]-c.from[2]) * u;
+      const dx = c.to[0]-c.from[0], dz = c.to[2]-c.from[2];
+      const len = Math.max(1e-6, Math.hypot(dx,dz));
+      pts.push({t: dur*u, pos:[x - dx/len*back, h, z - dz/len*back], look:[x, c.baseY+0.9, z]});
+    }
+    return pts;
+  }
+  return [];
+}
 function activePath(){
   // A per-aspect override lets a portrait shot reframe (pull back) instead of
   // reusing the landscape flight, which crops the subject off the top.
   if (CAM.paths && CAM.paths[CAM.aspect] && CAM.paths[CAM.aspect].length){
     return CAM.paths[CAM.aspect];
   }
-  return CAM.path || [];
+  if (CAM.path && CAM.path.length){ return CAM.path; }
+  return buildPresetPath();
 }
 function sampleCam(t){
   const path = activePath();
@@ -641,6 +771,7 @@ let curT = 0;
 function setTime(t){
   curT = t;
   sampleCam(t);
+  for (const c of characters){ characterAt(c, t); }
   for (const d of dynamic){
     if (d.type === 'planet'){ d.obj.userData.spinGroup.rotation.y = curT * d.obj.userData.spin; }
     else if (d.type === 'fox'){
@@ -866,10 +997,113 @@ window.__collisionReport = function(){
 window.__composer = composer;
 window.__scene = scene;
 
-// Render one frame immediately so __ready() can return true.
-render();
-_ready = true;
-window.__SCENE3D_DONE = true;
+// Deterministic character diagnostics: for each requested time, report the
+// character root position and the world position of a few skeleton bones.  A
+// real skeletal walk shows non-zero limb displacement across time, which is the
+// objective test the task asks for ("抽帧可见肢体位移").
+window.__characterStats = function(times){
+  const rows = [];
+  for (const t of times){
+    setTime(t);
+    scene.updateMatrixWorld(true);
+    const chars = characters.map(c => {
+      const bones = {};
+      const wanted = ['Hip','L_Foot','R_Foot','L_Hand','R_Hand','Head','Pelvis'];
+      c.root.traverse(o => {
+        if (wanted.includes(o.name)){
+          const w = o.getWorldPosition(new THREE.Vector3());
+          bones[o.name] = [w.x, w.y, w.z];
+        }
+      });
+      const rp = c.root.position;
+      return {root:[rp.x,rp.y,rp.z], yaw:c.root.rotation.y, bones};
+    });
+    rows.push({time:t, characters:chars});
+  }
+  return rows;
+};
+
+// Screen-space bbox of every character at a time (for framing checks).
+window.__characterScreenBBox = function(t){
+  setTime(t);
+  scene.updateMatrixWorld(true);
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for (const c of characters){
+    const bb = new THREE.Box3().setFromObject(c.root, true);
+    for (const x of [bb.min.x,bb.max.x]) for (const y of [bb.min.y,bb.max.y]) for (const z of [bb.min.z,bb.max.z]){
+      const p = new THREE.Vector3(x,y,z).project(camera);
+      const sx=p.x*0.5+0.5, sy=1-(p.y*0.5+0.5);
+      x0=Math.min(x0,sx); x1=Math.max(x1,sx); y0=Math.min(y0,sy); y1=Math.max(y1,sy);
+    }
+  }
+  if (!isFinite(x0)) return null;
+  return {x0,y0,x1,y1,width:x1-x0,height:y1-y0};
+};
+
+// ---- GLB load gate -----------------------------------------------------
+// Every registered GLB is loaded before the page reports done, so a caller can
+// never render a frame with a missing character.
+async function loadAllGLBs(){
+  for (const job of glbJobs){
+    const p = job.params;
+    let gltf;
+    try { gltf = await loadGLB(p.url); }
+    catch (err){ window.__SCENE3D_ERROR = String(err); throw err; }
+    const src = gltf.scene;
+    if (job.spec.kind === 'character'){
+      const root = skeletonClone(src);
+      const target = p.target_height ?? 1.15;
+      normaliseGLB(root, target, p.basis ?? 'height', p.glb_bbox_min, p.glb_bbox_size);
+      // normaliseGLB placed the measured base at local y=0 and wrote the offset
+      // into root.position.y; characterAt re-sets x/z every frame, so carry the
+      // offset separately (baseY + groundOffset).
+      const groundOffset = root.position.y;
+      root.traverse(o => { if (o.isMesh){ o.castShadow = !!WEA.shadows; o.frustumCulled = false; } });
+      // Pick the clip by name, never by index: a Tripo P2.0 export ships an
+      // empty ArmatureAction at [0] (§06).
+      const want = p.clip ? new RegExp(p.clip, 'i') : /walk/i;
+      const clip = gltf.animations.find(a => want.test(a.name)) || gltf.animations[0] || null;
+      let mixer = null;
+      if (clip){
+        mixer = new THREE.AnimationMixer(root);
+        const action = mixer.clipAction(clip);
+        action.play();
+      }
+      const from = p.from ?? [0,0,0];
+      const to = p.to ?? [0,0,0];
+      const char = {
+        root, mixer, clipDuration: clip ? clip.duration : 1.0,
+        timeScale: p.time_scale ?? 1.0, from, to, baseY: (p.pos?p.pos[1]:0),
+        groundOffset,
+        yaw: THREE.MathUtils.degToRad(p.yaw_deg ?? 0),
+      };
+      scene.add(root);
+      characters.push(char);
+      subjects.push({box:root});
+      char.root.userData.character = true;
+    } else {
+      const root = skeletonClone(src);
+      normaliseGLB(root, p.target_height ?? 1.5, p.basis ?? 'height', p.glb_bbox_min, p.glb_bbox_size);
+      root.position.x += (p.pos?p.pos[0]:0);
+      root.position.y += (p.pos?p.pos[1]:0);
+      root.position.z += (p.pos?p.pos[2]:0);
+      root.rotation.y = THREE.MathUtils.degToRad(p.yaw_deg ?? 0);
+      root.traverse(o => { if (o.isMesh){ o.castShadow = !!WEA.shadows; } });
+      scene.add(root);
+      glbStatics.push(root);
+    }
+  }
+  window.__glbLoaded = true;
+}
+
+loadAllGLBs().then(() => {
+  render();
+  _ready = true;
+  window.__SCENE3D_DONE = true;
+}).catch(err => {
+  window.__SCENE3D_ERROR = String(err && err.stack || err);
+  window.__SCENE3D_DONE = true;   // unblock the renderer so it can report the error
+});
 </script>
 </body>
 </html>

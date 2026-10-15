@@ -61,3 +61,26 @@ Sweety Handdraw Video
   local hand-drawn video assets under hevi/layer4_legacy/handdraw/. Consult the
   accompanying vendored license and provenance records for the component-specific
   copyright, license terms, and source attribution.
+
+---
+
+## VIBE3D-R1：3D Vibe Coding 手册（scene3d 线）
+
+`docs/SCENE3D_VIBE_RULES.md`、`hevi/scene3d/assets_pipeline/` 与
+`assets/scene3d/` 内化了 **花叔《3D Vibe Coding 手册》v260914c** 的方法：
+
+- 上游仓库：https://github.com/alchaincyf/3d-vibe-coding-handbook
+- 许可：**CC BY-NC-SA 4.0**（署名 · 非商业 · 相同方式共享）
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+- 作者：花叔（AI Native Coder）
+- 只读参考副本（未入库）：`/data/soffy/refs/3d-vibe-coding-handbook`、
+  `/data/soffy/refs/3d-vibe-assets/`
+
+`assets/scene3d/` 下提交的 GLB 来自该手册随书资源包（05 绑骨与动画、
+03 巴黎街景-512 与植被街具），逐件 SHA-256 / 规格 / 署名见
+`assets/scene3d/manifest.json` 与 `assets/scene3d/ATTRIBUTION.md`。
+`hevi/scene3d/assets_pipeline` 为独立实现（只借鉴方法，未复制其脚本源码）；
+`docs/SCENE3D_VIBE_RULES.md` 为按章节标注的方法提炼。
+
+**未**使用手册中需付费 API 的部分（Tripo / GPT 等），全书价格与积分结论不抄。
+小王子角色模型按上游口径（形象权未清）不随包分发，我们也没有使用。
