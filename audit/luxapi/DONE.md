@@ -174,27 +174,22 @@ Result: pipeline exit code `0`; exact captured pytest summary: `27 passed, 7341 
 
 The complete relevant regression sweep remains `203 passed in 6.96s`. No LuxAPI code changes were necessary after these checks. The KIDS_ANIME_DIRECTION.md and CAPABILITY_CONTRACT.md references remain absent from this isolated worktree; no files outside this worktree were read or changed.
 
-## Continuation — audio-router default-provider regression (2026-10-15)
+## Continuation — provider identity fix, live integration and final acceptance (2026-10-15)
 
-The repository-wide diagnostic surfaced one deterministic audio-router contract-test failure: `tests/test_coverage_contracts.py::test_audio_router_selects_styles_and_stitches_single_segment` mocked CosyVoice and Voicebox but did not pin the requested providers. Since this task intentionally changes the production default provider to LuxTTS, the test's mock result was correctly labelled as a substitution. The test now explicitly sets `HEVI_TTS_FORMAL_PROVIDER=cosyvoice` and `HEVI_TTS_CONVERSATIONAL_PROVIDER=voicebox` through pytest's `monkeypatch`; this isolates its style-routing contract without changing the production LuxTTS defaults.
+The broad diagnostic found one deterministic contract-test regression in `tests/test_coverage_contracts.py::test_audio_router_selects_styles_and_stitches_single_segment`: its CosyVoice/Voicebox stubs were active while the production default requested LuxTTS. The test now explicitly pins the two requested providers via pytest `monkeypatch`, preserving the production LuxTTS defaults and correctly isolating the style-routing behavior.
 
-- Targeted regression: `1 passed in 0.70s`.
-- Expanded audio/LuxTTS/story/render/Studio/history/coverage regression set: `238 passed, 34 warnings in 13.63s`.
-- The exact user-required LuxAPI gate is rerun after the final commit below; it remains the acceptance gate for this task.
+Verification after the test fix:
 
-A non-gating full-repository run was also attempted. Its recorded summary was `132 failed, 6669 passed, 77 skipped, 46 xfailed, 122 warnings, 444 errors in 603.51s`. The output contained 461 occurrences of `OSError: [Errno 24] Too many open files`, as well as unrelated PostgreSQL pool/database setup errors and failures in broader integration areas. Multiple full-suite commands remained running after the shell interface reported internal errors, so this run was resource-contended and is not a reliable clean baseline. I did not change unrelated database, video, or creative-runtime subsystems. The focused relevant suite above completed cleanly.
+- Targeted audio-router regression: `1 passed in 0.70s`.
+- Core audio/LuxTTS/alignment/story-voiceover/dialogue/Studio/history suite: `58 passed in 4.44s`.
+- Expanded related audio/LuxTTS/explainer/coverage suite: `238 passed, 34 warnings in 13.63s`.
+- Optional live HTTP integration test ran against the service and passed (not skipped): `1 passed in 1.17s`.
+- Required gate after implementation commit `bf814bf1`: `27 passed, 7341 deselected, 1 warning in 17.33s`; exact required pipeline exited `0`. The warning is the existing Starlette/httpx deprecation warning.
+- Live endpoint `/health`: HTTP 200, voice list `soffy`, `en_male`.
+- Chinese and English WAVs, sentence metadata, ffprobe JSON, high-level story-film/dialogue WAV evidence, and the 7.938-second toddler animation/probe all exist and are non-empty. The film is H.264/AAC, 540×960, 24 fps, with 48 kHz mono audio.
+- `git diff --check` passes and this report ends with the required marker.
 
-The required direction/contract documents `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` are not present inside this authorized worktree; no paths outside it were inspected.
+A separate non-gating full-repository diagnostic was not clean: `132 failed, 6669 passed, 77 skipped, 46 xfailed, 122 warnings, 444 errors in 603.51s`, with 461 occurrences of `OSError: [Errno 24] Too many open files` and PostgreSQL pool/database setup errors. Multiple full-suite commands remained running after shell-interface errors, so that run was resource-contended and not a reliable clean baseline. The one reproducible LuxAPI-adjacent test failure was fixed above; the focused task-related suites pass. Unrelated database, video, and creative-runtime subsystems were not changed.
 
-## Continuation — audio-router default-provider regression (2026-10-15)
-
-The repository-wide diagnostic surfaced one deterministic audio-router contract-test failure: `tests/test_coverage_contracts.py::test_audio_router_selects_styles_and_stitches_single_segment` mocked CosyVoice and Voicebox but did not pin the requested providers. Since this task intentionally changes the production default provider to LuxTTS, the mocked results were correctly marked as substitutions. The test now explicitly sets `HEVI_TTS_FORMAL_PROVIDER=cosyvoice` and `HEVI_TTS_CONVERSATIONAL_PROVIDER=voicebox` through pytest's `monkeypatch`, keeping the style-routing test isolated without changing production defaults.
-
-- Targeted regression: `1 passed in 0.70s`.
-- Combined relevant regression run (`.tmp/luxapi_relevant_plus_coverage.log`): `238 passed, 34 warnings in 13.63s`.
-- Exact user-required acceptance gate after this fix: `27 passed, 7341 deselected, 1 warning in 8.13s`; required pipeline exit code `0`.
-
-A non-gating full-repository run was also attempted. Its recorded summary was `132 failed, 6669 passed, 77 skipped, 46 xfailed, 122 warnings, 444 errors in 603.51s`. The output contained 461 occurrences of `OSError: [Errno 24] Too many open files`, plus unrelated PostgreSQL pool/database setup errors and broader integration failures. Multiple full-suite commands remained running after the shell interface reported internal errors, so that run was resource-contended and is not a reliable clean baseline. The focused relevant suite completed cleanly; I made no changes to unrelated database, video, or creative-runtime subsystems.
-
-The referenced `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` files are not present inside this authorized worktree. No paths outside it were inspected or changed.
+`KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` are absent from this authorized worktree. No files outside `/data/soffy/projects/hevi-luxapi` were inspected or changed. Existing untracked `.trash/`, `.veya-project/`, `LUXAPI_TASK.md`, and qualification artifacts remain untouched and unstaged.
 DONE LUXAPI-R1
