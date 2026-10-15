@@ -322,4 +322,8 @@ Verification:
 - Ruff, Python compilation, `git diff --check`: all passed.
 
 Warnings in the expanded sweep are existing `datetime.utcnow()` deprecations in adjacent schema/checkpoint coverage. External `/health` remains HTTP 200 with `soffy` and `en_male`. `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` remain absent from this authorized worktree and were not read outside it. No external files/services were changed, no paid API was called, and there was no deployment, restart, or cleanup. The required acceptance gate is repeated after this commit.
+
+## Final live endpoint status after latest commit (2026-10-15)
+
+The final two direct checks to `http://100.119.113.90:8795/health` could not connect (curl exit `7`, connection refused). Per the explicit task instruction, the external LuxTTS service was not restarted or redeployed. Consequently the post-commit acceptance gate reported `44 passed, 1 skipped, 7341 deselected, 1 warning in 17.63s`; the single skip is consistent with the optional live test's health-unreachable guard. The recorded live-generated proof artifacts were independently rechecked: 13 WAV/MP4/metadata/ffprobe/render files are present and non-empty, and all checked JSON/ffprobe files parse successfully. Earlier successful live integrations and the committed sample remain preserved. Live endpoint availability is the only current environmental blocker; local mocked regressions and the required pytest gate pass.
 DONE LUXAPI-R1
