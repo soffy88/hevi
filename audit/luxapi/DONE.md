@@ -68,7 +68,7 @@ Exact required selection command:
 
 `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q -k lux tests`
 
-Exact summary: `20 passed, 7341 deselected, 1 warning in 3.81s`. The exact required pipe was executed after these final routing/adapter changes and exited 0.
+Latest exact summary after the local history-fixture commit: `27 passed, 7341 deselected, 1 warning in 11.06s`. The user-specified acceptance pipeline, with output captured in `.tmp/luxapi_acceptance_latest.log`, exited `0`.
 
 Audio/story/dialogue regression suite:
 
@@ -126,7 +126,7 @@ Verification:
 - Initial attempt including `tests/test_history_arc_adapter.py` exposed two fixture-dependent failures (`test_conflict_corner_note` and `test_g1a_report`): the declared local fixture path was wrong and the fixture loader depended on an external-worktree file. This has been corrected with the checked-in fixture and worktree-local reader; the focused history adapter suite now passes `6 passed in 0.03s`.
 - Final combined expanded audio/explainer/voice/Studio/story suite, including the previously failing history adapter: `359 passed, 1 skipped, 10 warnings in 99.96s`. No failures. The warnings are existing Starlette/httpx and `datetime.utcnow()` deprecations.
 - The current live `/health` probe returned HTTP 200 and listed `soffy` and `en_male`; `tests/test_lux_tts_service.py::test_live_luxtts_http_integration_or_skip` passed (`1 passed in 2.33s`). The task-specified core audio/service suite passed (`26 passed in 3.89s`). Saved direct HTTP Chinese/English synthesis and high-level story-film/dialogue proof artifacts remain under `audit/luxapi/`.
-- The required post-implementation Lux selection gate had passed previously; it is rerun after this fixture/report commit. Python compilation and `git diff --check` are also rerun before delivery.
+- Post-fixture acceptance gate: `27 passed, 7341 deselected, 1 warning in 11.06s`, required pipe exit code `0`. `python -m py_compile tests/test_history_arc_adapter.py` and `git diff --check` passed.
 - Python compilation and `git diff --check` passed.
 
 The original committed `audit/luxapi/kids_story_sample.mp4` remains the short live-narration toddler-animation sample. This continuation does not alter the external LuxTTS service, install packages, or deploy/restart Hevi.
