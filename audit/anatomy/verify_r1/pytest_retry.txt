@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- /data/soffy/projects/hevi/.venv/bin/python
+rootdir: /data/soffy/projects/hevi-anatomy
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.4.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 3 items
+
+tests/test_anatomy_explainer.py::test_anatomy_capability_registered PASSED [ 33%]
+tests/test_anatomy_explainer.py::test_anatomy_params_validation PASSED   [ 66%]
+tests/test_anatomy_explainer.py::test_anatomy_render_and_assertions PASSED [100%]
+
+========================= 3 passed in 72.43s (0:01:12) =========================
+rc=0

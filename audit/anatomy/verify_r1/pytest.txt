@@ -1,0 +1,171 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.4, pytest-9.0.3, pluggy-1.6.0 -- /data/soffy/projects/hevi/.venv/bin/python
+rootdir: /data/soffy/projects/hevi-anatomy
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.4.0, anyio-4.13.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 3 items
+
+tests/test_anatomy_explainer.py::test_anatomy_capability_registered PASSED [ 33%]
+tests/test_anatomy_explainer.py::test_anatomy_params_validation PASSED   [ 66%]
+tests/test_anatomy_explainer.py::test_anatomy_render_and_assertions FAILED [100%]
+
+=================================== FAILURES ===================================
+______________________ test_anatomy_render_and_assertions ______________________
+
+tmp_path = PosixPath('/tmp/pytest-of-soffy/pytest-1056/test_anatomy_render_and_assert0')
+
+    @pytest.mark.slow
+    def test_anatomy_render_and_assertions(tmp_path: Path):
+        cap = get("anatomy_explainer")
+    
+        # Render windmill in 16:9, short duration (3s) for speed
+        out_dir_1 = tmp_path / "out_16_9"
+>       res1 = cap.render({"object": "windmill", "seed": 42}, out_dir_1, duration=3.0, aspect="16:9", seed=42)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_anatomy_explainer.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+params = {'object': 'windmill', 'seed': 42}
+out_dir = PosixPath('/tmp/pytest-of-soffy/pytest-1056/test_anatomy_render_and_assert0/out_16_9')
+
+    def render_anatomy_explainer(
+        params: dict[str, Any],
+        out_dir: Path,
+        *,
+        duration: float,
+        aspect: str,
+        seed: int,
+    ) -> CapabilityResult:
+        validated = validate_anatomy_params({**params, "duration": duration, "seed": seed})
+        obj_name = validated["object"]
+    
+        out_dir.mkdir(parents=True, exist_ok=True)
+        html_path = out_dir / f"anatomy_{obj_name}_{aspect.replace(':', '_')}.html"
+        frames_dir = out_dir / "frames"
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        mp4_path = out_dir / f"anatomy_{obj_name}_{aspect.replace(':', '_')}.mp4"
+    
+        figures_mjs_path = Path(__file__).parent / "figures.mjs"
+        third_party_scripts = Path(__file__).parents[3] / "third_party" / "anatomy" / "scripts"
+    
+        # 1. Build HTML via Node script
+        builder_script = out_dir / "build_one.mjs"
+        builder_script.write_text(f"""
+    import {{ generateFigureHtml }} from "{figures_mjs_path.resolve()}";
+    import {{ existsSync }} from "node:fs";
+    generateFigureHtml("{obj_name}", "{aspect}", {seed}, "{html_path.resolve()}");
+    """, encoding="utf-8")
+    
+        res_build = subprocess.run(["node", str(builder_script)], capture_output=True, text=True)
+        if res_build.returncode != 0:
+            raise RuntimeError(f"Builder failed: {res_build.stderr}\nstdout: {res_build.stdout}")
+    
+        html_content = html_path.read_text(encoding="utf-8")
+    
+        # 2. Render frames using Headless Chrome via Node CDP script with document.write
+        fps = 30
+        total_frames = int(duration * fps)
+        renderer_script = out_dir / "render_frames.mjs"
+        renderer_script.write_text(f"""
+    import {{ chromePort }} from "{third_party_scripts / 'chrome-port.mjs'}";
+    import {{ spawn }} from "node:child_process";
+    import {{ mkdtempSync, writeFileSync }} from "node:fs";
+    import {{ tmpdir }} from "node:os";
+    import {{ join, resolve }} from "node:path";
+    
+    async function main() {{
+      const binary = process.env.CHROME_PATH || "/snap/bin/chromium";
+      const profile = mkdtempSync(join(tmpdir(), "iso-render-"));
+      const chrome = spawn(binary, [
+        "--headless=new", "--no-sandbox", "--remote-debugging-port=0",
+        `--user-data-dir=${{profile}}`, "--no-first-run", "--no-default-browser-check",
+        "--hide-scrollbars", "--enable-unsafe-swiftshader", "about:blank"
+      ]);
+      const port = await chromePort(chrome, profile);
+      const target = await (await fetch(`http://127.0.0.1:${{port}}/json/new?about:blank`, {{ method: "PUT" }})).json();
+      const socket = new WebSocket(target.webSocketDebuggerUrl);
+      let id = 0;
+      const pending = new Map();
+    
+      socket.onmessage = (msg) => {{
+        const data = JSON.parse(msg.data);
+        if (data.id && pending.has(data.id)) {{
+          pending.get(data.id)(data);
+          pending.delete(data.id);
+        }}
+      }};
+    
+      const send = (method, params = {{}}) => new Promise((resolve) => {{
+        const call = ++id;
+        pending.set(call, resolve);
+        socket.send(JSON.stringify({{ id: call, method, params }}));
+      }});
+    
+      await new Promise((r) => socket.onopen = r);
+      await send("Runtime.enable");
+      await send("Page.enable");
+      const isPortrait = "{aspect}" === "9:16";
+      const width = isPortrait ? 1080 : 1920;
+      const height = isPortrait ? 1920 : 1080;
+      await send("Emulation.setDeviceMetricsOverride", {{ width, height, deviceScaleFactor: 1, mobile: isPortrait }});
+    
+      await send("Page.navigate", {{ url: "about:blank" }});
+    
+      // Inject HTML via document.write
+      const htmlContent = {json.dumps(html_content)};
+      await send("Runtime.evaluate", {{ expression: `
+        document.open();
+        document.write(` + JSON.stringify(htmlContent) + `);
+        document.close();
+      `}});
+    
+      // Poll readyState
+      for (let attempt = 0; attempt < 50; attempt++) {{
+        const res = await send("Runtime.evaluate", {{ expression: "document.readyState", returnByValue: true }});
+        if (res.result && res.result.result && res.result.result.value === "complete") break;
+        await new Promise((r) => setTimeout(r, 100));
+      }}
+      await new Promise((r) => setTimeout(r, 800)); // settle paint
+    
+      const totalFrames = {total_frames};
+      for (let i = 0; i < totalFrames; i++) {{
+        const t = i / (totalFrames - 1 || 1);
+        await send("Runtime.evaluate", {{ expression: `window.__heviSeek(${{t}})` }});
+        await send("Runtime.evaluate", {{ expression: `new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`, awaitPromise: true }});
+        const shot = await send("Page.captureScreenshot", {{ format: "png", captureBeyondViewport: true }});
+        if (shot.error) throw new Error("Shot error: " + JSON.stringify(shot.error));
+        const framePath = join("{frames_dir.resolve()}", String(i).padStart(4, "0") + ".png");
+        writeFileSync(framePath, Buffer.from(shot.result.data, "base64"));
+      }}
+      socket.close();
+      chrome.kill("SIGKILL");
+    }}
+    main().catch(err => {{ console.error(err); process.exit(1); }});
+    """, encoding="utf-8")
+    
+        env = {**os.environ, "CHROME_PATH": "/snap/bin/chromium"}
+        res_render = subprocess.run(["node", str(renderer_script)], capture_output=True, text=True, env=env)
+        if res_render.returncode != 0:
+>           raise RuntimeError(f"Renderer failed: {res_render.stderr}\nstdout: {res_render.stdout}")
+E           RuntimeError: Renderer failed: Error: ENOENT: no such file or directory, mkdtemp '/data/soffy/projects/hevi-anatomy/.tmp/iso-render-XXXXXX'
+E               at mkdtempSync (node:fs:3600:18)
+E               at main (file:///tmp/pytest-of-soffy/pytest-1056/test_anatomy_render_and_assert0/out_16_9/render_frames.mjs:10:19)
+E               at file:///tmp/pytest-of-soffy/pytest-1056/test_anatomy_render_and_assert0/out_16_9/render_frames.mjs:75:1
+E               at ModuleJob.run (node:internal/modules/esm/module_job:447:25)
+E               at async node:internal/modules/esm/loader:646:26
+E               at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5) {
+E             errno: -2,
+E             code: 'ENOENT',
+E             syscall: 'mkdtemp',
+E             path: '/data/soffy/projects/hevi-anatomy/.tmp/iso-render-XXXXXX'
+E           }
+E           
+E           stdout:
+
+hevi/capabilities/anatomy_explainer/renderer.py:151: RuntimeError
+=========================== short test summary info ============================
+FAILED tests/test_anatomy_explainer.py::test_anatomy_render_and_assertions - ...
+========================= 1 failed, 2 passed in 0.16s ==========================
+rc=1
