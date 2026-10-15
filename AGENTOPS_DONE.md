@@ -129,3 +129,73 @@ JWT_SECRET=testsecret /data/soffy/projects/hevi/.venv/bin/python -m pytest tests
 - `AGENTOPS_DONE.md`：追加 R3 报告。
 
 DONE AGENTOPS-R3
+
+---
+
+# AGENTOPS 验收记录 — R4 修复与核验报告
+
+- 工作树: `/data/soffy/projects/hevi-agentops`
+- 分支: `feat/agent-ops`
+- 上一提交: `8922ceb9` (DONE AGENTOPS-R3)
+- 完成标志（最后一行）: `DONE AGENTOPS-R4`
+- 依据: `AGENTOPS_FIX_R4.md`（R3 核验 FAIL：F2/F7/F9 已达成，但 G1 回归）
+
+## R4.1 阻断项修复（G1：ops 路由调用已删除的 seed_assets）
+
+根因：R3 为满足 F2 删除了 `hevi/operations/bridge.py` 的 `seed_assets`，但生产文件
+`hevi/api/routers/ops.py` 的 `_seed_assets()` 仍调用 `store.seed_assets(...)`，
+导致 `tests/test_agent_ops_bridge.py` 16 项 ERROR。
+
+修法（采用 R4 单第 1 种：删除 `_seed_assets`，测试改经既有 SubjectRepository）：
+- `hevi/api/routers/ops.py`：删除 `_seed_assets()` 函数（生产代码不再引用不存在的 `store.seed_assets`）。
+- `tests/test_agent_ops_bridge.py`：
+  - 移除 `from hevi.api.routers.ops import ... _seed_assets` 依赖。
+  - `store` fixture 改为经既有 `InMemorySubjectRepository`（`hevi/operations/in_memory.py`）正式写入 4 条资产，并经既有 `InMemoryGraphRepository` 写入两张画布图（不再直接 `INSERT INTO agent_graphs`）。
+  - 新增 `test_asset_list_reads_existing_subject_repository`：往既有 `InMemorySubjectRepository` 写 3 条资产，经 `store.list_assets` 与真实 HTTP 端点 `/api/ops/asset.list` 均读回同一批。
+- 未回退 R3 已达成项：影子表仍只剩 `agent_op_receipts` / `agent_schema_version`；画布/任务/资产分别走 `InMemoryGraphRepository` / `InMemoryTaskRepository` / `InMemorySubjectRepository`；F7 ffprobe 走 `resolve_ffprobe_bin()`；F9 重放回执相等。
+
+## R4.2 自测实测结果（全过）
+
+### R4.2.1 全量既有测试（R3 漏做的一步）
+```bash
+JWT_SECRET=testsecret TMPDIR=.tmp PYTHONPATH=$PWD \
+  /data/soffy/projects/hevi/.venv/bin/python -m pytest \
+  tests/test_agent_ops_bridge.py tests/test_agent_ops_capability.py \
+  tests/test_mcp.py tests/test_shot_spec_api.py tests/test_shot_spec_render.py \
+  tests/test_openshorts_integration_gates.py tests/test_capability_inventory.py \
+  tests/test_capability_truthfulness.py -q
+```
+结果：**134 passed, 1 skipped**（0 error、0 failed；R3 为 117 passed / 16 errors）。
+单文件 `tests/test_agent_ops_bridge.py`：**17 passed**（含新增测试）。
+
+### R4.2.2 verify.py（第 2、5 项 pass_=true）
+```bash
+JWT_SECRET=testsecret PYTHONPATH=$PWD /data/soffy/projects/hevi/.venv/bin/python audit/agentops/verify_r1/verify.py
+```
+结果：第 2 项 `pass_=true`、`replayed=true`、`receipt_equal=true`；第 5 项 `propose_status=200`、`agent_tasks_delta_propose=0`、`confirm_status=200`、`agent_tasks_delta_confirm=1`、`note` 不再提影子表。`network_attempts=[]`（零网络）。
+
+### R4.2.3 F7 受限 PATH
+```bash
+env -i HOME=/home/soffy PATH=/usr/bin:/bin JWT_SECRET=testsecret PYTHONPATH=$PWD \
+  /data/soffy/projects/hevi/.venv/bin/python -m pytest tests/test_agent_ops_capability.py -q
+```
+结果：**8 passed**（受限 PATH 下全绿）。
+
+### R4.2.4 3O lint（失败数 = 基线 4 项）
+```bash
+PYTHONPATH=$PWD /data/soffy/projects/hevi/.venv/bin/python scripts/ci/run_3o_v3_lint.py
+```
+结果：`3O_V3_LINT=FAIL`，失败 = 基线 4 项（check_no_sibling_call / check_omodul_signature / check_enabled_pillars / check_oprim_keyword_only），与基线一致。
+
+### R4.2.5 seed_assets 引用检查
+```bash
+grep -rn "seed_assets" hevi/ tests/ --include=*.py
+```
+结果：`hevi/` 下无任何引用；`tests/` 仅剩新增测试 docstring 中的说明文字（无对不存在方法的调用）。
+
+## R4.3 提交清单（R4）
+- `hevi/api/routers/ops.py`：删除 `_seed_assets()`（消除对已删除方法的调用，G1）。
+- `tests/test_agent_ops_bridge.py`：改用既有 `InMemorySubjectRepository` / `InMemoryGraphRepository`；新增 `test_asset_list_reads_existing_subject_repository`。
+- `AGENTOPS_DONE.md`：追加 R4 报告。
+
+DONE AGENTOPS-R4
