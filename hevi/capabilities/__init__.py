@@ -27,6 +27,7 @@ from .result import CapabilityResult
 # ``hevi.capabilities.get("scene3d.planet_orbit")``.
 from . import scene3d as _scene3d  # noqa: E402,F401
 _scene3d.register_scene3d_capabilities_once()
+from . import svfactory as _svfactory  # noqa: E402,F401
 
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
