@@ -326,4 +326,12 @@ Warnings in the expanded sweep are existing `datetime.utcnow()` deprecations in 
 ## Final live endpoint status after latest commit (2026-10-15)
 
 The final two direct checks to `http://100.119.113.90:8795/health` could not connect (curl exit `7`, connection refused). Per the explicit task instruction, the external LuxTTS service was not restarted or redeployed. Consequently the post-commit acceptance gate reported `44 passed, 1 skipped, 7341 deselected, 1 warning in 17.63s`; the single skip is consistent with the optional live test's health-unreachable guard. The recorded live-generated proof artifacts were independently rechecked: 13 WAV/MP4/metadata/ffprobe/render files are present and non-empty, and all checked JSON/ffprobe files parse successfully. Earlier successful live integrations and the committed sample remain preserved. Live endpoint availability is the only current environmental blocker; local mocked regressions and the required pytest gate pass.
+
+## Current complete audio-module regression (2026-10-15)
+
+Ran the audio-module test files directly on the latest implementation, including the new Studio-routing regressions:
+
+`JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp /data/soffy/projects/hevi/.venv/bin/python -m pytest -q tests/test_audio.py tests/test_audio_router_provider_identity.py tests/test_lux_tts_service.py tests/test_lux_studio_entrypoint.py`
+
+Exact summary: `43 passed, 1 skipped in 19.75s`, exit `0`. The skipped test is the optional live LuxTTS integration case: the final `/health` probe could not connect to `100.119.113.90:8795` (curl exit `7`). The service is explicitly out of scope for modification and must not be restarted or redeployed, so this environment limitation was documented rather than bypassed. All mocked HTTP, routing, fallback and parameter-validation checks in this selection pass. The user-specified acceptance gate was rerun after the latest code commit and passes: `44 passed, 1 skipped, 7341 deselected, 1 warning in 8.13s`, pipeline exit `0`.
 DONE LUXAPI-R1
