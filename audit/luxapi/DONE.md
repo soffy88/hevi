@@ -226,4 +226,16 @@ Verification after these changes:
 - `git diff --check`: passed.
 
 The warnings are existing deprecations in Pydantic validation and covered schema/checkpoint paths. No changes were made outside the LuxAPI client and its tests. The required final acceptance command is executed again after committing this continuation.
+
+## Continuation — fresh task acceptance re-run (2026-10-15)
+
+No new reproducible LuxAPI defect was found in this pass; the edge-case health-probe fix and provider-routing behavior remain green. Revalidation was performed from `/data/soffy/projects/hevi-luxapi` on branch `feat/luxtts-http`, using the required environment `JWT_SECRET=test-only TMPDIR=/data/soffy/projects/hevi-luxapi/.tmp`.
+
+- Exact required acceptance pipeline `pytest -q -k lux tests 2>&1 | tail -3 | grep -q passed`: exit code `0`; pytest summary `28 passed, 7341 deselected, 1 warning in 11.21s`.
+- Expanded task-relevant regression suite (audio, LuxTTS/LuxAPI, explainer, dialogue, Studio, history adapter and coverage contracts): `239 passed, 34 warnings in 9.59s`, exit code `0`.
+- Live LuxTTS `/health`: HTTP 200; `soffy` and `en_male` advertised, with Chinese `soffy` and other-language `en_male` auto-selection.
+- Checked 13 required audio/metadata/ffprobe/animation artifacts: no files missing or empty; key metadata and animation ffprobe JSON parsed successfully.
+- `git diff --check`: passed.
+
+The warnings in the expanded suite are existing `datetime.utcnow()` deprecations in covered validation/schema/checkpoint paths; there were no failures. This pass required no product-code changes. `KIDS_ANIME_DIRECTION.md` and `CAPABILITY_CONTRACT.md` remain absent from the authorized worktree and were not read from outside it. Existing unrelated untracked paths remain unstaged and untouched. The main checkout, live service configuration, and deployment state were not modified; no paid API was called.
 DONE LUXAPI-R1
