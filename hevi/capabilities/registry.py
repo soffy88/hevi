@@ -708,3 +708,120 @@ register(Capability(
     description="动效导演层完整渲染 pipeline (导演版 vs 基线版 + 逐帧审片 HTML)",
     line="director"
 ))
+
+
+# ── StoryPlan capabilities (merged from feat/story-plan, GOLIVE-1016 B) ──
+# The branch shipped its own private Capability/_REGISTRY inside
+# hevi/storyplan/capabilities.py, so these three never reached the unified
+# registry and were therefore invisible to GET /api/capabilities and to
+# ShotSpec.  Re-declare them here against the canonical Capability type so all
+# lines resolve them through get()/resolve() like every other capability.
+# The private module registry is left untouched (its own tests still pass).
+def _render_story_plan(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    from hevi.storyplan.autofill import autofill_story_plan
+
+    topic = str(params.get("topic", "小水滴去哪儿了"))
+    plan = autofill_story_plan(topic, aspect=aspect)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "story_plan.json").write_text(
+        plan.model_dump_json(indent=2), encoding="utf-8"
+    )
+    return CapabilityResult(
+        duration_s=float(plan.duration_sec),
+        qa={"status": "succeeded"},
+    )
+
+
+def _render_story_check(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    from hevi.storyplan.autofill import autofill_story_plan
+    from hevi.storyplan.check import run_story_check
+    from hevi.storyplan.model import StoryPlan
+
+    plan_data = params.get("plan")
+    if isinstance(plan_data, dict):
+        plan = StoryPlan(**plan_data)
+    else:
+        plan = autofill_story_plan("小水滴去哪儿了", aspect=aspect)
+    report = run_story_check(plan)
+    return CapabilityResult(
+        duration_s=float(plan.duration_sec),
+        qa={"passed": bool(report.passed)},
+    )
+
+
+def _render_take_select(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    from hevi.storyplan.take_select import TakeCandidate, select_best_take
+
+    raw = params.get(
+        "candidates",
+        [{"take_id": "t1", "video_path": "dummy.mp4", "duration_sec": 5.0}],
+    )
+    for c in raw:
+        if not isinstance(c, dict) or "take_id" not in c or "video_path" not in c:
+            raise CapabilityError(
+                "take_select: each candidate must be a dict with take_id and video_path"
+            )
+    cands = [TakeCandidate(**c) for c in raw]
+    criteria = str(params.get("acceptance_criteria", "验收点通过"))
+    best, all_res = select_best_take(cands, criteria)
+    return CapabilityResult(
+        duration_s=duration,
+        qa={"selected": best.take_id},
+    )
+
+
+_STORYPLAN_ASPECTS = ["16:9", "9:16", "1:1"]
+
+register(Capability(
+    name="story_plan",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"topic": {"type": "string"}},
+    },
+    cpu_cost_hint=0.1,
+    render=_render_story_plan,
+    description="一句话自动补全叙事/分镜/时间线三层结构 StoryPlan",
+    line="storyplan",
+))
+
+register(Capability(
+    name="story_check",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"plan": {"type": "object"}},
+    },
+    cpu_cost_hint=0.1,
+    render=_render_story_check,
+    description="StoryPlan 结构自检门 (钩子、声画对齐、冗余、六项必填、闭环、幼儿安全)",
+    line="storyplan",
+))
+
+register(Capability(
+    name="take_select",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "candidates": {"type": "array"},
+            "acceptance_criteria": {"type": "string"},
+        },
+    },
+    cpu_cost_hint=0.1,
+    render=_render_take_select,
+    description="选段器 take_select：多候选 take 按帧评分与子区间选中",
+    line="storyplan",
+))
