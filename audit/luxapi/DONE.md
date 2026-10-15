@@ -129,4 +129,35 @@ Verification:
 
 The previously committed `audit/luxapi/kids_story_sample.mp4` remains the original live-narration sample; this continuation does not change the external LuxTTS service, install packages, or deploy/restart Hevi.
 
+
+## Continuation — LuxTTS alignment entrypoint and AV-duration acceptance
+
+A further integration pass surfaced two items worth tightening beyond the initial `-k lux` gate:
+
+- `hevi/audio/tts_alignment.py` now defaults to the same LuxTTS-first HTTP/fallback implementation used by story-film narration, regardless of a separate formal-style provider override. Actual provider identity is kept in the returned `AudioAlignment` and JSON serialization. Since the LuxTTS HTTP contract returns synthesized audio but no native word-boundary timestamps, its duration-weighted token timeline is explicitly marked with `alignment_source=lux_tts_duration_weighted_estimate` and `is_estimated=true`; this is not represented as forced alignment. Native Edge word-boundary timestamps remain available only through the explicit `HEVI_TTS_ALIGNMENT_PROVIDER=edge_tts` setting.
+- `tests/test_lux_tts_alignment.py` adds offline tests for the LuxTTS default, recording the actual fallback provider, opt-in native Edge alignment, and ensuring a `HEVI_TTS_FORMAL_PROVIDER` override cannot bypass the LuxTTS-specific router. The TTS-alignment spike assertions now verify the estimate/provenance flag and no longer duplicate the same assertion block.
+- `hevi/explainer/cpu_fallback.py` now pads the last visual card rather than allowing image-concat timestamps to end the visual stream before narration. It probes the actual video-stream duration and fails if the visual stream drifts by more than two 24-fps frames from the target. `tests/test_explainer_render.py` checks this on the rendered file with BGM attached, not only on the un-mixed intermediate.
+
+A refreshed toddler story sample using the saved synthesized cue WAVs from the Hevi story-film path is at `audit/luxapi/live_story_pipeline_render_r4/`. Its FFprobe evidence is in `live_story_pipeline_r4_portrait.ffprobe.json`, `live_story_pipeline_r4_landscape.ffprobe.json`, and `live_story_pipeline_r4_proof.json`.
+
+- Portrait MP4: H.264 540×960, AAC 48 kHz, 11.560 s format duration; audio stream 11.541 s.
+- Landscape MP4: H.264 960×540, AAC 48 kHz, 11.560 s format duration; audio stream 11.541 s.
+- Both tracks are within 19 ms of each other, well under two 24-fps frames, and each sample is under 20 seconds. Rendering and BGM mixing were run serially; no parallel renderer was started.
+
+Verification after these changes:
+
+- Alignment, LuxTTS HTTP, task-entrypoint, and CPU-render targeted suite: `29 passed, 1 skipped in 34.06s`.
+- Expanded audio/explainer/voice-studio/storyboard/render regression suite (including `tests/test_runtime_edge_coverage.py`): `353 passed, 1 skipped, 10 warnings in 98.80s`. One skip is the optional live TTS/network test. The warnings are existing Starlette/httpx and `datetime.utcnow()` deprecations; no test failed.
+- The live LuxTTS `/health` endpoint timed out on the latest short probe. No service was restarted or redeployed. The previously saved direct HTTP synthesis evidence remains in `chinese_story.wav` / `chinese_story.metadata.json` and `english_line.wav` / `english_line.metadata.json`, both recording `provider=luxtts_http`; the skipped live test correctly does not count a fresh endpoint check as a pass.
+- Python compilation and `git diff --check` passed.
+
+
+
+Final acceptance rerun after implementation commit:
+
+- Exact required pipe (`python -m pytest -q -k lux tests 2>&1 | tail -3 | grep -q passed` with the mandated venv and environment): exit code `0`.
+- Exact pytest summary: `27 passed, 7341 deselected, 1 warning in 7.72s`.
+- `audit/luxapi/DONE.md` final line was checked again and remains `DONE LUXAPI-R1`.
+
+
 DONE LUXAPI-R1

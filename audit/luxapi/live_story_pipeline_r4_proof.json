@@ -1,0 +1,65 @@
+{
+  "pipeline": "hevi.explainer.cpu_fallback.render_storyboard_cpu_fallback",
+  "narration_source": "previously synthesized cue-level WAVs from Hevi story-film path",
+  "source_manifest": "audit/luxapi/live_story_pipeline_render_r4/run_manifest.json",
+  "topic": "小兔子的奇妙花园",
+  "renderer": "Pillow + FFmpeg, CPU-only; procedural ducked BGM",
+  "narration_timing_fix": "clone final frame to cover narration duration; fail if video/audio drift exceeds two 24-fps frames",
+  "portrait": "audit/luxapi/live_story_pipeline_render_r4/portrait.mp4",
+  "landscape": "audit/luxapi/live_story_pipeline_render_r4/landscape.mp4",
+  "max_duration_seconds": 20,
+  "probes": {
+    "portrait": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 540,
+          "height": 960,
+          "r_frame_rate": "25/1",
+          "duration": "11.560000"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "sample_rate": "48000",
+          "channels": 2,
+          "r_frame_rate": "0/0",
+          "duration": "11.541000"
+        }
+      ],
+      "format": {
+        "duration": "11.560000",
+        "size": "242974"
+      }
+    },
+    "landscape": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 960,
+          "height": 540,
+          "r_frame_rate": "25/1",
+          "duration": "11.560000"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "sample_rate": "48000",
+          "channels": 2,
+          "r_frame_rate": "0/0",
+          "duration": "11.541000"
+        }
+      ],
+      "format": {
+        "duration": "11.560000",
+        "size": "239654"
+      }
+    }
+  }
+}
