@@ -103,6 +103,13 @@ def _little_planet(aspect: str, duration: float, seed: int, camera_preset: str, 
         {"kind": "rock", "name": "rock_b", "params": {"pos": [2.6, 2.3, -0.9], "scale": 0.38, "color": [0.8, 0.5, 0.42]}},
         {"kind": "tree", "name": "tree_a", "params": {"pos": [1.7, 1.7, 1.5], "scale": 0.7}},
         {"kind": "grass", "name": "lawn", "params": {"count": 220, "radius": 2.3, "y": 1.7, "color": [0.62, 0.82, 0.42]}},
+        # A small walker circles the planet's near face so the shot has real
+        # skeletal motion (§06) without competing with the planet for attention.
+        {"kind": "character", "name": "walker", "params": {
+            "asset_id": "pedestrian-01-walk-anim", "target_height": 1.05, "basis": "height",
+            "pos": [0.0, 2.55, 1.5], "from": [-2.0, 2.55, 1.9], "to": [2.0, 2.55, 1.9],
+            "yaw_deg": 0.0, "clip": "walk", "time_scale": 1.0, "obstacle_radius": 0.3,
+        }},
     ]
     return {
         "name": "little_planet",
@@ -114,12 +121,12 @@ def _little_planet(aspect: str, duration: float, seed: int, camera_preset: str, 
             "aspect": aspect,
             "fov": 40.0,
             "preset": camera_preset or "orbit",
-            "preset_params": {"look": [0.0, 1.9, 0.0], "radius": 7.4, "height": 3.2, "steps": 4},
-            "pos": [7.4, 4.0, 7.4],
-            "look": [0.0, 1.9, 0.0],
+            "preset_params": {"look": [0.0, 2.0, 0.0], "radius": 10.5, "height": 3.6, "steps": 4},
+            "pos": [10.5, 4.4, 10.5],
+            "look": [0.0, 2.0, 0.0],
         },
         "lights": _warm_lights(),
-        "weather": _warm_weather(starfield=False),
+        "weather": _warm_weather(starfield=False, fog=0.004),
         "assets": assets,
     }
 
