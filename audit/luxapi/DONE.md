@@ -338,4 +338,8 @@ Exact summary: `43 passed, 1 skipped in 19.75s`, exit `0`. The skipped test is t
 ## Latest live recovery and final acceptance (2026-10-15)
 
 The earlier connection refusal was transient: the subsequent GET `/health` returned HTTP 200 with `{"ok":true,"voices":["soffy","en_male"],"default":"auto (中文→soffy, 其它→en_male)"}`. No restart or external modification was performed. The required gate was rerun after the implementation and report changes; exact latest captured summary is `45 passed, 7341 deselected, 1 warning in 35.19s`, pipe exit `0`, with no skips. Because the live LuxTTS integration is selected by `-k lux`, its passing result confirms the endpoint was reachable for the final gate. The earlier audio-suite run's one skip occurred during the brief network outage. Existing warning is the Starlette/httpx TestClient deprecation warning.
+
+## Gate variability note (2026-10-15)
+
+The selected pytest gate was run twice after the report/implementation commits: one execution completed `45 passed, 7341 deselected, 1 warning in 35.19s` with no skips; the immediately later repeat completed `44 passed, 1 skipped, 7341 deselected, 1 warning in 12.21s`. Both exact acceptance pipelines exited `0`. A direct `/health` request following the latter again returned HTTP 200 and both required voices. This indicates transient availability around test startup, not a deterministic client regression; the live service was not restarted or modified. The final acceptance command is run once more after this report update.
 DONE LUXAPI-R1
