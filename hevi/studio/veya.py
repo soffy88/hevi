@@ -240,7 +240,6 @@ async def produce(
     filled.setdefault("render_runtime", runtime)
     dest_root = Path(output_dir or "output/veya")
     filled.setdefault("output_dir", str(dest_root))
-<<<<<<< HEAD
     slate = await run_slate(Slate(line_id=rec.id, slots=filled, execute=execute))
     artifact = str(slate.data.get("result_video_path") or "")
     job = ProduceJob(
@@ -257,65 +256,6 @@ async def produce(
     )
     if platforms:
         # 只做分平台打包(标题/封面/标签交接单);平台发布已迁至 Easel。
-=======
-    try:
-        slate = await run_slate(Slate(line_id=rec.id, slots=filled, execute=execute))
-        artifact = str(slate.data.get("result_video_path") or "")
-        
-        if execute and (not artifact or slate.status != "completed"):
-            raise RuntimeError(f"Normal execution blocked or failed: {slate.status} / {slate.reason}")
-
-        if execute and artifact and Path(artifact).is_file():
-            from hevi.layer4_legacy.omlines.oprim_impl import zl
-            qa_res = zl.qa(artifact)
-            if not qa_res["pass"]:
-                raise RuntimeError(f"Artifact failed QA checks: {qa_res['checks']}")
-            
-        job = ProduceJob(
-            job_id=slate.slate_id,
-            line_id=rec.id,
-            status="ready" if artifact and slate.status == "completed" else slate.status,
-            render_runtime=runtime,
-            product=rec.product,
-            artifact=artifact,
-            production_order=slate.production_order,
-            fulfill=slate.data.get("fulfill") or {},
-            slate=slate.to_dict(),
-            reason=slate.reason,
-        )
-    except Exception as exc:
-        if execute:
-            from hevi.layer4_legacy.omlines.omodul_impl.fallback import omlines_fallback_workflow
-            filled["line_id"] = line_id
-            fb = await asyncio.to_thread(omlines_fallback_workflow, {}, filled, dest_root)
-            if fb.get("status") == "succeeded":
-                artifact = str(fb.get("result_video_path") or "")
-                fulfill, product = _fallback_fulfill(fb, line_id, artifact, rec.product)
-                job = ProduceJob(
-                    job_id=str(uuid.uuid4()),
-                    line_id=line_id,
-                    status="ready" if artifact else "failed",
-                    render_runtime="omlines_free_tier",
-                    product=product,
-                    artifact=artifact,
-                    production_order={"fallback": "omlines_free_tier"},
-                    fulfill=fulfill,
-                    slate={"status": "completed"},
-                    reason=fb.get("reason", "")
-                )
-                _JOBS[job.job_id] = job
-                return job
-        # If fallback fails or not executing, return a failed job
-        job = ProduceJob(
-            job_id=str(uuid.uuid4()),
-            line_id=line_id,
-            status="failed",
-            render_runtime=runtime,
-            product=rec.product,
-            reason=str(exc)
-        )
-    if publish and (platforms or []):
->>>>>>> 5947249d6b1fb7bf0e9df2d98f89dcd8312efe21
         from hevi.studio.packaging import pack_queue, write_pack_tickets
 
         queue = pack_queue(
