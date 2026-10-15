@@ -1,25 +1,25 @@
-# ANATOMY_DONE — 「会动的小机器」幼儿科普镜头线完成报告
+# ANATOMY_DONE — R2 修复与核验完成报告
 
-## 成果概述
-1. **Anatomy Kit Vendoring**: 成功将 `wheresryan22/anatomy` 的几何、渲染、审计核心模块引入 `third_party/anatomy/`（保留 LICENSE，附带 NOTICE 署名）。
-2. **Hevi Capability `anatomy_explainer`**: 
-   - 注册在 `hevi/capabilities/registry.py` 中，支持 4 个幼儿科普机械对象：`windmill`（风车转磨盘）、`waterwheel`（快乐转水车）、`soap_pump`（按压洗手液）、`clock_gear`（滴答小闹钟）。
-   - 支持 16:9 (1920x1080) 与 9:16 (1080x1920) 两种画幅输出。
-3. **渲染引擎与确定性**:
-   - 使用 Headless Chrome (SwiftShader) 逐帧推进时间（30fps）捕获无抖动截图，FFmpeg (v7.0.2) 渲染合成 MP4。
-   - 同参数同 seed 两次渲染 sha256 结果完全一致。
-4. **安全与质检闸门 (kids_gate)**:
-   - 全面接入 Hevi `kids_gate` 质检：单/平均镜头时长、光敏闪烁频率、响度标准 (-16 LUFS)、语速、竖屏字幕字号（≥56px）、台词与视觉内容审查。
-   - 色彩饱和度平均值 ≥ 0.35。
-5. **测试覆盖**:
-   - `tests/test_anatomy_explainer.py` 完整验证注册、参数校验、多对象多画幅渲染、sha256 一致性、kids_gate 检查及像素级饱和度。全量测试通过。
-6. **样片与报告**:
-   - 样片与关键帧 PNG 已存入 `audit/anatomy/samples/`（单文件均 ≤ 1MB）。
-   - 实测实证报告已写入 `audit/anatomy/REPORT.md`。
+## R2 修复成果概述
+1. **P1 画面与等距机械插画投影矫正**: 
+   - 彻底修复投影缩放：`figures.mjs` 基于实体几何的世界真实包围盒计算 `fitProjection`，使整机精准居中并预留充裕边缘（pad ≥ 150px），消除色块溢出。
+   - 非背景像素占比在 0.05–0.6 之间，主体完整在画内。
+2. **P2 运动零件与叶片排布**: 
+   - 风车 4 片叶片按 90° 旋转排布，永不重叠；各个对象的运动零件在 4s 内产生可测位移（像素变化占比 ≥ 2%，屏幕质心位移 ≥ 10px）。
+3. **P3 Anatomy 几何审计与悬空线检查接入**: 
+   - 渲染后编码前自动调用 `audit_figure.mjs`（底层调用 `third_party/anatomy/kit/audit.mjs` 的不穿模、支点支撑、深度遮挡审计）与 `audit_lines.mjs`（底层调用 `lines.mjs` 的悬空线检查），任何一项失败即 `raise` 拒绝出片。
+   - 审计结果写入 `out_dir/anatomy_audit.json`。
+   - 新增 `test_audit_failure_rejects_render` 测试注入故障拒绝出片。
+4. **P4 干净环境与临时目录**: 
+   - renderer 中对临时目录实施 `mkdir(parents=True, exist_ok=True)`，使 `git clean -xdf` 后的干净 worktree 直接 `pytest` 全绿。
+5. **P5 报告补全**: 
+   - `audit/anatomy/REPORT.md` 完整补充：实测时长、渲染耗时、内存峰值（RSS 峰值）、完整 SHA-256 哈希、anatomy 几何审计结果、kids_gate 结果。
 
-## 复现与验证命令
+## 自测与验证命令
 ```bash
-PYTHONPATH=/data/soffy/projects/hevi-anatomy JWT_SECRET=test-only /data/soffy/projects/hevi/.venv/bin/pytest tests/test_anatomy_explainer.py -v
+export JWT_SECRET=test-only TMPDIR=$PWD/.tmp PYTHONPATH=$PWD PATH=$HOME/.local/bin:$PATH
+rm -rf .tmp
+/data/soffy/projects/hevi/.venv/bin/python -m pytest tests/test_anatomy_explainer.py -v
 ```
 
-DONE ANATOMY-R1
+DONE ANATOMY-R2

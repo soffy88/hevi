@@ -4,6 +4,8 @@ import os
 import subprocess
 import json
 import hashlib
+import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,16 @@ def validate_anatomy_params(params: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def run_with_retry(cmd: list[str], *, retries: int = 3, delay: float = 1.0, **kwargs: Any) -> subprocess.CompletedProcess[str]:
+    for attempt in range(retries):
+        res = subprocess.run(cmd, capture_output=True, text=True, **kwargs)
+        if res.returncode == 0:
+            return res
+        if attempt < retries - 1:
+            time.sleep(delay)
+    return res
+
+
 def render_anatomy_explainer(
     params: dict[str, Any],
     out_dir: Path,
@@ -42,6 +54,11 @@ def render_anatomy_explainer(
     obj_name = validated["object"]
 
     out_dir.mkdir(parents=True, exist_ok=True)
+    
+    # P4: ensure tmp dir exists
+    tmp_base = Path(os.environ.get("TMPDIR", tempfile.gettempdir()))
+    tmp_base.mkdir(parents=True, exist_ok=True)
+
     html_path = out_dir / f"anatomy_{obj_name}_{aspect.replace(':', '_')}.html"
     frames_dir = out_dir / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
@@ -58,11 +75,28 @@ import {{ existsSync }} from "node:fs";
 generateFigureHtml("{obj_name}", "{aspect}", {seed}, "{html_path.resolve()}");
 """, encoding="utf-8")
 
-    res_build = subprocess.run(["node", str(builder_script)], capture_output=True, text=True)
+    res_build = run_with_retry(["node", str(builder_script)])
     if res_build.returncode != 0:
         raise RuntimeError(f"Builder failed: {res_build.stderr}\nstdout: {res_build.stdout}")
 
     html_content = html_path.read_text(encoding="utf-8")
+
+    # P3: Run anatomy geometry audit (audit.mjs)
+    audit_script = Path(__file__).parent / "audit_figure.mjs"
+    audit_json = out_dir / "anatomy_audit.json"
+    audit_env = {**os.environ}
+    if params.get("inject_audit_failure") or os.environ.get("HEVI_ANATOMY_AUDIT_INJECT"):
+        audit_env["HEVI_ANATOMY_AUDIT_INJECT"] = "clip"
+
+    res_audit = run_with_retry(["node", str(audit_script), obj_name, aspect, str(audit_json)], env=audit_env)
+    if res_audit.returncode != 0:
+        raise RuntimeError(f"Anatomy geometry audit failed: {res_audit.stderr}\nstdout: {res_audit.stdout}")
+
+    # P3: Run floating lines check (audit_lines.mjs) with retry
+    audit_lines_script = Path(__file__).parent / "audit_lines.mjs"
+    res_lines = run_with_retry(["node", str(audit_lines_script), str(html_path.resolve())], env={**os.environ, "CHROME_PATH": "/snap/bin/chromium"})
+    if res_lines.returncode != 0:
+        raise RuntimeError(f"Anatomy floating lines check failed: {res_lines.stderr}\nstdout: {res_lines.stdout}")
 
     # 2. Render frames using Headless Chrome via Node CDP script with document.write
     fps = 30
@@ -129,9 +163,9 @@ async function main() {{
   }}
   await new Promise((r) => setTimeout(r, 800)); // settle paint
 
-  const totalFrames = {total_frames};
-  for (let i = 0; i < totalFrames; i++) {{
-    const t = i / (totalFrames - 1 || 1);
+  const total_frames = {total_frames};
+  for (let i = 0; i < total_frames; i++) {{
+    const t = i / 30.0;
     await send("Runtime.evaluate", {{ expression: `window.__heviSeek(${{t}})` }});
     await send("Runtime.evaluate", {{ expression: `new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`, awaitPromise: true }});
     const shot = await send("Page.captureScreenshot", {{ format: "png", captureBeyondViewport: true }});
@@ -146,7 +180,7 @@ main().catch(err => {{ console.error(err); process.exit(1); }});
 """, encoding="utf-8")
 
     env = {**os.environ, "CHROME_PATH": "/snap/bin/chromium"}
-    res_render = subprocess.run(["node", str(renderer_script)], capture_output=True, text=True, env=env)
+    res_render = run_with_retry(["node", str(renderer_script)], env=env)
     if res_render.returncode != 0:
         raise RuntimeError(f"Renderer failed: {res_render.stderr}\nstdout: {res_render.stdout}")
 

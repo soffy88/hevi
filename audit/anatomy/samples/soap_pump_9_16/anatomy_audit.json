@@ -1,0 +1,5 @@
+{
+  "passed": true,
+  "failures": 0,
+  "report": "clearance: 0 problems\nclearance apart: 0 problems\nterminals: 0 ends not on a mount\nloose ends: 0\nscreen folds: 0\nsupport: 0 unsupported solids · 0 hanging tubes · 0 sunk pairs\ndepth order: 0 problems\nthrough in mid-flight: 0 pairs\nself-overlap: 0 chunks whose outline crosses itself on screen\nwobble: 0 smoothed profiles whose slope turns between its ends\nsaddles off their host apart: 0\nstand-in shapes: 0 items whose recorded shape covers too little of what it draws\ncrowding: 0 pairs where a bend or end touches another line on screen\nin passing (uniform explode states only, not failing): 1 interlocked pairs, 0 pairs no linear key can order\n  cycle  share 0  stem / neck   2162.94 px²"
+}
