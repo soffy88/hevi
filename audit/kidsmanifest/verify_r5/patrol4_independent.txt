@@ -1,0 +1,18 @@
+[PASS] adversarial: all 6 mandated words + synonyms blocked 23/23 blocked
+[PASS] adversarial group '勒脖子' blocked 3/3
+[PASS] adversarial group '踹飞' blocked 3/3
+[PASS] adversarial group '针扎' blocked 3/3
+[PASS] adversarial group '绑树堵嘴' blocked 3/3
+[PASS] adversarial group '鞭打' blocked 3/3
+[PASS] adversarial group '狗咬' blocked 3/3
+[PASS] benign: normal preschool words not over-blocked 15/15 clean
+[PASS] benign: direct negation not over-blocked all 3 clear
+[PASS] evasion: cross-clause violation blocked found=['毒药']
+story_gate public funcs: ['FUNCS:["dataclass", "field", "Field", "field_validator", "check_content_safety_text", "generate_logline", "kids_story_gate", "gate_json", "cross_check_story_manifest"]']
+story_gate signatures: ['SIG:[["dataclass", ["cls", "init", "repr", "eq"]], ["field", ["default", "default_factory", "init", "repr"]], ["Field", ["default", "default_factory", "alias", "alias_priority"]], ["field_validator", ["field", "fields", "mode", "check_fields"]], ["check_content_safety_text", ["text"]], ["generate_logline", ["story"]], ["_check_logline", ["story"]], ["_check_six_beats", ["story"]], ["_check_causal_ratio", ["story"]], ["_check_emotions", ["story"]], ["_check_single_theme", ["story"]], ["_check_fixed_characters", ["story"]], ["_check_spoken_language", ["story"]], ["_check_content_safety", ["story"]], ["_check_farewell", ["story"]], ["_check_recap", ["story"]], ["_check_attempt", ["story"]], ["_check_continuity_reuse", ["story"]], ["kids_story_gate", ["story", "profile"]], ["gate_json", ["story", "profile"]], ["cross_check_story_manifest", ["story", "manifest"]]]']
+[PASS] determinism: repeat run byte-identical (sha256) d443053f9f8b26e74c4c568b == d443053f9f8b26e74c4c568b
+
+==== PATROL4 KIDSMANIFEST SUMMARY ====
+11/11 checks passed
+VERDICT: PASS
+rc=0
