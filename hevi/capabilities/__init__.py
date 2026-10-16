@@ -40,6 +40,10 @@ from . import handdraw  # noqa: E402,F401
 from hevi.partsci.capabilities import register_partsci_capabilities_once
 register_partsci_capabilities_once()
 
+# GOLIVE3 capabilities (assets.library, assets.extract, image.multi_ref_compose, style.project_snapshot, storyboard.shot_groups)
+from . import golive3 as _golive3  # noqa: E402,F401
+_golive3.register_golive3_capabilities_once()
+
 
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
