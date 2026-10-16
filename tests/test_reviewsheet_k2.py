@@ -244,7 +244,8 @@ def test_e2e_manifest_to_render_to_gate(tmp_path: Path) -> None:
     merged = merge_patch(base, patch.changes)
     assert merged.camera == patch.changes["camera"]
     # 5) 回灌 manifest 并重新渲染（确定性）
-    new_data = m.to_dict()
+    import copy
+    new_data = copy.deepcopy(m.to_dict())
     new_data["shots"][2]["shot_spec"]["camera"] = patch.changes["camera"]
     m2 = manifest_adapter.draft_manifest(new_data)
     info2 = render_local.render_episode(m2, tmp_path / "ep2.mp4", seed=1, width=720, height=1280)
