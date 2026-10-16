@@ -1,8 +1,15 @@
 from __future__ import annotations
 
-import pytest
+import json
 from pathlib import Path
+import uuid
+import pytest
+from fastapi.testclient import TestClient
+
 from hevi.capabilities import get, list_capabilities, CapabilityError
+from hevi.api.main import app
+
+client = TestClient(app)
 
 
 def test_golive3_capabilities_registered():
@@ -20,8 +27,23 @@ def test_golive3_capabilities_registered():
         assert c.name == name
 
 
+def test_api_capabilities_endpoint():
+    resp = client.get("/api/capabilities")
+    assert resp.status_code == 200
+    data = resp.json()
+    names = {item["name"] for item in data.get("capabilities", [])}
+    for expected in [
+        "assets.library",
+        "assets.extract",
+        "image.multi_ref_compose",
+        "style.project_snapshot",
+        "storyboard.shot_groups",
+    ]:
+        assert expected in names
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Block 1: assets.library (8 tests)
+# Block 1: assets.library (with persistence & TestClient CRUD)
 # ─────────────────────────────────────────────────────────────────────────────
 def test_assets_library_list_empty(tmp_path: Path):
     cap = get("assets.library")
@@ -156,13 +178,47 @@ def test_assets_library_get_existing(tmp_path: Path):
     assert fetched.qa["name"] == "兔兔"
 
 
+def test_api_assets_crud_and_persistence():
+    # Test POST asset via API
+    resp = client.post(
+        "/api/golive3/assets",
+        json={
+            "project_id": "test_proj",
+            "kind": "character",
+            "name": "API小熊",
+            "description": "Test asset",
+            "reference_images": ["api_ref.png"],
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    asset_id = data["id"]
+    assert data["name"] == "API小熊"
+
+    # Test GET asset list
+    resp_list = client.get("/api/golive3/assets?project_id=test_proj")
+    assert resp_list.status_code == 200
+    items = resp_list.json()
+    assert any(item["id"] == asset_id for item in items)
+
+    # Test GET single asset
+    resp_get = client.get(f"/api/golive3/assets/{asset_id}")
+    assert resp_get.status_code == 200
+    assert resp_get.json()["name"] == "API小熊"
+
+    # Test DELETE asset
+    resp_del = client.delete(f"/api/golive3/assets/{asset_id}")
+    assert resp_del.status_code == 200
+    assert resp_del.json()["status"] == "deleted"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Block 2: assets.extract (8 tests)
+# Block 2: assets.extract (Layer4 ImportModule reuse)
 # ─────────────────────────────────────────────────────────────────────────────
 def test_assets_extract_basic(tmp_path: Path):
     cap = get("assets.extract")
     res = cap.render(
-        {"script_text": "场景：魔法森林。@小熊 拿著 @魔法棒 走进森林。"},
+        {"script_text": "场景：魔法森林。\n\n@小熊 拿著 @魔法棒 走进森林。"},
         tmp_path,
         duration=0,
         aspect="16:9",
@@ -170,6 +226,7 @@ def test_assets_extract_basic(tmp_path: Path):
     )
     assert "小熊" in res.qa["characters"]
     assert "魔法森林" in res.qa["scenes"]
+    assert res.qa["chapters_count"] >= 1
 
 
 def test_assets_extract_empty_script_fails(tmp_path: Path):
@@ -180,7 +237,7 @@ def test_assets_extract_empty_script_fails(tmp_path: Path):
 
 def test_assets_extract_determinism(tmp_path: Path):
     cap = get("assets.extract")
-    script = "【场景：海边】@波波 拿着 @贝壳。"
+    script = "【场景：海边】\n\n@波波 拿着 @贝壳。"
     res1 = cap.render({"script_text": script}, tmp_path / "1", duration=0, aspect="16:9", seed=10)
     res2 = cap.render({"script_text": script}, tmp_path / "2", duration=0, aspect="16:9", seed=10)
     assert res1.qa["deterministic_hash"] == res2.qa["deterministic_hash"]
@@ -250,7 +307,7 @@ def test_assets_extract_result_contract(tmp_path: Path):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Block 3: image.multi_ref_compose (8 tests)
+# Block 3: image.multi_ref_compose (capability_guard limit check)
 # ─────────────────────────────────────────────────────────────────────────────
 def test_multi_ref_compose_basic(tmp_path: Path):
     cap = get("image.multi_ref_compose")
@@ -258,7 +315,7 @@ def test_multi_ref_compose_basic(tmp_path: Path):
         {
             "shot_prompt": "@小熊 在 @森林 里散步",
             "references": {"@小熊": "char_bear.png", "@森林": "scene_forest.png"},
-            "max_refs": 4,
+            "provider": "h3_local",
         },
         tmp_path,
         duration=0,
@@ -276,7 +333,7 @@ def test_multi_ref_compose_exceeds_limit_fails(tmp_path: Path):
             {
                 "shot_prompt": "@A @B @C @D @E",
                 "references": {"@A": "1.png", "@B": "2.png", "@C": "3.png", "@D": "4.png", "@E": "5.png"},
-                "max_refs": 3,
+                "provider": "runway",  # runway max refs is 3
             },
             tmp_path,
             duration=0,
@@ -291,7 +348,7 @@ def test_multi_ref_compose_zero_refs(tmp_path: Path):
         {
             "shot_prompt": "单纯的日落风景",
             "references": {},
-            "max_refs": 4,
+            "provider": "h3_local",
         },
         tmp_path,
         duration=0,
@@ -302,14 +359,12 @@ def test_multi_ref_compose_zero_refs(tmp_path: Path):
 
 
 def test_multi_ref_compose_placeholder_resolution(tmp_path: Path):
-    cap = (
-        get("image.multi_ref_compose")
-    )
+    cap = get("image.multi_ref_compose")
     res = cap.render(
         {
             "shot_prompt": "@主角 挥舞 @武器",
             "references": {"@主角": "hero.png", "@武器": "sword.png"},
-            "max_refs": 4,
+            "provider": "vidu",
         },
         tmp_path,
         duration=0,
@@ -332,7 +387,6 @@ def test_multi_ref_compose_provider_routing(tmp_path: Path):
             "shot_prompt": "@熊",
             "references": {"@熊": "bear.png"},
             "provider": "h3_local",
-            "max_refs": 4,
         },
         tmp_path,
         duration=0,
@@ -346,16 +400,16 @@ def test_multi_ref_compose_exact_max_limit(tmp_path: Path):
     cap = get("image.multi_ref_compose")
     res = cap.render(
         {
-            "shot_prompt": "@1 @2 @3 @4",
-            "references": {"@1": "1.png", "@2": "2.png", "@3": "3.png", "@4": "4.png"},
-            "max_refs": 4,
+            "shot_prompt": "@1 @2 @3",
+            "references": {"@1": "1.png", "@2": "2.png", "@3": "3.png"},
+            "provider": "runway",  # max 3
         },
         tmp_path,
         duration=0,
         aspect="16:9",
         seed=6,
     )
-    assert res.qa["references_count"] == 4
+    assert res.qa["references_count"] == 3
 
 
 def test_multi_ref_compose_missing_placeholder_warns(tmp_path: Path):
@@ -364,7 +418,7 @@ def test_multi_ref_compose_missing_placeholder_warns(tmp_path: Path):
         {
             "shot_prompt": "晴空万里",
             "references": {"@unused": "img.png"},
-            "max_refs": 4,
+            "provider": "h3_local",
         },
         tmp_path,
         duration=0,
@@ -375,7 +429,7 @@ def test_multi_ref_compose_missing_placeholder_warns(tmp_path: Path):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Block 4: style.project_snapshot (8 tests)
+# Block 4: style.project_snapshot (Persistent & queryable API)
 # ─────────────────────────────────────────────────────────────────────────────
 def test_project_snapshot_create(tmp_path: Path):
     cap = get("style.project_snapshot")
@@ -390,8 +444,14 @@ def test_project_snapshot_create(tmp_path: Path):
         aspect="universal",
         seed=1,
     )
-    assert res.qa["snapshot_id"].startswith("snap_")
+    snapshot_id = res.qa["snapshot_id"]
+    assert snapshot_id.startswith("snap_")
     assert res.qa["base_preset"] == "pixar_3d"
+
+    # Test API query for snapshot
+    resp = client.get(f"/api/golive3/snapshots/{snapshot_id}")
+    assert resp.status_code == 200
+    assert resp.json()["snapshot_id"] == snapshot_id
 
 
 def test_project_snapshot_immutability(tmp_path: Path):
@@ -409,7 +469,6 @@ def test_project_snapshot_immutability(tmp_path: Path):
     )
     snap1_id = res1.qa["snapshot_id"]
 
-    # Change style overrides
     res2 = cap.render(
         {
             "project_id": "proj_2",
@@ -422,8 +481,6 @@ def test_project_snapshot_immutability(tmp_path: Path):
         seed=1,
     )
     snap2_id = res2.qa["snapshot_id"]
-
-    # Old snapshot ID must be different from new snapshot ID (or old record immutable)
     assert snap1_id != snap2_id
 
 
@@ -454,8 +511,9 @@ def test_project_snapshot_multiple_projects(tmp_path: Path):
 
 def test_project_snapshot_version_increment(tmp_path: Path):
     cap = get("style.project_snapshot")
-    r1 = cap.render({"project_id": "v_test", "overrides": {"v": 1}}, tmp_path / "1", duration=0, aspect="universal", seed=1)
-    r2 = cap.render({"project_id": "v_test", "overrides": {"v": 2}}, tmp_path / "2", duration=0, aspect="universal", seed=1)
+    pid = f"v_test_{uuid.uuid4()}"
+    r1 = cap.render({"project_id": pid, "overrides": {"v": 1}}, tmp_path / "1", duration=0, aspect="universal", seed=1)
+    r2 = cap.render({"project_id": pid, "overrides": {"v": 2}}, tmp_path / "2", duration=0, aspect="universal", seed=1)
     assert r2.qa["version"] > r1.qa["version"]
 
 
@@ -474,7 +532,7 @@ def test_project_snapshot_schema_valid(tmp_path: Path):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Block 5: storyboard.shot_groups (8 tests)
+# Block 5: storyboard.shot_groups (StoryPlan model reuse)
 # ─────────────────────────────────────────────────────────────────────────────
 def test_storyboard_shot_groups_default(tmp_path: Path):
     cap = get("storyboard.shot_groups")
@@ -500,7 +558,6 @@ def test_storyboard_shot_groups_split_by_duration(tmp_path: Path):
         {"id": "s1", "scene": "A", "duration_s": 6.0, "prompt": "Prompt 1"},
         {"id": "s2", "scene": "A", "duration_s": 6.0, "prompt": "Prompt 2"},
     ]
-    # group_duration_s = 5.0 should split them into 2 groups
     res = cap.render({"shots": shots, "group_duration_s": 5.0}, tmp_path, duration=0, aspect="16:9", seed=1)
     assert len(res.qa["groups"]) == 2
 

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-import subprocess
+import asyncio
 import json
+import subprocess
 from pathlib import Path
 import pytest
 
 from hevi.capabilities import get
+from hevi.assembly.freevideo.workflow import FreeVideoConfig, FreeVideoInput, free_video_workflow
+from hevi.assembly.freevideo.storyboard import FramePlan
 
 
 def test_golive3_end_to_end_pipeline(tmp_path: Path):
@@ -22,7 +25,7 @@ def test_golive3_end_to_end_pipeline(tmp_path: Path):
         "旁白：快乐的一天结束了，晚安。"
     )
 
-    # 2. Extract assets
+    # 2. Extract assets (using assets.extract capability which reuses layer4 ImportModule)
     extract_cap = get("assets.extract")
     extract_res = extract_cap.render(
         {"script_text": script_text},
@@ -34,8 +37,9 @@ def test_golive3_end_to_end_pipeline(tmp_path: Path):
     assert "小熊" in extract_res.qa["characters"]
     assert "兔兔" in extract_res.qa["characters"]
     assert "森林清晨" in extract_res.qa["scenes"]
+    assert extract_res.qa["chapters_count"] >= 1
 
-    # 3. Create assets in library
+    # 3. Create assets in library (integrating ReferenceStore)
     library_cap = get("assets.library")
     bear_res = library_cap.render(
         {
@@ -68,7 +72,7 @@ def test_golive3_end_to_end_pipeline(tmp_path: Path):
     snapshot_id = style_res.qa["snapshot_id"]
     assert snapshot_id.startswith("snap_")
 
-    # 5. Split shot groups
+    # 5. Split shot groups (reusing StoryPlan model)
     storyboard_cap = get("storyboard.shot_groups")
     shots = [
         {"id": "s1", "scene": "森林清晨", "duration_s": 8.0, "prompt": "小熊在草地上醒来"},
@@ -102,20 +106,27 @@ def test_golive3_end_to_end_pipeline(tmp_path: Path):
     assert compose_res.png is not None
     assert compose_res.qa["references_count"] == 2
 
-    # 7. Render >=20s video clip locally using ffmpeg lavfi (or video renderer) and verify duration with ffprobe
-    output_mp4 = tmp_path / "e2e_output_23s.mp4"
-    # Create a 23-second test video using ffmpeg lavfi color / testsrc
-    subprocess.run(
-        [
-            "ffmpeg", "-y", "-v", "error",
-            "-f", "lavfi", "-i", "color=c=blue:s=320x180:r=24:d=23",
-            "-f", "lavfi", "-i", "anullsrc=r=22050:cl=mono",
-            "-c:v", "libx264", "-t", "23", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-shortest",
-            str(output_mp4),
-        ],
-        check=True,
-    )
+    # 7. Render real >=20s toddler video using existing local rendering pipeline (free_video_workflow)
+    e2e_out_dir = Path("audit/v3/e2e")
+    e2e_out_dir.mkdir(parents=True, exist_ok=True)
+    output_mp4 = e2e_out_dir / "e2e_toddler_story.mp4"
+
+    plans = [
+        FramePlan(kind="title", title="场景1：森林清晨", body="小熊在草地上醒来，空气真新鲜", duration=8.0),
+        FramePlan(kind="scene", title="场景2：小河边", body="兔兔和小熊一起在小河边采蘑菇", duration=8.0),
+        FramePlan(kind="quote", title="场景3：草地晚霞", body="大家围着篝火快乐地唱歌跳舞，晚安", duration=7.0),
+    ]
+    config = FreeVideoConfig(width=1280, height=720, fps=24, frame_duration=7.0, bgm_mood="warm")
+    
+    async def run_render():
+        return await free_video_workflow(config, FreeVideoInput(plans=plans, title="幼儿剧本合成成片"), e2e_out_dir)
+
+    res = asyncio.run(run_render())
+    assert res["status"] == "completed"
+
+    src_mp4 = e2e_out_dir / "freevideo.mp4"
+    assert src_mp4.is_file()
+    src_mp4.replace(output_mp4)
 
     assert output_mp4.is_file()
     assert output_mp4.stat().st_size > 0

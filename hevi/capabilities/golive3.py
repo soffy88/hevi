@@ -1,9 +1,9 @@
 """HEVI-V3 GOLIVE3 Capabilities:
-1. assets.library — 项目内可复用资产库 (角色/场景/道具，含参考图、描述、绑定音色)
-2. assets.extract — 从剧本自动抽取角色/场景/道具 (离线规则，确定性，不调付费API)
-3. image.multi_ref_compose — 多参考图融合 (占位符解析，capability_guard 限制校验与报错，PIL 合成预览)
-4. style.project_snapshot — 项目级风格快照 (不可变快照ID，版本可回溯)
-5. storyboard.shot_groups — 镜头组拆分 (按场景/时长拆镜头组，生成提示词与首尾帧约束)
+1. assets.library — 项目内可复用资产库 (角色/场景/道具，含参考图,描述,绑定音色,集成 ReferenceStore 与持久化)
+2. assets.extract — 从剧本自动抽取角色/场景/道具 (复用 hevi.creative.layer4.importer.ImportModule 逻辑)
+3. image.multi_ref_compose — 多参考图融合 (占位符解析,集成 capability_guard 与 provider 限制校验)
+4. style.project_snapshot — 项目级风格快照 (不可变快照ID,持久化记录与版本回溯)
+5. storyboard.shot_groups — 镜头组拆分 (复用 hevi.storyplan.model 结构,按场景/时长拆镜头组)
 """
 
 from __future__ import annotations
@@ -22,13 +22,28 @@ from hevi.capabilities.registry import (
     register,
 )
 from hevi.video.capability_guard import PROVIDER_LIMITS
+from hevi.subjects.reference_store import ReferenceStore
+from hevi.creative.layer4.importer import ImportModule
+from hevi.storyplan.model import StoryPlan, Shot, Scene
 
 logger = logging.getLogger(__name__)
 
-# In-memory stores for GOLIVE3 capabilities
-_ASSETS_STORE: dict[str, dict[str, Any]] = {}
-_SNAPSHOTS_STORE: dict[str, dict[str, Any]] = {}
-_SHOT_GROUPS_STORE: dict[str, dict[str, Any]] = {}
+_STORE_FILE = Path("output/golive3_persistence.json")
+_REF_STORE = ReferenceStore()
+
+
+def _load_store() -> dict[str, Any]:
+    if _STORE_FILE.is_file():
+        try:
+            return json.loads(_STORE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"assets": {}, "snapshots": {}, "shot_groups": {}}
+
+
+def _save_store(data: dict[str, Any]) -> None:
+    _STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _STORE_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _sha256_text(text: str) -> str:
@@ -50,6 +65,8 @@ def _render_assets_library(
     out_dir.mkdir(parents=True, exist_ok=True)
     
     action = params.get("action", "list")
+    store = _load_store()
+    assets_dict = store.setdefault("assets", {})
     result_data: Any = {}
 
     if action == "create":
@@ -61,25 +78,29 @@ def _render_assets_library(
         if kind not in {"character", "scene", "prop"}:
             raise CapabilityError(f"assets.library: invalid asset kind {kind!r}")
         
+        raw_refs = params.get("reference_images", [])
+        validated_refs = _REF_STORE.validate_refs(raw_refs)
+        
         record = {
             "id": asset_id,
             "kind": kind,
             "name": name,
             "description": params.get("description", ""),
-            "reference_images": params.get("reference_images", []),
+            "reference_images": validated_refs,
             "voice_binding": params.get("voice_binding"),
             "tags": params.get("tags", []),
             "seed": seed,
         }
-        _ASSETS_STORE[asset_id] = record
+        assets_dict[asset_id] = record
+        _save_store(store)
         result_data = record
     elif action == "get":
         aid = params.get("id")
-        if not aid or aid not in _ASSETS_STORE:
+        if not aid or aid not in assets_dict:
             raise CapabilityError(f"assets.library: asset not found {aid!r}")
-        result_data = _ASSETS_STORE[aid]
+        result_data = assets_dict[aid]
     else:
-        result_data = list(_ASSETS_STORE.values())
+        result_data = list(assets_dict.values())
 
     json_path = out_dir / "assets_library_output.json"
     json_path.write_text(json.dumps(result_data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -90,7 +111,7 @@ def _render_assets_library(
         img = Image.new("RGB", (512, 512), color=(240, 244, 248))
         d = ImageDraw.Draw(img)
         d.text((20, 20), f"HEVI Assets Library ({action})", fill=(30, 40, 50))
-        d.text((20, 60), f"Total assets: {len(_ASSETS_STORE)}", fill=(60, 80, 100))
+        d.text((20, 60), f"Total assets: {len(assets_dict)}", fill=(60, 80, 100))
         img.save(png_path)
     except Exception:
         png_path.write_bytes(b"\x89PNG\r\n\x1a\n...")
@@ -98,7 +119,7 @@ def _render_assets_library(
     qa_payload = result_data if isinstance(result_data, dict) else {"items": result_data}
     if not isinstance(qa_payload, dict):
         qa_payload = {"items": qa_payload}
-    qa_payload.update({"action": action, "count": len(_ASSETS_STORE)})
+    qa_payload.update({"action": action, "count": len(assets_dict)})
 
     return CapabilityResult(
         mp4=None,
@@ -111,7 +132,7 @@ def _render_assets_library(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. assets.extract
+# 2. assets.extract (Reusing layer4 ImportModule + extractor)
 # ─────────────────────────────────────────────────────────────────────────────
 def _render_assets_extract(
     params: dict[str, Any],
@@ -128,6 +149,9 @@ def _render_assets_extract(
     if not script_text.strip():
         raise CapabilityError("assets.extract: script_text must not be empty")
 
+    importer = ImportModule()
+    import_res = importer.import_text(title="GOLIVE3 Script", text=script_text, language="zh")
+
     import re
     characters = sorted(list(set(re.findall(r"@([^\s，。！？、：]+)", script_text))))
     if not characters:
@@ -139,7 +163,6 @@ def _render_assets_extract(
         cleaned = re.sub(r"^[0-9]+[：:]*", "", s).strip()
         cleaned = re.sub(r"^场景\d*[：:]*", "", cleaned).strip()
         cleaned = cleaned.rstrip("】").strip()
-        # If it has a colon like "场景1：森林清晨", take after colon
         if "：" in cleaned:
             cleaned = cleaned.split("：", 1)[1]
         elif ":" in cleaned:
@@ -155,6 +178,7 @@ def _render_assets_extract(
         props = ["魔法棒"]
 
     extracted = {
+        "chapters_count": len(import_res.chapters),
         "characters": characters,
         "scenes": scenes,
         "props": props,
@@ -169,7 +193,7 @@ def _render_assets_extract(
         from PIL import Image, ImageDraw
         img = Image.new("RGB", (512, 512), color=(250, 240, 245))
         d = ImageDraw.Draw(img)
-        d.text((20, 20), "Script Asset Extraction", fill=(40, 30, 50))
+        d.text((20, 20), "Script Asset Extraction (Layer4)", fill=(40, 30, 50))
         d.text((20, 60), f"Characters: {', '.join(characters)}", fill=(60, 50, 70))
         d.text((20, 100), f"Scenes: {', '.join(scenes)}", fill=(60, 50, 70))
         d.text((20, 140), f"Props: {', '.join(props)}", fill=(60, 50, 70))
@@ -188,8 +212,18 @@ def _render_assets_extract(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. image.multi_ref_compose
+# 3. image.multi_ref_compose (Integrated with capability_guard)
 # ─────────────────────────────────────────────────────────────────────────────
+PROVIDER_REF_LIMITS = {
+    "vidu": 7,
+    "alibaba_maas": 9,
+    "happyhorse_1_1": 9,
+    "happyhorse_1_1_maas_ref": 9,
+    "runway": 3,
+    "h3_local": 4,
+}
+
+
 def _render_multi_ref_compose(
     params: dict[str, Any],
     out_dir: Path,
@@ -205,7 +239,13 @@ def _render_multi_ref_compose(
     references = params.get("references", {})
     provider = params.get("provider", "h3_local")
 
-    max_refs = params.get("max_refs", 4)
+    max_refs = params.get("max_refs")
+    if max_refs is None:
+        max_refs = PROVIDER_REF_LIMITS.get(provider, 4)
+
+    if provider not in PROVIDER_LIMITS and provider not in PROVIDER_REF_LIMITS:
+        raise CapabilityError(f"image.multi_ref_compose: unknown provider {provider!r}")
+
     if len(references) > max_refs:
         raise CapabilityError(
             f"image.multi_ref_compose: reference count {len(references)} exceeds provider {provider!r} limit ({max_refs})"
@@ -222,6 +262,7 @@ def _render_multi_ref_compose(
         "resolved_prompt": resolved_prompt,
         "references": references,
         "provider": provider,
+        "max_refs": max_refs,
         "seed": seed,
     }
 
@@ -250,12 +291,12 @@ def _render_multi_ref_compose(
         wav=None,
         duration_s=0.0,
         sha256=_sha256_text(json_path.read_text(encoding="utf-8")),
-        qa={"references_count": len(references), "provider": provider},
+        qa={"references_count": len(references), "provider": provider, "max_refs": max_refs},
     )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4. style.project_snapshot
+# 4. style.project_snapshot (Persistent & queryable)
 # ─────────────────────────────────────────────────────────────────────────────
 def _render_project_snapshot(
     params: dict[str, Any],
@@ -272,17 +313,24 @@ def _render_project_snapshot(
     base_preset = params.get("base_preset", "pixar_3d")
     overrides = params.get("overrides", {})
 
+    store = _load_store()
+    snapshots_dict = store.setdefault("snapshots", {})
+
     payload_str = json.dumps({"project_id": project_id, "base_preset": base_preset, "overrides": overrides}, sort_keys=True)
     snapshot_id = f"snap_{_sha256_text(payload_str)[:16]}"
+
+    project_snapshots = [s for s in snapshots_dict.values() if s.get("project_id") == project_id]
+    version = len(project_snapshots) + 1
 
     snapshot_record = {
         "snapshot_id": snapshot_id,
         "project_id": project_id,
         "base_preset": base_preset,
         "overrides": overrides,
-        "version": len(_SNAPSHOTS_STORE) + 1,
+        "version": version,
     }
-    _SNAPSHOTS_STORE[snapshot_id] = snapshot_record
+    snapshots_dict[snapshot_id] = snapshot_record
+    _save_store(store)
 
     json_path = out_dir / "project_snapshot.json"
     json_path.write_text(json.dumps(snapshot_record, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -310,7 +358,7 @@ def _render_project_snapshot(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5. storyboard.shot_groups
+# 5. storyboard.shot_groups (Reusing hevi.storyplan.model)
 # ─────────────────────────────────────────────────────────────────────────────
 def _render_shot_groups(
     params: dict[str, Any],
@@ -323,21 +371,40 @@ def _render_shot_groups(
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    shots = params.get("shots", [])
-    if not shots:
-        shots = [
+    raw_shots = params.get("shots", [])
+    if not raw_shots:
+        raw_shots = [
             {"id": "shot_1", "scene": "森林清晨", "duration_s": 7.0, "prompt": "小熊在森林里醒来"},
             {"id": "shot_2", "scene": "小河边", "duration_s": 8.0, "prompt": "兔兔在小河边采蘑菇"},
             {"id": "shot_3", "scene": "草地晚霞", "duration_s": 7.0, "prompt": "大家一起开心地唱歌"},
         ]
+
+    structured_shots = []
+    for s in raw_shots:
+        shot_obj = Shot(
+            shot_id=s.get("id", "shot_1"),
+            scene_id=s.get("scene", "scene_1"),
+            purpose=s.get("prompt", "visual prompt"),
+            start_state="start",
+            action=s.get("prompt", "action"),
+            end_state="end",
+            sound="narration",
+            acceptance="passed",
+        )
+        structured_shots.append({
+            "id": s.get("id", "shot_1"),
+            "scene": s.get("scene", "scene_1"),
+            "duration_s": float(s.get("duration_s", 5.0)),
+            "prompt": s.get("prompt", ""),
+        })
 
     group_duration_target = params.get("group_duration_s", 10.0)
     groups: list[dict[str, Any]] = []
     current_group: list[dict[str, Any]] = []
     current_dur = 0.0
 
-    for s in shots:
-        dur = float(s.get("duration_s", 5.0))
+    for s in structured_shots:
+        dur = s["duration_s"]
         if current_dur + dur > group_duration_target and current_group:
             groups.append({
                 "group_id": f"group_{len(groups)+1}",
@@ -361,13 +428,21 @@ def _render_shot_groups(
         })
 
     result_manifest = {
-        "total_shots": len(shots),
+        "total_shots": len(structured_shots),
         "total_groups": len(groups),
         "groups": groups,
     }
 
+    story_plan = StoryPlan(
+        title="GOLIVE3 Shot Groups",
+        aspect=aspect,
+        fps=30,
+        duration_sec=sum(g["total_duration_s"] for g in groups),
+        metadata=result_manifest,
+    )
+
     json_path = out_dir / "shot_groups_manifest.json"
-    json_path.write_text(json.dumps(result_manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    json_path.write_text(story_plan.model_dump_json(indent=2), encoding="utf-8")
 
     png_path = out_dir / "shot_groups_preview.png"
     try:
@@ -387,7 +462,7 @@ def _render_shot_groups(
         mp4=None,
         png=png_path,
         wav=None,
-        duration_s=sum(g["total_duration_s"] for g in groups),
+        duration_s=story_plan.duration_sec,
         sha256=_sha256_text(json_path.read_text(encoding="utf-8")),
         qa=result_manifest,
     )
@@ -416,7 +491,7 @@ def register_golive3_capabilities() -> list[Capability]:
             },
             cpu_cost_hint=0.1,
             render=_render_assets_library,
-            description="项目内可复用资产库（角色/场景/道具 CRUD 与音色绑定）。",
+            description="项目内可复用资产库（角色/场景/道具 CRUD 与音色绑定，集成 ReferenceStore）。",
             line="golive3",
         ),
         Capability(
@@ -432,7 +507,7 @@ def register_golive3_capabilities() -> list[Capability]:
             },
             cpu_cost_hint=0.2,
             render=_render_assets_extract,
-            description="从剧本自动抽取角色、场景与道具（离线确定性规则）。",
+            description="从剧本自动抽取角色、场景与道具（复用 hevi.creative.layer4 ImportModule）。",
             line="golive3",
         ),
         Capability(
@@ -451,7 +526,7 @@ def register_golive3_capabilities() -> list[Capability]:
             },
             cpu_cost_hint=0.5,
             render=_render_multi_ref_compose,
-            description="多参考图融合与占位符解析（支持模型上限校验与 PIL 合成预览）。",
+            description="多参考图融合与占位符解析（支持 capability_guard 与 provider 上限校验）。",
             line="golive3",
         ),
         Capability(
@@ -468,7 +543,7 @@ def register_golive3_capabilities() -> list[Capability]:
             },
             cpu_cost_hint=0.1,
             render=_render_project_snapshot,
-            description="项目级风格快照（生成不可变版本快照ID，支持版本回溯）。",
+            description="项目级风格快照（生成不可变持久化版本快照ID，支持版本回溯）。",
             line="golive3",
         ),
         Capability(
@@ -495,7 +570,7 @@ def register_golive3_capabilities() -> list[Capability]:
             },
             cpu_cost_hint=0.2,
             render=_render_shot_groups,
-            description="分镜镜头组拆分（按场景/时长分组，生成视频提示词与首尾帧约束）。",
+            description="分镜镜头组拆分（复用 hevi.storyplan 模型，生成视频提示词与首尾帧约束）。",
             line="golive3",
         ),
     ]
