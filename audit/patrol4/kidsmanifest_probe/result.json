@@ -2,43 +2,43 @@
   "results": [
     {
       "check": "adversarial: all 6 mandated words + synonyms blocked",
-      "ok": false,
-      "detail": "12/23 blocked; MISSED=['勒脖子', '勒脖子-同义', '踹飞', '针扎', '绑树堵嘴', '绑树堵嘴-同义', '绑树堵嘴-改写', '鞭打', '鞭打-同义', '鞭打-改写', '狗咬']"
+      "ok": true,
+      "detail": "23/23 blocked"
     },
     {
       "check": "adversarial group '勒脖子' blocked",
-      "ok": false,
-      "detail": "1/3"
+      "ok": true,
+      "detail": "3/3"
     },
     {
       "check": "adversarial group '踹飞' blocked",
-      "ok": false,
-      "detail": "2/3"
+      "ok": true,
+      "detail": "3/3"
     },
     {
       "check": "adversarial group '针扎' blocked",
-      "ok": false,
-      "detail": "2/3"
+      "ok": true,
+      "detail": "3/3"
     },
     {
       "check": "adversarial group '绑树堵嘴' blocked",
-      "ok": false,
-      "detail": "0/3"
+      "ok": true,
+      "detail": "3/3"
     },
     {
       "check": "adversarial group '鞭打' blocked",
-      "ok": false,
-      "detail": "0/3"
+      "ok": true,
+      "detail": "3/3"
     },
     {
       "check": "adversarial group '狗咬' blocked",
-      "ok": false,
-      "detail": "2/3"
+      "ok": true,
+      "detail": "3/3"
     },
     {
       "check": "benign: normal preschool words not over-blocked",
-      "ok": false,
-      "detail": "13/15 clean; FALSE_POSITIVE=[('日常-切菜', ['刀']), ('日常-刺猬', ['苹果'])]"
+      "ok": true,
+      "detail": "15/15 clean"
     },
     {
       "check": "benign: direct negation not over-blocked",
@@ -53,41 +53,94 @@
     {
       "check": "determinism: repeat run byte-identical (sha256)",
       "ok": true,
-      "detail": "2e0e2592106fb91c8a5c14db == 2e0e2592106fb91c8a5c14db"
+      "detail": "d443053f9f8b26e74c4c568b == d443053f9f8b26e74c4c568b"
     }
   ],
   "adversarial": {
-    "勒脖子": [],
-    "勒脖子-同义": [],
+    "勒脖子": [
+      "勒",
+      "勒住"
+    ],
+    "勒脖子-同义": [
+      "喉咙",
+      "喘不过气",
+      "箍住"
+    ],
     "勒脖子-改写": [
       "掐",
       "掐住"
     ],
-    "踹飞": [],
+    "踹飞": [
+      "踹",
+      "踹飞"
+    ],
     "踹飞-同义": [
       "踢"
     ],
     "踹飞-改写": [
-      "踢"
+      "踢",
+      "踢得远远"
     ],
-    "针扎": [],
+    "针扎": [
+      "扎",
+      "针",
+      "针扎"
+    ],
     "针扎-同义": [
-      "刺"
+      "刺",
+      "刺进",
+      "注射器"
     ],
     "针扎-改写": [
-      "刺"
+      "刺",
+      "刺了很多下",
+      "缝衣针",
+      "针",
+      "针刺"
     ],
-    "绑树堵嘴": [],
-    "绑树堵嘴-同义": [],
-    "绑树堵嘴-改写": [],
-    "鞭打": [],
-    "鞭打-同义": [],
-    "鞭打-改写": [],
-    "狗咬": [],
+    "绑树堵嘴": [
+      "堵",
+      "绑",
+      "绑在"
+    ],
+    "绑树堵嘴-同义": [
+      "塞",
+      "塞住嘴",
+      "捆",
+      "捆在",
+      "毛巾塞"
+    ],
+    "绑树堵嘴-改写": [
+      "封",
+      "绑",
+      "绑住",
+      "绑住手脚"
+    ],
+    "鞭打": [
+      "抽打",
+      "鞭子",
+      "鞭子抽"
+    ],
+    "鞭打-同义": [
+      "使劲抽",
+      "皮带"
+    ],
+    "鞭打-改写": [
+      "抽打",
+      "棍子"
+    ],
+    "狗咬": [
+      "咬",
+      "咬住"
+    ],
     "狗咬-同义": [
+      "咬",
+      "恶犬",
       "撕咬"
     ],
     "狗咬-改写": [
+      "咬",
+      "咬住",
       "死"
     ],
     "血": [
@@ -111,16 +164,12 @@
   "benign": {
     "BENIGN:日常-打招呼": [],
     "BENIGN:日常-喝水": [],
-    "BENIGN:日常-切菜": [
-      "刀"
-    ],
+    "BENIGN:日常-切菜": [],
     "BENIGN:日常-摔倒": [],
     "BENIGN:日常-打伞": [],
     "BENIGN:日常-打扫": [],
     "BENIGN:日常-抢答": [],
-    "BENIGN:日常-刺猬": [
-      "苹果"
-    ],
+    "BENIGN:日常-刺猬": [],
     "BENIGN:日常-打雪仗": [],
     "BENIGN:日常-打扮": [],
     "BENIGN:科普-种子": [],
@@ -129,6 +178,6 @@
     "BENIGN:直接否定-不下毒": [],
     "BENIGN:直接否定-没带刀": []
   },
-  "pass": 3,
+  "pass": 11,
   "total": 11
 }

@@ -1,0 +1,9 @@
+Running as unit: golive1016_lint.scope; invocation ID: 28fe56835cc64b8dabf13fd2c309b38b
+/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/text.py:479:estimate_cost positional=2
+/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/vector_db/lancedb.py:184:open_vector_db positional=4
+/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/oprim/verify_step.py:168:build_solve_result_with_checks positional=4
+[PASS] check_obase_no_reverse_dep.py
+[PASS] check_oservi_injection.py
+[PASS] check_async_contract.py
+3O_V3_LINT=FAIL
+failed: check_no_sibling_call.py, check_omodul_signature.py, check_enabled_pillars.py, check_oprim_keyword_only.py
