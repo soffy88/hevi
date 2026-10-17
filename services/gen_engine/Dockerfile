@@ -123,6 +123,12 @@ RUN python -m venv /opt/cosy-venv && \
     # 如此装上)。omegaconf 同步钉 2.3.0(hydra 1.3.2 声明 omegaconf<2.4)。
     /opt/cosy-venv/bin/pip install --no-cache-dir --timeout 120 --retries 8 --no-deps \
       "hydra-core==1.3.2" "omegaconf==2.3.0" "antlr4-python3-runtime==4.9.3"
+# cpu: openai-whisper pulls triton (~0.9 GB) on x86_64; it only serves CUDA
+# kernels (whisper imports it lazily inside try), so drop it for the cpu variant.
+RUN if [ "$PYTORCH_VARIANT" = "cpu" ]; then \
+      rm -rf /opt/cosy-venv/lib/python3.11/site-packages/triton \
+             /opt/cosy-venv/lib/python3.11/site-packages/triton-*.dist-info; \
+    fi
 COPY services/gen_engine/cosyvoice/ /opt/cosy-venv/lib/python3.11/site-packages/cosyvoice/
 COPY services/gen_engine/third_party/Matcha-TTS/matcha/ /opt/cosy-venv/lib/python3.11/site-packages/matcha/
 

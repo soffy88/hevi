@@ -8,6 +8,16 @@
 # Host context must include .venv/ — remove it from .dockerignore for this build.
 # After any `uv sync` on the host, rebuild: docker compose -f deploy/docker-compose-cftunnel.yml build
 
+# venv stage: take the host .venv, then swap CUDA torch for the CPU wheel of the
+# same version and drop nvidia-*/cuda-*/triton (~4.5 GB). The host GPU is not
+# usable from this container (runc, no device), so CUDA torch was dead weight.
+FROM python:3.14-slim AS venv
+WORKDIR /app
+COPY .venv/ ./.venv/
+COPY deploy/slim/strip-cuda-venv.sh /tmp/strip-cuda-venv.sh
+RUN ln -sf /usr/local/bin/python3.14 /usr/bin/python3.14 \
+    && sh /tmp/strip-cuda-venv.sh /app/.venv
+
 FROM python:3.14-slim
 
 WORKDIR /app
@@ -44,7 +54,7 @@ RUN python -m venv /opt/piper \
 # Copy pre-installed venv (Linux amd64 Python 3.14)
 # Scripts in .venv/bin/ have shebangs pointing to the host path
 # /data/soffy/projects/hevi/.venv/bin/python3 — create a symlink so they resolve
-COPY --chown=hevi:hevi .venv/ ./.venv/
+COPY --from=venv --chown=hevi:hevi /app/.venv ./.venv
 RUN mkdir -p /data/soffy/projects/hevi && \
     ln -s /app/.venv /data/soffy/projects/hevi/.venv
 
