@@ -1,0 +1,65 @@
+{
+  "version": "5.3",
+  "references": [
+    {
+      "name": "OpenMontage",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "HyperFrames",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "video-shotcraft",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "video-talkcraft",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "FireRed-OpenStoryline",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "vox-director",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "Paper-Cut",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "guizang-product-video-skill",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "codex-storyboard",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "reelbench-skills",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "story-to-handdrawn-video",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    },
+    {
+      "name": "data-animation-skills",
+      "license": "unknown",
+      "adoption_mode": "REFERENCE_ONLY"
+    }
+  ]
+}
