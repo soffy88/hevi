@@ -74,6 +74,7 @@ from hevi.api.routers.svfactory import router as svfactory_batch_router
 from hevi.api.routers.ws import router as ws_router
 from hevi.storyplan.api import router as storyplan_router
 from hevi.api.routers.golive3 import router as golive3_router
+from hevi.api.routers.stickman import router as stickman_router
 from hevi.core.config import settings
 from hevi.core.ws_manager import connection_manager
 from hevi.events import EventConsumer, EventGateway
@@ -229,6 +230,7 @@ app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提�
 app.include_router(storyplan_router, prefix="/api")
 app.include_router(golive3_router, prefix="/api")
 app.include_router(svfactory_batch_router, prefix="/api")  # SVFACTORY 批量预设生产与断点续跑
+app.include_router(stickman_router, prefix="/api")
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
 mount_mcp(app)

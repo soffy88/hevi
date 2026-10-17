@@ -1,0 +1,16 @@
+Stickman Video Director kit vendored into third_party/stickman_director.
+
+Upstream: https://github.com/kaomei/stickman-video-director
+License: MIT (see LICENSE)
+Copyright (c) 2026 Stickman Video Director contributors
+
+Vendored files:
+- skills/directing-stickman-videos/SKILL.md
+- skills/directing-stickman-videos/references/style-catalog.md (5 stickman visual styles & character DNA locks)
+- skills/directing-stickman-videos/references/storyboard-template.md (5-stage heartbeat narrative structure)
+- skills/directing-stickman-videos/references/omni-flash-prompt-contract.md (Omni Flash 720p prompt formulas)
+- skills/directing-stickman-videos/references/voice-continuity.md (Voice profile continuity specs)
+- skills/directing-stickman-videos/references/prehistoric-dark-comedy.md (Prehistoric comedy style specs)
+- skills/directing-stickman-videos/references/examples.md
+
+Hevi integrates these rules, style catalogs, prompt contracts, and narrative skeletons for stickman explainer video production and Flow pack generation.

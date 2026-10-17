@@ -35,3 +35,16 @@
 
 硬性磁盘阈值触发，按规则立即退出。**未部署、未 push、未清理、未伪造验收。**
 Fri Oct 16 00:29:20 UTC 2026 disk low 0G, loop stopped
+
+---
+
+# DISK_FULL_NOTE: /data 空间不足 5GB 停止通告 (feat/stickman-flow)
+
+- 监控时间：2026-10-17 06:22 (UTC)
+- 当前 `/data` 空间状态：
+  ```
+  Filesystem                       Size  Used Avail Use% Mounted on
+  /dev/mapper/ubuntu--vg-data--lv  787G  775G  4.3G 100% /data
+  (精确数值: 4377 MB < 5120 MB 门槛)
+  ```
+- 宿主机多任务后台进程（包括全量测试日志与外部模型生成进程）正在持续消耗 `/data` 空间。
