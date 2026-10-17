@@ -24,7 +24,7 @@
  | `feat/aimotion-rules` | 2026-10-14 03:28:03 +0000 | 7 | 27 | MERGED | Clean merge | 
  | `feat/riso-broll` | 2026-10-14 11:47:52 +0000 | 7 | 27 | SKIPPED | Conflict: Auto-merging hevi/capabilities/__init__.py CONFLICT (add/add | 
  | `feat/scene3d-vibe` | 2026-10-15 14:25:04 +0000 | 7 | 927 | MERGED | Clean merge | 
-| `feat/xfade-pack` | 2026-10-14 05:40:28 +0000 | 9 | 7 | PENDING |  |
+ | `feat/xfade-pack` | 2026-10-14 05:40:28 +0000 | 9 | 7 | MERGED | Clean merge | 
 | `feat/stickman-director` | 2026-10-14 02:24:34 +0000 | 9 | 41 | PENDING |  |
 | `feat/handdraw-line` | 2026-10-15 12:03:18 +0000 | 10 | 211 | PENDING |  |
 | `feat/aimotion-fx` | 2026-10-14 11:55:09 +0000 | 20 | 23 | PENDING |  |
