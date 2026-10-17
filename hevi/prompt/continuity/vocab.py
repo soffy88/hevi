@@ -922,6 +922,91 @@ for _item in _VOCAB_LIST:
     _LOOKUP[_item.name_zh] = _item
     _LOOKUP[_item.name_en.lower().replace("-", " ").replace("'", "")] = _item
 
+# post_only 技法别名与中文同义词表(覆盖常见术语别名)
+POST_ONLY_ALIASES: dict[str, list[str]] = {
+    "cam_dolly_zoom": [
+        "滑动变焦", "眩晕变焦", "希区柯克变焦", "反向变焦", "反向滑动变焦", "变焦推拉",
+        "zolly", "vertigo shot", "dolly zoom",
+    ],
+    "cam_whip_pan": [
+        "甩镜", "甩镜头", "急摇", "极速摇镜", "快速甩镜头", "whip pan", "swish pan",
+    ],
+    "cam_roll": [
+        "滚转镜头", "滚转", "旋转镜头", "镜头翻滚", "滚转运镜", "camera roll", "barrel roll",
+    ],
+    "shot_type_split_screen": [
+        "分屏镜头", "分屏", "多格画面", "split-screen", "split screen",
+    ],
+    "edit_jump_cut": [
+        "跳切", "跳跃剪辑", "动作跳切", "jump cut",
+    ],
+    "edit_match_cut": [
+        "匹配剪辑", "图形匹配剪接", "动作匹配剪辑", "match cut",
+    ],
+    "edit_j_cut": [
+        "j型剪辑", "j-cut", "j cut", "声音先行剪辑", "声音先行",
+    ],
+    "edit_l_cut": [
+        "l型剪辑", "l-cut", "l cut", "声音延后剪辑", "声音延后", "画面先行",
+    ],
+    "edit_cross_dissolve": [
+        "叠化", "交叉溶解", "淡入淡出转场", "交叉叠化", "cross dissolve", "dissolve",
+    ],
+    "edit_smash_cut": [
+        "突切", "剧烈突切", "声画突切", "smash cut",
+    ],
+    "edit_montage": [
+        "蒙太奇", "快速剪辑", "片段组合", "叙事蒙太奇", "montage",
+    ],
+    "edit_parallel_editing": [
+        "平行剪辑", "平行叙事", "双线并进剪辑", "parallel editing",
+    ],
+    "edit_cross_cutting": [
+        "交叉剪辑", "交叉剪接", "多线交叉", "cross-cutting", "cross cutting",
+    ],
+    "edit_flash_cut": [
+        "闪切", "闪白", "极短闪白", "flash cut",
+    ],
+    "edit_freeze_frame": [
+        "定格画面", "定格", "冻结帧", "画面定格", "freeze frame",
+    ],
+    "edit_slow_motion": [
+        "升格慢动作", "慢动作", "升格", "高速摄影慢动作", "slow motion", "slow-mo", "slowmo",
+    ],
+    "edit_time_lapse": [
+        "延时摄影", "降格摄影", "缩时摄影", "延时", "time-lapse", "timelapse",
+    ],
+    "edit_split_edit": [
+        "拆分剪辑", "声画拆分", "split edit",
+    ],
+    "edit_invisible_cut": [
+        "隐形剪辑", "无缝隐形转场", "无缝转场", "遮挡剪辑", "invisible cut",
+    ],
+    "edit_match_on_action": [
+        "动作连贯剪接", "动作匹配剪辑", "动作顺剪", "match on action",
+    ],
+    "edit_eyeline_match": [
+        "视线连贯剪接", "视线匹配剪辑", "视线对齐", "eyeline match",
+    ],
+    "edit_cut_on_action": [
+        "动点剪辑", "动作瞬间切开", "cut on action",
+    ],
+    "edit_establishing_cut": [
+        "定场切入", "建立镜头剪接", "establishing cut",
+    ],
+    "edit_cutaway_edit": [
+        "切出镜头组接", "切出镜头", "旁跳镜头", "cutaway",
+    ],
+}
+
+# 将所有别名写入 _LOOKUP 映射
+for _item_id, _aliases in POST_ONLY_ALIASES.items():
+    _item_obj = VOCAB_MAP.get(_item_id)
+    if _item_obj:
+        for _alias in _aliases:
+            _LOOKUP[_alias.lower()] = _item_obj
+            _LOOKUP[_alias] = _item_obj
+
 # post_only 技法集合(不可进文本生成提示词)
 POST_ONLY_IDS: set[str] = {item.id for item in _VOCAB_LIST if item.ai_risk == "post_only"}
 POST_ONLY_NAMES_EN: set[str] = {
@@ -947,15 +1032,16 @@ def list_vocab_by_category(cat: Category) -> list[VocabItem]:
 
 def is_post_only(key: str) -> bool:
     """判断是否为 post_only 技法(禁止进提示词)。"""
+    if not key:
+        return False
     item = get_vocab_item(key)
-    if item:
-        return item.ai_risk == "post_only"
-    k_lower = key.strip().lower()
-    return (
-        k_lower in POST_ONLY_NAMES_EN
-        or key.strip() in POST_ONLY_NAMES_ZH
-        or any(po in k_lower for po in ["dolly zoom", "whip pan", "split screen", "jump cut"])
-    )
+    if item and item.ai_risk == "post_only":
+        return True
+    k_clean = key.strip().lower()
+    for item_id, aliases in POST_ONLY_ALIASES.items():
+        if any(a.lower() == k_clean or a in key for a in aliases):
+            return True
+    return False
 
 
 def find_post_only_violations(text_or_names: str | list[str]) -> list[str]:
@@ -969,11 +1055,22 @@ def find_post_only_violations(text_or_names: str | list[str]) -> list[str]:
     for item in _VOCAB_LIST:
         if item.ai_risk != "post_only":
             continue
+        aliases = POST_ONLY_ALIASES.get(item.id, [item.name_zh, item.name_en])
         en = item.name_en.lower()
         zh = item.name_zh
+        matched = False
         for cand in candidates:
             c_lower = cand.lower()
             if en in c_lower or zh in cand:
                 violations.append(f"{item.name_en}({item.name_zh})")
+                matched = True
+                break
+            for alias in aliases:
+                a_lower = alias.lower()
+                if a_lower in c_lower or alias in cand:
+                    violations.append(f"{item.name_en}({item.name_zh})")
+                    matched = True
+                    break
+            if matched:
                 break
     return sorted(list(set(violations)))

@@ -24,9 +24,9 @@ class VoiceCard(BaseModel):
     speed: str = ""  # 语速，如 "中速沉稳，约每秒3-4字"
     timbre: str = ""  # 音色质感，如 "温和醇厚、略带磁性沙哑"
     accent: str = "标准普通话，无方言口音"  # 口音
-    reverb: str = "室内轻度混响匹配"  # 空间混响
+    reverb: str = "室内轻度混响匹配"  # 默认空间混响（优先被 SceneCard 混响覆盖）
 
-    def to_prompt_text(self) -> str:
+    def to_prompt_text(self, scene_reverb: str = "") -> str:
         parts: list[str] = []
         if self.gender_age:
             parts.append(self.gender_age)
@@ -38,8 +38,9 @@ class VoiceCard(BaseModel):
             parts.append(f"质感:{self.timbre}")
         if self.accent:
             parts.append(f"口音:{self.accent}")
-        if self.reverb:
-            parts.append(f"混响:{self.reverb}")
+        eff_reverb = scene_reverb or self.reverb
+        if eff_reverb:
+            parts.append(f"混响:{eff_reverb}")
         return "，".join(parts)
 
 
@@ -91,20 +92,27 @@ class FilmBible(BaseModel):
 
 
 class CharacterCard(BaseModel):
-    """角色卡：完整外貌固定描述(逐字复用，禁止只给短锚点)。"""
+    """角色卡：不变身体特征与按故事日服装配饰解耦（逐字复用，禁止只给短锚点）。"""
 
     s_no: int  # S号，全片稳定 1-based
     name: str  # 角色名
-    appearance_fixed: str  # 完整外貌描述(脸/肤/眼/眉/鼻唇/发/服装/配饰)，禁止只给短锚点
+    body_fixed: str = ""  # 不变身体特征（脸/肤/眼/眉/鼻唇/发/疤痕），逐字复用，禁止只给短锚点
+    appearance_fixed: str = ""  # 向后兼容字段：若 body_fixed 为空则取 appearance_fixed
+    wardrobes: dict[str, str] = Field(default_factory=dict)  # 按故事日的服装配饰（如 {"D1": "...", "D_flashback": "..."}）
     voice_card: VoiceCard | None = None  # 音色母卡
-    daily_states: dict[str, str] = Field(default_factory=dict)  # 故事日状态(伤/脏/湿/换装)
+    daily_states: dict[str, str] = Field(default_factory=dict)  # 故事日状态(伤/脏/湿/状态)
 
     def get_full_description(self, story_day: str = "") -> str:
-        base = self.appearance_fixed.strip()
+        base = (self.body_fixed or self.appearance_fixed).strip()
+        parts: list[str] = [base] if base else []
+        if self.wardrobes:
+            w = self.wardrobes.get(story_day) or self.wardrobes.get("default", "")
+            if w and w.strip():
+                parts.append(f"服装配饰:{w.strip()}")
         day_note = self.daily_states.get(story_day, "").strip() if story_day else ""
         if day_note:
-            return f"{base}【当日状态:{day_note}】"
-        return base
+            parts.append(f"当日状态:{day_note}")
+        return "；".join(parts)
 
 
 class SceneCard(BaseModel):
@@ -118,6 +126,7 @@ class SceneCard(BaseModel):
     lighting: str = ""  # 来自词表+主光方向+色温+调色
     lens: str = ""  # 焦段/光圈/机位高度
     ambient_noise: str = "环境底噪连续稳定，无突然静音或音量跳变"  # 固定底噪一句
+    reverb: str = ""  # 场景空间混响（覆盖角色的默认混响）
     music_policy: str = "无音乐"  # 配乐策略，明确“无音乐”或指定乐段
 
 
