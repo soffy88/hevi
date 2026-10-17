@@ -109,6 +109,7 @@ def sample_characters():
 def sample_scenes():
     s1 = SceneCard(
         scene_name="婚宴主舞台",
+        scene_name_en="luxury banquet hall",
         description="五星级酒店豪华宴会厅，主舞台铺浅金色地毯，背景为淡香槟色巨型丝绒花艺背景墙与暖光射灯",
         description_en=(
             "a luxury hotel banquet hall with a champagne-colored velvet backdrop, round dining tables draped in fine linen, "
@@ -122,6 +123,7 @@ def sample_scenes():
     )
     s2 = SceneCard(
         scene_name="医院康复花园",
+        scene_name_en="hospital rehabilitation garden",
         description="三年前阳光明媚的午后，医院室外康复花园鹅卵石步道，两侧为修剪整齐的绿植矮灌木与白色木质长椅",
         description_en=(
             "a sunny outdoor hospital rehabilitation garden with smooth cobblestone pathways, manicured green hedges, "
@@ -143,6 +145,7 @@ def sample_props():
             PropItem(
                 prop_name="话筒",
                 prop_name_en="microphone",
+                appearance_en="a metallic silver wireless handheld microphone with a dark matte mesh grille and aluminum casing",
                 holder="李明",
                 placement="右手手持",
                 placement_en="held in his right hand",
@@ -152,6 +155,7 @@ def sample_props():
             PropItem(
                 prop_name="轮椅",
                 prop_name_en="wheelchair",
+                appearance_en="a modern foldable manual wheelchair with matte black aluminum frame, clean padded seat and dual large rubber wheels",
                 holder="李明",
                 placement="双手推扶把手",
                 placement_en="gripping both rubber handles",
@@ -161,6 +165,7 @@ def sample_props():
             PropItem(
                 prop_name="手提包",
                 prop_name_en="handbag",
+                appearance_en="a structured small black leather women's handbag with polished gold-tone hardware and fine grain texture",
                 holder="苏晴",
                 placement="挂在轮椅右侧挂钩",
                 placement_en="hanging securely on the right hook of the wheelchair",
@@ -617,3 +622,138 @@ def test_validate_film_integration_with_first_frame_prompts(sample_bible, sample
         first_frame_prompts=[bad_ar_mj],
     )
     assert any("首帧 --ar '9:16' 与视频画幅 '16:9' 不符" in e for e in errs_bad)
+
+
+# ── 11. 复核专项测试 (Hark Review 6 大回归点) ────────────────────────────────
+
+
+def test_mj_prompts_no_cjk_characters(sample_bible, sample_scenes, sample_characters, sample_props):
+    """测试所有 MJ 提示词（资产参考图 + 每镜首帧）均不含 CJK 中文字符。"""
+    import re
+
+    # 1. 资产定妆参考图
+    specs = compile_asset_refs(sample_bible, sample_characters, sample_scenes, sample_props)
+    for sp in specs:
+        assert not re.search(r"[\u4e00-\u9fff]", sp.prompt), f"资产参考图包含中文: {sp.prompt}"
+
+    # 2. 单人镜头与双人镜头首帧
+    shot1 = ShotContract(
+        shot_id="S-CJK-1",
+        scene_name="婚宴主舞台",
+        shot_type_en="medium shot",
+        character_names=["李明"],
+        prop_names=["话筒"],
+        start_state_en="standing at the center podium, smiling gently",
+    )
+    shot2 = ShotContract(
+        shot_id="S-CJK-2",
+        scene_name="医院康复花园",
+        shot_type_en="full-body shot",
+        character_names=["李明", "苏晴"],
+        prop_names=["轮椅", "手提包"],
+        start_state_en="Li Ming standing behind the wheelchair, gripping both handles; Su Qing sitting peacefully in the wheelchair",
+    )
+    for s in [shot1, shot2]:
+        sc = sample_scenes[s.scene_name]
+        res = compile_first_frame(s, sample_bible, sc, sample_characters, sample_props, platform="midjourney")
+        assert not re.search(r"[\u4e00-\u9fff]", res.prompt), f"首帧提示词包含中文: {res.prompt}"
+
+
+def test_prop_refs_no_action_words(sample_bible, sample_scenes, sample_characters, sample_props):
+    """测试道具参考图描述道具本身外观材质，不含 holding/hand/standing behind 等人物动作词。"""
+    import re
+
+    specs = compile_asset_refs(sample_bible, sample_characters, sample_scenes, sample_props)
+    prop_specs = [s for s in specs if s.category == "prop"]
+    assert len(prop_specs) > 0
+
+    forbidden_patterns = [r"\bholding\b", r"\bhands?\b", r"\bstanding behind\b"]
+    for ps in prop_specs:
+        for pat in forbidden_patterns:
+            m = re.search(pat, ps.prompt, re.I)
+            assert m is None, f"道具参考图包含人物动作词 '{pat}': {ps.prompt}"
+
+
+def test_no_duplicate_6_word_phrases_in_first_frame(sample_bible, sample_scenes, sample_characters, sample_props):
+    """测试同一镜首帧提示词里不出现重复的 6 词以上连续短语。"""
+    import re
+    from collections import Counter
+
+    shot1 = ShotContract(
+        shot_id="S-DUP-1",
+        scene_name="婚宴主舞台",
+        shot_type_en="medium shot",
+        character_names=["李明"],
+        prop_names=["话筒"],
+        start_state_en="standing at the center podium, smiling gently, holding a sleek silver wireless handheld microphone in his right hand",
+    )
+    shot2 = ShotContract(
+        shot_id="S-DUP-2",
+        scene_name="医院康复花园",
+        shot_type_en="full-body shot",
+        character_names=["李明", "苏晴"],
+        prop_names=["轮椅", "手提包"],
+        start_state_en="Li Ming standing behind the wheelchair, gripping both handles, looking down warmly; Su Qing sitting peacefully in the wheelchair with a knitted lap blanket over her knees",
+    )
+
+    for s in [shot1, shot2]:
+        sc = sample_scenes[s.scene_name]
+        res = compile_first_frame(s, sample_bible, sc, sample_characters, sample_props, platform="midjourney")
+        words = re.findall(r"[a-zA-Z0-9_\-]+", res.prompt.lower())
+        assert len(words) >= 6
+        ngrams = [" ".join(words[i : i + 6]) for i in range(len(words) - 5)]
+        counts = Counter(ngrams)
+        duplicates = [ng for ng, c in counts.items() if c > 1]
+        assert not duplicates, f"[{s.shot_id}] 发现重复 6 词短语: {duplicates}"
+
+
+def test_multi_character_lead_guidance(sample_bible, sample_scenes, sample_characters):
+    """测试多角色首帧在每个角色描述前加名字与身份引导。"""
+    shot = ShotContract(
+        shot_id="S-MULTI",
+        scene_name="医院康复花园",
+        character_names=["李明", "苏晴"],
+    )
+    sc = sample_scenes["医院康复花园"]
+    res = compile_first_frame(shot, sample_bible, sc, sample_characters, platform="midjourney")
+    assert "Li Ming, an adult East Asian man" in res.prompt
+    assert "beside him, Su Qing, an adult East Asian woman" in res.prompt
+
+
+def test_composition_no_contradiction(sample_bible, sample_scenes, sample_characters):
+    """测试构图词不矛盾：指定构图规则(如 Rule of Thirds)时，不得追加默认 centered composition。"""
+    sc = sample_scenes["婚宴主舞台"]
+
+    # 1. 指定了三分法则
+    shot_thirds = ShotContract(
+        shot_id="S-THIRDS",
+        scene_name="婚宴主舞台",
+        composition_en="rule of thirds framing with balanced negative space around the head",
+        character_names=["李明"],
+    )
+    res_thirds = compile_first_frame(shot_thirds, sample_bible, sc, sample_characters, platform="midjourney")
+    assert "rule of thirds" in res_thirds.prompt.lower()
+    assert "centered composition" not in res_thirds.prompt.lower()
+
+    # 2. 未指定特定构图规则，回落为默认 centered composition
+    shot_default = ShotContract(
+        shot_id="S-DEF",
+        scene_name="婚宴主舞台",
+        character_names=["李明"],
+    )
+    res_default = compile_first_frame(shot_default, sample_bible, sc, sample_characters, platform="midjourney")
+    assert "centered composition" in res_default.prompt.lower()
+
+
+def test_outpaint_coherent_deduplication():
+    """测试扩图模板输出不会出现 'coherent coherent'。"""
+    outpaint_res = build_outpaint_prompt(
+        scene_background="outdoor hospital garden",
+        subject="Li Ming pushing Su Qing in wheelchair",
+        lighting="coherent warm afternoon sunlight",
+        directions="above and below",
+        target_ar="16:9",
+    )
+    assert "coherent coherent" not in outpaint_res["prompt"]
+    assert "coherent warm afternoon sunlight" in outpaint_res["prompt"]
+

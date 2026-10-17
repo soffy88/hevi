@@ -110,6 +110,7 @@ def run_demo() -> None:
     # ── 3. 建立场景母卡 (SceneCard) ─────────────────────────────────────────
     scene_wedding = SceneCard(
         scene_name="宴会主厅",
+        scene_name_en="grand hotel banquet hall",
         description="五星级酒店宏大宴会厅，水晶吊灯高悬，主舞台后方为暖金暗红纱幔花艺",
         description_en=(
             "a grand hotel banquet hall with crystal ceiling chandeliers in soft focus, a warm golden and muted-crimson velvet drape backdrop, "
@@ -123,6 +124,7 @@ def run_demo() -> None:
 
     scene_hospital = SceneCard(
         scene_name="康复花园",
+        scene_name_en="hospital rehabilitation garden",
         description="三年前阳光微醺的医院康复石子小径，两侧盛开黄色金丝桃灌木",
         description_en=(
             "a tranquil outdoor hospital rehabilitation garden with smooth cobblestone pathways, manicured green hedges, "
@@ -137,26 +139,29 @@ def run_demo() -> None:
 
     # ── 4. 建立道具账本 (PropLedger) ─────────────────────────────────────────
     mic = PropItem(
-        prop_name="立式麦克风",
-        prop_name_en="microphone",
+        prop_name="手持无线麦克风",
+        prop_name_en="wireless handheld microphone",
+        appearance_en="a sleek metallic silver wireless handheld microphone with a dark matte mesh grille and aluminum casing",
         holder="李明",
         placement="右手手持",
         placement_en="held in his right hand",
-        start_state="右手握持银色立式麦克风",
-        start_state_en="holding a silver wireless microphone in his right hand, left arm resting naturally by his side",
+        start_state="右手握持银色无线手持麦克风",
+        start_state_en="holding a silver wireless handheld microphone in his right hand, left arm resting naturally by his side",
     )
     wheelchair = PropItem(
         prop_name="折叠轮椅",
         prop_name_en="wheelchair",
+        appearance_en="a modern foldable manual wheelchair with matte black aluminum frame, clean padded seat and dual large rubber wheels",
         holder="李明",
         placement="双手推扶把手",
         placement_en="gripping both rubber handles",
         start_state="双手握持轮椅橡胶推把",
-        start_state_en="standing behind the wheelchair with both hands firmly gripping the black rubber handles",
+        start_state_en="groom standing behind the wheelchair with both hands firmly gripping the black rubber handles",
     )
     handbag = PropItem(
         prop_name="女式黑皮手提包",
         prop_name_en="handbag",
+        appearance_en="a structured small black leather women's handbag with polished gold-tone hardware and fine grain texture",
         holder="苏晴",
         placement="挂在轮椅右侧挂钩",
         placement_en="hanging securely from the right hook of the wheelchair",
@@ -175,13 +180,13 @@ def run_demo() -> None:
         composition="Rule of Thirds",
         composition_en="rule of thirds framing with balanced negative space around the head",
         character_names=["李明"],
-        prop_names=["立式麦克风"],
-        start_state="李明站于主舞台发言台前，右手持话筒，目光深情",
-        start_state_en="standing at the center podium, facing three-quarters towards the right, smiling gently",
+        prop_names=["手持无线麦克风"],
+        start_state="李明站于主舞台发言台前，右手持无线麦克风，目光深情",
+        start_state_en="standing at the center podium, facing three-quarters towards the right, smiling gently, holding a sleek silver wireless handheld microphone in his right hand",
         action="李明手持话筒动情回忆过去",
         duration_s=5.0,
         story_day="D1",
-        hands_occupation={"右手": "手持立式麦克风", "左手": "自然下垂"},
+        hands_occupation={"右手": "手持无线麦克风", "左手": "自然下垂"},
     )
 
     shot2 = ShotContract(
@@ -230,9 +235,17 @@ def run_demo() -> None:
         for r in mj_ff.requirements[:2]:
             print(f"  - {r}")
 
-    # ── [DEMO 3] 扩图/改画幅提示词示例 ───────────────────────────────────────
+    # ── [DEMO 3] 编辑与扩图提示词模板 ───────────────────────────────────────
     print("\n" + "=" * 80)
-    print("[DEMO 3] 扩图与改画幅提示词模板 (build_outpaint_prompt)...")
+    print("[DEMO 3] 编辑与扩图提示词模板 (build_local_edit_prompt & build_outpaint_prompt)...")
+    local_edit_sample = build_local_edit_prompt(
+        change_from="the deep black bow tie",
+        change_to="a muted wine-red velvet bow tie",
+    )
+    print("【局部修改提示词模板 (build_local_edit_prompt)】:")
+    print(f"  提示词: {local_edit_sample['prompt']}")
+    print(f"  操作指南: {local_edit_sample['instructions']}")
+
     outpaint_sample = build_outpaint_prompt(
         scene_background="outdoor hospital rehabilitation garden cobblestone path and hedge bushes",
         subject="Li Ming pushing Su Qing in wheelchair",
@@ -240,6 +253,7 @@ def run_demo() -> None:
         directions="above and below, left and right",
         target_ar="16:9",
     )
+    print("\n【扩图/改画幅提示词模板 (build_outpaint_prompt)】:")
     print(f"  提示词: {outpaint_sample['prompt']}")
     print(f"  操作指南: {outpaint_sample['instructions']}")
 

@@ -107,6 +107,36 @@ def _normalize_mapping(
     return {key_fn(it): it for it in items}
 
 
+def deduplicate_long_phrases(text: str, min_words: int = 6) -> str:
+    """去除提示词中重复出现的 6 词以上连续短语，保持自然语法。"""
+    chunks = re.split(r"([,;]\s*)", text)
+    seen_ngrams = set()
+    cleaned_chunks = []
+
+    for i in range(0, len(chunks), 2):
+        chunk = chunks[i].strip()
+        sep = chunks[i + 1] if i + 1 < len(chunks) else ""
+        if not chunk:
+            continue
+        words = re.findall(r"[a-zA-Z0-9_\-]+", chunk.lower())
+        is_dup = False
+        if len(words) >= min_words:
+            for j in range(len(words) - min_words + 1):
+                ngram = " ".join(words[j : j + min_words])
+                if ngram in seen_ngrams:
+                    is_dup = True
+                    break
+        if not is_dup:
+            if len(words) >= min_words:
+                for j in range(len(words) - min_words + 1):
+                    seen_ngrams.add(" ".join(words[j : j + min_words]))
+            cleaned_chunks.append(chunk + sep)
+
+    res = "".join(cleaned_chunks).strip()
+    res = re.sub(r"[,;]\s*$", "", res)
+    return res
+
+
 # ── 1. 首帧图提示词编译 ───────────────────────────────────────────────────────
 
 
@@ -135,18 +165,26 @@ def compile_first_frame(
     target_ar = bible.aspect_ratio or "16:9"
     platform_clean = (platform or "midjourney").lower().strip()
 
-    # 1. 主体与外观（卡片逐字复用）
+    # 1. 主体与外观（卡片逐字复用，带名字/身份引导）
     subject_parts: list[str] = []
-    for cname in shot.character_names:
+    for idx, cname in enumerate(shot.character_names):
         char_card = char_map.get(cname)
         if char_card:
-            # 优先使用英文外貌固定描述，保持与卡片逐字一致
             desc = char_card.appearance_fixed_en.strip() or char_card.appearance_fixed.strip()
-            subject_parts.append(desc)
+            c_name_en = (char_card.name_en or char_card.name).strip()
+            if idx == 0:
+                lead = f"{c_name_en}, {desc}"
+            elif idx == 1:
+                prev_text = subject_parts[0].lower() if subject_parts else ""
+                pronoun = "him" if any(w in prev_text for w in ["man", "groom", "he", "his"]) else "her"
+                lead = f"beside {pronoun}, {c_name_en}, {desc}"
+            else:
+                lead = f"along with {c_name_en}, {desc}"
+            subject_parts.append(lead)
         else:
             subject_parts.append(cname)
 
-    # 2. 0 秒起始姿态、站位与手部道具（取自 start_state 与道具账本）
+    # 2. 0 秒起始姿态、站位与手部道具（取自 start_state 与道具账本，严格去重与道具为主语）
     pose_parts: list[str] = []
     # 站位与起始动作
     start_state_text = (
@@ -156,20 +194,36 @@ def compile_first_frame(
     if start_state_text:
         pose_parts.append(start_state_text)
 
-    # 道具 0 秒状态
+    # 道具 0 秒状态（去重与道具为主语规范）
     for pname in shot.prop_names:
         p_item = prop_map.get(pname)
-        if p_item:
-            holder = p_item.holder or ""
-            placement = p_item.placement_en or p_item.placement or ""
-            state = p_item.start_state_en or p_item.start_state or ""
-            p_desc = f"{p_item.prop_name_en or p_item.prop_name}"
-            if placement:
-                p_desc += f" {placement}"
-            if state:
-                p_desc += f", {state}"
-            if p_desc not in pose_parts:
-                pose_parts.append(p_desc)
+        if not p_item:
+            continue
+        p_name = (p_item.prop_name_en or p_item.prop_name).strip()
+
+        # 若已在 start_state_text 中提及该道具，跳过重复描述
+        if start_state_text and p_name.lower() in start_state_text.lower():
+            continue
+
+        p_state = (p_item.start_state_en or p_item.start_state).strip()
+        p_place = (p_item.placement_en or p_item.placement).strip()
+
+        if p_state and p_name.lower() in p_state.lower():
+            prop_sentence = p_state
+        elif p_place:
+            if p_name.lower() in p_place.lower():
+                prop_sentence = p_place
+            elif any(w in p_place.lower() for w in ["holding", "held", "grip", "持", "拿", "推"]):
+                prop_sentence = f"the {p_name} is held in position ({p_place})"
+            else:
+                prop_sentence = f"the {p_name} is {p_place}"
+        elif p_state:
+            prop_sentence = f"the {p_name} is {p_state}"
+        else:
+            prop_sentence = f"the {p_name} in frame"
+
+        if prop_sentence and prop_sentence not in pose_parts:
+            pose_parts.append(prop_sentence)
 
     # 手部占用
     if shot.hands_occupation and not pose_parts:
@@ -194,13 +248,22 @@ def compile_first_frame(
     else:
         comp_parts.append("cinematic framing")
 
+    has_custom_composition = False
     if shot.composition_en:
         comp_parts.append(shot.composition_en.strip())
+        has_custom_composition = True
     elif shot.composition:
         comp_parts.append(shot.composition.strip())
+        has_custom_composition = True
 
     comp_parts.append("eye-level camera angle, 50mm lens, shallow depth of field")
-    comp_parts.append("centered composition, ample headroom above the head, balanced negative space around the edges")
+
+    # 构图留白：若已有构图法则(如三分构图、引导线)，不得强加冲突的 centered composition
+    if not has_custom_composition:
+        comp_parts.append("centered composition, ample headroom above the head, balanced negative space around the edges")
+    else:
+        comp_parts.append("ample headroom above the head, balanced negative space around the edges")
+
     comp_parts.append("realistic cinematic still photography, natural skin texture, movie color grading")
 
     # 画内文字控制
@@ -216,7 +279,7 @@ def compile_first_frame(
     # 组合自然语言主体内容
     content_blocks: list[str] = []
     if subject_parts:
-        content_blocks.append(", ".join(subject_parts))
+        content_blocks.append("; ".join(subject_parts))
     if pose_parts:
         content_blocks.append(", ".join(pose_parts))
     if env_desc:
@@ -227,6 +290,7 @@ def compile_first_frame(
         content_blocks.append(", ".join(comp_parts))
 
     body_content = ", ".join(s.strip() for s in content_blocks if s.strip())
+    body_content = deduplicate_long_phrases(body_content, min_words=6)
 
     # 6. 平台专属适配与参数组装
     if platform_clean == "midjourney":
@@ -430,8 +494,13 @@ def compile_asset_refs(
     # 2. 关键场景空镜参考 (Image Prompts / Attach to prompt)
     for idx, s in enumerate(scene_list):
         s_desc = s.description_en.strip() or s.description.strip()
+        s_name = s.scene_name_en.strip()
+        if s_name:
+            scene_intro = f"Cinematic architectural establishing shot of {s_name}, {s_desc}"
+        else:
+            scene_intro = f"Cinematic architectural establishing shot of {s_desc}"
         prompt = (
-            f"Cinematic architectural establishing shot of {s.scene_name}, {s_desc}. "
+            f"{scene_intro}. "
             f"Wide establishing shot, empty scene without people, authentic environment lighting, "
             f"realistic textures --ar {bible.aspect_ratio or '16:9'} --v 8.2 --raw --s 75 --c 0 --sd"
         )
@@ -452,12 +521,12 @@ def compile_asset_refs(
 
     # 3. 关键道具特写参考 (Attach to prompt，保物体)
     for idx, p in enumerate(prop_list):
-        p_name = p.prop_name_en or p.prop_name
-        p_state = p.start_state_en or p.start_state or "standard condition"
+        p_name = p.prop_name_en.strip() or p.prop_name.strip()
+        p_app = p.appearance_en.strip() or p.appearance.strip() or p.notes.strip() or f"a standard {p_name}"
         prompt = (
-            f"Product commercial photography of {p_name}, {p_state}. "
+            f"Product commercial photography of {p_name}, {p_app}. "
             "Neutral light-gray studio background, crisp focus, clean soft studio lighting, "
-            "realistic material texture --ar 1:1 --v 8.2 --raw --s 75 --c 0 --sd"
+            "realistic material texture, isolated standalone object, no people --ar 1:1 --v 8.2 --raw --s 75 --c 0 --sd"
         )
         instructions = (
             "Midjourney 入口：【Attach to prompt】（物体参考，保持后续各镜头道具外形与材质物理一致）。"
@@ -502,9 +571,17 @@ def build_outpaint_prompt(
     target_ar: str = "16:9",
 ) -> dict[str, str]:
     """扩图/改画幅提示词模板与操作指导（用于首帧画幅与视频画幅不一致时）。"""
+    light_clean = (lighting or "lighting").strip()
+    if light_clean.lower().startswith("coherent "):
+        light_phrase = light_clean
+    elif light_clean:
+        light_phrase = f"coherent {light_clean}"
+    else:
+        light_phrase = "coherent lighting"
+
     prompt = (
         f"Extend the existing {scene_background} {directions}. "
-        f"Keep the existing {subject} unchanged, coherent {lighting}."
+        f"Keep the existing {subject} unchanged, {light_phrase}."
     )
     instructions = (
         f"Midjourney 扩图/改画幅操作指南：首帧画幅与视频画幅不一致时，"

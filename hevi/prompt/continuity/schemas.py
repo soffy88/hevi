@@ -141,6 +141,7 @@ class SceneCard(BaseModel):
     ambient_noise: str = "环境底噪连续稳定，无突然静音或音量跳变"  # 固定底噪一句
     music_policy: str = "无音乐"  # 配乐策略，明确“无音乐”或指定乐段
     # 英文提示词支持 (FF-1017)
+    scene_name_en: str = ""  # 英文场景名
     description_en: str = ""  # 英文场景固定描述
     lighting_en: str = ""  # 英文光线与调色描述
 
@@ -155,7 +156,9 @@ class PropItem(BaseModel):
     end_state: str = ""  # 结束状态
     liquid_level: str = ""  # 液位等细节(如 "八分满咖啡", "半支烟")
     notes: str = ""
-    # 英文提示词支持 (FF-1017)
+    # 英文提示词与资产参考图外观支持 (FF-1017)
+    appearance: str = ""  # 道具外观材质独立描述(无手持/人物)
+    appearance_en: str = ""  # 英文道具外观材质独立描述(中性背景/产品摄影)
     prop_name_en: str = ""
     placement_en: str = ""
     start_state_en: str = ""
