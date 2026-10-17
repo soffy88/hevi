@@ -282,3 +282,335 @@ async def test_run_v2_produce_raises_when_no_segments(tmp_path: Path) -> None:
             llm=_fake_llm,
             **inputs,
         )
+
+
+def _build_inputs_two_scenes() -> dict:
+    """两场:scene 1(暗,室内)+ scene 2(亮,室外),各 2 段。用于验校色基准按场分组。"""
+    base = _build_inputs()
+    seg = lambda sid, order, dlg: SceneScriptSegment(  # noqa: E731
+        segment_id=sid,
+        order=order,
+        t_start_s=0.0,
+        t_end_s=2.0,
+        narrative_text="x",
+        camera_movement="静态对话",
+        dialogue=dlg,
+    )
+    sc1 = SceneScript(
+        scene_ref=1,
+        characters_present=["角色A"],
+        no_cut_to=[],
+        segments=[
+            seg("sg001", 1, []),
+            seg("sg002", 2, [SceneScriptDialogueLine(character_name="角色A", text="你好")]),
+        ],
+    )
+    sc2 = SceneScript(
+        scene_ref=2,
+        characters_present=["角色A"],
+        no_cut_to=[],
+        segments=[
+            seg("sg001", 1, []),
+            seg("sg002", 2, [SceneScriptDialogueLine(character_name="角色A", text="再会")]),
+        ],
+    )
+    base["screenplay"] = Screenplay(
+        scenes=[
+            ScreenplayScene(scene_no=1, location="室内", characters_present=["角色A"]),
+            ScreenplayScene(scene_no=2, location="室外", characters_present=["角色A"]),
+        ]
+    )
+    base["scene_script_set"] = SceneScriptSet(scripts=[sc1, sc2])
+    return base
+
+
+def _clip_mid_luma(clip: Path) -> float:
+    from hevi.assembly.color_match import frame_rgb_mean
+
+    dur = float(
+        subprocess.check_output(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
+                str(clip),
+            ],
+            text=True,
+        ).strip()
+    )
+    frame = clip.parent / f"_probe_{clip.stem}.png"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-v",
+            "error",
+            "-ss",
+            f"{dur / 2:.2f}",
+            "-i",
+            str(clip),
+            "-vframes",
+            "1",
+            str(frame),
+        ],
+        check=True,
+    )
+    r, g, b = frame_rgb_mean(frame)
+    return 0.299 * r + 0.587 * g + 0.114 * b
+
+
+@ffmpeg_only
+async def test_run_v2_produce_color_reference_is_per_scene(tmp_path: Path) -> None:
+    """校色基准按 scene 分组(2026-07-24 诊断修复):亮场(室外)的首段不该被往暗场(室内)基准
+    硬拉。全局单基准的旧实现会把 scene 2 首段拉暗、增益触边界被 L5 误判缺陷;分组后 scene 2 首段
+    = 本场基准,保留合理的室内外反差。"""
+    canon = tmp_path / "canon_a.png"
+    _make_canon(canon, "808080")
+
+    async def _scene_colored_gen(
+        *, prompt, reference_images, output_path, duration, resolution, ratio, seed
+    ):
+        # 按输出文件名里的场号上色:s1→暗(202020),s2→亮(D0D0D0)
+        color = "d0d0d0" if "s2_" in Path(output_path).name else "202020"
+        _make_av_clip(Path(output_path), 2.0, color)
+        return Path(output_path)
+
+    run_dir = tmp_path / "run"
+    await run_v2_produce(
+        task_repo=_make_task_repo(),
+        task_id="task-color",
+        run_dir=run_dir,
+        subject_ref_paths={"角色A": str(canon)},
+        scene_ref_paths={},
+        voice_by_speaker={"角色A": "zh-CN-XiaoxiaoNeural"},
+        gen_fn=_scene_colored_gen,
+        tts_fn=_fake_tts_fn,
+        transcribe_fn=_fake_transcribe_fn,
+        vlm=_fake_vlm,
+        llm=_fake_llm,
+        **_build_inputs_two_scenes(),
+    )
+
+    # 每场首段各有独立基准帧(证明分组发生);不再是单一 _color_ref.png
+    assert (run_dir / "_color_ref_s1.png").exists()
+    assert (run_dir / "_color_ref_s2.png").exists()
+    # scene 2 首段(亮)未被拉向 scene 1(暗):其 luma 明显高于 scene 1 首段
+    luma_s1 = _clip_mid_luma(run_dir / "s1_sg001_color.mp4")
+    luma_s2 = _clip_mid_luma(run_dir / "s2_sg001_color.mp4")
+    assert luma_s2 > luma_s1 + 60, f"跨场反差被抹平:s1={luma_s1:.1f} s2={luma_s2:.1f}"
+
+
+def test_location_negative_list_prefix_matches_world_entry() -> None:
+    # #3 补断链(2026-07-23):world[].name 常是 scene.location 的前缀(location 带括号氛围补充),
+    # 按包含匹配取该地点的 negative_list。
+    from hevi.director.pipeline_schemas import WorldBible, WorldVolumeEntry
+    from hevi.director.produce_v2 import _location_negative_list
+
+    wb = WorldBible(
+        world=[WorldVolumeEntry(name="青石渡口·河岸柳堤", negative_list=["不出现现代电线杆"])]
+    )
+    # 带括号补充的完整 location → 前缀匹配命中
+    got = _location_negative_list(wb, "青石渡口·河岸柳堤（水墨晕染的暮色）")
+    assert got == ["不出现现代电线杆"]
+    # 不匹配的地点 → 空
+    assert _location_negative_list(wb, "别处") == []
+    # world_bible None → 空
+    assert _location_negative_list(None, "青石渡口·河岸柳堤") == []
+
+
+def test_qc_score_returns_zero_for_none() -> None:
+    """qc=None → 0.0,不崩。"""
+    from hevi.director.produce_v2 import _qc_score
+
+    assert _qc_score(None) == 0.0
+
+
+def test_qc_score_handles_missing_attributes() -> None:
+    """qc 对象缺属性 → 用 0.5 默认填充,不抛异常。"""
+    from hevi.director.produce_v2 import _qc_score
+
+    class _StubQC:
+        identity_score = 0.8
+        # 其它属性缺失
+
+    score = _qc_score(_StubQC())
+    # identity 0.8*0.4 + 其余 0.5*(0.2+0.2+0.1+0.1) = 0.32 + 0.3 = 0.62
+    assert abs(score - 0.62) < 0.01
+
+
+def test_qc_score_full_attributes() -> None:
+    """全属性 → 正确加权。"""
+    from hevi.director.produce_v2 import _qc_score
+
+    class _FullQC:
+        identity_score = 1.0
+        lip_sync_score = 1.0
+        expression_score = 1.0
+        motion_score = 1.0
+        aesthetic_score = 1.0
+
+    assert abs(_qc_score(_FullQC()) - 1.0) < 0.01
+
+
+@ffmpeg_only
+async def test_run_v2_produce_multi_take_selects_best(tmp_path: Path) -> None:
+    """multi_take=3 + borderline QC → 额外生成 take,验证路径走通。
+    用低分 VLM(identity_consistent=false)确保 QC 综合分 < 0.75,触发多 take。"""
+    canon = tmp_path / "canon_a.png"
+    _make_canon(canon, "c0c0c0")
+
+    call_count = {"n": 0}
+
+    async def _scored_gen(
+        *, prompt, reference_images, output_path, duration, resolution, ratio, seed
+    ):
+        _make_av_clip(Path(output_path), 2.0, "808080")
+        call_count["n"] += 1
+        return Path(output_path)
+
+    def _low_score_vlm(*, messages, image_paths, max_tokens):
+        """identity_consistent=false → identity_score 低 → 综合分 < 0.75 → 触发 multi_take。"""
+        return {
+            "content": (
+                '{"spatial_jump": false, "camera_looks_repeated": false, '
+                '"identity_consistent": false, "color_mismatch": true, '
+                '"reason": "low quality"}'
+            )
+        }
+
+    task_repo = _make_task_repo()
+    seg_only = SceneScriptSegment(
+        segment_id="sg001",
+        order=1,
+        t_start_s=0.0,
+        t_end_s=2.0,
+        narrative_text="角色A静立。",
+        camera_movement="静态对话",
+        dialogue=[],
+    )
+    inputs = _build_inputs()
+    inputs["scene_script_set"] = SceneScriptSet(
+        scripts=[
+            SceneScript(
+                scene_ref=1,
+                characters_present=["角色A"],
+                segments=[seg_only],
+                no_cut_to=[],
+            )
+        ]
+    )
+
+    await run_v2_produce(
+        task_repo=task_repo,
+        task_id="task-mt",
+        run_dir=tmp_path / "run",
+        subject_ref_paths={"角色A": str(canon)},
+        scene_ref_paths={},
+        voice_by_speaker={},
+        gen_fn=_scored_gen,
+        tts_fn=_fake_tts_fn,
+        transcribe_fn=_fake_transcribe_fn,
+        vlm=_low_score_vlm,
+        llm=_fake_llm,
+        multi_take=3,
+        **inputs,
+    )
+
+    final_call = task_repo.update_task.await_args_list[-1]
+    _, payload = final_call.args
+    assert payload["status"] == "completed"
+    assert payload["config_json"]["multi_take"] == 3
+    # multi_take 路径被触发:gen_fn 被调用 > 1 次(1 次初始 + 至多 2 次 take)
+    assert call_count["n"] >= 2, f"multi_take 未触发额外生成,call_count={call_count['n']}"
+
+
+@ffmpeg_only
+async def test_run_v2_produce_edit_craft_runs_when_enabled(tmp_path: Path) -> None:
+    """edit_craft=True + 带 transcript → 后处理跑通,config_json 记录 edit_craft 报告。"""
+    canon = tmp_path / "canon_a.png"
+    _make_canon(canon, "808080")
+    task_repo = _make_task_repo()
+
+    def _transcribe_fn(path, output_path=None, *, language=None, **kwargs):
+        """兼容两种调用约定:
+        1. probe_native_dialogue 通过 asyncio.to_thread 同步调用:(wav, language="zh")→返回 cue 列表
+        2. edit_craft 后处理异步调用:(video, output_path)→写 transcript.json
+        提供含词级时间戳的 transcript(两个 filler "嗯"),让 filler_cut 有东西可切。"""
+        import json
+
+        if output_path is not None:
+            Path(output_path).write_text(
+                json.dumps(
+                    {
+                        "words": [
+                            {"word": "今天", "start": 0.2, "end": 0.6},
+                            {"word": "嗯", "start": 0.7, "end": 1.2},
+                            {"word": "天气", "start": 1.3, "end": 1.7},
+                            {"word": "嗯", "start": 1.8, "end": 2.3},
+                            {"word": "不错", "start": 2.4, "end": 2.8},
+                        ],
+                        "segments": [],
+                        "text": "今天嗯天气嗯不错",
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+        return []
+
+    await run_v2_produce(
+        task_repo=task_repo,
+        task_id="task-ec",
+        run_dir=tmp_path / "run",
+        subject_ref_paths={"角色A": str(canon)},
+        scene_ref_paths={},
+        voice_by_speaker={"角色A": "zh-CN-XiaoxiaoNeural"},
+        gen_fn=_gen_fn_factory(color="808080", seconds=3.0),
+        tts_fn=_fake_tts_fn,
+        transcribe_fn=_transcribe_fn,
+        vlm=_fake_vlm,
+        llm=_fake_llm,
+        edit_craft=True,
+        **_build_inputs(),
+    )
+
+    final_call = task_repo.update_task.await_args_list[-1]
+    _, payload = final_call.args
+    assert payload["status"] == "completed"
+    # edit_craft 报告存在(可能 cuts=0 因为短视频 + filler 不够长,但路径走通了)
+    ec_report = payload["config_json"]["edit_craft"]
+    assert ec_report is not None
+    # edit_craft 目录被创建
+    assert (tmp_path / "run" / "edit_craft").is_dir()
+
+
+@ffmpeg_only
+async def test_run_v2_produce_edit_craft_skipped_when_disabled(tmp_path: Path) -> None:
+    """edit_craft=False(默认) → config_json.edit_craft 为 None,目录不存在。"""
+    canon = tmp_path / "canon_a.png"
+    _make_canon(canon, "808080")
+    task_repo = _make_task_repo()
+
+    await run_v2_produce(
+        task_repo=task_repo,
+        task_id="task-ec-off",
+        run_dir=tmp_path / "run",
+        subject_ref_paths={"角色A": str(canon)},
+        scene_ref_paths={},
+        voice_by_speaker={"角色A": "zh-CN-XiaoxiaoNeural"},
+        gen_fn=_gen_fn_factory(color="808080", seconds=2.0),
+        tts_fn=_fake_tts_fn,
+        transcribe_fn=_fake_transcribe_fn,
+        vlm=_fake_vlm,
+        llm=_fake_llm,
+        **_build_inputs(),
+    )
+
+    final_call = task_repo.update_task.await_args_list[-1]
+    _, payload = final_call.args
+    assert payload["config_json"]["edit_craft"] is None
+    assert not (tmp_path / "run" / "edit_craft").exists()

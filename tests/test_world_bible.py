@@ -12,6 +12,7 @@ from hevi.director.world_bible import generate_world_bible_draft
 
 _REALISTIC_MARK = "照片级真人实拍电影帧"
 _INKWASH_MARK = "宣纸渗染、墨色晕化、留白构图"
+_HISTORICAL_MARK = "史诗历史正剧"
 
 
 async def _run_and_capture(visual_style: str | None) -> list[str]:
@@ -55,3 +56,81 @@ async def test_visual_style_inkwash_injects_directive() -> None:
     visual_prompts = await _run_and_capture("inkwash")
     assert _INKWASH_MARK in visual_prompts[0]
     assert _REALISTIC_MARK not in visual_prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_visual_style_historical_injects_directive() -> None:
+    # SPEC-005-V2 §4:通鉴历史正剧档,火把/烛火光源 + 禁浅景深糖水 + 考据。
+    visual_prompts = await _run_and_capture("historical")
+    assert _HISTORICAL_MARK in visual_prompts[0]
+    assert "火把" in visual_prompts[0] and "考据" in visual_prompts[0]
+    assert _INKWASH_MARK not in visual_prompts[0]
+
+
+@pytest.mark.asyncio
+async def test_visual_volume_prompts_and_parses_style_render_directive() -> None:
+    # 画风锁②:visual 卷 prompt 要求 style_render_directive,且 LLM 返回后被解析进 VisualVolume。
+    captured: list[str] = []
+
+    async def _fake_call(llm, prompt, **_kw):
+        captured.append(prompt)
+        if "视觉风格宣言" in prompt:
+            return {
+                "style_manifesto": "一大段抽象散文……",
+                "style_render_directive": "水墨渲染质感,青灰主调,写实人物比例——全片统一",
+                "camera_persona": {"persona_id": "static_watch"},
+            }
+        return {}
+
+    with patch.object(wb_mod, "_call_llm_json", side_effect=_fake_call):
+        wb = await generate_world_bible_draft(
+            concept=Concept(),
+            material_text="许姓渔夫与河中鬼友王六郎。",
+            design_list=DesignList(),
+            llm=lambda **_k: None,
+        )
+    # prompt 里显式要了这个字段
+    assert any("style_render_directive" in p for p in captured)
+    # 解析进了 VisualVolume
+    assert wb.visual.style_render_directive == "水墨渲染质感,青灰主调,写实人物比例——全片统一"
+    assert wb.visual.style_manifesto == "一大段抽象散文……"
+
+
+@pytest.mark.asyncio
+async def test_historical_domain_directive_reaches_character_and_world_prompts() -> None:
+    # SPEC-005-V2 §2.2:历史档时代考据硬约束必须到达角色卷 + 世界卷 prompt(不只 visual volume)。
+    captured: list[str] = []
+
+    async def _fake_call(llm, prompt, **_kw):
+        captured.append(prompt)
+        return {}
+
+    from hevi.director.pipeline_schemas import DesignCharacter, DesignScene
+
+    dl = DesignList(
+        characters=[DesignCharacter(name="商鞅")],
+        scenes=[DesignScene(name="秦国市集")],
+    )
+    with patch.object(wb_mod, "_call_llm_json", side_effect=_fake_call):
+        await generate_world_bible_draft(
+            concept=Concept(),
+            material_text="商鞅立木。",
+            design_list=dl,
+            llm=lambda **_k: None,
+            visual_style="historical",
+        )
+    char_prompts = [p for p in captured if "定妆手册" in p]
+    world_prompts = [p for p in captured if "环境设定" in p]
+    assert char_prompts and "时代考据硬约束" in char_prompts[0]
+    assert world_prompts and "时代考据硬约束" in world_prompts[0]
+    # realistic 档不注入(默认空)
+    captured.clear()
+    with patch.object(wb_mod, "_call_llm_json", side_effect=_fake_call):
+        await generate_world_bible_draft(
+            concept=Concept(),
+            material_text="x。",
+            design_list=dl,
+            llm=lambda **_k: None,
+            visual_style="realistic",
+        )
+    assert all("时代考据硬约束" not in p for p in captured)

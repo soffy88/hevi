@@ -13,12 +13,15 @@ duration),调用方按 `retake_reason` 里的关键字分流,这里不做值得�
 
 from __future__ import annotations
 
+import logging
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from hevi.subjects.subject_embed import cosine_similarity, subject_embed
+
+logger = logging.getLogger(__name__)
 
 _IDENTITY_THRESHOLD = 0.65
 _DIALOGUE_HANDLE_S = 0.5  # TTS 实际时长之外留的余量,不能卡着秒数正好够
@@ -120,14 +123,21 @@ async def segment_qc(
     tts_actual_s: float | None = None
     if dialogue_text and tts_fn is not None:
         tmp_audio = tmp_dir / f"_qc_tts_{segment_id}.mp3"
-        tts_actual_s = await _tts_duration_s(
-            dialogue_text=dialogue_text,
-            speaker=speaker,
-            voice=voice,
-            tts_fn=tts_fn,
-            tmp_out=tmp_audio,
-        )
-        dialogue_fits = requested_dur >= tts_actual_s + _DIALOGUE_HANDLE_S
+        try:
+            tts_actual_s = await _tts_duration_s(
+                dialogue_text=dialogue_text,
+                speaker=speaker,
+                voice=voice,
+                tts_fn=tts_fn,
+                tmp_out=tmp_audio,
+            )
+            dialogue_fits = requested_dur >= tts_actual_s + _DIALOGUE_HANDLE_S
+        except Exception as e:
+            # edge_tts 瞬断(网络/DNS 间歇超时)不该崩整条产线——测不到时长就跳过台词时长 QC,
+            # 记警告、按"通过"处理(2026-07-25 正反打试跑实证:QC 的 TTS 测量崩掉整个 run)。
+            logger.warning("段 %s TTS 时长测量失败,跳过台词时长 QC(不阻断出片): %s", segment_id, e)
+            tts_actual_s = None
+            dialogue_fits = True
 
     min_identity = min(identity_scores.values()) if identity_scores else 1.0
     if min_identity < identity_threshold:

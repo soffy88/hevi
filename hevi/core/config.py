@@ -113,6 +113,10 @@ class Settings(BaseSettings):
     # CosyVoice TTS (local GPU) configuration
     cosyvoice_model_dir: str = "/opt/cosyvoice/model"
     cosyvoice_use_watermark: bool = False
+    
+    # VibeVoice TTS (local GPU) configuration
+    vibevoice_model_dir: str = "vendor/vibevoice"
+    vibevoice_use_watermark: bool = False
 
     # L5 角色卡参考图(SDXL 本地文生图,tongjian §5.1 步骤3-4)。权重 ~7GB,
     # 根分区(/)只剩 20G 空闲,故缓存目录放 /data 而非默认 ~/.cache/huggingface。

@@ -54,8 +54,18 @@ async def vibevoice_synthesize(
     """
     cfg = config or {}
     model_dir = cfg.get("VIBEVOICE_MODEL_DIR") or os.environ.get(
-        "VIBEVOICE_MODEL_DIR", "vendor/vibevoice"
+        "VIBEVOICE_MODEL_DIR"
     )
+    if not model_dir:
+        # 尝试从 hevi.core.config 加载
+        try:
+            from hevi.core.config import settings
+            model_dir = getattr(settings, "vibevoice_model_dir", None)
+        except Exception:
+            pass
+    
+    if not model_dir:
+        model_dir = "vendor/vibevoice"  # 默认值
     return await _run_worker(
         script=script,
         output_path=output_path,

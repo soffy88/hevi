@@ -1,0 +1,27 @@
+{
+  "timestamp": 524907.361176919,
+  "video_file": "outputs/test_video.mp4",
+  "audio_file": "outputs/test_tts.wav",
+  "subtitle_file": "outputs/test_subtitles.srt",
+  "criteria_used": {
+    "audio_quality": {
+      "min_db": -32,
+      "max_db": -6
+    },
+    "video_integrity": true,
+    "subtitle_sync": true,
+    "file_size_check": true,
+    "codec_compliance": true
+  },
+  "passed": false,
+  "issues": [
+    "Subtitle file is empty"
+  ],
+  "warnings": [],
+  "checks_performed": [
+    "file_integrity",
+    "audio_quality",
+    "video_properties",
+    "subtitle_sync"
+  ]
+}

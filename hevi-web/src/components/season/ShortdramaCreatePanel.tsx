@@ -8,7 +8,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { shortdramaApi, subjectApi } from '@/lib/api-client';
 import { syncAuthToken } from '@/lib/auth-store';
-import type { ShortdramaRunStatus, Subject } from '@/types/api';
+import type { ShortdramaRunStatus, Subject, ProductionFormVal } from '@/types/api';
+
+const PRODUCTION_FORMS: { value: ProductionFormVal; label: string; desc: string }[] = [
+  { value: 'live_action', label: '🎬 真人实拍', desc: '电影级真人短剧，面部识别为主要通道' },
+  { value: 'dynamic_comic_2d', label: '📖 2D 动态漫（漫剧）', desc: '漫画/动画风格，剪影+色彩为主要通道' },
+  { value: 'stylized_3d', label: '🎮 风格化 3D', desc: '3D 渲染风格，几何形体为主要通道' },
+  { value: 'inkwash', label: '🖌️ 水墨动画', desc: '中国传统水墨画风，笔触+留白为主要通道' },
+  { value: 'paper_stop_motion', label: '✂️ 纸感定格动画', desc: '手工剪纸/折纸纹理，逐帧动画风格' },
+];
 
 const DURATION_OPTIONS: { value: string; label: string }[] = [
   { value: '1-5min', label: '1-5 分钟(推荐)' },
@@ -32,6 +40,8 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
   const [sourceName, setSourceName] = useState('');
   const [rawText, setRawText] = useState('');
   const [targetEpisodes, setTargetEpisodes] = useState(3);
+  const [productionForm, setProductionForm] = useState<ProductionFormVal>('live_action');
+  const [genre, setGenre] = useState('');
   const [videoProvider, setVideoProvider] = useState(VIDEO_PROVIDER_OPTIONS[0].value);
   const [durationArchetype, setDurationArchetype] = useState(DURATION_OPTIONS[0].value);
   // 默认 $20 是错的实测教训(2026-07-12):happyhorse_1_1_maas_lock + 1-5min 档,
@@ -130,6 +140,8 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
         source_name: sourceName,
         raw_text: rawText,
         target_episodes: targetEpisodes,
+        production_form: productionForm,
+        genre: genre || undefined,
       });
       setRunId(r.run_id);
     } catch (e) {
@@ -233,6 +245,34 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
               <span className="tj-field__label">作品名</span>
               <input value={sourceName} onChange={e => setSourceName(e.target.value)} placeholder="崂山道士" />
             </label>
+            <div className="tj-field">
+              <span className="tj-field__label">生产形态（决定视觉风格和渲染管线）</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '8px' }}>
+                {PRODUCTION_FORMS.map(f => (
+                  <button
+                    type="button"
+                    key={f.value}
+                    onClick={() => setProductionForm(f.value)}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: productionForm === f.value ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border, #e2e8f0)',
+                      background: productionForm === f.value ? 'var(--primary-bg, #eff6ff)' : 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{ fontWeight: 500, fontSize: '14px' }}>{f.label}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', marginTop: '4px' }}>{f.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="tj-field">
+              <span className="tj-field__label">题材标签（可选，影响故事开发和钩子取向）</span>
+              <input value={genre} onChange={e => setGenre(e.target.value)} placeholder="都市打脸 / 甜宠 / 悬疑 / 修仙…" />
+            </label>
             <label className="tj-field tj-field--tall">
               <span className="tj-field__label">手稿原文（小说/故事，{rawText.length} 字）</span>
               <textarea rows={10}
@@ -288,9 +328,14 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
       {planning && (
         <div className="tj-progress">
           <div className="tj-progress__head">
-            <span className="tj-run-badge tj-run-badge--running">⟳ 抽取 StoryGraph + 剧集规划中…</span>
+            <span className="tj-run-badge tj-run-badge--running">
+              ⟳ {status?.progress || '故事开发 + 抽取 + 规划中…'}
+            </span>
           </div>
-          <p className="tj-hint">B0 结构化抽取 + 剧集规划器最多重试 5 轮通过自我批判门，请稍候（约 1-2 分钟）。</p>
+          <p className="tj-hint">
+            故事开发（冲突引擎/分集地图/导演阐述）→ 结构化抽取 → 剧集规划（最多 5 轮自我批判），
+            请稍候（约 2-3 分钟）。
+          </p>
         </div>
       )}
 
@@ -327,6 +372,75 @@ export function ShortdramaCreatePanel({ onDispatched }: { onDispatched?: (series
                 直接点底部"确认无误，开始真实生成"按钮继续；或点下面"重新规划"换一版
               </div>
               <ul>{status.gate.errors.map((m, i) => <li key={i}>{m}</li>)}</ul>
+            </div>
+          )}
+
+          {/* 故事开发输出(对标 drama-skills develop) */}
+          {status.story_brief && (
+            <div className="sd-review" style={{ marginBottom: '16px', borderLeft: '3px solid var(--primary, #3b82f6)' }}>
+              <div className="sd-review__block">
+                <div className="sd-review__label">🎬 创作简报</div>
+                <dl style={{ fontSize: '13px', margin: 0 }}>
+                  {status.story_brief.theme && (
+                    <><dt style={{ fontWeight: 500, color: 'var(--muted-foreground)' }}>主题</dt>
+                    <dd style={{ margin: '0 0 8px' }}>{status.story_brief.theme}</dd></>
+                  )}
+                  {status.story_brief.conflict_engine && (
+                    <><dt style={{ fontWeight: 500, color: 'var(--muted-foreground)' }}>冲突引擎</dt>
+                    <dd style={{ margin: '0 0 8px' }}>{status.story_brief.conflict_engine}</dd></>
+                  )}
+                  {status.story_brief.escalation_mechanism && (
+                    <><dt style={{ fontWeight: 500, color: 'var(--muted-foreground)' }}>升级机制</dt>
+                    <dd style={{ margin: '0 0 8px' }}>{status.story_brief.escalation_mechanism}</dd></>
+                  )}
+                  {status.story_brief.audience_payoff && (
+                    <><dt style={{ fontWeight: 500, color: 'var(--muted-foreground)' }}>观众回报</dt>
+                    <dd style={{ margin: 0 }}>{status.story_brief.audience_payoff}</dd></>
+                  )}
+                </dl>
+              </div>
+            </div>
+          )}
+
+          {status.episode_map && status.episode_map.length > 0 && (
+            <div className="sd-review" style={{ marginBottom: '16px' }}>
+              <div className="sd-review__block">
+                <div className="sd-review__label">📋 分集地图（{status.episode_map.length}）</div>
+                <div style={{ display: 'grid', gap: '8px' }}>
+                  {status.episode_map.map(ep => (
+                    <div key={ep.ep_number} style={{
+                      padding: '8px 12px', borderRadius: '6px',
+                      background: 'var(--muted, #f7fafc)', fontSize: '13px',
+                    }}>
+                      <strong>第{ep.ep_number}集</strong>
+                      {ep.goal && <> · 目标: {ep.goal}</>}
+                      {ep.hook && <div style={{ color: 'var(--muted-foreground)', marginTop: '2px' }}>🪝 {ep.hook}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {status.director_brief && (
+            <div className="sd-review" style={{ marginBottom: '16px' }}>
+              <div className="sd-review__block">
+                <div className="sd-review__label">🎥 导演阐述</div>
+                <dl style={{ fontSize: '13px', margin: 0 }}>
+                  {status.director_brief.visual_direction && (
+                    <><dt style={{ fontWeight: 500, color: 'var(--muted-foreground)' }}>视觉方向</dt>
+                    <dd style={{ margin: '0 0 4px' }}>{status.director_brief.visual_direction}</dd></>
+                  )}
+                  {status.director_brief.tone && (
+                    <><dt style={{ fontWeight: 500, color: 'var(--muted-foreground)' }}>基调</dt>
+                    <dd style={{ margin: '0 0 4px' }}>{status.director_brief.tone}</dd></>
+                  )}
+                  {status.director_brief.visual_constraints.length > 0 && (
+                    <><dt style={{ fontWeight: 500, color: 'var(--muted-foreground)' }}>视觉约束</dt>
+                    <dd style={{ margin: 0 }}>{status.director_brief.visual_constraints.join('、')}</dd></>
+                  )}
+                </dl>
+              </div>
             </div>
           )}
 

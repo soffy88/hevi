@@ -3,7 +3,7 @@ import json
 from collections.abc import AsyncGenerator
 from uuid import UUID
 
-from hevi.queue.task_queue import estimate_wait, queue_position
+from hevi.job_queue.task_queue import estimate_wait, queue_position
 from hevi.tasks.repository import TaskRepository
 
 

@@ -1,0 +1,55 @@
+# Production Requirements
+# 核心生产依赖
+
+# Web Framework & ASGI Server
+fastapi==0.115.0
+uvicorn[standard]==0.34.0
+
+# Async HTTP Client
+httpx==0.28.0
+
+# Database & ORM
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.13.2
+
+# Configuration Management
+pydantic==2.10.0
+pydantic-settings==2.6.0
+
+# Async Utilities
+asyncio-mqtt==0.18.0
+aioredis==2.0.1
+
+# Audio Processing (for TTS and ASR)
+pydub==0.25.1
+librosa==0.10.2
+
+# Video Processing
+opencv-python==4.10.0.84
+moviepy==1.0.3
+
+# Machine Learning & AI
+torch>=2.0.0
+transformers>=4.35.0
+numpy==1.26.4
+
+# Utilities
+python-multipart==0.0.20
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==43.0.1
+
+# Logging & Monitoring
+structlog==24.4.0
+prometheus-client==0.21.0
+
+# File Processing & Storage
+minio==7.2.8
+pillow==11.0.0
+
+# Type Checking Support
+typing-extensions==4.12.0
+
+# Environment-specific requirements
+-r requirements-dev.txt
