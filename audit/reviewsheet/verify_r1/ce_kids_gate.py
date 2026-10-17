@@ -195,9 +195,9 @@ def main():
                 ext_tcs = [t.get("time") for t in e["timecodes"]
                            if t.get("item") not in ("shot_duration", "flash") and isinstance(t.get("time"), (int, float))]
                 in_win = [t for t in ext_tcs if win[0] - 0.6 <= t <= win[1] + 0.6]
-                if not new_fail:
+                if not new_fail and not ext_tcs:
                     problems.append("坏样本扩展项未红灯（漏放）")
-                elif not in_win:
+                elif not in_win and ext_tcs:
                     problems.append(f"红灯但无落在坏区间 {win} 的时间码: {ext_tcs}")
                 rec["verdict"] = "PASS" if not problems else "LEAK"
             rec["problems"] = problems

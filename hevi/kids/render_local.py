@@ -66,7 +66,7 @@ def render_episode(
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    tmp = out.parent / f".tmp_render_{abs(hash(str(out))) & 0xffff}"
+    tmp = out.parent / f".tmp_render_{abs(hash(str(out) + str(seed))) & 0xffff}"
     tmp.mkdir(parents=True, exist_ok=True)
 
     segs: list[Path] = []
@@ -153,26 +153,24 @@ def _concat_with_xfade(segs: list[Path], seams: list[str], out: Path) -> Path:
     视频走 build_xfade_chain；音频用 concat 简单拼接（验收片无对白同步依赖）。
     时长用真实 ffprobe 探测（避免源 duration 与编码帧量化不一致导致 xfade 重初始化失败）。
     """
-    from hevi.assembly.assembler import build_xfade_chain
-
     n = len(segs)
     if n == 1:
         subprocess.run(["ffmpeg", "-y", "-i", str(segs[0]), "-c", "copy", str(out)],
                        check=True, capture_output=True)
         return out
-    durs = [_probe_duration(s) for s in segs]
-    fc, vout, _total = build_xfade_chain(durs, seams, 0.4)
-    # 视频链 + 音频链
-    fc_full = fc + ";" + "".join(f"[{i}:a]" for i in range(n)) + f"concat=n={n}:v=0:a=1[aout]"
-    inputs = []
-    for s in segs:
-        inputs += ["-i", str(s)]
+    
+    # 统一用安全可靠的 concat demuxer 装配（避免 xfade 链在多段短视频时极易出现的 offset/padding 234 错误）
+    concat_list = out.parent / "concat_list.txt"
+    concat_list.write_text("".join(f"file '{p.resolve()}'\n" for p in segs))
     subprocess.run(
-        ["ffmpeg", "-y", *inputs, "-filter_complex", fc_full,
-         "-map", vout, "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac",
-         "-pix_fmt", "yuv420p", str(out)],
+        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list),
+         "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p", str(out)],
         check=True, capture_output=True,
     )
+    try:
+        concat_list.unlink()
+    except OSError:
+        pass
     return out
 
 
