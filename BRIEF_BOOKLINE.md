@@ -33,3 +33,12 @@ CPU-only，不调付费 API（豆包/GPT Image 只写适配器不调用）；edg
 
 ## 环境
 测试用 .venv（软链到主仓库 venv，只读使用，不要 pip install 到里面；需新依赖写进 pyproject 并在报告注明）。
+
+## 追加（2026-10-17 18:27，用户要求：充分利用 image-story-video-wizard skill）
+参考仓库已装为技能：~/.claude/skills、~/.codex/skills、~/.config/opencode/skills 下的 image-story-video-wizard（软链到 /data/soffy/ref/image-story-video-wizard）。
+必须逐个读完并吸收：SKILL.md、references/workflow.md、state-schema.md、writing-and-review.md、host-routing.md、assets/brief-template.md、writing-pack-manifest.md、writer-rules.md、storyboard-template.csv、handoff-template.md、scripts/project_state.py、tests/、docs/ARTICLE_ALIGNMENT.md。
+- PROJECT_STATE.json 与其 state-schema.md 保持兼容（字段、阶段名一致），这样同一个项目可在 Codex/Claude 里用该 skill 推进，也可在 hevi API 里推进，两边互通。
+- 移植/包装 scripts/project_state.py 的状态初始化与恢复逻辑（保留 MIT 版权声明，放 hevi/bookline/third_party_notice 或 NOTICE），其 tests 的校验点也要在 hevi 测试中覆盖。
+- 写作包按 writing-pack-manifest.md 与 writer-rules.md 生成；分镜表按 storyboard-template.csv 列；交接按 handoff-template.md；每轮引导输出五段式（现在进行到/我现在会做/你现在只需要/完成后我会交付/确认后下一步）。
+- 在 docs/bookline/REUSE_MAP.md 加一节：skill 每个阶段/文件 → hevi 对应实现。
+- 另写 hevi 版 skill：skills/hevi-bookline/SKILL.md（在原 skill 流程上，把配音/分镜/生图/剪辑步骤改为调用 hevi API/CLI），便于用户的 Codex/Claude 直接驱动 hevi 讲书线。
