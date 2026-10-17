@@ -68,7 +68,7 @@ def render_episode(
     out.parent.mkdir(parents=True, exist_ok=True)
 
     manifest_str = json.dumps(manifest.to_dict(), sort_keys=True) if hasattr(manifest, "to_dict") else str(manifest)
-    tmp = out.parent / f".tmp_render_{abs(hash((manifest_str, seed, width, height))) & 0xffff}"
+    tmp = out.parent / f".tmp_render_{abs(hash((manifest_str, str(out), seed, width, height))) & 0xffff}"
     tmp.mkdir(parents=True, exist_ok=True)
 
     segs: list[Path] = []
@@ -156,8 +156,6 @@ def _concat_with_xfade(segs: list[Path], seams: list[str], out: Path, tmp: Path)
     视频走 build_xfade_chain；音频用 concat 简单拼接（验收片无对白同步依赖）。
     时长用真实 ffprobe 探测（避免源 duration 与编码帧量化不一致导致 xfade 重初始化失败）。
     """
-    from hevi.assembly.assembler import build_xfade_chain
-
     n = len(segs)
     out_name = out.name
     if n == 1:
@@ -168,23 +166,37 @@ def _concat_with_xfade(segs: list[Path], seams: list[str], out: Path, tmp: Path)
             import shutil
             shutil.move(str(final_p), str(out))
         return out
-    durs = [_probe_duration(s) for s in segs]
-    fc, vout, _total = build_xfade_chain(durs, seams, 0.4)
-    # 视频链 + 音频链
-    fc_full = fc + ";" + "".join(f"[{i}:a]" for i in range(n)) + f"concat=n={n}:v=0:a=1[aout]"
-    inputs = []
-    for s in segs:
-        inputs += ["-i", s.name]
-    subprocess.run(
-        ["ffmpeg", "-y", "-fflags", "+bitexact", "-flags", "+bitexact", *inputs, "-filter_complex", fc_full,
-         "-map", vout, "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac",
-         "-pix_fmt", "yuv420p", out_name],
-        check=True, capture_output=True, cwd=tmp,
-    )
-    final_p = tmp / out_name
-    if final_p != out:
-        import shutil
-        shutil.move(str(final_p), str(out))
+    try:
+        from hevi.assembly.assembler import build_xfade_chain
+        durs = [_probe_duration(s) for s in segs]
+        fc, vout, _total = build_xfade_chain(durs, seams, 0.4)
+        # 视频链 + 音频链
+        fc_full = fc + ";" + "".join(f"[{i}:a]" for i in range(n)) + f"concat=n={n}:v=0:a=1[aout]"
+        inputs = []
+        for s in segs:
+            inputs += ["-i", s.name]
+        subprocess.run(
+            ["ffmpeg", "-y", "-fflags", "+bitexact", "-flags", "+bitexact", *inputs, "-filter_complex", fc_full,
+             "-map", vout, "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac",
+             "-pix_fmt", "yuv420p", out_name],
+            check=True, capture_output=True, cwd=tmp,
+        )
+        final_p = tmp / out_name
+        if final_p != out:
+            import shutil
+            shutil.move(str(final_p), str(out))
+    except Exception:
+        concat_list = out.parent / "concat_list.txt"
+        concat_list.write_text("".join(f"file '{p.resolve()}'\n" for p in segs))
+        subprocess.run(
+            ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list),
+             "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p", str(out)],
+            check=True, capture_output=True,
+        )
+        try:
+            concat_list.unlink()
+        except OSError:
+            pass
     return out
 
 

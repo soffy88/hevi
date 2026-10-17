@@ -6,7 +6,7 @@
   "expect_cells": 1,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n01_9x16.png",
-  "sha256": "521c0f26fc779c57493be5cf4cc9ab005f8ca795195c2d7351a0f89ec0ed86ba",
+  "sha256": "18117544e14139164064514f3726c17b909532b4818da2cf036db28c61d8ad62",
   "deterministic": true,
   "size": [
    720,
@@ -16,12 +16,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 2
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 2}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "n01",
@@ -30,7 +28,7 @@
   "expect_cells": 1,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n01_16x9.png",
-  "sha256": "915d484ac72bff319893ecfbe9c3ce40a3292c559be8bddcce61f5d4c26bf2c9",
+  "sha256": "5ea41ab67a68313ba4969c83286e78bc82ac9906d817ead144acf073c4d5c40c",
   "deterministic": true,
   "size": [
    1280,
@@ -52,7 +50,7 @@
   "expect_cells": 2,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n02_9x16.png",
-  "sha256": "65665e1e5c309e1e7ce9c7a110c2a3e6ba11414bcc20c082bd833d5c21cdc5df",
+  "sha256": "4cfb55f028f567ab4d05e9b661550c1ea9b22f9f8e62f2c6b3d40e8e660883e3",
   "deterministic": true,
   "size": [
    720,
@@ -62,12 +60,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 2
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 2}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "n02",
@@ -76,7 +72,7 @@
   "expect_cells": 2,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n02_16x9.png",
-  "sha256": "e56170681d1e124ae712727d7876c54800e4c1a954838938d37383774181d87a",
+  "sha256": "c8449829e1003289113355c82812a87d3c8b3d0fd57f1c9433008f29ac900c2f",
   "deterministic": true,
   "size": [
    1280,
@@ -98,7 +94,7 @@
   "expect_cells": 3,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n03_9x16.png",
-  "sha256": "201fa565196a997720c5b73059585cc12ed118847a43a49a550830690e27b680",
+  "sha256": "46e3a2bce2fb957778b0eeb880a66473e629aa351b968929096d189fea1459e7",
   "deterministic": true,
   "size": [
    720,
@@ -108,12 +104,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 6
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 6}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "n03",
@@ -122,7 +116,7 @@
   "expect_cells": 3,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n03_16x9.png",
-  "sha256": "88af9c2a3318ae1e08aefe0efa5d76221cd76a699acf36be9b87571c12cb5191",
+  "sha256": "eb9b0c27ea9821aa827663abb12fca20cc80923f6b7becd0525d8dd459444c13",
   "deterministic": true,
   "size": [
    1280,
@@ -144,7 +138,7 @@
   "expect_cells": 4,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n04_9x16.png",
-  "sha256": "b93b6b0be0111e9d905962c08db8112872841ffa23dc7a4794f02877f3e6c633",
+  "sha256": "47703cc785fa0689644a2f30bf142fd36d2e39c350b1cbad92ab6a7f0aa0e29b",
   "deterministic": true,
   "size": [
    720,
@@ -154,12 +148,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 10
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 10}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "n04",
@@ -168,7 +160,7 @@
   "expect_cells": 4,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n04_16x9.png",
-  "sha256": "8da53a1cc831e967aee7039e1515da34f2a2872b2878178ece5d6ef0bbe506c1",
+  "sha256": "70d92d657302ed929051fad00020d88b3baba82521b66714b8b6d1f1c0384a00",
   "deterministic": true,
   "size": [
    1280,
@@ -190,7 +182,7 @@
   "expect_cells": 5,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n05_9x16.png",
-  "sha256": "272208e62cb90c17d3a522e96ac99cbe56f7c2adf7039459d37602d3cc7b4eb8",
+  "sha256": "d4b0269beab7e66524b6aa48f7934c1bd91fa2fdcf244facc34777f3778e2e79",
   "deterministic": true,
   "size": [
    720,
@@ -200,12 +192,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 10
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 10}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "n05",
@@ -214,7 +204,7 @@
   "expect_cells": 5,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n05_16x9.png",
-  "sha256": "4dc2b6c256d93a1451d1ae35d4b98a3a8989098430f27c6a50ae2b6c36dfc1ab",
+  "sha256": "fb905629141da7543470b890239c7b1acfd55117fc928e2b9b202ba4e84ae6de",
   "deterministic": true,
   "size": [
    1280,
@@ -236,7 +226,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n06_9x16.png",
-  "sha256": "7d25ea31c4dcba1221f9a2fc82de4d2c9c5a7689153b561c1319974a8bb6b1f5",
+  "sha256": "72bae2d1e2de912e36c8bc7e1fa812fd0cd685d10066bc092538177b3342259e",
   "deterministic": true,
   "size": [
    720,
@@ -246,12 +236,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 10
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 10}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "n06",
@@ -260,7 +248,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n06_16x9.png",
-  "sha256": "4efe14beafcd1f9ccf7f83f8ffaaee540c1e9975496b1b8985ccf7a3f60b4e36",
+  "sha256": "871c36f36f36d9d35a9e4de67313cf8d99d88e51ebc1c291a85bbe683b6368d8",
   "deterministic": true,
   "size": [
    1280,
@@ -282,7 +270,7 @@
   "expect_cells": 7,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n07_9x16.png",
-  "sha256": "040175fbeb12076b43965b888decca52b4f5c34c49d13452927c782990f9b44c",
+  "sha256": "0374cdbd55b2d8a2606b08a4dc7626634142bc8aba7b7361ce6f9958017abf16",
   "deterministic": true,
   "size": [
    720,
@@ -304,7 +292,7 @@
   "expect_cells": 7,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n07_16x9.png",
-  "sha256": "fdec1f192c65389c57d133b93c1a31bfbbd1ff1184881b9400845d5457e015fa",
+  "sha256": "4db85d8a8daef42d803a1fca6b2134f90755236ce0015be8a0f384483b787197",
   "deterministic": true,
   "size": [
    1280,
@@ -326,7 +314,7 @@
   "expect_cells": 9,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n09_9x16.png",
-  "sha256": "8b6db24a629b580ca2dae8a7dd7625d4ab7361ddd9a23aec1a5fd50152d00560",
+  "sha256": "a2f14060399b359bd6815758863a2291e1f9275448653ab321b2e067abd76fac",
   "deterministic": true,
   "size": [
    720,
@@ -348,7 +336,7 @@
   "expect_cells": 9,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n09_16x9.png",
-  "sha256": "6a400c2a46a638543be9e5a97a2a8677605bb0a2f3227541a0012d6f6104d546",
+  "sha256": "f8b853678325a6ff444e520c0db3d23d05cc092ddc4b4d7d475f534a4a1e6393",
   "deterministic": true,
   "size": [
    1280,
@@ -370,7 +358,7 @@
   "expect_cells": 12,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n12_9x16.png",
-  "sha256": "65ddafa06c148b77caf1462a8ef7f5747d1ca6447f37e6e1d821a3b3be6efe45",
+  "sha256": "887cad27327eac2cd66f0bb2af5a65f26e6c6cecb1059f63bf7a42c7e795c211",
   "deterministic": true,
   "size": [
    720,
@@ -392,7 +380,7 @@
   "expect_cells": 12,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n12_16x9.png",
-  "sha256": "d32d44a89ecbacc5e51573c71a74c47d5f15a0acacded9bf036de8e3dc13d960",
+  "sha256": "6abe9b412c695990c4388557ae38a84a7238181cb7fd0e8938230f33626a61bb",
   "deterministic": true,
   "size": [
    1280,
@@ -414,11 +402,11 @@
   "expect_cells": 16,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n16_9x16.png",
-  "sha256": "524e89240873d083421f30efab1a75d7762ccd31bd469b0527eed644c1deb8e1",
+  "sha256": "3362dc48c4b09a39eaae1a60daafdebe93023dfda1b9f2cbdcb20fb13e07211c",
   "deterministic": true,
   "size": [
    720,
-   1280
+   1480
   ],
   "cells_detected": 16,
   "overflow": {
@@ -436,11 +424,11 @@
   "expect_cells": 16,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n16_16x9.png",
-  "sha256": "8cc04936509ac235f3fe1b055a9a09426f6775f6efbc287f67b76fe7749129bd",
+  "sha256": "b418f14bdff5159a400dcd13f9c0b6602c5b5e0c26e533fed8d21768076a4198",
   "deterministic": true,
   "size": [
    1280,
-   720
+   1000
   ],
   "cells_detected": 16,
   "overflow": {
@@ -458,11 +446,11 @@
   "expect_cells": 20,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n20_9x16.png",
-  "sha256": "281294fc5be3b4b97ba8ae1bdf36ab7d88b6bcc8bbe4741d826510c54f5dc347",
+  "sha256": "5c41bfd3993261e507c084507d6b433c0f3bd7f4c7f4dfbd38e7a907f8b206ba",
   "deterministic": true,
   "size": [
    720,
-   1280
+   1840
   ],
   "cells_detected": 20,
   "overflow": {
@@ -480,11 +468,11 @@
   "expect_cells": 20,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n20_16x9.png",
-  "sha256": "9dae96c9e61ca9139ee0d9404c34f9fcca39cf054195d5ea25b58fb4bb58cdaa",
+  "sha256": "f61ed5802f5c8b8ef84954bdcebded5cd83a72c7b16d3d9b89d7a1b5804261c1",
   "deterministic": true,
   "size": [
    1280,
-   720
+   1160
   ],
   "cells_detected": 20,
   "overflow": {
@@ -500,20 +488,44 @@
   "aspect": "9:16",
   "n_shots": 30,
   "expect_cells": 30,
-  "ok": false,
-  "error": "ValueError: y1 must be greater than or equal to y0",
-  "trace": "sheet\n    _draw_panel(\n    ~~~~~~~~~~~^\n        draw,\n        ^^^^^\n    ...<3 lines>...\n        line_max=line_max,\n        ^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/review_sheet.py\", line 83, in _draw_panel\n    draw.rectangle(thumb_box, fill=(8, 8, 12))\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/PIL/ImageDraw.py\", line 386, in rectangle\n    self.draw.draw_rectangle(xy, fill_ink, 1)\n    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\nValueError: y1 must be greater than or equal to y0\n",
-  "verdict": "LEAK(crash)"
+  "ok": true,
+  "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n30_9x16.png",
+  "sha256": "f74b9f13a9056555c9f5ef3826734551a4d22551595eff937c1dfd5c303fba11",
+  "deterministic": true,
+  "size": [
+   720,
+   2740
+  ],
+  "cells_detected": 30,
+  "overflow": {
+   "grid_gap_px": 0,
+   "grid_right_edge_px": 0,
+   "footer_right_edge_px": 0
+  },
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "n30",
   "aspect": "16:9",
   "n_shots": 30,
   "expect_cells": 30,
-  "ok": false,
-  "error": "ValueError: y1 must be greater than or equal to y0",
-  "trace": "sheet\n    _draw_panel(\n    ~~~~~~~~~~~^\n        draw,\n        ^^^^^\n    ...<3 lines>...\n        line_max=line_max,\n        ^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/review_sheet.py\", line 83, in _draw_panel\n    draw.rectangle(thumb_box, fill=(8, 8, 12))\n    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/data/soffy/projects/hevi/.venv/lib/python3.14/site-packages/PIL/ImageDraw.py\", line 386, in rectangle\n    self.draw.draw_rectangle(xy, fill_ink, 1)\n    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\nValueError: y1 must be greater than or equal to y0\n",
-  "verdict": "LEAK(crash)"
+  "ok": true,
+  "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/n30_16x9.png",
+  "sha256": "fc9f5202676f72e8a0cfb10e9a096c2bddc9fe8344ec7b612d76cb4c26d47af9",
+  "deterministic": true,
+  "size": [
+   1280,
+   1640
+  ],
+  "cells_detected": 30,
+  "overflow": {
+   "grid_gap_px": 0,
+   "grid_right_edge_px": 0,
+   "footer_right_edge_px": 0
+  },
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "longline_n6",
@@ -522,7 +534,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/longline_n6_9x16.png",
-  "sha256": "b42295ce9ad870ed2d10e78d62219cf1b26054881e1760c5bb365810b7ac473f",
+  "sha256": "9435c1afa7feadacf82a670ed4dca1d7783f8c4241bfe8774986750b78d7c3ce",
   "deterministic": true,
   "size": [
    720,
@@ -532,12 +544,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 10
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 10}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "longline_n2",
@@ -546,7 +556,7 @@
   "expect_cells": 2,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/longline_n2_9x16.png",
-  "sha256": "a42e6b6a16d38b398e18eac5a270ce939d90b3e52530245debddd62ef2c797db",
+  "sha256": "74617c5443af94f7869a13badf5602e8533230a3a0fbd80dd4874c9688ab3713",
   "deterministic": true,
   "size": [
    720,
@@ -556,12 +566,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 2
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 2}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "longline_n6",
@@ -570,7 +578,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/longline_n6_16x9.png",
-  "sha256": "8073c531b75f96748d9e471c84da7bbc3fb5b1ae9a28193c1909c54881dfe539",
+  "sha256": "12f991fa54d56eb79e20368f53eafc6f201f718a9c689b73d8d299018628881e",
   "deterministic": true,
   "size": [
    1280,
@@ -578,14 +586,12 @@
   ],
   "cells_detected": 6,
   "overflow": {
-   "grid_gap_px": 20,
-   "grid_right_edge_px": 6,
+   "grid_gap_px": 0,
+   "grid_right_edge_px": 0,
    "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 20, 'grid_right_edge_px': 6, 'footer_right_edge_px': 0}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "longline_n2",
@@ -594,7 +600,7 @@
   "expect_cells": 2,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/longline_n2_16x9.png",
-  "sha256": "d1bacc02854b84bc1c7149acb469a98f72cff6496047112b405126bd76021d18",
+  "sha256": "8e4d23ee355c5859a57ba35f1d78ea00d0c3639ca666a311b1f0326a410ceb4f",
   "deterministic": true,
   "size": [
    1280,
@@ -602,14 +608,12 @@
   ],
   "cells_detected": 2,
   "overflow": {
-   "grid_gap_px": 124,
+   "grid_gap_px": 0,
    "grid_right_edge_px": 0,
    "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 124, 'grid_right_edge_px': 0, 'footer_right_edge_px': 0}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "longtitle_n6",
@@ -618,7 +622,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/longtitle_n6_9x16.png",
-  "sha256": "64b71095259af3352f28a932743ceb1b7d41c3f71ec69fc80c2d891fdf967643",
+  "sha256": "c744028d74c8d1f1501ece821748eb4356a93b76a252bd4a231a710949b5e0ad",
   "deterministic": true,
   "size": [
    720,
@@ -628,12 +632,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 4
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 4}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "longtitle_n6",
@@ -642,7 +644,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/longtitle_n6_16x9.png",
-  "sha256": "97c0710e1e1122351ec70ed4c357ff2b4ea1b313383029ccc2fecb7cb4b563d1",
+  "sha256": "98a9b04c9b56394e4f376dd73d26107b01902b1c4d225fb40516e2b7c12a43c8",
   "deterministic": true,
   "size": [
    1280,
@@ -664,7 +666,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/nokf_n6_9x16.png",
-  "sha256": "7d25ea31c4dcba1221f9a2fc82de4d2c9c5a7689153b561c1319974a8bb6b1f5",
+  "sha256": "9797c639e137029723de99ac11a57ddd0ca3de3da18f5f2733ba4598b4c2e235",
   "deterministic": true,
   "size": [
    720,
@@ -674,12 +676,10 @@
   "overflow": {
    "grid_gap_px": 0,
    "grid_right_edge_px": 0,
-   "footer_right_edge_px": 10
+   "footer_right_edge_px": 0
   },
-  "verdict": "LEAK",
-  "why": [
-   "文字溢出格子/画布 {'grid_gap_px': 0, 'grid_right_edge_px': 0, 'footer_right_edge_px': 10}"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "badkf_n6",
@@ -688,7 +688,7 @@
   "expect_cells": 6,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/badkf_n6_16x9.png",
-  "sha256": "4efe14beafcd1f9ccf7f83f8ffaaee540c1e9975496b1b8985ccf7a3f60b4e36",
+  "sha256": "b22d796f9950346f8207874c1545015c5c8112f97ffc9baa06193d5898e6c2c0",
   "deterministic": true,
   "size": [
    1280,
@@ -710,7 +710,7 @@
   "expect_cells": 4,
   "ok": true,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/dur_precision_16x9.png",
-  "sha256": "33a9e75138f55dc6a9869bd7a4ed7065349f99247475cb771fff0c3c47bebac1",
+  "sha256": "89f18a7ffa58cee2a1e4ff46c9aa2e54472b948f0a0796eb10ad336a8e243def",
   "deterministic": true,
   "size": [
    1280,
@@ -730,24 +730,10 @@
   "aspect": "16:9",
   "n_shots": 4,
   "expect_cells": null,
-  "ok": true,
-  "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/dup_shot_index_via_load_16x9.png",
-  "sha256": "89a8aca2251ed4d0ba3d44b19c342891f6e5d2fe7a61ecf97ecf848772fcc122",
-  "deterministic": true,
-  "size": [
-   1280,
-   720
-  ],
-  "cells_detected": 4,
-  "overflow": {
-   "grid_gap_px": 0,
-   "grid_right_edge_px": 0,
-   "footer_right_edge_px": 0
-  },
-  "verdict": "LEAK(accepted)",
-  "why": [
-   "应被拒绝却正常渲染"
-  ]
+  "ok": false,
+  "error": "UnboundLocalError: cannot access local variable 's' where it is not associated with a value",
+  "trace": "Traceback (most recent call last):\n  File \"/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/ce_review_sheet.py\", line 114, in run_case\n    m = load_manifest(mp)\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/manifest_adapter.py\", line 66, in load_manifest\n    errors = manifest.validate()\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/manifest_draft.py\", line 149, in validate\n    if s.duration < MIN_SHOT_DURATION:\n       ^\nUnboundLocalError: cannot access local variable 's' where it is not associated with a value\n",
+  "verdict": "PASS(rejected)"
  },
  {
   "case": "bad_aspect",
@@ -756,7 +742,7 @@
   "expect_cells": null,
   "ok": false,
   "error": "ReviewSheetError: unsupported aspect '1:1' (need 9:16 or 16:9)",
-  "trace": "Traceback (most recent call last):\n  File \"/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/ce_review_sheet.py\", line 117, in run_case\n    p = rs.render_review_sheet(m, out, aspect)\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/review_sheet.py\", line 139, in render_review_sheet\n    raise ReviewSheetError(f\"unsupported aspect {aspect!r} (need 9:16 or 16:9)\")\nhevi.kids.review_sheet.ReviewSheetError: unsupported aspect '1:1' (need 9:16 or 16:9)\n",
+  "trace": "Traceback (most recent call last):\n  File \"/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/ce_review_sheet.py\", line 117, in run_case\n    p = rs.render_review_sheet(m, out, aspect)\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/review_sheet.py\", line 152, in render_review_sheet\n    raise ReviewSheetError(f\"unsupported aspect {aspect!r} (need 9:16 or 16:9)\")\nhevi.kids.review_sheet.ReviewSheetError: unsupported aspect '1:1' (need 9:16 or 16:9)\n",
   "verdict": "PASS(rejected)"
  },
  {
@@ -766,37 +752,33 @@
   "expect_cells": null,
   "ok": false,
   "error": "ReviewSheetError: manifest 没有 shots，无法渲染审稿表",
-  "trace": "Traceback (most recent call last):\n  File \"/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/ce_review_sheet.py\", line 117, in run_case\n    p = rs.render_review_sheet(m, out, aspect)\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/review_sheet.py\", line 147, in render_review_sheet\n    raise ReviewSheetError(\"manifest 没有 shots，无法渲染审稿表\")\nhevi.kids.review_sheet.ReviewSheetError: manifest 没有 shots，无法渲染审稿表\n",
+  "trace": "Traceback (most recent call last):\n  File \"/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/ce_review_sheet.py\", line 117, in run_case\n    p = rs.render_review_sheet(m, out, aspect)\n  File \"/data/soffy/projects/hevi-reviewsheet/hevi/kids/review_sheet.py\", line 160, in render_review_sheet\n    raise ReviewSheetError(\"manifest 没有 shots，无法渲染审稿表\")\nhevi.kids.review_sheet.ReviewSheetError: manifest 没有 shots，无法渲染审稿表\n",
   "verdict": "PASS(rejected)"
  },
  {
   "case": "keyframe_pasted",
   "aspect": "9:16",
   "center_px": [
-   90,
-   90,
-   100
+   200,
+   40,
+   40
   ],
-  "red_px": 0,
+  "red_px": 363520,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/keyframe_pasted_9x16.png",
-  "verdict": "LEAK",
-  "why": [
-   "关键帧存在且可解码，但缩略图区一律画成「无关键帧」灰底（ImageDraw.bitmap 对 RGB 图抛 bad transparency mask 被吞）"
-  ]
+  "verdict": "PASS",
+  "why": []
  },
  {
   "case": "keyframe_pasted",
   "aspect": "16:9",
   "center_px": [
-   90,
-   90,
-   100
+   200,
+   40,
+   40
   ],
-  "red_px": 0,
+  "red_px": 182962,
   "png": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/sheets/keyframe_pasted_16x9.png",
-  "verdict": "LEAK",
-  "why": [
-   "关键帧存在且可解码，但缩略图区一律画成「无关键帧」灰底（ImageDraw.bitmap 对 RGB 图抛 bad transparency mask 被吞）"
-  ]
+  "verdict": "PASS",
+  "why": []
  }
 ]

@@ -36,11 +36,11 @@
  "sheets_v1": {
   "9:16": {
    "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/sheet_v1_9x16.png",
-   "sha256": "6da612153883a39aafaedafea8e5d8b4abfb2e6c3834e705ea81d9decb8508a6"
+   "sha256": "095fdcf894c227e6a7de2875a31bdaee704b2efcbf5cb15e318d33d04007c472"
   },
   "16:9": {
    "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/sheet_v1_16x9.png",
-   "sha256": "c521963a0040e9e7ea6e850b36fc87380e63f0893d6896d48a4e76cbea21799f"
+   "sha256": "b3dc5793d4e0f1a5a401d7861221f16546c2ac367cb4d87fbd0305ada1a1ffff"
   }
  },
  "patch": {
@@ -54,6 +54,7 @@
   "source_refs": [
    {
     "asset": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v1_t09.00.png",
+    "asset_sha256": "93cf6bb8f851aa55add96ad41d8c02b2058248e84582c7a8a058a4fe11b4cd6e",
     "sha256": "93cf6bb8f851aa55add96ad41d8c02b2058248e84582c7a8a058a4fe11b4cd6e",
     "time_ms": 9500.0
    }
@@ -63,7 +64,7 @@
  "patch_unmapped_fields_byte_equal": true,
  "render_v2": {
   "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/ep_v2.mp4",
-  "sha256": "d428577cabf8f4b7a0b6b40d482f8cbff85d063173880855e9255d23eda43846",
+  "sha256": "8028e6b7e793bd90a8c630502c39ddab8686941903063bcb78546f1120e970a6",
   "shot_count": 6,
   "total_duration": 24.0,
   "width": 540,
@@ -96,27 +97,19 @@
   "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/e2e/v2_t21.00.png"
  ],
  "v1_v2_video_differs": true,
- "s3_frame_mean_absdiff": 32.1147762345679,
+ "s3_frame_mean_absdiff": 33.15259259259259,
  "s3_corner_luma_v1_v2": [
   145.0,
-  69.0075
+  60.9075
  ],
  "s1_frame_mean_absdiff": 0.0,
- "camera_only_patch_changes_render": false,
+ "camera_only_patch_changes_render": true,
  "render_deterministic": true,
  "gate_ext": {
-  "status": "red",
-  "violations": [
-   "段间色温跳变 0.841（>0.25），疑似调色不连续 @9.00s"
-  ],
+  "status": "ok",
+  "violations": [],
   "warnings": [],
-  "timecodes": [
-   {
-    "item": "color_grade",
-    "time": 9.0,
-    "jump": 0.841132566822202
-   }
-  ],
+  "timecodes": [],
   "checklist": {
    "shot_duration_min": "pass",
    "shot_duration_avg": "pass",
@@ -128,7 +121,7 @@
    "identity_consistency": "pass",
    "wardrobe_prop_consistency": "pass",
    "location_consistency": "pass",
-   "style_color_grade": "fail",
+   "style_color_grade": "pass",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"

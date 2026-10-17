@@ -5,8 +5,8 @@
   "kind": "good_real",
   "bad_window_s": null,
   "secs": {
-   "orig": 29.5,
-   "ext": 43.3
+   "orig": 28.1,
+   "ext": 88.1
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -39,7 +39,7 @@
   "ext_timecodes": [],
   "ext_metrics": {
    "identity_max_color_diff": 7,
-   "color_grade_max_ratio_jump": 0.006,
+   "color_grade_max_ratio_jump": 0.004,
    "detected_cuts": 1,
    "min_shot_duration": 56.566667,
    "integrated_lufs": -15.7,
@@ -56,8 +56,8 @@
   "kind": "good_real",
   "bad_window_s": null,
   "secs": {
-   "orig": 27.7,
-   "ext": 37.3
+   "orig": 16.0,
+   "ext": 63.5
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -90,7 +90,7 @@
   "ext_timecodes": [],
   "ext_metrics": {
    "identity_max_color_diff": 36,
-   "color_grade_max_ratio_jump": 0.009,
+   "color_grade_max_ratio_jump": 0.022,
    "detected_cuts": 1,
    "min_shot_duration": 48.433333,
    "integrated_lufs": -15.7,
@@ -107,8 +107,8 @@
   "kind": "good_real",
   "bad_window_s": null,
   "secs": {
-   "orig": 8.2,
-   "ext": 20.4
+   "orig": 3.9,
+   "ext": 35.7
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -141,7 +141,7 @@
   "ext_timecodes": [],
   "ext_metrics": {
    "identity_max_color_diff": 2,
-   "color_grade_max_ratio_jump": 0.01,
+   "color_grade_max_ratio_jump": 0.017,
    "detected_cuts": 1,
    "min_shot_duration": 12.0,
    "integrated_lufs": -16.0,
@@ -153,13 +153,13 @@
   "problems": []
  },
  {
-  "sample": "control_base16",
-  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/base16.mp4",
-  "kind": "control",
+  "sample": "scene3d_star_sea_9x16",
+  "path": "/data/soffy/projects/hevi-scene3d/output/scene3d_r1b/star_sea_9x16/through_star_sea.mp4",
+  "kind": "observe",
   "bad_window_s": null,
   "secs": {
-   "orig": 2.6,
-   "ext": 6.5
+   "orig": 5.3,
+   "ext": 37.6
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -192,7 +192,58 @@
   "ext_timecodes": [],
   "ext_metrics": {
    "identity_max_color_diff": 4,
-   "color_grade_max_ratio_jump": 0.007,
+   "color_grade_max_ratio_jump": 0.014,
+   "detected_cuts": 1,
+   "min_shot_duration": 13.0,
+   "integrated_lufs": -16.0,
+   "flashes_per_second": 0.0,
+   "forbidden_words_found": []
+  },
+  "ext_new_fails": [],
+  "verdict": "OBSERVE",
+  "problems": []
+ },
+ {
+  "sample": "control_base16",
+  "path": "/data/soffy/projects/hevi-reviewsheet/audit/reviewsheet/verify_r1/samples/base16.mp4",
+  "kind": "control",
+  "bad_window_s": null,
+  "secs": {
+   "orig": 2.0,
+   "ext": 23.0
+  },
+  "orig_status": "ok",
+  "orig_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass"
+  },
+  "ext_status": "ok",
+  "ext_checklist": {
+   "shot_duration_min": "pass",
+   "shot_duration_avg": "pass",
+   "photosensitive_flash": "pass",
+   "loudness": "pass",
+   "speech_rate": "pass",
+   "subtitle_fontsize": "pass",
+   "dialogue_content": "pass",
+   "identity_consistency": "pass",
+   "wardrobe_prop_consistency": "pass",
+   "location_consistency": "pass",
+   "style_color_grade": "pass",
+   "transition_table_boundary": "pass",
+   "spoken_language": "pass",
+   "no_fast_cut_transition_types": "pass"
+  },
+  "ext_violations": [],
+  "ext_timecodes": [],
+  "ext_metrics": {
+   "identity_max_color_diff": 4,
+   "color_grade_max_ratio_jump": 0.004,
    "detected_cuts": 1,
    "min_shot_duration": 16.0,
    "integrated_lufs": -15.2,
@@ -212,8 +263,8 @@
    16
   ],
   "secs": {
-   "orig": 2.4,
-   "ext": 6.8
+   "orig": 1.7,
+   "ext": 29.8
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -225,7 +276,7 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass"
   },
-  "ext_status": "ok",
+  "ext_status": "red",
   "ext_checklist": {
    "shot_duration_min": "pass",
    "shot_duration_avg": "pass",
@@ -235,29 +286,140 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass",
    "identity_consistency": "pass",
-   "wardrobe_prop_consistency": "pass",
+   "wardrobe_prop_consistency": "fail",
    "location_consistency": "pass",
-   "style_color_grade": "pass",
+   "style_color_grade": "fail",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
-  "ext_violations": [],
-  "ext_timecodes": [],
+  "ext_violations": [
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @0.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @1.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @2.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @3.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @4.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.000) @5.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.000) @6.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @7.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @8.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @9.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @10.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @11.50s",
+   "hue_drift 违规: 画面中心色相漂移 43（>30） @11.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @12.50s",
+   "hue_drift 违规: 画面中心色相漂移 43（>30） @12.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @13.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @14.50s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @15.50s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "low_saturation",
+    "time": 0.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 1.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 2.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 3.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 4.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 5.5,
+    "reason": "画面过灰/饱和度过低 (0.000)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 6.5,
+    "reason": "画面过灰/饱和度过低 (0.000)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 7.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 8.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 9.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 10.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 11.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "hue_drift",
+    "time": 11.5,
+    "reason": "画面中心色相漂移 43（>30）"
+   },
+   {
+    "item": "low_saturation",
+    "time": 12.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "hue_drift",
+    "time": 12.5,
+    "reason": "画面中心色相漂移 43（>30）"
+   },
+   {
+    "item": "low_saturation",
+    "time": 13.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 14.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 15.5,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   }
+  ],
   "ext_metrics": {
    "identity_max_color_diff": 5,
-   "color_grade_max_ratio_jump": 0.002,
+   "color_grade_max_ratio_jump": 0.0,
    "detected_cuts": 1,
    "min_shot_duration": 16.0,
    "integrated_lufs": -15.2,
    "flashes_per_second": 0.0,
    "forbidden_words_found": []
   },
-  "ext_new_fails": [],
-  "verdict": "LEAK",
-  "problems": [
-   "坏样本扩展项未红灯（漏放）"
-  ]
+  "ext_new_fails": [
+   "wardrobe_prop_consistency",
+   "style_color_grade"
+  ],
+  "verdict": "PASS",
+  "problems": []
  },
  {
   "sample": "gray_second_half",
@@ -268,8 +430,8 @@
    16
   ],
   "secs": {
-   "orig": 2.6,
-   "ext": 7.2
+   "orig": 2.1,
+   "ext": 21.0
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -281,7 +443,7 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass"
   },
-  "ext_status": "ok",
+  "ext_status": "red",
   "ext_checklist": {
    "shot_duration_min": "pass",
    "shot_duration_avg": "pass",
@@ -293,27 +455,77 @@
    "identity_consistency": "pass",
    "wardrobe_prop_consistency": "pass",
    "location_consistency": "pass",
-   "style_color_grade": "pass",
+   "style_color_grade": "fail",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
-  "ext_violations": [],
-  "ext_timecodes": [],
+  "ext_violations": [
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.002) @8.52s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.002) @9.52s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @10.53s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @11.53s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @12.53s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @13.53s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @14.54s",
+   "low_saturation 违规: 画面过灰/饱和度过低 (0.001) @15.54s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "low_saturation",
+    "time": 8.52125,
+    "reason": "画面过灰/饱和度过低 (0.002)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 9.52375,
+    "reason": "画面过灰/饱和度过低 (0.002)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 10.52625,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 11.528749999999999,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 12.53125,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 13.53375,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 14.536249999999999,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   },
+   {
+    "item": "low_saturation",
+    "time": 15.538749999999999,
+    "reason": "画面过灰/饱和度过低 (0.001)"
+   }
+  ],
   "ext_metrics": {
    "identity_max_color_diff": 7,
-   "color_grade_max_ratio_jump": 0.021,
+   "color_grade_max_ratio_jump": 0.02,
    "detected_cuts": 1,
    "min_shot_duration": 16.04,
    "integrated_lufs": -15.2,
    "flashes_per_second": 0.0,
    "forbidden_words_found": []
   },
-  "ext_new_fails": [],
-  "verdict": "LEAK",
-  "problems": [
-   "坏样本扩展项未红灯（漏放）"
-  ]
+  "ext_new_fails": [
+   "style_color_grade"
+  ],
+  "verdict": "PASS",
+  "problems": []
  },
  {
   "sample": "temp_jump",
@@ -324,8 +536,8 @@
    9
   ],
   "secs": {
-   "orig": 5.6,
-   "ext": 12.0
+   "orig": 3.7,
+   "ext": 34.0
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -347,16 +559,16 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass",
    "identity_consistency": "fail",
-   "wardrobe_prop_consistency": "pass",
+   "wardrobe_prop_consistency": "fail",
    "location_consistency": "pass",
-   "style_color_grade": "fail",
+   "style_color_grade": "pass",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
   "ext_violations": [
    "跨镜主色漂移 123（>120），疑似服装/配色不连续 @8.69s",
-   "段间色温跳变 0.599（>0.25），疑似调色不连续 @8.69s"
+   "hue_drift 违规: 画面中心色相漂移 118（>30） @8.52s"
   ],
   "ext_timecodes": [
    {
@@ -365,14 +577,14 @@
     "diff": 123
    },
    {
-    "item": "color_grade",
-    "time": 8.688333333333333,
-    "jump": 0.5986136758429136
+    "item": "hue_drift",
+    "time": 8.52125,
+    "reason": "画面中心色相漂移 118（>30）"
    }
   ],
   "ext_metrics": {
    "identity_max_color_diff": 123,
-   "color_grade_max_ratio_jump": 0.599,
+   "color_grade_max_ratio_jump": 0.605,
    "detected_cuts": 1,
    "min_shot_duration": 16.04,
    "integrated_lufs": -15.2,
@@ -381,7 +593,7 @@
   },
   "ext_new_fails": [
    "identity_consistency",
-   "style_color_grade"
+   "wardrobe_prop_consistency"
   ],
   "verdict": "PASS",
   "problems": []
@@ -395,8 +607,8 @@
    9
   ],
   "secs": {
-   "orig": 2.6,
-   "ext": 7.5
+   "orig": 1.5,
+   "ext": 21.6
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -408,7 +620,7 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass"
   },
-  "ext_status": "ok",
+  "ext_status": "red",
   "ext_checklist": {
    "shot_duration_min": "pass",
    "shot_duration_avg": "pass",
@@ -418,29 +630,37 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass",
    "identity_consistency": "pass",
-   "wardrobe_prop_consistency": "pass",
+   "wardrobe_prop_consistency": "fail",
    "location_consistency": "pass",
    "style_color_grade": "pass",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
-  "ext_violations": [],
-  "ext_timecodes": [],
+  "ext_violations": [
+   "hue_drift 违规: 画面中心色相漂移 57（>30） @8.52s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "hue_drift",
+    "time": 8.52125,
+    "reason": "画面中心色相漂移 57（>30）"
+   }
+  ],
   "ext_metrics": {
    "identity_max_color_diff": 10,
-   "color_grade_max_ratio_jump": 0.032,
+   "color_grade_max_ratio_jump": 0.03,
    "detected_cuts": 1,
    "min_shot_duration": 16.04,
    "integrated_lufs": -15.2,
    "flashes_per_second": 0.0,
    "forbidden_words_found": []
   },
-  "ext_new_fails": [],
-  "verdict": "LEAK",
-  "problems": [
-   "坏样本扩展项未红灯（漏放）"
-  ]
+  "ext_new_fails": [
+   "wardrobe_prop_consistency"
+  ],
+  "verdict": "PASS",
+  "problems": []
  },
  {
   "sample": "adult_text_4_12",
@@ -451,8 +671,8 @@
    12
   ],
   "secs": {
-   "orig": 3.1,
-   "ext": 6.6
+   "orig": 1.9,
+   "ext": 24.7
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -464,7 +684,7 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass"
   },
-  "ext_status": "ok",
+  "ext_status": "red",
   "ext_checklist": {
    "shot_duration_min": "pass",
    "shot_duration_avg": "pass",
@@ -481,11 +701,61 @@
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
-  "ext_violations": [],
-  "ext_timecodes": [],
+  "ext_violations": [
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @4.50s",
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @5.50s",
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @6.50s",
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @7.50s",
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @8.50s",
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @9.50s",
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @10.50s",
+   "adult_text 违规: 画面上部非字幕区出现成人/非幼儿文字 '深入机制分析' @11.50s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "adult_text",
+    "time": 4.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   },
+   {
+    "item": "adult_text",
+    "time": 5.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   },
+   {
+    "item": "adult_text",
+    "time": 6.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   },
+   {
+    "item": "adult_text",
+    "time": 7.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   },
+   {
+    "item": "adult_text",
+    "time": 8.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   },
+   {
+    "item": "adult_text",
+    "time": 9.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   },
+   {
+    "item": "adult_text",
+    "time": 10.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   },
+   {
+    "item": "adult_text",
+    "time": 11.5,
+    "reason": "画面上部非字幕区出现成人/非幼儿文字 '深入机制分析'"
+   }
+  ],
   "ext_metrics": {
    "identity_max_color_diff": 40,
-   "color_grade_max_ratio_jump": 0.006,
+   "color_grade_max_ratio_jump": 0.003,
    "detected_cuts": 1,
    "min_shot_duration": 16.0,
    "integrated_lufs": -15.2,
@@ -493,10 +763,8 @@
    "forbidden_words_found": []
   },
   "ext_new_fails": [],
-  "verdict": "LEAK",
-  "problems": [
-   "坏样本扩展项未红灯（漏放）"
-  ]
+  "verdict": "PASS",
+  "problems": []
  },
  {
   "sample": "empty_star_8_16",
@@ -507,8 +775,8 @@
    16
   ],
   "secs": {
-   "orig": 2.3,
-   "ext": 6.1
+   "orig": 1.9,
+   "ext": 20.1
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -530,16 +798,25 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass",
    "identity_consistency": "fail",
-   "wardrobe_prop_consistency": "pass",
-   "location_consistency": "pass",
-   "style_color_grade": "fail",
+   "wardrobe_prop_consistency": "fail",
+   "location_consistency": "fail",
+   "style_color_grade": "pass",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
   "ext_violations": [
    "跨镜主色漂移 705（>120），疑似服装/配色不连续 @8.67s",
-   "段间色温跳变 0.799（>0.25），疑似调色不连续 @8.67s"
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @8.50s",
+   "hue_drift 违规: 画面中心色相漂移 123（>30） @8.50s",
+   "wardrobe_jump 违规: 局部服装/色块跳变（253 格连通色相突变） @8.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @9.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @10.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @11.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @12.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @13.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @14.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 8.1, 方差 18.7) @15.50s"
   ],
   "ext_timecodes": [
    {
@@ -548,14 +825,59 @@
     "diff": 705
    },
    {
-    "item": "color_grade",
-    "time": 8.666666666666666,
-    "jump": 0.7986151306622077
+    "item": "empty_screen",
+    "time": 8.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
+   },
+   {
+    "item": "hue_drift",
+    "time": 8.5,
+    "reason": "画面中心色相漂移 123（>30）"
+   },
+   {
+    "item": "wardrobe_jump",
+    "time": 8.5,
+    "reason": "局部服装/色块跳变（253 格连通色相突变）"
+   },
+   {
+    "item": "empty_screen",
+    "time": 9.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 10.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 11.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 12.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 13.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 14.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 15.5,
+    "reason": "空画面/近黑画面 (亮度 8.1, 方差 18.7)"
    }
   ],
   "ext_metrics": {
    "identity_max_color_diff": 705,
-   "color_grade_max_ratio_jump": 0.799,
+   "color_grade_max_ratio_jump": 0.0,
    "detected_cuts": 2,
    "min_shot_duration": 8.0,
    "integrated_lufs": -15.2,
@@ -564,7 +886,8 @@
   },
   "ext_new_fails": [
    "identity_consistency",
-   "style_color_grade"
+   "wardrobe_prop_consistency",
+   "location_consistency"
   ],
   "verdict": "PASS",
   "problems": []
@@ -578,8 +901,8 @@
    16
   ],
   "secs": {
-   "orig": 2.4,
-   "ext": 6.3
+   "orig": 1.7,
+   "ext": 12.5
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -591,7 +914,7 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass"
   },
-  "ext_status": "ok",
+  "ext_status": "red",
   "ext_checklist": {
    "shot_duration_min": "pass",
    "shot_duration_avg": "pass",
@@ -602,28 +925,126 @@
    "dialogue_content": "pass",
    "identity_consistency": "pass",
    "wardrobe_prop_consistency": "pass",
-   "location_consistency": "pass",
+   "location_consistency": "fail",
    "style_color_grade": "pass",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
-  "ext_violations": [],
-  "ext_timecodes": [],
+  "ext_violations": [
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @0.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @1.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @2.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @3.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @4.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @5.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @6.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @7.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @8.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @9.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @10.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @11.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @12.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @13.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @14.50s",
+   "empty_screen 违规: 空画面/近黑画面 (亮度 4.0, 方差 0.0) @15.50s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "empty_screen",
+    "time": 0.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 1.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 2.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 3.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 4.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 5.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 6.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 7.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 8.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 9.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 10.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 11.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 12.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 13.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 14.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   },
+   {
+    "item": "empty_screen",
+    "time": 15.5,
+    "reason": "空画面/近黑画面 (亮度 4.0, 方差 0.0)"
+   }
+  ],
   "ext_metrics": {
    "identity_max_color_diff": 0,
-   "color_grade_max_ratio_jump": 0.0,
+   "color_grade_max_ratio_jump": null,
    "detected_cuts": 1,
    "min_shot_duration": 16.0,
    "integrated_lufs": -15.2,
    "flashes_per_second": 0.0,
    "forbidden_words_found": []
   },
-  "ext_new_fails": [],
-  "verdict": "LEAK",
-  "problems": [
-   "坏样本扩展项未红灯（漏放）"
-  ]
+  "ext_new_fails": [
+   "location_consistency"
+  ],
+  "verdict": "PASS",
+  "problems": []
  },
  {
   "sample": "wardrobe_jump_8",
@@ -634,8 +1055,8 @@
    9
   ],
   "secs": {
-   "orig": 4.4,
-   "ext": 9.5
+   "orig": 3.1,
+   "ext": 27.3
   },
   "orig_status": "ok",
   "orig_checklist": {
@@ -647,7 +1068,7 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass"
   },
-  "ext_status": "ok",
+  "ext_status": "red",
   "ext_checklist": {
    "shot_duration_min": "pass",
    "shot_duration_avg": "pass",
@@ -657,79 +1078,42 @@
    "subtitle_fontsize": "pass",
    "dialogue_content": "pass",
    "identity_consistency": "pass",
-   "wardrobe_prop_consistency": "pass",
+   "wardrobe_prop_consistency": "fail",
    "location_consistency": "pass",
    "style_color_grade": "pass",
    "transition_table_boundary": "pass",
    "spoken_language": "pass",
    "no_fast_cut_transition_types": "pass"
   },
-  "ext_violations": [],
-  "ext_timecodes": [],
+  "ext_violations": [
+   "hue_drift 违规: 画面中心色相漂移 72（>30） @8.79s",
+   "wardrobe_jump 违规: 局部服装/色块跳变（16 格连通色相突变） @8.79s"
+  ],
+  "ext_timecodes": [
+   {
+    "item": "hue_drift",
+    "time": 8.794666666666666,
+    "reason": "画面中心色相漂移 72（>30）"
+   },
+   {
+    "item": "wardrobe_jump",
+    "time": 8.794666666666666,
+    "reason": "局部服装/色块跳变（16 格连通色相突变）"
+   }
+  ],
   "ext_metrics": {
    "identity_max_color_diff": 20,
-   "color_grade_max_ratio_jump": 0.052,
+   "color_grade_max_ratio_jump": 0.26,
    "detected_cuts": 1,
    "min_shot_duration": 15.52,
    "integrated_lufs": -15.3,
    "flashes_per_second": 0.0,
    "forbidden_words_found": []
   },
-  "ext_new_fails": [],
-  "verdict": "LEAK",
-  "problems": [
-   "坏样本扩展项未红灯（漏放）"
-  ]
- },
- {
-  "sample": "scene3d_star_sea_9x16",
-  "path": "/data/soffy/projects/hevi-scene3d/output/scene3d_r1b/star_sea_9x16/through_star_sea.mp4",
-  "kind": "observe",
-  "bad_window_s": null,
-  "secs": {
-   "orig": 7.1,
-   "ext": 21.5
-  },
-  "orig_status": "ok",
-  "orig_checklist": {
-   "shot_duration_min": "pass",
-   "shot_duration_avg": "pass",
-   "photosensitive_flash": "pass",
-   "loudness": "pass",
-   "speech_rate": "pass",
-   "subtitle_fontsize": "pass",
-   "dialogue_content": "pass"
-  },
-  "ext_status": "ok",
-  "ext_checklist": {
-   "shot_duration_min": "pass",
-   "shot_duration_avg": "pass",
-   "photosensitive_flash": "pass",
-   "loudness": "pass",
-   "speech_rate": "pass",
-   "subtitle_fontsize": "pass",
-   "dialogue_content": "pass",
-   "identity_consistency": "pass",
-   "wardrobe_prop_consistency": "pass",
-   "location_consistency": "pass",
-   "style_color_grade": "pass",
-   "transition_table_boundary": "pass",
-   "spoken_language": "pass",
-   "no_fast_cut_transition_types": "pass"
-  },
-  "ext_violations": [],
-  "ext_timecodes": [],
-  "ext_metrics": {
-   "identity_max_color_diff": 4,
-   "color_grade_max_ratio_jump": 0.008,
-   "detected_cuts": 1,
-   "min_shot_duration": 13.0,
-   "integrated_lufs": -16.0,
-   "flashes_per_second": 0.0,
-   "forbidden_words_found": []
-  },
-  "ext_new_fails": [],
-  "verdict": "OBSERVE",
+  "ext_new_fails": [
+   "wardrobe_prop_consistency"
+  ],
+  "verdict": "PASS",
   "problems": []
  }
 ]
