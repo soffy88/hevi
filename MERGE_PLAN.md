@@ -59,4 +59,4 @@
  | `platform/production-intelligence-vnext` | 2026-09-12 01:57:51 +0000 | 48 | 93 | SKIPPED | Conflict: Auto-merging docs/API-CAPABILITIES.md Auto-merging docs/open | 
  | `release/hevi-vnext` | 2026-09-12 14:29:47 +0000 | 52 | 95 | SKIPPED | Conflict: Auto-merging Dockerfile Auto-merging deploy/Dockerfile.api C | 
  | `feat/spec-001-shortdrama-backend` | 2026-07-25 10:44:59 +0000 | 78 | 166 | SKIPPED | Conflict: Auto-merging STATUS.md CONFLICT (content): Merge conflict in | 
-| `feat/tongjian-v2-consolidation-color` | 2026-07-31 13:48:49 +0000 | 97 | 3257 | PENDING |  |
+ | `feat/tongjian-v2-consolidation-color` | 2026-07-31 13:48:49 +0000 | 97 | 3257 | SKIPPED | Conflict: Auto-merging STATUS.md CONFLICT (content): Merge conflict in | 
