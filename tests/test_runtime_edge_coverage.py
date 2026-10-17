@@ -555,6 +555,8 @@ async def test_audio_router_routes_backends_and_stitches_successful_segments(
     monkeypatch.setattr(audio_router, "probe_duration", lambda _path: 1.25)
 
     class Process:
+        returncode = 0
+
         async def communicate(self) -> tuple[bytes, bytes]:
             return b"", b""
 
@@ -627,8 +629,24 @@ async def test_audio_router_provider_specific_paths_and_empty_fallback(
         await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None)
     monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "lux")
     monkeypatch.setattr("hevi.audio.lux_tts_service.lux_tts_available", lambda: False)
-    with pytest.raises(audio_router.AudioRoutingError, match="luxvoice"):
-        await audio_router._synthesize_formal(text="x", output_path=out, voice="v", instruct=None)
+
+    async def cosyvoice_down(**_kwargs: object) -> None:
+        raise RuntimeError("mock CosyVoice outage")
+
+    def piper_stub(*, text: str, out_wav: Path, lang: str, length_scale: float) -> None:
+        out_wav.write_bytes(b"P" * 128)
+
+    monkeypatch.setattr("hevi.audio.cosyvoice_service.cosyvoice_synthesize", cosyvoice_down)
+    monkeypatch.setattr("hevi.layer4_legacy.talkcraft.omodul_impl._media.piper_tts", piper_stub)
+    lux_fallback = await audio_router._synthesize_formal(
+        text="x", output_path=out, voice="v", instruct=None
+    )
+    assert Path(lux_fallback["path"]) == out
+    assert lux_fallback["requested_provider"] == "lux"
+    assert lux_fallback["actual_provider"] == "piper"
+    assert lux_fallback["substituted"] is True
+    assert "luxtts_http_unavailable" in str(lux_fallback["fallback_reason"])
+    assert "cosyvoice_unavailable" in str(lux_fallback["fallback_reason"])
 
     async def missing(**_kwargs: object) -> dict[str, object]:
         missing_path = tmp_path / "missing.wav"
@@ -1667,20 +1685,25 @@ async def test_studio_kit_delegates_and_preserves_cross_line_contracts(
     monkeypatch.setattr("hevi.audio.lux_tts_service.lux_tts_available", lambda: False)
     assert (await kit.tts_synth({"text": "hello", "provider": "lux"}))["status"] == "failed"
 
-    class EdgeCommunicate:
-        def __init__(self, text: str, voice: str) -> None:
-            self.text, self.voice = text, voice
+    async def fake_lux_route(**kwargs: object) -> dict[str, object]:
+        output_path = Path(str(kwargs["output_path"]))
+        output_path.write_bytes(b"piper-fallback" * 16)
+        return {
+            "path": output_path,
+            "requested_provider": "lux_tts",
+            "actual_provider": "piper",
+            "substituted": True,
+            "fallback_reason": "lux_http_unavailable;cosyvoice_unavailable",
+        }
 
-        async def save(self, path: str) -> None:
-            Path(path).write_bytes(self.text.encode() + self.voice.encode())
-
-    import edge_tts
-
-    monkeypatch.setattr(edge_tts, "Communicate", EdgeCommunicate)
+    monkeypatch.setattr("hevi.audio.audio_router._synthesize_luxtts_with_fallback", fake_lux_route)
     tts = await kit.tts_synth(
-        {"text": "hello", "provider": "auto", "output_path": tmp_path / "line.mp3"}
+        {"text": "hello", "provider": "auto", "output_path": tmp_path / "line.wav"}
     )
-    assert tts["provider"] == "edge_tts" and Path(tts["audio_path"]).exists()
+    assert tts["provider"] == "piper"
+    assert tts["requested_provider"] == "lux_tts"
+    assert tts["substituted"] is True
+    assert Path(tts["audio_path"]).exists()
 
 
 def test_studio_kit_exports_assets_profiles_nle_and_catalogs(

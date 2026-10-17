@@ -121,3 +121,47 @@ async def test_voice_studio_route_creates_a_real_shared_task(monkeypatch) -> Non
         "status": "queued",
         "audio_url": f"/api/tasks/{task_id}/audio",
     }
+
+
+@pytest.mark.asyncio
+async def test_voice_studio_lux_fallback_identity_is_persisted(tmp_path, monkeypatch) -> None:
+    task_id = uuid4()
+
+    async def fake_lux_route(
+        _engine, *, line, output_path, config, emotion
+    ):
+        assert line.text == "小兔子来啦。"
+        assert config["engine"] == "lux_tts"
+        _write_valid_wav(output_path)
+        return {
+            "path": output_path,
+            "requested_provider": "lux_tts",
+            "actual_provider": "piper",
+            "substituted": True,
+            "fallback_reason": "luxtts_http_unavailable;cosyvoice_unavailable",
+        }
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("hevi.audio.task_adapter._synthesize_with_engine", fake_lux_route)
+    result = await execute_voice_studio_task(
+        {
+            "id": task_id,
+            "config_json": {
+                "text": "小兔子来啦。",
+                "engine": "lux_tts",
+                "voice": "soffy",
+            },
+        },
+        MagicMock(),
+    )
+
+    config = result["config_json"]
+    assert config["audio_provider_used"] == "piper"
+    assert config["audio_fallback"] == {
+        "from": "lux_tts",
+        "to": "piper",
+        "reason": "luxtts_http_unavailable;cosyvoice_unavailable",
+    }
+    manifest = ArtifactManifest.model_validate(config["artifact_manifest"])
+    assert manifest.path_for("audio") is not None
+    assert config["audio_probe"]["sample_rate"] == 16_000

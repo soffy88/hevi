@@ -50,31 +50,64 @@ async def synthesize_audio_file(
     fmt = response_format.lower().strip()
     if fmt not in AUDIO_FORMATS:
         raise ValueError(f"unsupported response_format: {response_format}")
-    _validate_tts_engine(engine)
-
-    from hevi.audio.task_adapter import _synthesize_with_engine
-
     root = Path(output_dir)
     root.mkdir(parents=True, exist_ok=True)
     wav_path = root / f"speech-{uuid.uuid4().hex}.wav"
-    line = SimpleNamespace(text=text, voice=voice or None, emotion=instructions or None)
-    config = {
-        "engine": engine,
-        "voice": voice,
-        "language": language or "zh",
-        "speed": speed,
-        "instruct": instructions,
-        "reference_audio": reference_audio,
-        "reference_text": reference_text,
-        "voice_design": voice_design,
-    }
-    await _synthesize_with_engine(
-        engine,
-        line=line,
-        output_path=wav_path,
-        config=config,
-        emotion=instructions or None,
-    )
+    actual_provider = engine
+    substituted = False
+    fallback_reason: str | None = None
+
+    if engine == "lux_tts":
+        # Do not reject LuxTTS just because its health check is currently down:
+        # this route has a deliberate CosyVoice -> Piper fallback path.
+        from hevi.audio.speech_platform import _TTS_SPECS
+
+        if not any(spec.get("id") == engine for spec in _TTS_SPECS):
+            raise ValueError(f"unknown TTS engine: {engine}")
+        from hevi.audio.audio_router import _synthesize_luxtts_with_fallback
+
+        router_kwargs: dict[str, Any] = {}
+        requested_voice = voice.strip().lower()
+        if requested_voice in {"auto", "soffy", "en_male"}:
+            router_kwargs["remote_voice"] = requested_voice
+        routed = await _synthesize_luxtts_with_fallback(
+            text=text,
+            output_path=wav_path,
+            voice=voice,
+            instruct=instructions or voice_design or None,
+            requested_provider="lux_tts",
+            reference_audio=reference_audio or None,
+            reference_text=reference_text or None,
+            speed=speed,
+            **router_kwargs,
+        )
+        wav_path = Path(routed.get("path") or wav_path)
+        actual_provider = str(routed.get("actual_provider") or "lux_tts")
+        substituted = bool(routed.get("substituted")) or actual_provider != engine
+        fallback_reason = routed.get("fallback_reason")
+    else:
+        _validate_tts_engine(engine)
+        from hevi.audio.task_adapter import _synthesize_with_engine
+
+        line = SimpleNamespace(text=text, voice=voice or None, emotion=instructions or None)
+        config = {
+            "engine": engine,
+            "voice": voice,
+            "language": language or "zh",
+            "speed": speed,
+            "instruct": instructions,
+            "reference_audio": reference_audio,
+            "reference_text": reference_text,
+            "voice_design": voice_design,
+        }
+        await _synthesize_with_engine(
+            engine,
+            line=line,
+            output_path=wav_path,
+            config=config,
+            emotion=instructions or None,
+        )
+
     if not wav_path.is_file() or wav_path.stat().st_size == 0:
         raise RuntimeError("TTS provider returned no local audio artifact")
 
@@ -88,7 +121,14 @@ async def synthesize_audio_file(
         media_type=AUDIO_FORMATS[fmt][0],
         primary=True,
         logical_role="speech",
-        metadata={"engine": engine, "voice": voice, "language": language or "zh"},
+        metadata={
+            "engine": engine,
+            "actual_provider": actual_provider,
+            "substituted": substituted,
+            "fallback_reason": fallback_reason,
+            "voice": voice,
+            "language": language or "zh",
+        },
     )
     manifest = ArtifactManifest(artifacts=[artifact])
     return {
@@ -96,6 +136,9 @@ async def synthesize_audio_file(
         "media_type": AUDIO_FORMATS[fmt][0],
         "format": fmt,
         "engine": engine,
+        "actual_provider": actual_provider,
+        "substituted": substituted,
+        "fallback_reason": fallback_reason,
         "voice": voice,
         "manifest": manifest.model_dump(mode="json"),
     }

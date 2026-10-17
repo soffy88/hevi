@@ -1,0 +1,18 @@
+{
+  "portrait": {
+    "path": "/data/soffy/projects/hevi-luxapi/audit/luxapi/live_story_pipeline_render_r4/portrait.mp4",
+    "width": 540,
+    "height": 960,
+    "fps": 24,
+    "duration_s": 11.56,
+    "renderer": "ffmpeg-pillow-cpu-fallback"
+  },
+  "landscape": {
+    "path": "/data/soffy/projects/hevi-luxapi/audit/luxapi/live_story_pipeline_render_r4/landscape.mp4",
+    "width": 960,
+    "height": 540,
+    "fps": 24,
+    "duration_s": 11.56,
+    "renderer": "ffmpeg-pillow-cpu-fallback"
+  }
+}

@@ -126,7 +126,13 @@ def _captions_from_duration(text: str, duration: float) -> list[CaptionCue]:
 
 
 def _provider() -> str:
-    return os.environ.get("HEVI_EXPLAINER_TTS_PROVIDER", "cosyvoice").strip().lower()
+    # Story-film narration shares the project's formal TTS default. Explicit
+    # explainer-specific configuration remains the highest-priority override.
+    return (
+        os.environ.get("HEVI_EXPLAINER_TTS_PROVIDER")
+        or os.environ.get("HEVI_TTS_FORMAL_PROVIDER")
+        or "lux_tts"
+    ).strip().lower()
 
 
 def _allow_edge_fallback() -> bool:
@@ -160,17 +166,41 @@ async def synthesize_storyboard(
     是相对 public/ 的路径(Remotion staticFile() 约定),不是绝对路径。
     """
     provider = (provider or _provider()).strip().lower()
-    if provider not in {"cosyvoice", "voicebox", "edge_tts", "piper"}:
+    lux_providers = {"lux", "lux_tts", "luxtts"}
+    if provider not in {"cosyvoice", "voicebox", "edge_tts", "piper", *lux_providers}:
         raise VoiceoverError(f"不支持的解说 TTS provider: {provider}")
     manifest: list[ManifestSegment] = []
     cursor = 0.0
     for seg in storyboard.segments:
         active_provider = provider
-        suffix = "wav" if provider in {"cosyvoice", "voicebox", "piper"} else "mp3"
+        suffix = "mp3" if provider == "edge_tts" else "wav"
         out_path = audio_dir / f"{seg.id}.{suffix}"
         words: list[dict[str, Any]] = []
         try:
-            if provider == "cosyvoice":
+            if provider in lux_providers:
+                from hevi.audio.audio_router import _synthesize_formal
+
+                routed = await _synthesize_formal(
+                    text=seg.narration,
+                    output_path=out_path,
+                    voice=voice,
+                    instruct="gentle, warm, clear narration for children aged 2-6",
+                )
+                out_path = Path(routed["path"])
+                actual_provider = str(routed.get("actual_provider") or provider)
+                active_provider = actual_provider
+                logger.info(
+                    "explainer voiceover TTS identity %s",
+                    {
+                        "requested_provider": provider,
+                        "actual_provider": actual_provider,
+                        "substituted": bool(routed.get("substituted"))
+                        or actual_provider != provider,
+                        "fallback_reason": routed.get("fallback_reason"),
+                        "segment_id": seg.id,
+                    },
+                )
+            elif provider == "cosyvoice":
                 mode = os.environ.get("HEVI_COSY_INFERENCE_MODE", "").strip() or None
                 await cosyvoice_synthesize(
                     # cosy-ref-v1: voice(=voice_profile)作为 voice_id 交给

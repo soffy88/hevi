@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -193,23 +194,47 @@ async def tts_synth(payload: dict[str, Any]) -> dict[str, Any]:
             payload = dict(payload)
             payload["reference_audio"] = spec.audio_path
             payload["reference_text"] = spec.transcript
-    if provider in {"auto", "lux"}:
+    if provider in {"auto", "lux", "lux_tts", "luxtts"}:
         try:
-            from hevi.audio.lux_tts_service import lux_tts_available, synth_with_luxvoice
+            from hevi.audio.audio_router import _synthesize_luxtts_with_fallback
 
-            if lux_tts_available():
-                await synth_with_luxvoice(
-                    text,
-                    dest,
-                    reference_audio=payload.get("reference_audio"),
-                )
-                return _ok(audio_path=str(dest), provider="lux")
-            if provider == "lux":
-                return _fail("luxvoice unavailable")
+            requested_voice = str(payload.get("voice") or "").strip().lower()
+            remote_voice = (
+                requested_voice
+                if requested_voice in {"auto", "soffy", "en_male"}
+                else os.getenv("HEVI_LUXTTS_VOICE", "auto").strip().lower()
+            )
+            fallback_voice = (
+                requested_voice
+                if requested_voice and requested_voice not in {"auto", "soffy", "en_male"}
+                else "zh-CN-XiaoxiaoNeural"
+            )
+            routed = await _synthesize_luxtts_with_fallback(
+                text=text,
+                output_path=dest,
+                voice=fallback_voice,
+                instruct=str(payload.get("instructions") or payload.get("voice_design") or "") or None,
+                requested_provider="lux_tts" if provider == "auto" else provider,
+                remote_voice=remote_voice,
+                reference_audio=payload.get("reference_audio"),
+                reference_text=payload.get("reference_text"),
+                speed=float(payload.get("speed") or 1.0),
+                steps=int(payload.get("steps") or 4),
+                celeb=celeb or None,
+            )
+            result_path = Path(routed.get("path") or dest)
+            if not result_path.is_file() or result_path.stat().st_size == 0:
+                return _fail("TTS router did not create an audio artifact")
+            return _ok(
+                audio_path=str(result_path),
+                provider=str(routed.get("actual_provider") or "lux_tts"),
+                requested_provider=str(routed.get("requested_provider") or "lux_tts"),
+                substituted=bool(routed.get("substituted")),
+                fallback_reason=routed.get("fallback_reason"),
+            )
         except Exception as exc:
-            if provider == "lux":
-                return _fail(str(exc))
-            logger.info("lux tts skipped: %s", exc)
+            logger.warning("studio TTS LuxTTS/CosyVoice/Piper route failed: %s", exc)
+            return _fail(str(exc))
     try:
         import edge_tts
 

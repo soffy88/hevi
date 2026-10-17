@@ -1,4 +1,4 @@
-"""G0.2-B spike tests: TTS word timing survives as artifact (T1-T3 + reverse)."""
+"""G0.2-B TTS alignment artifacts: coverage, duration, revision isolation."""
 
 import pytest
 
@@ -10,7 +10,7 @@ from hevi.audio.tts_alignment import (
 
 VOICE = "en-US-AriaNeural"
 
-# ~100 words 体( SPEC T1 要求 100 words 覆盖率 >= 95%)
+# ~100 words body (SPEC T1 requires at least 95% coverage).
 TEXT_100 = (
     "The black hole bends light and time around it. Matter falls inward past the point "
     "of no return where gravity wins every contest. From far away we watch the disk glow "
@@ -35,13 +35,16 @@ async def test_t1_word_coverage(tmp_path):
     assert [w.start_ms for w in alignment.words] == sorted(w.start_ms for w in alignment.words)
     payload = alignment_to_json(alignment)
     assert '"token": "black"' in payload or '"token":"black"' in payload or "black" in payload
+    # LuxTTS doesn't return native word timings; estimates must never be represented as forced alignment.
+    assert alignment.is_estimated is True
+    assert alignment.alignment_source == f"{alignment.tts_provider}_duration_weighted_estimate"
+    assert '"is_estimated": true' in payload
+    assert alignment.tts_provider in {"lux_tts", "cosyvoice", "piper"}
 
 
 @pytest.mark.asyncio
 async def test_t2_duration_match(tmp_path):
-    # SPEC 原假设 last_word.end ≈ duration(±500ms)被实测推翻:edge-tts 输出含
-    # 约 884ms 真实尾静音(附录测量)。修正规则:语音不被截断(duration >= last_end),
-    # 尾静音有界(<=2000ms);dialogue-end 事件用 last_word.end,不用 duration。
+    # Audio may contain trailing silence; it must not be truncated and it must be bounded.
     _, alignment = await synthesize_with_alignment(
         text="The black hole bends light.", voice=VOICE,
         audio_id="tts:spike-short", output_path=tmp_path / "short.mp3",

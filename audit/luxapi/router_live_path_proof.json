@@ -1,0 +1,66 @@
+{
+  "story_film_voiceover": {
+    "default_provider": "lux_tts",
+    "file": "/data/soffy/projects/hevi-luxapi/audit/luxapi/router_story_film_cn.wav",
+    "manifest": {
+      "id": "router_story_film_cn",
+      "sceneType": "hook",
+      "text": "小兔子早上醒来了。它看见花园里有一朵小黄花。小兔子轻轻地给花儿浇水。花儿点点头，小兔子开心地笑了。",
+      "audioFile": "luxapi/router_story_film_cn.wav",
+      "durationSec": 7.938,
+      "startSec": 0.0,
+      "keywords": [
+        "小兔子",
+        "花园",
+        "浇水"
+      ],
+      "props": {
+        "title": "小兔子的花园",
+        "subtitle": "温柔地照顾朋友",
+        "items": [
+          {
+            "emoji": "🌼",
+            "label": "爱护花朵"
+          }
+        ]
+      },
+      "captions": [
+        {
+          "text": "小兔子早上醒来了",
+          "start": 0.0,
+          "end": 1.4112
+        },
+        {
+          "text": "它看见花园里有一朵小黄花",
+          "start": 1.4112,
+          "end": 3.528
+        },
+        {
+          "text": "小兔子轻轻地给花儿浇水",
+          "start": 3.528,
+          "end": 5.4684
+        },
+        {
+          "text": "花儿点点头，小兔子开心地笑了",
+          "start": 5.4684,
+          "end": 7.938
+        }
+      ],
+      "visualType": null,
+      "visualConfig": {
+        "layout_mode": "fullscreen",
+        "audio_style": "formal"
+      },
+      "layoutMode": "fullscreen",
+      "audioStyle": "formal",
+      "visualSearchQuery": ""
+    }
+  },
+  "digital_human_dialogue": {
+    "default_provider": "lux_tts",
+    "file": "/data/soffy/projects/hevi-luxapi/audit/luxapi/router_english_dialogue.wav",
+    "text": "Hello, little bunny!",
+    "voice_requested": "auto",
+    "expected_voice_for_non_chinese": "en_male"
+  }
+}

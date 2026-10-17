@@ -1,0 +1,177 @@
+[
+  {
+    "id": "kids-cue-1",
+    "sceneType": "hook",
+    "text": "早上好，小兔子醒来啦。",
+    "audioFile": "audio/kids-cue-1.wav",
+    "durationSec": 1.642667,
+    "startSec": 0.0,
+    "keywords": [
+      "小兔子",
+      "花园",
+      "温柔",
+      "成长"
+    ],
+    "props": {
+      "title": "早上好，小兔子醒来啦。",
+      "subtitle": "深度解说",
+      "items": [
+        {
+          "emoji": "🎙️",
+          "label": "重点"
+        }
+      ]
+    },
+    "captions": [
+      {
+        "text": "早上好，小兔子醒来啦",
+        "start": 0.0,
+        "end": 1.642667
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "kids-cue-2",
+    "sceneType": "definition",
+    "text": "花园里的小花，轻轻地笑了。",
+    "audioFile": "audio/kids-cue-2.wav",
+    "durationSec": 1.973333,
+    "startSec": 1.642667,
+    "keywords": [
+      "小兔子",
+      "花园",
+      "温柔",
+      "成长"
+    ],
+    "props": {
+      "question": "花园里的小花，轻轻地笑了。",
+      "formulaHead": "核心概念",
+      "formulaLines": [
+        "= 事实与证据",
+        "= 可验证结论"
+      ],
+      "sinkEmojis": [
+        "📌",
+        "🔎"
+      ],
+      "splitLeft": {
+        "emoji": "📚",
+        "title": "材料",
+        "sub": "来源与背景"
+      },
+      "splitRight": {
+        "emoji": "🧭",
+        "title": "结论",
+        "sub": "行动方向"
+      }
+    },
+    "captions": [
+      {
+        "text": "花园里的小花，轻轻地笑了",
+        "start": 0.0,
+        "end": 1.973333
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "kids-cue-3",
+    "sceneType": "cards",
+    "text": "小兔子给花儿浇水，大家一起长大。",
+    "audioFile": "audio/kids-cue-3.wav",
+    "durationSec": 2.389333,
+    "startSec": 3.616,
+    "keywords": [
+      "小兔子",
+      "花园",
+      "温柔",
+      "成长"
+    ],
+    "props": {
+      "header": "关键画面",
+      "cards": [
+        {
+          "emoji": "📰",
+          "title": "证据",
+          "desc": "小兔子给花儿浇水，大家一起长大。"
+        }
+      ]
+    },
+    "captions": [
+      {
+        "text": "小兔子给花儿浇水，大家一起长大",
+        "start": 0.0,
+        "end": 2.389333
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "kids-cue-4",
+    "sceneType": "reason",
+    "text": "太阳出来啦，我们挥挥手，明天再见。",
+    "audioFile": "audio/kids-cue-4.wav",
+    "durationSec": 2.549333,
+    "startSec": 6.005333,
+    "keywords": [
+      "小兔子",
+      "花园",
+      "温柔",
+      "成长"
+    ],
+    "props": {
+      "question": "为什么重要？",
+      "brainLine": "太阳出来啦，我们挥挥手，明天再见。",
+      "bubbleText": "把证据放回上下文。",
+      "leftLabel": {
+        "title": "只看表面",
+        "sub": "容易误判"
+      },
+      "rightLabel": {
+        "title": "看清机制",
+        "sub": "做出判断"
+      }
+    },
+    "captions": [
+      {
+        "text": "太阳出来啦，我们挥挥手，明天再见",
+        "start": 0.0,
+        "end": 2.549333
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  }
+]

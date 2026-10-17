@@ -799,6 +799,10 @@ async def test_audio_router_selects_styles_and_stitches_single_segment(
     assert audio_router._infer_audio_style("这是正式播报") == "formal"
     assert audio_router._infer_audio_style("其实呢，这很简单") == "conversational"
     calls: list[str] = []
+    # This test isolates style dispatch; keep the requested provider aligned with
+    # the mocked backends even though production now defaults both styles to LuxTTS.
+    monkeypatch.setenv("HEVI_TTS_FORMAL_PROVIDER", "cosyvoice")
+    monkeypatch.setenv("HEVI_TTS_CONVERSATIONAL_PROVIDER", "voicebox")
 
     def envelope(path: Path, provider: str) -> dict[str, object]:
         return {

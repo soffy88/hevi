@@ -1,0 +1,104 @@
+{
+  "chinese_story": {
+    "provider": "luxtts_http",
+    "endpoint": "http://100.119.113.90:8795/tts",
+    "voice_requested": "auto",
+    "sample_rate": 48000,
+    "channels": 1,
+    "sample_width_bytes": 2,
+    "sentence_gap_ms": 150,
+    "sentence_count": 4,
+    "duration_seconds": 7.938,
+    "total_gen_seconds": 25.42,
+    "output_path": "/data/soffy/projects/hevi-luxapi/audit/luxapi/chinese_story.wav",
+    "sentences": [
+      {
+        "index": 1,
+        "text": "小兔子早上醒来了。",
+        "voice_requested": "auto",
+        "voice": "soffy",
+        "duration_seconds": 1.3973,
+        "api_audio_seconds": 1.4,
+        "gen_seconds": 17.77,
+        "http_attempts": 1,
+        "start_seconds": 0.0,
+        "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_cb01e21b58c94f0083445cf27088f673/sentence-001.wav"
+      },
+      {
+        "index": 2,
+        "text": "它看见花园里有一朵小黄花。",
+        "voice_requested": "auto",
+        "voice": "soffy",
+        "duration_seconds": 2.0587,
+        "api_audio_seconds": 2.06,
+        "gen_seconds": 0.67,
+        "http_attempts": 1,
+        "start_seconds": 1.5473,
+        "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_cb01e21b58c94f0083445cf27088f673/sentence-002.wav"
+      },
+      {
+        "index": 3,
+        "text": "小兔子轻轻地给花儿浇水。",
+        "voice_requested": "auto",
+        "voice": "soffy",
+        "duration_seconds": 1.8133,
+        "api_audio_seconds": 1.81,
+        "gen_seconds": 6.36,
+        "http_attempts": 1,
+        "start_seconds": 3.756,
+        "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_cb01e21b58c94f0083445cf27088f673/sentence-003.wav"
+      },
+      {
+        "index": 4,
+        "text": "花儿点点头，小兔子开心地笑了。",
+        "voice_requested": "auto",
+        "voice": "soffy",
+        "duration_seconds": 2.2187,
+        "api_audio_seconds": 2.22,
+        "gen_seconds": 0.62,
+        "http_attempts": 1,
+        "start_seconds": 5.7193,
+        "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_cb01e21b58c94f0083445cf27088f673/sentence-004.wav"
+      }
+    ]
+  },
+  "english_line": {
+    "provider": "luxtts_http",
+    "endpoint": "http://100.119.113.90:8795/tts",
+    "voice_requested": "auto",
+    "sample_rate": 48000,
+    "channels": 1,
+    "sample_width_bytes": 2,
+    "sentence_gap_ms": 150,
+    "sentence_count": 2,
+    "duration_seconds": 2.3367,
+    "total_gen_seconds": 51.38,
+    "output_path": "/data/soffy/projects/hevi-luxapi/audit/luxapi/english_line.wav",
+    "sentences": [
+      {
+        "index": 1,
+        "text": "Hello, little bunny!",
+        "voice_requested": "auto",
+        "voice": "en_male",
+        "duration_seconds": 0.864,
+        "api_audio_seconds": 0.86,
+        "gen_seconds": 50.65,
+        "http_attempts": 1,
+        "start_seconds": 0.0,
+        "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_87f641856f8f45679d2aa6ac4315c4ad/sentence-001.wav"
+      },
+      {
+        "index": 2,
+        "text": "Let's water the flowers together.",
+        "voice_requested": "auto",
+        "voice": "en_male",
+        "duration_seconds": 1.3227,
+        "api_audio_seconds": 1.32,
+        "gen_seconds": 0.73,
+        "http_attempts": 1,
+        "start_seconds": 1.014,
+        "temp_wav": "/data/soffy/projects/hevi-luxapi/.tmp/lux_tts_87f641856f8f45679d2aa6ac4315c4ad/sentence-002.wav"
+      }
+    ]
+  }
+}
