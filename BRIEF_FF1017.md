@@ -46,3 +46,13 @@ CPU-only，不调付费 API，不真的调用 Midjourney；不 push、不 merge�
 6. 扩图模板输出 `coherent coherent warm afternoon sunlight`（lighting 已含 coherent 时重复），修掉并加测试。
 7. demo 导入了 build_local_edit_prompt 却没输出：在 demo 中打印一条局部修改模板示例（如只把领结换成酒红色）。
 修完后重跑全部回归（含 test_first_frame.py）与 demo，在 REPORT_FF1017.md 新增「复核问题修复」节，贴修复后的 demo 片段，最后一行仍为 `FF1017 DONE`。
+
+## 复核问题（2026-10-17 第2轮，同样问题复发）
+1. 场景参考图提示词仍含中文场景名（"of 宴会主厅"、"of 康复花园"），MJ 提示词必须全英文。
+2. 道具参考图提示词仍从持有状态生成（"holding a silver wireless microphone in his right hand"、"standing behind the wheelchair with both hands gripping"、"hanging from the hook"），道具定妆图应只描述物体本身，不含人物动作。
+3. 首帧中短语重复："microphone held in his right hand, holding a silver wireless microphone in his right hand"；"handbag hanging ... , a small black leather handbag hanging ..."；"wheelchair gripping both rubber handles, standing behind the wheelchair ... gripping"。需去重。
+4. 构图冲突："rule of thirds" 与 "centered composition" 同时出现；只保留一个。
+5. 扩图模板仍有 "coherent coherent"。
+6. demo 未展示局部修改（local edit）模板输出。
+7. 双人镜头里 Li Ming 的外貌描述后直接接 an adult ... woman，缺少分隔/标签。
+修完需重跑 demo 自查以上七点后再写 FF1017 DONE。
