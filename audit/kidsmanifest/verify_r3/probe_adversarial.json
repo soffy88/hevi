@@ -120,26 +120,32 @@
  {
   "id": "n_pinch",
   "expect": "FAIL",
-  "got": "PASS",
-  "ok": false,
+  "got": "FAIL",
+  "ok": true,
   "text": "坏孩子把小熊掐得哇哇叫，还把他推下楼梯。",
-  "rules": []
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
  },
  {
   "id": "n_knife",
   "expect": "FAIL",
-  "got": "PASS",
-  "ok": false,
+  "got": "FAIL",
+  "ok": true,
   "text": "他们用石头砸小兔，把小兔的头划破了直流血。",
-  "rules": []
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
  },
  {
   "id": "n_lockup",
   "expect": "FAIL",
-  "got": "PASS",
-  "ok": false,
+  "got": "FAIL",
+  "ok": true,
   "text": "大家把小刺猬关进小黑屋，一整天都不给他饭吃。",
-  "rules": []
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
  },
  {
   "id": "n_shove",
@@ -154,10 +160,12 @@
  {
   "id": "n_scald",
   "expect": "FAIL",
-  "got": "PASS",
-  "ok": false,
+  "got": "FAIL",
+  "ok": true,
   "text": "小狐狸把一壶开水浇在小猫身上，小猫疼得直哭。",
-  "rules": []
+  "rules": [
+   "R8_CONTENT_SAFETY"
+  ]
  },
  {
   "id": "w_drug",
