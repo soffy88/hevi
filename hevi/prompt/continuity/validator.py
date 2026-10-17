@@ -164,14 +164,19 @@ def validate_film(
                 for p_name in shot.prop_names:
                     p_obj = prop_map.get(p_name)
                     if p_obj and p_obj.holder == char_name:
-                        # 检查道具放置位置
-                        if any(hw in (p_obj.placement or "") for hw in ["手", "手持", "提", "端", "拿", "左手", "右手"]):
+                        # 检查道具放置位置：如果是双手正在操作的主道具(如双手推轮椅)，不构成额外冲突；
+                        # 额外单手或手持道具才构成双手占用冲突！
+                        is_primary_two_hand = any(th in (p_obj.placement or "") for th in ["双手", "两手"])
+                        if not is_primary_two_hand and any(
+                            hw in (p_obj.placement or "")
+                            for hw in ["手持", "手提", "提", "端", "拿", "左手", "右手", "单手"]
+                        ):
                             held_props.append(f"{p_name}({p_obj.placement})")
-                    elif p_name in occ and p_name not in ["轮椅", "方向盘"]:
+                    elif p_name in occ and p_name not in ["轮椅", "方向盘", "推车"]:
                         held_props.append(p_name)
 
                 # 也检查描述文本中是否同时出现手部冲突字眼
-                conflict_keywords = ["手提包", "包", "咖啡", "杯", "手机", "枪", "花束"]
+                conflict_keywords = ["手提包", "皮包", "咖啡", "茶杯", "手机", "手枪", "花束"]
                 for kw in conflict_keywords:
                     if kw in occ and ("推轮椅" in occ or "推车" in occ or "方向盘" in occ):
                         if kw not in held_props:
@@ -194,7 +199,11 @@ def validate_film(
         for cname in shot.character_names:
             c_props = [p for p in prop_map.values() if p.holder == cname and p.prop_name in shot.prop_names]
             has_two_hand_prop = any("双手" in (p.placement or "") for p in c_props)
-            single_hand_props = [p for p in c_props if any(h in (p.placement or "") for h in ["左手", "右手", "手持", "手提"])]
+            single_hand_props = [
+                p for p in c_props
+                if not any(th in (p.placement or "") for th in ["双手", "两手"])
+                and any(h in (p.placement or "") for h in ["左手", "右手", "手持", "手提", "单手"])
+            ]
             if has_two_hand_prop and single_hand_props:
                 p_names = [p.prop_name for p in single_hand_props]
                 errors.append(
