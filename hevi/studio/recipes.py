@@ -26,7 +26,11 @@ class Recipe(BaseModel):
     id: str
     product: str
     summary: str
-    handoff: str = "none"  # tongjian | shortdrama | explainer | none
+    # tongjian | shortdrama | explainer | scene3d | none
+    # A line may hand a work order off to another line (explainer / shortdrama /
+    # tongjian) or to itself (``scene3d`` — the scene3d line renders its own
+    # order through its pipeline) or to nothing (``none``).
+    handoff: str = "none"
     slots: list[SlotSpec] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
     render_runtime: str = "remotion"

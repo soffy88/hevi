@@ -260,7 +260,7 @@ async def produce(
 
         queue = pack_queue(
             str(filled.get("topic") or rec.product),
-            list(platforms),
+            list(platforms or []),
             media_path=artifact or "",
         )
         write_pack_tickets(queue, dest_root / "pack")
