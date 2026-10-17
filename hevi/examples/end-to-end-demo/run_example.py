@@ -12,7 +12,12 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from hevi.skills.production-director import production_director_skill_execute
+import importlib
+
+try:
+    production_director_skill_execute = importlib.import_module("hevi.skills.production-director").production_director_skill_execute
+except Exception:
+    production_director_skill_execute = None
 
 async def run_demo():
     """Run the complete end-to-end demo."""
