@@ -21,3 +21,12 @@
 ## 规则
 CPU-only，不调付费 API；不 push、不部署；不要动 /data/soffy/projects/hevi 主检出目录（Hark 会在核验后快进主分支）；不要删除任何分支或 worktree；不删 worktree 外文件；/data 剩余 <5G 立即停；每步 commit。
 最后写 REPORT_MERGEALL.md：合并了哪些、修了哪些冲突、跳过哪些及原因、测试基线 vs 最终；最后一行 `MERGEALL DONE` 或 `MERGEALL BLOCKED`。
+
+## 复核问题（Hark 2026-10-17 17:30）
+复核未通过，MERGEALL DONE 无效，请继续：
+1. 34 个 SKIPPED 的理由只是贴了 git 的 "CONFLICT" 输出，并没有尝试解决。brief 第 3 条要求冲突要真正解决（registry / __init__ / pyproject / .gitignore / NOTICE / provenance-ledger / docs 等合成并集，理解双方意图保留两边功能）。只有在解决后仍有修不好的测试失败时才可 SKIPPED，且原因要写具体失败的测试/技术原因。请逐个重试这 34 个分支（先小后大），每个解决冲突后 commit，状态写 MERGED-WITH-FIXES。
+   - modify/delete（hevi/distribution/service.py 等）：查清主线为何删除（chore/remove-publishing 之类），若主线有意删除则保持删除并在 MERGE_PLAN 写明，属于"已解决"而不是 SKIPPED。
+   - feat/continuity-1017 等内容已在主线的分支：解决冲突时以主线为准但保留分支独有改动。
+2. 另有 37 个 `wip/*-20261017` 分支（各 worktree 未提交改动和 stash 的快照，如 wip/opuscar-20261017、wip/stash-0-20261017 …）未列入 MERGE_PLAN.md，也属于"没合并的更改"，必须加入计划并合并（同样解决冲突）。
+3. 最终回归比基线多 1 个失败（ShotPlan 重复权威架构测试）。不得新增失败：找出是哪个合并引入的并修复。
+4. 完成标准：`git branch --no-merged integration/mergeall-1017` 只剩确有具体技术原因的 SKIPPED 分支；核心回归失败名单 ⊆ 基线 3 个。
