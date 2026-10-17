@@ -78,18 +78,32 @@ class GPUUnavailableError(RuntimeError):
 
 
 _GPU_PREFLIGHT_TIMEOUT_S = 10.0
+# INC-004 第3步 ControlNet 最小验证(2026-07-19)真机实测:同一份代码,GPU 基本空闲时峰值
+# 8.51GB 能跑完;起跑那一刻共享卡已被其它租户占了 ~8.75GB 时,直接 CUDA OOM——同一张 10GB
+# 卡,纯粹看"这一刻还剩多少"。9GB 空闲门槛按那次实测峰值(8.51GB)+ 余量定,不是拍脑袋:
+# 显存不够就在 worker 拉起子进程、加载模型之前快速失败,不要跑到加载中途才 OOM——那样每次
+# 白花几十秒加载时间才知道"卡被占了",快速失败更便宜。这个门槛先按现有已知最贵路径(SDXL+
+# ControlNet)定,比单纯 img2img/IP-Adapter 路径(峰值 7-8.6GB)更保守;各路径要不要分开定
+# 门槛,等 ControlNet 真的接进生产再看,现在不过度设计。
+_MIN_FREE_VRAM_MIB = 9000.0
 
 
-async def check_gpu_available(timeout_s: float = _GPU_PREFLIGHT_TIMEOUT_S) -> None:
+async def check_gpu_available(
+    timeout_s: float = _GPU_PREFLIGHT_TIMEOUT_S, min_free_mib: float | None = _MIN_FREE_VRAM_MIB
+) -> None:
     """`nvidia-smi` 探活——特意不在这个(主)进程里 import torch/碰 CUDA,同模块
     docstring 的既有原则(常驻进程不占显存)。卡掉出总线时 nvidia-smi 会返回非零
     退出码或直接报 "Unable to determine the device handle"。
+
+    `min_free_mib`:同一次 nvidia-smi 调用顺带查空闲显存,不够(共享卡被其它租户占用)
+    直接快速失败,不进模型加载(见上方 _MIN_FREE_VRAM_MIB 注释)。传 None 跳过这项检查
+    (只探活,不管显存够不够——旧调用方行为不变)。
     """
     try:
         proc = await asyncio.create_subprocess_exec(
             "nvidia-smi",
-            "--query-gpu=name",
-            "--format=csv,noheader",
+            "--query-gpu=name,memory.free",
+            "--format=csv,noheader,nounits",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -97,7 +111,7 @@ async def check_gpu_available(timeout_s: float = _GPU_PREFLIGHT_TIMEOUT_S) -> No
         raise GPUUnavailableError("nvidia-smi 不存在,无法探活") from e
 
     try:
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
     except TimeoutError:
         proc.kill()
         await proc.wait()
@@ -107,6 +121,18 @@ async def check_gpu_available(timeout_s: float = _GPU_PREFLIGHT_TIMEOUT_S) -> No
         raise GPUUnavailableError(
             f"nvidia-smi 探活失败(exit {proc.returncode}): {stderr.decode(errors='replace').strip()}"
         )
+
+    if min_free_mib is not None:
+        line = stdout.decode(errors="replace").strip().splitlines()[0] if stdout else ""
+        try:
+            free_mib = float(line.rsplit(",", 1)[-1].strip())
+        except (ValueError, IndexError) as e:
+            raise GPUUnavailableError(f"nvidia-smi 输出解析不了空闲显存: {line!r}") from e
+        if free_mib < min_free_mib:
+            raise GPUUnavailableError(
+                f"GPU 空闲显存不够(空闲 {free_mib:.0f}MiB < 需要 {min_free_mib:.0f}MiB)——"
+                "共享卡当前被其它租户占用,快速失败,不进模型加载"
+            )
 
 
 # ── prompt_language:base SDXL 是英文偏好 provider ──────────────────────────────

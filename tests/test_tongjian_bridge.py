@@ -252,6 +252,7 @@ async def test_render_episode_wires_l2_to_l8_and_maps_shots(tmp_path):
             "degrade_reason": "",
             "quality_checks": {},
             "retry_count": 0,
+            "cost_usd": None,
         }
     ]
     assert set(result["gate_reports"]) == {

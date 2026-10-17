@@ -38,6 +38,26 @@ _SHOT_LIST_PROMPT = """你是电影分镜师。把下面这一场剧本切成**�
 3. **对白镜头**:人物开口说话的镜头。**每一句人物对白必须原样落到某个镜头的 dialogue_lines
    里并标出说话人(character_name)。**
 
+**镜头类型 shot_type(INC-004 §1.2,治"单人像跳来跳去"——④分镜若只切干净单人轮播,渲染层
+再强也拼不出"两人同处一室"的观感,必须在这一步就切出关系镜):每镜标出 shot_type:
+- master:建立空间关系的多人/双人全景,两人都在画面里、交代相对位置。
+- two_shot:双人中景同框(比 master 更近,仍是两人都在画面里)。
+- ots:过肩(前景一人的肩膀/后脑虚化,后景另一人的脸清晰),对话正反打常用。
+- clean_single:干净单人,画面里只有一个人。
+- insert:道具/手部/环境特写,不含完整人脸。
+
+**这场戏若出场人物 ≥2 且含对白,必须遵守:**
+- 第一镜(或对白开始前最后一个建场镜)用 master 或 two_shot 开场,先让观众看清楚这两人在
+  同一空间、相对位置如何——不能一上来就是 clean_single。
+- 对白往来的主体用 **ots 正反打**(A 说话时前景是 B 的背影、后景是 A 的脸;B 说话时反过来),
+  不要用 clean_single 逐句轮播——那样看不出两人同处一室,像各自单独录了台词拼起来。
+  shot_type=ots 时必须填 ots_foreground(前景/背对镜头那个角色的名字)。
+- clean_single 只留给**情绪峰值**(全场戏剧张力最重的那一句台词),不要平均分配给每句台词。
+- 每 4-5 镜回一次 two_shot 或 master,重新建立两人的空间关系——连续太多 ots/clean_single,
+  观众会忘记两人还在同一个地方。
+- 只有单人出场(或这镜画面里就是一个人在场)的场次/镜头,shot_type 正常标 clean_single 或
+  insert 即可,不必强凑 master/two_shot。
+
 **硬性要求:**
 - 开场至少一个建场/动作镜头,而且必须有**运动主体**(跑、走、推门、纵马),禁止静物特写开场。
 - 关键情节(如刺杀、擒拿、搜身)要用**动作镜头**演出来,别只靠台词交代。
@@ -71,6 +91,8 @@ target_name 就是 B 的名字(必须是已锁定人物名)。对众/独白/自�
 只输出 JSON:
 {{"shots": [
   {{"shot_size": "远/全/中/近/特写", "camera": "机位/摄法(如 平视/仰拍/推镜/手持跟拍)",
+    "shot_type": "master/two_shot/ots/clean_single/insert 之一",
+    "ots_foreground": "仅 shot_type=ots 时填:前景(背对镜头)那个角色名,否则留空",
     "visual_prompt": "按①景别②场景③主体④动作⑤氛围⑥风格的顺序组织(动作镜写动作不写台词)",
     "action_beats": ["触发拍:具体画面动作", "峰值拍:...", "收束拍:..."],
     "dialogue_lines": [{{"character_name": "人物名(动作镜头留空数组)", "text": "台词",
@@ -83,6 +105,45 @@ target_name 就是 B 的名字(必须是已锁定人物名)。对众/独白/自�
 
 这一场剧本:
 {scene_text}"""
+
+_VALID_SHOT_TYPES = {"master", "two_shot", "ots", "clean_single", "insert"}
+
+# INC-004 §4.1:quality_tier 判定用词表,纯规则、不上 LLM(十个以内,够用就不扩)。
+# 构图级姿态差异:≥2 人同框且 blocking 出现这类词——INC-004 第2、3步真机验证坐实,本地
+# compose 路(几何底图+img2img[+ControlNet])对"多人+姿态落差+身份保真"三者一起要求已到顶。
+_POSE_DIFFERENCE_KEYWORDS = ("伏地", "跪", "俯视", "搀扶", "居高", "扶起", "半跪", "叩首")
+# INC-004 §4.4(2026-07-19,soffy 定,规则宁窄勿宽):第二类"双人复杂关系镜"——shot_type 是
+# two_shot/ots(人物是画面主体,不是 master 那种建场全景、人物占比小、本地路大概率够用)且
+# ≥2 人同框。**如实标注:这一类没有独立的真机反例直接验证过**——SH003_01/05 两个真机验证过
+# 的样本恰好都同时命中了①(blocking 里有"伏地"/"跪地"),没有一个"2人但没有姿态差异词、
+# 纯粹因为是 two_shot/ots"的对照案例。是 soffy 权衡"规则宁窄勿宽"后主动选择的外推范围
+# (在"就用①"和"扩到含 master 的全部关系镜类型"之间选了中间档),不是拿真机数据反推出来的。
+# 情绪峰值 clean_single 那一类(soffy 定,2026-07-19):**移除**——本地单人镜质量本来就稳
+# (INC-003/004 全程真机验证,单人 IP-Adapter 路从没出过问题),没有证据支撑"需要花钱买",
+# 规则宁窄勿宽,不为了"可能用得上"就多开一个花钱口子。
+
+
+def classify_quality_tier(
+    *,
+    character_names: list[str],
+    blocking: list[ShotBlocking],
+    shot_type: str,
+) -> str:
+    """④分镜镜头 → quality_tier(key/standard),纯规则判定,不调 LLM。key 两类(见上方
+    模块级常量注释,分别标注了各自的证据强度):①构图级姿态差异——≥2 人同框且 blocking
+    文本(position+facing)出现"伏地/跪/俯视/搀扶"这类描述人物间高度/姿态落差的词(真机
+    验证过);②双人复杂关系镜——shot_type 是 two_shot/ots 且 ≥2 人同框(soffy 定的外推
+    范围,非真机直接验证)。命中任一条 → "key"(值得路由 L4 旗舰,见 ShotListItem.
+    quality_tier docstring);其余 → "standard"(本地免费路够用,默认)。判据说不准时宁可
+    漏标,不误标。"""
+    if len(character_names) >= 2:
+        for b in blocking:
+            text = f"{b.position} {b.facing}"
+            if any(k in text for k in _POSE_DIFFERENCE_KEYWORDS):
+                return "key"
+        if shot_type in ("two_shot", "ots"):
+            return "key"
+    return "standard"
 
 
 def _craft_knowledge() -> str:
@@ -265,13 +326,29 @@ async def _shots_for_scene(
         if shot_scene_name not in scene_names and scene.location in scene_names:
             shot_scene_name = scene.location
 
+        shot_type = str(raw.get("shot_type") or "").strip().lower()
+        if shot_type not in _VALID_SHOT_TYPES:
+            shot_type = ""  # 未识别值当"未分类",不硬塞一个可能误导 lint 的类型
+        ots_foreground = str(raw.get("ots_foreground") or "").strip()
+        if shot_type != "ots" or ots_foreground not in character_names:
+            ots_foreground = ""  # 非 ots 镜头,或前景名不在已锁定人物里 → 丢弃,不编造
+        shot_visual_prompt = str(raw.get("visual_prompt") or "").strip()
+        quality_tier = classify_quality_tier(
+            character_names=shot_character_names,
+            blocking=blocking,
+            shot_type=shot_type,
+        )
+
         shots.append(
             ShotListItem(
                 shot_id=f"SH{idx + 1:03d}_{j + 1:02d}",
                 scene_no=scene.scene_no,
                 shot_size=str(raw.get("shot_size") or "").strip(),
                 camera=str(raw.get("camera") or "").strip(),
-                visual_prompt=str(raw.get("visual_prompt") or "").strip(),
+                shot_type=shot_type,
+                ots_foreground=ots_foreground,
+                quality_tier=quality_tier,
+                visual_prompt=shot_visual_prompt,
                 action_beats=action_beats,
                 dialogue_lines=dialogue_lines,
                 blocking=blocking,

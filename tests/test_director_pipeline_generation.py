@@ -14,9 +14,10 @@ from hevi.director.pipeline_schemas import (
     Screenplay,
     ScreenplayDialogueLine,
     ScreenplayScene,
+    ShotBlocking,
 )
 from hevi.director.screenplay import generate_screenplay_draft
-from hevi.director.shot_list import generate_shot_list_draft
+from hevi.director.shot_list import classify_quality_tier, generate_shot_list_draft
 
 
 def _llm(content: str) -> AsyncMock:
@@ -244,6 +245,172 @@ async def test_shot_list_draft_parses_target_name_on_dialogue():
     )
     sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
     assert sl.shots[0].dialogue_lines[0].target_name == "韩康子"
+
+
+# ── INC-004 §1.2 shot_type/ots_foreground 解析 ──────────────────────────────
+
+
+async def test_shot_list_draft_parses_shot_type_and_ots_foreground():
+    llm = _llm(
+        '{"shots": [{"shot_size": "中景", "shot_type": "ots", "ots_foreground": "智伯", '
+        '"visual_prompt": "过肩镜", "dialogue_lines": [], '
+        '"character_names": ["智伯", "韩康子"], "duration_s": 5}]}'
+    )
+    screenplay = Screenplay(
+        scenes=[ScreenplayScene(scene_no=1, location="宫殿", characters_present=["智伯", "韩康子"])]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="智伯"), DesignCharacter(name="韩康子")],
+        scenes=[DesignScene(name="宫殿")],
+    )
+    sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
+    assert sl.shots[0].shot_type == "ots"
+    assert sl.shots[0].ots_foreground == "智伯"
+
+
+async def test_shot_list_draft_unrecognized_shot_type_dropped():
+    """LLM 吐出词表外的 shot_type(如凭空编的类型)→ 丢弃成"未分类",不硬塞可能误导 lint 的值。"""
+    llm = _llm(
+        '{"shots": [{"shot_size": "中景", "shot_type": "extreme_wide_pan", '
+        '"visual_prompt": "v", "dialogue_lines": [], '
+        '"character_names": ["智伯"], "duration_s": 5}]}'
+    )
+    screenplay = Screenplay(scenes=[ScreenplayScene(scene_no=1, location="宫殿")])
+    design_list = DesignList(
+        characters=[DesignCharacter(name="智伯")], scenes=[DesignScene(name="宫殿")]
+    )
+    sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
+    assert sl.shots[0].shot_type == ""
+
+
+async def test_shot_list_draft_ots_foreground_dropped_when_not_ots():
+    """shot_type 不是 ots 时,即便 LLM 填了 ots_foreground 也丢弃(不是这个类型的字段)。"""
+    llm = _llm(
+        '{"shots": [{"shot_size": "中景", "shot_type": "clean_single", '
+        '"ots_foreground": "智伯", "visual_prompt": "v", "dialogue_lines": [], '
+        '"character_names": ["智伯"], "duration_s": 5}]}'
+    )
+    screenplay = Screenplay(scenes=[ScreenplayScene(scene_no=1, location="宫殿")])
+    design_list = DesignList(
+        characters=[DesignCharacter(name="智伯")], scenes=[DesignScene(name="宫殿")]
+    )
+    sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
+    assert sl.shots[0].shot_type == "clean_single"
+    assert sl.shots[0].ots_foreground == ""
+
+
+async def test_shot_list_draft_ots_foreground_unlocked_name_dropped():
+    """ots_foreground 填了一个没锁定过的人名(LLM 编的)→ 丢弃,不发明新角色。"""
+    llm = _llm(
+        '{"shots": [{"shot_size": "中景", "shot_type": "ots", "ots_foreground": "路人甲", '
+        '"visual_prompt": "v", "dialogue_lines": [], '
+        '"character_names": ["智伯", "韩康子"], "duration_s": 5}]}'
+    )
+    screenplay = Screenplay(
+        scenes=[ScreenplayScene(scene_no=1, location="宫殿", characters_present=["智伯", "韩康子"])]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="智伯"), DesignCharacter(name="韩康子")],
+        scenes=[DesignScene(name="宫殿")],
+    )
+    sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
+    assert sl.shots[0].shot_type == "ots"
+    assert sl.shots[0].ots_foreground == ""
+
+
+# ── INC-004 §4.1/§4.4 quality_tier(纯规则,不上 LLM)──────────────────────────
+
+
+def test_classify_quality_tier_pose_difference_keyword_flags_key():
+    """≥2 人同框且 blocking 出现"伏地"这类姿态落差词 → key(①,真机验证过)。"""
+    blocking = [
+        ShotBlocking(character_name="王生", position="石阶中央，伏地", facing="面朝石阶上方"),
+        ShotBlocking(character_name="老道士", position="石阶下两级", facing="仰视王生后颈"),
+    ]
+    tier = classify_quality_tier(
+        character_names=["王生", "老道士"], blocking=blocking, shot_type="master"
+    )
+    assert tier == "key"
+
+
+def test_classify_quality_tier_pose_keyword_in_facing_also_flags_key():
+    """关键词出现在 facing 里(不只 position)也要命中——"俯视"经常写在朝向描述上。"""
+    blocking = [ShotBlocking(character_name="老道士", position="阶顶", facing="居高俯视王生")]
+    tier = classify_quality_tier(
+        character_names=["王生", "老道士"], blocking=blocking, shot_type="clean_single"
+    )
+    assert tier == "key"
+
+
+def test_classify_quality_tier_single_character_pose_keyword_not_flagged():
+    """单人镜就算 blocking 写了姿态词,也不算"构图级姿态差异"(至少要 2 人)→ standard。"""
+    blocking = [ShotBlocking(character_name="王生", position="伏地", facing="")]
+    tier = classify_quality_tier(
+        character_names=["王生"], blocking=blocking, shot_type="clean_single"
+    )
+    assert tier == "standard"
+
+
+def test_classify_quality_tier_two_shot_flags_key_without_pose_keyword():
+    """②双人复杂关系镜(soffy 定的外推范围,2026-07-19):≥2 人 + shot_type=two_shot,
+    即便 blocking 没有姿态落差词也标 key。"""
+    blocking = [
+        ShotBlocking(character_name="王生", position="画面左侧", facing="面向老道士"),
+        ShotBlocking(character_name="老道士", position="画面右侧", facing="面向王生"),
+    ]
+    tier = classify_quality_tier(
+        character_names=["王生", "老道士"], blocking=blocking, shot_type="two_shot"
+    )
+    assert tier == "key"
+
+
+def test_classify_quality_tier_ots_flags_key_without_pose_keyword():
+    """同上,ots 也算双人复杂关系镜 → key。"""
+    tier = classify_quality_tier(character_names=["王生", "老道士"], blocking=[], shot_type="ots")
+    assert tier == "key"
+
+
+def test_classify_quality_tier_master_not_flagged_without_pose_keyword():
+    """master(建场全景,人物占比小)不算"双人复杂关系镜"——没有姿态落差词时不标 key
+    (soffy 定:排除 master,规则宁窄勿宽)。"""
+    tier = classify_quality_tier(
+        character_names=["王生", "老道士"], blocking=[], shot_type="master"
+    )
+    assert tier == "standard"
+
+
+def test_classify_quality_tier_clean_single_no_longer_flags_key():
+    """情绪峰值 clean_single 这条已被 soffy 移除(2026-07-19:本地单人镜质量本来就稳,
+    没有证据支撑要花钱)——即便曾经的强情绪词也不再触发,clean_single 恒 standard
+    (除非同时满足①,但 clean_single 结构上不可能 ≥2 人)。"""
+    tier = classify_quality_tier(character_names=["王生"], blocking=[], shot_type="clean_single")
+    assert tier == "standard"
+
+
+def test_classify_quality_tier_defaults_to_standard_with_no_signals():
+    tier = classify_quality_tier(character_names=[], blocking=[], shot_type="insert")
+    assert tier == "standard"
+
+
+async def test_shot_list_draft_sets_quality_tier_key_for_pose_difference():
+    """端到端:generate_shot_list_draft 产出的 shot 真的带上了 quality_tier(不是只有纯函数
+    测试过,LLM 输出解析这条链路也要接上)。"""
+    llm = _llm(
+        '{"shots": [{"shot_size": "全景", "shot_type": "master", '
+        '"visual_prompt": "二人同框", "dialogue_lines": [], '
+        '"blocking": [{"character_name": "王生", "position": "石阶中央，伏地", "facing": ""}, '
+        '{"character_name": "老道士", "position": "阶下", "facing": "仰视"}], '
+        '"character_names": ["王生", "老道士"], "duration_s": 6}]}'
+    )
+    screenplay = Screenplay(
+        scenes=[ScreenplayScene(scene_no=1, location="山门", characters_present=["王生", "老道士"])]
+    )
+    design_list = DesignList(
+        characters=[DesignCharacter(name="王生"), DesignCharacter(name="老道士")],
+        scenes=[DesignScene(name="山门")],
+    )
+    sl = await generate_shot_list_draft(screenplay=screenplay, design_list=design_list, llm=llm)
+    assert sl.shots[0].quality_tier == "key"
 
 
 # ── INC-001 §K.1 质量闸(参考图映射污染 → 修正重试)────────────────────────────

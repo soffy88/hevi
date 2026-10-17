@@ -90,8 +90,13 @@ def _extract_json_obj(content: str | None) -> dict[str, Any]:
         return {}
 
 
-async def _call_llm_json(llm: Any, prompt: str) -> dict[str, Any]:
-    resp = await llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
+async def _call_llm_json(
+    llm: Any, prompt: str, *, max_tokens: int = 4096, temperature: float | None = None
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {"max_tokens": max_tokens}
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    resp = await llm(messages=[{"role": "user", "content": prompt}], **kwargs)
     content = resp.get("content") if hasattr(resp, "get") else str(resp)
     return _extract_json_obj(content)
 

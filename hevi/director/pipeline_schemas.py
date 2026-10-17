@@ -660,3 +660,89 @@ class DirectorGateReport(BaseModel):
     checks: list[DirectorGateCheck] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+
+
+# ── V2 导演流水线模式 (SPEC-007) ──────────────────────────────────────────
+
+
+class CharacterVolumeEntry(BaseModel):
+    name: str
+    profile_text: str = ""
+    identity_lock_sentence: str = ""
+    source_design_ref: str = ""
+    assumed_details: list[str] = Field(default_factory=list)
+
+
+class WorldVolumeEntry(BaseModel):
+    name: str
+    profile_text: str = ""
+    negative_list: list[str] = Field(default_factory=list)
+    source_design_ref: str = ""
+    assumed_details: list[str] = Field(default_factory=list)
+
+
+class CameraPersona(BaseModel):
+    persona_id: str = "invisible_cine"
+    persona_rationale: str = ""
+    behavior_derivation_text: str = ""
+
+
+class VisualVolume(BaseModel):
+    style_manifesto: str = ""
+    camera_persona: CameraPersona = Field(default_factory=CameraPersona)
+    photographic_flaw_aesthetics: list[str] = Field(default_factory=list)
+    negative_list: list[str] = Field(default_factory=list)
+    assumed_details: list[str] = Field(default_factory=list)
+
+
+class SoundVolume(BaseModel):
+    ambient_soundscape_text: str = ""
+    music_stance_text: str = ""
+    negative_list: list[str] = Field(default_factory=list)
+    assumed_details: list[str] = Field(default_factory=list)
+
+
+class WorldBible(BaseModel):
+    characters: list[CharacterVolumeEntry] = Field(default_factory=list)
+    world: list[WorldVolumeEntry] = Field(default_factory=list)
+    visual: VisualVolume = Field(default_factory=VisualVolume)
+    sound: SoundVolume = Field(default_factory=SoundVolume)
+
+
+class SceneScriptDialogueLine(BaseModel):
+    character_name: str = ""
+    text: str = ""
+    target_name: str = ""
+
+
+class SceneScriptSegment(BaseModel):
+    segment_id: str = ""
+    order: int = 0
+    t_start_s: float = 0.0
+    t_end_s: float = 0.0
+    narrative_text: str = ""
+    dialogue: list[SceneScriptDialogueLine] = Field(default_factory=list)
+    handoff_out: str = ""
+    handoff_in: str = ""
+    camera_movement: str = ""
+    offscreen_trigger: str = ""
+    beat_description: str = ""
+
+
+class SceneScript(BaseModel):
+    scene_ref: int = 0
+    characters_present: list[str] = Field(default_factory=list)
+    segments: list[SceneScriptSegment] = Field(default_factory=list)
+    total_duration_s: float = 0.0
+    no_cut_to: list[str] = Field(default_factory=list)
+
+
+class SceneScriptSet(BaseModel):
+    scripts: list[SceneScript] = Field(default_factory=list)
+
+
+class GenerationPacket(BaseModel):
+    scene_ref: int = 0
+    segment_ids: list[str] = Field(default_factory=list)
+    duration_s: float = 0.0
+    prompt_text: str = ""

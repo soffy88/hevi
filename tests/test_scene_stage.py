@@ -459,6 +459,48 @@ def test_compute_shot_views_from_geometry():
     assert "SH2" not in views  # 未接场事实的镜头不产条目
 
 
+def test_compute_shot_sides_parses_side_convention_independent_of_character_order():
+    """渲染层洞#1(2026-07-18):同一场景的画左/画右从 SceneAxis.side_convention 解析,跟
+    ShotListItem.character_names 的排列顺序无关——不能因为某镜里说话人排在前面就翻左右
+    (真机复验撞见:同场 SH003_04/05 因 present 顺序不同而跳轴)。这里故意让两镜的
+    character_names 顺序相反,验证解析结果仍然一致。"""
+    from hevi.director.pipeline_schemas import SceneAxis, SceneBlocking
+    from hevi.director.scene_stage import compute_shot_sides
+
+    stage = SceneStage(
+        scene_ref=1,
+        blocking=SceneBlocking(),
+        axis=SceneAxis(side_convention="王生恒在画左，老道士恒在画右"),
+    )
+    shots = ShotList(
+        shots=[
+            ShotListItem(
+                shot_id="SH1", scene_no=1, scene_stage_ref=1, character_names=["王生", "老道士"]
+            ),
+            ShotListItem(  # 顺序反过来(模拟"老道士"是这镜说话人、被排到前面)
+                shot_id="SH2", scene_no=1, scene_stage_ref=1, character_names=["老道士", "王生"]
+            ),
+            ShotListItem(shot_id="SH3", scene_no=99, character_names=["王生"]),  # 无场事实
+        ]
+    )
+    sides = compute_shot_sides(shots, SceneStageSet(stages=[stage]))
+    assert sides["SH1"] == {"王生": "left", "老道士": "right"}
+    assert sides["SH2"] == {"王生": "left", "老道士": "right"}  # 顺序反了,结果不变
+    assert "SH3" not in sides
+
+
+def test_compute_shot_sides_empty_when_no_side_convention():
+    """side_convention 为空 → 不产条目,渲染层退回既有判据(向后兼容)。"""
+    from hevi.director.pipeline_schemas import SceneBlocking
+    from hevi.director.scene_stage import compute_shot_sides
+
+    stage = SceneStage(scene_ref=1, blocking=SceneBlocking())
+    shots = ShotList(
+        shots=[ShotListItem(shot_id="SH1", scene_no=1, scene_stage_ref=1, character_names=["甲"])]
+    )
+    assert compute_shot_sides(shots, SceneStageSet(stages=[stage])) == {}
+
+
 def test_compute_shot_views_missing_azimuth_falls_back_front():
     """机位无 azimuth_deg → 该镜所有角色 front(渲染层退回 2D 真照)。"""
     from hevi.director.pipeline_schemas import (

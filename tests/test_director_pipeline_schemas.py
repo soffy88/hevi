@@ -89,6 +89,14 @@ class TestShotList:
         item = ShotListItem(shot_id="SH001", scene_no=1)
         assert item.dialogue_lines == []
         assert item.duration_s == 5.0
+        assert item.shot_type == ""  # 未分类,向后兼容旧 work(INC-004 §1.1)
+        assert item.ots_foreground == ""
+        assert item.quality_tier == "standard"  # 默认 standard,不误标 key(INC-004 §4.1)
+
+    def test_shot_item_shot_type_and_ots_foreground(self):
+        item = ShotListItem(shot_id="SH001", scene_no=1, shot_type="ots", ots_foreground="王生")
+        assert item.shot_type == "ots"
+        assert item.ots_foreground == "王生"
 
     def test_shot_list_multi_character_dialogue(self):
         """治"只有旁白没对白":一个镜头里两个角色各自的台词行都能表达。"""
