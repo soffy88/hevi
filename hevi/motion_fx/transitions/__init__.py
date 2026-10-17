@@ -10,6 +10,16 @@ from hevi.motion_fx.transitions.engine import (
 from hevi.motion_fx.transitions.glass_refract import render_glass_refract
 from hevi.motion_fx.transitions.line_to_structure import render_line_to_structure
 from hevi.motion_fx.transitions.water_ripple import render_water_ripple
+from hevi.motion_fx.transitions.storybook import (
+    STORYBOOK_TRANSITIONS,
+    render_page_flip,
+    render_wet_brush,
+    render_torn_paper,
+    render_pencil_sketch,
+    render_watercolor_bloom,
+    render_storybook_transition,
+    render_transitions_storybook_capability,
+)
 
 __all__ = [
     "REGISTRY",
@@ -21,4 +31,12 @@ __all__ = [
     "render_glass_refract",
     "render_line_to_structure",
     "render_water_ripple",
+    "STORYBOOK_TRANSITIONS",
+    "render_page_flip",
+    "render_wet_brush",
+    "render_torn_paper",
+    "render_pencil_sketch",
+    "render_watercolor_bloom",
+    "render_storybook_transition",
+    "render_transitions_storybook_capability",
 ]

@@ -792,6 +792,14 @@ def _render_storyboard_preview_sheet(
     return render_preview_sheet_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
 
 
+def _render_transitions_storybook(
+    params: dict[str, Any], out_dir: Path, *, duration: float = 1.0, aspect: str = "16:9", seed: int = 0
+) -> CapabilityResult:
+    from hevi.motion_fx.transitions.storybook import render_transitions_storybook_capability
+
+    return render_transitions_storybook_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
 _STORYPLAN_ASPECTS = ["16:9", "9:16", "1:1"]
 
 register(Capability(
@@ -881,4 +889,29 @@ register(Capability(
     render=_render_storyboard_preview_sheet,
     description="分镜预览图：按镜头组生成漫画格分镜表（景别远中特、画面描述、台词，铅笔线淡彩风格）",
     line="storyplan",
+))
+
+register(Capability(
+    name="transitions.storybook",
+    kind="transition",
+    aspects=["16:9", "9:16", "1:1"],
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "transition_type": {
+                "type": "string",
+                "enum": ["page_flip", "wet_brush", "torn_paper", "pencil_sketch", "watercolor_bloom"],
+            },
+            "clip_a": {"type": "string"},
+            "clip_b": {"type": "string"},
+            "duration": {"type": "number"},
+            "fps": {"type": "number"},
+            "params": {"type": "object"},
+        },
+    },
+    cpu_cost_hint=2.0,
+    render=_render_transitions_storybook,
+    description="绘本转场：翻页、湿笔刷晕开、纸页撕裂、铅笔线自绘、水彩晕染",
+    line="handdraw",
 ))
