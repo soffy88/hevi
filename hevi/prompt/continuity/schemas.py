@@ -181,6 +181,8 @@ class ShotContract(BaseModel):
     end_state: dict[str, str] | str = Field(default_factory=dict)  # 结束状态
     negatives: list[str] = Field(default_factory=list)  # 负面与约束
     character_names: list[str] = Field(default_factory=list)
+    character_anchor: str = ""  # 历史/兼容锚点字段(若给出且非完整母卡描述，将被连续性校验器拦截)
+    character_descriptions: dict[str, str] = Field(default_factory=dict)  # 自定义角色描述覆盖
     prop_names: list[str] = Field(default_factory=list)
     duration_s: float = 5.0
     visual_prompt: str = ""
