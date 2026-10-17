@@ -156,11 +156,12 @@
           }
         },
         {
-          "t": 4.2,
+          "t": 4.3,
           "kind": "impact",
           "magnitude": 0.7,
           "params": {
-            "restitution": 0.25
+            "restitution": 0.25,
+            "snapped_frame": 129
           }
         },
         {
@@ -190,7 +191,7 @@
       "motion": "spring_response",
       "events": [
         {
-          "t": 4.3,
+          "t": 4.4,
           "kind": "impact",
           "magnitude": 0.35,
           "params": {
@@ -238,11 +239,12 @@
       }
     },
     {
-      "t": 4.2,
+      "t": 4.3,
       "kind": "collision",
       "target": "primary",
       "params": {
-        "restitution": 0.25
+        "restitution": 0.25,
+        "snapped_frame": 129
       }
     },
     {
@@ -290,7 +292,7 @@
       "duck_db": 0.0
     },
     {
-      "t": 4.08,
+      "t": 4.18,
       "kind": "bgm_duck",
       "sfx_id": null,
       "gain_db": 0.0,
@@ -298,7 +300,7 @@
       "duck_db": -7.0
     },
     {
-      "t": 4.2,
+      "t": 4.3,
       "kind": "sfx",
       "sfx_id": "impact",
       "gain_db": -7.9,
@@ -356,12 +358,12 @@
         <div>
             <card>
                 <h2>出片前自检门报告 (director_check)</h2>
-                <pre>{'brief_id': 'character_narrative-share-532e8de9', 'prompt': '小狐狸学分享', 'line': 'character_narrative', 'director_version': {'mp4': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.mp4', 'sha256': '35c0baee5255cd8875febc45d53f694b57f00e0b3522effc15ead32993919e06', 'duration_s': 10.0, 'baseline': False}, 'baseline_version': {'mp4': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_baseline.mp4', 'sha256': '7384876931d47a9ff1d257ae2c85ed2413dd11a278cc5b58aafc224bf36c0f1c', 'duration_s': 10.0, 'baseline': True}, 'director_report': {'passed': False, 'brief_id': 'character_narrative-share-532e8de9', 'line': 'character_narrative', 'checks': {'ppt_sync': {'passed': True, 'detail': "motion types: ['roll', 'spring_response', 'float'], duplicate count: 0"}, 'static_freeze': {'passed': True, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 120.0}, 'beat_alignment': {'passed': False, 'alignment_rate': 0.5, 'details': [{'kind': 'impact', 't': 4.2, 'dev_frames': 3, 'aligned': False}, {'kind': 'impact', 't': 4.3, 'dev_frames': 0, 'aligned': True}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.03s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.033333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.033333, 'avg_shot_duration': 0.033333, 'shot_count': 1, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': True, 'forbidden_words_found': []}}}, 'errors': ['拍点对齐率过低: 0.50 < 0.60'], 'warnings': []}, 'baseline_report': {'passed': False, 'brief_id': 'character_narrative-share-532e8de9', 'line': 'character_narrative', 'checks': {'ppt_sync': {'passed': False, 'detail': "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"}, 'static_freeze': {'passed': False, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 120.0}, 'beat_alignment': {'passed': False, 'alignment_rate': 0.5, 'details': [{'kind': 'impact', 't': 4.2, 'dev_frames': 3, 'aligned': False}, {'kind': 'impact', 't': 4.3, 'dev_frames': 0, 'aligned': True}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_baseline.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.03s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.033333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.033333, 'avg_shot_duration': 0.033333, 'shot_count': 1, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': True, 'forbidden_words_found': []}}}, 'errors': ['静止冻结检测失败:关键物体静止时高光/受光面完全冻结', '拍点对齐率过低: 0.50 < 0.60'], 'warnings': []}}</pre>
+                <pre>{'brief_id': 'character_narrative-share-532e8de9', 'prompt': '小狐狸学分享', 'line': 'character_narrative', 'director_version': {'mp4': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.mp4', 'wav': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.wav', 'sha256': '9a62091b0002e10bb2def3fb13c6e8416da679bcdbeafb548164adfc0e8217db', 'duration_s': 10.0, 'baseline': False}, 'baseline_version': {'mp4': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9-baseline_baseline.mp4', 'wav': None, 'sha256': '80c13f8af2bd2317d953739eac2718d4cfaeca7b7a678527f88292f876373985', 'duration_s': 10.0, 'baseline': True}, 'director_report': {'passed': False, 'brief_id': 'character_narrative-share-532e8de9', 'line': 'character_narrative', 'checks': {'ppt_sync': {'passed': True, 'detail': "motion types: ['roll', 'spring_response', 'float'], duplicate count: 0"}, 'static_freeze': {'passed': True, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 120.0}, 'beat_alignment': {'passed': True, 'alignment_rate': 1.0, 'details': [{'kind': 'impact', 't': 4.3, 'dev_frames': 0, 'aligned': True}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.93s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.0333333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.0333333, 'avg_shot_duration': 0.9318181818181818, 'shot_count': 11, 'flashes_per_second': 1.7560975609756098, 'integrated_lufs': -15.6, 'true_peak_dbtp': -1.7, 'subtitle_font_px': 64, 'is_portrait': True}}}, 'errors': [], 'warnings': []}, 'baseline_report': {'passed': False, 'brief_id': 'character_narrative-share-532e8de9-baseline', 'line': 'character_narrative', 'checks': {'ppt_sync': {'passed': False, 'detail': "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"}, 'static_freeze': {'passed': False, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 120.0}, 'beat_alignment': {'passed': True, 'alignment_rate': 1.0, 'details': []}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'ok', 'verdict': 'ok', 'passed': True, 'profile': 'kids', 'path': 'audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9-baseline_baseline.mp4', 'violations': [], 'warnings': [], 'timecodes': [], 'metrics': {'min_shot_duration': 13.333333, 'avg_shot_duration': 13.333333, 'shot_count': 1, 'flashes_per_second': 0.0, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': True}}}, 'errors': ['静止冻结检测失败:关键物体静止时高光/受光面完全冻结'], 'warnings': []}}</pre>
             </card>
             <card>
                 <h2>声画同步与 Kids Gate 验审</h2>
                 <p>响度目标: -16 LUFS | 真峰值: &le; -1.5 dBTP | 错相编排: 已通过</p>
-                <p>Sha256 (Director): <code>35c0baee5255cd8875febc45d53f694b57f00e0b3522effc15ead32993919e06</code></p>
+                <p>Sha256 (Director): <code>9a62091b0002e10bb2def3fb13c6e8416da679bcdbeafb548164adfc0e8217db</code></p>
             </card>
         </div>
     </div>

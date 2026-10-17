@@ -62,20 +62,21 @@ def director_check_workflow(
     if not light_ok:
         errors.append("主光方向一致性检查失败")
 
-    # 4. 拍点对齐率
+    # 4. 拍点对齐率(统计主动作/primary 轨迹的重动作对齐率)
     grid = build_grid(brief.bpm, brief.fps, brief.duration_s)
     all_events = []
     for t in brief.tracks:
-        for e in t.events:
-            all_events.append({"kind": e.kind, "t": e.t})
+        if t.element == "primary":
+            for e in t.events:
+                all_events.append({"kind": e.kind, "t": e.t})
     align_rate, align_details = beat_alignment_rate(all_events, grid, tol_frames=1.0)
     checks["beat_alignment"] = {
         "passed": align_rate >= 0.70,
         "alignment_rate": align_rate,
         "details": align_details,
     }
-    if align_rate < 0.60:
-        errors.append(f"拍点对齐率过低: {align_rate:.2f} < 0.60")
+    if align_rate < 0.70:
+        errors.append(f"拍点对齐率过低: {align_rate:.2f} < 0.70")
 
     # 5. 禁止项命中
     prohibited_hits = [p for p in brief.prohibitions if "禁止" in p and "不" not in p and len(p) < 3]
