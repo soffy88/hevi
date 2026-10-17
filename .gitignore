@@ -99,3 +99,7 @@ artifacts/real_video/*/work/
 artifacts/real_video/*/artifacts/*_finecut.mp4
 artifacts/real_video/*/artifacts/scene_*.mp4
 artifacts/real_video/*/final/concat.txt
+
+audit/storyplan/verify_r1/
+STORYPLAN_VFY_DONE.md
+STORYPLAN_FIX.md
