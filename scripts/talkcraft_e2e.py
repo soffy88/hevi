@@ -1,7 +1,9 @@
 """CPU end-to-end proof for the talkcraft line (no GPU, no paid calls).
 
-usage: python scripts/talkcraft_e2e.py <output_dir> [--host-only | --with-host]
+usage: python scripts/talkcraft_e2e.py <output_dir> [--host-only | --with-host | --musetalk-only]
 
+--musetalk-only renders just the explainer with the opt-in MuseTalk 1.5 avatar
+engine (slow: ~40x real time on CPU; needs HEVI_MUSETALK_HOME).
 --with-host also renders the presenter (host) layout for the talking_head and
 avatar_spokesperson lines; --host-only renders just those two.
 """
@@ -97,6 +99,8 @@ if __name__ == "__main__":
         ("explainer", SEGMENTS, "复利的力量", AvatarSpec(mode="lipsync")),  # avatar on
         ("kinetic_promo", PROMO, "晨光咖啡", None),  # avatar off (optional)
     )
+    if "--musetalk-only" in flags:
+        runs = (("explainer_musetalk", SEGMENTS, "复利的力量", AvatarSpec(mode="lipsync", engine="musetalk")),)
     if "--host-only" not in flags:
         for line, segs, name, avatar in runs:
             res = produce_talkcraft(segments=segs, output_dir=root / line, line=line, name=name, aligner=aligner, avatar=avatar)
