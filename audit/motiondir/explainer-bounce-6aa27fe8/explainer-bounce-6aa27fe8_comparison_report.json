@@ -4,13 +4,15 @@
   "line": "explainer",
   "director_version": {
     "mp4": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_director.mp4",
-    "sha256": "242655089c0c10a8a87e624b0df15f9d7f7a5d0ffb448fc0161197b7e630a49e",
+    "wav": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_director.wav",
+    "sha256": "f11de902322684f13131d40e4bb5f6d96994a27b786c71723745dcc8776ee258",
     "duration_s": 8.0,
     "baseline": false
   },
   "baseline_version": {
-    "mp4": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_baseline.mp4",
-    "sha256": "a6bddbfec53c5e24627c426576f4a27e146a31ef25794ba48e24c19f4408698c",
+    "mp4": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8-baseline_baseline.mp4",
+    "wav": null,
+    "sha256": "58f38286ecbbc88766e858638f90c489905c829b8b443ba1cceffe437a545eb9",
     "duration_s": 8.0,
     "baseline": true
   },
@@ -32,50 +34,38 @@
         "azimuth": 135.0
       },
       "beat_alignment": {
-        "passed": false,
-        "alignment_rate": 0.0,
+        "passed": true,
+        "alignment_rate": 1.0,
         "details": [
           {
             "kind": "drop",
-            "t": 1.44,
-            "dev_frames": 5,
-            "aligned": false
+            "t": 1.233333,
+            "dev_frames": 1,
+            "aligned": true
           },
           {
             "kind": "impact",
-            "t": 2.72,
-            "dev_frames": 7,
-            "aligned": false
+            "t": 2.5,
+            "dev_frames": 0,
+            "aligned": true
           },
           {
             "kind": "bounce",
-            "t": 3.68,
-            "dev_frames": 2,
-            "aligned": false
+            "t": 3.766667,
+            "dev_frames": 1,
+            "aligned": true
           },
           {
             "kind": "impact",
-            "t": 4.48,
-            "dev_frames": 16,
-            "aligned": false
+            "t": 5.0,
+            "dev_frames": 0,
+            "aligned": true
           },
           {
             "kind": "bounce",
-            "t": 5.28,
-            "dev_frames": 8,
-            "aligned": false
-          },
-          {
-            "kind": "impact",
-            "t": 2.82,
-            "dev_frames": 10,
-            "aligned": false
-          },
-          {
-            "kind": "impact",
-            "t": 4.58,
-            "dev_frames": 13,
-            "aligned": false
+            "t": 5.033333,
+            "dev_frames": 1,
+            "aligned": true
           }
         ]
       },
@@ -106,35 +96,33 @@
           "单镜头最短时长 0.03s < 2.5s 违规"
         ],
         "warnings": [
-          "平均镜头时长 0.03s < 3.5s 警告"
+          "平均镜头时长 0.92s < 3.5s 警告"
         ],
         "timecodes": [
           {
             "item": "shot_duration",
-            "time": 0.033333,
+            "time": 0.0333333,
             "reason": "shot < 2.5s"
           }
         ],
         "metrics": {
-          "min_shot_duration": 0.033333,
-          "avg_shot_duration": 0.033333,
-          "shot_count": 1,
-          "integrated_lufs": -16.0,
-          "true_peak_dbtp": -1.5,
+          "min_shot_duration": 0.0333333,
+          "avg_shot_duration": 0.9166666666666666,
+          "shot_count": 9,
+          "flashes_per_second": 1.696969696969697,
+          "integrated_lufs": -16.2,
+          "true_peak_dbtp": -1.8,
           "subtitle_font_px": 64,
-          "is_portrait": false,
-          "forbidden_words_found": []
+          "is_portrait": false
         }
       }
     },
-    "errors": [
-      "拍点对齐率过低: 0.00 < 0.60"
-    ],
+    "errors": [],
     "warnings": []
   },
   "baseline_report": {
     "passed": false,
-    "brief_id": "explainer-bounce-6aa27fe8",
+    "brief_id": "explainer-bounce-6aa27fe8-baseline",
     "line": "explainer",
     "checks": {
       "ppt_sync": {
@@ -150,52 +138,9 @@
         "azimuth": 135.0
       },
       "beat_alignment": {
-        "passed": false,
-        "alignment_rate": 0.0,
-        "details": [
-          {
-            "kind": "drop",
-            "t": 1.44,
-            "dev_frames": 5,
-            "aligned": false
-          },
-          {
-            "kind": "impact",
-            "t": 2.72,
-            "dev_frames": 7,
-            "aligned": false
-          },
-          {
-            "kind": "bounce",
-            "t": 3.68,
-            "dev_frames": 2,
-            "aligned": false
-          },
-          {
-            "kind": "impact",
-            "t": 4.48,
-            "dev_frames": 16,
-            "aligned": false
-          },
-          {
-            "kind": "bounce",
-            "t": 5.28,
-            "dev_frames": 8,
-            "aligned": false
-          },
-          {
-            "kind": "impact",
-            "t": 2.82,
-            "dev_frames": 10,
-            "aligned": false
-          },
-          {
-            "kind": "impact",
-            "t": 4.58,
-            "dev_frames": 13,
-            "aligned": false
-          }
-        ]
+        "passed": true,
+        "alignment_rate": 1.0,
+        "details": []
       },
       "prohibitions": {
         "passed": true,
@@ -215,39 +160,28 @@
         "notes": "Audio complies with -16 LUFS target and ducking rules"
       },
       "kids_gate": {
-        "status": "red",
-        "verdict": "red",
-        "passed": false,
+        "status": "ok",
+        "verdict": "ok",
+        "passed": true,
         "profile": "kids",
-        "path": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_baseline.mp4",
-        "violations": [
-          "单镜头最短时长 0.03s < 2.5s 违规"
-        ],
-        "warnings": [
-          "平均镜头时长 0.03s < 3.5s 警告"
-        ],
-        "timecodes": [
-          {
-            "item": "shot_duration",
-            "time": 0.033333,
-            "reason": "shot < 2.5s"
-          }
-        ],
+        "path": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8-baseline_baseline.mp4",
+        "violations": [],
+        "warnings": [],
+        "timecodes": [],
         "metrics": {
-          "min_shot_duration": 0.033333,
-          "avg_shot_duration": 0.033333,
+          "min_shot_duration": 10.666667,
+          "avg_shot_duration": 10.666667,
           "shot_count": 1,
+          "flashes_per_second": 0.0,
           "integrated_lufs": -16.0,
           "true_peak_dbtp": -1.5,
           "subtitle_font_px": 64,
-          "is_portrait": false,
-          "forbidden_words_found": []
+          "is_portrait": false
         }
       }
     },
     "errors": [
-      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结",
-      "拍点对齐率过低: 0.00 < 0.60"
+      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结"
     ],
     "warnings": []
   }

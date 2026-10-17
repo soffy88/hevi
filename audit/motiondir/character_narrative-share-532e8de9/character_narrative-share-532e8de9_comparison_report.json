@@ -4,13 +4,15 @@
   "line": "character_narrative",
   "director_version": {
     "mp4": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.mp4",
-    "sha256": "35c0baee5255cd8875febc45d53f694b57f00e0b3522effc15ead32993919e06",
+    "wav": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_director.wav",
+    "sha256": "9a62091b0002e10bb2def3fb13c6e8416da679bcdbeafb548164adfc0e8217db",
     "duration_s": 10.0,
     "baseline": false
   },
   "baseline_version": {
-    "mp4": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_baseline.mp4",
-    "sha256": "7384876931d47a9ff1d257ae2c85ed2413dd11a278cc5b58aafc224bf36c0f1c",
+    "mp4": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9-baseline_baseline.mp4",
+    "wav": null,
+    "sha256": "80c13f8af2bd2317d953739eac2718d4cfaeca7b7a678527f88292f876373985",
     "duration_s": 10.0,
     "baseline": true
   },
@@ -32,15 +34,9 @@
         "azimuth": 120.0
       },
       "beat_alignment": {
-        "passed": false,
-        "alignment_rate": 0.5,
+        "passed": true,
+        "alignment_rate": 1.0,
         "details": [
-          {
-            "kind": "impact",
-            "t": 4.2,
-            "dev_frames": 3,
-            "aligned": false
-          },
           {
             "kind": "impact",
             "t": 4.3,
@@ -76,35 +72,33 @@
           "单镜头最短时长 0.03s < 2.5s 违规"
         ],
         "warnings": [
-          "平均镜头时长 0.03s < 3.5s 警告"
+          "平均镜头时长 0.93s < 3.5s 警告"
         ],
         "timecodes": [
           {
             "item": "shot_duration",
-            "time": 0.033333,
+            "time": 0.0333333,
             "reason": "shot < 2.5s"
           }
         ],
         "metrics": {
-          "min_shot_duration": 0.033333,
-          "avg_shot_duration": 0.033333,
-          "shot_count": 1,
-          "integrated_lufs": -16.0,
-          "true_peak_dbtp": -1.5,
+          "min_shot_duration": 0.0333333,
+          "avg_shot_duration": 0.9318181818181818,
+          "shot_count": 11,
+          "flashes_per_second": 1.7560975609756098,
+          "integrated_lufs": -15.6,
+          "true_peak_dbtp": -1.7,
           "subtitle_font_px": 64,
-          "is_portrait": true,
-          "forbidden_words_found": []
+          "is_portrait": true
         }
       }
     },
-    "errors": [
-      "拍点对齐率过低: 0.50 < 0.60"
-    ],
+    "errors": [],
     "warnings": []
   },
   "baseline_report": {
     "passed": false,
-    "brief_id": "character_narrative-share-532e8de9",
+    "brief_id": "character_narrative-share-532e8de9-baseline",
     "line": "character_narrative",
     "checks": {
       "ppt_sync": {
@@ -120,22 +114,9 @@
         "azimuth": 120.0
       },
       "beat_alignment": {
-        "passed": false,
-        "alignment_rate": 0.5,
-        "details": [
-          {
-            "kind": "impact",
-            "t": 4.2,
-            "dev_frames": 3,
-            "aligned": false
-          },
-          {
-            "kind": "impact",
-            "t": 4.3,
-            "dev_frames": 0,
-            "aligned": true
-          }
-        ]
+        "passed": true,
+        "alignment_rate": 1.0,
+        "details": []
       },
       "prohibitions": {
         "passed": true,
@@ -155,39 +136,28 @@
         "notes": "Audio complies with -16 LUFS target and ducking rules"
       },
       "kids_gate": {
-        "status": "red",
-        "verdict": "red",
-        "passed": false,
+        "status": "ok",
+        "verdict": "ok",
+        "passed": true,
         "profile": "kids",
-        "path": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9_baseline.mp4",
-        "violations": [
-          "单镜头最短时长 0.03s < 2.5s 违规"
-        ],
-        "warnings": [
-          "平均镜头时长 0.03s < 3.5s 警告"
-        ],
-        "timecodes": [
-          {
-            "item": "shot_duration",
-            "time": 0.033333,
-            "reason": "shot < 2.5s"
-          }
-        ],
+        "path": "audit/motiondir/character_narrative-share-532e8de9/character_narrative-share-532e8de9-baseline_baseline.mp4",
+        "violations": [],
+        "warnings": [],
+        "timecodes": [],
         "metrics": {
-          "min_shot_duration": 0.033333,
-          "avg_shot_duration": 0.033333,
+          "min_shot_duration": 13.333333,
+          "avg_shot_duration": 13.333333,
           "shot_count": 1,
+          "flashes_per_second": 0.0,
           "integrated_lufs": -16.0,
           "true_peak_dbtp": -1.5,
           "subtitle_font_px": 64,
-          "is_portrait": true,
-          "forbidden_words_found": []
+          "is_portrait": true
         }
       }
     },
     "errors": [
-      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结",
-      "拍点对齐率过低: 0.50 < 0.60"
+      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结"
     ],
     "warnings": []
   }

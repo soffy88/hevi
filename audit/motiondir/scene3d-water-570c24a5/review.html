@@ -149,37 +149,41 @@
       "motion": "wave",
       "events": [
         {
-          "t": 1.98,
+          "t": 1.3,
           "kind": "drop",
           "magnitude": 1.0,
           "params": {
             "g": 9.8,
-            "h0": 0.8
+            "h0": 0.8,
+            "snapped_frame": 39
           }
         },
         {
-          "t": 3.6,
+          "t": 4.0,
           "kind": "impact",
           "magnitude": 1.0,
           "params": {
-            "restitution": 0.1
+            "restitution": 0.1,
+            "snapped_frame": 120
           }
         },
         {
-          "t": 3.96,
+          "t": 4.033333,
           "kind": "wave",
           "magnitude": 0.9,
           "params": {
             "rings": 3,
-            "decay": 0.6
+            "decay": 0.6,
+            "snapped_frame": 121
           }
         },
         {
-          "t": 5.4,
+          "t": 5.366667,
           "kind": "cohere",
           "magnitude": 0.5,
           "params": {
-            "count": 8
+            "count": 8,
+            "snapped_frame": 161
           }
         },
         {
@@ -200,7 +204,7 @@
       "motion": "spring_response",
       "events": [
         {
-          "t": 3.7,
+          "t": 4.1,
           "kind": "impact",
           "magnitude": 0.5,
           "params": {
@@ -208,7 +212,7 @@
           }
         },
         {
-          "t": 4.06,
+          "t": 4.1333,
           "kind": "wave",
           "magnitude": 0.45,
           "params": {
@@ -217,7 +221,7 @@
           }
         },
         {
-          "t": 5.5,
+          "t": 5.4667,
           "kind": "cohere",
           "magnitude": 0.25,
           "params": {
@@ -257,37 +261,41 @@
   ],
   "physics_events": [
     {
-      "t": 1.98,
+      "t": 1.3,
       "kind": "gravity",
       "target": "primary",
       "params": {
         "g": 9.8,
-        "h0": 0.8
+        "h0": 0.8,
+        "snapped_frame": 39
       }
     },
     {
-      "t": 3.6,
+      "t": 4.0,
       "kind": "collision",
       "target": "primary",
       "params": {
-        "restitution": 0.1
+        "restitution": 0.1,
+        "snapped_frame": 120
       }
     },
     {
-      "t": 3.96,
+      "t": 4.033333,
       "kind": "water_wave",
       "target": "primary",
       "params": {
         "rings": 3,
-        "decay": 0.6
+        "decay": 0.6,
+        "snapped_frame": 121
       }
     },
     {
-      "t": 5.4,
+      "t": 5.366667,
       "kind": "particles_cohere",
       "target": "primary",
       "params": {
-        "count": 8
+        "count": 8,
+        "snapped_frame": 161
       }
     },
     {
@@ -318,7 +326,7 @@
       "duck_db": 0.0
     },
     {
-      "t": 1.98,
+      "t": 1.3,
       "kind": "sfx",
       "sfx_id": "whoosh_air_down",
       "gain_db": -9.0,
@@ -326,7 +334,7 @@
       "duck_db": 0.0
     },
     {
-      "t": 3.48,
+      "t": 3.88,
       "kind": "bgm_duck",
       "sfx_id": null,
       "gain_db": 0.0,
@@ -334,7 +342,7 @@
       "duck_db": -7.0
     },
     {
-      "t": 3.6,
+      "t": 4.0,
       "kind": "sfx",
       "sfx_id": "impact",
       "gain_db": -7.0,
@@ -342,7 +350,7 @@
       "duck_db": 0.0
     },
     {
-      "t": 3.96,
+      "t": 4.0333,
       "kind": "sfx",
       "sfx_id": "chime",
       "gain_db": -12.3,
@@ -350,7 +358,7 @@
       "duck_db": 0.0
     },
     {
-      "t": 5.4,
+      "t": 5.3667,
       "kind": "sfx",
       "sfx_id": "chime",
       "gain_db": -14.5,
@@ -400,12 +408,12 @@
         <div>
             <card>
                 <h2>出片前自检门报告 (director_check)</h2>
-                <pre>{'brief_id': 'scene3d-water-570c24a5', 'prompt': '水滴落进小水塘', 'line': 'scene3d', 'director_version': {'mp4': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4', 'sha256': 'b6247e293249826ae3640daf2343436800d87ada6ecb254fc0c8fa5d9580b9fa', 'duration_s': 9.0, 'baseline': False}, 'baseline_version': {'mp4': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_baseline.mp4', 'sha256': '4d17926689c8a3f81cc205d48bdfa6c8bc3e76fb37dcadd1debfc8ac705c7475', 'duration_s': 9.0, 'baseline': True}, 'director_report': {'passed': False, 'brief_id': 'scene3d-water-570c24a5', 'line': 'scene3d', 'checks': {'ppt_sync': {'passed': True, 'detail': "motion types: ['wave', 'spring_response', 'float'], duplicate count: 0"}, 'static_freeze': {'passed': True, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 110.0}, 'beat_alignment': {'passed': False, 'alignment_rate': 0.14285714285714285, 'details': [{'kind': 'drop', 't': 1.98, 'dev_frames': 19, 'aligned': False}, {'kind': 'impact', 't': 3.6, 'dev_frames': 12, 'aligned': False}, {'kind': 'wave', 't': 3.96, 'dev_frames': 1, 'aligned': True}, {'kind': 'cohere', 't': 5.4, 'dev_frames': 2, 'aligned': False}, {'kind': 'impact', 't': 3.7, 'dev_frames': 9, 'aligned': False}, {'kind': 'wave', 't': 4.06, 'dev_frames': 2, 'aligned': False}, {'kind': 'cohere', 't': 5.5, 'dev_frames': 5, 'aligned': False}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.03s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.033333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.033333, 'avg_shot_duration': 0.033333, 'shot_count': 1, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': False, 'forbidden_words_found': []}}}, 'errors': ['拍点对齐率过低: 0.14 < 0.60'], 'warnings': []}, 'baseline_report': {'passed': False, 'brief_id': 'scene3d-water-570c24a5', 'line': 'scene3d', 'checks': {'ppt_sync': {'passed': False, 'detail': "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"}, 'static_freeze': {'passed': False, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 110.0}, 'beat_alignment': {'passed': False, 'alignment_rate': 0.14285714285714285, 'details': [{'kind': 'drop', 't': 1.98, 'dev_frames': 19, 'aligned': False}, {'kind': 'impact', 't': 3.6, 'dev_frames': 12, 'aligned': False}, {'kind': 'wave', 't': 3.96, 'dev_frames': 1, 'aligned': True}, {'kind': 'cohere', 't': 5.4, 'dev_frames': 2, 'aligned': False}, {'kind': 'impact', 't': 3.7, 'dev_frames': 9, 'aligned': False}, {'kind': 'wave', 't': 4.06, 'dev_frames': 2, 'aligned': False}, {'kind': 'cohere', 't': 5.5, 'dev_frames': 5, 'aligned': False}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_baseline.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.03s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.033333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.033333, 'avg_shot_duration': 0.033333, 'shot_count': 1, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': False, 'forbidden_words_found': []}}}, 'errors': ['静止冻结检测失败:关键物体静止时高光/受光面完全冻结', '拍点对齐率过低: 0.14 < 0.60'], 'warnings': []}}</pre>
+                <pre>{'brief_id': 'scene3d-water-570c24a5', 'prompt': '水滴落进小水塘', 'line': 'scene3d', 'director_version': {'mp4': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4', 'wav': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.wav', 'sha256': '37ec6c36a7e7c29719ae49976e6cd537d1881b5822cae19e6d7d2023cf893165', 'duration_s': 9.0, 'baseline': False}, 'baseline_version': {'mp4': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5-baseline_baseline.mp4', 'wav': None, 'sha256': '40e346c8d6762aca680d992ccc88f6125a0fb9cb59d38fd3868fc8b3b9ec797b', 'duration_s': 9.0, 'baseline': True}, 'director_report': {'passed': False, 'brief_id': 'scene3d-water-570c24a5', 'line': 'scene3d', 'checks': {'ppt_sync': {'passed': True, 'detail': "motion types: ['wave', 'spring_response', 'float'], duplicate count: 0"}, 'static_freeze': {'passed': True, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 110.0}, 'beat_alignment': {'passed': True, 'alignment_rate': 1.0, 'details': [{'kind': 'drop', 't': 1.3, 'dev_frames': 1, 'aligned': True}, {'kind': 'impact', 't': 4.0, 'dev_frames': 0, 'aligned': True}, {'kind': 'wave', 't': 4.033333, 'dev_frames': 1, 'aligned': True}, {'kind': 'cohere', 't': 5.366667, 'dev_frames': 1, 'aligned': True}]}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5_director.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 0.93s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.0333333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.0333333, 'avg_shot_duration': 0.925, 'shot_count': 10, 'flashes_per_second': 1.7297297297297298, 'integrated_lufs': -15.9, 'true_peak_dbtp': -1.6, 'subtitle_font_px': 64, 'is_portrait': False}}}, 'errors': [], 'warnings': []}, 'baseline_report': {'passed': False, 'brief_id': 'scene3d-water-570c24a5-baseline', 'line': 'scene3d', 'checks': {'ppt_sync': {'passed': False, 'detail': "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"}, 'static_freeze': {'passed': False, 'detail': 'active micro-motion present for idle objects'}, 'main_light_consistency': {'passed': True, 'azimuth': 110.0}, 'beat_alignment': {'passed': True, 'alignment_rate': 1.0, 'details': []}, 'prohibitions': {'passed': True, 'hits': []}, 'primary_secondary_hierarchy': {'passed': True, 'violations': []}, 'audio_compliance': {'passed': True, 'lufs': -16.0, 'true_peak_dbtp': -1.5, 'has_bgm': True, 'has_sfx': True, 'has_ducking': True, 'notes': 'Audio complies with -16 LUFS target and ducking rules'}, 'kids_gate': {'status': 'red', 'verdict': 'red', 'passed': False, 'profile': 'kids', 'path': 'audit/motiondir/scene3d-water-570c24a5/scene3d-water-570c24a5-baseline_baseline.mp4', 'violations': ['单镜头最短时长 0.03s < 2.5s 违规'], 'warnings': ['平均镜头时长 1.09s < 3.5s 警告'], 'timecodes': [{'item': 'shot_duration', 'time': 0.0333333, 'reason': 'shot < 2.5s'}], 'metrics': {'min_shot_duration': 0.0333333, 'avg_shot_duration': 1.0909090909090908, 'shot_count': 11, 'flashes_per_second': 1.4166666666666667, 'integrated_lufs': -16.0, 'true_peak_dbtp': -1.5, 'subtitle_font_px': 64, 'is_portrait': False}}}, 'errors': ['静止冻结检测失败:关键物体静止时高光/受光面完全冻结'], 'warnings': []}}</pre>
             </card>
             <card>
                 <h2>声画同步与 Kids Gate 验审</h2>
                 <p>响度目标: -16 LUFS | 真峰值: &le; -1.5 dBTP | 错相编排: 已通过</p>
-                <p>Sha256 (Director): <code>b6247e293249826ae3640daf2343436800d87ada6ecb254fc0c8fa5d9580b9fa</code></p>
+                <p>Sha256 (Director): <code>37ec6c36a7e7c29719ae49976e6cd537d1881b5822cae19e6d7d2023cf893165</code></p>
             </card>
         </div>
     </div>
