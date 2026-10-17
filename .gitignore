@@ -56,7 +56,7 @@ lint_after.txt
 *.wav
 # cosy-ref-v1: 仓库内置 CosyVoice 默认参考音(Apache-2.0, 见 services/gen_engine/assets/voice_refs/README.md)
 !services/gen_engine/assets/voice_refs/*.wav
-output/
+output/*
 
 # Docker
 *.pid
@@ -105,3 +105,14 @@ artifacts/real_video/*/artifacts/scene_*.mp4
 artifacts/real_video/*/final/concat.txt
 .venv-scene3d/
 output/
+
+# Lint and inspection logs (AMFX-R2 H4)
+lint_before.txt
+lint_after.txt
+pi_*.jsonl
+pi_*.err
+pi_*.log
+
+# dirstyle E2E outputs — tracked explicitly (task requirement)
+!output/dirstyle_e2e/
+!output/dirstyle_e2e/*

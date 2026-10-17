@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -66,7 +67,8 @@ def render_episode(
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    tmp = out.parent / f".tmp_render_{abs(hash(str(out))) & 0xffff}"
+    manifest_str = json.dumps(manifest.to_dict(), sort_keys=True) if hasattr(manifest, "to_dict") else str(manifest)
+    tmp = out.parent / f".tmp_render_{abs(hash((manifest_str, seed, width, height))) & 0xffff}"
     tmp.mkdir(parents=True, exist_ok=True)
 
     segs: list[Path] = []
@@ -79,9 +81,10 @@ def render_episode(
         spec = s.spec()
         spec_obj = ShotSpec.model_validate(spec) if spec else None
         vf = combined_shot_filter(spec_obj)
-        seg = tmp / f"seg_{s.shot_index:03d}.mp4"
-        # 镜号/台词用预渲染 PNG 叠加（本机 ffmpeg 无 drawtext；overlay 确定性可复现）。
-        label_png = tmp / f"label_{s.shot_index:03d}.png"
+        seg_name = f"seg_{s.shot_index:03d}.mp4"
+        seg = tmp / seg_name
+        label_name = f"label_{s.shot_index:03d}.png"
+        label_png = tmp / label_name
         _make_frame_png(
             label_png, index=s.shot_index, color=color, label=f"S{s.shot_index}",
             line=s.line, w=width, h=height,
@@ -90,10 +93,10 @@ def render_episode(
         # 主色背景 + 叠加层。音频(若有)作为独立输入,一并进 filter_complex。
         base = f"color=c={_rgb_to_ffmpeg(color)}:s={width}x{height}:rate={fps}:duration={s.duration:.3f}"
         if vf:
-            fc = f"[0:v]{vf}[styl];[styl][1:v]overlay=0:0,format=yuv420p[vout]"
+            fc = f"[0:v]{vf},scale={width}:{height}[vbase];[vbase][1:v]overlay=0:0,format=yuv420p[vout]"
         else:
             fc = f"[0:v][1:v]overlay=0:0,format=yuv420p[vout]"
-        cmd = ["ffmpeg", "-y", "-f", "lavfi", "-i", base, "-i", str(label_png)]
+        cmd = ["ffmpeg", "-y", "-fflags", "+bitexact", "-flags", "+bitexact", "-f", "lavfi", "-i", base, "-i", label_name]
         maps = ["-map", "[vout]"]
         if not silent:
             fc += ";[2:a]loudnorm=I=-16:TP=-1.5[aout]"
@@ -101,15 +104,15 @@ def render_episode(
             cmd += ["-f", "lavfi", "-i", f"sine=f=440:r=48000:d={s.duration:.3f}"]
         cmd += ["-filter_complex", fc, *maps,
                 "-c:a", "aac", "-t", f"{s.duration:.3f}", "-c:v", "libx264",
-                "-pix_fmt", "yuv420p", str(seg)]
-        subprocess.run(cmd, check=True, capture_output=True)
+                "-pix_fmt", "yuv420p", seg_name]
+        subprocess.run(cmd, check=True, capture_output=True, cwd=tmp)
         segs.append(seg)
         durations.append(s.duration)
         transitions.append(_transition_token(spec_obj))
 
     # 转场：除第 1 镜外，transition_in 决定接缝（cut 为硬切）。
     seam: list[str] = [t or "fade" for t in transitions[1:]]
-    final = _concat_with_xfade(segs, seam, out)
+    final = _concat_with_xfade(segs, seam, out, tmp)
     # 清理临时段
     for p in segs:
         try:
@@ -147,7 +150,7 @@ def _transition_token(spec: ShotSpec | None) -> str | None:
     return None
 
 
-def _concat_with_xfade(segs: list[Path], seams: list[str], out: Path) -> Path:
+def _concat_with_xfade(segs: list[Path], seams: list[str], out: Path, tmp: Path) -> Path:
     """用 xfade 链拼接多段（复用经过 golden 测试的 build_xfade_chain，保证 offset 正确）。
 
     视频走 build_xfade_chain；音频用 concat 简单拼接（验收片无对白同步依赖）。
@@ -156,9 +159,14 @@ def _concat_with_xfade(segs: list[Path], seams: list[str], out: Path) -> Path:
     from hevi.assembly.assembler import build_xfade_chain
 
     n = len(segs)
+    out_name = out.name
     if n == 1:
-        subprocess.run(["ffmpeg", "-y", "-i", str(segs[0]), "-c", "copy", str(out)],
-                       check=True, capture_output=True)
+        subprocess.run(["ffmpeg", "-y", "-fflags", "+bitexact", "-flags", "+bitexact", "-i", segs[0].name, "-c", "copy", out_name],
+                       check=True, capture_output=True, cwd=tmp)
+        final_p = tmp / out_name
+        if final_p != out:
+            import shutil
+            shutil.move(str(final_p), str(out))
         return out
     durs = [_probe_duration(s) for s in segs]
     fc, vout, _total = build_xfade_chain(durs, seams, 0.4)
@@ -166,13 +174,17 @@ def _concat_with_xfade(segs: list[Path], seams: list[str], out: Path) -> Path:
     fc_full = fc + ";" + "".join(f"[{i}:a]" for i in range(n)) + f"concat=n={n}:v=0:a=1[aout]"
     inputs = []
     for s in segs:
-        inputs += ["-i", str(s)]
+        inputs += ["-i", s.name]
     subprocess.run(
-        ["ffmpeg", "-y", *inputs, "-filter_complex", fc_full,
+        ["ffmpeg", "-y", "-fflags", "+bitexact", "-flags", "+bitexact", *inputs, "-filter_complex", fc_full,
          "-map", vout, "-map", "[aout]", "-c:v", "libx264", "-c:a", "aac",
-         "-pix_fmt", "yuv420p", str(out)],
-        check=True, capture_output=True,
+         "-pix_fmt", "yuv420p", out_name],
+        check=True, capture_output=True, cwd=tmp,
     )
+    final_p = tmp / out_name
+    if final_p != out:
+        import shutil
+        shutil.move(str(final_p), str(out))
     return out
 
 

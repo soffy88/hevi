@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>场景1：森林清晨</title>
+<style>
+
+:root {
+  --w: 1280px; --h: 720px;
+  --bg0: #0f1220; --bg1: #171c33;
+  --fg: #f5f7ff; --muted: #a8b0cf;
+  --accent: #38bdf8; --accent2: #f43f5e; --accent3: #fbbf24;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width: 1280px; height: 720px; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--bg1) 0%, var(--bg0) 62%);
+  color: var(--fg);
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei",
+    "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  width: 1280px; height: 720px;
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 6% 7%;
+}
+
+/* 帧首 0.5s 从黑淡入(转场呼吸,避免硬切跳变) */
+.stage > * { opacity: 0; animation: frameIn 0.5s ease 0.1s both; }
+@keyframes frameIn { from { opacity: 0; } to { opacity: 1; } }
+.kicker {
+  color: var(--accent); font-size: 15px; font-weight: 700;
+  letter-spacing: 0.32em; text-transform: uppercase; margin-bottom: 18px;
+  animation: kickerIn 0.7s cubic-bezier(.2,.8,.2,1) 0.25s both !important;
+}
+@keyframes kickerIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+
+.ch { display:inline-block; opacity:0; transform: translateY(0.42em) scale(0.92);
+  animation: chIn 0.6s cubic-bezier(.2,1.35,.3,1) both; }
+@keyframes chIn {
+  0% { opacity:0; transform: translateY(0.42em) scale(0.92); filter: blur(6px); }
+  60% { filter: blur(0); }
+  100% { opacity:1; transform:none; }
+}
+.title-line { font-size: 96px; font-weight: 800;
+  letter-spacing: -0.02em; line-height: 1.15; text-align: center; max-width: 92%;
+  text-shadow: 0 6px 40px rgba(56,189,248,.18); }
+.sub { margin-top: 26px; font-size: 33px; color: var(--muted);
+  text-align: center; max-width: 78%; line-height: 1.7;
+  animation: subIn 0.9s ease 0.95s both !important; }
+@keyframes subIn { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform:none; } }
+.bar { margin-top: 34px; width: 64%; height: 3px; border-radius: 2px; opacity:.55;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  animation: barIn 0.8s ease 1.15s both !important; transform-origin: left; }
+@keyframes barIn { from { transform: scaleX(0); opacity:.9; } to { transform:none; opacity:.55; } }
+
+
+</style>
+</head>
+<body>
+
+
+<div class="stage">
+  <div class="title-line"><span class="ch" style="animation-delay:0.15s">场</span><span class="ch" style="animation-delay:0.20s">景</span><span class="ch" style="animation-delay:0.26s">1</span><span class="ch" style="animation-delay:0.32s">：</span><span class="ch" style="animation-delay:0.37s">森</span><span class="ch" style="animation-delay:0.43s">林</span><span class="ch" style="animation-delay:0.48s">清</span><span class="ch" style="animation-delay:0.54s">晨</span></div>
+  <div class="sub">小熊在草地上醒来，空气真新鲜</div>
+  <div class="bar"></div>
+  <div class="sweep"></div>
+</div>
+
+</body>
+</html>

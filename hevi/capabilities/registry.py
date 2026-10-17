@@ -29,14 +29,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .errors import CapabilityError
+from .result import CapabilityResult
 from hevi.quality.kids_gate import kids_gate_workflow, kids_gate_extended
 from hevi.kids import manifest_adapter
 from hevi.kids import review_sheet as review_sheet_mod
 from hevi.kids import render_local
 from hevi.kids import annotation_revision
-
-from .errors import CapabilityError
-from .result import CapabilityResult
+from hevi.director_lens.brief import autofill, DirectorBrief
+from hevi.director_lens.gate import director_check_workflow
+from hevi.director_lens.render import render_comparison_package
+from hevi.director_lens.review import generate_review_html
 
 __all__ = [
     "Capability",
@@ -46,6 +49,7 @@ __all__ = [
     "get",
     "list_capabilities",
     "list",
+    "names",
     "resolve",
     "Registry",
 ]
@@ -148,6 +152,11 @@ def list_capabilities(
 
 # Public alias matching the contract's ``list(kind=..., aspect=...)`` signature.
 list = list_capabilities  # noqa: A001 - intentionally mirrors the contract API.
+
+
+def names() -> list[str]:
+    """Return all registered capability names in stable sorted order."""
+    return sorted(_REGISTRY.keys())
 
 
 def Registry() -> dict[str, Capability]:  # noqa: N802 - DDD-style factory per contract.
@@ -320,7 +329,8 @@ register(
 
 
 # ---------------------------------------------------------------------------
-# Kids / anime safety capabilities (merged from feat/kids-manifest)
+# Kids / anime safety capabilities (merged from feat/kids-manifest,
+# feat/review-sheet and feat/agent-ops).
 #
 # These expose the 2–6 岁幼儿 safety gates as first-class capabilities so any
 # product line (and the ShotSpec workbench) can run them by dotted name.
@@ -353,22 +363,23 @@ def _render_kids_gate(
     )
 
 
-register(Capability(
-    name="qa.kids_gate",
-    kind="line",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object"},
-    cpu_cost_hint=0.1,
-    render=_render_kids_gate,
-    description="幼儿动漫安全与节奏质检闸门",
-    line="anime"
-))
+register(
+    Capability(
+        name="qa.kids_gate",
+        kind="line",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object"},
+        cpu_cost_hint=0.1,
+        render=_render_kids_gate,
+        description="幼儿动漫安全与节奏质检闸门",
+        line="anime",
+    )
+)
 
 
-# ── K2 新增能力注册 ─────────────────────────────────────────────────
-
-
-def _render_kids_gate_extended(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_kids_gate_extended(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     video_path = Path(params.get("video_path", ""))
     srt_path = Path(params.get("srt_path")) if params.get("srt_path") else None
     meta_path = Path(params.get("metadata_path")) if params.get("metadata_path") else None
@@ -385,19 +396,23 @@ def _render_kids_gate_extended(params: dict[str, Any], out_dir: Path, *, duratio
     )
 
 
-register(Capability(
-    name="qa.kids_gate.extended",
-    kind="line",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object"},
-    cpu_cost_hint=0.2,
-    render=_render_kids_gate_extended,
-    description="幼儿动漫安全与节奏质检闸门 + §3.6 续作 QC（连续性/调色/转场/口语语言）",
-    line="anime",
-))
+register(
+    Capability(
+        name="qa.kids_gate.extended",
+        kind="line",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object"},
+        cpu_cost_hint=0.2,
+        render=_render_kids_gate_extended,
+        description="幼儿动漫安全与节奏质检闸门 + §3.6 续作 QC（连续性/调色/转场/口语语言）",
+        line="anime",
+    )
+)
 
 
-def _render_review_sheet(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_review_sheet(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     manifest_path = params.get("manifest_path")
     if not manifest_path:
         raise RuntimeError("review_sheet 需要 manifest_path")
@@ -412,19 +427,23 @@ def _render_review_sheet(params: dict[str, Any], out_dir: Path, *, duration: flo
     )
 
 
-register(Capability(
-    name="kids.review_sheet",
-    kind="overlay",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object", "required": ["manifest_path"]},
-    cpu_cost_hint=0.5,
-    render=_render_review_sheet,
-    description="分镜审稿表网格 PNG 渲染（每格镜号/时长/台词/机位/景别/缩略图）",
-    line="anime",
-))
+register(
+    Capability(
+        name="kids.review_sheet",
+        kind="overlay",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object", "required": ["manifest_path"]},
+        cpu_cost_hint=0.5,
+        render=_render_review_sheet,
+        description="分镜审稿表网格 PNG 渲染（每格镜号/时长/台词/机位/景别/缩略图）",
+        line="anime",
+    )
+)
 
 
-def _render_local_episode(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_local_episode(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     manifest_path = params.get("manifest_path")
     if not manifest_path:
         raise RuntimeError("render_local 需要 manifest_path")
@@ -438,19 +457,23 @@ def _render_local_episode(params: dict[str, Any], out_dir: Path, *, duration: fl
     )
 
 
-register(Capability(
-    name="kids.render_local",
-    kind="shot",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object", "required": ["manifest_path"]},
-    cpu_cost_hint=2.0,
-    render=_render_local_episode,
-    description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）",
-    line="anime",
-))
+register(
+    Capability(
+        name="kids.render_local",
+        kind="shot",
+        aspects=["16:9", "9:16"],
+        params_schema={"type": "object", "required": ["manifest_path"]},
+        cpu_cost_hint=2.0,
+        render=_render_local_episode,
+        description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）",
+        line="anime",
+    )
+)
 
 
-def _render_annotation_patch(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+def _render_annotation_patch(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
     """从标注请求构建确定性 ShotSpecPatch（注册点，便于产线按名调用）。"""
     manifest_path = params.get("manifest_path")
     ann = params.get("annotation") or {}
@@ -483,25 +506,15 @@ def _render_annotation_patch(params: dict[str, Any], out_dir: Path, *, duration:
     )
 
 
-register(Capability(
-    name="kids.annotation_revision",
-    kind="line",
-    aspects=["16:9", "9:16"],
-    params_schema={"type": "object", "required": ["manifest_path"]},
-    cpu_cost_hint=0.1,
-    render=_render_annotation_patch,
-    description="帧标注 → 确定性 ShotSpecPatch（§3.5 映射）",
-    line="anime",
-))
 register(
     Capability(
-        name="qa.kids_gate",
+        name="kids.annotation_revision",
         kind="line",
         aspects=["16:9", "9:16"],
-        params_schema={"type": "object"},
+        params_schema={"type": "object", "required": ["manifest_path"]},
         cpu_cost_hint=0.1,
-        render=_render_kids_gate,
-        description="幼儿动漫安全与节奏质检闸门",
+        render=_render_annotation_patch,
+        description="帧标注 → 确定性 ShotSpecPatch（§3.5 映射）",
         line="anime",
     )
 )
@@ -613,3 +626,202 @@ register(
 # Anatomy explainer capability (merged from feat/anatomy-explainer).  Importing
 # the module registers ``anatomy.explainer`` via this same registry.
 import hevi.capabilities.anatomy_explainer  # noqa: E402,F401
+
+
+# ── Director Lens Capabilities ──
+
+def _render_director_brief(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+    prompt = params.get("prompt", "小球学弹跳")
+    line = params.get("line", "explainer")
+    brief = autofill(prompt, line=line, duration_s=duration, aspect=aspect, seed=seed)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / f"{brief.id}.json"
+    brief.save(p)
+    return CapabilityResult(
+        mp4=None,
+        duration_s=duration,
+        qa={"brief_id": brief.id, "path": str(p), "status": "success"}
+    )
+
+
+register(Capability(
+    name="director_brief",
+    kind="shot",
+    aspects=["16:9", "9:16", "1:1"],
+    params_schema={"type": "object"},
+    cpu_cost_hint=0.05,
+    render=_render_director_brief,
+    description="线路无关的 DirectorBrief 生成与自动补全",
+    line="director"
+))
+
+
+def _render_director_check(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+    brief_path = params.get("brief_path")
+    if brief_path and Path(brief_path).exists():
+        brief = DirectorBrief.load(brief_path)
+    else:
+        brief = autofill(params.get("prompt", "小球学弹跳"), line=params.get("line", "explainer"), duration_s=duration, aspect=aspect, seed=seed)
+    report = director_check_workflow(brief, video_path=params.get("video_path"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report_path = out_dir / "director_check_report.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    return CapabilityResult(
+        duration_s=duration,
+        qa=report
+    )
+
+
+register(Capability(
+    name="director_check",
+    kind="line",
+    aspects=["16:9", "9:16", "1:1"],
+    params_schema={"type": "object"},
+    cpu_cost_hint=0.1,
+    render=_render_director_check,
+    description="全线通用的出片前自检闸门 (PPT同步/静止冻结/拍点对齐/声画对齐等)",
+    line="director"
+))
+
+
+def _render_motion_director(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+    prompt = params.get("prompt", "小球学弹跳")
+    line = params.get("line", "explainer")
+    brief = autofill(prompt, line=line, duration_s=duration, aspect=aspect, seed=seed)
+    comparison = render_comparison_package(brief, out_dir)
+    html_path = generate_review_html(brief, comparison, out_dir / f"{brief.id}_review.html")
+    return CapabilityResult(
+        mp4=comparison["director_version"]["mp4"],
+        duration_s=duration,
+        sha256=comparison["director_version"]["sha256"],
+        qa={"comparison": comparison, "review_html": str(html_path)}
+    )
+
+
+register(Capability(
+    name="motion_director",
+    kind="shot",
+    aspects=["16:9", "9:16", "1:1"],
+    params_schema={"type": "object"},
+    cpu_cost_hint=0.5,
+    render=_render_motion_director,
+    description="动效导演层完整渲染 pipeline (导演版 vs 基线版 + 逐帧审片 HTML)",
+    line="director"
+))
+
+
+# ── StoryPlan capabilities (merged from feat/story-plan, GOLIVE-1016 B) ──
+# The branch shipped its own private Capability/_REGISTRY inside
+# hevi/storyplan/capabilities.py, so these three never reached the unified
+# registry and were therefore invisible to GET /api/capabilities and to
+# ShotSpec.  Re-declare them here against the canonical Capability type so all
+# lines resolve them through get()/resolve() like every other capability.
+# The private module registry is left untouched (its own tests still pass).
+def _render_story_plan(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    from hevi.storyplan.autofill import autofill_story_plan
+
+    topic = str(params.get("topic", "小水滴去哪儿了"))
+    plan = autofill_story_plan(topic, aspect=aspect)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "story_plan.json").write_text(
+        plan.model_dump_json(indent=2), encoding="utf-8"
+    )
+    return CapabilityResult(
+        duration_s=float(plan.duration_sec),
+        qa={"status": "succeeded"},
+    )
+
+
+def _render_story_check(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    from hevi.storyplan.autofill import autofill_story_plan
+    from hevi.storyplan.check import run_story_check
+    from hevi.storyplan.model import StoryPlan
+
+    plan_data = params.get("plan")
+    if isinstance(plan_data, dict):
+        plan = StoryPlan(**plan_data)
+    else:
+        plan = autofill_story_plan("小水滴去哪儿了", aspect=aspect)
+    report = run_story_check(plan)
+    return CapabilityResult(
+        duration_s=float(plan.duration_sec),
+        qa={"passed": bool(report.passed)},
+    )
+
+
+def _render_take_select(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    from hevi.storyplan.take_select import TakeCandidate, select_best_take
+
+    raw = params.get(
+        "candidates",
+        [{"take_id": "t1", "video_path": "dummy.mp4", "duration_sec": 5.0}],
+    )
+    for c in raw:
+        if not isinstance(c, dict) or "take_id" not in c or "video_path" not in c:
+            raise CapabilityError(
+                "take_select: each candidate must be a dict with take_id and video_path"
+            )
+    cands = [TakeCandidate(**c) for c in raw]
+    criteria = str(params.get("acceptance_criteria", "验收点通过"))
+    best, all_res = select_best_take(cands, criteria)
+    return CapabilityResult(
+        duration_s=duration,
+        qa={"selected": best.take_id},
+    )
+
+
+_STORYPLAN_ASPECTS = ["16:9", "9:16", "1:1"]
+
+register(Capability(
+    name="story_plan",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"topic": {"type": "string"}},
+    },
+    cpu_cost_hint=0.1,
+    render=_render_story_plan,
+    description="一句话自动补全叙事/分镜/时间线三层结构 StoryPlan",
+    line="storyplan",
+))
+
+register(Capability(
+    name="story_check",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"plan": {"type": "object"}},
+    },
+    cpu_cost_hint=0.1,
+    render=_render_story_check,
+    description="StoryPlan 结构自检门 (钩子、声画对齐、冗余、六项必填、闭环、幼儿安全)",
+    line="storyplan",
+))
+
+register(Capability(
+    name="take_select",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "candidates": {"type": "array"},
+            "acceptance_criteria": {"type": "string"},
+        },
+    },
+    cpu_cost_hint=0.1,
+    render=_render_take_select,
+    description="选段器 take_select：多候选 take 按帧评分与子区间选中",
+    line="storyplan",
+))

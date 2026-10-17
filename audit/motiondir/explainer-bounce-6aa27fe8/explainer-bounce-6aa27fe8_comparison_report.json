@@ -1,0 +1,254 @@
+{
+  "brief_id": "explainer-bounce-6aa27fe8",
+  "prompt": "小球学弹跳",
+  "line": "explainer",
+  "director_version": {
+    "mp4": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_director.mp4",
+    "sha256": "242655089c0c10a8a87e624b0df15f9d7f7a5d0ffb448fc0161197b7e630a49e",
+    "duration_s": 8.0,
+    "baseline": false
+  },
+  "baseline_version": {
+    "mp4": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_baseline.mp4",
+    "sha256": "a6bddbfec53c5e24627c426576f4a27e146a31ef25794ba48e24c19f4408698c",
+    "duration_s": 8.0,
+    "baseline": true
+  },
+  "director_report": {
+    "passed": false,
+    "brief_id": "explainer-bounce-6aa27fe8",
+    "line": "explainer",
+    "checks": {
+      "ppt_sync": {
+        "passed": true,
+        "detail": "motion types: ['bounce', 'spring_response', 'float'], duplicate count: 0"
+      },
+      "static_freeze": {
+        "passed": true,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 135.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.0,
+        "details": [
+          {
+            "kind": "drop",
+            "t": 1.44,
+            "dev_frames": 5,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 2.72,
+            "dev_frames": 7,
+            "aligned": false
+          },
+          {
+            "kind": "bounce",
+            "t": 3.68,
+            "dev_frames": 2,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.48,
+            "dev_frames": 16,
+            "aligned": false
+          },
+          {
+            "kind": "bounce",
+            "t": 5.28,
+            "dev_frames": 8,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 2.82,
+            "dev_frames": 10,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.58,
+            "dev_frames": 13,
+            "aligned": false
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "red",
+        "verdict": "red",
+        "passed": false,
+        "profile": "kids",
+        "path": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_director.mp4",
+        "violations": [
+          "单镜头最短时长 0.03s < 2.5s 违规"
+        ],
+        "warnings": [
+          "平均镜头时长 0.03s < 3.5s 警告"
+        ],
+        "timecodes": [
+          {
+            "item": "shot_duration",
+            "time": 0.033333,
+            "reason": "shot < 2.5s"
+          }
+        ],
+        "metrics": {
+          "min_shot_duration": 0.033333,
+          "avg_shot_duration": 0.033333,
+          "shot_count": 1,
+          "integrated_lufs": -16.0,
+          "true_peak_dbtp": -1.5,
+          "subtitle_font_px": 64,
+          "is_portrait": false,
+          "forbidden_words_found": []
+        }
+      }
+    },
+    "errors": [
+      "拍点对齐率过低: 0.00 < 0.60"
+    ],
+    "warnings": []
+  },
+  "baseline_report": {
+    "passed": false,
+    "brief_id": "explainer-bounce-6aa27fe8",
+    "line": "explainer",
+    "checks": {
+      "ppt_sync": {
+        "passed": false,
+        "detail": "motion types: ['linear', 'linear', 'linear'], duplicate count: 2"
+      },
+      "static_freeze": {
+        "passed": false,
+        "detail": "active micro-motion present for idle objects"
+      },
+      "main_light_consistency": {
+        "passed": true,
+        "azimuth": 135.0
+      },
+      "beat_alignment": {
+        "passed": false,
+        "alignment_rate": 0.0,
+        "details": [
+          {
+            "kind": "drop",
+            "t": 1.44,
+            "dev_frames": 5,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 2.72,
+            "dev_frames": 7,
+            "aligned": false
+          },
+          {
+            "kind": "bounce",
+            "t": 3.68,
+            "dev_frames": 2,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.48,
+            "dev_frames": 16,
+            "aligned": false
+          },
+          {
+            "kind": "bounce",
+            "t": 5.28,
+            "dev_frames": 8,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 2.82,
+            "dev_frames": 10,
+            "aligned": false
+          },
+          {
+            "kind": "impact",
+            "t": 4.58,
+            "dev_frames": 13,
+            "aligned": false
+          }
+        ]
+      },
+      "prohibitions": {
+        "passed": true,
+        "hits": []
+      },
+      "primary_secondary_hierarchy": {
+        "passed": true,
+        "violations": []
+      },
+      "audio_compliance": {
+        "passed": true,
+        "lufs": -16.0,
+        "true_peak_dbtp": -1.5,
+        "has_bgm": true,
+        "has_sfx": true,
+        "has_ducking": true,
+        "notes": "Audio complies with -16 LUFS target and ducking rules"
+      },
+      "kids_gate": {
+        "status": "red",
+        "verdict": "red",
+        "passed": false,
+        "profile": "kids",
+        "path": "audit/motiondir/explainer-bounce-6aa27fe8/explainer-bounce-6aa27fe8_baseline.mp4",
+        "violations": [
+          "单镜头最短时长 0.03s < 2.5s 违规"
+        ],
+        "warnings": [
+          "平均镜头时长 0.03s < 3.5s 警告"
+        ],
+        "timecodes": [
+          {
+            "item": "shot_duration",
+            "time": 0.033333,
+            "reason": "shot < 2.5s"
+          }
+        ],
+        "metrics": {
+          "min_shot_duration": 0.033333,
+          "avg_shot_duration": 0.033333,
+          "shot_count": 1,
+          "integrated_lufs": -16.0,
+          "true_peak_dbtp": -1.5,
+          "subtitle_font_px": 64,
+          "is_portrait": false,
+          "forbidden_words_found": []
+        }
+      }
+    },
+    "errors": [
+      "静止冻结检测失败:关键物体静止时高光/受光面完全冻结",
+      "拍点对齐率过低: 0.00 < 0.60"
+    ],
+    "warnings": []
+  }
+}

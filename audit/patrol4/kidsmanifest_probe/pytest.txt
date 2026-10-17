@@ -1,0 +1,3 @@
+Running as unit: patrol4_km_pytest.scope; invocation ID: 881e6d20b96e4cb1b6605b8c662547da
+.................................................                        [100%]
+49 passed in 2.53s

@@ -1,0 +1,58 @@
+{
+  "status": "completed",
+  "output_path": "audit/v3/e2e/freevideo.mp4",
+  "frames": 3,
+  "resolution": "1280x720@24fps",
+  "est_duration_s": 21.0,
+  "zero_cost": true,
+  "bgm": {
+    "mood": "warm",
+    "bpm": 72.0,
+    "beats": 28,
+    "beats_path": "audit/v3/e2e/bgm_beats.json"
+  },
+  "voice": null,
+  "decision_trail": [
+    {
+      "stage": "frame",
+      "kind": "title",
+      "title": "场景1：森林清晨"
+    },
+    {
+      "stage": "frame",
+      "kind": "scene",
+      "title": "场景2：小河边"
+    },
+    {
+      "stage": "frame",
+      "kind": "quote",
+      "title": "场景3：草地晚霞"
+    }
+  ],
+  "plan": [
+    {
+      "kind": "title",
+      "title": "场景1：森林清晨",
+      "body": "小熊在草地上醒来，空气真新鲜",
+      "duration": 8.0,
+      "broll": null,
+      "data": null
+    },
+    {
+      "kind": "scene",
+      "title": "场景2：小河边",
+      "body": "兔兔和小熊一起在小河边采蘑菇",
+      "duration": 8.0,
+      "broll": null,
+      "data": null
+    },
+    {
+      "kind": "quote",
+      "title": "场景3：草地晚霞",
+      "body": "大家围着篝火快乐地唱歌跳舞，晚安",
+      "duration": 7.0,
+      "broll": null,
+      "data": null
+    }
+  ]
+}

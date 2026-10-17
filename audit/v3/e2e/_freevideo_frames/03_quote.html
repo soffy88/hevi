@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>quote · 场景3：草地晚霞</title>
+<style>
+
+:root {
+  --w: 1280px; --h: 720px;
+  --bg0: #0f1220; --bg1: #171c33;
+  --fg: #f5f7ff; --muted: #a8b0cf;
+  --accent: #38bdf8; --accent2: #f43f5e; --accent3: #fbbf24;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width: 1280px; height: 720px; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--bg1) 0%, var(--bg0) 62%);
+  color: var(--fg);
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei",
+    "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+  width: 1280px; height: 720px;
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 6% 7%;
+}
+
+/* 帧首 0.5s 从黑淡入(转场呼吸,避免硬切跳变) */
+.stage > * { opacity: 0; animation: frameIn 0.5s ease 0.1s both; }
+@keyframes frameIn { from { opacity: 0; } to { opacity: 1; } }
+.kicker {
+  color: var(--accent); font-size: 15px; font-weight: 700;
+  letter-spacing: 0.32em; text-transform: uppercase; margin-bottom: 18px;
+  animation: kickerIn 0.7s cubic-bezier(.2,.8,.2,1) 0.25s both !important;
+}
+@keyframes kickerIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform:none; } }
+
+.mark { font-size: 153px; color: var(--accent2); font-family: Georgia, serif;
+  height: 0.4em; line-height: 0.4; opacity: .9; align-self: flex-start;
+  margin-left: 4%; animation: markIn 0.6s ease 0.2s both !important; }
+@keyframes markIn { from { opacity: 0; transform: scale(.6); } to { opacity: .9; transform:none; } }
+.qtext { font-size: 56px; font-weight: 700;
+  line-height: 1.7; text-align: left; max-width: 88%; letter-spacing: .01em; }
+.w { display: inline-block; opacity: 0; transform: translateY(0.4em);
+  filter: blur(8px);
+  text-shadow: 2px 0 var(--accent2), -2px 0 var(--accent);
+  animation: wIn 0.55s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes wIn {
+  0% { opacity: 0; transform: translateY(0.4em); filter: blur(8px); }
+  70% { filter: blur(0); }
+  100% { opacity: 1; transform: none;
+    text-shadow: 0 0 0 transparent; }
+}
+.src { margin-top: 30px; font-size: 22px;
+  color: var(--muted); letter-spacing: .12em; align-self: flex-end;
+  margin-right: 6%; animation: subIn 0.8s ease 1.4s both !important; }
+
+
+</style>
+</head>
+<body>
+
+
+<div class="stage">
+  <div class="mark">“</div>
+  <div class="qtext"><span class="w" style="animation-delay:0.40s">大</span><span class="w" style="animation-delay:0.49s">家</span><span class="w" style="animation-delay:0.58s">围</span><span class="w" style="animation-delay:0.67s">着</span><span class="w" style="animation-delay:0.76s">篝</span><span class="w" style="animation-delay:0.85s">火</span><span class="w" style="animation-delay:0.94s">快</span><span class="w" style="animation-delay:1.03s">乐</span><span class="w" style="animation-delay:1.12s">地</span><span class="w" style="animation-delay:1.21s">唱</span><span class="w" style="animation-delay:1.30s">歌</span><span class="w" style="animation-delay:1.39s">跳</span><span class="w" style="animation-delay:1.48s">舞</span><span class="w" style="animation-delay:1.57s">，</span><span class="w" style="animation-delay:1.66s">晚</span><span class="w" style="animation-delay:1.75s">安</span></div>
+  <div class="src">场景3：草地晚霞</div>
+</div>
+
+</body>
+</html>

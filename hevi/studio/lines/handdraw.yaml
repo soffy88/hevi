@@ -1,0 +1,30 @@
+id: handdraw
+product: 手绘口播
+summary: 选题/文本 → 口播稿 → 分镜 → CPU矢量插画 → CosyVoice全篇旁白 → 逐笔描线/填色/手写渲染
+handoff: explainer
+render_runtime: handdraw
+slots:
+  - name: topic
+    required: true
+    description: 讲解主题或文章全文
+  - name: style_id
+    required: false
+    description: 手绘风格编号（1极简黑白线条，8水墨写意，10淡彩速写，17墨线绘本）
+  - name: hand_preset
+    required: false
+    description: 手部预设（navy深蓝袖马克笔，pen-only仅画笔）
+tools:
+  - runtime.select
+  - runtime.handdraw.render
+  - delivery.preview
+pipeline:
+  name: handdraw
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: runtime
+      fn: hevi.studio.stages:stage_runtime
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch
