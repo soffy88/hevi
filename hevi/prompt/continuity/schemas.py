@@ -82,6 +82,17 @@ class FilmBible(BaseModel):
     native_audio_strategy: str = (
         "原生音频仅作口型参考，全部替换；每场景铺一条连续底噪，配音加该房间混响"
     )
+    # Midjourney V8.x 首帧参数预设 (FF-1017)
+    mj_version: str = "8.2"
+    mj_stylize: int = 75
+    mj_chaos: int = 0
+    mj_raw: bool = True
+    seed: int | None = None
+    personalization: str = ""  # --p 个性化 (pID 配置 或 mID 情绪板)
+    is_moodboard: bool = False  # 是否为情绪板 (mID 情绪板禁止搭配 --sw/--sv)
+    style_ref: str = ""  # --sref 风格参考代码 (与 --p 不混写)
+    style_weight: int | None = None  # --sw 风格强度
+    image_weight: float | None = None  # --iw 图片权重
 
     def format_style_qualification(self) -> str:
         """输出成'不是X，而是Y'的风格定性。"""
@@ -98,12 +109,22 @@ class CharacterCard(BaseModel):
     appearance_fixed: str  # 完整外貌描述(脸/肤/眼/眉/鼻唇/发/服装/配饰)，禁止只给短锚点
     voice_card: VoiceCard | None = None  # 音色母卡
     daily_states: dict[str, str] = Field(default_factory=dict)  # 故事日状态(伤/脏/湿/换装)
+    # 英文提示词支持 (FF-1017)
+    name_en: str = ""  # 英文角色名
+    appearance_fixed_en: str = ""  # 英文完整外貌固定描述(逐字复用)
 
     def get_full_description(self, story_day: str = "") -> str:
         base = self.appearance_fixed.strip()
         day_note = self.daily_states.get(story_day, "").strip() if story_day else ""
         if day_note:
             return f"{base}【当日状态:{day_note}】"
+        return base
+
+    def get_full_description_en(self, story_day: str = "") -> str:
+        base = self.appearance_fixed_en.strip() or self.appearance_fixed.strip()
+        day_note = self.daily_states.get(story_day, "").strip() if story_day else ""
+        if day_note and self.appearance_fixed_en:
+            return f"{base} [Daily state: {day_note}]"
         return base
 
 
@@ -119,6 +140,9 @@ class SceneCard(BaseModel):
     lens: str = ""  # 焦段/光圈/机位高度
     ambient_noise: str = "环境底噪连续稳定，无突然静音或音量跳变"  # 固定底噪一句
     music_policy: str = "无音乐"  # 配乐策略，明确“无音乐”或指定乐段
+    # 英文提示词支持 (FF-1017)
+    description_en: str = ""  # 英文场景固定描述
+    lighting_en: str = ""  # 英文光线与调色描述
 
 
 class PropItem(BaseModel):
@@ -131,6 +155,11 @@ class PropItem(BaseModel):
     end_state: str = ""  # 结束状态
     liquid_level: str = ""  # 液位等细节(如 "八分满咖啡", "半支烟")
     notes: str = ""
+    # 英文提示词支持 (FF-1017)
+    prop_name_en: str = ""
+    placement_en: str = ""
+    start_state_en: str = ""
+    end_state_en: str = ""
 
 
 class PropLedger(BaseModel):
@@ -189,6 +218,12 @@ class ShotContract(BaseModel):
     action: str = ""
     on_screen_text: list[str] = Field(default_factory=list)  # 画面可能出现的文字
     story_day: str = "D1"  # 故事日对应
+    # 英文提示词支持 (FF-1017)
+    shot_type_en: str = ""
+    action_en: str = ""
+    start_state_en: str = ""
+    end_state_en: str = ""
+    composition_en: str = ""
 
 
 class GenerationLog(BaseModel):

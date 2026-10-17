@@ -30,6 +30,7 @@ from hevi.prompt.continuity.vocab import (
     find_post_only_violations,
     list_vocab_by_category,
 )
+from hevi.prompt.continuity.first_frame import validate_first_frame
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -50,6 +51,7 @@ def validate_film(
     props: list[PropItem] | dict[str, PropItem] | PropLedger | None,
     shots: list[ShotContract],
     prompts: list[Any] | None = None,
+    first_frame_prompts: list[Any] | None = None,
 ) -> list[str]:
     """全片连续性与导演纪律统一校验，返回错误列表(空列表表示完全合格)。
 
@@ -60,6 +62,7 @@ def validate_film(
         props: 道具账本
         shots: 镜头契约列表
         prompts: 可选的已编译提示词列表(用于检查提示词正文中的禁词或缺失项)
+        first_frame_prompts: 可选的首帧提示词列表(用于检查首帧画幅、参数、构图与道具一致性)
     """
     errors: list[str] = []
 
@@ -313,5 +316,19 @@ def validate_film(
                 errors.append(
                     f"[{sid}] post_only 词汇泄漏进生成提示词: {', '.join(post_in_prompt)}。"
                 )
+
+    # ── 首帧提示词复核 (如果传入了首帧编译产物 first_frame_prompts) ───────
+    if first_frame_prompts:
+        for idx, fp in enumerate(first_frame_prompts):
+            s = shots[idx] if idx < len(shots) else ShotContract(shot_id=f"Shot-{idx+1}")
+            fp_text = fp.prompt if hasattr(fp, "prompt") else str(fp)
+            ff_errs = validate_first_frame(
+                shot=s,
+                bible=bible,
+                prompt_text=fp_text,
+                props=props,
+                characters=characters,
+            )
+            errors.extend(ff_errs)
 
     return errors
