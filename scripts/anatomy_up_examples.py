@@ -100,8 +100,12 @@ def sha256(path: Path) -> str:
 
 
 def run(cmd: list[str], *, label: str, timeout: float = 900.0) -> str:
+    # Every kit script takes CHROME_PATH; resolve (and probe) it exactly like
+    # the renderer does, and give Chrome a socket-safe TMPDIR.
+    from hevi.capabilities.anatomy_explainer.chrome import chrome_env
+
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=chrome_env())
     except subprocess.TimeoutExpired as exc:
         raise ExampleMismatch(f"{label} timed out: {' '.join(cmd)}") from exc
     out = (res.stdout or "") + (res.stderr or "")

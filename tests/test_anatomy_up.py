@@ -31,11 +31,12 @@ from hevi.capabilities.errors import CapabilityError
 
 REPO = Path(__file__).resolve().parents[1]
 ANATOMY = REPO / "third_party" / "anatomy"
-PYTHON = Path.home() / ".venv" / "bin" / "python"
-if not PYTHON.exists():  # pragma: no cover - the venv is the documented one
-    import sys
+import sys
 
-    PYTHON = Path(sys.executable)
+# Run the scripts with the interpreter that is running this test file: the repo
+# venv (``/data/soffy/projects/hevi/.venv``) has pydantic, Pillow and numpy, a
+# bare ``~/.venv`` does not.
+PYTHON = Path(sys.executable)
 
 
 # ── the vendored upstream ────────────────────────────────────────────────────
