@@ -11,15 +11,31 @@ the kit that actually answered.  CPU only: the probe and every later launch use
 
 from __future__ import annotations
 
+import atexit
 import os
 import shutil
 import subprocess
+import tempfile
 from functools import lru_cache
 from pathlib import Path
 
 from hevi.capabilities.errors import CapabilityError
 
-__all__ = ["chrome_candidates", "resolve_chrome", "chrome_env", "ChromeUnavailable"]
+__all__ = [
+    "ChromeUnavailable",
+    "chrome_candidates",
+    "chrome_env",
+    "chrome_version",
+    "resolve_chrome",
+    "short_tmpdir",
+]
+
+#: Chrome's DevTools singleton lives in ``$TMPDIR/org.chromium.Chromium.XXXXXX/
+#: SingletonSocket`` and a unix socket path is limited to 104 bytes, so a long
+#: TMPDIR (a pytest tmp_path, or a deep worktree) makes Chrome abort with
+#: "Socket path too long".  The kit scripts ``mkdtemp`` under ``tmpdir()``, so
+#: the subprocess gets a short scratch TMPDIR instead of the caller's.
+SHORT_TMPDIR_LIMIT = 52
 
 #: Flags every kit script uses.  ``--enable-unsafe-swiftshader`` keeps WebGL on
 #: a CPU-only box; ``--no-sandbox`` is required in containers.
@@ -64,6 +80,22 @@ def chrome_candidates() -> list[Path]:
     return unique
 
 
+@lru_cache(maxsize=1)
+def short_tmpdir() -> str:
+    """A short, private scratch TMPDIR for Chrome (created once per process)."""
+    directory = tempfile.mkdtemp(prefix="hevi-anatomy-", dir="/tmp")
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    return directory
+
+
+def _tmpdir_for_chrome(current: str | None = None) -> str:
+    """The caller's TMPDIR when it is short enough for a unix socket."""
+    value = current if current is not None else os.environ.get("TMPDIR")
+    if value and len(value) <= SHORT_TMPDIR_LIMIT and os.path.isdir(value):
+        return value
+    return short_tmpdir()
+
+
 def _probe(binary: Path, *, timeout: float = 60.0) -> str | None:
     """Launch ``binary`` headless once.  Returns an error string or ``None``."""
     try:
@@ -72,6 +104,7 @@ def _probe(binary: Path, *, timeout: float = 60.0) -> str | None:
             capture_output=True,
             text=True,
             timeout=timeout,
+            env={**os.environ, "TMPDIR": _tmpdir_for_chrome()},
         )
     except (OSError, subprocess.TimeoutExpired) as exc:  # pragma: no cover - host specific
         return f"{type(exc).__name__}: {exc}"
@@ -106,8 +139,17 @@ def resolve_chrome() -> Path:
 
 
 def chrome_env(extra: dict[str, str] | None = None) -> dict[str, str]:
-    """``os.environ`` plus ``CHROME_PATH``, for every kit script."""
-    env = {**os.environ, "CHROME_PATH": str(resolve_chrome())}
+    """``os.environ`` plus ``CHROME_PATH`` and a socket-safe ``TMPDIR``.
+
+    Every vendored kit script reads ``CHROME_PATH``; the ``TMPDIR`` override is
+    what keeps Chrome's DevTools socket under the 104-byte unix path limit when
+    the caller runs from a deep temporary directory.
+    """
+    env = {
+        **os.environ,
+        "CHROME_PATH": str(resolve_chrome()),
+        "TMPDIR": _tmpdir_for_chrome(os.environ.get("TMPDIR")),
+    }
     if extra:
         env.update(extra)
     return env

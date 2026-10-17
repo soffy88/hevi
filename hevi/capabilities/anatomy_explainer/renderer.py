@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from hevi.capabilities.anatomy_explainer.chrome import chrome_env
 from hevi.capabilities.registry import Capability, CapabilityResult, register
 from hevi.quality.kids_gate import kids_gate_workflow
 
@@ -94,7 +95,7 @@ generateFigureHtml("{obj_name}", "{aspect}", {seed}, "{html_path.resolve()}");
 
     # P3: Run floating lines check (audit_lines.mjs) with retry
     audit_lines_script = Path(__file__).parent / "audit_lines.mjs"
-    res_lines = run_with_retry(["node", str(audit_lines_script), str(html_path.resolve())], env={**os.environ, "CHROME_PATH": "/snap/bin/chromium"})
+    res_lines = run_with_retry(["node", str(audit_lines_script), str(html_path.resolve())], env=chrome_env())
     if res_lines.returncode != 0:
         raise RuntimeError(f"Anatomy floating lines check failed: {res_lines.stderr}\nstdout: {res_lines.stdout}")
 
@@ -110,7 +111,7 @@ import {{ tmpdir }} from "node:os";
 import {{ join, resolve }} from "node:path";
 
 async function main() {{
-  const binary = process.env.CHROME_PATH || "/snap/bin/chromium";
+  const binary = process.env.CHROME_PATH;
   const profile = mkdtempSync(join(tmpdir(), "iso-render-"));
   const chrome = spawn(binary, [
     "--headless=new", "--no-sandbox", "--remote-debugging-port=0",
@@ -179,8 +180,7 @@ async function main() {{
 main().catch(err => {{ console.error(err); process.exit(1); }});
 """, encoding="utf-8")
 
-    env = {**os.environ, "CHROME_PATH": "/snap/bin/chromium"}
-    res_render = run_with_retry(["node", str(renderer_script)], env=env)
+    res_render = run_with_retry(["node", str(renderer_script)], env=chrome_env())
     if res_render.returncode != 0:
         raise RuntimeError(f"Renderer failed: {res_render.stderr}\nstdout: {res_render.stdout}")
 
