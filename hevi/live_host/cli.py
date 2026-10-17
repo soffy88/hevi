@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -45,7 +46,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="赛博小雅 全本地实时主持")
     parser.add_argument("--audio", help="单条音频文件(wav)，跑一轮")
     parser.add_argument("--workdir", default="audit/live_host/run")
-    parser.add_argument("--tts", choices=["piper", "cosyvoice"], default="piper")
+    parser.add_argument(
+        "--tts",
+        choices=["piper", "cosyvoice", "luxtts"],
+        default=os.environ.get("HEVI_LIVE_TTS") or "piper",
+    )
     parser.add_argument("--synthesize-questions", metavar="DIR", help="仅生成测试提问音频")
     parser.add_argument("--no-aigc-label", action="store_true")
     args = parser.parse_args(argv)

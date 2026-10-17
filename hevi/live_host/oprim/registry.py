@@ -8,6 +8,7 @@ from typing import Any
 from hevi.live_host.oprim.llm_ollama import OllamaLLM
 from hevi.live_host.oprim.stt_whisper import WhisperSTT
 from hevi.live_host.oprim.tts_cosyvoice import CosyVoiceTTS
+from hevi.live_host.oprim.tts_luxtts import LuxTTS, LuxTTSWithFallback
 from hevi.live_host.oprim.tts_piper import PiperTTS
 from hevi.live_host.schemas import EngineConfig
 
@@ -33,6 +34,11 @@ class EngineRegistry:
             "tts": {
                 "piper": lambda: PiperTTS(cfg.piper_binary, cfg.piper_model),
                 "cosyvoice": lambda: CosyVoiceTTS(cfg.cosyvoice_base_url),
+                # LuxTTS 显式选中才启用；服务不可达自动回退到 piper（默认 TTS）。
+                "luxtts": lambda: LuxTTSWithFallback(
+                    LuxTTS(cfg.luxtts_base_url, cfg.luxtts_voice),
+                    PiperTTS(cfg.piper_binary, cfg.piper_model),
+                ),
             },
         }
         self._cache: dict[tuple[str, str], Any] = {}
