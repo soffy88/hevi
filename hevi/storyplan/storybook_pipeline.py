@@ -29,12 +29,7 @@ from hevi.audio.storybook_voice import (
     mix_storybook_audio_master,
 )
 from hevi.motion_fx.transitions.storybook import (
-    render_page_flip,
-    render_pencil_sketch,
     render_storybook_transition,
-    render_torn_paper,
-    render_watercolor_bloom,
-    render_wet_brush,
 )
 from hevi.storyplan.autofill import autofill_story_plan
 from hevi.storyplan.check import run_story_check
@@ -146,7 +141,7 @@ def render_watercolor_shot_clip(
 ) -> Path:
     """渲染一段具有真实水彩纸纹、呼吸微动与铅笔线勾边效果的手绘动画片段。"""
     w, h = size
-    total_frames = max(2, int(round(duration_s * fps)))
+    total_frames = max(2, round(duration_s * fps))
 
     # 色调根据镜头主题与景别调整
     shot_id = shot_def.get("id", "S01")
@@ -266,7 +261,7 @@ def run_storybook_e2e_pipeline(
     srt_path = out_dir / "bilingual_subtitles.srt"
     export_bilingual_subtitles_srt(cues, srt_path)
 
-    master_wav, voice_wav = mix_storybook_audio_master(
+    master_wav, _voice_wav = mix_storybook_audio_master(
         cues,
         audio_total_dur,
         out_dir / "master_audio.wav",
@@ -317,9 +312,7 @@ def run_storybook_e2e_pipeline(
 
     # 步骤 6: 拼接完整视觉视频轨 (Video Assembly)
     concat_list = out_dir / "concat_list.txt"
-    concat_lines = []
-    for c in rendered_shot_clips:
-        concat_lines.append(f"file '{c.resolve()}'")
+    concat_lines = [f"file '{c.resolve()}'" for c in rendered_shot_clips]
     concat_list.write_text("\n".join(concat_lines), encoding="utf-8")
 
     assembled_video = out_dir / "assembled_video.mp4"

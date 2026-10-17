@@ -11,24 +11,23 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import logging
-import math
 import os
 import shutil
 import subprocess
 import wave
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
 from hevi.audio.procedural_bgm import BgmConfig, synthesize_bgm
-from hevi.audio.providers.doubao_tts import DoubaoStorybookTTSProvider, DoubaoKeyMissingError
+from hevi.audio.providers.doubao_tts import DoubaoKeyMissingError, DoubaoStorybookTTSProvider
 from hevi.capabilities.registry import CapabilityResult
-from hevi.storyplan.model import StoryPlan
 
 logger = logging.getLogger(__name__)
 
@@ -131,13 +130,11 @@ def synthesize_local_speech(
     length_scale = float(profile["length_scale"])
     noise_scale = float(profile["noise_scale"])
 
-    # 首先检测豆包可选 Provider 接口
+    # 首先检测豆包可选 Provider 接口（无 key 时依规跳过，绝不发起付费请求）
     doubao = DoubaoStorybookTTSProvider()
     if doubao.is_available():
-        try:
+        with contextlib.suppress(DoubaoKeyMissingError):
             doubao.synthesize(text, out_wav)
-        except DoubaoKeyMissingError:
-            pass  # 无 key 依规跳过，回落本地
 
     # 1. 优先使用本地 Piper ONNX 模型
     piper_bin = Path(PIPER_BIN)
@@ -155,8 +152,7 @@ def synthesize_local_speech(
         proc = subprocess.run(
             cmd,
             input=text.encode("utf-8"),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
         )
         if proc.returncode == 0 and out_wav.is_file() and out_wav.stat().st_size > 100:
             # 保证采样率为 48000Hz 立体声或单声道统一
@@ -284,9 +280,9 @@ def align_and_retime_storybook(
         shot_end_s = speech_end_s + post_pad_s
         shot_duration_s = round(shot_end_s - shot_start_s, 3)
 
-        cue_start_ms = int(round(speech_start_s * 1000))
-        cue_end_ms = int(round(speech_end_s * 1000))
-        audio_dur_ms = int(round(actual_dur_s * 1000))
+        cue_start_ms = round(speech_start_s * 1000)
+        cue_end_ms = round(speech_end_s * 1000)
+        audio_dur_ms = round(actual_dur_s * 1000)
 
         # 3. 记录对齐字幕项
         cue = AlignedCue(

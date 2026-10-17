@@ -15,17 +15,14 @@
 from __future__ import annotations
 
 import hashlib
-import math
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import cv2
 import numpy as np
 
-from hevi.motion_fx.transitions.base import VideoInfo, probe_video
-from hevi.motion_fx.transitions.engine import REGISTRY, register_transition
+from hevi.motion_fx.transitions.engine import register_transition
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -52,8 +49,6 @@ def render_page_flip(
     # 翻页卷曲中轴线从右到左推进 (w + curl_radius -> -curl_radius)
     x_curl = w * (1.0 - p)
 
-    out = frame_b.copy()
-
     # 翻页左侧依然是 frame_a
     mask_a = np.zeros((h, w), dtype=np.float32)
     xx = np.arange(w, dtype=np.float32).reshape(1, -1)
@@ -66,15 +61,20 @@ def render_page_flip(
     curl_zone = (xx >= (x_curl - curl_radius)) & (xx <= x_curl)
     if np.any(curl_zone):
         dist = (x_curl - xx[curl_zone]) / max(1.0, curl_radius)  # 0 (at curl line) to 1 (flat)
-        # 翻折阴影与圆柱弧光
-        shadow = 0.5 + 0.5 * np.sin(dist * np.pi * 0.5)
-        # 在 frame_a 卷起边缘添加暗部
+        # 在 frame_a 卷起边缘添加暗部（圆柱卷起的弧形过渡）
         mask_a[curl_zone] = dist
 
     mask_3d = np.repeat(mask_a[:, :, np.newaxis], 3, axis=2)
 
     # 合成 frame_a 与 frame_b
     blended = (frame_a.astype(np.float32) * mask_3d + frame_b.astype(np.float32) * (1.0 - mask_3d))
+
+    # 卷起纸张内表面的弧光：靠近卷曲中轴线处略压暗，模拟纸背阴影
+    curl_shade = (xx >= (x_curl - curl_radius)) & (xx < x_curl)
+    if np.any(curl_shade):
+        shade = 0.78 + 0.22 * ((xx[curl_shade] - (x_curl - curl_radius)) / max(1.0, curl_radius))
+        for c in range(3):
+            blended[:, :, c][curl_shade] *= shade
 
     # 沿着翻折线投射在底层 frame_b 上的微阴影
     shadow_zone = (xx >= x_curl) & (xx <= (x_curl + curl_radius * 0.75))
@@ -352,8 +352,8 @@ def _create_placeholder_frame(
 
 
 def render_storybook_transition(
-    clip_a_or_frame: Union[str, Path, np.ndarray],
-    clip_b_or_frame: Union[str, Path, np.ndarray],
+    clip_a_or_frame: str | Path | np.ndarray,
+    clip_b_or_frame: str | Path | np.ndarray,
     transition_type: str,
     duration: float,
     out_mp4: Path,
@@ -397,7 +397,7 @@ def render_storybook_transition(
     out_mp4 = Path(out_mp4).resolve()
     out_mp4.parent.mkdir(parents=True, exist_ok=True)
 
-    total_frames = max(2, int(round(duration * fps)))
+    total_frames = max(2, round(duration * fps))
 
     cmd = [
         "ffmpeg",

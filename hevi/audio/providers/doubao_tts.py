@@ -12,7 +12,6 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +42,8 @@ class DoubaoStorybookTTSProvider:
         """检查凭证是否有效存在且非测试占位符。"""
         if not self.app_id or not self.access_token:
             return False
-        if self.app_id in {"dummy", "test-only", "none", "mock"} or self.access_token in {"dummy", "test-only", "none", "mock"}:
-            return False
-        return True
+        placeholder = {"dummy", "test-only", "none", "mock"}
+        return self.app_id not in placeholder and self.access_token not in placeholder
 
     def synthesize(
         self,

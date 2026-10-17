@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import json
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from hevi.storyplan.autofill import autofill_story_plan
 from hevi.storyplan.check import run_story_check
-from hevi.storyplan.model import Scene, Sequence, Shot, StoryBeat, StoryPlan
+from hevi.storyplan.model import StoryPlan
 
 
 class CritiqueIssue(BaseModel):
@@ -151,7 +150,7 @@ def _critique_director(plan: StoryPlan) -> list[CritiqueIssue]:
     for sh in all_shots:
         act = (sh.action or "").strip()
         end_st = (sh.end_state or "").strip()
-        if len(act) < 8 or "动作" in act and len(act) <= 8:
+        if len(act) < 8 or ("动作" in act and len(act) <= 8):
             issues.append(
                 CritiqueIssue(
                     issue_id=f"DIR-{issue_count:02d}",
@@ -245,14 +244,13 @@ def revise_story_plan(plan: StoryPlan, report: CritiqueReport) -> StoryPlan:
     if "HOOK_ENGAGEMENT" in issue_categories:
         hook_text = revised.narrative.hook.text
         if not hook_text or len(hook_text) < 5:
-            revised.narrative.hook.text = f"快看！在奇妙的童话森林深处，一颗闪闪发光的小种子在悄悄伸懒腰呢，它会变成什么呢？"
+            revised.narrative.hook.text = "快看！在奇妙的童话森林深处，一颗闪闪发光的小种子在悄悄伸懒腰呢，它会变成什么呢？"
         elif "？" not in hook_text and "?" not in hook_text:
             revised.narrative.hook.text = f"{hook_text.rstrip('。！')}，里面究竟藏着怎样神奇的小秘密呢？"
         revised.narrative.hook.end_ms = min(3000, max(2000, revised.narrative.hook.end_ms))
 
     # 4.2 修订景别尺度与动作具体度
     all_shots = [sh for seq in revised.shots.sequences for sc in seq.scenes for sh in sc.shots]
-    num_shots = len(all_shots)
 
     shot_scale_cycle = ["establishing", "character", "insert", "character", "establishing"]
 
@@ -300,7 +298,7 @@ def revise_story_plan(plan: StoryPlan, report: CritiqueReport) -> StoryPlan:
 # 5. 渲染预览图与 Capability 入口
 # ─────────────────────────────────────────────────────────────────────────────
 def _draw_critique_preview(report: CritiqueReport, plan_title: str, out_png: Path) -> None:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
 
     w, h = 800, 600
     img = Image.new("RGB", (w, h), color=(248, 246, 240))
@@ -323,7 +321,7 @@ def _draw_critique_preview(report: CritiqueReport, plan_title: str, out_png: Pat
     # 问题清单区域
     d.text((30, 225), f"检出优化议题清单 ({len(report.issues)} 项):", fill=(50, 60, 70))
     y = 260
-    for idx, iss in enumerate(report.issues[:8]):
+    for iss in report.issues[:8]:
         badge = "[观众]" if iss.persona == "挑剔观众" else "[导演]"
         badge_color = (180, 80, 40) if iss.persona == "挑剔观众" else (30, 100, 180)
         d.text((30, y), badge, fill=badge_color)

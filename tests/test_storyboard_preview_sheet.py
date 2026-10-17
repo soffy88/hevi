@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from PIL import Image
-import pytest
 
-from hevi.capabilities import get, resolve, names
+import pytest
+from PIL import Image
+
+from hevi.capabilities import get, names, resolve
 from hevi.capabilities.errors import CapabilityError
 from hevi.storyplan.autofill import autofill_story_plan
-from hevi.storyplan.preview_sheet import render_storyboard_preview_sheet
 
 
 def test_storyboard_preview_sheet_registered():

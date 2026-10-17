@@ -4,20 +4,20 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+
 import cv2
 import numpy as np
 import pytest
 
-from hevi.capabilities import get, resolve, names
+from hevi.capabilities import get, names
 from hevi.capabilities.errors import CapabilityError
-from hevi.motion_fx.transitions.engine import REGISTRY, apply_transition
+from hevi.motion_fx.transitions.engine import REGISTRY
 from hevi.motion_fx.transitions.storybook import (
     render_page_flip,
-    render_wet_brush,
-    render_torn_paper,
     render_pencil_sketch,
+    render_torn_paper,
     render_watercolor_bloom,
-    render_storybook_transition,
+    render_wet_brush,
 )
 
 

@@ -12,11 +12,11 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
-from PIL import Image
+
 import pytest
+from PIL import Image
 
 from hevi.storyplan.storybook_pipeline import (
     create_three_chapter_storybook,

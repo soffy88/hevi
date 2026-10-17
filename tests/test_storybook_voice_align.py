@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import wave
 from pathlib import Path
-import numpy as np
+
 import pytest
 
 from hevi.audio.providers.doubao_tts import DoubaoKeyMissingError, DoubaoStorybookTTSProvider
 from hevi.audio.storybook_voice import (
-    AlignedCue,
     VoiceLine,
     align_and_retime_storybook,
     export_bilingual_subtitles_srt,
     mix_storybook_audio_master,
     synthesize_local_speech,
 )
-from hevi.capabilities import get, resolve, names
-from hevi.capabilities.errors import CapabilityError
+from hevi.capabilities import get, names, resolve
 
 
 def test_storybook_voice_align_registered():
@@ -71,7 +68,7 @@ def test_align_and_retime_with_bilingual_subtitles(tmp_path: Path):
         VoiceLine("L3", "bear", "我们一起为它浇水吧。", "Let us water it together.", "shot_3"),
     ]
 
-    cues, retimed_shots, total_dur = align_and_retime_storybook(
+    cues, retimed_shots, _total_dur = align_and_retime_storybook(
         lines,
         tmp_path / "align_test",
         quiet_break_s=2.0,

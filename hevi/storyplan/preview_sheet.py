@@ -24,7 +24,6 @@ from hevi.kids.fonts import cjk_font
 from hevi.storyplan.autofill import autofill_story_plan
 from hevi.storyplan.model import StoryPlan
 
-
 # 景别规范映射
 SHOT_SCALE_MAP = {
     "establishing": "远景",
@@ -102,7 +101,7 @@ def _normalize_shots(params: dict[str, Any], aspect: str) -> tuple[str, list[dic
         plan_obj = StoryPlan(**params["plan"])
         title = title or plan_obj.title
         all_shots = [sh for seq in plan_obj.shots.sequences for sc in seq.scenes for sh in sc.shots]
-        for idx, sh in enumerate(all_shots):
+        for sh in all_shots:
             scale = sh.shot_type
             dur = (sh.end_ms - sh.start_ms) / 1000.0 if sh.end_ms > sh.start_ms else 4.0
             normalized_shots.append({
@@ -119,7 +118,7 @@ def _normalize_shots(params: dict[str, Any], aspect: str) -> tuple[str, list[dic
         plan_obj = autofill_story_plan(topic, aspect=aspect)
         title = title or plan_obj.title
         all_shots = [sh for seq in plan_obj.shots.sequences for sc in seq.scenes for sh in sc.shots]
-        for idx, sh in enumerate(all_shots):
+        for sh in all_shots:
             scale = sh.shot_type
             dur = (sh.end_ms - sh.start_ms) / 1000.0 if sh.end_ms > sh.start_ms else 4.0
             normalized_shots.append({
@@ -342,8 +341,8 @@ def render_storyboard_preview_sheet(
         draw.text((x0 + card_pad, desc_y), "【画面描述】", fill=COLOR_INK_LINE, font=font_meta)
         desc_lines = _wrap_text(sh["description"], max_chars_per_line=int(content_w / 14))
         cur_y = desc_y + 20
-        for l in desc_lines[:2]:
-            draw.text((x0 + card_pad, cur_y), l, fill=COLOR_TEXT_SECONDARY, font=font_desc)
+        for desc_line in desc_lines[:2]:
+            draw.text((x0 + card_pad, cur_y), desc_line, fill=COLOR_TEXT_SECONDARY, font=font_desc)
             cur_y += 18
 
         # 4.4 台词 / 口播区域（气泡框设计）

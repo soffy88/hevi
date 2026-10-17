@@ -4,20 +4,18 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+
 import pytest
 
-from hevi.capabilities import get, resolve, names
+from hevi.capabilities import get, names, resolve
 from hevi.capabilities.errors import CapabilityError
 from hevi.storyplan.autofill import autofill_story_plan
 from hevi.storyplan.check import run_story_check
 from hevi.storyplan.critique import (
-    CritiqueIssue,
     CritiqueReport,
     critique_story_plan,
     revise_story_plan,
-    render_storyplan_critique,
 )
-from hevi.storyplan.model import StoryPlan
 
 
 def test_storyplan_critique_capability_registered():
