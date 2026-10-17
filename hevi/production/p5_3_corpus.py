@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 class AdoptionMode(str, Enum):
@@ -11,64 +11,46 @@ class AdoptionMode(str, Enum):
     CODE_ADOPT_ALLOWED = "CODE_ADOPT_ALLOWED"
     REJECT = "REJECT"
 
-@dataclass(frozen=True)
+@dataclass
 class ReferenceEntry:
     name: str
+    verifiable: bool
     license: str
+    description: str
     adoption_mode: AdoptionMode
 
 class VideoAgentReferenceCorpus:
-    """Read-only corpus of video agent reference capabilities."""
-    
-    def __init__(self, data_path: str = "data/p5_3_reference_corpus.json"):
-        self.data_path = Path(data_path)
-        self._entries: List[ReferenceEntry] = []
+    def __init__(self, data_path: Optional[Path] = None):
+        if data_path is None:
+            data_path = Path(__file__).parent.parent.parent / "data" / "p5_3_reference_corpus.json"
+        
+        self.data_path = data_path
+        self._entries: Dict[str, ReferenceEntry] = {}
         self._load()
 
-    def _load(self):
+    def _load(self) -> None:
         if not self.data_path.exists():
             return
             
         with open(self.data_path, "r", encoding="utf-8") as f:
             data = json.load(f)
             
-        for ref in data.get("references", []):
-            mode = AdoptionMode(ref.get("adoption_mode", "REFERENCE_ONLY"))
-            if ref.get("license", "unknown").lower() == "unknown":
-                mode = AdoptionMode.REFERENCE_ONLY
+        for item in data.get("seed_references", []):
+            mode = item.get("adoption_mode", "REFERENCE_ONLY")
+            if item.get("license", "Unknown") == "Unknown":
+                mode = "REFERENCE_ONLY"
                 
-            self._entries.append(ReferenceEntry(
-                name=ref["name"],
-                license=ref.get("license", "unknown"),
-                adoption_mode=mode
-            ))
+            entry = ReferenceEntry(
+                name=item["name"],
+                verifiable=item.get("verifiable", False),
+                license=item.get("license", "Unknown"),
+                description=item.get("description", ""),
+                adoption_mode=AdoptionMode(mode)
+            )
+            self._entries[entry.name] = entry
 
-    def get_entry(self, name: str) -> Optional[ReferenceEntry]:
-        for entry in self._entries:
-            if entry.name == name:
-                return entry
-        return None
+    def get_reference(self, name: str) -> Optional[ReferenceEntry]:
+        return self._entries.get(name)
 
-    def list_entries(self) -> List[ReferenceEntry]:
-        return list(self._entries)
-
-class ReferenceRepository:
-    """Repository interface for the video reference corpus."""
-    
-    def __init__(self, corpus: VideoAgentReferenceCorpus):
-        self.corpus = corpus
-
-    def check_license_boundary(self, name: str) -> bool:
-        """Enforces LICENSE_BOUNDARY gate."""
-        entry = self.corpus.get_entry(name)
-        if not entry:
-            return False
-        return entry.adoption_mode != AdoptionMode.REJECT
-
-    def allow_code_execution(self, name: str) -> bool:
-        """Enforces EXTERNAL_CODE_EXECUTION=0 gate."""
-        return False
-        
-    def allow_unlicensed_import(self) -> bool:
-        """Enforces UNLICENSED_CODE_IMPORT=0 gate."""
-        return False
+    def list_references(self) -> List[ReferenceEntry]:
+        return list(self._entries.values())

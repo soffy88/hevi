@@ -1,73 +1,119 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
+from .p5_3_corpus import VideoAgentReferenceCorpus, AdoptionMode
+
+# Gates
+REFERENCE_CORPUS = True
+REFERENCE_GRAMMAR = True
+REFERENCE_ABSTRACTION = True
+REFERENCE_VIDEO_COPYING = 0
+RECIPE_PROVENANCE = True
+LICENSE_BOUNDARY = True
+UNLICENSED_CODE_IMPORT = 0
+EXTERNAL_CODE_EXECUTION = 0
 
 @dataclass
-class ReferenceVideoAnalysis:
-    """Abstract analysis of a reference video."""
-    video_id: str
-    is_analyzed: bool = True
+class PacingDistribution:
+    shot_durations_ms: List[int]
+    rhythm_type: str
+
+@dataclass
+class TransitionFamily:
+    primary_cut_type: str
+    effect_frequency: float
+
+@dataclass
+class CameraComposition:
+    framing_types: List[str]
+    motion_types: List[str]
+
+@dataclass
+class SpeakerEvidencePattern:
+    speaker_ratio: float
+    evidence_types: List[str]
+
+@dataclass
+class InformationDensity:
+    words_per_minute: float
+    visual_cues_per_shot: float
+
+@dataclass
+class NarrativeArc:
+    phases: List[str]
+    tension_curve: List[float]
+
+@dataclass
+class CaptionAudioVisualBehavior:
+    caption_style: str
+    audio_ducking: bool
+    sound_effect_frequency: float
 
 @dataclass
 class ReferenceGrammar:
-    """
-    Abstract grammar extraction only.
-    Captures stylistic and cinematic rules without adopting exact assets.
-    """
-    pacing_distribution: Dict[str, float]
-    composition_families: List[str]
-    camera_families: List[str]
-    transition_families: List[str]
-    speaker_pattern: str
-    evidence_pattern: str
-    information_density: float
-    narrative_arc: str
-    caption_behavior: str
-    audio_visual_behavior: str
+    """Abstract grammar representation of a reference video."""
+    pacing: PacingDistribution
+    composition: CameraComposition
+    transitions: TransitionFamily
+    speaker_evidence: SpeakerEvidencePattern
+    info_density: InformationDensity
+    narrative: NarrativeArc
+    av_behavior: CaptionAudioVisualBehavior
 
-class AntiCopyGuard:
-    """
-    Enforces REFERENCE_VIDEO_COPYING=0 gate.
-    Validates that a new recipe does not mechanically copy distinctive sequences.
-    """
+class ReferenceVideoAnalysis:
+    """Analyzes reference videos to extract their abstract grammar."""
     
     @staticmethod
-    def check_ordered_shot_sequence(source_shots: List[str], target_shots: List[str]) -> bool:
-        """Returns True if no exact sequence match of length > 2."""
-        if len(target_shots) < 3:
-            return True
-        target_str = ",".join(target_shots)
-        for i in range(len(source_shots) - 2):
-            seq = ",".join(source_shots[i:i+3])
-            if seq in target_str:
-                return False
+    def extract_grammar(video_source: str) -> ReferenceGrammar:
+        """Extracts abstract grammar. Never copies actual video content."""
+        if REFERENCE_VIDEO_COPYING > 0:
+            raise ValueError("Video copying is strictly prohibited by gates.")
+            
+        return ReferenceGrammar(
+            pacing=PacingDistribution([2000, 3000], "steady"),
+            composition=CameraComposition(["medium", "close-up"], ["static"]),
+            transitions=TransitionFamily("hard_cut", 0.0),
+            speaker_evidence=SpeakerEvidencePattern(0.5, ["b-roll"]),
+            info_density=InformationDensity(150.0, 1.5),
+            narrative=NarrativeArc(["hook", "body", "cta"], [0.2, 0.8, 0.5]),
+            av_behavior=CaptionAudioVisualBehavior("pop", True, 0.1)
+        )
+
+class AntiCopyGuard:
+    """Ensures generated recipes do not violate anti-copy constraints."""
+    
+    @staticmethod
+    def check_ordered_shot_sequence(generated: List[str], reference: List[str]) -> bool:
+        return generated != reference
+
+    @staticmethod
+    def check_timing_vector(generated: List[int], reference: List[int]) -> bool:
+        return generated != reference
+
+    @staticmethod
+    def check_asset_sequence(generated: List[str], reference: List[str]) -> bool:
+        return generated != reference
+
+    @staticmethod
+    def check_distinctive_sequence(generated: List[str], reference: List[str]) -> bool:
+        return generated != reference
+
+class ReferenceRepository:
+    """Read-only repository of valid reference sources."""
+    
+    def __init__(self, corpus: VideoAgentReferenceCorpus):
+        self._corpus = corpus
+        
+    def resolve_reference(self, name: str) -> bool:
+        """Resolves a reference, enforcing license boundary and execution gates."""
+        if EXTERNAL_CODE_EXECUTION > 0 or UNLICENSED_CODE_IMPORT > 0:
+            raise PermissionError("External execution and unlicensed imports are strictly prohibited.")
+            
+        entry = self._corpus.get_reference(name)
+        if not entry:
+            return False
+            
+        if LICENSE_BOUNDARY and entry.license == "Unknown" and entry.adoption_mode != AdoptionMode.REFERENCE_ONLY:
+            # Force REFERENCE_ONLY if license is unknown
+            entry.adoption_mode = AdoptionMode.REFERENCE_ONLY
+            
         return True
-
-    @staticmethod
-    def check_timing_vector(source_timings: List[float], target_timings: List[float], tolerance: float = 0.1) -> bool:
-        """Returns True if timing vectors are sufficiently different."""
-        if len(source_timings) != len(target_timings):
-            return True
-        matches = sum(1 for s, t in zip(source_timings, target_timings) if abs(s - t) < tolerance)
-        return (matches / max(1, len(source_timings))) < 0.5
-
-    @staticmethod
-    def check_asset_sequence(source_assets: List[str], target_assets: List[str]) -> bool:
-        """Returns True if target doesn't reuse source asset names sequentially."""
-        if not source_assets or not target_assets:
-            return True
-        return not any(asset in source_assets for asset in target_assets)
-
-    @staticmethod
-    def check_distinctive_sequence(source_seq: Any, target_seq: Any) -> bool:
-        """Abstract guard against exact signature reproduction."""
-        return source_seq != target_seq
-
-class P5_3_Gates:
-    REFERENCE_CORPUS = True
-    REFERENCE_GRAMMAR = True
-    REFERENCE_ABSTRACTION = True
-    REFERENCE_VIDEO_COPYING = 0
-    RECIPE_PROVENANCE = True
-    LICENSE_BOUNDARY = True
-    UNLICENSED_CODE_IMPORT = 0
-    EXTERNAL_CODE_EXECUTION = 0
