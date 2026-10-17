@@ -166,3 +166,28 @@ register(
         description="选段器 take_select：多候选 take 按帧评分与子区间选中",
     )
 )
+
+def _render_storyplan_critique_local(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
+    from hevi.storyplan.critique import render_storyplan_critique
+    res = render_storyplan_critique(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+    return CapabilityResult(
+        mp4=str(res.mp4) if res.mp4 else None,
+        png=str(res.png) if res.png else None,
+        wav=str(res.wav) if res.wav else None,
+        duration_s=res.duration_s,
+        sha256=res.sha256,
+        qa=res.qa,
+        payload=res.payload if hasattr(res, "payload") else {},
+    )
+
+register(
+    Capability(
+        name="storyplan.critique",
+        kind="shot",
+        aspects=["16:9", "9:16", "1:1"],
+        params_schema={"type": "object", "properties": {"plan": {"type": "object"}, "topic": {"type": "string"}, "auto_revise": {"type": "boolean"}}},
+        cpu_cost_hint=0.2,
+        render=_render_storyplan_critique_local,
+        description="剧本自审轮：挑剔观众+动画导演双重视角批判与自动修订",
+    )
+)

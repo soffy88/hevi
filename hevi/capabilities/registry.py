@@ -776,6 +776,14 @@ def _render_take_select(
     )
 
 
+def _render_storyplan_critique(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    from hevi.storyplan.critique import render_storyplan_critique
+
+    return render_storyplan_critique(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
 _STORYPLAN_ASPECTS = ["16:9", "9:16", "1:1"]
 
 register(Capability(
@@ -823,5 +831,24 @@ register(Capability(
     cpu_cost_hint=0.1,
     render=_render_take_select,
     description="选段器 take_select：多候选 take 按帧评分与子区间选中",
+    line="storyplan",
+))
+
+register(Capability(
+    name="storyplan.critique",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "plan": {"type": "object"},
+            "topic": {"type": "string"},
+            "auto_revise": {"type": "boolean"},
+        },
+    },
+    cpu_cost_hint=0.2,
+    render=_render_storyplan_critique,
+    description="剧本自审轮：挑剔观众+动画导演双重视角批判与自动修订",
     line="storyplan",
 ))
