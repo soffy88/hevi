@@ -6,7 +6,7 @@
 | 分支名 | 最近提交时间 | 分叉提交数 | 改动文件数 | 状态 | 备注 |
 |---|---|---|---|---|---|
  | `feat/opuscar-integration` | 2026-10-16 21:11:24 +0000 | 1 | 1 | SKIPPED | Conflict: Auto-merging hevi/capabilities/registry.py CONFLICT (content | 
-| `feat/review-sheet` | 2026-10-15 09:55:59 +0000 | 1 | 1 | PENDING |  |
+ | `feat/review-sheet` | 2026-10-15 09:55:59 +0000 | 1 | 1 | MERGED | Clean merge | 
 | `feat/manga-name` | 2026-10-14 12:27:14 +0000 | 1 | 38 | PENDING |  |
 | `chore/remove-publishing` | 2026-10-13 08:08:37 +0000 | 1 | 75 | PENDING |  |
 | `feat/continuity-1017` | 2026-10-17 07:29:22 +0000 | 2 | 8 | PENDING |  |
