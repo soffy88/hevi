@@ -1,0 +1,16 @@
+verdict  category       hits                           sentence
+PASS!!   violence       []                             小狐狸用绳子把小兔勒住了脖子。
+PASS!!   violence       []                             坏孩子揪住小熊的耳朵，把他按在地上。
+PASS!!   violence       []                             大灰狼一脚把小猪踹飞了。
+PASS!!   violence       []                             小狐狸拿针扎了小兔的手。
+PASS!!   violence       []                             他们把小熊绑在树上，还堵住了他的嘴。
+PASS!!   violence       []                             小狐狸狠狠抽了小马一鞭子。
+PASS!!   violence       []                             小猫被大狗咬得直叫。
+PASS!!   violence       []                             小狐狸把小猫的尾巴扯断了。
+PASS!!   intimidation   []                             坏人把小熊关进了笼子里。
+PASS!!   violence       []                             小狐狸拿棍子敲了小兔的头。
+FAIL     violence       ['摔', '摔下']                    小兔从高高的树上摔下来，摔断了腿。
+PASS!!   violence       []                             小狐狸一脚踩在小猫身上。
+FAIL     violence       ['踢']                          小狐狸对着小兔又踢又打。
+
+MISS (harmful PASSed, should FAIL): 11/13
