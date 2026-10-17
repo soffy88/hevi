@@ -46,7 +46,7 @@
  | `veya/remote-mcp-direct-command-remote-668e6` | 2026-09-24 06:47:53 +0000 | 1 | 5 | SKIPPED | Conflict: CONFLICT (modify/delete): hevi/distribution/service.py delet | 
  | `veya/remote-mcp-direct-command-remote-6e272` | 2026-09-24 06:47:53 +0000 | 1 | 5 | SKIPPED | Conflict: CONFLICT (modify/delete): hevi/distribution/service.py delet | 
  | `veya/remote-mcp-direct-command-remote-8583a` | 2026-09-24 06:47:53 +0000 | 1 | 5 | SKIPPED | Conflict: CONFLICT (modify/delete): hevi/distribution/service.py delet | 
-| `veya/remote-mcp-direct-command-remote-8cfd9` | 2026-09-24 06:47:53 +0000 | 1 | 5 | PENDING |  |
+ | `veya/remote-mcp-direct-command-remote-8cfd9` | 2026-09-24 06:47:53 +0000 | 1 | 5 | SKIPPED | Conflict: CONFLICT (modify/delete): hevi/distribution/service.py delet | 
 | `veya/execution/direct-cf1c0c18df8b45a29bde2d85d/hevi` | 2026-10-03 03:42:04 +0000 | 1 | 7 | PENDING |  |
 | `veya/execution/direct-c41c995898754ade8da7bccb2/hevi` | 2026-10-03 08:56:16 +0000 | 1 | 9 | PENDING |  |
 | `pi-attempt-1` | 2026-10-10 00:12:29 +0000 | 1 | 11 | PENDING |  |
