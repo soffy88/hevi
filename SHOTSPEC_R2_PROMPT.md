@@ -1,0 +1,2 @@
+# SHOTSPEC 第2轮返工
+读 SHOTSPEC_FIX.md，逐条修复并达到其中全部机器验收标准。补充规定：template 要么在装配期真正渲染（有可测的 framemd5 差异），要么在 API 返回 422；style 只接受有 ffmpeg 映射的枚举值，其它 422；spec.duration 生效（成片时长误差 ±1 帧）；任务存储里的 spec 必须由现有出片入口读取并传给 assemble_longvideo（集成测试证明）。所有 python 设 PYTHONPATH=$(pwd)。只改本 worktree，不删 worktree 外任何文件，不清理磁盘（/data 剩余<5G 写 DISK_FULL_NOTE.md 并停止），不 push。完成后在 SHOTSPEC_DONE.md 末尾写验收证据，最后一行写 DONE SHOTSPEC-R2 并 commit。
