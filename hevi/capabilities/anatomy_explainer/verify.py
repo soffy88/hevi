@@ -32,13 +32,14 @@ from hevi.capabilities.errors import CapabilityError
 __all__ = [
     "AnatomyVerifyError",
     "VerifyReport",
+    "capture_still",
     "check_console",
     "check_fidelity",
     "check_lines",
     "check_turn",
     "contact_sheet",
-    "capture_still",
     "image_stats",
+    "orbit_sheet",
     "scripts_dir",
     "turning_builder",
 ]
@@ -129,10 +130,8 @@ def run_script(
 def check_console(stdout: str, *, label: str) -> None:
     """capture.mjs and drive.mjs print ``console: clean`` when the page is quiet."""
     for row in stdout.splitlines():
-        if row.startswith("console:") and "clean" not in row:
+        if row.startswith(("console:", "Exception", "Uncaught")) and "clean" not in row:
             raise AnatomyVerifyError(f"{label}: page raised console errors or exceptions:\n{row}")
-        if row.startswith("Exception") or row.startswith("Uncaught"):
-            raise AnatomyVerifyError(f"{label}: page raised an exception:\n{row}")
 
 
 def image_stats(path: Path, *, background: tuple[int, int, int] | None = None) -> dict[str, Any]:
@@ -142,8 +141,8 @@ def image_stats(path: Path, *, background: tuple[int, int, int] | None = None) -
     works for the kid-blue plates and for the kit's light/dark cards alike.
     """
     try:
-        from PIL import Image  # local import: the renderer already depends on Pillow
         import numpy as np
+        from PIL import Image  # local import: the renderer already depends on Pillow
     except ImportError as exc:  # pragma: no cover
         raise AnatomyVerifyError(f"image_stats needs Pillow and numpy: {exc}") from exc
     if not path.is_file():
@@ -163,7 +162,7 @@ def image_stats(path: Path, *, background: tuple[int, int, int] | None = None) -
         "width": int(arr.shape[1]),
         "height": int(arr.shape[0]),
         "ink_ratio": round(float(ink.mean()), 5),
-        "colours": int(len(np.unique(arr.reshape(-1, 3), axis=0))),
+        "colours": len(np.unique(arr.reshape(-1, 3), axis=0)),
     }
     if arr.shape[0] < 80 or arr.shape[1] < 80:
         raise AnatomyVerifyError(f"screenshot {path} is only {arr.shape[1]}x{arr.shape[0]} px")
@@ -210,6 +209,24 @@ def contact_sheet(html: Path, out_png: Path, *, every: int = 160, count: int = 8
     stats = image_stats(out_png)
     stats["frames"] = count
     stats["sheet"] = stdout.strip().splitlines()[0]
+    return stats
+
+
+def orbit_sheet(html: Path, out_png: Path, *, from_angle: float = 0.0, to_angle: float = 360.0, step: float = 45.0) -> dict[str, Any]:
+    """``drive.mjs`` 3D orbit: one tiled contact sheet across the turn angles."""
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    actions = json.dumps(
+        [["wait", 400], ["orbit", str(out_png), from_angle, to_angle, step, None, 1]],
+    )
+    args = [str(html), actions, "--width", "1440", "--height", "1200"]
+    stdout = run_script("drive.mjs", args, label="Anatomy orbit sheet", timeout=900, expect=("orbit ", "console:"))
+    check_console(stdout, label="Anatomy orbit sheet")
+    if f"{out_png} - " not in stdout and str(out_png) not in stdout:
+        raise AnatomyVerifyError(f"Anatomy orbit sheet did not write {out_png}:\n{_tail(stdout, 8)}")
+    stats = image_stats(out_png)
+    steps = int(abs(to_angle - from_angle) / step) + 1
+    stats["angles"] = steps
+    stats["orbit"] = stdout.strip().splitlines()[0]
     return stats
 
 

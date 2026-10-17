@@ -21,10 +21,10 @@ from hevi.capabilities.anatomy_explainer.verify import (
     check_turn,
     contact_sheet,
     image_stats,
+    orbit_sheet,
 )
 from hevi.capabilities.registry import Capability, CapabilityResult, register
 from hevi.quality.kids_gate import kids_gate_workflow
-
 
 VALID_OBJECTS = {"windmill", "waterwheel", "soap_pump", "clock_gear"}
 VALID_MODES = {"2d", "3d"}
@@ -274,7 +274,8 @@ def _render_3d(
 
     still = capture_still(html_path, out_dir / "keyframe_3d.png")
     report.add("capture", **still)
-
+    sheet = orbit_sheet(html_path, out_dir / "orbit_sheet.png", from_angle=0.0, to_angle=360.0, step=45.0)
+    report.add("orbit_sheet", **sheet)
     frames_dir = out_dir / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
     total_frames = int(duration * FPS)
@@ -359,6 +360,9 @@ def render_anatomy_explainer(
     qa_report = _kids_gate(mp4_path, out_dir, duration, obj_name)
     report.add("kids_gate", passed=qa_report.get("passed"), verdict=qa_report.get("verdict"))
 
+    # The craft rules, as the generation constraints a figure builder gets, and
+    # the measured compliance of the figure that was actually built.
+    (out_dir / "anatomy_craft_constraints.md").write_text(craft.constraints_for_prompt(mode=mode), encoding="utf-8")
     craft_report = craft.measure_figure(html_path, frames_dir=out_dir / "frames", mode=mode)
     craft.write_report(out_dir / "anatomy_craft.json", craft_report)
     craft.enforce(craft_report)

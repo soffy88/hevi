@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -27,11 +28,9 @@ from hevi.capabilities.anatomy_explainer.verify import (
     scripts_dir,
     turning_builder,
 )
-from hevi.capabilities.errors import CapabilityError
 
 REPO = Path(__file__).resolve().parents[1]
 ANATOMY = REPO / "third_party" / "anatomy"
-import sys
 
 # Run the scripts with the interpreter that is running this test file: the repo
 # venv (``/data/soffy/projects/hevi/.venv``) has pydantic, Pillow and numpy, a

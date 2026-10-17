@@ -33,7 +33,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -41,7 +40,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from hevi.capabilities.anatomy_explainer import verify  # noqa: E402
+from hevi.capabilities.anatomy_explainer import verify
 
 REPO = Path(__file__).resolve().parents[1]
 ANATOMY = REPO / "third_party" / "anatomy"
@@ -80,7 +79,7 @@ class Result:
         }
 
     @classmethod
-    def from_dict(cls, name: str, entry: dict[str, object]) -> "Result":
+    def from_dict(cls, name: str, entry: dict[str, object]) -> Result:
         return cls(
             name=name,
             page=str(entry.get("page", "")),

@@ -32,8 +32,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from hevi.capabilities.anatomy_explainer import verify  # noqa: E402
-from hevi.capabilities.anatomy_explainer.renderer import encode_mp4, ffprobe_bin  # noqa: E402
+from hevi.capabilities.anatomy_explainer import verify
+from hevi.capabilities.anatomy_explainer.renderer import encode_mp4, ffprobe_bin
 
 REPO = Path(__file__).resolve().parents[1]
 ANATOMY = REPO / "third_party" / "anatomy"
@@ -70,8 +70,8 @@ def actions_for(name: str, frames_dir: Path, count: int, *, sweep: float) -> lis
 
 
 def frames_stats(frames: list[Path]) -> dict[str, object]:
-    from PIL import Image
     import numpy as np
+    from PIL import Image
 
     sizes = {Image.open(path).size for path in (frames[0], frames[len(frames) // 2], frames[-1])}
     arrays = [np.asarray(Image.open(path).convert("RGB"), dtype="int16") for path in frames]
