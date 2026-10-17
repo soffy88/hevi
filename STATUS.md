@@ -89,6 +89,17 @@ Post-skeletal production PASS 2026-10-03 (`docs/p10/post_skeletal_acceptance.md`
 S1 CANONOMICALIZATION PASS 2026-10-03 (`docs/p10/s1_canonicalization_report.md`): hevi/creative/autonomous/ wires Director 五级主干 + p0 VisualIntent + p7 asset + provider_policy + MissionExecutor + ProductionVerdictAuthority + RepairIncident; production_manifest.json is the only greenfield; 186 tests green. Architecture guards make 'no 6th/7th vocabulary' mechanically enforced (`tests/p10/test_s1_canonical_authority.py`). Audit: `docs/CURRENT_ARCHITECTURE_MAP.md`.
 Open questions Q1–Q3/Q5–Q9 RESOLVED (`docs/p10/open_questions_resolution.md`): K<3 by reason · Memory global scope disabled · structure_clone forbidden · multilingual explicit translation index · tolerance calibration (needs real data) · signature budget 2 · cost table per deployment.
 
+## HEVI Director System pointer (S1, 2026-10-03)
+
+S1 PASS (`docs/p10/p10s1_acceptance.md`: S1-1–S1-6, 34 tests green): `hevi/creative/director_brief/`
+ReferencePack (observed/inferred/target/forbidden + provenance/reference identity) + DirectorBrief
+(thesis/treatment pins, visual+motion priorities, constraints, anti-patterns, approval/completeness),
+deterministic hash + fail-loud validation. **Data contracts only** — no Director Agent, no new
+orchestrator, no new semantic authority; NarrativeCanon/CreativeProgram/P10a-lifecycle/P10b-pins are
+referenced by pin, never re-owned. Real vertical test over the P10-S artifacts.
+NOT started: S2 MotionGrammar, S3 Physics/Camera/Lighting, S4 Sound, S5 Compiler, S6 Review,
+S7 Review Surface, S8 Revision Impact, S9 E2E.
+
 ## Video Intelligence closure (2026-09-23)
 
 The existing durable Case Learning runtime is connected and runtime-qualified;
