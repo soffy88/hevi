@@ -36,8 +36,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from hevi.capabilities import CapabilityError, get, list_capabilities
+from hevi.huobao.capabilities import register_huobao_capabilities
 
 router = APIRouter(prefix="/capabilities", tags=["capabilities"])
+
+# Register the huobao (short-drama) capability family on import so
+# GET /api/capabilities exposes them alongside every other line.
+register_huobao_capabilities()
 
 
 def _summary(name: str) -> dict[str, Any]:

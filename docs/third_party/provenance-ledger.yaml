@@ -122,3 +122,14 @@ entries:
     commercial_restrictions: none
     derived_data: false
     last_verified: 2026-10-14
+  - source: Huobao Drama (chatfire-AI/huobao-drama v4.x)
+    repository: /data/soffy/refs/huobao-drama
+    license: CC BY-NC-SA 4.0
+    version: v4.x
+    integration_type: prompt_methodology_and_workflow_distillation
+    bundled: false
+    runtime_dependency: false
+    attribution_required: true
+    commercial_restrictions: non_commercial_only_clean_room_replacement_required_for_commercial
+    derived_data: true
+    last_verified: 2026-10-14

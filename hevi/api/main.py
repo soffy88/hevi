@@ -31,6 +31,8 @@ from hevi.api.routers.fx import router as fx_router
 from hevi.api.routers.gallery import router as gallery_router
 from hevi.api.routers.cinematic import router as cinematic_router
 from hevi.api.routers.history_series import router as history_series_router
+from hevi.api.routers.capabilities import router as capabilities_router
+from hevi.api.routers.huobao import router as huobao_router
 from hevi.api.routers.payment import router as payment_router
 from hevi.api.routers.pipeline import router as pipeline_router
 from hevi.api.routers.pro_studio import router as pro_studio_router
@@ -201,8 +203,10 @@ app.include_router(director_pipeline_router, prefix="/api")
 app.include_router(tongjian_router, prefix="/api")
 app.include_router(cinematic_router, prefix="/api")  # 黄金公式动画演绎
 app.include_router(history_series_router, prefix="/api")  # P2 历史现场每日连载
+app.include_router(capabilities_router, prefix="/api")
 app.include_router(shortdrama_router, prefix="/api")
 app.include_router(shortdrama_writer_router, prefix="/api")
+app.include_router(huobao_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
 app.include_router(fx_router, prefix="/api")
 app.include_router(mpt_router, prefix="/api")
