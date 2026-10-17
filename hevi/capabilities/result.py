@@ -33,6 +33,14 @@ class CapabilityResult:
                 return Path(p)
         raise ValueError("CapabilityResult has no artefact path")
 
+    @property
+    def artifact_path(self) -> str:
+        """Compatibility property for legacy and webkit-layers callers."""
+        for p in (self.mp4, self.png, self.wav):
+            if p:
+                return str(p)
+        return ""
+
     def as_dict(self) -> dict:
         return {
             "mp4": self.mp4,

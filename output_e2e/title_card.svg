@@ -1,0 +1,9 @@
+<svg width="1080" height="1920" viewBox="0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#0f172a"/>
+  <g transform="translate(100, 810)">
+    <text x="0" y="0" fill="#f8fafc" font-family="Noto Sans SC, sans-serif" font-size="64" font-weight="bold">Hevi WebKit 动画工具链</text>
+    <text x="0" y="90" fill="#94a3b8" font-family="Noto Sans SC, sans-serif" font-size="32">30秒 E2E 样片演示</text>
+    <rect x="0" y="150" width="120" height="8" rx="4" fill="#3b82f6"/>
+  </g>
+  <text x="80" y="1840" fill="#94a3b8" font-family="Noto Sans SC, sans-serif" font-size="24">Hevi WebKit Engine · Satori Card</text>
+</svg>

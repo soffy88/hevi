@@ -1,0 +1,14 @@
+{
+  "title_card": "output_e2e/title_card.png",
+  "svgo_metrics": {
+    "original_size_bytes": 116,
+    "optimized_size_bytes": 93,
+    "savings_percent": 19.83
+  },
+  "video_mp4": "output_e2e/sample_e2e.mp4",
+  "duration_seconds": 30.0,
+  "sha256": "0e3c587c6e7a74540d67d5255274a5c07b62d796a6119bc5c9f70cc807e0424f",
+  "lufs": -14.2,
+  "aspect_ratio": "9:16",
+  "status": "SHIP_APPROVED"
+}
