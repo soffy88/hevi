@@ -20,7 +20,7 @@
  | `feat/kids-manifest` | 2026-10-15 23:42:53 +0000 | 4 | 12 | MERGED | Clean merge | 
  | `feat/webkit-layers` | 2026-10-14 12:40:56 +0000 | 4 | 16 | SKIPPED | Conflict: Auto-merging hevi/capabilities/registry.py CONFLICT (add/add | 
  | `feat/story-plan` | 2026-10-15 13:47:50 +0000 | 4 | 35 | MERGED | Clean merge | 
-| `feat/archify-visuals` | 2026-10-12 22:00:52 +0000 | 6 | 723 | PENDING |  |
+ | `feat/archify-visuals` | 2026-10-12 22:00:52 +0000 | 6 | 723 | SKIPPED | Conflict: Auto-merging third_party/README.md CONFLICT (add/add): Merge | 
 | `feat/aimotion-rules` | 2026-10-14 03:28:03 +0000 | 7 | 27 | PENDING |  |
 | `feat/riso-broll` | 2026-10-14 11:47:52 +0000 | 7 | 27 | PENDING |  |
 | `feat/scene3d-vibe` | 2026-10-15 14:25:04 +0000 | 7 | 927 | PENDING |  |
