@@ -776,6 +776,38 @@ def _render_take_select(
     )
 
 
+def _render_storyplan_critique(
+    params: dict[str, Any], out_dir: Path, *, duration: float = 0.0, aspect: str = "16:9", seed: int = 0
+) -> CapabilityResult:
+    from hevi.storyplan.critique import render_storyplan_critique
+
+    return render_storyplan_critique(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
+def _render_storyboard_preview_sheet(
+    params: dict[str, Any], out_dir: Path, *, duration: float = 0.0, aspect: str = "16:9", seed: int = 0
+) -> CapabilityResult:
+    from hevi.storyplan.preview_sheet import render_preview_sheet_capability
+
+    return render_preview_sheet_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
+def _render_transitions_storybook(
+    params: dict[str, Any], out_dir: Path, *, duration: float = 1.0, aspect: str = "16:9", seed: int = 0
+) -> CapabilityResult:
+    from hevi.motion_fx.transitions.storybook import render_transitions_storybook_capability
+
+    return render_transitions_storybook_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
+def _render_storybook_voice_align(
+    params: dict[str, Any], out_dir: Path, *, duration: float = 0.0, aspect: str = "16:9", seed: int = 0
+) -> CapabilityResult:
+    from hevi.audio.storybook_voice import render_storybook_voice_align_capability
+
+    return render_storybook_voice_align_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
 _STORYPLAN_ASPECTS = ["16:9", "9:16", "1:1"]
 
 register(Capability(
@@ -824,4 +856,91 @@ register(Capability(
     render=_render_take_select,
     description="选段器 take_select：多候选 take 按帧评分与子区间选中",
     line="storyplan",
+))
+
+register(Capability(
+    name="storyplan.critique",
+    kind="shot",
+    aspects=_STORYPLAN_ASPECTS,
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "plan": {"type": "object"},
+            "topic": {"type": "string"},
+            "auto_revise": {"type": "boolean"},
+        },
+    },
+    cpu_cost_hint=0.2,
+    render=_render_storyplan_critique,
+    description="剧本自审轮：挑剔观众+动画导演双重视角批判与自动修订",
+    line="storyplan",
+))
+
+register(Capability(
+    name="storyboard.preview_sheet",
+    kind="shot",
+    aspects=["16:9", "9:16"],
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "title": {"type": "string"},
+            "shots": {"type": "array"},
+            "shot_groups": {"type": "array"},
+            "plan": {"type": "object"},
+            "topic": {"type": "string"},
+            "aspect": {"type": "string"},
+        },
+    },
+    cpu_cost_hint=0.3,
+    render=_render_storyboard_preview_sheet,
+    description="分镜预览图：按镜头组生成漫画格分镜表（景别远中特、画面描述、台词，铅笔线淡彩风格）",
+    line="storyplan",
+))
+
+register(Capability(
+    name="transitions.storybook",
+    kind="transition",
+    aspects=["16:9", "9:16", "1:1"],
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "transition_type": {
+                "type": "string",
+                "enum": ["page_flip", "wet_brush", "torn_paper", "pencil_sketch", "watercolor_bloom"],
+            },
+            "clip_a": {"type": "string"},
+            "clip_b": {"type": "string"},
+            "duration": {"type": "number"},
+            "fps": {"type": "number"},
+            "params": {"type": "object"},
+        },
+    },
+    cpu_cost_hint=2.0,
+    render=_render_transitions_storybook,
+    description="绘本转场：翻页、湿笔刷晕开、纸页撕裂、铅笔线自绘、水彩晕染",
+    line="handdraw",
+))
+
+register(Capability(
+    name="storybook.voice_align",
+    kind="audio",
+    aspects=["16:9", "9:16", "1:1"],
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "script": {"type": "array"},
+            "bgm_style": {"type": "string"},
+            "quiet_break_s": {"type": "number"},
+            "pre_pad_s": {"type": "number"},
+            "post_pad_s": {"type": "number"},
+        },
+    },
+    cpu_cost_hint=2.0,
+    render=_render_storybook_voice_align,
+    description="绘本配音对齐：按本地TTS实际时长重排镜头，双语字幕逐句对齐(<150ms)，旁白角色多音色语气，BGM避让留白",
+    line="audio",
 ))

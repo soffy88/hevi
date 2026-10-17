@@ -1,0 +1,38 @@
+{
+  "audience_score": 100.0,
+  "director_score": 84.0,
+  "overall_score": 91.2,
+  "issues": [
+    {
+      "issue_id": "DIR-01",
+      "persona": "动画导演",
+      "severity": "medium",
+      "category": "SHOT_SCALE_VARIETY",
+      "target_shot_id": "",
+      "target_scene_id": "",
+      "description": "缺少细节特写（insert）镜头，角色的手部动作、眼神、道具细微动态无法充分放大传递情绪。",
+      "suggestion": "为关键互动动作或发现瞬间配置特写景别（insert）。"
+    },
+    {
+      "issue_id": "DIR-02",
+      "persona": "动画导演",
+      "severity": "low",
+      "category": "AUDIO_VISUAL_SYNC",
+      "target_shot_id": "shot_01",
+      "target_scene_id": "",
+      "description": "镜头 shot_01 仅有台词，缺乏环境声（Foley）或动作提示音效（SFX），画面声场扁平。",
+      "suggestion": "标注环境音或拟声点（如风吹树叶沙沙声、水滴声、轻柔木琴BGM）。"
+    },
+    {
+      "issue_id": "DIR-03",
+      "persona": "动画导演",
+      "severity": "low",
+      "category": "AUDIO_VISUAL_SYNC",
+      "target_shot_id": "shot_03",
+      "target_scene_id": "",
+      "description": "镜头 shot_03 仅有台词，缺乏环境声（Foley）或动作提示音效（SFX），画面声场扁平。",
+      "suggestion": "标注环境音或拟声点（如风吹树叶沙沙声、水滴声、轻柔木琴BGM）。"
+    }
+  ],
+  "summary": "自审完成：综合评分 91.2/100（挑剔观众 100.0 分，动画导演 84.0 分）。 共检出 3 项优化议题（观众视角 0 项，导演视角 3 项）。 整体剧本结构健全，细节润色后可直接进入分镜与水彩渲染。"
+}
