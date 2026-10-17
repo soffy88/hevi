@@ -618,8 +618,23 @@ def validate_first_frame(
     action_text = f"{shot.action} {' '.join(shot.second_beats)} {shot.action_en}".lower()
     needs_whole_body = any(kw.lower() in action_text for kw in WHOLE_BODY_ACTION_KEYWORDS)
 
-    framing_text = f"{shot.shot_type} {shot.shot_type_en} {pt}".lower()
-    is_closeup = any(kw.lower() in framing_text for kw in CLOSEUP_FRAMING_KEYWORDS)
+    # 景别检查针对 shot_type、shot_type_en 以及 prompt 中的景别声明
+    framing_candidates = f"{shot.shot_type} {shot.shot_type_en}".strip()
+    prompt_framings = re.findall(r"\b([a-zA-Z\s\-]+framing)\b", pt, re.I)
+    if prompt_framings:
+        framing_candidates += " " + " ".join(prompt_framings)
+
+    is_closeup = False
+    for kw in ["特写", "大特写", "微距", "肩部以上", "胸部以上", "特写镜头", "头部特写"]:
+        if kw in framing_candidates:
+            is_closeup = True
+            break
+    if not is_closeup:
+        for kw in ["close-up", "extreme close-up", "medium close-up", "head-and-shoulders", "head and shoulders", "bust shot", "ecu", "cu", "mcu"]:
+            if re.search(r"\b" + re.escape(kw) + r"\b", framing_candidates, re.I):
+                is_closeup = True
+                break
+
     # 若首帧明确为特写但又需要全身大动作
     if needs_whole_body and is_closeup:
         errors.append(
