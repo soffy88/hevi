@@ -173,6 +173,14 @@ app.add_middleware(
 )
 app.add_middleware(PrometheusMiddleware)
 
+
+@app.get("/health", tags=["system"])
+async def root_health() -> dict[str, str]:
+    """Unauthenticated process health for release/load-balancer probes."""
+
+    return {"status": "ok"}
+
+
 app.include_router(metrics_router)
 app.include_router(auth_router, prefix="/api")
 app.include_router(authorities_router, prefix="/api")
