@@ -35,3 +35,14 @@ hevi 现在出图生视频提示词时，必须同时为每个镜头产出可直
 ## 规则
 CPU-only，不调付费 API，不真的调用 Midjourney；不 push、不 merge、不部署；不删 worktree 外文件；/data 很紧（约 13G），不要生成大文件、不要装新包；每步 commit。
 最后写 REPORT_FF1017.md：做了什么、文件清单、测试（基线 vs 现在）、demo 输出摘录、未完成项；最后一行 `FF1017 DONE` 或 `FF1017 BLOCKED`。
+
+## 复核问题（2026-10-17 15:30 Hark 独立复核，未通过，请逐条修复后再写 DONE）
+测试 105 passed、demo 能跑、参数格式正确，但 demo 实际输出质量不合格：
+1. 场景定妆参考图提示词混入中文：`Cinematic architectural establishing shot of 宴会主厅, ...` / `of 康复花园`。Midjourney 版必须全英文：场景用英文名（schemas 已有英文字段就用，没有就只用英文场景描述）。加测试：所有 MJ 提示词（资产参考图+每镜首帧）不含 CJK 字符。
+2. 道具定妆参考图提示词取错字段：`Product commercial photography of microphone, holding a silver wireless microphone in his right hand, left arm resting...`、轮椅 `standing behind the wheelchair with both hands...`。道具参考图要描述道具本身外观材质（中性背景、无人物、无手持动作），不能用角色持有状态。另外 demo 道具名「立式麦克风」与镜头里的手持无线麦矛盾，修正 demo 数据。加测试：道具参考图不含 holding/hand/standing behind 等人物动作词。
+3. 首帧正文重复和语病：Shot-01 `microphone held in his right hand, holding a silver wireless microphone in his right hand`；Shot-02 `wheelchair gripping both rubber handles`（主语错成轮椅）、手提包短语出现两次、`standing behind the wheelchair` 出现两次。道具账本状态与 start_state 已表达的内容要去重，道具状态句子以道具为主语。加测试：同一镜首帧提示词里不出现重复的 6 词以上短语。
+4. 多角色首帧把两人外貌描述直接首尾相连，看不出哪段属于谁。每个角色描述前加名字/身份引导（如 `Li Ming, an adult East Asian man ...; beside him, Su Qing, an adult East Asian woman ...`），角色母卡描述本体仍逐字复用。
+5. 构图词互相矛盾：Shot-01 同时有 `rule of thirds framing` 和 `centered composition`；固定追加的 `centered composition` 不能和镜头自身构图冲突（镜头有构图要求时不加默认 centered）。
+6. 扩图模板输出 `coherent coherent warm afternoon sunlight`（lighting 已含 coherent 时重复），修掉并加测试。
+7. demo 导入了 build_local_edit_prompt 却没输出：在 demo 中打印一条局部修改模板示例（如只把领结换成酒红色）。
+修完后重跑全部回归（含 test_first_frame.py）与 demo，在 REPORT_FF1017.md 新增「复核问题修复」节，贴修复后的 demo 片段，最后一行仍为 `FF1017 DONE`。
