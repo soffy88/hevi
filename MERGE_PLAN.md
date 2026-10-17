@@ -55,7 +55,7 @@
  | `veya/remote-mcp-direct-command-remote-8ff76` | 2026-09-24 08:24:09 +0000 | 2 | 8 | SKIPPED | Conflict: CONFLICT (modify/delete): hevi/distribution/service.py delet | 
  | `closure/3o-v3-architecture` | 2026-09-14 13:24:42 +0000 | 3 | 19 | SKIPPED | Conflict: Auto-merging artifacts/3o-v3/canonical_pins.json CONFLICT (a | 
  | `architecture/production-graph-vnext` | 2026-09-11 14:03:31 +0000 | 28 | 73 | SKIPPED | Conflict: Auto-merging docs/API-CAPABILITIES.md Auto-merging docs/open | 
-| `product/director-workbench-vnext` | 2026-09-12 01:16:59 +0000 | 46 | 87 | PENDING |  |
+ | `product/director-workbench-vnext` | 2026-09-12 01:16:59 +0000 | 46 | 87 | SKIPPED | Conflict: Auto-merging docs/API-CAPABILITIES.md Auto-merging docs/open | 
 | `platform/production-intelligence-vnext` | 2026-09-12 01:57:51 +0000 | 48 | 93 | PENDING |  |
 | `release/hevi-vnext` | 2026-09-12 14:29:47 +0000 | 52 | 95 | PENDING |  |
 | `feat/spec-001-shortdrama-backend` | 2026-07-25 10:44:59 +0000 | 78 | 166 | PENDING |  |
