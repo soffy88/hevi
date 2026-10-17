@@ -63,6 +63,10 @@ register_explainer_render_capability()
 from hevi.stickman.capabilities import register_stickman_capabilities_once
 register_stickman_capabilities_once()
 
+# Riso B-roll capabilities (feat/riso-broll)
+from hevi.riso.capabilities import register_riso_capabilities
+register_riso_capabilities()
+
 
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.

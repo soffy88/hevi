@@ -54,6 +54,7 @@ __all__ = [
     "Registry",
     "list_caps",
     "describe",
+    "compute_sha256",
 ]
 
 # Canonical registry: a process-global, ordered dict keyed by capability name.
@@ -126,10 +127,24 @@ class Capability:
         )
 
 
-def register(cap: Capability) -> Capability:
+def compute_sha256(path: Path | str) -> str:
+    """Compute sha256 checksum of a file."""
+    p = Path(path)
+    if not p.is_file():
+        raise CapabilityError(f"File not found for sha256 computation: {p}")
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def register(cap: Capability, overwrite: bool = True) -> Capability:
     """Install ``cap`` into the global registry (last writer wins per name)."""
     if not cap.name:
         raise CapabilityError("capability name must be non-empty")
+    if not overwrite and cap.name in _REGISTRY:
+        return _REGISTRY[cap.name]
     _REGISTRY[cap.name] = cap
     return cap
 

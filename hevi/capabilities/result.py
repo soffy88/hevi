@@ -41,6 +41,16 @@ class CapabilityResult:
                 return str(p)
         return ""
 
+    @property
+    def output_path(self) -> Path:
+        """Compatibility property for riso-broll callers."""
+        return Path(self.artifact_path)
+
+    @property
+    def duration(self) -> float:
+        """Compatibility property for riso-broll callers."""
+        return self.duration_s
+
     def as_dict(self) -> dict:
         return {
             "mp4": self.mp4,
