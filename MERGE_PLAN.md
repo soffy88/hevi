@@ -33,7 +33,7 @@
  | `feat/director-styles` | 2026-10-14 03:51:38 +0000 | 29 | 201 | SKIPPED | Conflict: Auto-merging .gitignore CONFLICT (content): Merge conflict i | 
  | `feat/luxtts-http` | 2026-10-15 15:07:35 +0000 | 30 | 55 | SKIPPED | Conflict: Auto-merging hevi/audio/audio_router.py Auto-merging hevi/au | 
  | `feat/motion-director` | 2026-10-15 11:34:11 +0000 | 92 | 2456 | SKIPPED | Conflict: Auto-merging .gitignore CONFLICT (content): Merge conflict i | 
-| `feat/v3-aid-gaps` | 2026-10-16 06:09:26 +0000 | 140 | 2609 | PENDING |  |
+ | `feat/v3-aid-gaps` | 2026-10-16 06:09:26 +0000 | 140 | 2609 | MERGED | Clean merge | 
 | `feat/explainer-flow` | 2026-10-17 05:33:43 +0000 | 146 | 2623 | PENDING |  |
 | `feat/stickman-flow` | 2026-10-17 06:25:24 +0000 | 146 | 2638 | PENDING |  |
 | `feat/storybook-flow` | 2026-10-17 04:28:52 +0000 | 148 | 2631 | PENDING |  |
