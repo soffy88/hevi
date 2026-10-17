@@ -54,53 +54,58 @@ def run_demo() -> None:
     )
 
     # ── 2. 建立角色母卡 (CharacterCard) ─────────────────────────────────────
+    # 不变身体特征（body_fixed）与故事日服装（wardrobes）严格解耦，防止换装矛盾
     groom = CharacterCard(
         s_no=1,
         name="李明",
-        appearance_fixed=(
-            "30岁成年东亚男子，面部棱角分明，短发梳理整齐微卷，浓眉，右眉角有一道浅淡旧疤痕，"
-            "双眼温和坚定，高鼻梁薄唇；身穿深灰色定制羊毛西装外套，内搭纯白挺括衬衫与深黑色领结，"
-            "左胸佩戴一朵淡香槟色玫瑰襟花，无耳环戒指。"
+        body_fixed=(
+            "30岁成年东亚男子，面部棱角分明，短发微卷梳理自然，浓眉，右眉角有一道浅淡旧疤痕，"
+            "双眼温和坚定，高鼻梁薄唇，手指修长无饰品。"
         ),
+        wardrobes={
+            "D1": "身穿深灰色定制羊毛西装外套，内搭纯白挺括衬衫与深黑色领结，左胸佩戴一朵淡香槟色玫瑰襟花。",
+            "D_flashback": "身穿浅蓝色薄针织衫与深灰运动长裤，脚穿白色平底休闲布鞋。",
+        },
         voice_card=VoiceCard(
             gender_age="30岁青年男性",
             pitch="中低音沉稳",
             speed="每秒约3.2字，句间停顿自然",
             timbre="温和醇厚、略带沙哑磁性",
             accent="标准普通话，咬字清晰",
-            reverb="中等宴会厅空间混响",
         ),
         daily_states={
-            "D1": "婚宴正日：发型整齐油亮，西装一尘不染，精神饱满",
-            "D_flashback": "三年前回忆：短发凌乱，身穿浅蓝色薄针织衫与深灰运动裤，眼神略显憔悴但温柔",
+            "D1": "婚宴正日：精神饱满，气色极佳",
+            "D_flashback": "三年前回忆：眼神略显憔悴但温柔专注",
         },
     )
 
     bride = CharacterCard(
         s_no=2,
         name="苏晴",
-        appearance_fixed=(
-            "28岁东亚女子，鹅蛋脸，皮肤白皙，深棕色柔顺长发盘起，耳际自然散落微卷碎发，戴精巧单颗珍珠耳钉，"
-            "杏眼清亮带笑意，眉形柔和，浅粉色唇膏；身穿米白色露肩缎面轻婚纱，裙摆绣有淡暗纹银丝，"
-            "锁骨正中戴一条极细银质吊坠项链。"
+        body_fixed=(
+            "28岁东亚女子，鹅蛋脸，皮肤白皙，深棕色柔顺长发，杏眼清亮带笑意，眉形柔和，浅粉色唇膏。"
         ),
+        wardrobes={
+            "D1": "深棕长发高雅盘起，戴精巧单颗珍珠耳钉，身穿米白色露肩缎面轻婚纱，裙摆绣有淡暗纹银丝，锁骨戴细银吊坠项链。",
+            "D_flashback": "扎简单低马尾，穿着棉质病服外套，膝盖覆着浅粉色针织保暖小毛毯。",
+        },
         voice_card=VoiceCard(
             gender_age="28岁年轻女性",
             pitch="清亮中音",
             speed="轻柔舒缓",
             timbre="柔和纯净甜美",
             accent="标准普通话",
-            reverb="近距离微混响",
         ),
         daily_states={
-            "D1": "婚宴正日：盘发珍珠婚纱，气色红润",
-            "D_flashback": "三年前回忆：马尾辫，膝盖覆着浅粉色针织毛毯，穿着棉质病服外套，坐在轮椅上",
+            "D1": "婚宴正日：气色红润，容光焕发",
+            "D_flashback": "三年前回忆：坐在轮椅上，身体虚弱康复中",
         },
     )
 
     characters = [groom, bride]
 
     # ── 3. 建立场景母卡 (SceneCard) ─────────────────────────────────────────
+    # 空间混响由 SceneCard 决定（宴会厅有混响，室外花园无室内混响）
     scene_wedding = SceneCard(
         scene_name="宴会主厅",
         description="五星级酒店宏大宴会厅，水晶吊灯高悬，主舞台后方为暖金暗红纱幔",
@@ -109,7 +114,8 @@ def run_demo() -> None:
         reverse_angle_background="反打背景为座无虚席的圆形宴会桌与深远暖光大门",
         lighting="Three-Point / 侧逆主光45度 / 3200K暖白钨丝灯感 / 柔光漫射",
         lens="85mm / f2.0 / 视平高度1.65米单人浅景深",
-        ambient_noise="宴会大厅平稳轻微人声低语、玻璃杯轻微碰撞声，连续平稳",
+        ambient_noise="宴会大厅平稳轻微人声低语、玻璃杯轻微碰撞声，声音平稳连贯",
+        reverb="中等宴会厅空间混响",
         music_policy="无音乐",  # 明确无音乐
     )
 
@@ -121,7 +127,8 @@ def run_demo() -> None:
         reverse_angle_background="反打方向为老式红砖康复大楼与落叶林荫道",
         lighting="Natural / 傍晚低角度暖金逆光 / 4500K柔和漫射",
         lens="50mm / f2.8 / 移动推拉稳定器视角",
-        ambient_noise="午后微风吹过树叶沙沙声，远处偶尔一声鸟鸣",
+        ambient_noise="午后微风吹过树叶沙沙声，远处偶有一声鸟鸣",
+        reverb="室外开阔花园自然声，自然衰减无室内混响",
         music_policy="无音乐",
     )
 
@@ -208,11 +215,11 @@ def run_demo() -> None:
     assert len(errors) > 0, "Expected errors to be detected!"
 
     # ── 6. 修复错误：修正运镜为单一运镜，修正道具手部占用 ─────────────────
-    print("\n[STEP 2] 修复穿帮错误：运镜改为单一 'Tracking'，手提包挂在轮椅右侧把手...")
+    print("\n[STEP 2] 修复穿帮错误：运镜改为单一 'Tracking'，手提包持有人为李明但放置于轮椅右把手挂钩...")
     handbag_fixed = PropItem(
         prop_name="女式黑皮手提包",
-        holder="折叠轮椅",
-        placement="挂在轮椅挂钩",
+        holder="李明",
+        placement="挂在轮椅右把手挂钩",
         start_state="稳固悬挂于轮椅右把手挂钩",
         end_state="稳固悬挂",
     )
@@ -252,31 +259,31 @@ def run_demo() -> None:
     assert len(fixed_errors) == 0, f"Expected 0 errors after fix, got: {fixed_errors}"
 
     # ── 7. 多平台提示词编译输出 ─────────────────────────────────────────────
-    print("\n[STEP 3] 编译 Shot-01 各平台提示词输出：")
+    print("\n[STEP 3] 编译 Shot-01 (婚礼现场) 与 Shot-02 (闪回推轮椅) 各平台完整提示词输出：")
     platforms = ["h3", "seedance", "veo", "runway", "generic"]
-    for plat in platforms:
-        render = compile_continuity_prompt(
-            bible=bible,
-            scene=scene_wedding,
-            characters=characters,
-            props=props_fixed,
-            shot=shot1,
-            platform=plat,
-        )
-        print(f"\n--- Platform: [{plat.upper()}] ---")
-        out_dict = render.to_dict()
-        print(f"Soundscape: {out_dict.get('overall_soundscape') or out_dict.get('soundscape')}")
-        print(f"Music: {out_dict.get('non_diegetic_music') or out_dict.get('music')}")
-        if "negative_prompt" in out_dict:
-            print(f"Negative: {out_dict['negative_prompt'][:60]}...")
-        if "constraints" in out_dict:
-            print(f"Constraints: {out_dict['constraints']}")
-        p_text = out_dict.get("integrated_multimodal_description") or out_dict.get("prompt", "")
-        # 打印前 3 行与关键段
-        lines = p_text.split("\n")
-        print("Prompt preview (first 4 sections):")
-        for line in lines[:4]:
-            print(f"  {line}")
+
+    for shot_item, scene_item in [(shot1, scene_wedding), (shot2_fixed, scene_hospital)]:
+        print(f"\n{'#' * 40} {shot_item.shot_id} ({shot_item.scene_name}) {'#' * 40}")
+        for plat in platforms:
+            render = compile_continuity_prompt(
+                bible=bible,
+                scene=scene_item,
+                characters=characters,
+                props=props_fixed,
+                shot=shot_item,
+                platform=plat,
+            )
+            print(f"\n--- Platform: [{plat.upper()}] | {shot_item.shot_id} ---")
+            out_dict = render.to_dict()
+            print(f"Soundscape: {out_dict.get('overall_soundscape') or out_dict.get('soundscape')}")
+            print(f"Music: {out_dict.get('non_diegetic_music') or out_dict.get('music')}")
+            if "negative_prompt" in out_dict:
+                print(f"Negative: {out_dict['negative_prompt']}")
+            if "constraints" in out_dict:
+                print(f"Constraints: {out_dict['constraints']}")
+            p_text = out_dict.get("integrated_multimodal_description") or out_dict.get("prompt", "")
+            print("Full Prompt:")
+            print(p_text)
 
     # ── 8. 逐镜审片清单输出 ─────────────────────────────────────────────────
     print("\n[STEP 4] 生成 Shot-02 逐镜 16 项审片清单 (review_checklist)...")

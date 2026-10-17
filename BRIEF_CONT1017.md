@@ -41,3 +41,12 @@ Lighting: Three-Point, High-Key, Low-Key, Rembrandt, Silhouette, Chiaroscuro, Pr
 Editing: Jump Cut, Match Cut, J-Cut, L-Cut, Cross Dissolve, Smash Cut, Montage, Parallel Editing, Cross-Cutting, Flash Cut, Freeze Frame, Slow Motion, Time-Lapse, Split Edit, Invisible Cut, Match on Action, Eyeline Match, Cut on Action, Establishing Cut, Cutaway
 Composition: Rule of Thirds, Leading Lines, Symmetry, Framing Within Frame, Depth of Field, Negative Space, Golden Ratio, Diagonal Lines, Foreground Interest, Balance, Triangular, Dynamic Symmetry
 Genres: Horror, Comedy, Drama, Thriller, Sci-Fi, Action, Romance, Documentary, Film Noir, Western, Musical, Mystery, War, Animation, Independent
+
+## 复核问题（Hark 复核 2026-10-17 15:30，必须修完再写 DONE）
+用修改版 demo 把 Shot-02（闪回推轮椅）各平台完整 prompt 打出来后发现：
+1. **闪回换装自相矛盾**：【人物】完整固定描述里写死婚礼服装（李明“深灰定制西装+领结+襟花”，苏晴“米白露肩婚纱+珍珠耳钉”），后面又追加【当日状态：浅蓝针织衫/病服外套】。同一镜给模型两套服装＝必穿帮。要求：CharacterCard 把“不变的身体特征（脸/肤/眼/眉/鼻唇/发质/疤痕）”与“按故事日的服装配饰”分开；编译时只输出本镜所在故事日的那一套服装，不出现别的故事日服装。加单测：闪回镜头 prompt 不含婚礼服装词。
+2. **音色卡混响写死在角色上**：闪回室外花园仍输出“中等宴会厅空间混响”。空间混响应来自 SceneCard（或按场景覆盖），音色本体（音高/语速/质感/口音）跨镜不变。加单测。
+3. **runway 仍是否定写法**：输出“保持完全无字幕、无文字、无水印的干净画面”，“无耳环戒指”等。brief 要求 runway 全部肯定句；改成“画面干净纯净，只呈现人物与场景”之类，角色描述里的“无X”在 runway 下也要改写或省略。加单测：runway 输出不含“无/不要/禁止/严禁/避免/没有”否定词（“无音乐”字段除外，或改为“仅环境声”）。
+4. **post_only 中文同义词漏拦**：find_post_only_violations("眩晕变焦") 返回空（只认“滑动变焦”）。给 post_only 项加常见中文别名（眩晕变焦/希区柯克变焦、甩镜头、急摇、叠化、慢动作、延时摄影、定格、蒙太奇、平行剪辑等）。加单测。
+5. 小问题：seedance 动作行出现“。。”双句号；道具“女式黑皮手提包 持有人:折叠轮椅”应写为持有人李明/放置于轮椅右把手挂钩。
+6. demo 增加 Shot-02 的完整各平台 prompt 输出（不要只打前 4 行），REPORT 的“未完成项”如实写。

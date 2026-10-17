@@ -506,3 +506,159 @@ def test_16_item_review_checklist(sample_characters: list[CharacterCard]):
         it.item_no for it in checklist if it.vlm_screenable
     ]
     assert vlm_screenable_indices == [6, 8, 10, 14]
+
+
+# ── 测试 13: 闪回镜头服装与不变身体特征解耦，不含婚礼服装词 ───────────────
+
+
+def test_flashback_wardrobe_separation_no_wedding_clothes(sample_bible: FilmBible):
+    groom = CharacterCard(
+        s_no=1,
+        name="李明",
+        body_fixed="30岁成年东亚男子，面部轮廓分明，浓眉短发微卷，右眉角有浅淡旧疤痕",
+        wardrobes={
+            "D1": "身穿深灰色定制西装，内搭挺括白衬衫与深黑领结，左胸佩戴白玫瑰襟花",
+            "D_flashback": "身穿浅蓝色薄针织衫与深灰运动长裤，脚穿白色平底布鞋",
+        },
+    )
+    bride = CharacterCard(
+        s_no=2,
+        name="苏晴",
+        body_fixed="28岁东亚女子，鹅蛋脸，皮肤白皙，深棕色柔顺长发，杏眼清亮带笑意",
+        wardrobes={
+            "D1": "长发盘起戴珍珠耳钉，身穿米白色露肩缎面轻婚纱配银细吊坠项链",
+            "D_flashback": "扎简单低马尾，身穿棉质条纹病服外套，膝盖覆浅粉色针织小毛毯",
+        },
+    )
+    scene_hospital = SceneCard(scene_name="康复花园")
+    shot_flashback = ShotContract(
+        shot_id="S13_FB",
+        scene_name="康复花园",
+        character_names=["李明", "苏晴"],
+        story_day="D_flashback",
+    )
+
+    r = compile_continuity_prompt(
+        sample_bible, scene_hospital, [groom, bride], None, shot_flashback, platform="generic"
+    )
+
+    # 1. 必须包含闪回故事日的服装
+    assert "浅蓝色薄针织衫" in r.prompt
+    assert "棉质条纹病服外套" in r.prompt
+
+    # 2. 严禁出现婚宴故事日的服装配饰词（彻底杜绝同镜两套衣服穿帮）
+    wedding_forbidden_words = ["西装", "领结", "襟花", "婚纱", "珍珠耳钉"]
+    for word in wedding_forbidden_words:
+        assert word not in r.prompt, f"Flashback prompt should not contain wedding clothing word: {word}"
+
+
+# ── 测试 14: 音色卡空间混响由 SceneCard 动态覆盖，音色本体跨镜稳定 ───────────
+
+
+def test_scene_reverb_overrides_voice_card(sample_bible: FilmBible):
+    actor = CharacterCard(
+        s_no=1,
+        name="李明",
+        appearance_fixed="30岁成年男子",
+        voice_card=VoiceCard(
+            gender_age="30岁青年男性",
+            pitch="中低音沉稳",
+            speed="每秒约3.2字",
+            timbre="温和醇厚沙哑磁性",
+            accent="标准普通话",
+            reverb="默认微混响",
+        ),
+    )
+    # 场景 1: 宴会厅
+    scene_hall = SceneCard(scene_name="宴会厅", reverb="中等宴会厅大空间混响")
+    shot1 = ShotContract(shot_id="S14_A", character_names=["李明"])
+    r1 = compile_continuity_prompt(
+        sample_bible, scene_hall, [actor], None, shot1, platform="h3"
+    )
+    assert "中等宴会厅大空间混响" in r1.prompt
+    assert "温和醇厚沙哑磁性" in r1.prompt
+
+    # 场景 2: 室外花园（室外自然声，无室内混响）
+    scene_outdoor = SceneCard(scene_name="室外花园", reverb="室外开阔自然声自然衰减无室内混响")
+    shot2 = ShotContract(shot_id="S14_B", character_names=["李明"])
+    r2 = compile_continuity_prompt(
+        sample_bible, scene_outdoor, [actor], None, shot2, platform="h3"
+    )
+    assert "室外开阔自然声自然衰减无室内混响" in r2.prompt
+    assert "中等宴会厅大空间混响" not in r2.prompt
+    # 音色本体跨镜完全一致
+    assert "温和醇厚沙哑磁性" in r2.prompt
+    assert "中低音沉稳" in r2.prompt
+
+
+# ── 测试 15: Runway 输出严格全肯定句，不含任何否定词 ──────────────────────────
+
+
+def test_runway_positive_phrasing_strictly_no_negatives(
+    sample_bible: FilmBible,
+    sample_characters: list[CharacterCard],
+    sample_scene: SceneCard,
+):
+    shot = ShotContract(
+        shot_id="S15_RUNWAY",
+        scene_name="婚礼主厅",
+        shot_type="Medium",
+        camera_move="Push In",
+        character_names=["李明"],
+        second_beats=["0-2s: 步入发言台", "2-4s: 拿起麦克风"],
+        dialogue=ShotDialogue(speaker="李明", text="感谢各位来宾。", is_in_frame=False),
+    )
+    r_runway = compile_continuity_prompt(
+        sample_bible, sample_scene, sample_characters, None, shot, platform="runway"
+    )
+
+    # 验证 runway 输出的 prompt 中绝对不含任何常见否定词
+    forbidden_negatives = ["无", "不要", "禁止", "严禁", "避免", "没有", "不得"]
+    for neg in forbidden_negatives:
+        assert neg not in r_runway.prompt, f"Runway prompt must not contain negative word '{neg}'"
+
+    # 验证音乐字段改为了肯定或仅环境声表达
+    assert r_runway.music == "仅环境声"
+
+
+# ── 测试 16: post_only 中文常见别名/同义词全量拦截 ──────────────────────────
+
+
+def test_post_only_chinese_synonyms_intercepted():
+    synonyms = [
+        "眩晕变焦",
+        "希区柯克变焦",
+        "甩镜头",
+        "急摇",
+        "叠化",
+        "慢动作",
+        "延时摄影",
+        "定格",
+        "蒙太奇",
+        "平行剪辑",
+    ]
+    for syn in synonyms:
+        violations = find_post_only_violations(syn)
+        assert len(violations) > 0, f"Expected post_only violation for synonym: {syn}"
+
+
+# ── 测试 17: Seedance 顺序节拍改写不出现双句号 ─────────────────────────────
+
+
+def test_seedance_sequential_beats_no_double_periods(
+    sample_bible: FilmBible,
+    sample_characters: list[CharacterCard],
+    sample_scene: SceneCard,
+):
+    shot = ShotContract(
+        shot_id="S17_SEEK",
+        scene_name="婚礼主厅",
+        character_names=["李明"],
+        second_beats=["0-2s: 缓步走上台", "2-4s: 拿起麦克风", "4-5s: 望向全场"],
+    )
+    r_seedance = compile_continuity_prompt(
+        sample_bible, sample_scene, sample_characters, None, shot, platform="seedance"
+    )
+    # 动作行格式检查：绝不出现“。。”
+    assert "。。" not in r_seedance.prompt
+    assert "先缓步走上台；再拿起麦克风；最后望向全场。" in r_seedance.prompt

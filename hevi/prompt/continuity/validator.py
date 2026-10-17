@@ -168,9 +168,13 @@ def validate_film(
                     p_obj = prop_map.get(p_name)
                     if p_obj and p_obj.holder == char_name:
                         # 检查道具放置位置：如果是双手正在操作的主道具(如双手推轮椅)，不构成额外冲突；
-                        # 额外单手或手持道具才构成双手占用冲突！
+                        # 额外单手或手持道具才构成双手占用冲突！挂在挂钩或放置于设施上的道具不占用手部。
                         is_primary_two_hand = any(th in (p_obj.placement or "") for th in ["双手", "两手"])
-                        if not is_primary_two_hand and any(
+                        is_hung_or_placed = any(
+                            hp in (p_obj.placement or "")
+                            for hp in ["挂在", "挂于", "挂钩", "桌面", "地面", "置于", "轮椅挂钩"]
+                        )
+                        if not is_primary_two_hand and not is_hung_or_placed and any(
                             hw in (p_obj.placement or "")
                             for hw in ["手持", "手提", "提", "端", "拿", "左手", "右手", "单手"]
                         ):
@@ -205,6 +209,7 @@ def validate_film(
             single_hand_props = [
                 p for p in c_props
                 if not any(th in (p.placement or "") for th in ["双手", "两手"])
+                and not any(hp in (p.placement or "") for hp in ["挂在", "挂于", "挂钩", "桌面", "地面", "置于", "轮椅挂钩"])
                 and any(h in (p.placement or "") for h in ["左手", "右手", "手持", "手提", "单手"])
             ]
             if has_two_hand_prop and single_hand_props:

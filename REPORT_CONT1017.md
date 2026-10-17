@@ -18,9 +18,9 @@ hevi 原有 H3 提示词编译器（`hevi/prompt/h3_compiler.py`）仅具备基�
 
 ### 2.1 连续性核心数据结构 (`hevi/prompt/continuity/schemas.py`)
 - **`FilmBible`**：整片圣经，包含片名、画幅、风格定性（is / is_not 列表，可输出成“不是X，而是Y”）、对白语言（默认 `zh-普通话`）、语言锁文案、画内文字白名单、类型预设、调色基准、故事日时间线、参考资产清单（带各主流平台上限）以及原生音频去留决策。
-- **`VoiceCard`**：音色母卡，规范性别年龄、音高、语速、音色质感、口音与空间混响。
-- **`CharacterCard`**：角色母卡，包含 S 号、姓名、脸/肤/眼/眉/鼻唇/发/服装/配饰完整外貌固定描述（逐字复用，杜绝短锚点）、VoiceCard 绑定及各故事日状态变化。
-- **`SceneCard`**：场景母卡，包含场景固定描述、俯视文字站位坐标、180°主轴线与正反打视线约定、反打固定背景描述、布光方案、镜头参数、连续环境底噪与配乐策略（明确支持“无音乐”）。
+- **`VoiceCard`**：音色母卡，规范性别年龄、音高、语速、音色质感、口音与空间混响（支持由 SceneCard 动态覆盖）。
+- **`CharacterCard`**：角色母卡，**将“不变身体特征（body_fixed: 脸/肤/眼/眉/鼻唇/发质/疤痕）”与“按故事日的服装配饰（wardrobes: D1/D_flashback/...）”严格解耦**，并在编译时按故事日精准输出，杜绝同镜多套衣服穿帮。
+- **`SceneCard`**：场景母卡，包含场景固定描述、俯视文字站位坐标、180°主轴线与正反打视线约定、反打固定背景描述、布光方案、镜头参数、连续环境底噪、**场景空间混响（reverb，动态覆盖角色默认混响）**与配乐策略（明确支持“无音乐”）。
 - **`PropItem` / `PropLedger`**：道具账本，记录道具名称、持有人、携带/放置位置（左手/右手/双手/桌面/悬挂等）、起止状态与液位等物理细节。
 - **`ShotDialogue` / `ShotContract`**：扩展镜头契约，整合景别、唯一运镜、构图法则、出入画方向、按秒 beats（内部计划）、动作对齐到台词某个词（match on action）、手部占用状态字典、台词与口型锁定等级、表演情绪刻度、起始/结束状态字典、负面约束与画内文字列表。
 - **`GenerationLog`**：生成场记日志，记录模型版本、seed、参考资产文件、条次及选用/废弃标记。
@@ -33,24 +33,24 @@ hevi 原有 H3 提示词编译器（`hevi/prompt/h3_compiler.py`）仅具备基�
 - **Editing (20 项，全 post_only)**：Jump Cut, Match Cut, J-Cut, L-Cut, Cross Dissolve, Smash Cut, Montage, Parallel Editing, Cross-Cutting, Flash Cut, Freeze Frame, Slow Motion, Time-Lapse, Split Edit, Invisible Cut, Match on Action, Eyeline Match, Cut on Action, Establishing Cut, Cutaway。
 - **Composition (12 项)**：Rule of Thirds, Leading Lines, Symmetry, Framing Within Frame, Depth of Field, Negative Space, Golden Ratio, Diagonal Lines, Foreground Interest, Balance, Triangular, Dynamic Symmetry。
 - **Genres (15 项)**：Horror, Comedy, Drama, Thriller, Sci-Fi, Action, Romance, Documentary, Film Noir, Western, Musical, Mystery, War, Animation, Independent。
-- **拦截机制**：所有 `post_only` 技法（共 24 项）严禁进入生成提示词正文，通过 `find_post_only_violations()` 自动拦截并强制留入剪辑单。
+- **post_only 技法别名与中文同义词全量拦截**：补充 24 项剪辑与极端运镜技法的常见中文同义词（如眩晕变焦/希区柯克变焦、甩镜头、急摇、叠化、慢动作、延时摄影、定格、蒙太奇、平行剪辑等），由 `find_post_only_violations()` 严格拦截进入生成提示词，留入剪辑单。
 
 ### 2.3 多平台连续性提示词编译器 (`hevi/prompt/continuity/compiler.py`)
 实现 `compile_continuity_prompt(bible, scene, characters, props, shot, platform)`：
-- 每镜统一输出：风格定性（“不是X，而是Y”）、语言锁（防日语与乱码）、每个角色完整固定描述（修复共享 anchor 穿帮）、角色音色卡、镜头语言组合（景别/角度/焦段/唯一运镜）、光线调色基准、道具与手部占用、动作弧与动作对齐、对白与口型锁定、环境底噪与配乐策略、全片一致性条款以及尾帧衔接状态。
+- 每镜统一输出：风格定性（“不是X，而是Y”）、语言锁（防日语与乱码）、角色逐字固定身体描述 + 专属故事日服装（修复换装冲突与共享 anchor 穿帮）、角色音色卡（空间混响按场景适配）、镜头语言组合（景别/角度/焦段/唯一运镜）、光线调色基准、道具与手部占用、动作弧与动作对齐、对白与口型锁定、环境底噪与配乐策略、全片一致性条款以及尾帧衔接状态。
 - **平台专属适配**：
   - `h3`：保留标准三段式协议输出（`integrated_multimodal_description`, `overall_soundscape`, `non_diegetic_music`）与 `<d>[Chinese] 对白</d>`；
   - `veo`：台词采用 `说话人：台词` 严格不加引号，负面词输出至独立 `negative_prompt` 参数；
-  - `seedance` / `muse`：内部秒级时间码自动转换为“先…再…最后…”顺序节拍，提供规范约束词；
-  - `runway`：全面禁止否定句写法，全部转写为纯肯定句表达（如“锁定普通话清晰发声；画面纯净无文字”）；
+  - `seedance` / `muse`：内部秒级时间码自动转换为“先…再…最后…”顺序节拍（消除 `。。` 双句号缺陷），提供规范约束词；
+  - `runway`：**全面禁止否定句写法，消灭所有“无/不要/禁止/严禁/避免/没有/不得”否定词**，角色描述“无X”全部转为肯定素雅表达，配乐字段转为“仅环境声”；
   - `generic`：通用专业电影影视提示词规范。
 - **无配乐支持**：当 `music_policy="无音乐"` 时，明确输出“无音乐”，绝不自动塞入默认 BGM。
 
 ### 2.4 全片连续性校验器 (`hevi/prompt/continuity/validator.py`)
 实现 `validate_film(bible, scenes, characters, props, shots, prompts)`，返回违规列表：
 1. **一镜多运镜**：拦截复合运镜（如 `Dolly, Pan`）；
-2. **post_only 技法进入生成提示词**：拦截眩晕变焦、甩镜、跳切、叠化等进入生成提示词；
-3. **道具手部冲突**：拦截“双手推轮椅同时手持手提包”、双重单手占用等生理不可能动作；
+2. **post_only 技法进入生成提示词**：拦截原名及中文别名（眩晕变焦、甩镜头、跳切、叠化等）进入生成提示词；
+3. **道具手部冲突**：拦截“双手推轮椅同时手持手提包”、双重单手占用等生理不可能动作（挂在挂钩上的道具不误报）；
 4. **状态衔接穿帮**：检查相邻镜头 `shots[i].start_state == shots[i-1].end_state`；
 5. **对白超时长预算**：拦截 4 秒短镜头塞入 >2 句或超 25 字等超时长对白；
 6. **角色描述非逐字一致**：拦截短锚点，确保母卡完整描述逐字复用；
@@ -77,56 +77,69 @@ hevi 原有 H3 提示词编译器（`hevi/prompt/h3_compiler.py`）仅具备基�
 16. 场记记录
 
 ### 2.6 演示示例 (`examples/continuity_wedding_demo.py`)
-构造“婚宴致辞 + 闪回推轮椅”两场景两镜头：
+构造“婚宴致辞 (Shot-01) + 闪回推轮椅 (Shot-02)”两场景两镜头：
 - 真实演示校验器准确拦截“双手推轮椅同时手持手提包”手部冲突、复合运镜与状态断层；
 - 修复冲突后重新校验，验证 0 errors 完全合规；
-- 输出 H3、Seedance、Veo、Runway、Generic 五大平台适配提示词及 16 项审片清单。
+- **输出 Shot-01 与 Shot-02 各平台的完整提示词（非前4行）**，验证闪回镜头不泄漏婚礼服装词、室外花园混响准确覆盖、Seedance 无双句号、Runway 无否定词。
 
 ---
 
-## 3. 文件清单
+## 3. 复核问题（Hark 复核 2026-10-17 15:30）专项修复
+
+| # | 复核问题 | 修复策略 | 验收单测 |
+|---|---|---|---|
+| 1 | 闪回换装自相矛盾（提示词同时出现西装婚纱与病服外套） | `CharacterCard` 拆分 `body_fixed`（不变身体特征）与 `wardrobes`（按故事日服装配饰），按镜所属故事日输出单一服装 | `test_flashback_wardrobe_separation_no_wedding_clothes` |
+| 2 | 音色卡混响写死在角色上（闪回室外仍输出宴会厅混响） | 空间混响优先由 `SceneCard.reverb` 提供并动态覆盖角色默认混响，音色本体跨镜保持不变 | `test_scene_reverb_overrides_voice_card` |
+| 3 | Runway 仍有否定写法（含“无字幕/无耳环戒指”等） | 实现 `_sanitize_for_runway`，消除全部“无/不要/禁止/严禁/避免/没有/不得”否定词，无音乐转为“仅环境声” | `test_runway_positive_phrasing_strictly_no_negatives` |
+| 4 | post_only 中文同义词漏拦（“眩晕变焦”返回空） | 为 24 项 post_only 技法补充完整中文同义词/别名映射表并接入检测 | `test_post_only_chinese_synonyms_intercepted` |
+| 5 | Seedance 双句号（`。。`）及手提包持有人标注 | 动作行尾标点统一规范去除再组装；手提包持有人标为李明，放置位置设为挂在轮椅右把手挂钩（不占手部） | `test_seedance_sequential_beats_no_double_periods` |
+| 6 | demo 输出完整各平台 prompt | demo 改为完整输出 Shot-01 与 Shot-02 全部 5 平台提示词全文 | demo 实测全部正常输出 |
+
+---
+
+## 4. 文件清单
 
 | 文件路径 | 状态 | 说明 |
 |---|---|---|
 | `hevi/prompt/continuity/__init__.py` | 新增 | 连续性子包导出接口 |
-| `hevi/prompt/continuity/schemas.py` | 新增 | FilmBible, CharacterCard, SceneCard, PropLedger, ShotContract 等 |
-| `hevi/prompt/continuity/vocab.py` | 新增 | Filmvision 107 项导演词表与 post_only 风险过滤 |
-| `hevi/prompt/continuity/compiler.py` | 新增 | 跨平台连续性提示词编译器与 ContinuityRender |
-| `hevi/prompt/continuity/validator.py` | 新增 | 8 项严格连续性与导演纪律校验器 validate_film |
-| `hevi/prompt/continuity/checklist.py` | 新增 | 16 项逐镜防穿帮审片清单生成器 |
-| `examples/continuity_wedding_demo.py` | 新增 | 婚宴致辞+闪回推轮椅完整演示脚本 |
-| `tests/test_continuity.py` | 新增 | 12 项端到端单测（真实调用无 mock） |
-| `REPORT_CONT1017.md` | 新增 | 任务总结与验收报告 |
+| `hevi/prompt/continuity/schemas.py` | 新增/更新 | 身体特征/故事日服装解耦、SceneCard.reverb、PropLedger 等 |
+| `hevi/prompt/continuity/vocab.py` | 新增/更新 | 107项词表、POST_ONLY_ALIASES 别名表与过滤逻辑 |
+| `hevi/prompt/continuity/compiler.py` | 新增/更新 | 跨平台编译器、Runway纯肯定句清洗器、混响按场景适配 |
+| `hevi/prompt/continuity/validator.py` | 新增/更新 | 8项连续性校验器、挂钩道具手部占用放行 |
+| `hevi/prompt/continuity/checklist.py` | 新增 | 16项逐镜防穿帮审片清单生成器 |
+| `examples/continuity_wedding_demo.py` | 新增/更新 | 婚宴致辞+闪回推轮椅全平台提示词完整演示脚本 |
+| `tests/test_continuity.py` | 新增/更新 | 17项端到端单测（真实调用无 mock） |
+| `REPORT_CONT1017.md` | 新增/更新 | 任务总结与验收报告 |
 
 ---
 
-## 4. 测试与验证结果
+## 5. 测试与验证结果
 
-### 4.1 基线测试
+### 5.1 基线测试
 执行命令：
 ```bash
 /data/soffy/projects/hevi/.venv/bin/python -m pytest tests/test_h3_compiler.py tests/test_h3_shot_discipline.py tests/test_prompt_engineering.py tests/test_shot_prompt.py
 ```
 - 结果：**73 passed in 7.00s**（无失败，基线正常）。
 
-### 4.2 现状测试（包含新增模块与全套回归）
+### 5.2 现状测试（包含新增模块、复核新增单测与全套回归）
 执行命令：
 ```bash
 /data/soffy/projects/hevi/.venv/bin/python -m pytest tests/test_h3_compiler.py tests/test_h3_shot_discipline.py tests/test_prompt_engineering.py tests/test_shot_prompt.py tests/test_continuity.py
 ```
-- 结果：**85 passed in 6.03s**
-- 差异：+12 个新增测试，73 个基线测试全部继续保持通过，0 回归，0 告警新增。
+- 结果：**90 passed in 4.55s**
+- 差异：+17 个新增连续性单测全部通过，73 个基线测试保持通过，0 回归，0 告警新增。
 
-### 4.3 演示脚本独立运行验证
+### 5.3 演示脚本独立运行验证
 执行命令：
 ```bash
 /data/soffy/projects/hevi/.venv/bin/python examples/continuity_wedding_demo.py
 ```
-- 结果：正常运行到底，准确展示穿帮捕获（6 项违规）、修复验证（0 errors PASS）、多平台提示词生成与 16 项审片清单输出。
+- 结果：正常运行到底，成功拦截冲突、修复通过校验、完整打印 Shot-01 与 Shot-02 在 H3/Seedance/Veo/Runway/Generic 5 平台的提示词全文并生成 16 项审片清单。
 
 ---
 
-## 5. 未完成项
-- 无未完成项。全部 BRIEF_CONT1017.md 规定范围内工作均已高质量交付并验证。
+## 6. 未完成项
+- 无未完成项。BRIEF_CONT1017.md 及其复核问题（Hark 复核 2026-10-17 15:30）要求的全部内容均已完成并通过自动化测试闭环。
 
 CONT1017 DONE

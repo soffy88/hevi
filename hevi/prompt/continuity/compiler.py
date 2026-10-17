@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -111,28 +112,79 @@ class ContinuityRender:
             }
 
 
+def _sanitize_for_runway(text: str) -> str:
+    """将文本中的否定句表达改写为肯定句，满足 Runway 平台纯肯定句要求。
+
+    消灭所有包含'无'、'不要'、'禁止'、'严禁'、'避免'、'没有'、'不得'的表达。
+    """
+    replacements = [
+        ("无耳环戒指", "耳部与手指保持自然素雅"),
+        ("无首饰", "周身保持素雅"),
+        ("无配饰", "造型保持简约"),
+        ("无方言口音", "普通话纯正发音"),
+        ("无口音", "普通话纯正发音"),
+        ("无字幕、无文字、无水印", "纯净画面，只呈现人物与场景"),
+        ("无字幕", "纯净画面"),
+        ("无文字", "纯净画面"),
+        ("无水印", "纯净画面"),
+        ("无杂音", "声音纯净"),
+        ("无噪音", "背景平稳"),
+        ("无混响", "开阔自然干声"),
+        ("无手持道具冲突", "手部自然放松"),
+        ("无动作", "保持静止姿态"),
+        ("无对白", "画面静默"),
+        ("无表情", "神态沉静"),
+        ("无妆容", "素颜自然面貌"),
+        ("无瑕疵", "质感细腻"),
+        ("无偏色", "色彩纯正"),
+        ("无突然静音或音量跳变", "声音平稳连贯"),
+        ("无突然静音", "声音平稳连贯"),
+        ("无音乐", "仅环境声"),
+        ("不得开口", "保持双唇自然闭合"),
+        ("禁止开口", "保持双唇自然闭合"),
+        ("禁止日语或其他语言", "只使用清晰普通话"),
+        ("禁止日语", "只使用清晰普通话"),
+        ("禁止其他语言", "只使用清晰普通话"),
+        ("禁止外语", "只使用清晰普通话"),
+        ("禁止", "务必"),
+        ("严禁", "务必"),
+        ("不要", "请"),
+        ("避免", "保持"),
+        ("不得", "请保持"),
+        ("没有", "缺少"),
+    ]
+    res = text
+    for old, new in replacements:
+        res = res.replace(old, new)
+    # 替换以'无'开头的词
+    res = re.sub(r"无([\u4e00-\u9fa5]{1,4})", r"素雅\1", res)
+    for bad in ["无", "不要", "禁止", "严禁", "避免", "没有", "不得"]:
+        if bad in res:
+            res = res.replace(bad, "自然" if bad == "无" else "")
+    return res
+
+
 def _convert_beats_to_sequential_order(beats: list[str]) -> str:
     """将秒级时间码动作(如 0-2s/2-4s)改写为 Seedance/Muse 推荐的‘先…再…最后…’顺序节拍。"""
     cleaned: list[str] = []
     for b in beats:
-        s = b.strip()
-        # 去掉常见秒级前缀如 "0-2s: ", "0-2s：", "[0-3s]"
+        s = b.strip().rstrip("。；;.")
         if ":" in s:
-            s = s.split(":", 1)[1].strip()
+            s = s.split(":", 1)[1].strip().rstrip("。；;.")
         elif "：" in s:
-            s = s.split("：", 1)[1].strip()
+            s = s.split("：", 1)[1].strip().rstrip("。；;.")
         if s:
             cleaned.append(s)
 
     if not cleaned:
         return ""
     if len(cleaned) == 1:
-        return f"动作按序发生：{cleaned[0]}。"
+        return f"动作按序发生：{cleaned[0]}"
     if len(cleaned) == 2:
-        return f"先{cleaned[0]}；再{cleaned[1]}。"
+        return f"先{cleaned[0]}；再{cleaned[1]}"
     # 3项及以上
     middle = "；再".join(cleaned[1:-1])
-    return f"先{cleaned[0]}；再{middle}；最后{cleaned[-1]}。"
+    return f"先{cleaned[0]}；再{middle}；最后{cleaned[-1]}"
 
 
 def compile_continuity_prompt(
@@ -188,7 +240,7 @@ def compile_continuity_prompt(
     if platform_clean == "runway":
         language_lock_block = (
             "【语言与画面要求】全部对话与背景人声严格保持普通话清晰发声；"
-            "画面构图纯净，保持完全无字幕、无文字、无水印的干净画面。"
+            "画面构图纯净，只呈现人物与场景，保持纯净电影质感画面。"
         )
     else:
         language_lock_block = (
@@ -213,14 +265,24 @@ def compile_continuity_prompt(
     # ── 模块 D: 角色逐字固定描述与音色卡 ─────────────────────────────────
     char_blocks: list[str] = []
     voice_blocks: list[str] = []
+    def _voice_text(char: "CharacterCard") -> str:
+        sc_rev = getattr(scene, "reverb", "") or ""
+        if platform_clean == "runway" and sc_rev:
+            sc_rev = _sanitize_for_runway(sc_rev)
+        v_text = char.voice_card.to_prompt_text(scene_reverb=sc_rev) if char.voice_card else ""
+        if platform_clean == "runway" and v_text:
+            v_text = _sanitize_for_runway(v_text)
+        return v_text
+
     if has_first_frame:
         char_names_with_s: list[str] = []
         for cname in shot.character_names:
             char = char_map.get(cname)
             if char:
                 char_names_with_s.append(f"S{char.s_no} {char.name}")
-                if char.voice_card:
-                    voice_blocks.append(f"【音色卡】{char.name}：{char.voice_card.to_prompt_text()}")
+                v_text = _voice_text(char)
+                if v_text:
+                    voice_blocks.append(f"【音色卡】{char.name}：{v_text}")
             else:
                 char_names_with_s.append(cname)
         char_str = "、".join(char_names_with_s) if char_names_with_s else "出场角色"
@@ -232,9 +294,12 @@ def compile_continuity_prompt(
             char = char_map.get(cname)
             if char:
                 desc = char.get_full_description(story_day=shot.story_day)
+                if platform_clean == "runway":
+                    desc = _sanitize_for_runway(desc)
                 char_blocks.append(f"【人物】S{char.s_no} {char.name}（完整外貌固定描述）：{desc}")
-                if char.voice_card:
-                    voice_blocks.append(f"【音色卡】{char.name}：{char.voice_card.to_prompt_text()}")
+                v_text = _voice_text(char)
+                if v_text:
+                    voice_blocks.append(f"【音色卡】{char.name}：{v_text}")
             else:
                 char_blocks.append(f"【人物】{cname}（未绑定母卡，保持既往外观一致）")
 
@@ -278,21 +343,29 @@ def compile_continuity_prompt(
     for pname in shot.prop_names:
         p_item = prop_map.get(pname)
         if p_item:
-            detail = f"{p_item.prop_name}(持有人:{p_item.holder or '无'}，位置:{p_item.placement or '现场'}，状态:{p_item.start_state or '自然'}"
+            inner_parts = []
+            if p_item.holder and p_item.holder != "无":
+                inner_parts.append(f"持有人:{p_item.holder}")
+            if p_item.placement:
+                inner_parts.append(f"位置:{p_item.placement}")
+            if p_item.start_state:
+                inner_parts.append(f"状态:{p_item.start_state}")
             if p_item.liquid_level:
-                detail += f"，液位:{p_item.liquid_level}"
-            detail += ")"
+                inner_parts.append(f"液位:{p_item.liquid_level}")
+            detail = f"{p_item.prop_name}({'，'.join(inner_parts)})" if inner_parts else p_item.prop_name
             prop_parts.append(detail)
         else:
             prop_parts.append(pname)
     if shot.hands_occupation:
         hands_desc = "，".join(f"{k}:{v}" for k, v in shot.hands_occupation.items())
         prop_parts.append(f"手部占用状态:[{hands_desc}]")
-    prop_block = (
-        "【道具与手部】"
-        + ("；".join(prop_parts) if prop_parts else "双手自然下垂无手持道具冲突")
-        + "。"
-    )
+    if prop_parts:
+        prop_block = "【道具与手部】" + "；".join(prop_parts) + "。"
+    else:
+        if platform_clean == "runway":
+            prop_block = "【道具与手部】双手自然垂放，肢体姿态放松舒展。"
+        else:
+            prop_block = "【道具与手部】双手自然下垂无手持道具冲突。"
 
     # ── 模块 H: 动作与节拍 ─────────────────────────────────────────────────
     action_content: list[str] = []
@@ -303,15 +376,19 @@ def compile_continuity_prompt(
             if seq_action:
                 action_content.append(seq_action)
         else:
-            # 其他平台保留节拍列表
-            action_content.append("节拍计划：" + "；".join(shot.second_beats))
+            cleaned_beats = [b.strip().rstrip("。；;.") for b in shot.second_beats if b.strip()]
+            action_content.append("节拍计划：" + "；".join(cleaned_beats))
     if shot.action:
-        action_content.append(shot.action)
+        action_content.append(shot.action.strip().rstrip("。；;."))
     elif shot.visual_prompt:
-        action_content.append(shot.visual_prompt)
+        action_content.append(shot.visual_prompt.strip().rstrip("。；;."))
     if shot.match_on_action:
-        action_content.append(f"动作剪辑衔接点:{shot.match_on_action}")
-    action_block = "【动作】" + ("；".join(action_content) if action_content else "人物自然动态") + "。"
+        action_content.append(f"动作剪辑衔接点:{shot.match_on_action.strip().rstrip('。；;.')}")
+
+    if action_content:
+        action_block = "【动作】" + "；".join(action_content) + "。"
+    else:
+        action_block = "【动作】人物自然动态。"
 
     # ── 模块 I: 对白与口型 ─────────────────────────────────────────────────
     dialogue_block = ""
@@ -325,7 +402,9 @@ def compile_continuity_prompt(
         s_no = char_obj.s_no if char_obj else 1
         text = target_dialogue.text.strip()
         quote_mark = f"[q:{target_dialogue.quote_id}]" if target_dialogue.quote_id else ""
-        in_out_tag = "画内口型对齐" if target_dialogue.is_in_frame else "画外音(画面人物不得开口)"
+        in_out_tag = "画内口型对齐" if target_dialogue.is_in_frame else (
+            "画外音(画面人物保持静默闭合双唇)" if platform_clean == "runway" else "画外音(画面人物不得开口)"
+        )
         sync_tag = "口型锁定" if target_dialogue.lip_sync_locked else "非强锁定"
 
         if platform_clean == "h3":
@@ -405,6 +484,14 @@ def compile_continuity_prompt(
         if (scene.music_policy and scene.music_policy.strip() != "")
         else "无音乐"
     )
+
+    if platform_clean == "runway":
+        prompt_integrated = _sanitize_for_runway(prompt_integrated)
+        soundscape = _sanitize_for_runway(soundscape)
+        if music == "无音乐":
+            music = "仅环境声"
+        else:
+            music = _sanitize_for_runway(music)
 
     # ── 负面与约束处理 ─────────────────────────────────────────────────────
     negative_prompt = ""
