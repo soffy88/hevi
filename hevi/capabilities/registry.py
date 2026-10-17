@@ -800,6 +800,14 @@ def _render_transitions_storybook(
     return render_transitions_storybook_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
 
 
+def _render_storybook_voice_align(
+    params: dict[str, Any], out_dir: Path, *, duration: float = 0.0, aspect: str = "16:9", seed: int = 0
+) -> CapabilityResult:
+    from hevi.audio.storybook_voice import render_storybook_voice_align_capability
+
+    return render_storybook_voice_align_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
 _STORYPLAN_ASPECTS = ["16:9", "9:16", "1:1"]
 
 register(Capability(
@@ -914,4 +922,25 @@ register(Capability(
     render=_render_transitions_storybook,
     description="绘本转场：翻页、湿笔刷晕开、纸页撕裂、铅笔线自绘、水彩晕染",
     line="handdraw",
+))
+
+register(Capability(
+    name="storybook.voice_align",
+    kind="audio",
+    aspects=["16:9", "9:16", "1:1"],
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "script": {"type": "array"},
+            "bgm_style": {"type": "string"},
+            "quiet_break_s": {"type": "number"},
+            "pre_pad_s": {"type": "number"},
+            "post_pad_s": {"type": "number"},
+        },
+    },
+    cpu_cost_hint=2.0,
+    render=_render_storybook_voice_align,
+    description="绘本配音对齐：按本地TTS实际时长重排镜头，双语字幕逐句对齐(<150ms)，旁白角色多音色语气，BGM避让留白",
+    line="audio",
 ))
