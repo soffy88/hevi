@@ -15,7 +15,7 @@
  | `feat/huobao-agents` | 2026-10-14 12:23:58 +0000 | 2 | 22 | SKIPPED | Conflict: Auto-merging docs/third_party/provenance-ledger.yaml CONFLIC | 
  | `feat/particle-science` | 2026-10-15 14:23:12 +0000 | 2 | 293 | MERGED | Clean merge | 
  | `feat/toonflow-assets` | 2026-10-15 15:08:22 +0000 | 3 | 6 | MERGED | Clean merge | 
-| `feat/svfactory` | 2026-10-15 15:15:08 +0000 | 3 | 13 | PENDING |  |
+ | `feat/svfactory` | 2026-10-15 15:15:08 +0000 | 3 | 13 | SKIPPED | Conflict: Auto-merging hevi/capabilities/__init__.py Auto-merging hevi | 
 | `feat/brand-film` | 2026-10-14 08:13:18 +0000 | 3 | 53 | PENDING |  |
 | `feat/kids-manifest` | 2026-10-15 23:42:53 +0000 | 4 | 12 | PENDING |  |
 | `feat/webkit-layers` | 2026-10-14 12:40:56 +0000 | 4 | 16 | PENDING |  |
