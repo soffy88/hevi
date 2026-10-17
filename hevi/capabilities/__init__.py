@@ -48,6 +48,8 @@ _golive3.register_golive3_capabilities_once()
 from hevi.manga.capabilities import register_manga_capabilities
 register_manga_capabilities()
 
+import hevi.capabilities.brandfilm  # noqa: E402,F401
+
 # Explainer line capabilities (explainer.script, explainer.visual_plan, explainer.render)
 from hevi.explainer.script import register_explainer_script_capability
 from hevi.explainer.visual_plan import register_explainer_visual_plan_capability
