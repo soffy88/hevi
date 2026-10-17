@@ -274,9 +274,14 @@ def revise_story_plan(plan: StoryPlan, report: CritiqueReport) -> StoryPlan:
             foley = "【轻柔风铃与落叶沙沙声】" if idx == 0 else "【清脆露珠水滴声与微光升腾音效】" if idx == 1 else "【温暖木琴舒缓旋律】"
             sh.sound = f"{foley} {sh.sound}"
 
-    # 4.3 结尾温暖闭环
-    if "EMOTIONAL_PAYOFF" in issue_categories or len(revised.narrative.closing_response) < 6:
-        revised.narrative.closing_response = "微光洒在每一片绿叶上，友谊与希望在心中悄悄绽放，明天一定更美好！"
+    # 4.3 结尾温暖闭环（确保与开场钩子关键词形成叙事闭环）
+    import jieba
+    hook_terms = [w for w in jieba.lcut(revised.narrative.hook.text) if len(w) > 1 and w not in {"什么", "怎么", "哪里", "为什么", "究竟", "怎样", "里面"}]
+    term_str = hook_terms[0] if hook_terms else (revised.title or "故事")
+    existing_closure = revised.narrative.closing_response or ""
+    closure_words = set(jieba.lcut(existing_closure))
+    if "EMOTIONAL_PAYOFF" in issue_categories or len(existing_closure) < 6 or not (closure_words & set(hook_terms)):
+        revised.narrative.closing_response = f"关于{term_str}的奇妙秘密终于解开啦，微光与友谊在心中悄悄绽放，明天一定更美好！"
 
     # 4.4 确保自检门通过
     check_rep = run_story_check(revised)
