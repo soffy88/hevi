@@ -1,0 +1,322 @@
+{
+  "sample_1_raindrop": {
+    "title": "小水滴去哪儿了",
+    "duration_sec": 37.5,
+    "check": {
+      "passed": true,
+      "checks": [
+        {
+          "check_id": "C1_OPENING_HOOK",
+          "name": "开场钩子前置门禁",
+          "status": "PASS",
+          "message": "钩子类型 result_first，起止区间 [0ms, 3500ms]",
+          "evidence": {
+            "hook": {
+              "hook_type": "result_first",
+              "text": "小水滴最后去哪儿了呢？",
+              "start_ms": 0,
+              "end_ms": 3500,
+              "shown_in": [
+                "voice",
+                "subtitle",
+                "visual"
+              ]
+            },
+            "window_sec": 3.5
+          }
+        },
+        {
+          "check_id": "C2_SHOT_REQUIRED_FIELDS",
+          "name": "镜头六项必填与结束状态",
+          "status": "PASS",
+          "message": "所有镜头六项必填及结束状态齐备",
+          "evidence": {
+            "total_shots": 3,
+            "errors": []
+          }
+        },
+        {
+          "check_id": "C3_REDUNDANT_SHOTS",
+          "name": "冗余镜头去重",
+          "status": "PASS",
+          "message": "无无效冗余镜头",
+          "evidence": {
+            "redundant_notes": []
+          }
+        },
+        {
+          "check_id": "C4_SPEECH_RATE_AND_SYNC",
+          "name": "幼儿语速与声画对齐闸门",
+          "status": "PASS",
+          "message": "旁白语速 2.93 字/秒（标准 ≤ 3.5 字/秒）：合规",
+          "evidence": {
+            "chars_per_sec": 2.93,
+            "max_allowed": 3.5
+          }
+        },
+        {
+          "check_id": "C5_NARRATIVE_CLOSURE",
+          "name": "叙事闭环检查",
+          "status": "PASS",
+          "message": "开头钩子与结尾回应形成闭环",
+          "evidence": {
+            "hook_text": "小水滴最后去哪儿了呢？",
+            "closing": "它回到了清澈的小河里，去找小伙伴玩啦"
+          }
+        },
+        {
+          "check_id": "C6_TIMELINE_INTEGRITY",
+          "name": "时间线完整性与无黑场",
+          "status": "PASS",
+          "message": "时间线完整无断层",
+          "evidence": {
+            "duration_ms": 37500
+          }
+        },
+        {
+          "check_id": "C7_CONTENT_SAFETY",
+          "name": "幼儿内容安全词表审查",
+          "status": "PASS",
+          "message": "内容纯净安全，无违禁词",
+          "evidence": {
+            "violations": []
+          }
+        }
+      ],
+      "summary": "全套自检通过 (PASS)"
+    },
+    "baseline_check": {
+      "passed": false,
+      "checks": [
+        {
+          "check_id": "C1_OPENING_HOOK",
+          "name": "开场钩子前置门禁",
+          "status": "FAIL",
+          "message": "钩子类型 result_first，起止区间 [0ms, 3500ms]：未在规定时间窗内或内容为空",
+          "evidence": {
+            "hook": {
+              "hook_type": "result_first",
+              "text": "",
+              "start_ms": 0,
+              "end_ms": 3500,
+              "shown_in": [
+                "voice",
+                "subtitle",
+                "visual"
+              ]
+            },
+            "window_sec": 3.5
+          }
+        },
+        {
+          "check_id": "C2_SHOT_REQUIRED_FIELDS",
+          "name": "镜头六项必填与结束状态",
+          "status": "FAIL",
+          "message": "镜头 shot_01 缺少必填项: ['end_state']; 镜头 shot_01 动作缺少明确结束状态 (end_state)",
+          "evidence": {
+            "total_shots": 3,
+            "errors": [
+              "镜头 shot_01 缺少必填项: ['end_state']",
+              "镜头 shot_01 动作缺少明确结束状态 (end_state)"
+            ]
+          }
+        },
+        {
+          "check_id": "C3_REDUNDANT_SHOTS",
+          "name": "冗余镜头去重",
+          "status": "PASS",
+          "message": "无无效冗余镜头",
+          "evidence": {
+            "redundant_notes": []
+          }
+        },
+        {
+          "check_id": "C4_SPEECH_RATE_AND_SYNC",
+          "name": "幼儿语速与声画对齐闸门",
+          "status": "PASS",
+          "message": "旁白语速 2.93 字/秒（标准 ≤ 3.5 字/秒）：合规",
+          "evidence": {
+            "chars_per_sec": 2.93,
+            "max_allowed": 3.5
+          }
+        },
+        {
+          "check_id": "C5_NARRATIVE_CLOSURE",
+          "name": "叙事闭环检查",
+          "status": "PASS",
+          "message": "开头钩子与结尾回应形成闭环",
+          "evidence": {
+            "hook_text": "",
+            "closing": "它回到了清澈的小河里，去找小伙伴玩啦"
+          }
+        },
+        {
+          "check_id": "C6_TIMELINE_INTEGRITY",
+          "name": "时间线完整性与无黑场",
+          "status": "PASS",
+          "message": "时间线完整无断层",
+          "evidence": {
+            "duration_ms": 37500
+          }
+        },
+        {
+          "check_id": "C7_CONTENT_SAFETY",
+          "name": "幼儿内容安全词表审查",
+          "status": "PASS",
+          "message": "内容纯净安全，无违禁词",
+          "evidence": {
+            "violations": []
+          }
+        }
+      ],
+      "summary": "存在门禁未通过项 (FAIL)"
+    }
+  },
+  "sample_2_bear": {
+    "title": "小熊为什么洗手",
+    "duration_sec": 31.4,
+    "check": {
+      "passed": true,
+      "checks": [
+        {
+          "check_id": "C1_OPENING_HOOK",
+          "name": "开场钩子前置门禁",
+          "status": "PASS",
+          "message": "钩子类型 question，起止区间 [0ms, 3500ms]",
+          "evidence": {
+            "hook": {
+              "hook_type": "question",
+              "text": "小熊为什么吃苹果前一定要先洗手呢？",
+              "start_ms": 0,
+              "end_ms": 3500,
+              "shown_in": [
+                "voice",
+                "subtitle",
+                "visual"
+              ]
+            },
+            "window_sec": 3.5
+          }
+        },
+        {
+          "check_id": "C2_SHOT_REQUIRED_FIELDS",
+          "name": "镜头六项必填与结束状态",
+          "status": "PASS",
+          "message": "所有镜头六项必填及结束状态齐备",
+          "evidence": {
+            "total_shots": 3,
+            "errors": []
+          }
+        },
+        {
+          "check_id": "C3_REDUNDANT_SHOTS",
+          "name": "冗余镜头去重",
+          "status": "PASS",
+          "message": "无无效冗余镜头",
+          "evidence": {
+            "redundant_notes": []
+          }
+        },
+        {
+          "check_id": "C4_SPEECH_RATE_AND_SYNC",
+          "name": "幼儿语速与声画对齐闸门",
+          "status": "PASS",
+          "message": "旁白语速 2.99 字/秒（标准 ≤ 3.5 字/秒）：合规",
+          "evidence": {
+            "chars_per_sec": 2.99,
+            "max_allowed": 3.5
+          }
+        },
+        {
+          "check_id": "C5_NARRATIVE_CLOSURE",
+          "name": "叙事闭环检查",
+          "status": "PASS",
+          "message": "开头钩子与结尾回应形成闭环",
+          "evidence": {
+            "hook_text": "小熊为什么吃苹果前一定要先洗手呢？",
+            "closing": "因为洗干净小手，才能健健康康、开开心心吃苹果呀"
+          }
+        },
+        {
+          "check_id": "C6_TIMELINE_INTEGRITY",
+          "name": "时间线完整性与无黑场",
+          "status": "PASS",
+          "message": "时间线完整无断层",
+          "evidence": {
+            "duration_ms": 31400
+          }
+        },
+        {
+          "check_id": "C7_CONTENT_SAFETY",
+          "name": "幼儿内容安全词表审查",
+          "status": "PASS",
+          "message": "内容纯净安全，无违禁词",
+          "evidence": {
+            "violations": []
+          }
+        }
+      ],
+      "summary": "全套自检通过 (PASS)"
+    }
+  },
+  "take_select_demo": {
+    "best": {
+      "take_id": "take_1_full",
+      "selected_in_sec": 0.0,
+      "selected_out_sec": 5.0,
+      "score": 96.1,
+      "motion_completeness": 1.0,
+      "stability": 0.92,
+      "no_tail_redundancy": 0.95,
+      "reasons": [
+        "运动完整度评分 1.00 (时长 5.0s vs 目标 5.0s)",
+        "首尾稳定度 0.92，无冗余尾巴得分 0.95",
+        "选中最优子区间 [0.0s, 5.0s]，完美契合验收点: 主角问候并提出开场疑问，动作平稳完成"
+      ]
+    },
+    "candidates": [
+      {
+        "take_id": "take_1_full",
+        "selected_in_sec": 0.0,
+        "selected_out_sec": 5.0,
+        "score": 96.1,
+        "motion_completeness": 1.0,
+        "stability": 0.92,
+        "no_tail_redundancy": 0.95,
+        "reasons": [
+          "运动完整度评分 1.00 (时长 5.0s vs 目标 5.0s)",
+          "首尾稳定度 0.92，无冗余尾巴得分 0.95",
+          "选中最优子区间 [0.0s, 5.0s]，完美契合验收点: 主角问候并提出开场疑问，动作平稳完成"
+        ]
+      },
+      {
+        "take_id": "take_3_clip",
+        "selected_in_sec": 0.0,
+        "selected_out_sec": 3.1,
+        "score": 80.9,
+        "motion_completeness": 0.62,
+        "stability": 0.92,
+        "no_tail_redundancy": 0.95,
+        "reasons": [
+          "运动完整度评分 0.62 (时长 3.1s vs 目标 5.0s)",
+          "首尾稳定度 0.92，无冗余尾巴得分 0.95",
+          "选中最优子区间 [0.0s, 3.1s]，完美契合验收点: 主角问候并提出开场疑问，动作平稳完成"
+        ]
+      },
+      {
+        "take_id": "take_2_slow",
+        "selected_in_sec": 0.0,
+        "selected_out_sec": 5.0,
+        "score": 66.2,
+        "motion_completeness": 0.44000000000000006,
+        "stability": 0.92,
+        "no_tail_redundancy": 0.7,
+        "reasons": [
+          "运动完整度评分 0.44 (时长 7.8s vs 目标 5.0s)",
+          "首尾稳定度 0.92，无冗余尾巴得分 0.70",
+          "选中最优子区间 [0.0s, 5.0s]，完美契合验收点: 主角问候并提出开场疑问，动作平稳完成"
+        ]
+      }
+    ]
+  }
+}

@@ -69,6 +69,7 @@ from hevi.api.routers.voice_platform import router as voice_platform_router
 from hevi.api.routers.stream_edit import router as stream_edit_router
 from hevi.api.routers.screenshot_studio import router as screenshot_studio_router
 from hevi.api.routers.ws import router as ws_router
+from hevi.storyplan.api import router as storyplan_router
 from hevi.core.config import settings
 from hevi.core.ws_manager import connection_manager
 from hevi.events import EventConsumer, EventGateway
@@ -218,6 +219,7 @@ app.include_router(ops_router)  # 单元 C:Agent 画布操作桥 (router 自带 
 app.include_router(ws_router)  # WebSocket 路由自带 /api/ws 前缀
 app.include_router(freezone_router, prefix="/api")
 app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提升/修复/画像/草图)
+app.include_router(storyplan_router, prefix="/api")
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
 mount_mcp(app)

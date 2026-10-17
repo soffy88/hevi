@@ -81,6 +81,27 @@ def _talkcraft_ready() -> bool:
 
 
 _CATALOG: dict[str, CapabilityDescriptor] = {
+    "story_plan": CapabilityDescriptor(
+        "story_plan",
+        "一句话自动补全 StoryPlan",
+        ("/api/story-plan/plan",),
+        True,
+        "一句话自动补全叙事/分镜/时间线三层结构 StoryPlan。",
+    ),
+    "story_check": CapabilityDescriptor(
+        "story_check",
+        "StoryPlan 结构自检门",
+        ("/api/story-plan/check",),
+        True,
+        "StoryPlan 结构自检门 (钩子、声画对齐、冗余、六项必填、闭环、幼儿安全)。",
+    ),
+    "take_select": CapabilityDescriptor(
+        "take_select",
+        "选段器 take_select",
+        ("/api/story-plan/take-select",),
+        True,
+        "多候选 take 按真实帧评分与子区间选中。",
+    ),
     "quote_image": CapabilityDescriptor(
         "quote_image",
         "字幕金句长图",
