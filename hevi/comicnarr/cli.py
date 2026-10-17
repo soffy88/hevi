@@ -37,6 +37,12 @@ def main() -> int:
         help="Keyframe engine (default: sdturbo_cpu)",
     )
     parser.add_argument(
+        "--background-source",
+        default="keyframe",
+        choices=["keyframe", "roomgacha", "locscout"],
+        help="Background visual source (keyframe | roomgacha | locscout)",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("output/comicnarr"),
@@ -56,6 +62,7 @@ def main() -> int:
         "style": args.style,
         "subtitle_style": args.subtitle_style,
         "keyframe_engine": args.engine,
+        "background_source": args.background_source,
         "base_seed": args.seed,
     }
 
