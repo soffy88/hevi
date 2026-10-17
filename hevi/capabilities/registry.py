@@ -777,11 +777,19 @@ def _render_take_select(
 
 
 def _render_storyplan_critique(
-    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+    params: dict[str, Any], out_dir: Path, *, duration: float = 0.0, aspect: str = "16:9", seed: int = 0
 ) -> CapabilityResult:
     from hevi.storyplan.critique import render_storyplan_critique
 
     return render_storyplan_critique(params, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
+def _render_storyboard_preview_sheet(
+    params: dict[str, Any], out_dir: Path, *, duration: float = 0.0, aspect: str = "16:9", seed: int = 0
+) -> CapabilityResult:
+    from hevi.storyplan.preview_sheet import render_preview_sheet_capability
+
+    return render_preview_sheet_capability(params, out_dir, duration=duration, aspect=aspect, seed=seed)
 
 
 _STORYPLAN_ASPECTS = ["16:9", "9:16", "1:1"]
@@ -850,5 +858,27 @@ register(Capability(
     cpu_cost_hint=0.2,
     render=_render_storyplan_critique,
     description="剧本自审轮：挑剔观众+动画导演双重视角批判与自动修订",
+    line="storyplan",
+))
+
+register(Capability(
+    name="storyboard.preview_sheet",
+    kind="shot",
+    aspects=["16:9", "9:16"],
+    params_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "title": {"type": "string"},
+            "shots": {"type": "array"},
+            "shot_groups": {"type": "array"},
+            "plan": {"type": "object"},
+            "topic": {"type": "string"},
+            "aspect": {"type": "string"},
+        },
+    },
+    cpu_cost_hint=0.3,
+    render=_render_storyboard_preview_sheet,
+    description="分镜预览图：按镜头组生成漫画格分镜表（景别远中特、画面描述、台词，铅笔线淡彩风格）",
     line="storyplan",
 ))
