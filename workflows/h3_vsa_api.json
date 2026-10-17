@@ -1,0 +1,11 @@
+{
+  "profile": "FASTVIDEO_VSA",
+  "status": "UNAVAILABLE",
+  "integration": "ComfyUI PR #15958 plus comfy-kitchen PR #117",
+  "reason": "The exact ComfyUI VSA core patch is not in the running tree and installed comfy-kitchen 0.2.28 exports no sol_attn backend; no fake ApplySolAttn node is used.",
+  "comfyui_pr15958_head": "10febb01d7be73d1491cf5e5347b5ab8b6c2c09e",
+  "comfy_kitchen_pr117_merge": "dae00a13d458876570804523ae045a487fd92961",
+  "comfy_kitchen_pr117_head": "67c6987568676823b63b38fe860605ec166f0176",
+  "comfyui_node": false,
+  "executed": false
+}
