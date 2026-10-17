@@ -81,9 +81,11 @@ def ffprobe_bin() -> str:
 
 
 def encode_mp4(frames_dir: Path, mp4_path: Path, *, fps: int = FPS, pattern: str = "%04d.png") -> Path:
+    # libx264 needs even dimensions; the 3D clips come in at card sizes.
     cmd = [
         ffmpeg_bin(), "-y", "-framerate", str(fps),
         "-i", str(frames_dir / pattern),
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20",
         str(mp4_path),
     ]

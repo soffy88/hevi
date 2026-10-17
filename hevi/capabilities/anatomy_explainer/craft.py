@@ -300,11 +300,23 @@ def measure_figure(html_path: Path, *, frames_dir: Path | None = None, mode: str
     token_block = re.findall(r"--anatomy-[a-z0-9-]+:\s*#[0-9a-fA-F]{3,8}", html)
     report["measurements"]["typed_colours"] = sorted(set(typed))[:12]
     report["measurements"]["token_count"] = len(token_block)
-    # The kid plates paint one flat page background behind the drawing; that one
-    # rect is the card, not a part colour.  Every part colour must be a token.
-    backgrounds = re.findall(r'<rect[^>]*width="[^"]*"[^>]*height="[^"]*"[^>]*fill="(#[0-9a-fA-F]{3,8})"', markup)
-    part_colours = [colour for colour in typed if colour.lower() not in {b.lower() for b in backgrounds}]
-    report["measurements"]["page_background"] = sorted(set(backgrounds))
+    # One literal colour is allowed: the full-bleed rect behind the whole card
+    # (the kid plates paint their own page background).  It is only exempt when
+    # it really is the page background -- a rect that covers the whole viewBox.
+    viewbox = re.search(r'<svg[^>]*viewBox="0 0 ([0-9.]+) ([0-9.]+)"', markup)
+    page_colours: set[str] = set()
+    if viewbox:
+        vw, vh = float(viewbox.group(1)), float(viewbox.group(2))
+        for attr in re.findall(r"<rect\b[^>]*/>", markup):
+            colour = re.search(r'fill="(#[0-9a-fA-F]{3,8})"', attr)
+            width = re.search(r'width="([0-9.]+)"', attr)
+            height = re.search(r'height="([0-9.]+)"', attr)
+            if not (colour and width and height):
+                continue
+            if float(width.group(1)) >= 0.9 * vw and float(height.group(1)) >= 0.9 * vh:
+                page_colours.add(colour.group(1).lower())
+    report["measurements"]["page_background"] = sorted(page_colours)
+    part_colours = [colour for colour in typed if colour.lower() not in page_colours]
     if part_colours:
         report["violations"].append(
             f"[craft.theme_tokens] {len(part_colours)} part fills use a literal colour: {sorted(set(part_colours))[:6]}"
