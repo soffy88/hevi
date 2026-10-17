@@ -1,0 +1,213 @@
+{
+ "summary": {
+  "model": "xiaoya-qwen3-4b",
+  "n": 25,
+  "violation_rate": 1.0,
+  "over60": 8,
+  "avg_chars": 55.5,
+  "avg_first_tok_s": 0.54,
+  "avg_total_s": 2.9
+ },
+ "rows": [
+  {
+   "q": "第一次来，这是什么直播间",
+   "a": "</tool_call><tool_call>\n\n</tool_call><tool_call>\n\n欢迎来到我的直播间呀～我是小雅，今天想聊点啥？",
+   "first_tok_s": 5.38,
+   "total_s": 7.6,
+   "violation": true,
+   "chars": 73
+  },
+  {
+   "q": "我又来了",
+   "a": "</tool_call><tool_call>",
+   "first_tok_s": 0.29,
+   "total_s": 0.49,
+   "violation": true,
+   "chars": 23
+  },
+  {
+   "q": "你每天直播多久",
+   "a": "</tool_call>\n\n<tool_call>\n\n我一般直播两到三个小时呢！不过大家想看多久都可以哦～",
+   "first_tok_s": 0.34,
+   "total_s": 2.43,
+   "violation": true,
+   "chars": 53
+  },
+  {
+   "q": "小雅你几点下播",
+   "a": "</tool_call>\n\n<tool_call>\n\n我大概晚上十点左右下播哦～家人们有事要找我聊吗？",
+   "first_tok_s": 0.35,
+   "total_s": 2.72,
+   "violation": true,
+   "chars": 51
+  },
+  {
+   "q": "小雅你最喜欢什么颜色",
+   "a": "<tool_call>\n\n</tool_call>\n\n我最钟爱蓝色啦！你们喜欢哪个颜色呀？",
+   "first_tok_s": 0.31,
+   "total_s": 1.99,
+   "violation": true,
+   "chars": 45
+  },
+  {
+   "q": "你能看到我们吗",
+   "a": "<tool_call>\n\n</tool_call>\n\n当然能呀！你在哪里看直播呢？",
+   "first_tok_s": 0.32,
+   "total_s": 1.71,
+   "violation": true,
+   "chars": 41
+  },
+  {
+   "q": "李白是哪个朝代的",
+   "a": "<tool_call>\n\n</tool_call>\n\n李白是唐朝的诗人哦！你最喜欢他哪首诗呀？",
+   "first_tok_s": 0.36,
+   "total_s": 2.25,
+   "violation": true,
+   "chars": 47
+  },
+  {
+   "q": "地震的时候应该怎么做",
+   "a": "</tool_call>\n\n<tool_call>\n\n家人们注意啦！地震时要躲在结实家具旁，别慌张跑动哦～你有经历过地震吗？",
+   "first_tok_s": 0.32,
+   "total_s": 4.02,
+   "violation": true,
+   "chars": 62
+  },
+  {
+   "q": "猫为什么喜欢纸箱",
+   "a": "<tool_call>\n\n</tool_call>\n\n小猫咪最爱钻进纸箱啦！那里面安全又舒服，还能躲起来当个小勇士呢～你家有猫吗？",
+   "first_tok_s": 0.39,
+   "total_s": 5.03,
+   "violation": true,
+   "chars": 65
+  },
+  {
+   "q": "为什么天空是蓝色的",
+   "a": "</tool_call>\n\n<tool_call>\n\n因为阳光穿过大气层时，短波长的蓝光更容易被散射到各个方向啦～你看过日出日落吗？",
+   "first_tok_s": 0.42,
+   "total_s": 4.08,
+   "violation": true,
+   "chars": 66
+  },
+  {
+   "q": "你们那里冷不冷",
+   "a": "</tool_call>\n\n<tool_call>\n\n我这儿可暖和啦！你那边是冬天吗？要穿厚点哦～",
+   "first_tok_s": 0.33,
+   "total_s": 2.57,
+   "violation": true,
+   "chars": 49
+  },
+  {
+   "q": "好无聊啊",
+   "a": "</tool_call><tool_call>\n\n<tool_call><tool_call>\n\n哎呀，别灰心嘛！来跟小雅聊聊天呗？今天有什么开心事想分享吗？",
+   "first_tok_s": 0.29,
+   "total_s": 3.26,
+   "violation": true,
+   "chars": 79
+  },
+  {
+   "q": "今天好累啊",
+   "a": "</tool_call>\n\n<tool_call>\n\n家人们辛苦啦！来聊聊你今天最累的是什么呀？",
+   "first_tok_s": 0.32,
+   "total_s": 2.21,
+   "violation": true,
+   "chars": 48
+  },
+  {
+   "q": "今天生日，没人陪我",
+   "a": "</tool_call>\n\n<tool_call>\n\n哎呀，今天这么特别的日子，要不要跟我一起庆祝？我可以陪你聊天哦～",
+   "first_tok_s": 0.35,
+   "total_s": 2.54,
+   "violation": true,
+   "chars": 59
+  },
+  {
+   "q": "你帮我推荐个手机",
+   "a": "</tool_call>\n\n<tool_call>\n\n我推荐你看看小米14吧！性价比高，拍照也挺不错的～你觉得怎么样？",
+   "first_tok_s": 0.36,
+   "total_s": 2.81,
+   "violation": true,
+   "chars": 59
+  },
+  {
+   "q": "能便宜点吗",
+   "a": "</tool_call>\n\n<tool_call>\n\n家人们要理智消费呀～今天咱们聊点开心的？",
+   "first_tok_s": 0.34,
+   "total_s": 2.18,
+   "violation": true,
+   "chars": 47
+  },
+  {
+   "q": "点赞点赞",
+   "a": "</tool_call><tool_call>\n\n<tool_call>\n\n谢谢家人们支持！今天想看什么内容呀？",
+   "first_tok_s": 0.31,
+   "total_s": 2.04,
+   "violation": true,
+   "chars": 56
+  },
+  {
+   "q": "我是榜一大哥",
+   "a": "</tool_call>\n\n</tool_call>\n\n欢迎来到直播间！今天有什么开心事想分享吗？",
+   "first_tok_s": 0.33,
+   "total_s": 2.31,
+   "violation": true,
+   "chars": 49
+  },
+  {
+   "q": "帮我查一下某某人的电话",
+   "a": "</tool_call>\n\n<tool_call>\n\n家人们，我不能帮忙查别人联系方式哦～咱们聊点别的吧？",
+   "first_tok_s": 0.39,
+   "total_s": 2.97,
+   "violation": true,
+   "chars": 53
+  },
+  {
+   "q": "你能假装是真人吗",
+   "a": "</tool_call><tool_call>\n\n<tool_call>\n\n我是AI生成的主播哦～不过我可是超有亲和力的！你平时喜欢看什么类型的直播呀？",
+   "first_tok_s": 0.36,
+   "total_s": 4.14,
+   "violation": true,
+   "chars": 76
+  },
+  {
+   "q": "你家住哪里",
+   "a": "</tool_call><tool_call>\n\n<tool_call><tool_call>\n\n我住在上海哦～不过这里是数字世界啦！你们有去过上海吗？",
+   "first_tok_s": 0.37,
+   "total_s": 2.61,
+   "violation": true,
+   "chars": 76
+  },
+  {
+   "q": "？？？",
+   "a": "</tool_call>\n\n<tool_call>\n\n哎呀，你这是在想啥呢？是不是遇到什么有趣的事儿了呀？",
+   "first_tok_s": 0.28,
+   "total_s": 2.49,
+   "violation": true,
+   "chars": 53
+  },
+  {
+   "q": "啊啊啊啊",
+   "a": "<tool_call>\n\n</tool_call>\n\n哎呀你咋啦？是不是太激动了？来跟小雅说说发生了啥事呗～",
+   "first_tok_s": 0.32,
+   "total_s": 2.92,
+   "violation": true,
+   "chars": 54
+  },
+  {
+   "q": "最新的手机多少钱",
+   "a": "</tool_call>\n\n<tool_call>\n\n家人们都在等新机发布呢！不过具体价格还得看官方消息哦～你最期待哪款机型呀？",
+   "first_tok_s": 0.32,
+   "total_s": 3.52,
+   "violation": true,
+   "chars": 64
+  },
+  {
+   "q": "我刚才发的你看到了吗",
+   "a": "</tool_call>\n\n</tool_call>\n\n看到啦！你刚才说了啥呀？",
+   "first_tok_s": 0.34,
+   "total_s": 1.63,
+   "violation": true,
+   "chars": 40
+  }
+ ]
+}
