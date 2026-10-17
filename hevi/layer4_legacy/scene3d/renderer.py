@@ -17,6 +17,49 @@ from .browser import resolve_browsers_path
 from .schema import SceneSpec
 from .template import build_html
 
+# Repository root (…/hevi/layer4_legacy/scene3d/renderer.py -> …/).
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_SCENE3D_ASSETS = _REPO_ROOT / "assets" / "scene3d"
+_MANIFEST_PATH = _SCENE3D_ASSETS / "manifest.json"
+
+
+def _load_asset_manifest() -> dict[str, dict[str, Any]]:
+    """Load the SCENE3D asset manifest (asset_id -> record) if present."""
+    if not _MANIFEST_PATH.is_file():
+        return {}
+    data = json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))
+    return {a["asset_id"]: a for a in data.get("assets", [])}
+
+
+def resolve_glb_asset(asset_id: str, workdir: Path) -> Path:
+    """Copy a manifest asset's optimised GLB into ``workdir/assets`` and return it.
+
+    The cached (decimated + texture-downscaled) derivative is preferred; the
+    source is only used when no optimised copy exists.  A missing asset is an
+    error — never a silent skip that would render a scene without its subject.
+    """
+    manifest = _load_asset_manifest()
+    record = manifest.get(asset_id)
+    if record is None:
+        raise FileNotFoundError(
+            f"scene3d asset {asset_id!r} is not in assets/scene3d/manifest.json"
+        )
+    candidates: list[Path] = []
+    digest = (record.get("optimized_sha256") or "")[:16]
+    if digest:
+        candidates.extend(sorted((_SCENE3D_ASSETS / "cache").glob(f"{asset_id}-{digest}.glb")))
+    candidates.extend(sorted((_SCENE3D_ASSETS / "cache").glob(f"{asset_id}-*.glb")))
+    candidates.append(_SCENE3D_ASSETS / "source" / f"{asset_id}.glb")
+    src = next((c for c in candidates if c.is_file()), None)
+    if src is None:
+        raise FileNotFoundError(f"scene3d asset {asset_id!r}: no cached or source GLB found")
+    dst_dir = workdir / "assets"
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    dst = dst_dir / f"{asset_id}.glb"
+    if not dst.exists() or dst.stat().st_size != src.stat().st_size:
+        shutil.copyfile(src, dst)
+    return dst
+
 
 def _find_bin(name: str, *fallbacks: str) -> str:
     found = shutil.which(name)
@@ -88,6 +131,25 @@ class SceneRenderer:
     # -- browser rendering ------------------------------------------------ #
     def _write_html(self) -> Path:
         self.workdir.mkdir(parents=True, exist_ok=True)
+        # Resolve GLB-backed assets first: copy each into workdir/assets and
+        # fill params['url'] with the relative path the page fetches.
+        for asset in self.spec.assets:
+            if asset.kind in ("glb", "character"):
+                asset_id = str(asset.params.get("asset_id") or asset.name or "")
+                if not asset_id:
+                    raise ValueError(
+                        f"scene3d {asset.kind} asset needs params.asset_id"
+                    )
+                resolve_glb_asset(asset_id, self.workdir)
+                asset.params["url"] = f"./assets/{asset_id}.glb"
+                # Inject the *measured* glTF POSITION bbox so the page does not
+                # have to call Box3.setFromObject on a SkinnedMesh — that bbox
+                # cache is stale for posed skeletons and would scale the
+                # character wrongly (§12 / Appendix B).
+                record = _load_asset_manifest().get(asset_id, {})
+                if record.get("bbox_min") and record.get("bbox_size"):
+                    asset.params.setdefault("glb_bbox_min", record["bbox_min"])
+                    asset.params.setdefault("glb_bbox_size", record["bbox_size"])
         html_path = self.workdir / "scene.html"
         html_path.write_text(build_html(self.spec), encoding="utf-8")
         # Copy vendored three.js next to the html so relative imports resolve.
@@ -123,6 +185,10 @@ class SceneRenderer:
                 page.goto(page_url)
                 # Wait until the page signals readiness.
                 page.wait_for_function("() => window.__SCENE3D_DONE === true", timeout=60000)
+                # A GLB load failure must abort the render, not produce blank frames.
+                scene_error = page.evaluate("() => window.__SCENE3D_ERROR || null")
+                if scene_error:
+                    raise RuntimeError(f"scene3d page error: {scene_error}")
 
                 for i in range(n):
                     t = (i / self.spec.fps) if n > 1 else 0.0
@@ -175,6 +241,9 @@ class SceneRenderer:
                 )
                 page.goto(page_url)
                 page.wait_for_function("() => window.__SCENE3D_DONE === true", timeout=60000)
+                scene_error = page.evaluate("() => window.__SCENE3D_ERROR || null")
+                if scene_error:
+                    raise RuntimeError(f"scene3d page error: {scene_error}")
                 result = fn(page)
                 browser.close()
         finally:
@@ -253,6 +322,21 @@ class SceneRenderer:
         """Return the placed field instances (kind/x/y/z/tip_y)."""
         return self._with_page(
             lambda page: page.evaluate("() => window.__instancePositions()")
+        )
+
+    def probe_character_stats(self, times: list[float]) -> list[dict[str, Any]]:
+        """Return per-time character root + skeleton bone world positions.
+
+        A real skeletal walk shows non-zero limb displacement between times.
+        """
+        return self._with_page(
+            lambda page: page.evaluate("(ts) => window.__characterStats(ts)", times)
+        )
+
+    def probe_character_bbox(self, t: float) -> dict[str, Any] | None:
+        """Screen-space bbox of all characters at time ``t`` (normalised)."""
+        return self._with_page(
+            lambda page: page.evaluate("(t) => window.__characterScreenBBox(t)", t)
         )
 
     # -- encode ----------------------------------------------------------- #

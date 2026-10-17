@@ -28,7 +28,13 @@ class AssetSpec:
 
     ``kind`` selects the procedural/built-in generator:
       planet | wheat | grass | fox | starfield | rock | tree | bush | ground
-    ``params`` are kind-specific (color, scale, count, position, …).
+    or one of the GLB-backed kinds:
+      glb       | static GLB prop (normalised to ``target_height``, base at y=0)
+      character | skinned GLB driven by a deterministic AnimationMixer
+
+    ``params`` are kind-specific (color, scale, position, …).  For the GLB
+    kinds the renderer fills ``params["url"]`` with the path it copied the
+    asset to inside the render workdir.
     """
 
     kind: str
@@ -51,6 +57,12 @@ class CameraSpec:
     # reframe can pull the camera back instead of reusing the landscape flight
     # (which would crop the subject out of the top of frame).
     paths: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    # Named camera-path preset.  ``orbit`` circles the look target, ``push_in``
+    # dollies toward it, ``follow`` tracks the first character along its walk.
+    # When a preset is set it generates the waypoints at render time unless an
+    # explicit ``path``/``paths`` entry is present.
+    preset: str = ""
+    preset_params: dict[str, Any] = field(default_factory=dict)
     # Optional dolly default position if no path given.
     pos: list[float] = field(default_factory=lambda: [0.0, 2.0, 12.0])
     look: list[float] = field(default_factory=lambda: [0.0, 0.0, 0.0])
@@ -146,6 +158,8 @@ _SCHEMA: dict[str, Any] = {
             "additionalProperties": False,
             "properties": {
                 "aspect": {"enum": ["16:9", "9:16", "1:1", "21:9"]},
+                "preset": {"enum": ["", "orbit", "push_in", "follow"]},
+                "preset_params": {"type": "object"},
                 "fov": {"type": "number", "minimum": 1.0, "maximum": 179.0},
                 "near": {"type": "number", "minimum": 0.001},
                 "far": {"type": "number", "minimum": 1.0},
@@ -233,6 +247,8 @@ def parse_scene(data: dict[str, Any]) -> SceneSpec:
             far=float(cam.get("far", 2000.0)),
             path=cam.get("path", []),
             paths=cam.get("paths", {}),
+            preset=str(cam.get("preset", "")),
+            preset_params=dict(cam.get("preset_params", {}) or {}),
             pos=list(cam.get("pos", [0.0, 2.0, 12.0])),
             look=list(cam.get("look", [0.0, 0.0, 0.0])),
         ),
@@ -296,6 +312,8 @@ def scene_to_dict(spec: SceneSpec) -> dict[str, Any]:
                 ]
                 for aspect, waypoints in spec.camera.paths.items()
             },
+            "preset": spec.camera.preset,
+            "preset_params": dict(spec.camera.preset_params),
             "pos": vec(spec.camera.pos),
             "look": vec(spec.camera.look),
         },

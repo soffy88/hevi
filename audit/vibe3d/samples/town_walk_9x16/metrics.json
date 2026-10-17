@@ -1,0 +1,120 @@
+{
+  "id": "town_walk_9x16",
+  "template": "town_street",
+  "camera_preset": "follow",
+  "aspect": "9:16",
+  "resolution": [
+    1080,
+    1920
+  ],
+  "duration_s": 14.0,
+  "fps": 30,
+  "seed": 20241015,
+  "frame_count": 420,
+  "nb_read_frames": 420,
+  "per_frame_s": 0.245,
+  "total_render_s": 102.898,
+  "encode_s": 4.008,
+  "sha256": "85fc0971da439cae689c349323602c0977cc315da5cf4b740396bd1c2318bf02",
+  "silent_sha256": "e9ee932a21a0cddd3460f2796fd5fe90d24b80977f572cbc466dafd52ab8503b",
+  "probe": {
+    "duration": 14.0,
+    "size_bytes": 5925241,
+    "width": 1080,
+    "height": 1920,
+    "codec": "h264",
+    "nb_frames": "420",
+    "has_audio": true
+  },
+  "character_motion": {
+    "max_limb_displacement": 6.6071,
+    "samples": 6,
+    "per_bone": {
+      "Head": 6.5978,
+      "Hip": 6.6,
+      "L_Foot": 6.6061,
+      "L_Hand": 6.5885,
+      "Pelvis": 6.6,
+      "R_Foot": 6.6071,
+      "R_Hand": 6.607
+    }
+  },
+  "layout_boxes": [
+    {
+      "x0": 0.4720301210780935,
+      "y0": 0.39226186985522227,
+      "x1": 0.6399693583284404,
+      "y1": 0.6646199021493248,
+      "width": 0.16793923725034687,
+      "height": 0.2723580322941025
+    },
+    {
+      "x0": 0.4247605830826537,
+      "y0": 0.3928371349749308,
+      "x1": 0.616417015190625,
+      "y1": 0.6657088347272868,
+      "width": 0.1916564321079713,
+      "height": 0.27287169975235603
+    },
+    {
+      "x0": 0.4574973607410661,
+      "y0": 0.3924592201966446,
+      "x1": 0.6444194922393838,
+      "y1": 0.6654327821340618,
+      "width": 0.18692213149831766,
+      "height": 0.2729735619374172
+    },
+    {
+      "x0": 0.42535899626269624,
+      "y0": 0.39251122006606654,
+      "x1": 0.6205967193517659,
+      "y1": 0.6652496721072668,
+      "width": 0.19523772308906961,
+      "height": 0.2727384520412003
+    },
+    {
+      "x0": 0.4548770523982239,
+      "y0": 0.393201905099801,
+      "x1": 0.6801047896685263,
+      "y1": 0.664516239973162,
+      "width": 0.22522773727030238,
+      "height": 0.271314334873361
+    },
+    {
+      "x0": 0.4404475458264493,
+      "y0": 0.39157950412106113,
+      "x1": 0.6000406756535637,
+      "y1": 0.6647101253168816,
+      "width": 0.15959312982711438,
+      "height": 0.27313062119582043
+    }
+  ],
+  "narration": {
+    "enabled": true,
+    "lines": [
+      {
+        "start_s": 0.6,
+        "intended_start_s": 0.6,
+        "text": "小镇的街道上，太阳暖暖的。",
+        "wav": "town_walk_9x16_line0.wav",
+        "duration_s": 2.554
+      },
+      {
+        "start_s": 5.2,
+        "intended_start_s": 5.2,
+        "text": "叔叔提着包，慢慢地往前走。",
+        "wav": "town_walk_9x16_line1.wav",
+        "duration_s": 1.579
+      },
+      {
+        "start_s": 9.8,
+        "intended_start_s": 9.8,
+        "text": "大树和小鸟，都跟他打招呼。",
+        "wav": "town_walk_9x16_line2.wav",
+        "duration_s": 2.299
+      }
+    ]
+  },
+  "subtitles": "audit/vibe3d/samples/town_walk_9x16/subtitles.srt",
+  "video": "audit/vibe3d/samples/town_walk_9x16/town_walk_9x16.mp4"
+}
