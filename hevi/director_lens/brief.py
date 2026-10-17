@@ -102,7 +102,7 @@ class Reference:
 
 
 @dataclass
-class ShotPlan:
+class LensShotPlan:
     """一个分镜:一个主任务 + 时长。起势→发展→收束。"""
 
     index: int
@@ -115,6 +115,9 @@ class ShotPlan:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+ShotPlan = LensShotPlan
 
 
 @dataclass
