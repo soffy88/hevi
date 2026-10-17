@@ -44,6 +44,10 @@ register_partsci_capabilities_once()
 from . import golive3 as _golive3  # noqa: E402,F401
 _golive3.register_golive3_capabilities_once()
 
+# Stickman line (feat/stickman-flow): topic_scout, structure_clone, proposal, render_local, flow_pack, flow_import
+from hevi.stickman.capabilities import register_stickman_capabilities_once
+register_stickman_capabilities_once()
+
 
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
