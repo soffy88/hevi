@@ -52,7 +52,7 @@
  | `pi-attempt-1` | 2026-10-10 00:12:29 +0000 | 1 | 11 | SKIPPED | Conflict: Auto-merging docs/TALKCRAFT-INTERNALIZATION.md CONFLICT (add | 
  | `veya/remote-mcp-direct-command-remote-77392` | 2026-09-25 05:11:12 +0000 | 1 | 11 | MERGED | Clean merge | 
  | `veya/remote-mcp-direct-command-remote-f6a5c` | 2026-09-25 09:32:21 +0000 | 1 | 23 | MERGED | Clean merge | 
-| `veya/remote-mcp-direct-command-remote-8ff76` | 2026-09-24 08:24:09 +0000 | 2 | 8 | PENDING |  |
+ | `veya/remote-mcp-direct-command-remote-8ff76` | 2026-09-24 08:24:09 +0000 | 2 | 8 | SKIPPED | Conflict: CONFLICT (modify/delete): hevi/distribution/service.py delet | 
 | `closure/3o-v3-architecture` | 2026-09-14 13:24:42 +0000 | 3 | 19 | PENDING |  |
 | `architecture/production-graph-vnext` | 2026-09-11 14:03:31 +0000 | 28 | 73 | PENDING |  |
 | `product/director-workbench-vnext` | 2026-09-12 01:16:59 +0000 | 46 | 87 | PENDING |  |
