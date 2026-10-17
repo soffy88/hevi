@@ -13,7 +13,7 @@
  | `slim-image-hevi-api` | 2026-10-14 14:21:20 +0000 | 2 | 8 | MERGED | Clean merge | 
  | `feat/musetalk-3o` | 2026-10-11 01:40:17 +0000 | 2 | 9 | SKIPPED | Conflict: Auto-merging hevi/api/routers/explainer.py Auto-merging hevi | 
  | `feat/huobao-agents` | 2026-10-14 12:23:58 +0000 | 2 | 22 | SKIPPED | Conflict: Auto-merging docs/third_party/provenance-ledger.yaml CONFLIC | 
-| `feat/particle-science` | 2026-10-15 14:23:12 +0000 | 2 | 293 | PENDING |  |
+ | `feat/particle-science` | 2026-10-15 14:23:12 +0000 | 2 | 293 | MERGED | Clean merge | 
 | `feat/toonflow-assets` | 2026-10-15 15:08:22 +0000 | 3 | 6 | PENDING |  |
 | `feat/svfactory` | 2026-10-15 15:15:08 +0000 | 3 | 13 | PENDING |  |
 | `feat/brand-film` | 2026-10-14 08:13:18 +0000 | 3 | 53 | PENDING |  |
