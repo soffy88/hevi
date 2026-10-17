@@ -43,7 +43,7 @@
  | `veya/execution/direct-af502849f6874a14b2421c29f/hevi` | 2026-09-28 15:55:29 +0000 | 1 | 4 | SKIPPED | Conflict: Auto-merging hevi/production/p5_3_library.py CONFLICT (add/a | 
  | `veya/execution/direct-d27fedb4ceb749b7a9def0333/hevi` | 2026-09-28 15:56:13 +0000 | 1 | 4 | MERGED | Clean merge | 
  | `veya/execution/direct-dbc8c4555c2f49f9a9704812d/hevi` | 2026-09-28 15:54:37 +0000 | 1 | 4 | SKIPPED | Conflict: Auto-merging data/p5_3_reference_corpus.json CONFLICT (add/a | 
-| `veya/remote-mcp-direct-command-remote-668e6` | 2026-09-24 06:47:53 +0000 | 1 | 5 | PENDING |  |
+ | `veya/remote-mcp-direct-command-remote-668e6` | 2026-09-24 06:47:53 +0000 | 1 | 5 | SKIPPED | Conflict: CONFLICT (modify/delete): hevi/distribution/service.py delet | 
 | `veya/remote-mcp-direct-command-remote-6e272` | 2026-09-24 06:47:53 +0000 | 1 | 5 | PENDING |  |
 | `veya/remote-mcp-direct-command-remote-8583a` | 2026-09-24 06:47:53 +0000 | 1 | 5 | PENDING |  |
 | `veya/remote-mcp-direct-command-remote-8cfd9` | 2026-09-24 06:47:53 +0000 | 1 | 5 | PENDING |  |
