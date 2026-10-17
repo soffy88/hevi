@@ -1,0 +1,30 @@
+{
+  "artifacts": {
+    "frames": "/data/soffy/projects/hevi-anatup/output/anatomy_up/anatomy-up-video-tq66jqgx/frames",
+    "mp4": "audit/anatomy_up/video/turning-dial-drive.mp4"
+  },
+  "drive_shots": 132,
+  "example": "turning-dial",
+  "fps": 12,
+  "frames": 132,
+  "largest_frame_change": 0.0253,
+  "mean_frame_diff": 0.8468,
+  "page": "third_party/anatomy/examples/turning-dial/turning-dial-light.html",
+  "sizes": [
+    [
+      688,
+      576
+    ]
+  ],
+  "video": {
+    "codec": "h264",
+    "duration_s": 11.0,
+    "fps": "12/1",
+    "height": 576,
+    "min_duration_required": 10.0,
+    "nb_frames": 132,
+    "sha256": "9e71d4fff726472a4019f558c20d4f8967c20a7bfd1f653cbe6ba0a89cf48977",
+    "size_bytes": 411968,
+    "width": 688
+  }
+}
