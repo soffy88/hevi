@@ -1,0 +1,10 @@
+{
+  "profile": "SOL_H3",
+  "status": "UNAVAILABLE",
+  "integration": "NVlabs/Sana Sol-H3 external h3_runtime, not a ComfyUI node",
+  "reason": "The pinned Sol-H3 runtime requires multi-GPU context parallel attention for sol/sol_bsa and is not installed or validated on this single RTX 3080 SM86 host.",
+  "source": "https://github.com/NVlabs/Sana/tree/sol-engine/models/minimax_h3/Sol-H3",
+  "source_revision": "8249b285142e70ab596370db59636a714de3169b",
+  "comfyui_node": false,
+  "executed": false
+}

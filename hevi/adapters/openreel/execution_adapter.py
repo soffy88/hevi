@@ -23,7 +23,7 @@ from hevi.adapters.openreel import (
 )
 from hevi.adapters.openreel.operation_mapper import map_operation
 from hevi.production.execution_executor import ExecutionContext
-from hevi.production.execution_result import AdapterError, ExecutionResult
+from hevi.production.execution_result import AdapterError, ProductionExecutionResult
 from hevi.production.operation import ProductionOperation
 
 
@@ -51,7 +51,7 @@ class OpenReelExecutionAdapter:
 
     def execute(
         self, operation: ProductionOperation, context: ExecutionContext
-    ) -> ExecutionResult:
+    ) -> ProductionExecutionResult:
         if self.runner is None or not self.runner.available():
             # Named and loud. Returning an empty successful result here would let a
             # production commit having produced nothing (§35).
@@ -73,7 +73,7 @@ class OpenReelExecutionAdapter:
         except Exception as exc:
             raise AdapterError("provider_unavailable", f"openreel run failed: {exc}") from exc
 
-        return ExecutionResult(
+        return ProductionExecutionResult(
             operation_id=operation.operation_id,
             status="SUCCEEDED",
             artifacts=tuple(a.artifact_id for a in artifacts),

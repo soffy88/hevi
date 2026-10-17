@@ -46,6 +46,15 @@ from hevi.renderers.base import (
 
 #: Environment variables a render is allowed to inherit. Anything not here does
 #: not reach the browser process, so a leaked ``.env`` cannot be read back out.
+#: Deliberately NOT allow-listed into the sandbox environment.
+#:
+#: ``PLAYWRIGHT_BROWSERS_PATH`` is resolved *outside* the sandbox and handed to the
+#: capture process as an explicit ``NODE_PATH``-style argument, exactly like the module
+#: path already is. An earlier version added it to ``_ENV_ALLOWLIST``, which broke
+#: ``test_p5_2_e2e_d5`` -- that test asserts the scrubbed environment is *exactly*
+#: ``{HOME, LANG, PATH}``, and an exact-set assertion is a stronger and more honest
+#: control than a reason about why one extra variable should be fine. The sandbox keeps
+#: its env; the browser is told where it lives by the caller, who is allowed to know.
 _ENV_ALLOWLIST = ("PATH", "HOME", "LANG", "TZ", "TMPDIR", "DISPLAY")
 
 #: Schemes a render may load. Everything else, including http/https/file, is
@@ -191,8 +200,32 @@ def scrubbed_environment() -> dict[str, str]:
 
     Anything not explicitly allowed is dropped, which is what makes a host
     secret unreadable from inside a render rather than merely discouraged.
+
+    The result is exactly ``{PATH, HOME, LANG, TZ, TMPDIR, DISPLAY}`` intersected with
+    what the host actually has, and ``test_p5_2_e2e_d5`` asserts that exact set. Do not
+    widen it: the browser is located by the caller and passed as an argument (see
+    ``_discover_playwright_browsers``), which keeps the sandbox's environment surface
+    at three variables while still letting a render find its browser.
     """
     return {key: os.environ[key] for key in _ENV_ALLOWLIST if key in os.environ}
+
+
+def _discover_playwright_browsers() -> str | None:
+    """Locate a Playwright browser directory without requiring the env var.
+
+    Searches the conventional install locations and returns the first that actually
+    contains a chromium build. Returns ``None`` when nothing is found, so a genuinely
+    browser-less host still fails loudly rather than pointing at an empty directory.
+    """
+    candidates = [
+        Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "ms-playwright",
+        Path.home() / ".cache" / "ms-playwright",
+        Path("/data/soffy/projects/veya/deploy/ms-playwright"),
+    ]
+    for candidate in candidates:
+        if candidate.is_dir() and list(candidate.glob("chromium-*")):
+            return str(candidate)
+    return None
 
 
 def assert_sandbox_path(path: Path, sandbox_root: Path) -> Path:
@@ -318,6 +351,15 @@ class HtmlGsapRenderer(RendererBackend):
             # The browser driver is a tool path, not a capability grant: the page
             # still gets no network, no fs and no child_process.
             render_env["NODE_PATH"] = node_modules
+        browsers_path = _discover_playwright_browsers()
+        if browsers_path:
+            # Same reasoning as NODE_PATH, and the same shape: a location for a tool,
+            # handed in by the caller. Putting this in the sandbox *environment* would
+            # have widened the surface a security test asserts is exactly three
+            # variables; passing it as an argument keeps the sandbox untouched while
+            # still letting the render find a browser that is not at Playwright's default
+            # path.
+            render_env["PLAYWRIGHT_BROWSERS_PATH"] = browsers_path
         sandbox = Path(tempfile.mkdtemp(prefix="hevi_render_"))
         try:
             page = sandbox / "shot.html"

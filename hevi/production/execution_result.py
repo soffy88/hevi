@@ -90,7 +90,7 @@ def classify_failure(error_type: str) -> ExecutionFailureLevel:
     return ExecutionFailureLevel.SEMANTIC
 
 
-class ExecutionResult(BaseModel):
+class ProductionExecutionResult(BaseModel):
     """The outcome of one operation attempt.
 
     ``FAILED`` and ``SKIPPED`` are distinct: a skipped operation did not fail, and
@@ -293,7 +293,7 @@ __all__ = [
     "AttemptRecord",
     "ExecutionFailureLevel",
     "ExecutionFailureRecord",
-    "ExecutionResult",
+    "ProductionExecutionResult",
     "classify_failure",
     "failure_from_exception",
 ]

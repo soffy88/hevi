@@ -20,7 +20,7 @@ from hevi.production.execution_executor import (
 from hevi.production.execution_result import (
     AdapterError,
     ExecutionFailureRecord,
-    ExecutionResult,
+    ProductionExecutionResult,
 )
 from hevi.production.execution_transaction import (
     ArtifactState,
@@ -52,7 +52,7 @@ class RecordingAdapter:
 
     def execute(
         self, operation: ProductionOperation, context: ExecutionContext
-    ) -> ExecutionResult:
+    ) -> ProductionExecutionResult:
         self.calls.append(operation.operation_id)
         if context.dry_run:
             raise AssertionError("dry run must not invoke the adapter")
@@ -60,7 +60,7 @@ class RecordingAdapter:
         target = self.work_dir / f"{artifact_id}.bin"
         target.write_bytes(b"real bytes")
         self.receipts.append(f"receipt-{artifact_id}")
-        return ExecutionResult(
+        return ProductionExecutionResult(
             operation_id=operation.operation_id,
             status="SUCCEEDED",
             artifacts=(artifact_id,),
@@ -91,13 +91,13 @@ class FailingAdapter:
 
     def execute(
         self, operation: ProductionOperation, context: ExecutionContext
-    ) -> ExecutionResult:
+    ) -> ProductionExecutionResult:
         self.calls += 1
         still_failing = self.fail_times is None or self.calls <= self.fail_times
         if still_failing:
             raise AdapterError(self.error_type, f"simulated {self.error_type}")
         (context.work_dir or Path("/tmp")).mkdir(parents=True, exist_ok=True)
-        return ExecutionResult(
+        return ProductionExecutionResult(
             operation_id=operation.operation_id,
             status="SUCCEEDED",
             artifacts=(f"{operation.operation_id}-out",),
@@ -193,7 +193,7 @@ def test_t4_second_operation_failure_restores_first_operations_logical_state(tmp
 
         def execute(self, operation, context):
             if operation.operation_id == "first":
-                return ExecutionResult(
+                return ProductionExecutionResult(
                     operation_id="first", status="SUCCEEDED",
                     artifacts=("first-out",), receipt_refs=("receipt-first",),
                     metadata={"hash:first-out": "ef" * 32, "kind:first-out": "video",
@@ -228,7 +228,7 @@ def test_t5_artifact_generated_before_failure_is_orphaned_not_deleted(tmp_path: 
                 target = tmp_path / "first.bin"
                 target.write_bytes(b"produced before failure")
                 self.made.append(target)
-                return ExecutionResult(
+                return ProductionExecutionResult(
                     operation_id="first", status="SUCCEEDED", artifacts=("first-out",),
                     receipt_refs=("receipt-first",),
                     metadata={"hash:first-out": "ef" * 32, "kind:first-out": "video",
@@ -256,7 +256,7 @@ def test_t6_receipts_are_retained_after_rollback(tmp_path: Path):
         def execute(self, operation, context):
             if operation.operation_id == "first":
                 (tmp_path / "f.bin").write_bytes(b"x")
-                return ExecutionResult(
+                return ProductionExecutionResult(
                     operation_id="first", status="SUCCEEDED", artifacts=("first-out",),
                     receipt_refs=("receipt-first",),
                     metadata={"hash:first-out": "ef" * 32, "kind:first-out": "video",
@@ -377,7 +377,7 @@ def test_optional_operation_failure_does_not_block_commit(tmp_path: Path):
         def execute(self, operation, context):
             if operation.required:
                 (tmp_path / "req.bin").write_bytes(b"x")
-                return ExecutionResult(
+                return ProductionExecutionResult(
                     operation_id=operation.operation_id, status="SUCCEEDED",
                     artifacts=("req-out",),
                     metadata={"hash:req-out": "11" * 32, "kind:req-out": "video",

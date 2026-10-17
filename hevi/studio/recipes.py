@@ -34,7 +34,7 @@ class Recipe(BaseModel):
     @field_validator("handoff")
     @classmethod
     def _known_handoff(cls, v: str) -> str:
-        allowed = {"tongjian", "shortdrama", "explainer", "none"}
+        allowed = {"tongjian", "shortdrama", "explainer", "scene3d", "none"}
         if v not in allowed:
             raise ValueError(f"handoff must be one of {sorted(allowed)}")
         return v

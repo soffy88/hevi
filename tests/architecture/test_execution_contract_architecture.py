@@ -484,3 +484,102 @@ def test_pre_existing_duplicate_authorities_do_not_grow(authority: str):
         f"{sorted(expected)}. A new definition is a §62 violation; removing one means "
         "the owning phase (not this spec) resolved it -- update this map then."
     )
+
+
+# ── rename safety: a type rename must not half-apply ──
+
+
+def test_no_module_references_a_nonexistent_contract_type():
+    """Every contract type must be importable from where it is imported.
+
+    Added after renaming `ExecutionResult` to `ProductionExecutionResult`. A
+    skip-guard written to protect `hevi/qualification/models.py` matched two unrelated
+    files that merely contained the word "qualification" in a comment, so the rename
+    landed in 3 of 5 files and left `execution_transaction.py` and
+    `renderers/html_gsap_production.py` importing a name that no longer existed.
+
+    The failure was invisible to the module's own checks and only surfaced as an
+    ImportError from an unrelated test module -- which is how a partially-applied
+    rename behaves in a 6k-module codebase. This closes the whole contract set so that
+    cannot happen again.
+    """
+    import importlib
+    import inspect
+
+    contract_modules = (
+        "hevi.production.operation",
+        "hevi.production.execution_result",
+        "hevi.production.execution_transaction",
+        "hevi.production.execution_executor",
+        "hevi.production.render_job",
+        "hevi.production.render_cache",
+        "hevi.production.production_validation",
+        "hevi.production.visual_scene_ir",
+        "hevi.renderers.html_gsap_scene",
+        "hevi.renderers.html_gsap_production",
+        "hevi.adapters.openreel.execution_adapter",
+    )
+
+    # Types each contract module is expected to define.
+    expected: dict[str, set[str]] = {
+        "hevi.production.operation": {
+            "ProductionOperation", "ProductionOperationType", "ArtifactRef",
+            "ResourceRef", "ArtifactExpectation",
+        },
+        "hevi.production.execution_result": {
+            "ProductionExecutionResult", "ExecutionFailureRecord", "AdapterError",
+            "ExecutionFailureLevel",
+        },
+        "hevi.production.execution_transaction": {
+            "ProductionExecutionTransaction", "TransactionSnapshot", "TransactionReceipt",
+            "RollbackReceipt", "ArtifactState", "TransactionState",
+        },
+        "hevi.production.execution_executor": {
+            "ProductionExecutor", "OperationValidator", "ExecutionContext",
+            "ValidationReport", "ProductionAdapter",
+        },
+        "hevi.production.render_job": {
+            "RenderJob", "RenderReceipt", "RenderJobStatus", "OutputSpec",
+        },
+        "hevi.production.render_cache": {
+            "ArtifactStore", "CacheEntry", "CacheLookup", "CacheLevel",
+        },
+        "hevi.production.production_validation": {
+            "ProductionValidationResult", "ValidationCheck", "ValidationFailure",
+        },
+        "hevi.production.visual_scene_ir": {
+            "VisualSceneIR", "VisualElement", "VisualElementType", "AnimationSpec",
+            "TransitionSpec", "Keyframe", "LayoutMode", "BackgroundSpec",
+        },
+        "hevi.renderers.html_gsap_scene": {
+            "compile_scene", "CompiledScene", "UnsupportedSceneComponent",
+        },
+        "hevi.renderers.html_gsap_production": {"HtmlGsapProductionAdapter"},
+        "hevi.adapters.openreel.execution_adapter": {"OpenReelExecutionAdapter"},
+    }
+
+    missing: list[str] = []
+    for module_name, types in expected.items():
+        module = importlib.import_module(module_name)
+        for type_name in types:
+            if not hasattr(module, type_name):
+                missing.append(f"{module_name}.{type_name}")
+            else:
+                # And the object is actually importable, not just a stray attribute.
+                try:
+                    getattr(module, type_name)
+                except Exception as exc:
+                    missing.append(f"{module_name}.{type_name} (access raised {exc!r})")
+    assert not missing, f"contract types not importable from their module: {missing}"
+
+    # And every module in the contract set imports cleanly, which is the actual symptom
+    # the partial rename produced.
+    for module_name in contract_modules:
+        importlib.import_module(module_name)
+
+    # The qualification ExecutionResult must be untouched by the contract's naming.
+    from hevi.qualification.models import ExecutionResult as QualificationResult
+
+    assert set(inspect.signature(QualificationResult).parameters) == {
+        "artifact_locator", "execution_id", "runtime_metadata",
+    }, "the qualification ExecutionResult must not have gained contract fields"

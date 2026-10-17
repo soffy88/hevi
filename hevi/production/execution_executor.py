@@ -40,7 +40,7 @@ from typing import Any, Protocol, runtime_checkable
 
 from hevi.production.execution_result import (
     ExecutionFailureRecord,
-    ExecutionResult,
+    ProductionExecutionResult,
     failure_from_exception,
 )
 from hevi.production.execution_transaction import (
@@ -87,7 +87,7 @@ class ProductionAdapter(Protocol):
 
     def execute(
         self, operation: ProductionOperation, context: ExecutionContext
-    ) -> ExecutionResult: ...
+    ) -> ProductionExecutionResult: ...
 
 
 @dataclass(frozen=True)
@@ -192,7 +192,7 @@ class ExecutionOutcome:
     transaction_id: str
     production_id: str
     dry_run: bool
-    results: tuple[ExecutionResult, ...] = ()
+    results: tuple[ProductionExecutionResult, ...] = ()
     failures: tuple[ExecutionFailureRecord, ...] = ()
     commit: TransactionReceipt | None = None
     rollback: RollbackReceipt | None = None
@@ -260,7 +260,7 @@ class ProductionExecutor:
         )
 
         completed: set[str] = set()
-        results: list[ExecutionResult] = []
+        results: list[ProductionExecutionResult] = []
         failures: list[ExecutionFailureRecord] = []
         skipped: list[str] = []
 
@@ -291,7 +291,7 @@ class ProductionExecutor:
                 # §36: optional failure is recorded, execution continues, and final
                 # validation still learns about it via `failures`.
                 results.append(
-                    ExecutionResult(
+                    ProductionExecutionResult(
                         operation_id=operation.operation_id,
                         status="FAILED",
                         metadata={"problems": list(report.problems)},
@@ -303,7 +303,7 @@ class ProductionExecutor:
             if dry_run:
                 # §57: resolve and validate, generate nothing.
                 results.append(
-                    ExecutionResult(
+                    ProductionExecutionResult(
                         operation_id=operation.operation_id,
                         status="SKIPPED",
                         metadata={"dry_run": True,
@@ -394,7 +394,7 @@ class ProductionExecutor:
         operation: ProductionOperation,
         context: ExecutionContext,
         transaction: ProductionExecutionTransaction,
-    ) -> tuple[int, ExecutionResult | None, ExecutionFailureRecord | None]:
+    ) -> tuple[int, ProductionExecutionResult | None, ExecutionFailureRecord | None]:
         for attempt in range(1, self.max_attempts + 1):
             started = time.monotonic()
             try:
@@ -442,7 +442,7 @@ class ProductionExecutor:
         context: ExecutionContext,
         transaction: ProductionExecutionTransaction,
         prior_attempt: int,
-    ) -> tuple[ExecutionResult | None, ExecutionFailureRecord | None]:
+    ) -> tuple[ProductionExecutionResult | None, ExecutionFailureRecord | None]:
         started = time.monotonic()
         try:
             result = self.adapter.execute(operation, context)
@@ -473,7 +473,7 @@ class ProductionExecutor:
         self,
         transaction: ProductionExecutionTransaction,
         operation: ProductionOperation,
-        result: ExecutionResult,
+        result: ProductionExecutionResult,
     ) -> None:
         for artifact_id in result.artifacts:
             # The artifact layer hashes the produced file. Adapters supply a locator and

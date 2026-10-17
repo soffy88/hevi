@@ -41,7 +41,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hevi.production.execution_result import ExecutionFailureRecord, ExecutionResult
+from hevi.production.execution_result import ExecutionFailureRecord, ProductionExecutionResult
 from hevi.production.operation import ProductionOperation, resolve_execution_order
 
 
@@ -223,7 +223,7 @@ class ProductionExecutionTransaction:
         self._artifacts: dict[str, ArtifactStateRecord] = {}
         self._operation_states: dict[str, str] = {op.operation_id: "PENDING" for op in operations}
         self._provider_assignments: dict[str, str] = {}
-        self._results: list[ExecutionResult] = []
+        self._results: list[ProductionExecutionResult] = []
         self._failures: list[ExecutionFailureRecord] = []
         self._receipt_refs: list[str] = []
         #: Artifacts committed by *earlier* transactions. Rollback must not touch
@@ -247,7 +247,7 @@ class ProductionExecutionTransaction:
         return tuple(self._failures)
 
     @property
-    def results(self) -> tuple[ExecutionResult, ...]:
+    def results(self) -> tuple[ProductionExecutionResult, ...]:
         return tuple(self._results)
 
     def artifact(self, artifact_id: str) -> ArtifactStateRecord | None:
@@ -338,7 +338,7 @@ class ProductionExecutionTransaction:
             self._receipt_refs.append(receipt_ref)
         return record
 
-    def record_result(self, result: ExecutionResult) -> None:
+    def record_result(self, result: ProductionExecutionResult) -> None:
         self._results.append(result)
         self._operation_states[result.operation_id] = result.status
 

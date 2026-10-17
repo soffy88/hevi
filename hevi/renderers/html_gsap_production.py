@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from hevi.production.execution_executor import ExecutionContext
-from hevi.production.execution_result import AdapterError, ExecutionResult
+from hevi.production.execution_result import AdapterError, ProductionExecutionResult
 from hevi.production.operation import ProductionOperation, ProductionOperationType
 from hevi.production.visual_scene_ir import VisualSceneIR
 from hevi.renderers.base import RenderPlan
@@ -50,7 +50,7 @@ class HtmlGsapProductionAdapter:
 
     def execute(
         self, operation: ProductionOperation, context: ExecutionContext
-    ) -> ExecutionResult:
+    ) -> ProductionExecutionResult:
         if context.dry_run:
             raise AdapterError("capability_mismatch", "dry run must not render")
 
@@ -100,7 +100,7 @@ class HtmlGsapProductionAdapter:
         # party able to attest to them. The executor hashes the produced file through
         # the artifact layer instead.
         artifact_id = f"{operation.operation_id}-video"
-        return ExecutionResult(
+        return ProductionExecutionResult(
             operation_id=operation.operation_id,
             status="SUCCEEDED",
             artifacts=(artifact_id,),
