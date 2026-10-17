@@ -7,7 +7,7 @@
 |---|---|---|---|---|---|
  | `feat/opuscar-integration` | 2026-10-16 21:11:24 +0000 | 1 | 1 | SKIPPED | Conflict: Auto-merging hevi/capabilities/registry.py CONFLICT (content | 
  | `feat/review-sheet` | 2026-10-15 09:55:59 +0000 | 1 | 1 | MERGED | Clean merge | 
-| `feat/manga-name` | 2026-10-14 12:27:14 +0000 | 1 | 38 | PENDING |  |
+ | `feat/manga-name` | 2026-10-14 12:27:14 +0000 | 1 | 38 | SKIPPED | Conflict: Auto-merging hevi/capabilities/__init__.py CONFLICT (add/add | 
 | `chore/remove-publishing` | 2026-10-13 08:08:37 +0000 | 1 | 75 | PENDING |  |
 | `feat/continuity-1017` | 2026-10-17 07:29:22 +0000 | 2 | 8 | PENDING |  |
 | `slim-image-hevi-api` | 2026-10-14 14:21:20 +0000 | 2 | 8 | PENDING |  |
