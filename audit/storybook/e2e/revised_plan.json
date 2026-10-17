@@ -1,0 +1,278 @@
+{
+  "plan_id": "sp-20261017024231",
+  "title": "小狐狸与微光森林的奇迹",
+  "aspect": "16:9",
+  "fps": 30,
+  "duration_sec": 31.8,
+  "audience": "kids_2_6",
+  "language": "zh",
+  "narration_text": "清晨的阳光洒满大地，小动物们对小狐狸与微光森林的奇迹充满了好奇。 大家齐心协力迈出探索的第一步，克服了重重小关卡。 通过这次有趣的经历，大家终于弄明白了小狐狸与微光森林的奇迹是怎么回事啦！",
+  "narrative": {
+    "hook": {
+      "hook_type": "curiosity_image",
+      "text": "为什么大家对小狐狸与微光森林的奇迹这么好奇呢？",
+      "start_ms": 0,
+      "end_ms": 3500,
+      "shown_in": [
+        "voice",
+        "subtitle",
+        "visual"
+      ]
+    },
+    "beats": [
+      {
+        "beat_id": "beat_general_1_cause",
+        "phase": "cause",
+        "summary": "清晨的阳光洒满大地，小动物们对小狐狸与微光森林的奇迹充满了好奇",
+        "expectation": "为什么大家对小狐狸与微光森林的奇迹这么好奇呢？",
+        "start_ms": 0,
+        "end_ms": 9540,
+        "semantic_refs": [
+          "general",
+          "topic_intro"
+        ]
+      },
+      {
+        "beat_id": "beat_general_2_process",
+        "phase": "process",
+        "summary": "大家齐心协力迈出探索的第一步，克服了重重小关卡",
+        "expectation": "寻找核心解决方法",
+        "start_ms": 9540,
+        "end_ms": 23850,
+        "semantic_refs": [
+          "general",
+          "exploration"
+        ]
+      },
+      {
+        "beat_id": "beat_general_3_result",
+        "phase": "result",
+        "summary": "通过这次有趣的经历，大家终于弄明白了小狐狸与微光森林的奇迹是怎么回事啦",
+        "expectation": "回应开头期待与互动问句",
+        "start_ms": 23850,
+        "end_ms": 31800,
+        "semantic_refs": [
+          "general",
+          "closure"
+        ]
+      }
+    ],
+    "closing_response": "通过这次有趣的经历，大家终于弄明白了小狐狸与微光森林的奇迹是怎么回事啦"
+  },
+  "shots": {
+    "sequences": [
+      {
+        "sequence_id": 1,
+        "name": "main_sequence",
+        "scenes": [
+          {
+            "scene_id": "scene_1",
+            "location": "小狐狸与微光森林的奇迹主题动画绘本舞台",
+            "time_of_day": "day",
+            "shots": [
+              {
+                "shot_id": "shot_01",
+                "scene_id": "scene_1",
+                "sequence_id": 1,
+                "purpose": "引入主题 小狐狸与微光森林的奇迹 与开场提问",
+                "start_state": "画面明亮温馨，主角登场迎接观众",
+                "action": "主角面向镜头挥手并提出关于 小狐狸与微光森林的奇迹 的生动疑问，表情期待",
+                "end_state": "主角站定并微笑，疑问字幕清晰呈现",
+                "sound": "【轻柔风铃与落叶沙沙声】 旁白温柔发问，背景音乐轻快",
+                "acceptance": "前3秒内画面与声音双重呈现问题，无快切，语速合规",
+                "roll_role": "A_main",
+                "b_roll_function": "交代环境",
+                "shot_type": "establishing",
+                "material_source": "generated",
+                "new_info": [
+                  "小狐狸与微光森林的奇迹",
+                  "主角登场",
+                  "开场提问"
+                ],
+                "start_ms": 0,
+                "end_ms": 9540,
+                "in_point_ms": 0,
+                "out_point_ms": 0,
+                "capability_binding": {}
+              },
+              {
+                "shot_id": "shot_02",
+                "scene_id": "scene_1",
+                "sequence_id": 1,
+                "purpose": "探索 小狐狸与微光森林的奇迹 的过程与互动演示",
+                "start_state": "主角处于探索与实践状态中",
+                "action": "主角通过生动动作展示关于 小狐狸与微光森林的奇迹 的探索细节，动作平稳过渡",
+                "end_state": "主角露出恍然大悟的欣喜表情，指向核心知识点",
+                "sound": "【清脆露珠水滴声与微光升腾音效】 旁白详细讲解，音效契合动作",
+                "acceptance": "镜头时长充足，动作状态有清晰起止，无冗余空转",
+                "roll_role": "A_main",
+                "b_roll_function": "补充说明",
+                "shot_type": "character",
+                "material_source": "generated",
+                "new_info": [
+                  "探索过程",
+                  "核心知识点",
+                  "转折互动"
+                ],
+                "start_ms": 9540,
+                "end_ms": 23850,
+                "in_point_ms": 0,
+                "out_point_ms": 0,
+                "capability_binding": {}
+              },
+              {
+                "shot_id": "shot_03",
+                "scene_id": "scene_1",
+                "sequence_id": 1,
+                "purpose": "总结升华关于 小狐狸与微光森林的奇迹 的完整闭环",
+                "start_state": "主角微笑站在画面中央，场景温馨和谐",
+                "action": "主角做出点赞与挥手告别动作，伴随结尾闭环互动复述",
+                "end_state": "画面平稳渐隐收尾，主角保持微笑定格",
+                "sound": "【温暖木琴舒缓旋律】 旁白总结主题并留出互动空白，音乐柔和淡出",
+                "acceptance": "开头问题在结尾得到明确回应，时间线闭环无黑场",
+                "roll_role": "A_main",
+                "b_roll_function": "衔接",
+                "shot_type": "insert",
+                "material_source": "generated",
+                "new_info": [
+                  "主题复述",
+                  "互动问句",
+                  "完美闭环"
+                ],
+                "start_ms": 23850,
+                "end_ms": 31800,
+                "in_point_ms": 0,
+                "out_point_ms": 0,
+                "capability_binding": {}
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "timeline": {
+    "duration_ms": 31800,
+    "tracks": [
+      {
+        "track_kind": "video",
+        "clips": [
+          {
+            "clip_id": "vid_0",
+            "track_kind": "video",
+            "start_ms": 0,
+            "end_ms": 9540,
+            "source_ref": "shot_01",
+            "text": ""
+          },
+          {
+            "clip_id": "vid_1",
+            "track_kind": "video",
+            "start_ms": 9540,
+            "end_ms": 23850,
+            "source_ref": "shot_02",
+            "text": ""
+          },
+          {
+            "clip_id": "vid_2",
+            "track_kind": "video",
+            "start_ms": 23850,
+            "end_ms": 31800,
+            "source_ref": "shot_03",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "track_kind": "voice",
+        "clips": [
+          {
+            "clip_id": "v_0",
+            "track_kind": "voice",
+            "start_ms": 0,
+            "end_ms": 10600,
+            "source_ref": "",
+            "text": "清晨的阳光洒满大地，小动物们对小狐狸与微光森林的奇迹充满了好奇"
+          },
+          {
+            "clip_id": "v_1",
+            "track_kind": "voice",
+            "start_ms": 10600,
+            "end_ms": 21200,
+            "source_ref": "",
+            "text": "大家齐心协力迈出探索的第一步，克服了重重小关卡"
+          },
+          {
+            "clip_id": "v_2",
+            "track_kind": "voice",
+            "start_ms": 21200,
+            "end_ms": 31800,
+            "source_ref": "",
+            "text": "通过这次有趣的经历，大家终于弄明白了小狐狸与微光森林的奇迹是怎么回事啦"
+          }
+        ]
+      },
+      {
+        "track_kind": "music",
+        "clips": [
+          {
+            "clip_id": "mus_0",
+            "track_kind": "music",
+            "start_ms": 0,
+            "end_ms": 31800,
+            "source_ref": "bgm_warm_bed",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "track_kind": "sfx",
+        "clips": [
+          {
+            "clip_id": "sfx_0",
+            "track_kind": "sfx",
+            "start_ms": 0,
+            "end_ms": 500,
+            "source_ref": "chime_soft",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "track_kind": "subtitle",
+        "clips": [
+          {
+            "clip_id": "sub_0",
+            "track_kind": "subtitle",
+            "start_ms": 0,
+            "end_ms": 10600,
+            "source_ref": "",
+            "text": "清晨的阳光洒满大地，小动物们对小狐狸与微光森林的奇迹充满了好奇"
+          },
+          {
+            "clip_id": "sub_1",
+            "track_kind": "subtitle",
+            "start_ms": 10600,
+            "end_ms": 21200,
+            "source_ref": "",
+            "text": "大家齐心协力迈出探索的第一步，克服了重重小关卡"
+          },
+          {
+            "clip_id": "sub_2",
+            "track_kind": "subtitle",
+            "start_ms": 21200,
+            "end_ms": 31800,
+            "source_ref": "",
+            "text": "通过这次有趣的经历，大家终于弄明白了小狐狸与微光森林的奇迹是怎么回事啦"
+          }
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "generator": "hevi.storyplan.autofill",
+    "hook_type": "curiosity_image",
+    "domain": "general"
+  },
+  "created_at": "2026-10-17T02:42:31.706026Z"
+}
