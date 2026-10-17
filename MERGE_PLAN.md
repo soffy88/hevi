@@ -18,7 +18,7 @@
  | `feat/svfactory` | 2026-10-15 15:15:08 +0000 | 3 | 13 | SKIPPED | Conflict: Auto-merging hevi/capabilities/__init__.py Auto-merging hevi | 
  | `feat/brand-film` | 2026-10-14 08:13:18 +0000 | 3 | 53 | SKIPPED | Conflict: Auto-merging docs/third_party/provenance-ledger.yaml CONFLIC | 
  | `feat/kids-manifest` | 2026-10-15 23:42:53 +0000 | 4 | 12 | MERGED | Clean merge | 
-| `feat/webkit-layers` | 2026-10-14 12:40:56 +0000 | 4 | 16 | PENDING |  |
+ | `feat/webkit-layers` | 2026-10-14 12:40:56 +0000 | 4 | 16 | SKIPPED | Conflict: Auto-merging hevi/capabilities/registry.py CONFLICT (add/add | 
 | `feat/story-plan` | 2026-10-15 13:47:50 +0000 | 4 | 35 | PENDING |  |
 | `feat/archify-visuals` | 2026-10-12 22:00:52 +0000 | 6 | 723 | PENDING |  |
 | `feat/aimotion-rules` | 2026-10-14 03:28:03 +0000 | 7 | 27 | PENDING |  |
