@@ -51,6 +51,7 @@ from hevi.api.routers.stickdir import router as stickdir_router
 from hevi.api.routers.style import router as style_router
 from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.studio_v2 import router as studio_v2_router
+from hevi.api.routers.production_intelligence import router as production_intelligence_router
 from hevi.api.routers.subjects import router as subjects_router
 from hevi.api.routers.tasks import router as tasks_router
 from hevi.api.routers.shot_spec import router as shot_spec_router
@@ -186,6 +187,7 @@ app.include_router(material_corpus_router, prefix="/api")
 app.include_router(backlot_router, prefix="/api")
 app.include_router(studio_router, prefix="/api")
 app.include_router(studio_v2_router, prefix="/api")
+app.include_router(production_intelligence_router, prefix="/api")
 app.include_router(production_tools_v2_router, prefix="/api")
 app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
