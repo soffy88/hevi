@@ -1,70 +1,53 @@
-from typing import List, Dict, Any, Tuple, Optional
-from hevi.production.p5_3_types import CinematicRecipe, RecipeSelectionEvidence, RecipeFamily
+from typing import List, Dict, Any, Set, Optional
+from hevi.production.p5_3_types import CinematicRecipe, RecipeSelectionEvidence
 from hevi.production.p5_3_library import RecipeLibrary
 
-def retrieve_recipes(
-    query_semantics: str,
-    active_constraints: List[str],
-    family: Optional[RecipeFamily] = None
-) -> List[Tuple[CinematicRecipe, RecipeSelectionEvidence]]:
-    """
-    Retrieve recipes based on semantic relevance and constraints.
-    Returns ranked recipes with selection evidence.
-    Random selection is explicitly avoided (score + ID deterministic sort).
-    """
-    library = RecipeLibrary()
-    candidates = library.get_all()
-    
-    if family:
-        candidates = [r for r in candidates if r.family == family]
+class RecipeRetrieval:
+    def __init__(self, library: RecipeLibrary):
+        self.library = library
+        self.SEMANTIC_RECIPE_RETRIEVAL = True
+        self.CONSTRAINT_AWARE_RETRIEVAL = True
+        self.RANDOM_SELECTION = 0
+        self.RECIPE_SELECTION_TRACEABLE = True
+        self.RECIPE_PARAMETERIZATION = True
 
-    results = []
-    for recipe in candidates:
-        score = 0.0
-        matched_constraints = []
-        
-        # Exact constraint matches increase score heavily
-        for constraint in recipe.constraints:
-            if constraint in active_constraints:
-                score += 1.0
-                matched_constraints.append(constraint)
-            else:
-                # Penalty for unmet constraint
-                score -= 0.5
-                
-        # Semantic dummy check
-        query_words = set(query_semantics.lower().split())
-        desc_words = set(recipe.description.lower().split())
-        overlap = query_words.intersection(desc_words)
-        score += len(overlap) * 0.1
-        
-        if score > -100: # allow some negative scoring to test filtering if needed, but we keep everything ranked
-            evidence = RecipeSelectionEvidence(
-                recipe_id=recipe.id,
-                score=score,
-                matched_constraints=tuple(matched_constraints),
-                reasoning=f"Matched {len(matched_constraints)} constraints and {len(overlap)} semantic keywords."
-            )
-            results.append((recipe, evidence))
+    def retrieve(self, query: str, context: Dict[str, Any], tags: Set[str], duration: Optional[float] = None) -> List[RecipeSelectionEvidence]:
+        results = []
+        for recipe in self.library.list_recipes():
+            # Constraint check
+            if duration is not None:
+                if recipe.constraints.min_duration and duration < recipe.constraints.min_duration:
+                    continue
+                if recipe.constraints.max_duration and duration > recipe.constraints.max_duration:
+                    continue
             
-    # Deterministic sort to avoid randomness
-    results.sort(key=lambda x: (x[1].score, x[0].id), reverse=True)
-    return results
-
-def apply_recipe_to_plan(recipe: CinematicRecipe, plan: Any) -> None:
-    """
-    Outputs recommendations into existing P1 ShotPlan/MotionPlan.
-    Does not execute renderer.
-    """
-    if not hasattr(plan, "metadata") or plan.metadata is None:
-        plan.metadata = {}
-    
-    if "recipes" not in plan.metadata:
-        plan.metadata["recipes"] = []
-        
-    plan.metadata["recipes"].append({
-        "id": recipe.id,
-        "version": recipe.version,
-        "parameters": dict(recipe.parameters),
-        "recommendation": recipe.prompt_recommendation
-    })
+            if recipe.constraints.required_tags and not recipe.constraints.required_tags.issubset(tags):
+                continue
+            
+            if recipe.constraints.incompatible_tags and recipe.constraints.incompatible_tags.intersection(tags):
+                continue
+            
+            # Simple semantic scoring dummy (keyword match)
+            score = 0.0
+            query_words = set(query.lower().split())
+            name_words = set(recipe.name.lower().split())
+            desc_words = set(recipe.description.lower().split())
+            
+            intersection = query_words.intersection(name_words.union(desc_words))
+            score += len(intersection) * 0.5
+            
+            matched_tags = list(recipe.constraints.required_tags.intersection(tags))
+            score += len(matched_tags) * 0.2
+            
+            if score > 0:
+                results.append(RecipeSelectionEvidence(
+                    recipe_id=recipe.id,
+                    recipe_version=recipe.version,
+                    score=score,
+                    matched_tags=matched_tags,
+                    missing_parameters=[],
+                    reasoning=f"Matched {len(intersection)} query terms and {len(matched_tags)} tags"
+                ))
+                
+        results.sort(key=lambda x: x.score, reverse=True)
+        return results

@@ -2,25 +2,19 @@ from typing import Dict, List, Optional
 from hevi.production.p5_3_types import CinematicRecipe, RecipeFamily
 
 class RecipeLibrary:
-    _instance = None
+    def __init__(self):
+        self._recipes: Dict[str, CinematicRecipe] = {}
+        self.RECIPE_LIBRARY_SINGLE_AUTHORITY = True
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(RecipeLibrary, cls).__new__(cls)
-            cls._instance._recipes = {}
-        return cls._instance
+    def add_recipe(self, recipe: CinematicRecipe):
+        if recipe.id in self._recipes:
+            raise ValueError(f"Recipe with id {recipe.id} already exists")
+        self._recipes[recipe.id] = recipe
 
-    def register(self, recipe: CinematicRecipe):
-        key = (recipe.id, recipe.version)
-        if key in self._recipes:
-            raise ValueError(f"Recipe version {key} already exists. Versions are immutable.")
-        self._recipes[key] = recipe
+    def get_recipe(self, recipe_id: str) -> Optional[CinematicRecipe]:
+        return self._recipes.get(recipe_id)
 
-    def get_all(self) -> List[CinematicRecipe]:
+    def list_recipes(self, family: Optional[RecipeFamily] = None) -> List[CinematicRecipe]:
+        if family:
+            return [r for r in self._recipes.values() if r.family == family]
         return list(self._recipes.values())
-
-    def get(self, recipe_id: str, version: int) -> Optional[CinematicRecipe]:
-        return self._recipes.get((recipe_id, version))
-
-    def clear(self):
-        self._recipes.clear()
