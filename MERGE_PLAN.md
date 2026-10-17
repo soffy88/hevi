@@ -11,7 +11,7 @@
  | `chore/remove-publishing` | 2026-10-13 08:08:37 +0000 | 1 | 75 | SKIPPED | Conflict: Auto-merging docs/API-CAPABILITIES.md Auto-merging docs/gene | 
  | `feat/continuity-1017` | 2026-10-17 07:29:22 +0000 | 2 | 8 | SKIPPED | Conflict: Auto-merging hevi/prompt/continuity/compiler.py CONFLICT (co | 
  | `slim-image-hevi-api` | 2026-10-14 14:21:20 +0000 | 2 | 8 | MERGED | Clean merge | 
-| `feat/musetalk-3o` | 2026-10-11 01:40:17 +0000 | 2 | 9 | PENDING |  |
+ | `feat/musetalk-3o` | 2026-10-11 01:40:17 +0000 | 2 | 9 | SKIPPED | Conflict: Auto-merging hevi/api/routers/explainer.py Auto-merging hevi | 
 | `feat/huobao-agents` | 2026-10-14 12:23:58 +0000 | 2 | 22 | PENDING |  |
 | `feat/particle-science` | 2026-10-15 14:23:12 +0000 | 2 | 293 | PENDING |  |
 | `feat/toonflow-assets` | 2026-10-15 15:08:22 +0000 | 3 | 6 | PENDING |  |
