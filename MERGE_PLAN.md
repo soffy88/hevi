@@ -56,7 +56,7 @@
  | `closure/3o-v3-architecture` | 2026-09-14 13:24:42 +0000 | 3 | 19 | SKIPPED | Conflict: Auto-merging artifacts/3o-v3/canonical_pins.json CONFLICT (a | 
  | `architecture/production-graph-vnext` | 2026-09-11 14:03:31 +0000 | 28 | 73 | SKIPPED | Conflict: Auto-merging docs/API-CAPABILITIES.md Auto-merging docs/open | 
  | `product/director-workbench-vnext` | 2026-09-12 01:16:59 +0000 | 46 | 87 | SKIPPED | Conflict: Auto-merging docs/API-CAPABILITIES.md Auto-merging docs/open | 
-| `platform/production-intelligence-vnext` | 2026-09-12 01:57:51 +0000 | 48 | 93 | PENDING |  |
+ | `platform/production-intelligence-vnext` | 2026-09-12 01:57:51 +0000 | 48 | 93 | SKIPPED | Conflict: Auto-merging docs/API-CAPABILITIES.md Auto-merging docs/open | 
 | `release/hevi-vnext` | 2026-09-12 14:29:47 +0000 | 52 | 95 | PENDING |  |
 | `feat/spec-001-shortdrama-backend` | 2026-07-25 10:44:59 +0000 | 78 | 166 | PENDING |  |
 | `feat/tongjian-v2-consolidation-color` | 2026-07-31 13:48:49 +0000 | 97 | 3257 | PENDING |  |
