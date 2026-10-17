@@ -1,0 +1,7 @@
+{
+  "title": "Gold B — Two chapters, one identity",
+  "chapters": [
+    {"source": "chapter one", "characters": ["hero"], "events": [{"id": "arrive", "summary": "The hero arrives.", "span": [0, 17]}]},
+    {"source": "chapter two", "characters": ["hero"], "events": [{"id": "return", "summary": "The hero returns changed.", "span": [0, 25]}]}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "title": "Gold A — The public-domain council",
+  "source_text": "At dawn, the council gathered at the old gate. The envoy carried the sealed letter.",
+  "characters": [
+    {"character_id": "envoy", "canonical_name": "The Envoy", "role_in_chapter": "protagonist"},
+    {"character_id": "warden", "canonical_name": "The Warden", "role_in_chapter": "supporting"}
+  ],
+  "events": [
+    {"event_id": "gather", "summary": "The council gathers at the old gate.", "actors": ["envoy", "warden"], "location": "old gate", "causes": [], "effects": ["letter"], "source_span": [0, 55], "dramatic_weight": 4},
+    {"event_id": "letter", "summary": "The envoy carries the sealed letter.", "actors": ["envoy"], "location": "old gate", "causes": ["gather"], "effects": [], "source_span": [56, 98], "dramatic_weight": 5}
+  ]
+}

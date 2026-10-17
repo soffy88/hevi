@@ -1,8 +1,8 @@
 // Keep production renders independent of the public Google Fonts CDN.  These
 // Noto families are installed in the HEVI runtime image and are resolved by
 // Chromium locally, so render output does not depend on network availability.
-export const headingFont = '"Noto Serif CJK SC", "Noto Serif CJK JP", serif';
-export const bodyFont = '"Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif';
+export const headingFont = '"Noto Serif CJK SC", "Noto Serif CJK JP", "STKaiti", "KaiTi", serif';
+export const bodyFont = '"Noto Sans CJK SC", "Noto Sans CJK JP", Arial, sans-serif';
 export const emojiFont = '"Noto Color Emoji", "Noto Sans CJK SC", sans-serif';
 
 export const colors = {

@@ -5,6 +5,7 @@ import { ExplainerVideo, getTotalDurationInFrames } from "./ExplainerVideo";
 import { HandDrawnDiary, getHandDrawnDuration } from "./HandDrawnDiary/HandDrawnDiary";
 import { PaperPromo, getPaperPromoDuration } from "./templates/PaperPromo/PaperPromo";
 import { MotionGraphics, getMotionDuration } from "./MotionGraphics";
+import { P0GoldenScene } from "./P0GoldenScene";
 
 const FPS = 30;
 
@@ -90,6 +91,14 @@ export const RemotionRoot: React.FC = () => {
           width: props.spec.width,
           height: props.spec.height,
         })}
+      />
+      <Composition
+        id="P0-Golden"
+        component={P0GoldenScene}
+        durationInFrames={360}
+        fps={30}
+        width={1080}
+        height={1440}
       />
     </>
   );

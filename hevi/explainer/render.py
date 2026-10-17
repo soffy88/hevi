@@ -27,6 +27,7 @@ from hevi.explainer.props import normalise_visual_config
 from hevi.explainer.schemas import ManifestSegment, Storyboard
 from hevi.explainer.voiceover import DEFAULT_RATE, DEFAULT_VOICE, synthesize_storyboard
 from hevi.production.delivery_gate import ComposeGateError, assert_explainer_compose
+from hevi.production_graph.resources import ExecutionProfile, assert_concurrency
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,26 @@ def _attach_procedural_bgm(video_path: Path, duration_s: float, work_dir: Path) 
     return video_path
 
 
-async def _run_remotion_render(composition_id: str, output_path: Path) -> None:
+def effective_remotion_concurrency(
+    configured_concurrency: int = 4,
+    *,
+    execution_profile: ExecutionProfile | None = None,
+) -> int:
+    """Resolve Remotion concurrency from the worker's actual CPU envelope."""
+
+    profile = execution_profile or ExecutionProfile.from_system(
+        render_concurrency=configured_concurrency
+    )
+    return assert_concurrency(profile, configured_concurrency, "render")
+
+
+async def _run_remotion_render(
+    composition_id: str,
+    output_path: Path,
+    *,
+    configured_concurrency: int = 4,
+    execution_profile: ExecutionProfile | None = None,
+) -> None:
     if not _HEVI_REMOTION_DIR.is_dir():
         raise RenderError(f"Remotion 项目目录不存在: {_HEVI_REMOTION_DIR}；请重建 API 镜像")
     if not _REMOTION_BIN.is_file():
@@ -202,13 +222,16 @@ async def _run_remotion_render(composition_id: str, output_path: Path) -> None:
     # unmounted Remotion project instead of the shared /app/output volume.
     output_path = output_path.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    effective_concurrency = effective_remotion_concurrency(
+        configured_concurrency,
+        execution_profile=execution_profile,
+    )
     proc = await asyncio.create_subprocess_exec(
         str(_REMOTION_BIN),
         "render",
         composition_id,
         str(output_path),
-        # memory-bounded hosts can lower this (each worker is a headless Chromium decoding video)
-        f"--concurrency={os.environ.get('HEVI_REMOTION_CONCURRENCY', '4')}",
+        f"--concurrency={effective_concurrency}",
         cwd=str(_HEVI_REMOTION_DIR),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
@@ -229,6 +252,7 @@ async def render_storyboard(
     voice: str = DEFAULT_VOICE,
     rate: str = DEFAULT_RATE,
     tts_provider: str | None = None,
+    execution_profile: ExecutionProfile | None = None,
 ) -> RenderResult:
     """storyboard(E0 产出,未配音)→ 配音 + 写 manifest/audio → 子进程渲染竖屏/横屏。"""
     output_dir = output_dir.resolve()
@@ -253,11 +277,13 @@ async def render_storyboard(
     portrait_path = output_dir / "portrait.mp4"
     landscape_path = output_dir / "landscape.mp4"
     render_runtime = "remotion"
+    if execution_profile is None:
+        execution_profile = ExecutionProfile.from_system(render_concurrency=4)
     async with _REMOTION_LOCK:
         if _HEVI_REMOTION_DIR.is_dir() and _REMOTION_BIN.is_file():
             _write_manifest(manifest)
-            await _run_remotion_render("Explainer-Portrait", portrait_path)
-            await _run_remotion_render("Explainer-Landscape", landscape_path)
+            await _run_remotion_render("Explainer-Portrait", portrait_path, execution_profile=execution_profile)
+            await _run_remotion_render("Explainer-Landscape", landscape_path, execution_profile=execution_profile)
         else:
             from hevi.explainer.cpu_fallback import render_storyboard_cpu_fallback
 

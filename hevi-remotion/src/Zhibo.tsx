@@ -5,10 +5,9 @@ import {
   interpolate,
   useCurrentFrame,
 } from "remotion";
-
 // Local system fonts keep this composition deterministic and offline-safe.
-const brushFont = '"Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif';
-const serifFont = '"Noto Serif CJK SC", "Noto Serif CJK JP", serif';
+const brushFont = '"Noto Sans CJK SC", "Noto Sans CJK JP", "STKaiti", "KaiTi", serif';
+const serifFont = '"Noto Serif CJK SC", "Noto Serif CJK JP", "Songti SC", "SimSun", serif';
 
 const NAME = "智伯";
 const ERA = "战国 · 晋";
