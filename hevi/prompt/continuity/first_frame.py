@@ -641,9 +641,8 @@ def validate_first_frame(
         if any(h in p_place for h in ["挂钩", "挂在", "桌", "地面", "现场", "hook", "hanging", "table"]):
             # 若首帧 prompt 中将该道具描述为手持或在角色手中
             wrong_holding = (
-                f"holding {p_name_en.lower()}" in pt.lower()
-                or f"holds {p_name_en.lower()}" in pt.lower()
-                or f"in {p_holder}'s hand" in pt.lower()
+                bool(re.search(rf"\b(?:holding|holds|carrying|gripping)\s+(?:a\s+|the\s+)?(?:[a-zA-Z\-]+\s+)*{re.escape(p_name_en.lower())}\b", pt, re.I))
+                or bool(re.search(rf"\b{re.escape(p_name_en.lower())}\b[^\.]*?\bin\s+(?:his|her|their|[a-zA-Z]+'s)?\s*hands?\b", pt, re.I))
                 or f"手持{pname}" in pt
                 or f"手提{pname}" in pt
                 or f"拿{pname}" in pt
@@ -654,20 +653,33 @@ def validate_first_frame(
                     f"但首帧提示词描述为角色手持/手中。"
                 )
 
-        # 典型冲突 B: 账本中角色持有道具，但首帧描述在其他人手里或遗漏关键位置
-        elif any(h in p_place for h in ["左手", "右手", "双手", "手持", "left hand", "right hand"]):
-            # 如果账本指定了右手，但首帧提示词写了左手
-            if "左手" in p_place or "left hand" in p_place.lower():
-                if f"right hand" in pt.lower() and p_name_en.lower() in pt.lower():
-                    errors.append(
-                        f"[{sid}] 首帧道具状态与道具账本 0 秒状态不符: 道具 '{pname}' 在账本中为左手持有，"
-                        f"但首帧提示词描述为右手持有。"
-                    )
-            elif "右手" in p_place or "right hand" in p_place.lower():
-                if f"left hand" in pt.lower() and p_name_en.lower() in pt.lower():
+        # 典型冲突 B: 账本中角色持有道具，但首帧描述在错误手部
+        elif any(h in p_place for h in ["左手", "右手", "left hand", "right hand"]):
+            # 如果账本指定了右手，但首帧提示词写了左手持有该道具
+            if "右手" in p_place or "right hand" in p_place.lower():
+                is_held_in_left = (
+                    bool(re.search(rf"\b(?:in\s+(?:his|her|their)?\s*left\s+hand|with\s+(?:his|her|their)?\s*left\s+hand|left\s+hand\s+holding)\b[^\.]*?\b{re.escape(p_name_en.lower())}\b", pt, re.I))
+                    or bool(re.search(rf"\b{re.escape(p_name_en.lower())}\b[^\.]*?\bin\s+(?:his|her|their)?\s*left\s+hand\b", pt, re.I))
+                    or f"左手持{pname}" in pt
+                    or f"左手拿{pname}" in pt
+                )
+                if is_held_in_left:
                     errors.append(
                         f"[{sid}] 首帧道具状态与道具账本 0 秒状态不符: 道具 '{pname}' 在账本中为右手持有，"
                         f"但首帧提示词描述为左手持有。"
+                    )
+            # 如果账本指定了左手，但首帧提示词写了右手持有该道具
+            elif "左手" in p_place or "left hand" in p_place.lower():
+                is_held_in_right = (
+                    bool(re.search(rf"\b(?:in\s+(?:his|her|their)?\s*right\s+hand|with\s+(?:his|her|their)?\s*right\s+hand|right\s+hand\s+holding)\b[^\.]*?\b{re.escape(p_name_en.lower())}\b", pt, re.I))
+                    or bool(re.search(rf"\b{re.escape(p_name_en.lower())}\b[^\.]*?\bin\s+(?:his|her|their)?\s*right\s+hand\b", pt, re.I))
+                    or f"右手持{pname}" in pt
+                    or f"右手拿{pname}" in pt
+                )
+                if is_held_in_right:
+                    errors.append(
+                        f"[{sid}] 首帧道具状态与道具账本 0 秒状态不符: 道具 '{pname}' 在账本中为左手持有，"
+                        f"但首帧提示词描述为右手持有。"
                     )
 
     # ── 检查 9: 角色描述未逐字复用 ────────────────────────────────────────
