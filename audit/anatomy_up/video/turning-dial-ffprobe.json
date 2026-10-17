@@ -1,15 +1,15 @@
 {
   "format": {
-    "bit_rate": "299613",
+    "bit_rate": "299619",
     "duration": "11.000000",
-    "filename": "/data/soffy/projects/hevi-anatup/output/anatomy_up/anatomy-up-video-tq66jqgx/turning-dial-drive.mp4",
+    "filename": "/data/soffy/projects/hevi-anatup/output/anatomy_up/anatomy-up-video-3ho4sfej/turning-dial-drive.mp4",
     "format_long_name": "QuickTime / MOV",
     "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
     "nb_programs": 0,
     "nb_stream_groups": 0,
     "nb_streams": 1,
     "probe_score": 100,
-    "size": "411968",
+    "size": "411977",
     "start_time": "0.000000",
     "tags": {
       "compatible_brands": "isomiso2avc1mp41",
@@ -21,7 +21,7 @@
   "streams": [
     {
       "avg_frame_rate": "12/1",
-      "bit_rate": "297861",
+      "bit_rate": "297867",
       "bits_per_raw_sample": "8",
       "chroma_location": "left",
       "closed_captions": 0,
