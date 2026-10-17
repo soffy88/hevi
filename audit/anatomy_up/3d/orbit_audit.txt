@@ -1,0 +1,44 @@
+clearance: 0 problems
+clearance apart: 0 problems
+terminals: 0 ends not on a mount
+loose ends: 0
+screen folds: 0
+support: 0 unsupported solids · 0 hanging tubes · 0 sunk pairs
+depth order: 0 problems
+through in mid-flight: 0 pairs
+self-overlap: 0 chunks whose outline crosses itself on screen
+wobble: 0 smoothed profiles whose slope turns between its ends
+saddles off their host apart: 0
+stand-in shapes: 0 items whose recorded shape covers too little of what it draws
+crowding: 0 pairs where a bend or end touches another line on screen
+items with no shape: 2  stand.ruler, tower.bolts
+audit · 0 tubes · 12 solids · 9 items · 1 depth states · 7 overlaps · 7 order rules · 0.4 s
+audit failed: 2 problems
+separation: 0
+unseparated: 0
+cycles: 0
+forced: 0
+swaps: 0
+layers: 0
+rigid: 0
+swept: 0
+posed: 0
+folds: 0
+self: 0
+crowding: 0
+endon: 0
+coverage: 0
+depth: 0
+continuity: 0
+worst tone step 0.25 · worst birth 1.71 px² · worst dot α step 0.000 · worst faded α step 0.031 · merges 0 · outline motion over bound 0.000 px · halving 0 of 400
+order changes: 7 states with swaps · 2374 order states · 720 posed states · 8 planes (tightest margin 0.000) · depth oracle 43 states, 150 overlapping pairs
+  sweep at 91.000: 3 pairs reorder (blade0 / blade2; blade0 / blade3; hub / blade0)
+  sweep at 181.000: 3 pairs reorder (hub / blade3; blade1 / blade3; blade2 / blade3)
+  sweep at 271.000: 3 pairs reorder (hub / blade2; blade0 / blade2; blade1 / blade2)
+  sweep at 1.000: 2 pairs reorder (blade1 / blade3; hub / blade1)
+  sweep at 90.000: 2 pairs reorder (blade1 / blade2; hub / blade2)
+  sweep at 180.000: 2 pairs reorder (blade0 / blade1; hub / blade1)
+  sweep at 270.000: 2 pairs reorder (hub / blade0; blade0 / blade3)
+turn audit · 188.79 s
+turn audit passed
+wrote /data/soffy/projects/hevi-anatup/.tmp/proto/wma.html · 230 KB · 5 parts · back: 0 planes, 0 dynamic · mid: 8 planes, 0 dynamic

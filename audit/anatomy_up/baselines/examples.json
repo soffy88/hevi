@@ -1,0 +1,23 @@
+{
+  "dial-indicator": {
+    "page": "dial-indicator-light.html",
+    "page_bytes": 136489,
+    "page_sha256": "bc1810e340d916a25cc1749589b44096b7e41970f22fa7fce569bbefc0613093",
+    "shot": "dial-indicator-light.png",
+    "shot_sha256": "43576fdbe9fe93100b512b7207c37703ed22a777e4f4766ee9666088b4c86caf"
+  },
+  "ripple-tank": {
+    "page": "ripple-tank-light.html",
+    "page_bytes": 505499,
+    "page_sha256": "15b5b7a1e738fb5e435e9c1dccea874f6d292962fb31943fdd4466c15b351b59",
+    "shot": "ripple-tank-light.png",
+    "shot_sha256": "24f4384943602366a68d8974309032df6f1da67b84290c15456e22eb19c54e06"
+  },
+  "turning-dial": {
+    "page": "turning-dial-light.html",
+    "page_bytes": 673894,
+    "page_sha256": "7873a4873e4f1a204ca59691765915f155f44095c2c290730aa2b915b4c88c9e",
+    "shot": "turning-dial-light.png",
+    "shot_sha256": "0a2fdd1280f10a9aba41e23efc004e1839aee53e096ed266b4c3efd764f5c9ce"
+  }
+}
