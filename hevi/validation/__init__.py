@@ -5,5 +5,22 @@ visual/audio integrity checks.
 """
 
 from hevi.validation.artifact import ValidationCheck, ValidationResult
+from hevi.validation.layout_gate import (
+    Box,
+    LayoutAuditReport,
+    audit_sampled_frames,
+    check_clipped,
+    check_safe_area,
+    compute_overlap_ratio,
+)
 
-__all__ = ["ValidationCheck", "ValidationResult"]
+__all__ = [
+    "Box",
+    "LayoutAuditReport",
+    "ValidationCheck",
+    "ValidationResult",
+    "audit_sampled_frames",
+    "check_clipped",
+    "check_safe_area",
+    "compute_overlap_ratio",
+]

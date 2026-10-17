@@ -111,3 +111,14 @@ entries:
     commercial_restrictions: none
     derived_data: false
     last_verified: 2026-10-14
+  - source: code-brand-film
+    repository: https://github.com/nutllwhy/code-brand-film
+    license: MIT
+    version: "2026-10"
+    integration_type: vendored_layer4_legacy
+    bundled: true
+    runtime_dependency: false
+    attribution_required: true
+    commercial_restrictions: none
+    derived_data: false
+    last_verified: 2026-10-14

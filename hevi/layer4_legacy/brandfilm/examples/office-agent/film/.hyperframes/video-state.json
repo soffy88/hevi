@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "historyId": "24afa154-9406-49d1-8f2d-171ab9d17ad1",
+  "currentRevision": null,
+  "pendingChanges": false,
+  "files": {
+    "assets/fonts/sans-400.woff2": {
+      "hash": "8f2496833a2cced9155442a64e770a5afc9c20e965b0970898b6da6d9dbfd422",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/8f/8f2496833a2cced9155442a64e770a5afc9c20e965b0970898b6da6d9dbfd422"
+    },
+    "assets/fonts/sans-700.woff2": {
+      "hash": "d7a32360b73e4c2b209b961037a7564f13f61be88330c0e8c7fbf1b5540c7f0d",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/d7/d7a32360b73e4c2b209b961037a7564f13f61be88330c0e8c7fbf1b5540c7f0d"
+    },
+    "assets/fonts/serif-600.woff2": {
+      "hash": "917e4ac71e2e29469925a63f858792d10e8e89f94fcfbd15498aa4acca0bdd02",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/91/917e4ac71e2e29469925a63f858792d10e8e89f94fcfbd15498aa4acca0bdd02"
+    },
+    "assets/fonts/serif-900.woff2": {
+      "hash": "93ff8de1998189bea1aa37dc8aef204d6aa890a396ee78b756a7a39bbef69610",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/93/93ff8de1998189bea1aa37dc8aef204d6aa890a396ee78b756a7a39bbef69610"
+    },
+    "assets/logo.svg": {
+      "hash": "720cc11426ba08d60fb4048fad82d2e1cd67be6445f78767d195127e26a440fb",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/72/720cc11426ba08d60fb4048fad82d2e1cd67be6445f78767d195127e26a440fb"
+    },
+    "hyperframes.json": {
+      "hash": "405c46fc97387a45fd8d833244d3f94660ce061aa8cb89f0d2f50212197f0727",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/40/405c46fc97387a45fd8d833244d3f94660ce061aa8cb89f0d2f50212197f0727"
+    },
+    "index.html": {
+      "hash": "27ee260ab47ad63b9e1d44410a9d9dba7d58e04c494539698c1cc1010e797a8d",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/27/27ee260ab47ad63b9e1d44410a9d9dba7d58e04c494539698c1cc1010e797a8d"
+    },
+    "package.json": {
+      "hash": "1791dc06f3703fb2290d589bdf44b3eda317ae2051d780b73fb92bfe0628efc5",
+      "content": "/home/soffy/.cache/hyperframes/history/24afa154-9406-49d1-8f2d-171ab9d17ad1/blobs/17/1791dc06f3703fb2290d589bdf44b3eda317ae2051d780b73fb92bfe0628efc5"
+    }
+  },
+  "revisions": {},
+  "checks": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "snapshots": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "renders": {
+    "latest": {
+      "id": "1445dbb9-8fa4-4c52-a922-6218fcc6518f",
+      "completedAt": 1791964332004,
+      "output": "/data/soffy/projects/hevi-brandfilm/hevi/layer4_legacy/brandfilm/examples/office-agent/film/renders/silent.mp4",
+      "status": "completed",
+      "revision": null
+    },
+    "retainedRevisions": []
+  },
+  "pendingArtifactCleanup": []
+}
