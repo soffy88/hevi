@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -71,7 +72,7 @@ class EngineConfig:
 
     stt: str = "whisper"
     llm: str = "ollama"
-    tts: str = "piper"
+    tts: str = ""  # 空 → __post_init__ 读 HEVI_LIVE_TTS，再退回 piper；piper | cosyvoice | luxtts
 
     # whisper
     whisper_model: str = "/home/soffy/models/faster-whisper-large-v3-turbo"
@@ -91,9 +92,24 @@ class EngineConfig:
     # cosyvoice (可选, HTTP 委托 GPU 引擎)
     cosyvoice_base_url: str = "http://localhost:17600/api/ai/cosyvoice"
 
+    # luxtts (可选, HTTP 委托 tailnet 上的 LuxTTS 服务; 默认不启用)
+    luxtts_base_url: str = ""
+    luxtts_voice: str = ""
+
     # AIGC 标识
     aigc_label_enabled: bool = True
     aigc_label_text: str = "AI生成"
+
+    def __post_init__(self) -> None:
+        """实例化时解析"未指定"的默认值（空串），按当前 env 而不是 import 时。"""
+        if not self.tts:
+            self.tts = os.environ.get("HEVI_LIVE_TTS") or "piper"
+        if not self.luxtts_base_url:
+            self.luxtts_base_url = os.environ.get(
+                "HEVI_LIVE_LUXTTS_URL", "http://100.119.113.90:8795"
+            )
+        if not self.luxtts_voice:
+            self.luxtts_voice = os.environ.get("HEVI_LIVE_LUXTTS_VOICE", "soffy")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -110,6 +126,8 @@ class EngineConfig:
             "piper_binary": self.piper_binary,
             "piper_model": self.piper_model,
             "cosyvoice_base_url": self.cosyvoice_base_url,
+            "luxtts_base_url": self.luxtts_base_url,
+            "luxtts_voice": self.luxtts_voice,
             "aigc_label_enabled": self.aigc_label_enabled,
             "aigc_label_text": self.aigc_label_text,
         }
