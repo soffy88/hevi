@@ -1,0 +1,12 @@
+id: contact_sheet_first
+title: 先接触样张核验，后全量渲染
+category: 渲染校验
+trigger:
+  - 全片渲染发布、分镜审阅与排版质检
+counter_example: |
+  分镜脚本写完后未经中间静态核验，直接启动耗时的 60fps 全片渲染，跑完几十秒视频才发现文字被截断、重叠穿帮或节奏拥挤，浪费大量算力和时间。
+correct_approach: |
+  在执行全量逐帧渲染前，必须先按节拍（每个 beat 抽 1 帧）输出接触样张（contact sheet / probe frames）。先行检查并修整版面拥挤、文字遮挡、越界以及网格脱节问题，确认无误后再执行全量高质量渲染。
+source_case_id: "2103483957266268381"
+source_author: Martijn Verbove (@verbove)
+prompt_summary: 渲染前必须先生成节拍接触样张（contact sheet / probe frames），快速排查文字遮挡与版面拥挤，确认合规后再全量渲染。

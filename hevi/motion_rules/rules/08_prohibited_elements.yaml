@@ -1,0 +1,12 @@
+id: prohibited_elements
+title: 动效禁项红线清单（Banned Elements）
+category: 禁忌红线
+trigger:
+  - 动效修饰、特效选择、滤镜与文案排版
+counter_example: |
+  滥用廉价模板特效：shockwave rings（冲击波圈）、particle bursts（粒子爆发）、RGB split（色散色差）、camera shake（镜头剧烈晃动）、lens flare（镜头光晕）、neon glow（荧光霓虹辉光）、grid floor（透视网格地板）、flashing background（背景闪烁频闪）、bouncy easing（剧烈弹跳缓动），以及屏上文案句末带有句号（。）。
+correct_approach: |
+  坚守高级克制的极简动效风格（High-end minimal）。完全剔除上述廉价模板特效，依靠严谨精确的几何形变、干净考究的排版（字体如 Geist/Inter）和纯粹的动效节奏表达质感；屏上文字一律杜绝句号结尾。
+source_case_id: "2102554209166000267"
+source_author: zero (@twoclipping)
+prompt_summary: 严禁使用廉价模板特效：shockwave rings、particle bursts、RGB split、camera shake、lens flare、neon glow、grid floor、flashing background、bouncy easing；屏上文字句末严禁加句号。
