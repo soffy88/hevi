@@ -13,6 +13,7 @@ end 时间——后者会截掉尾部静音/呼吸,拼进 Remotion Sequence 的 
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -33,6 +34,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_VOICE = "Dylan"  # Voicebox Qwen3-TTS 中文预置音色；可用 VOICEBOX_PROFILE_ID 替换
 DEFAULT_EDGE_VOICE = "zh-CN-XiaoxiaoNeural"  # edge-tts provider/fallback 必须使用 Edge 原生 neural voice
 DEFAULT_RATE = "-10%"  # 仅 edge_tts 使用；Voicebox 通过 instruct 控制表达
+# edge_tts 需要 Microsoft 完整音色 ID(如 zh-CN-XiaoxiaoNeural),不能用 Voicebox 预设名。
+# 这里按 provider 环境变量在 _provider_voice() 里解析,让同一条 explainer 代码在
+# voicebox / edge_tts 两条通道上都能拿到各自合法的音色。
+EDGE_TTS_DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural"
+EDGE_TTS_DEFAULT_RATE = "+0%"  # edge_tts 语速;Voicebox 通过 instruct 控制表达
 
 _CLAUSE_SPLIT_CHARS = [*list(",,。;;::!!??……~~“”\"'()()·"), r"\s+"]
 _CLAUSE_SPLIT_RE = re.compile(
@@ -48,11 +54,40 @@ def _clauses_of(text: str) -> list[str]:
     return [c for c in _CLAUSE_SPLIT_RE.split(text) if c.strip()]
 
 
-async def _synthesize(text: str, out_path: Path, *, voice: str, rate: str) -> list[dict[str, Any]]:
+async def _synthesize(
+    text: str, out_path: Path, *, voice: str, rate: str, max_attempts: int = 5
+) -> list[dict[str, Any]]:
     """3O §2 Task 2.2:委托 oprim.edge_tts_word_boundary 原子(单源),
-    返回词级 WordBoundary 时间戳(秒)。"""
-    result = await edge_tts_word_boundary(text, voice=voice, rate=rate, output_path=out_path)
-    return list(result["words"])
+    返回词级 WordBoundary 时间秒。edge_tts 偶发 "No audio was received"
+    (服务端瞬断),重试后成功;5 次仍失败才抛 VoiceoverError。"""
+    last_exc: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            result = await edge_tts_word_boundary(  # type: ignore[no-untyped-call]
+                text, voice=voice, rate=rate, output_path=out_path
+            )
+            return list(result["words"])
+        except Exception as exc:
+            last_exc = exc
+            msg = str(exc)
+            transient = (
+                "No audio was received" in msg
+                or "EOF" in msg
+                or "connection" in msg.lower()
+                or "reset" in msg.lower()
+                or "timed out" in msg.lower()
+            )
+            if attempt >= max_attempts or not transient:
+                raise
+            logger.warning(
+                "edge_tts 瞬断重试 %s/%s (%s): %s",
+                attempt,
+                max_attempts,
+                out_path.name,
+                exc,
+            )
+            await asyncio.sleep(min(2 ** attempt, 8))
+    raise VoiceoverError(f"edge_tts 合成重试耗尽: {last_exc}") from last_exc
 
 
 def _captions_from_words(text: str, words: list[dict[str, Any]]) -> list[CaptionCue]:

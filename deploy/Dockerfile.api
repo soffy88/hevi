@@ -98,11 +98,19 @@ RUN cd hevi-remotion-talkcraft && node scripts/gen-index.mjs \
     && chown -R hevi:hevi src public node_modules/.cache
 COPY alembic.ini ./
 
-RUN mkdir -p /app/output /app/data /app/assets /app/.cache/hevi/zerolines && \
+RUN mkdir -p /app/output /app/data /app/assets /app/.cache/hevi/zerolines /app/.obase/work \
+        /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio && \
     chown -R hevi:hevi /app/.cache && \
-    chown hevi:hevi /app /app/output /app/data /app/assets
+    chown hevi:hevi /app /app/output /app/data /app/assets && \
+    chown -R 1000:1000 /app/.obase /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio /app/hevi && \
+    chmod -R a+rX /app && \
+    find /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio /app/hevi -exec chmod o+w {} +
 USER hevi
 
+# cftunnel: obase 默认 ~/.obase/work,无 HOME 时解析到 /,UID 1000 无权创建
+ENV HOME=/app
+# Use edge_tts for explainer TTS to avoid voicebox DNS issues
+ENV HEVI_EXPLAINER_TTS_PROVIDER=edge_tts
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app"
 

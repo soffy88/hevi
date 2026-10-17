@@ -91,6 +91,9 @@ services:
         NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
     restart: unless-stopped
     # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 全部分配给 hevi-gen-engine。
+    # 用户覆盖:镜像默认 hevi(999),但持久化卷(output/data/assets)宿主持有为
+    # 1000:1000,不加此行则 slate/timeline/memory 全部落盘 Permission denied。
+    user: "1000:1000"
     deploy:
       resources:
         limits:
@@ -132,7 +135,7 @@ services:
       # 面部生理+运镜曲线。每镜一次 LLM 调用(并发,后台路径),分镜生成会明显变慢+花钱。见
       # config.performance_track_tier。不想填时删掉这行或设 L0。
       PERFORMANCE_TRACK_TIER: "L2"
-      HEVI_EXPLAINER_TTS_PROVIDER: voicebox
+      HEVI_EXPLAINER_TTS_PROVIDER: edge_tts
       HEVI_AUDIO_PROVIDER: voicebox
       # 数字人:EchoMimicV2(宿主机 Comfy 8188)。容器走 host.docker.internal,
       # 宿主脚本仍用 127.0.0.1。失败不要静默占位圈。
@@ -197,6 +200,11 @@ services:
       # 让容器内 sdxl_local 关键帧引擎(engine="local")能加载模型在 GPU 上出锁脸/摆姿势
       # 关键帧——不挂则 engine=local 找不到权重、退回云端 edit(免费额度墙)→ canon。
       - /data/models/huggingface:/data/models/huggingface:ro
+      # hevi-remotion public/runs: 宿主持有, 容器写。原本镜像内 runs 归 hevi(999) 且无写权限。
+      - /home/soffy/projects/hevi/hevi-remotion/public/runs:/app/hevi-remotion/public/runs
+      # hevi-remotion src/data: Remotion 渲染期读写 run_manifest.json。镜像内该目录
+      # 归 hevi(999),cftunnel API 跑在 1000:1000 → 挂载到宿主卷让 UID 1000 可写。
+      - /home/soffy/projects/hevi/hevi-remotion/src/data:/app/hevi-remotion/src/data
     ports:
       - "8201:8000"
     extra_hosts:
