@@ -1,15 +1,15 @@
 {
   "format": {
-    "bit_rate": "299619",
+    "bit_rate": "264631",
     "duration": "11.000000",
-    "filename": "/data/soffy/projects/hevi-anatup/output/anatomy_up/anatomy-up-video-3ho4sfej/turning-dial-drive.mp4",
+    "filename": "/data/soffy/projects/hevi-anatup/output/anatomy_up/anatomy-up-video-6wt3rout/turning-dial-drive.mp4",
     "format_long_name": "QuickTime / MOV",
     "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
     "nb_programs": 0,
     "nb_stream_groups": 0,
     "nb_streams": 1,
     "probe_score": 100,
-    "size": "411977",
+    "size": "363868",
     "start_time": "0.000000",
     "tags": {
       "compatible_brands": "isomiso2avc1mp41",
@@ -20,8 +20,8 @@
   },
   "streams": [
     {
-      "avg_frame_rate": "12/1",
-      "bit_rate": "297867",
+      "avg_frame_rate": "8/1",
+      "bit_rate": "263263",
       "bits_per_raw_sample": "8",
       "chroma_location": "left",
       "closed_captions": 0,
@@ -53,7 +53,7 @@
         "visual_impaired": 0
       },
       "duration": "11.000000",
-      "duration_ts": 135168,
+      "duration_ts": 180224,
       "extradata_size": 45,
       "field_order": "progressive",
       "film_grain": 0,
@@ -64,10 +64,10 @@
       "is_avc": "true",
       "level": 22,
       "nal_length_size": "4",
-      "nb_frames": "132",
+      "nb_frames": "88",
       "pix_fmt": "yuv420p",
       "profile": "High",
-      "r_frame_rate": "12/1",
+      "r_frame_rate": "8/1",
       "refs": 1,
       "start_pts": 0,
       "start_time": "0.000000",
@@ -77,7 +77,7 @@
         "language": "und",
         "vendor_id": "[0][0][0][0]"
       },
-      "time_base": "1/12288",
+      "time_base": "1/16384",
       "width": 688
     }
   ]
