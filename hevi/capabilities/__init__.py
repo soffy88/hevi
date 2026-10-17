@@ -28,6 +28,9 @@ from .result import CapabilityResult
 from . import scene3d as _scene3d  # noqa: E402,F401
 _scene3d.register_scene3d_capabilities_once()
 
+from hevi.partsci.capabilities import register_partsci_capabilities_once
+register_partsci_capabilities_once()
+
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
 # ``registry.register`` is import-triggered for these three so every line can

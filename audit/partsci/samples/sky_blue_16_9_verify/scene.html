@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin:0; overflow:hidden; background:#f0f9ff; }
+  canvas { display:block; width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+const W = 1920;
+const H = 1080;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+// Seeded PRNG (mulberry32)
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  }
+}
+const rng = mulberry32(42);
+
+// Particles
+const PARTICLE_COUNT = 300;
+const particles = [];
+for (let i = 0; i < PARTICLE_COUNT; i++) {
+  particles.push({
+    x: rng() * W,
+    y: rng() * H,
+    vx: (rng() - 0.5) * 2,
+    vy: (rng() - 0.5) * 2 - 0.5,
+    size: rng() * 6 + 2,
+    alpha: rng() * 0.8 + 0.2,
+    phase: rng() * Math.PI * 2
+  });
+}
+
+function render(t) {
+  // 1. Background gradient (Layer 0 & 1)
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#f0f9ff');
+  grad.addColorStop(1, '#bae6fd');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // 2. Parallax layers (Layer 2 & 3)
+  ctx.fillStyle = '#0ea5e9';
+  ctx.beginPath();
+  let waveY = H * 0.7 + Math.sin(t * 2) * 20;
+  ctx.moveTo(0, H);
+  ctx.lineTo(0, waveY);
+  for (let x = 0; x <= W; x += 50) {
+    ctx.lineTo(x, waveY + Math.sin(x * 0.01 + t * 3) * 30);
+  }
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  ctx.globalAlpha = 0.3;
+  ctx.fill();
+
+  // 3. Subject (Main vector graphic / center element)
+  ctx.globalAlpha = 1.0;
+  ctx.fillStyle = '#0ea5e9';
+  ctx.beginPath();
+  let cx = W / 2 + Math.sin(t) * 40;
+  let cy = H / 2 + Math.cos(t * 0.8) * 30;
+  ctx.arc(cx, cy, 120, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Particles (Layer 4)
+  for (let p of particles) {
+    let px = (p.x + Math.sin(t + p.phase) * 20) % W;
+    let py = (p.y - t * 40) % H;
+    if (py < 0) py += H;
+    
+    ctx.fillStyle = '#38bdf8';
+    ctx.globalAlpha = p.alpha * (0.5 + 0.5 * Math.sin(t * 5 + p.phase));
+    ctx.beginPath();
+    ctx.arc(px, py, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 5. Captions & Keyword (Layer 5)
+  ctx.globalAlpha = 1.0;
+  ctx.fillStyle = '#1e293b';
+  ctx.font = 'bold 90px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText("蓝天", W / 2, H * 0.2);
+
+  // Safe area border check (subtle guide / debug indicator if needed)
+}
+
+window.__setTime = function(t) {
+  render(t);
+};
+
+render(0.0);
+</script>
+</body>
+</html>
