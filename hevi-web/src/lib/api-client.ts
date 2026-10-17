@@ -15,6 +15,10 @@ import type {
   PersistentIdentity, IdentityBinding, ContinuityFact, RepairIncident,
   IdentitySummary, ContinuityProjectSummary, IncidentTimelineEvent, IncidentProductView, ProjectHealth,
   TaskCheckpoint, ArtifactCurrencyResponse, ArtifactPresentationResponse,
+  ProductionGraphSnapshot, ProductionProject, ProductionRevision,
+  ProductionNarrative, ProductionReadinessResult, ProductionDirectorSession,
+  ProductionDirectorDecision, ProductionExecutionPlan, ProductionExecutionAttempt,
+  RevisionPatchOperation,
 } from '@/types/api';
 import { API_BASE, USE_MOCK } from '@/lib/runtime-config';
 import type { VoiceEffectPreset, VoicePersonalityPreset, VoiceTTSEngine } from '@/types/api';
@@ -238,6 +242,51 @@ export type StudioTimeline = {
   timeline_id: string; title: string; duration_s: number; bgm: string; fps: number;
   clips: StudioTimelineClip[];
   tracks: { video: StudioTimelineClip[]; audio: StudioTimelineClip[]; captions: StudioTimelineClip[] };
+};
+
+// ── Canonical Production Graph / Director Workbench ────────────────────────
+// Every mutation here crosses Studio API v2 and creates/validates a canonical
+// revision. The browser never writes production state directly.
+export const canonicalProductionApi = {
+  list: () => authedReq<{ projects: ProductionProject[]; total: number }>('/api/studio/projects'),
+  onePrompt: (request: string, renderPath?: string) => authedReq<{ project_id: string; revision_id: string; director_session_id: string; director_decision_id: string; production_plan_id: string; execution_plan_id: string; execution_attempt_id: string; task_id: string; status: string; artifact_id?: string | null }>('/api/studio/one-prompt', { method: 'POST', body: JSON.stringify({ request, ...(renderPath ? { render_path: renderPath } : {}) }) }),
+  historicalProduct: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/product/historical', { method: 'POST', body: JSON.stringify(body) }),
+  longFormProduct: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/product/long-form', { method: 'POST', body: JSON.stringify(body) }),
+  get: (projectId: string) => authedReq<ProductionGraphSnapshot>(`/api/studio/projects/${projectId}`),
+  create: (body: Record<string, unknown>) => authedReq<ProductionGraphSnapshot>('/api/studio/projects', { method: 'POST', body: JSON.stringify(body) }),
+  patchProject: (projectId: string, body: Record<string, unknown>, baseRevisionId?: string) => authedReq<ProductionGraphSnapshot>(`/api/studio/projects/${projectId}`, { method: 'PATCH', body: JSON.stringify({ ...body, ...(baseRevisionId ? { base_revision_id: baseRevisionId } : {}) }) }),
+  revisions: (projectId: string) => authedReq<{ revisions: ProductionRevision[] }>(`/api/studio/projects/${projectId}/revisions`),
+  candidates: (shotId: string) => authedReq<{ candidates: Array<Record<string, unknown>> }>(`/api/studio/shots/${shotId}/candidates`),
+  candidateAction: (shotId: string, candidateId: string, action: string, baseRevisionId?: string) => authedReq<{ candidate: Record<string, unknown>; revision: ProductionRevision }>(`/api/studio/shots/${shotId}/candidates/${candidateId}/${action}`, { method: 'POST', body: JSON.stringify({ ...(baseRevisionId ? { base_revision_id: baseRevisionId } : {}) }) }),
+  memory: (projectId: string) => authedReq<{ memory: Array<Record<string, unknown>> }>(`/api/studio/projects/${projectId}/memory`),
+  addMemory: (projectId: string, body: Record<string, unknown>) => authedReq<{ memory: Record<string, unknown> }>(`/api/studio/projects/${projectId}/memory`, { method: 'POST', body: JSON.stringify(body) }),
+  versions: (projectId: string) => authedReq<{ versions: Array<Record<string, unknown>> }>(`/api/studio/projects/${projectId}/versions`),
+  createVersion: (projectId: string, body: Record<string, unknown>) => authedReq<{ version: Record<string, unknown> }>(`/api/studio/projects/${projectId}/versions`, { method: 'POST', body: JSON.stringify(body) }),
+  activateVersion: (projectId: string, versionId: string) => authedReq<Record<string, unknown>>(`/api/studio/projects/${projectId}/versions/activate`, { method: 'POST', body: JSON.stringify({ version_id: versionId }) }),
+  diffVersions: (projectId: string, fromId: string, toId: string) => authedReq<Record<string, unknown>>(`/api/studio/projects/${projectId}/versions/diff?from_id=${encodeURIComponent(fromId)}&to_id=${encodeURIComponent(toId)}`),
+  templatePolicies: () => authedReq<{ templates: Array<Record<string, unknown>> }>('/api/studio/templates/policies'),
+  applyTemplate: (projectId: string, templateId: string, baseRevisionId?: string) => authedReq<ProductionGraphSnapshot>(`/api/studio/projects/${projectId}/templates/${templateId}/apply`, { method: 'POST', body: JSON.stringify({ ...(baseRevisionId ? { base_revision_id: baseRevisionId } : {}) }) }),
+  lookReworkPreview: (projectId: string, lookVariantId: string) => authedReq<Record<string, unknown>>(`/api/studio/projects/${projectId}/rework/look-variants/${lookVariantId}`),
+  applyLookRework: (projectId: string, lookVariantId: string, body: { base_revision_id: string; field: string; value: unknown }) => authedReq<Record<string, unknown>>(`/api/studio/projects/${projectId}/rework/look-variants/${lookVariantId}`, { method: 'POST', body: JSON.stringify(body) }),
+  canvas: (projectId: string) => authedReq<Record<string, unknown>>(`/api/studio/projects/${projectId}/canvas`),
+  canvasSemanticPatch: (projectId: string, body: { base_revision_id: string; reason: string; node: Record<string, unknown>; field: string; value: unknown }) => authedReq<{ revision: ProductionRevision; semantic: boolean }>(`/api/studio/projects/${projectId}/canvas/semantic-patch`, { method: 'POST', body: JSON.stringify(body) }),
+  narrative: (projectId: string) => authedReq<ProductionNarrative>(`/api/studio/projects/${projectId}/narrative`),
+  episodes: (projectId: string) => authedReq<{ episodes: ProductionGraphSnapshot['episodes'] }>(`/api/studio/projects/${projectId}/episodes`),
+  patchShot: (shotId: string, reason: string, operations: RevisionPatchOperation[], baseRevisionId?: string) => authedReq<{ shot: ProductionGraphSnapshot['shots'][number]; revision: ProductionRevision }>(`/api/studio/shots/${shotId}`, { method: 'PATCH', body: JSON.stringify({ reason, operations, ...(baseRevisionId ? { base_revision_id: baseRevisionId } : {}) }) }),
+  prepareShot: (shotId: string, context: Record<string, unknown> = {}) => authedReq<{ shot: ProductionGraphSnapshot['shots'][number]; readiness: ProductionReadinessResult; revision: ProductionRevision }>(`/api/studio/shots/${shotId}/prepare`, { method: 'POST', body: JSON.stringify({ context }) }),
+  compileShot: (shotId: string, provider: Record<string, unknown>, resource_budget: Record<string, unknown> = {}) => authedReq<{ execution_plan: ProductionExecutionPlan; immutable: boolean }>(`/api/studio/shots/${shotId}/compile`, { method: 'POST', body: JSON.stringify({ provider, resource_budget }) }),
+  generateShot: (shotId: string, provider: Record<string, unknown>, resource_budget: Record<string, unknown> = {}) => authedReq<{ status: string; task: Record<string, unknown>; execution_plan: ProductionExecutionPlan }>(`/api/studio/shots/${shotId}/generate`, { method: 'POST', body: JSON.stringify({ provider, resource_budget }) }),
+  regenerateShot: (shotId: string, provider: Record<string, unknown>, resource_budget: Record<string, unknown> = {}) => authedReq<{ status: string; task: Record<string, unknown>; execution_plan: ProductionExecutionPlan }>(`/api/studio/shots/${shotId}/regenerate`, { method: 'POST', body: JSON.stringify({ provider, resource_budget }) }),
+  renderCandidate: (shotId: string, provider: Record<string, unknown>, resource_budget: Record<string, unknown> = {}) => authedReq<Record<string, unknown>>(`/api/studio/shots/${shotId}/candidate-render`, { method: 'POST', body: JSON.stringify({ provider, resource_budget }) }),
+  approveShot: (shotId: string) => authedReq<{ shot: ProductionGraphSnapshot['shots'][number]; revision: ProductionRevision }>(`/api/studio/shots/${shotId}/approve`, { method: 'POST' }),
+  lockShot: (shotId: string) => authedReq<{ shot: ProductionGraphSnapshot['shots'][number]; revision: ProductionRevision }>(`/api/studio/shots/${shotId}/lock`, { method: 'POST' }),
+  references: (shotId: string) => authedReq<{ reference_bundle: Record<string, unknown> | null }>(`/api/studio/shots/${shotId}/references`),
+  qa: (shotId: string) => authedReq<{ readiness: ProductionReadinessResult | null; qa: Record<string, unknown> }>(`/api/studio/shots/${shotId}/qa`),
+  createDirectorSession: (projectId: string, objective: string, constraints: string[] = []) => authedReq<{ session: ProductionDirectorSession; revision: ProductionRevision }>(`/api/studio/director/sessions?project_id=${encodeURIComponent(projectId)}`, { method: 'POST', body: JSON.stringify({ objective, constraints, memory_scope: 'PROJECT' }) }),
+  directorDecisions: (sessionId: string) => authedReq<{ session_id: string; decisions: ProductionDirectorDecision[] }>(`/api/studio/director/sessions/${sessionId}/decisions`),
+  directorMessage: (sessionId: string, body: { base_revision_id?: string; decision_type?: string; rationale?: string; inputs?: Record<string, unknown>; operations?: RevisionPatchOperation[] }) => authedReq<{ decision: ProductionDirectorDecision; revision: ProductionRevision }>(`/api/studio/director/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify(body) }),
+  run: (projectId: string, body: { line_id?: string; execute?: boolean; slots?: Record<string, unknown> } = {}) => authedReq<Record<string, unknown>>(`/api/studio/runs?project_id=${encodeURIComponent(projectId)}`, { method: 'POST', body: JSON.stringify(body) }),
+  tasks: (projectId?: string) => authedReq<{ tasks: Array<Record<string, unknown>>; total: number }>(`/api/studio/tasks${projectId ? `?project_id=${encodeURIComponent(projectId)}` : ''}`),
 };
 
 // ── 创意辅助 (需登录) ─────────────────────────────

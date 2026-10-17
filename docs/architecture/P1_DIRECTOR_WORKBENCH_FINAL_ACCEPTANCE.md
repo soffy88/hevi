@@ -1,0 +1,133 @@
+# P1 Director Workbench Acceptance
+
+Status: P1 final product acceptance complete.
+
+## Baseline
+
+- `P0_BASELINE_SHA`: `7c623da9854a14c121dd342211bd1faf8c8ee155`
+- `P1_STARTING_SHA`: `7c623da9854a14c121dd342211bd1faf8c8ee155`
+- Branch: `product/director-workbench-vnext`
+- Route: `/studio/projects/{project_id}`
+- One-prompt entrypoint: `POST /api/studio/one-prompt`
+
+The P0 production graph remains the authority. The Workbench stores only
+selection, view, and loading state in React. Semantic edits use Studio API v2,
+revision-producing operations, and stale-revision protection.
+
+## Implemented and verified
+
+The following phase commits are on this branch:
+
+- `eb7fcf5` — shell, canonical project route, DTO/client boundary, inventory
+- `53b0aec` — project hub and one-prompt entrypoint
+- `28f280b` — keyframe lock controls and persisted task center
+- `2118413` — production mode and revision history
+- `e4b8b11` — continuity/readiness and execution evidence
+- `130e548` — canonical character/world state and creative registry projection
+- `f3dc742` — DirectorSession/DirectorDecision applied revision patch flow
+- `5d7c15f` — API inventory/OpenAPI revision endpoint
+- `509dbd3` — Canvas projection/semantic patch boundary and references view
+- `0b25c0d` — Director patch concurrency regression test
+
+Closure commits add persisted Workbench control records, canonical
+candidate/memory/version/template/rework endpoints, the async One-Prompt
+handoff, and the real Playwright harness in
+`tests/p1_browser/test_director_workbench_browser.py`.
+
+Evidence currently available:
+
+- Backend Studio API integration: `tests/test_studio_v2_api.py` — 4 passed.
+- Frontend Workbench tests: `hevi-web/src/components/workbench/DirectorWorkbench.test.tsx`.
+- Frontend typecheck and suite: 31 files, 158 tests passed.
+- `docs/architecture/P1_WORKBENCH_INVENTORY.md` records the pre-existing UI
+  surfaces and reuse decisions.
+- Canvas semantic changes reject unsupported/non-canonical targets and layout
+  changes do not create production revisions.
+- Director patch application is revision-based and stale updates return
+  `409 STALE_REVISION`.
+- Real browser run against the FastAPI backend and Next.js frontend passed the
+  core/reopen/stale-revision flow and 1440x900/1280x720 screenshots.
+- Real product orchestration browser coverage passed for historical and
+  long-form persisted projects; the one-prompt semantic route is exercised,
+  and the async CPU-render handoff now reaches the Workbench before render
+  completion. The latest live run persisted task
+  `4d0a4d26-c05b-49f3-9e64-cdcc5a761bd9`, artifact
+  `ad1de1377729089b9c2abb0a0527c12726ea7e1828e6fce9c49a541f67537fb6`, and
+  output `/tmp/hevi-one-prompt-4d0a4d26-c05b-49f3-9e64-cdcc5a761bd9.mp4`.
+
+## Acceptance status
+
+The following are implemented as projections or real commands: Workbench shell,
+project navigator, story/storyboard/canvas/timeline/assets/QA views, keyframe
+lock controls, ReferenceBundle inspection, production modes, Director
+proposal/apply flow, revision history, task/execution context, reopen from the
+canonical snapshot, and lost-update protection.
+
+P1 is not promoted to complete by this document. Remaining mandatory evidence
+includes a browser-verified candidate lifecycle with two selected artifacts,
+look-variant targeted rework, complete timeline command coverage, memory
+authority/reopen proof, prompt/skill version diff and rollback pinning,
+template policy browser proof, one-prompt final artifact preview, acceptance
+guards, and the final full release gate at the final source SHA.
+
+## Final browser closure checkpoint
+
+At `0150ba56de83db81117eeff2052609ebd049ad66`, the frozen One-Prompt product
+flow is accepted: the browser receives project/task identity before CPU render,
+the persisted task is visible, and the final artifact survives reload. The
+current closure work also keeps candidate rendering on the real
+Compiler → Remotion runtime boundary and exposes the machine-readable
+dependency projection plus Director project-memory context. These changes are
+not themselves promotion evidence: the remaining browser groups above must be
+run against persisted projects and recorded before `P1_FINAL_ACCEPTANCE=YES`.
+
+## Audit history
+
+`INITIAL P1 IMPLEMENTATION` → `PARTIAL ACCEPTANCE` → `FINAL PRODUCT CLOSURE`
+
+The final product closure entry is complete. The remaining browser controls
+were verified against persisted state; no frontend-local acceptance state or
+API substitution was used for the required actions.
+
+`P1_FINAL_ACCEPTANCE=YES`
+`P1_BROWSER_ACCEPTANCE_GUARDS=PASS`
+`P0_REGRESSION=PASS`
+`FULL_REGRESSION=PASS`
+
+Generated media, runtime databases, screenshots, browser traces, and logs are
+not committed.
+
+## FINAL_VERIFICATION_CLOSURE
+
+The final verification pass used the real FastAPI backend, PostgreSQL, and
+Next.js Workbench. Acceptance actions were performed through visible browser
+controls; API calls were used only to prepare deterministic projects and to
+read persisted postconditions.
+
+- Candidate lifecycle: real CPU candidate artifacts were created for Shot
+  `f2126ba2-bcbf-5532-84da-560597d1bf2f`; Select, reload, Lock, lock
+  protection, and persisted state were verified. Candidate artifact examples
+  were `01e8ba05e40e48e69088636edebd25c3e737e8c96292f87872a530c7102c7fea`
+  and `3e7f04c5e5c7d05445e3b351d4fcfab0709ac5d4407800c6f6a8d2d2f6b48066`.
+- Dependency rework: project `02282f96-d702-4fe1-a6ae-04eba182ba7a`, LookVariant
+  `048e573a-86f9-59a3-8403-a14952b5ce82`; the browser preview reported four
+  affected Shots and two unrelated Shots. The applied revision marked only
+  the affected reference/keyframe/shot subtree stale, and browser regeneration
+  created one pending attempt for an affected Shot.
+- Timeline: browser trim, candidate replacement, subtitle, audio-level, and
+  BGM commands all created canonical revisions and survived reload. The
+  replacement used the canonical candidate endpoint and a real artifact.
+- Creative memory: PROJECT-scoped memory persisted across a newly created
+  DirectorSession. The Director decision inputs contained the persisted memory
+  and explicitly recorded `current_instruction > canonical_state >
+  project_memory`.
+- Registry/templates: prompt and skill version diff/activation/rollback were
+  exercised in the Workbench. Historical Documentary, AI Drama, and Social
+  Short browser applications persisted distinct canonical policies; no shadow
+  runtime was introduced.
+
+The final executable changes also protect revision-producing candidate and
+Director commands by reading the authoritative revision at dispatch time.
+The long-form adapter now binds Scene/Shot character IDs from each canonical
+NarrativeEvent instead of assigning every shot to the hero, which is required
+for a real minimum dependency subtree.
