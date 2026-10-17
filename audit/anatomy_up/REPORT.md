@@ -285,3 +285,5 @@ d89f17c  audit(anatomy_up): full (non-quick) orbit audit of the 3D windmill roto
 - `--pops` and `--perf` are supported by `verify.check_turn` but not part of the default render
   gate (they are minutes-long checks on heavy pages); the default gate is `--order --lines`, and the
   full orbit audit log is committed as evidence for the rotor.
+
+ANATUP-FINAL DONE 6cdd9036f98a76ffc3bf4f5ac4730cfde3d9cb17
