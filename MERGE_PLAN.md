@@ -26,7 +26,7 @@
  | `feat/scene3d-vibe` | 2026-10-15 14:25:04 +0000 | 7 | 927 | MERGED | Clean merge | 
  | `feat/xfade-pack` | 2026-10-14 05:40:28 +0000 | 9 | 7 | MERGED | Clean merge | 
  | `feat/stickman-director` | 2026-10-14 02:24:34 +0000 | 9 | 41 | SKIPPED | Conflict: Auto-merging hevi/api/main.py CONFLICT (content): Merge conf | 
-| `feat/handdraw-line` | 2026-10-15 12:03:18 +0000 | 10 | 211 | PENDING |  |
+ | `feat/handdraw-line` | 2026-10-15 12:03:18 +0000 | 10 | 211 | SKIPPED | Conflict: Auto-merging NOTICE CONFLICT (content): Merge conflict in NO | 
 | `feat/aimotion-fx` | 2026-10-14 11:55:09 +0000 | 20 | 23 | PENDING |  |
 | `feat/aimotion-templates` | 2026-10-14 12:26:40 +0000 | 25 | 49 | PENDING |  |
 | `feat/live-host-3o` | 2026-10-15 07:31:54 +0000 | 29 | 69 | PENDING |  |
