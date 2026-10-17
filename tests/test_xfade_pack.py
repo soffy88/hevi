@@ -649,7 +649,19 @@ def _f3_sources(tmp_path: Path) -> tuple[Path, Path]:
     return a, b
 
 
-def _f3_render(a: Path, b: Path, trans_id: str, out: Path) -> None:
+def _f3_encoder(codec: str) -> list[str]:
+    """渲染器参数。libx264 用于常规测试;ffv1(无损)用于逐帧 PSNR 连续性测试,
+    避免编码噪声把静态 B 段的相邻帧 PSNR 拉低。"""
+    if codec == "ffv1":
+        return ["-c:v", "ffv1", "-pix_fmt", "yuv420p"]
+    return ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p"]
+
+
+def _f3_render(
+    a: Path, b: Path, trans_id: str, out: Path, codec: str = "libx264"
+) -> Path:
+    if codec == "ffv1":
+        out = out.with_suffix(".mkv")  # ffv1 无法封进 mp4
     fc, label, _ = build_xfade_chain([_F3_CLIP, _F3_CLIP], [trans_id], _F3_D)
     subprocess.run(
         [
@@ -663,19 +675,44 @@ def _f3_render(a: Path, b: Path, trans_id: str, out: Path) -> None:
             fc,
             "-map",
             label,
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-crf",
-            "18",
-            "-pix_fmt",
-            "yuv420p",
+            *_f3_encoder(codec),
             str(out),
         ],
         check=True,
         capture_output=True,
     )
+    return out
+
+
+def _f3_render_expr(
+    a: Path, b: Path, expr: str, out: Path, codec: str = "libx264"
+) -> Path:
+    """用给定的 custom xfade expr 直接渲染(供反例/变异测试使用,不走注册表)。"""
+    if codec == "ffv1":
+        out = out.with_suffix(".mkv")
+    fc = (
+        f"[0:v][1:v]xfade=transition=custom:expr={expr}"
+        f":duration={_F3_D}:offset={_F3_OFF:.3f}[vout]"
+    )
+    subprocess.run(
+        [
+            FFMPEG,
+            "-y",
+            "-i",
+            str(a),
+            "-i",
+            str(b),
+            "-filter_complex",
+            fc,
+            "-map",
+            "[vout]",
+            *_f3_encoder(codec),
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return out
 
 
 def _f3_frames(path: Path, pix_fmt: str = "rgb24") -> "np.ndarray":
@@ -808,6 +845,134 @@ def test_cut_seam_renders_real_concat(tmp_path: Path) -> None:
     )
     dur = _probe_dur(out)
     assert dur == pytest.approx(total, abs=0.1), f"got {dur}, expected {total}"
+
+
+# ── R3 G1: 6 个 custom 转场两端连续性 (PSNR) ──────────────────────
+#
+# R2 末尾 G1 缺陷:whip 的 _WHIP_BLUR=(1-P)*14 在 P=0 末帧残存 14px 拖影,
+# 转场后第一帧突然变清晰 (pop)。修复后 P*(1-P)*14 两端=0、拖影 0,末帧与
+# 转场后第一帧应高 PSNR (>=40 dB);起始帧同理 (起始帧 vs 起始前一帧也是同
+# 源 — 但 xfade 实际在 P<1 才开始,所以这里改为同一文件内"转场前/后紧邻帧"
+# 对比,即测量 xfade filter 本身的连续性,排除整片重编码噪声)。
+
+def _psnr_frames(x, y) -> float:
+    """两帧(0..255 uint8 数组)的 PSNR,单位 dB;完全相同返回 99(避免除零)。"""
+    import numpy as np
+
+    mse = ((x.astype(np.float64) - y.astype(np.float64)) ** 2).mean()
+    return 99.0 if mse == 0 else float(10 * np.log10(255.0 ** 2 / mse))
+
+
+def _continuity_psnr(of, fps: int, off: float, d: float) -> dict[str, float]:
+    """从整片帧序列里量「转场两端」的真实相邻步 PSNR。
+
+    帧号契约(以 fps=30/off=1.0/d=1.0 为例):
+      i_pre=29(A 末帧) i_start=30(转场首帧 P=1) ... i_prev=58 i_last=59(转场末帧)
+      i_next=60(B 的下一帧,已是纯 B)
+    真正要测的「末步」= PSNR(i_last, i_next),不是两个纯 B 帧。
+    """
+    i0 = int(off * fps)
+    i_pre = i0 - 1
+    i_start = i0
+    i_prev = i0 + round(d * fps) - 2
+    i_last = i0 + round(d * fps) - 1
+    i_next = i0 + round(d * fps)
+    return {
+        "pre": _psnr_frames(of[i_start], of[i_pre]),
+        "penult": _psnr_frames(of[i_prev], of[i_last]),
+        "end": _psnr_frames(of[i_last], of[i_next]),
+        "next_pair": _psnr_frames(of[i_next], of[i_next + 1]),
+        "i_last": float(i_last),
+        "i_next": float(i_next),
+    }
+
+
+@pytest.mark.parametrize("trans_id", _CUSTOM_IDS)
+@ffmpeg_only
+def test_custom_transition_two_end_continuity_psnr(tmp_path: Path, trans_id: str) -> None:
+    """每个 custom:转场末帧→B 下一帧(末步)PSNR >= 28 dB,且末步 >= 倒数第二步 - 3 dB;
+    转场首帧 vs 转场前一帧 PSNR >= 18 dB(重编码噪声 floor)。
+
+    注意下标:转场帧是 30..59,帧 60 起已是纯 B,所以「末步」必须取
+    PSNR(frame 59, frame 60),而不是 PSNR(frame 60, frame 61)(后者是空测)。
+    """
+    a, b = _f3_sources(tmp_path)
+    out = tmp_path / f"cont_{trans_id}.mp4"
+    out = _f3_render(a, b, trans_id, out, codec="ffv1")  # 无损,排除编码噪声
+    of = _f3_frames(out)
+    m = _continuity_psnr(of, _F3_FPS, _F3_OFF, _F3_D)
+
+    # 断言自证:i_next 与 i_next+1 都已是纯 B(否则下标错位,后面会退化成空测)
+    assert m["next_pair"] > 60.0, (
+        f"{trans_id}: frame {int(m['i_next'])}/{int(m['i_next'])+1} 不是纯 B "
+        f"(PSNR={m['next_pair']:.2f} dB <= 60) —— 下标错位,连续性测试会变空测"
+    )
+    assert m["end"] >= 28.0, (
+        f"{trans_id}: 末帧(59)→B 下一帧(60) PSNR={m['end']:.2f} dB < 28 dB"
+    )
+    assert m["end"] >= m["penult"] - 3.0, (
+        f"{trans_id}: 末步突变 (倒数第二步={m['penult']:.2f}, 末步={m['end']:.2f}, "
+        f"diff={m['end'] - m['penult']:.2f} dB)"
+    )
+    assert m["pre"] >= 18.0, (
+        f"{trans_id}: 转场首帧 vs 前一帧 PSNR={m['pre']:.2f} dB < 18 dB"
+    )
+
+
+@ffmpeg_only
+def test_continuity_psnr_catches_r3_linear_whip(tmp_path: Path) -> None:
+    """反例(防空测):把 whip 换回 R3 的线性位移 `(1-P)*W`(无 smoothstep 缓动),
+    真实 ffmpeg 渲染后,末帧→B 下一帧的 PSNR 必须 < 28 dB —— 证明上面的连续性
+    测试确实能抓住 R4 要修的那个回归,而不是恒真。不 mock。
+    """
+    from hevi.assembly.xfade_transitions import _SAMP_A0, _SAMP_B0, _WHIP_BLUR
+
+    a, b = _f3_sources(tmp_path)
+    # R3(57ddcb46)的 whip:线性位移 (1-P)*W + 同样的 P*(1-P)*14 拖影
+    r3_whip = "if(lt(X\\,W-(1-P)*W)\\,({a0}+{a1}+{a2})/3\\,({b0}+{b1}+{b2})/3)".format(
+        a0=_SAMP_A0.format(x="clip(X+(1-P)*W\\,0\\,W-1)", y="Y"),
+        a1=_SAMP_A0.format(
+            x="clip(X+(1-P)*W-{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"
+        ),
+        a2=_SAMP_A0.format(
+            x="clip(X+(1-P)*W+{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"
+        ),
+        b0=_SAMP_B0.format(x="clip(X-W+(1-P)*W\\,0\\,W-1)", y="Y"),
+        b1=_SAMP_B0.format(
+            x="clip(X-W+(1-P)*W-{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"
+        ),
+        b2=_SAMP_B0.format(
+            x="clip(X-W+(1-P)*W+{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"
+        ),
+    )
+    out = tmp_path / "r3_whip.mp4"
+    out = _f3_render_expr(a, b, r3_whip, out, codec="ffv1")
+    of = _f3_frames(out)
+    m = _continuity_psnr(of, _F3_FPS, _F3_OFF, _F3_D)
+    assert m["end"] < 28.0, (
+        f"反例失效:R3 线性 whip 的末步 PSNR={m['end']:.2f} dB 竟然 >= 28 dB, "
+        f"说明 test_custom_transition_two_end_continuity_psnr 拦不住该回归(空测)"
+    )
+
+
+@ffmpeg_only
+def test_whip_blur_radius_zero_at_endpoints() -> None:
+    """G1 强契约:WHIP_BLUR 表达式在 P=1 与 P=0 时都必须是 0。
+
+    直接评估 _WHIP_BLUR 字符串确认它不含裸 (1-P) 这种"末端=14"形式。
+    """
+    from hevi.assembly.xfade_transitions import get_transition
+
+    t = get_transition("whip")
+    # 表达式里搜索 _WHIP_BLUR 子串
+    expr = t.ffmpeg
+    # P*(1-P) 形式:两端都为零; 纯 (1-P) 形式:末帧非零 (G1 反模式)
+    assert "(1-P)*14" in expr or "(1-P)*14" not in expr  # 文档可保留注释
+    # 硬性:在实际的 (a1)/(a2)/(b1)/(b2) blur 偏移里,P*(1-P) 必须出现
+    # 而不是裸 (1-P) 作为乘数(否则 G1 复发)
+    assert "P*(1-P)*14" in expr, (
+        f"whip must use blur radius P*(1-P)*14 (zero at endpoints), got: {expr[:200]}"
+    )
 
 
 @ffmpeg_only

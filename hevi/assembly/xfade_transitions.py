@@ -111,14 +111,17 @@ _SAMP_A0 = "if(eq(PLANE\\,0)\\,a0({x}\\,{y})\\,if(eq(PLANE\\,1)\\,a1({x}\\,{y})\
 _SAMP_B0 = "if(eq(PLANE\\,0)\\,b0({x}\\,{y})\\,if(eq(PLANE\\,1)\\,b1({x}\\,{y})\\,b2({x}\\,{y})))"
 
 # flash: 前半 A 提亮到接近白，后半从白回落到 B。中点基本全白。
-#   Y 平面趋近 235、U/V 趋近 128（用 PLANE 区分，否则会变粉/绿）。
+#   用 smoothstep 缓动替代线性 P，避免末端突变。
 _FLASH_WHITE = "128+eq(PLANE\\,0)*107"  # Y=235, U=V=128
-_FLASH = "if(gt(P\\,0.5)\\,A*(2*P-1)+({w})*(2-2*P)\\,B*(1-2*P)+({w})*(2*P))".format(w=_FLASH_WHITE)
+_FLASH_PS = "P*P*(3-2*P)"
+_FLASH = "if(gt(P\\,0.5)\\,A*(2*({ps})-1)+({w})*(2-2*({ps}))\\,B*(1-2*({ps}))+({w})*(2*({ps})))".format(
+    w=_FLASH_WHITE, ps=_FLASH_PS
+)
 
 # burn: 以画面中心为圆心的径向"灼烧"掩膜向外扩散，掩膜内取 B、外取 A，边缘平滑过渡。
-#   P=1 时掩膜为空（输出 A），P=0 时铺满（输出 B）。
+#   放大系数 1.10 使两端更平缓收敛。
 _BURN_R = "hypot(X-W/2\\,Y-H/2)/hypot(W/2\\,H/2)"
-_BURN = "A*(1-clip(((1-P)*1.25-{r})*12\\,0\\,1))+B*clip(((1-P)*1.25-{r})*12\\,0\\,1)".format(
+_BURN = "A*(1-clip(((1-P)*1.10-{r})*12\\,0\\,1))+B*clip(((1-P)*1.10-{r})*12\\,0\\,1)".format(
     r=_BURN_R
 )
 
@@ -129,31 +132,37 @@ _INK = "A*(1-clip(((1-P)*1.25-({r}))*5\\,0\\,1))+B*clip(((1-P)*1.25-({r}))*5\\,0
 )
 
 # whip: 横向甩镜——A 向左侧快速位移并带水平拖影（三取样平均模拟运动模糊）滑出，
-#   B 从右侧带拖影滑入。位移 s=(1-P)*W，拖影半径随 (1-P) 收缩（两端为 0，无跳变）。
-_WHIP_BLUR = "(1-P)*14"
-_WHIP = "if(lt(X\\,W-(1-P)*W)\\,({a0}+{a1}+{a2})/3\\,({b0}+{b1}+{b2})/3)".format(
-    a0=_SAMP_A0.format(x="clip(X+(1-P)*W\\,0\\,W-1)", y="Y"),
-    a1=_SAMP_A0.format(x="clip(X+(1-P)*W-{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
-    a2=_SAMP_A0.format(x="clip(X+(1-P)*W+{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
-    b0=_SAMP_B0.format(x="clip(X-W+(1-P)*W\\,0\\,W-1)", y="Y"),
-    b1=_SAMP_B0.format(x="clip(X-W+(1-P)*W-{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
-    b2=_SAMP_B0.format(x="clip(X-W+(1-P)*W+{bl}\\,0\\,W-1)".format(bl=_WHIP_BLUR), y="Y"),
+#   B 从右侧带拖影滑入。位移采用 smoothstep 缓动，两端平滑收敛到 0，无 pop。
+_WHIP_BLUR = "P*(1-P)*14"
+_WHIP_S = "clip((P-0.05)/0.9\\,0\\,1)*clip((P-0.05)/0.9\\,0\\,1)*(3-2*clip((P-0.05)/0.9\\,0\\,1))*W"
+_WHIP = "if(lt(X\\,{s})\\,({a0}+{a1}+{a2})/3\\,({b0}+{b1}+{b2})/3)".format(
+    s=_WHIP_S,
+    a0=_SAMP_A0.format(x="clip(X+W-({s})\\,0\\,W-1)".format(s=_WHIP_S), y="Y"),
+    a1=_SAMP_A0.format(x="clip(X+W-({s})-{bl}\\,0\\,W-1)".format(s=_WHIP_S, bl=_WHIP_BLUR), y="Y"),
+    a2=_SAMP_A0.format(x="clip(X+W-({s})+{bl}\\,0\\,W-1)".format(s=_WHIP_S, bl=_WHIP_BLUR), y="Y"),
+    b0=_SAMP_B0.format(x="clip(X-({s})\\,0\\,W-1)".format(s=_WHIP_S), y="Y"),
+    b1=_SAMP_B0.format(x="clip(X-({s})-{bl}\\,0\\,W-1)".format(s=_WHIP_S, bl=_WHIP_BLUR), y="Y"),
+    b2=_SAMP_B0.format(x="clip(X-({s})+{bl}\\,0\\,W-1)".format(s=_WHIP_S, bl=_WHIP_BLUR), y="Y"),
 )
 
 # glitch: 块状错位——按 32px 高的行块做横向伪随机位移（sin 哈希），
-#   并让一部分块整块取自 B；B 块占比随 P→0 增大（=1-P），位移两端为 0（无跳变）。
+#   并让一部分块整块取自 B；B 块占比阈值平滑收敛，dx 在两端为 0。
 _GLITCH_N = "0.5+0.5*sin(floor(Y/32)*12.9898)"
-_GLITCH_DX = "clip(X+({n}-0.5)*70*4*P*(1-P)\\,0\\,W-1)".format(n=_GLITCH_N)
-_GLITCH = "if(lt({n}\\,1-P)\\,{gb}\\,{ga})".format(
+_GLITCH_T = "clip((1-P)*1.15\\,0\\,1)"
+_GLITCH_DX = "clip(X+({n}-0.5)*70*4*{t}*(1-{t})\\,0\\,W-1)".format(n=_GLITCH_N, t=_GLITCH_T)
+_GLITCH = "if(lt({n}\\,{t})\\,{gb}\\,{ga})".format(
     n=_GLITCH_N,
+    t=_GLITCH_T,
     ga=_SAMP_A0.format(x=_GLITCH_DX, y="Y"),
     gb=_SAMP_B0.format(x=_GLITCH_DX, y="Y"),
 )
 
 # zoom_punch: 推进冲击——前半 A 以画面中心放大（采样坐标向中心收缩）冲击，
-#   中点切到 B，B 从放大状态回落到原尺寸。缩放系数两端为 1（无跳变）。
-_ZOOM_KA = "(1-0.35*(1-P))"
-_ZOOM_KB = "(1-0.35*P)"
+#   中点切到 B，B 从放大状态回落到原尺寸。缩放系数两端用 smoothstep 缓动归 1。
+_ZOOM_VA = "clip((1-P-0.05)/0.45\\,0\\,1)"
+_ZOOM_VB = "clip((P-0.05)/0.45\\,0\\,1)"
+_ZOOM_KA = f"(1-0.35*{_ZOOM_VA}*{_ZOOM_VA}*(3-2*{_ZOOM_VA}))"
+_ZOOM_KB = f"(1-0.35*{_ZOOM_VB}*{_ZOOM_VB}*(3-2*{_ZOOM_VB}))"
 _ZOOM = "if(gt(P\\,0.5)\\,{a}\\,{b})".format(
     a=_SAMP_A0.format(
         x="clip(W/2+(X-W/2)*{k}\\,0\\,W-1)".format(k=_ZOOM_KA),
