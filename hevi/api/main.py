@@ -46,6 +46,8 @@ from hevi.api.routers.presenters import router as presenters_router
 from hevi.api.routers.series import router as series_router
 from hevi.api.routers.shortdrama import router as shortdrama_router
 from hevi.api.routers.shortdrama_writer import router as shortdrama_writer_router
+from hevi.api.routers.stickdir import router as stickdir_router
+from hevi.api.routers.stickdir import router as stickdir_router
 from hevi.api.routers.style import router as style_router
 from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.subjects import router as subjects_router
@@ -227,10 +229,9 @@ app.include_router(ops_router)  # 单元 C:Agent 画布操作桥 (router 自带 
 app.include_router(ws_router)  # WebSocket 路由自带 /api/ws 前缀
 app.include_router(freezone_router, prefix="/api")
 app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提升/修复/画像/草图)
-app.include_router(storyplan_router, prefix="/api")
-app.include_router(golive3_router, prefix="/api")
 app.include_router(svfactory_batch_router, prefix="/api")  # SVFACTORY 批量预设生产与断点续跑
 app.include_router(stickman_router, prefix="/api")
+app.include_router(stickdir_router, prefix="/api")  # 火柴人导演线:提案 + CPU 渲染
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
 mount_mcp(app)
