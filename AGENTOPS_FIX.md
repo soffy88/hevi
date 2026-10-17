@@ -22,3 +22,6 @@ R2 核验（独立重跑 audit/agentops/verify_r1/verify.py + pytest + lint）�
 ## 说明
 - F1 已修（路径是 /api/openshorts/ai-short/run，与基线一致；verify.py 里 `/api/ai-short/run` 的检查是核验脚本写错路径，不必理会）。
 - 自测命令同 R2：verify.py 第 2、5 项必须 pass_=true，且 5 的 note 里不得再提影子表。
+
+## 安全规则
+只改本 worktree；不删 worktree 外任何文件；不清理磁盘（/data <5G 写 DISK_FULL_NOTE.md 停止）；所有 python 设 PYTHONPATH=/data/soffy/projects/hevi-agentops；不 push；不调付费 API；不要把 lint 日志提交进仓库。完成后在 AGENTOPS_DONE.md 最后一行写 DONE AGENTOPS-R3。
