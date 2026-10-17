@@ -116,3 +116,7 @@ pi_*.log
 # dirstyle E2E outputs — tracked explicitly (task requirement)
 !output/dirstyle_e2e/
 !output/dirstyle_e2e/*
+
+audit/storyplan/verify_r1/
+STORYPLAN_VFY_DONE.md
+STORYPLAN_FIX.md
