@@ -48,6 +48,8 @@ Thumbs.db
 
 # Logs
 *.log
+lint_before.txt
+lint_after.txt
 
 # Generated media & task artifacts
 *.mp4

@@ -1,0 +1,52 @@
+{
+  "title": "Studio 运维监控面板",
+  "bpm": 120,
+  "duration": 10.0,
+  "states": [
+    {
+      "id": "btn_dispatch",
+      "type": "button",
+      "title": "触发分布式渲染集群",
+      "badge": "DISPATCH",
+      "accent": "#10b981",
+      "duration_beats": 4
+    },
+    {
+      "id": "prog_load",
+      "type": "progress",
+      "title": "GPU 与 CPU 算力负载均衡",
+      "badge": "BALANCING 92%",
+      "progress": 0.92,
+      "accent": "#f59e0b",
+      "duration_beats": 4
+    },
+    {
+      "id": "stat_nodes",
+      "type": "metric",
+      "title": "在线渲染工作节点",
+      "badge": "CLUSTER HEALTH",
+      "value": "64",
+      "unit": "ACTIVE NODES",
+      "accent": "#38bdf8",
+      "duration_beats": 4
+    },
+    {
+      "id": "chart_latency",
+      "type": "chart",
+      "title": "单帧渲染耗时监控",
+      "badge": "FRAME MS",
+      "bars": [0.35, 0.42, 0.38, 0.29, 0.31],
+      "accent": "#10b981",
+      "duration_beats": 4
+    },
+    {
+      "id": "card_gate",
+      "type": "card",
+      "title": "画质审计门禁全绿通过",
+      "badge": "GATE VERIFIED",
+      "detail": "zero hallucination | 100% deterministic",
+      "accent": "#10b981",
+      "duration_beats": 4
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "title": "智能视频生成流水线",
+  "bpm": 120,
+  "duration": 10.0,
+  "states": [
+    {
+      "id": "btn_init",
+      "type": "button",
+      "title": "启动智能成片引擎",
+      "badge": "INITIALIZE",
+      "accent": "#f59e0b",
+      "duration_beats": 4
+    },
+    {
+      "id": "progress_parse",
+      "type": "progress",
+      "title": "脚本解析与分镜语义分解",
+      "badge": "ANALYZING 88%",
+      "progress": 0.88,
+      "accent": "#10b981",
+      "duration_beats": 4
+    },
+    {
+      "id": "stat_shots",
+      "type": "metric",
+      "title": "原子镜头规划就绪",
+      "badge": "SHOTS: 18 / 18",
+      "value": "18",
+      "unit": "CLIPS",
+      "accent": "#38bdf8",
+      "duration_beats": 4
+    },
+    {
+      "id": "chart_render",
+      "type": "chart",
+      "title": "算力调度与并行渲染",
+      "badge": "THROUGHPUT",
+      "bars": [0.45, 0.72, 0.95, 0.84, 0.62],
+      "accent": "#f59e0b",
+      "duration_beats": 4
+    },
+    {
+      "id": "player_preview",
+      "type": "player",
+      "title": "4K 原生画质实时预览",
+      "badge": "PREVIEW 60FPS",
+      "playhead": 0.75,
+      "accent": "#e11d48",
+      "duration_beats": 4
+    }
+  ]
+}
