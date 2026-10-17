@@ -30,3 +30,6 @@ hevi/storyplan/storybook_pipeline.py、storyplan.critique、storyboard.preview_s
 ## 规则
 CPU-only，不调付费 API（豆包/GPT Image 只写适配器不调用）；edge-tts 免费可用；不 push、不合并、不部署；不要动 hevi-mergeall 和主检出；不删 worktree 外文件；/data<20G 停下写 DISK_FULL_NOTE.md。每步 commit。
 最后写 audit/bookline/REPORT.md：做了什么、复用了什么、新建了什么、测试基线 vs 最终、样片路径、研究要点摘要；末行 `BOOKLINE DONE <commit>` 或 `BOOKLINE BLOCKED <原因>` 并 commit。
+
+## 环境
+测试用 .venv（软链到主仓库 venv，只读使用，不要 pip install 到里面；需新依赖写进 pyproject 并在报告注明）。
