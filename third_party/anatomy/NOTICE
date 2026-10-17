@@ -1,28 +1,52 @@
 Anatomy kit vendored into third_party/anatomy.
 
 Upstream: https://github.com/wheresryan22/anatomy
+Vendored commit: e9488296a44211c42701ff71705b7901470ec78f
 License: MIT (see LICENSE)
 Copyright (c) 2026 Ryan
 
-Vendored files:
-- kit/iso-kit.mjs   (isometric SVG geometry + shading)
-- kit/lathe.mjs     (profile / curve math used by audit.mjs)
-- kit/tube.mjs      (tube path math used by audit.mjs)
-- kit/audit.mjs     (geometry audit: no clipping, every endpoint supported, draw order)
-- kit/gl.mjs        (optional WebGL shader camera — unused by Hevi render path)
-- kit/canvas-painter.mjs (turning 3D painter — unused by Hevi render path)
-- scripts/capture.mjs  (headless Chrome screenshot)
-- scripts/drive.mjs    (headless Chrome driver: wait, shot, lines, slow-motion)
-- scripts/lines.mjs    (floating-line check, wraps drive.mjs)
-- scripts/chrome-port.mjs
-- scripts/inline-kit.mjs (embeds kit source into a standalone page)
-- scripts/line-ends.mjs (floating-line detection used by drive.mjs lines action)
+Vendored files (ANATUP, unmodified except for the import paths noted below):
 
-Hevi uses these only to build static isometric SVG figures, run the upstream
-geometry audit (audit.mjs) and the floating-line check (lines.mjs), and to
-drive headless Chrome (CPU / SwiftShader) for frame-by-frame video rendering.
-No changes were made to the vendored logic; only relative imports are kept
-intact. The 3D beta mode and WebGL shaders are intentionally out of scope.
+kit/
+- iso-kit.mjs         isometric SVG geometry + shading
+- iso.css             the kit's own CSS (--anatomy-* tokens)
+- lathe.mjs           profile / curve math used by audit.mjs and turn-build.mjs
+- tube.mjs            tube path math used by audit.mjs and turn-build.mjs
+- audit.mjs           geometry audit: no clipping, every endpoint supported, draw order
+- gl.mjs              optional WebGL shader camera
+- gl-shared.mjs       WebGL shader helpers shared by gl.mjs and the examples
+- canvas-painter.mjs  turning 3D painter used by turn-fixed.mjs
+- turn.mjs            3D mode runtime (turning groups, TURN.mount, TURN_CSS)
+- turn-build.mjs      3D mode builder (T.prism/round/lathe/ball/tube, painter's order)
+- turn-audit.mjs      3D orbit audit (separation, cycles, layers, rigid, folds, …)
+- turn-fixed.mjs      3D "fixed picture" recorder used by turn-build.mjs
+
+scripts/
+- capture.mjs         headless Chrome screenshot (clip to .iso-plate)
+- drive.mjs           headless Chrome driver: wait, move, click, key, shot, lines, sheet, orbit, turn
+- lines.mjs           floating-line check, wraps drive.mjs
+- line-ends.mjs       LINE_ENDS: floating-line detection used by drive.mjs and turn-check.mjs
+- chrome-port.mjs     reads the DevTools port from a freshly started Chrome
+- inline-kit.mjs      embeds kit source into a standalone page
+- turn-check.mjs      3D browser checks (--order, --pops, --lines, --perf, --fidelity)
+- turn-fidelity.mjs   kit-fidelity reference used by turn-check.mjs --fidelity
+
+references/            craft.md, kit.md, motion.md, verify.md, webgl.md, 3d.md
+examples/              dial-indicator/, ripple-tank/, turning-dial/ (sources + light build)
+
+Not vendored on purpose: kit/react/ and references/react.md (Hevi does not use
+React for figures), kit/iso-kit.ts (the .mjs is the runtime), examples that are
+not used as regression baselines, evals/, agents/, tests/ and SKILL.md.
+
+Changes to vendored code: none. The only edits are the import paths the
+examples and scripts need to run from this layout (they already use relative
+`../../kit/...` paths upstream, so no rewrite was required), plus the light
+build outputs under examples/ which are generated, not hand-edited.
+
+Hevi uses these to build static isometric SVG figures, to run the upstream
+geometry audit (audit.mjs), the floating-line check (lines.mjs), the 3D orbit
+audit (turn-audit.mjs) and the 3D browser checks (turn-check.mjs), and to drive
+headless Chrome (CPU / SwiftShader) for frame-by-frame video rendering.
 
 This product bundles the Anatomy kit (MIT). The rest of the Hevi worktree is
 governed by its own license.
