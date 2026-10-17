@@ -44,6 +44,15 @@ register_partsci_capabilities_once()
 from . import golive3 as _golive3  # noqa: E402,F401
 _golive3.register_golive3_capabilities_once()
 
+# Explainer line capabilities (explainer.script, explainer.visual_plan, explainer.render)
+from hevi.explainer.script import register_explainer_script_capability
+from hevi.explainer.visual_plan import register_explainer_visual_plan_capability
+from hevi.explainer.render_engine import register_explainer_render_capability
+register_explainer_script_capability()
+register_explainer_visual_plan_capability()
+register_explainer_render_capability()
+
+
 
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
