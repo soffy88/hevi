@@ -1,0 +1,134 @@
+# oprim uncommitted backup 2026-10-19
+## branch/HEAD
+HEAD
+bac877084de9fce1300401111d124561ffd153b4
+## status --porcelain=v1
+ M oprim/changefeed/__init__.py
+ M oprim/changefeed/reader.py
+ M oprim/changefeed/snapshot.py
+ M oprim/changefeed/writer.py
+## git diff (unstaged)
+diff --git a/oprim/changefeed/__init__.py b/oprim/changefeed/__init__.py
+index 6fb9c71..d856804 100644
+--- a/oprim/changefeed/__init__.py
++++ b/oprim/changefeed/__init__.py
+@@ -1,6 +1,17 @@
+-"""oprim.changefeed — append-only event log for Stratum multi-device sync (Phase 2)."""
++"""oprim.changefeed — append-only event log for Stratum multi-device sync (Phase 2).
+ 
+-from oprim.changefeed.errors import ChangefeedConflictError, ChangefeedError
++Restored from Phase 2 Wave 2 (commit 11a6f0b). Canonical contract:
++event_type / seq / device_id on ChangefeedEvent, dotted EventType values.
++
++Engine/recovery primitives only — no business/project state, no sibling imports.
++"""
++
++from __future__ import annotations
++
++from oprim.changefeed.errors import (
++    ChangefeedConflictError,
++    ChangefeedError,
++)
+ from oprim.changefeed.reader import ChangefeedReader
+ from oprim.changefeed.schema import ChangefeedEvent, EventType
+ from oprim.changefeed.snapshot import ChangefeedSnapshot
+diff --git a/oprim/changefeed/reader.py b/oprim/changefeed/reader.py
+index 0e98e33..6af2054 100644
+--- a/oprim/changefeed/reader.py
++++ b/oprim/changefeed/reader.py
+@@ -1,4 +1,8 @@
+-"""Cursor-based changefeed reader."""
++"""Cursor-based changefeed reader.
++
++Restored from Phase 2 Wave 2 (commit 11a6f0b) and adapted to the current
++consumer contract (event_type/seq/device_id) + lazy schema bootstrap.
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -27,8 +31,9 @@ class ChangefeedReader:
+     ) -> list[ChangefeedEvent]:
+         """Return events with seq > since_seq, ascending order.
+ 
+-        This is a synchronous call — DuckDB is in-process and fast.
++        This is a synchronous call — the backing store is in-process/local.
+         """
++        ensure_schema(self.db)
+         if event_types:
+             placeholders = ", ".join("?" * len(event_types))
+             sql = f"""
+@@ -58,6 +63,7 @@ class ChangefeedReader:
+ 
+     def get_latest_seq(self) -> int:
+         """Return the maximum seq for this user, or 0 if no events."""
++        ensure_schema(self.db)
+         rows = self.db.fetchall(
+             "SELECT COALESCE(MAX(seq), 0) FROM changefeed_events WHERE user_id = ?",
+             [self.user_id],
+@@ -66,6 +72,7 @@ class ChangefeedReader:
+ 
+     def count(self) -> int:
+         """Return total event count for this user."""
++        ensure_schema(self.db)
+         rows = self.db.fetchall(
+             "SELECT COUNT(*) FROM changefeed_events WHERE user_id = ?",
+             [self.user_id],
+diff --git a/oprim/changefeed/snapshot.py b/oprim/changefeed/snapshot.py
+index 12252e7..4f4ecfe 100644
+--- a/oprim/changefeed/snapshot.py
++++ b/oprim/changefeed/snapshot.py
+@@ -5,6 +5,10 @@ Canonical stratum tables are the plural contract (``substrates`` / ``concepts``
+ 11a6f0b era (``substrate`` / ``concept`` / ``note``) are accepted on restore and
+ used on create only when the plural table is absent — no data is ever silently
+ dropped or double-counted.
++
++Restored from Phase 2 Wave 2 (commit 11a6f0b) and adapted to the current
++consumer schema (oskill.sync): plural tables ``substrates`` / ``concepts`` /
++``notes`` with the consumer column set, plus lazy schema bootstrap.
+ """
+ 
+ from __future__ import annotations
+@@ -201,3 +205,23 @@ class ChangefeedSnapshot:
+             )
+             restored += 1
+         return restored
++
++    def list_snapshots(self, user_id: str) -> list[dict]:
++        """Return all snapshots for user, newest first."""
++        ensure_schema(self.db)
++        rows = self.db.fetchall(
++            "SELECT id, user_id, device_id, seq_at, file_id, created_at "
++            "FROM changefeed_snapshots WHERE user_id = ? ORDER BY seq_at DESC",
++            [user_id],
++        )
++        return [
++            {
++                "snapshot_id": r[0],
++                "user_id": r[1],
++                "device_id": r[2],
++                "seq_at": r[3],
++                "file_id": r[4],
++                "created_at": str(r[5]),
++            }
++            for r in rows
++        ]
+diff --git a/oprim/changefeed/writer.py b/oprim/changefeed/writer.py
+index 8faf187..e53201d 100644
+--- a/oprim/changefeed/writer.py
++++ b/oprim/changefeed/writer.py
+@@ -1,9 +1,12 @@
+-"""Append-only changefeed writer backed by DuckDB.
++"""Append-only changefeed writer backed by MetaDB (DuckDB/Postgres).
+ 
+ Invariants:
+ - Only INSERTs — never UPDATE or DELETE changefeed_events
+ - seq is strictly increasing per (user_id)
+ - asyncio.Lock per user_id serializes concurrent writers within a process
++
++Restored from Phase 2 Wave 2 (commit 11a6f0b) and adapted to the current
++consumer contract (event_type/seq/device_id) + lazy schema bootstrap.
+ """
+ 
+ from __future__ import annotations
+## git diff --cached (staged)
+## git diff (pyc, names only)

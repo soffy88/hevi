@@ -1,0 +1,560 @@
+ M ADR-062.md
+ M docs/signoffs/SELF_CHECK_P7_B3.md
+ M docs/signoffs/SELF_CHECK_P7_B4.md
+ M integration_test_search.py
+ M oskill/__init__.py
+ M oskill/_apply_edit_block.py
+ M oskill/_apply_todo_update.py
+ M oskill/_apply_unified_diff.py
+ M oskill/_asset_reference_inject.py
+ M oskill/_base.py
+ M oskill/_batch_generate_animations.py
+ M oskill/_build_repo_context.py
+ M oskill/_build_subagent_prompt.py
+ M oskill/_build_undo_plan.py
+ M oskill/_capability_gap_analyze.py
+ M oskill/_cascade_delete.py
+ M oskill/_chunk_code.py
+ M oskill/_community_cluster.py
+ M oskill/_compose_plugin_manifest.py
+ M oskill/_compress_context.py
+ M oskill/_compute_line_item_totals.py
+ M oskill/_compute_tax_lines.py
+ M oskill/_conflict_resolution.py
+ M oskill/_dedup_edits.py
+ M oskill/_english_speaking_practice.py
+ M oskill/_escalate_thinking_budget.py
+ M oskill/_essay_assessment.py
+ M oskill/_evaluate_hooks.py
+ M oskill/_evaluate_tax_inclusive_pricing.py
+ M oskill/_exceptions.py
+ M oskill/_extract_symbols.py
+ M oskill/_format_diagnostics.py
+ M oskill/_generate_animation.py
+ M oskill/_generate_patch_preview.py
+ M oskill/_graph_expand_retrieval.py
+ M oskill/_hc_types.py
+ M oskill/_llm_caller.py
+ M oskill/_load_skill_progressive.py
+ M oskill/_match_permission_rule.py
+ M oskill/_media_to_structured_md.py
+ M oskill/_merge_config.py
+ M oskill/_merge_subagent_result.py
+ M oskill/_ontology_extract.py
+ M oskill/_parse_llm_tool_calls.py
+ M oskill/_physics_force_analysis_guide.py
+ M oskill/_plan_decompose.py
+ M oskill/_plan_to_todos.py
+ M oskill/_query_cluster.py
+ M oskill/_rank_relevant_files.py
+ M oskill/_reading_comprehension_guide.py
+ M oskill/_regenerate_animation.py
+ M oskill/_relation_extract_llm.py
+ M oskill/_relevance_compute.py
+ M oskill/_render_shot.py
+ M oskill/_repo_map_build.py
+ M oskill/_resolve_memory_hierarchy.py
+ M oskill/_resolve_mentions.py
+ M oskill/_schemas.py
+ M oskill/_select_region_currency.py
+ M oskill/_select_skill.py
+ M oskill/_select_tools.py
+ M oskill/_semantic_search.py
+ M oskill/_signal.py
+ M oskill/_summarize_file.py
+ M oskill/_syntax_check.py
+ M oskill/_theorem_verify_3way.py
+ M oskill/_three_way_merge.py
+ M oskill/_two_step_ingest.py
+ M oskill/_types.py
+ M oskill/_utils.py
+ M oskill/_validate_edit.py
+ M oskill/_video_cost_proposal.py
+ M oskill/_video_filter_by_rules.py
+ M oskill/agentic_investigate_loop.py
+ M oskill/analysis.py
+ M oskill/asset_reference_inject.py
+ M oskill/audit.py
+ M oskill/audit/__init__.py
+ M oskill/avatar_assembler.py
+ M oskill/backtest/embargo_cv.py
+ M oskill/backtest/market_rules_backtest.py
+ M oskill/backtest/walk_forward_optimization.py
+ M oskill/backtest_strategy_skills.py
+ M oskill/backup_schedule_check.py
+ M oskill/batch_edit.py
+ M oskill/batch_generate_animations.py
+ M oskill/bayesian/__init__.py
+ M oskill/bayesian/gp_regression.py
+ M oskill/bayesian/hierarchical.py
+ M oskill/bayesian/linear_regression.py
+ M oskill/bayesian/posterior_diagnostics.py
+ M oskill/bayesian/var.py
+ M oskill/behavioral/__init__.py
+ M oskill/behavioral/cpt_analytical.py
+ M oskill/behavioral/cpt_portfolio.py
+ M oskill/behavioral/salience_pricing.py
+ M oskill/bocpd_changepoint.py
+ M oskill/caddy_route_add.py
+ M oskill/call_hierarchy_trace.py
+ M oskill/candidate_universe_builder_v3.py
+ M oskill/canvas_workflow_executor.py
+ M oskill/causal.py
+ M oskill/causal_discovery.py
+ M oskill/change_point/bayesian_online.py
+ M oskill/change_point/pelt.py
+ M oskill/circuit_breaker_check.py
+ M oskill/classifier/rule_based.py
+ M oskill/classify_signal.py
+ M oskill/code_intel_lookup.py
+ M oskill/code_search.py
+ M oskill/cognitive_state.py
+ M oskill/cointegration_pairs.py
+ M oskill/cold_start_single.py
+ M oskill/comic_to_animation_workflow/__init__.py
+ M oskill/compute_capacity_forecast.py
+ M oskill/compute_severity_score.py
+ M oskill/conformal/__init__.py
+ M oskill/conformal/adaptive_cp.py
+ M oskill/conformal/change_point_cp.py
+ M oskill/conformal/split_cp.py
+ M oskill/consistency_check.py
+ M oskill/container_health_aggregate.py
+ M oskill/container_resource_rank.py
+ M oskill/context_compact.py
+ M oskill/cost/_sigmoid.py
+ M oskill/covariance/__init__.py
+ M oskill/covariance/denoising.py
+ M oskill/cross_layer_search.py
+ M oskill/data/__init__.py
+ M oskill/data/calendar_surprise_detect.py
+ M oskill/diagnose_pattern_match.py
+ M oskill/distribution.py
+ M oskill/distributional_rl/__init__.py
+ M oskill/distributional_rl/iqn.py
+ M oskill/distributional_rl/quantile_regression.py
+ M oskill/dsl/evaluator.py
+ M oskill/echo_loop_skill.py
+ M oskill/edit.py
+ M oskill/essay_guide.py
+ M oskill/exchange/__init__.py
+ M oskill/exchange/okx_demo/__init__.py
+ M oskill/exchange/okx_demo/_signing.py
+ M oskill/exchange/okx_demo/_types.py
+ M oskill/exchange/okx_demo/rest_client.py
+ M oskill/exchange/okx_demo/ws_private.py
+ M oskill/expand_tasks_from_note.py
+ M oskill/factor/__init__.py
+ M oskill/factor/barra.py
+ M oskill/factor/carhart.py
+ M oskill/factor/disclosure_scoring.py
+ M oskill/factor/event_theme_cluster.py
+ M oskill/factor/fama_french.py
+ M oskill/factor/neutralization.py
+ M oskill/factor/quantile_returns.py
+ M oskill/factor/sector_rotation.py
+ M oskill/find_consistency_issues.py
+ M oskill/generate_animation.py
+ M oskill/generate_practice_set.py
+ M oskill/generative/ddpm_paths.py
+ M oskill/git_safe_snapshot.py
+ M oskill/hmm.py
+ M oskill/hmm_regime_detect.py
+ M oskill/hybrid_retrieve.py
+ M oskill/hybrid_search.py
+ M oskill/image_to_video_workflow.py
+ M oskill/ingest_substrate.py
+ M oskill/install_plugin.py
+ M oskill/interleave_select.py
+ M oskill/knowledge/__init__.py
+ M oskill/knowledge/_context.py
+ M oskill/knowledge/classify_inbox_file.py
+ M oskill/knowledge/detect_duplicate_substrate.py
+ M oskill/knowledge/generate_audio_narration.py
+ M oskill/knowledge/generate_derivative.py
+ M oskill/knowledge/generate_illustration.py
+ M oskill/knowledge/transcribe_audio_substrate.py
+ M oskill/knowledge/web_search_augmented.py
+ M oskill/ku_extract_pipeline.py
+ M oskill/llm/__init__.py
+ M oskill/llm/batch_classify.py
+ M oskill/llm/consistency.py
+ M oskill/llm/cot.py
+ M oskill/llm/deterministic_call.py
+ M oskill/llm/faithfulness.py
+ M oskill/llm/multi_model.py
+ M oskill/llm/text_translate.py
+ M oskill/llm/tool_validation.py
+ M oskill/llm_agent/_parsing.py
+ M oskill/llm_agent/bear_analyst.py
+ M oskill/llm_agent/bull_analyst.py
+ M oskill/llm_agent/referee.py
+ M oskill/llm_client/deepseek.py
+ M oskill/llm_factor_debate.py
+ M oskill/llm_skills.py
+ M oskill/longitudinal_pattern.py
+ M oskill/market_impact_sigmoid.py
+ M oskill/market_making/_base.py
+ M oskill/market_making/avellaneda_stoikov.py
+ M oskill/mcp_tool_invoke.py
+ M oskill/mean_reversion_compose.py
+ M oskill/metacog_scaffold.py
+ M oskill/metadata_generate.py
+ M oskill/metric_baseline_compare.py
+ M oskill/microstructure/__init__.py
+ M oskill/microstructure/bar_aggregation.py
+ M oskill/microstructure/hawkes.py
+ M oskill/microstructure/order_flow.py
+ M oskill/microstructure/state_hawkes.py
+ M oskill/ml_finance/__init__.py
+ M oskill/ml_finance/fractional_diff.py
+ M oskill/ml_finance/meta_labeling.py
+ M oskill/mllm_frame_consistency_check.py
+ M oskill/multi_node_health_sweep.py
+ M oskill/networks/__init__.py
+ M oskill/networks/centrality.py
+ M oskill/networks/clearing.py
+ M oskill/networks/contagion.py
+ M oskill/node_register_probe.py
+ M oskill/paper_grading.py
+ M oskill/patch_apply_verified.py
+ M oskill/performance.py
+ M oskill/permission_evaluate.py
+ M oskill/point_process.py
+ M oskill/policy_sector_attribution.py
+ M oskill/portfolio/ssd_milp.py
+ M oskill/prediction.py
+ M oskill/prompt_assemble.py
+ M oskill/rag/chunking.py
+ M oskill/rag/reranking.py
+ M oskill/recursive_utility/__init__.py
+ M oskill/recursive_utility/ez_solver.py
+ M oskill/reference_generator.py
+ M oskill/regenerate_animation.py
+ M oskill/regime/multi_state_classify.py
+ M oskill/regime_gate_eval.py
+ M oskill/regime_smoothing.py
+ M oskill/render_shot.py
+ M oskill/researcher_workflow.py
+ M oskill/response_decode.py
+ M oskill/restart_and_verify.py
+ M oskill/retrieve_and_synthesize.py
+ M oskill/retrieve_runbook.py
+ M oskill/risk/__init__.py
+ M oskill/risk/systemic.py
+ M oskill/robust/maxmin_eu.py
+ M oskill/robust/smooth_ambiguity.py
+ M oskill/runbook_match.py
+ M oskill/scan_project_structure.py
+ M oskill/scm_fit.py
+ M oskill/script_writer.py
+ M oskill/select_reference.py
+ M oskill/semantic_file_read.py
+ M oskill/shorts_recompose.py
+ M oskill/shot_generator.py
+ M oskill/signal_detection.py
+ M oskill/signal_fusion_skills.py
+ M oskill/signals/aggregation.py
+ M oskill/signals/ensemble.py
+ M oskill/signals/forward_returns.py
+ M oskill/signature/__init__.py
+ M oskill/signature/kernel.py
+ M oskill/signature/pricing.py
+ M oskill/similarity.py
+ M oskill/similarity_indexing.py
+ M oskill/smart_edit.py
+ M oskill/socratic_guide_v2.py
+ M oskill/socratic_loop.py
+ M oskill/solve_and_visualize.py
+ M oskill/spectral/clustering.py
+ M oskill/state_space/_base.py
+ M oskill/state_space/kalman.py
+ M oskill/state_space/particle.py
+ M oskill/storyboard_planner.py
+ M oskill/streaming_assemble.py
+ M oskill/structured_log_anomaly_cluster.py
+ M oskill/subagent_dispatch.py
+ M oskill/sync/__init__.py
+ M oskill/sync/errors.py
+ M oskill/sync/flush_outbox.py
+ M oskill/sync/restore_from_snapshot.py
+ M oskill/sync/snapshot_backup.py
+ M oskill/synthesize_action_plan.py
+ M oskill/threeo_ingester.py
+ M oskill/tool_call_loop.py
+ M oskill/tool_schema_assemble.py
+ M oskill/tooling.py
+ M oskill/trace_dependency.py
+ M oskill/transform_pipeline.py
+ M oskill/translate_substrate.py
+ M oskill/trend_compose.py
+ M oskill/validation/__init__.py
+ M oskill/validation/_legacy.py
+ M oskill/validation/csv.py
+ M oskill/validation/full_cpcv.py
+ M oskill/validation/pbo.py
+ M oskill/variant_for_review.py
+ M oskill/verify_health_after_action.py
+ M oskill/video_assembler.py
+ M oskill/video_cost_proposal.py
+ M oskill/video_self_assess.py
+ M oskill/walk_forward.py
+ M oskill/wave2_skills.py
+ M oskill/web_research.py
+ M oskill/worktree_prepare.py
+ M pyproject.toml
+ M scripts/check_init_refs.py
+ M tests/backtest/test_market_rules_backtest.py
+ M tests/backtest/test_random_subsampling.py
+ M tests/backtest/test_walk_forward.py
+ M tests/bayesian/test_bayesian_linear_regression.py
+ M tests/bayesian/test_bayesian_var.py
+ M tests/bayesian/test_gaussian_process_regression.py
+ M tests/bayesian/test_hierarchical_bayes.py
+ M tests/bayesian/test_posterior_diagnostics.py
+ M tests/behavioral/test_cpt_analytical.py
+ M tests/behavioral/test_cpt_portfolio.py
+ M tests/behavioral/test_salience_pricing.py
+ M tests/causal/test_pcmci.py
+ M tests/causal/test_scm_fit.py
+ M tests/causal/test_symbolic_transfer_entropy.py
+ M tests/change_point/test_bocpd.py
+ M tests/change_point/test_pelt.py
+ M tests/classifier/test_rule_based.py
+ M tests/conformal/test_adaptive_cp.py
+ M tests/conformal/test_change_point_cp.py
+ M tests/conformal/test_split_cp.py
+ M tests/conftest.py
+ M tests/cost/test_crypto_market_impact_sigmoid.py
+ M tests/covariance/test_denoising.py
+ M tests/covariance/test_shrinkage.py
+ M tests/data/test_point_in_time_join.py
+ M tests/distributional_rl/test_iqn.py
+ M tests/distributional_rl/test_qr_loss.py
+ M tests/dsl/test_evaluator.py
+ M tests/exchange/test_okx_demo_rest_mock.py
+ M tests/exchange/test_okx_demo_signing.py
+ M tests/factor/test_carhart.py
+ M tests/factor/test_disclosure_scoring.py
+ M tests/factor/test_ff5.py
+ M tests/factor/test_ic.py
+ M tests/factor/test_quantile_returns.py
+ M tests/factor/test_sector_rotation.py
+ M tests/generative/test_ddpm_paths.py
+ M tests/hmm/test_gaussian_hmm.py
+ M tests/integration/test_deepseek_real.py
+ M tests/knowledge/conftest.py
+ M tests/knowledge/test_classify_inbox_file.py
+ M tests/knowledge/test_detect_duplicate_substrate.py
+ M tests/knowledge/test_e2e.py
+ M tests/knowledge/test_generate_derivative.py
+ M tests/knowledge/test_hybrid_search.py
+ M tests/knowledge/test_ingest_substrate.py
+ M tests/knowledge/test_lint.py
+ M tests/knowledge/test_translate_substrate.py
+ M tests/llm/test_batch_classify.py
+ M tests/llm/test_consistency.py
+ M tests/llm/test_cot.py
+ M tests/llm/test_deterministic_call.py
+ M tests/llm/test_faithfulness.py
+ M tests/llm/test_multi_model.py
+ M tests/llm/test_prompt_fingerprint.py
+ M tests/llm/test_text_translate.py
+ M tests/llm/test_tool_validation.py
+ M tests/llm_agent/test_bull_bear.py
+ M tests/llm_agent/test_referee.py
+ M tests/llm_client/test_deepseek_mock.py
+ M tests/market_making/test_avellaneda_stoikov.py
+ M tests/market_making/test_cartea_jaimungal.py
+ M tests/microstructure/test_bar_aggregation.py
+ M tests/microstructure/test_hawkes.py
+ M tests/microstructure/test_order_flow.py
+ M tests/microstructure/test_state_hawkes.py
+ M tests/ml_finance/test_bet_sizing.py
+ M tests/ml_finance/test_cusum_filter.py
+ M tests/ml_finance/test_fractional_diff.py
+ M tests/ml_finance/test_sample_weights.py
+ M tests/ml_finance/test_triple_barrier.py
+ M tests/networks/test_centrality.py
+ M tests/networks/test_clearing.py
+ M tests/networks/test_contagion.py
+ M tests/operational_risk/test_lda.py
+ M tests/performance/test_rule_compliance_winrate_diff.py
+ M tests/performance/test_subject_forward_winrate.py
+ M tests/point_process/test_fit_hawkes.py
+ M tests/portfolio/test_hrp_v2.py
+ M tests/portfolio/test_ssd_milp.py
+ M tests/rag/test_chunking.py
+ M tests/rag/test_reranking.py
+ M tests/recursive_utility/test_ez_solver.py
+ M tests/reference_papers/test_bansal_yaron_2004.py
+ M tests/reference_papers/test_cpt_analytical_bernard_ghossoub_2010.py
+ M tests/reference_papers/test_eisenberg_noe_2001.py
+ M tests/reference_papers/test_hrp_v2_lopez_de_prado_2016.py
+ M tests/regime/test_multi_state_classify.py
+ M tests/risk/test_systemic.py
+ M tests/robust/test_maxmin_eu.py
+ M tests/robust/test_smooth_ambiguity.py
+ M tests/screening/test_candidate_pool_builder.py
+ M tests/signal_detection/test_signal_detection.py
+ M tests/signals/test_signal_ensemble.py
+ M tests/signals/test_weighted_signal_aggregation.py
+ M tests/signature/test_signature_kernel.py
+ M tests/signature/test_signature_pricing.py
+ M tests/similarity/test_batch_indexing.py
+ M tests/state_space/test_kalman.py
+ M tests/state_space/test_particle.py
+ M tests/sync/conftest.py
+ M tests/sync/test_apply_remote_events.py
+ M tests/sync/test_flush_outbox.py
+ M tests/sync/test_restore_from_snapshot.py
+ M tests/sync/test_snapshot_backup.py
+ M tests/test_aegis_b3_composition.py
+ M tests/test_aegis_b3_pure_algo.py
+ M tests/test_aegis_oskills_batch2.py
+ M tests/test_aegis_oskills_batch3_4.py
+ M tests/test_agentic_investigate_loop.py
+ M tests/test_aii_k1_k2.py
+ M tests/test_aii_k3_k4.py
+ M tests/test_asset_reference_inject.py
+ M tests/test_backtest_strategy_skills.py
+ M tests/test_batch_d.py
+ M tests/test_batch_generate_animations.py
+ M tests/test_batch_helivex_c.py
+ M tests/test_batch_hevi_f11.py
+ M tests/test_batch_md.py
+ M tests/test_cc_supplement_oskill.py
+ M tests/test_character_consistency_workflow.py
+ M tests/test_character_three_view.py
+ M tests/test_comic_to_animation_workflow.py
+ M tests/test_container_health_aggregate.py
+ M tests/test_distribution.py
+ M tests/test_event_trail_correlate.py
+ M tests/test_expand_tasks_from_note.py
+ M tests/test_feed_diff_pipeline.py
+ M tests/test_find_consistency_issues.py
+ M tests/test_formal_proof_verify.py
+ M tests/test_generate_animation.py
+ M tests/test_graph_k1_k5.py
+ M tests/test_hevi_oskill_part1.py
+ M tests/test_hevi_oskill_part2.py
+ M tests/test_hicode_batch_hc.py
+ M tests/test_hybrid_retrieve.py
+ M tests/test_hybrid_search_v3.py
+ M tests/test_image_qa.py
+ M tests/test_ku_extract_pipeline.py
+ M tests/test_media_k1_k2.py
+ M tests/test_metric_baseline_compare.py
+ M tests/test_mllm_frame_consistency_check.py
+ M tests/test_mneme_k1_k2.py
+ M tests/test_multi_angle_9.py
+ M tests/test_multi_shot_storyboard_workflow.py
+ M tests/test_ontology_extract.py
+ M tests/test_p6b3_modules.py
+ M tests/test_p6b4_extensions.py
+ M tests/test_performance.py
+ M tests/test_prediction.py
+ M tests/test_r7_compose.py
+ M tests/test_regenerate_animation.py
+ M tests/test_regime_conditional_score_weighted.py
+ M tests/test_regime_smoothing.py
+ M tests/test_render_shot.py
+ M tests/test_render_template.py
+ M tests/test_restart_and_verify.py
+ M tests/test_retrieve_and_synthesize.py
+ M tests/test_runbook_match.py
+ M tests/test_select_reference.py
+ M tests/test_signal_fusion_skills.py
+ M tests/test_similarity.py
+ M tests/test_solver_convergence.py
+ M tests/test_storyboard_grid.py
+ M tests/test_stratum_b2_group_a.py
+ M tests/test_stratum_b2_group_b.py
+ M tests/test_structured_log_anomaly_cluster.py
+ M tests/test_theorem_verify_3way.py
+ M tests/test_tool_call_loop.py
+ M tests/test_trace_dependency.py
+ M tests/test_validation.py
+ M tests/test_video_cost_proposal.py
+ M tests/test_wave2_skills.py
+ M tests/test_web_search_augmented.py
+ M tests/tide_step2/test_b10_oskills.py
+ M tests/validation/test_cscv.py
+ M tests/validation/test_deflated_sharpe.py
+ M tests/validation/test_full_cpcv.py
+ M tests/validation/test_haircut.py
+ M tests/validation/test_pbo.py
+ M tests/validation/test_trial_correction.py
+?? .veya-project/
+?? .veya/
+?? oskill/_auto_data_curation.py
+?? oskill/_backtranslate_diff.py
+?? oskill/_bayesian_belief_update.py
+?? oskill/_browser_automation_loop.py
+?? oskill/_buffer_stride_alignment.py
+?? oskill/_code_review_gate.py
+?? oskill/_code_symbol_investigate.py
+?? oskill/_cognitive_honeypot_gen.py
+?? oskill/_context_compression.py
+?? oskill/_contextual_reschedule.py
+?? oskill/_counterfactual_reasoning.py
+?? oskill/_dag_visual_layout.py
+?? oskill/_deep_research_tree.py
+?? oskill/_embodied_kinematics_serialize.py
+?? oskill/_error_diagnose_skill.py
+?? oskill/_extract_counterexample.py
+?? oskill/_formal_code_proof.py
+?? oskill/_genetic_dag_mutate.py
+?? oskill/_graph_impact_analysis.py
+?? oskill/_harness_uniform_route.py
+?? oskill/_hitl_instruction_steer.py
+?? oskill/_leader_worker_dispatch.py
+?? oskill/_long_context_compress.py
+?? oskill/_mcp_schema_adapter.py
+?? oskill/_mcp_tool_route.py
+?? oskill/_mcts_thought_planner.py
+?? oskill/_meta_strategy.py
+?? oskill/_multi_modal_fusion.py
+?? oskill/_mus_shrink_algorithm.py
+?? oskill/_neuro_symbolic_verify.py
+?? oskill/_proactive_deep_reach.py
+?? oskill/_prompt_evolution_eval.py
+?? oskill/_puct_tree_search.py
+?? oskill/_rag_rerank.py
+?? oskill/_repomap_gen.py
+?? oskill/_skills_dynamic_inject.py
+?? oskill/_smart_web_scraping.py
+?? oskill/_soul_self_evolution.py
+?? oskill/_structure_learn.py
+?? oskill/_task_dag_split.py
+?? oskill/_theory_of_mind_simulator.py
+?? oskill/_vlm_page_nav.py
+?? oskill/_voice_interruption_handler.py
+?? oskill/_worktree_conflict_resolve.py
+?? oskill/ast_analyzer.py
+?? oskill/code_auditor.py
+?? oskill/context_compress.py
+?? oskill/diff_apply.py
+?? oskill/evaluate_stop.py
+?? oskill/evo_crossover.py
+?? oskill/evo_debug.py
+?? oskill/evo_draft.py
+?? oskill/evo_improve.py
+?? oskill/memory_induction.py
+?? oskill/progressive_disclosure.py
+?? oskill/protocol_translate.py
+?? oskill/protocols.py
+?? oskill/pure_parsers.py
+?? oskill/symbol_summarize.py
+?? tests/test_graft_openrsi.py
+?? tests/test_paradigm_fullstack.py
+?? tests/test_paradigm_phase3.py
+?? tests/test_progressive_disclosure.py
+?? tests/test_veya_42_oskill.py
+?? tests/test_veya_agent_oskill.py
+?? tests/test_veya_frontier_oskill.py
+?? tests/test_veya_mind_oskill.py
+?? tests/test_veya_o1o2o3_oskill.py
+?? tests/test_veya_p12_oskill.py
+?? tests/test_veya_skills_graphify_oskill.py
+?? tests/test_veya_superpowers_oskill.py

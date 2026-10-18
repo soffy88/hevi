@@ -1,0 +1,2 @@
+?? .veya-project/
+?? .veya/

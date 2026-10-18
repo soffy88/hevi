@@ -1,0 +1,2530 @@
+diff --git a/obase/__init__.py b/obase/__init__.py
+index 5c25558..53a69f9 100644
+--- a/obase/__init__.py
++++ b/obase/__init__.py
+@@ -178,11 +178,115 @@ __all__ = [
+     # mcp_client
+     "McpClientHandle",
+     "McpClientRegistry",
+-    # ------------------------------------------------------------------
+-    # D0 canonical lineage reconciliation — runtime adapter lineage only
+-    # (Veya-lineage provider_routing/tool_governance/agent_registry +
+-    # standalone harness/acp/a2a adapters + ProviderRegistry spec wiring)
+-    # ------------------------------------------------------------------
++    # veya/3O — decision_logger
++    "DecisionTrail",
++    "begin_trail",
++    "end_trail",
++    "get_trail",
++    "record_decision",
++    # veya/3O — pseudo_anonymizer
++    "PseudoAnonymizer",
++    "pseudo_anonymize",
++    "pseudo_anonymize_user",
++    # veya/3O — browser_runner
++    "BrowserError",
++    "BrowserPageHandle",
++    "BrowserRunner",
++    # veya/3O — plugin_loader
++    "PluginSandboxError",
++    "PluginSpec",
++    "load_plugin",
++    "load_python_plugin",
++    "load_wasm_plugin",
++    # veya/3O — docker_pool（docker SDK 惰性加载，此处仅导出类定义）
++    "ContainerSlot",
++    "DockerPool",
++    "DockerPoolError",
++    # veya/3O — git_worktree
++    "GitWorktreeError",
++    "add_worktree",
++    "list_worktrees",
++    "prune_worktrees",
++    "remove_worktree",
++    # veya/3O — cognitive_store
++    "MemoryChunk",
++    "MemoryStore",
++    "PgVectorMemoryStore",
++    "SqliteMemoryStore",
++    "make_memory_store",
++    # veya/3O — version_store
++    "SnapshotMeta",
++    "VersionStore",
++    "VersionStoreError",
++    # veya/3O — cost_tracker ContextVar 全局计数器
++    "bind_cost_tracker",
++    "get_cost_tracker",
++    "current_cost",
++    "record_cost",
++    "record_tokens",
++    # 3O Paradigm Phase 4 — omodul 基座
++    "OmodulBaseConfig",
++    "DaemonBusProvider",
++    "LocalEventBarrier",
++    "JSONValue",
++    "ResultDict",
++    "ErrorDict",
++    "ContextSlot",
++    # 3O 范式内化 — Graft / OpenRSI / ReasoningBank 基建
++    "GraphNode",
++    "GraphRelation",
++    "MarkdownGraphStore",
++    "TrajectoryEntry",
++    "TrajectoryLog",
++    "append_trajectory",
++    "load_trajectories",
++    "LocalSandboxRunner",
++    "DockerSandboxRunner",
++    "MemoryItem",
++    "MemoryBank",
++    "cosine_similarity",
++    # veya/3O — treesitter_indexer
++    "AstFallbackIndexer",
++    "CodeIndex",
++    "SymbolIndexer",
++    "SymbolRecord",
++    "TreesitterIndexer",
++    # veya/3O — hitl_signal_bus
++    "ApprovalRequest",
++    "HitlSignalBus",
++    "bind_bus",
++    "get_bus",
++    "interrupted",
++    "request_approval",
++    "signal_interrupt",
++    "wait_for_decision",
++    # veya/3O — P1/P2 顶级 Agent 功能复现 (9)
++    "ZeroMQBus",
++    "ZeroMQBusError",
++    "DurableLeaseQueue",
++    "LeaseQueueError",
++    "NETWORK_COMMANDS",
++    "SandboxError",
++    "SandboxResult",
++    "ZeroEgressSandbox",
++    "LiveKitError",
++    "LiveKitRoom",
++    "LiveKitWebRTC",
++    "EnergyVAD",
++    "VADError",
++    "VADPipeline",
++    "speech_segments",
++    "SignedTokenSession",
++    "TokenError",
++    "TokenExpiredError",
++    "TokenRevokedError",
++    "MediaItem",
++    "MediaScraper",
++    "MediaScraperError",
++    "extract_from_html",
++    "DebouncedMemoryQueue",
++    "HarnessBridge",
++    "HarnessBridgeError",
+     "HarnessAdapter",
+     "HarnessAdapterError",
+     "HarnessCapabilities",
+@@ -210,10 +314,120 @@ __all__ = [
+     "ACPAdapterError",
+     "ACPCapabilities",
+     "ACPSession",
++    "ChannelAdapter",
++    "ChannelMessage",
++    "BaseChannelAdapter",
++    "TelegramChannelAdapter",
++    "SlackChannelAdapter",
++    "register_channel_adapters",
++    # veya/3O — 前沿探索 (形式化验证)
++    "SMTUnavailableError",
++    "SMTSolverAdapter",
++    "LeanFormalProver",
++    "LeanProverError",
++    # veya/3O — 终极前沿认知能力
++    "KVCacheError",
++    "KVCacheSharedMemory",
++    # veya/3O — checkpoint_store
++    "CheckpointStore",
++    # veya/3O — browser_vision_runner
++    "BrowserVisionRunner",
++    "PageElement",
++    "PageState",
++    "VisionRunnerError",
++    # veya/3O — ssrf_safe_network
++    "SSRFSafeNetwork",
++    "SSRFSafeNetworkError",
++    # veya/3O — skills_registry
++    "SkillsRegistry",
++    "SkillsRegistryError",
++    # veya/3O — adaptive_scraper (D0: Veya-lineage element = callable entry point)
++    "adaptive_scraper",
++    # veya/3O — dlt_pipeline_store
++    "DltPipelineStore",
++    "DltPipelineStoreError",
++    # 3O Paradigm Phase 1 — obase 契约层 + 基础实现
++    "IDaemon_Bus",
++    "IEvent_Barrier",
++    "IKV_Store",
++    "ILLM_Client",
++    "IVFS_Sandbox",
++    "VFSProvider",
++    "KVStoreProvider",
++    "LocalVFS",
++    "HttpLLMClient",
++    "SQLiteKVStore",
++    # ------------------------------------------------------------------
++    # D0 canonical lineage reconciliation — Veya-lineage obase elements
++    # ------------------------------------------------------------------
++    "ActionDecision",
++    "ActionEffect",
++    "ActionRequest",
++    "ActionVerdict",
++    "AuditRecord",
++    "PolicyRule",
++    "redact_value",
+     "AgentRegistry",
+     "RegistryConflictError",
+     "register_agent",
+     "registry",
++    "BrowserAdapter",
++    "BrowserControlState",
++    "BrowserProfile",
++    "BrowserSessionHandle",
++    "BrowserSessionState",
++    "PlaywrightBrowserAdapter",
++    "ComputerBackend",
++    "ComputerHandle",
++    "ComputerProfile",
++    "ComputerState",
++    "Event",
++    "EventBus",
++    "HierarchicalContextError",
++    "HierarchicalContextStore",
++    "RetrievalResult",
++    "RetrievalStep",
++    "TokenBudgetExceeded",
++    "retrieve",
++    "KnowledgeStore",
++    "HoneypotAccessError",
++    "LocalSandboxPool",
++    "SandboxExecutionResult",
++    "BreakerState",
++    "get_breaker",
++    "init_breaker",
++    "reset_breaker",
++    "AppendOnlyEventStore",
++    "EVENT_SCHEMA_VERSION",
++    "LoopStoreError",
++    "QuotaTracker",
++    "VerifyResult",
++    "ensure_synthetic_data",
++    "get_market_data_schema",
++    "load_asset",
++    "resolve_data_dir",
++    "HttpMcpError",
++    "StreamableHttpMcpClient",
++    "StdioMcpClient",
++    "StdioMcpError",
++    "PluginRegistry",
++    "HookNotFoundError",
++    "HookRegistry",
++    "default_hook_runner",
++    "make_default_check_runner",
++    "register_hook",
++    "RunbookParseError",
++    "load_runbook_yaml",
++    "parse_runbook",
++    "SecretsStore",
++    "TeamRegistry",
++    "make_message",
++    "make_task",
++    "make_team_config",
++    "make_team_member",
++    "VectorMemory",
++    "WorkspaceInspector",
++    "WorkspaceSnapshot",
+     "ModelSpec",
+     "Pricing",
+     "ProviderCallRequest",
+@@ -232,6 +446,9 @@ __all__ = [
+     "ToolKind",
+     "ToolSpec",
+     "redact_payload",
++    "CausalGraphError",
++    "CausalGraphStore",
++    "get_runtime_causal_store",
+ ]
+ 
+ # --- Stratum B3 obase submodules (v0.8.0) ---
+@@ -264,16 +481,112 @@ from obase.acp_adapter import (
+     ACPCapabilities,
+     ACPSession,
+ )
++
++# ---------------------------------------------------------------------------
++# D0 canonical lineage reconciliation — Veya-lineage obase elements (2026-09)
++# ---------------------------------------------------------------------------
++from obase.action import (
++    ActionDecision,
++    ActionEffect,
++    ActionRequest,
++    ActionVerdict,
++    AuditRecord,
++    PolicyRule,
++    redact_value,
++)
++
++# Veya/3O — adaptive_scraper
++from obase.adaptive_scraper import adaptive_scraper
+ from obase.agent_registry import (
+     AgentRegistry,
+     RegistryConflictError,
+     register_agent,
+     registry,
+ )
++from obase.base_types import ErrorDict, JSONValue, ResultDict
++from obase.browser import (
++    BrowserAdapter,
++    BrowserControlState,
++    BrowserProfile,
++    BrowserSessionHandle,
++    BrowserSessionState,
++    PlaywrightBrowserAdapter,
++)
++from obase.browser_runner import BrowserError, BrowserPageHandle, BrowserRunner
++
++# Veya/3O — browser_vision_runner
++from obase.browser_vision_runner import (
++    BrowserVisionRunner,
++    PageElement,
++    PageState,
++    VisionRunnerError,
++)
++from obase.channel_adapter import (
++    BaseChannelAdapter,
++    ChannelAdapter,
++    ChannelMessage,
++    SlackChannelAdapter,
++    TelegramChannelAdapter,
++    register_channel_adapters,
++)
++
++# Veya/3O — checkpoint_store
++from obase.checkpoint_store import CheckpointStore
+ from obase.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
++from obase.cognitive_store import (
++    MemoryChunk,
++    MemoryStore,
++    PgVectorMemoryStore,
++    SqliteMemoryStore,
++    make_memory_store,
++)
++from obase.computer import ComputerBackend, ComputerHandle, ComputerProfile, ComputerState
++from obase.context_vars import ContextSlot
++
++# --- 3O Paradigm Phase 1 — obase 契约层 + 基础实现 ---
++from obase.contracts import (
++    IDaemon_Bus,
++    IEvent_Barrier,
++    IKV_Store,
++    ILLM_Client,
++    IVFS_Sandbox,
++    KVStoreProvider,
++    VFSProvider,
++)
++from obase.cost_tracker import (
++    bind_cost_tracker,
++    current_cost,
++    get_cost_tracker,
++    record_cost,
++    record_tokens,
++)
+ from obase.crypto import CryptoError, decrypt_token, derive_master_key, encrypt_token
++from obase.daemon_bus import DaemonBusProvider
++from obase.debounced_memory_queue import DebouncedMemoryQueue
++from obase.decision_logger import (
++    DecisionTrail,
++    begin_trail,
++    end_trail,
++    get_trail,
++    record_decision,
++)
++
++# Veya/3O — dlt_pipeline_store
++from obase.dlt_pipeline_store import DltPipelineStore, DltPipelineStoreError
++from obase.docker_pool import ContainerSlot, DockerPool, DockerPoolError
++from obase.durable_lease_queue import DurableLeaseQueue, LeaseQueueError
++from obase.event_barrier import LocalEventBarrier
++from obase.event_bus import Event, EventBus
+ from obase.git import GitResult, run_git
++from obase.git_worktree import (
++    GitWorktreeError,
++    add_worktree,
++    list_worktrees,
++    prune_worktrees,
++    remove_worktree,
++)
+ from obase.gpu import GpuScheduler, LocalModelProvider, ModelRegistry
++from obase.graph_storage import GraphNode, GraphRelation, MarkdownGraphStore
+ from obase.harness_adapter import (
+     RESULT_STATUSES,
+     TERMINAL_STATUSES,
+@@ -294,16 +607,65 @@ from obase.harness_adapter import (
+     normalize_status,
+     register_harness_adapters,
+ )
++from obase.harness_bridge import HarnessBridge, HarnessBridgeError
++from obase.hierarchical_context import (
++    HierarchicalContextError,
++    HierarchicalContextStore,
++    RetrievalResult,
++    RetrievalStep,
++    TokenBudgetExceeded,
++    retrieve,
++)
++from obase.hitl_signal_bus import (
++    ApprovalRequest,
++    HitlSignalBus,
++    bind_bus,
++    get_bus,
++    interrupted,
++    request_approval,
++    signal_interrupt,
++    wait_for_decision,
++)
+ from obase.http.dns_pinned_transport import (
+     SSRFBlockedError,
+     is_safe_ip,
+     make_ssrf_safe_opener,
+     resolve_and_check,
+ )
++from obase.knowledge_store import KnowledgeStore
++from obase.kv_cache_shared_memory import KVCacheError, KVCacheSharedMemory
++from obase.kv_store import SQLiteKVStore
++from obase.lean_formal_prover import LeanFormalProver, LeanProverError
++from obase.livekit_webrtc import LiveKitError, LiveKitRoom, LiveKitWebRTC
++from obase.llm_client import HttpLLMClient
++from obase.local_sandbox_pool import (
++    HoneypotAccessError,
++    LocalSandboxPool,
++    SandboxExecutionResult,
++)
++from obase.loop_breaker import BreakerState, get_breaker, init_breaker, reset_breaker
++from obase.loop_event_store import (
++    EVENT_SCHEMA_VERSION,
++    AppendOnlyEventStore,
++    LoopStoreError,
++    QuotaTracker,
++    VerifyResult,
++)
+ from obase.lsp import LspClientManager, LspServerHandle
++from obase.market_data import (
++    ensure_synthetic_data,
++    get_market_data_schema,
++    load_asset,
++    resolve_data_dir,
++)
+ from obase.mcp_client import McpClientHandle, McpClientRegistry
++from obase.mcp_http import HttpMcpError, StreamableHttpMcpClient
++from obase.mcp_stdio import StdioMcpClient, StdioMcpError
++from obase.media_scraper import MediaItem, MediaScraper, MediaScraperError, extract_from_html
++from obase.memory_bank import MemoryBank, MemoryItem, cosine_similarity
+ from obase.migration import MigrationResult, run_migration
+ from obase.observability.tracer import Span, Tracer, get_tracer
++from obase.omodul_base_config import OmodulBaseConfig
+ from obase.persistence import (
+     PgPool,
+     VectorMetric,
+@@ -315,6 +677,14 @@ from obase.persistence import (
+     upsert_batch,
+     vector_search,
+ )
++from obase.plugin_loader import (
++    PluginSandboxError,
++    PluginSpec,
++    load_plugin,
++    load_python_plugin,
++    load_wasm_plugin,
++)
++from obase.plugin_registry import PluginRegistry
+ from obase.provider_routing import (
+     ModelSpec,
+     Pricing,
+@@ -325,7 +695,42 @@ from obase.provider_routing import (
+     UsageRecord,
+     tool_kind_to_protocol_family,
+ )
++from obase.pseudo_anonymizer import (
++    PseudoAnonymizer,
++    pseudo_anonymize,
++    pseudo_anonymize_user,
++)
+ from obase.retry import RetryPolicy, retry_with_backoff
++from obase.runbook_loader import RunbookParseError, load_runbook_yaml, parse_runbook
++from obase.runbook_runtime import (
++    HookNotFoundError,
++    HookRegistry,
++    default_hook_runner,
++    make_default_check_runner,
++    register_hook,
++)
++from obase.sandbox_runner import DockerSandboxRunner, LocalSandboxRunner
++from obase.secrets_store import SecretsStore
++from obase.signed_token_session import (
++    SignedTokenSession,
++    TokenError,
++    TokenExpiredError,
++    TokenRevokedError,
++)
++
++# Veya/3O — skills_registry
++from obase.skills_registry import SkillsRegistry, SkillsRegistryError
++from obase.smt_solver_adapter import SMTSolverAdapter, SMTUnavailableError
++
++# Veya/3O — ssrf_safe_network
++from obase.ssrf_safe_network import SSRFSafeNetwork, SSRFSafeNetworkError
++from obase.team_registry import (
++    TeamRegistry,
++    make_message,
++    make_task,
++    make_team_config,
++    make_team_member,
++)
+ from obase.tool_governance import (
+     CredentialRef,
+     Grant,
+@@ -338,3 +743,46 @@ from obase.tool_governance import (
+     ToolSpec,
+     redact_payload,
+ )
++from obase.trajectory_logger import (
++    TrajectoryEntry,
++    TrajectoryLog,
++    append_trajectory,
++    load_trajectories,
++)
++from obase.treesitter_indexer import (
++    AstFallbackIndexer,
++    CodeIndex,
++    SymbolIndexer,
++    SymbolRecord,
++    TreesitterIndexer,
++)
++from obase.vad_pipeline import EnergyVAD, VADError, VADPipeline, speech_segments
++from obase.vector_memory import VectorMemory
++from obase.versionstore import (
++    SnapshotMeta,
++    VersionStore,
++    VersionStoreError,
++)
++from obase.vfs_sandbox import LocalVFS
++from obase.workspace_snapshot import WorkspaceInspector, WorkspaceSnapshot
++from obase.zero_egress_sandbox import (
++    NETWORK_COMMANDS,
++    SandboxError,
++    SandboxResult,
++    ZeroEgressSandbox,
++)
++from obase.zeromq_bus import ZeroMQBus, ZeroMQBusError
++
++# causal_graph_store 依赖可选重依赖 networkx(本仓 pyproject 未声明)。
++# 与 Veya pin 的 lazy 语义一致:缺失时该 element 视为不可解析(resolve_element -> None),
++# 而不是让 `import obase` 整体失败。
++try:  # pragma: no cover - 取决于环境是否安装 networkx
++    from obase.causal_graph_store import (
++        CausalGraphError,
++        CausalGraphStore,
++        get_runtime_causal_store,
++    )
++except ImportError:  # pragma: no cover
++    pass
++
++# TODO: Import daemon_bus and event_barrier implementations once finalized
+diff --git a/obase/acp_adapter.py b/obase/acp_adapter.py
+index ffb5243..8fb7a74 100644
+--- a/obase/acp_adapter.py
++++ b/obase/acp_adapter.py
+@@ -38,12 +38,22 @@ ACP_TURN_METHOD = "session/prompt"
+ 
+ @dataclass
+ class ACPCapabilities:
+-    """ACP agent capabilities (protocol shapes only)。"""
++    """ACP agent capabilities (protocol shapes only)。
++
++    D5: ``supports_mcp_attachment`` / ``supports_mcp_refresh`` /
++    ``supports_session_close`` are declaration-driven — set only from
++    explicit upstream ``initialize`` evidence, defaulting to ``False``.
++    ``as_dict`` keeps the original four transport keys (pinned contract);
++    the D5 flags are read as attributes.
++    """
+ 
+     streaming: bool = False
+     resume: bool = False
+     cancel: bool = False
+     tools: bool = False
++    supports_mcp_attachment: bool = False
++    supports_mcp_refresh: bool = False
++    supports_session_close: bool = False
+     raw: dict[str, Any] = field(default_factory=dict)
+ 
+     def as_dict(self) -> dict[str, bool]:
+@@ -122,16 +132,22 @@ class ACPAgentAdapter:
+         return session
+ 
+     async def capabilities(self) -> ACPCapabilities:
+-        """取 ACP capabilities (initialize 握手派生)。"""
++        """取 ACP capabilities (initialize 握手派生,声明驱动)。"""
+         init = await self.initialize()
+         caps = init.get("capabilities", init) if isinstance(init, dict) else {}
+         if not isinstance(caps, dict):
+             caps = {}
++        mcp_declared = caps.get("mcp") if isinstance(caps.get("mcp"), dict) else {}
+         return ACPCapabilities(
+             streaming=bool(caps.get("streaming", False)),
+             resume=bool(caps.get("resume", False)),
+             cancel=bool(caps.get("cancel", True)),
+             tools=bool(caps.get("tools", False)),
++            supports_mcp_attachment=bool(
++                mcp_declared.get("attachment", mcp_declared.get("attach", False))
++            ),
++            supports_mcp_refresh=bool(mcp_declared.get("refresh", False)),
++            supports_session_close=bool(caps.get("session_close", caps.get("close", False))),
+             raw=caps,
+         )
+ 
+@@ -197,18 +213,47 @@ class ACPAgentAdapter:
+             return await self.turn(session_id, prompt)
+         return {"session_id": session_id, "status": "active"}
+ 
++    async def close(self, session_id: str) -> dict[str, Any]:
++        """关闭会话:尽力而为的远端 session/close + 保证本地 detach。
++
++        D5 session-scoped teardown contract. 幂等:未知会话也返回成功
++        (无可清理)。若对端不支持远端关闭,诚实报告
++        ``remote_close_supported=False`` 而不伪装,本地 detach 照常完成。
++        """
++        remote_supported: bool | None = None
++        remote_error: str | None = None
++        if session_id in self._sessions:
++            try:
++                await self._send(
++                    {
++                        "jsonrpc": "2.0",
++                        "id": uuid.uuid4().hex[:8],
++                        "method": "session/close",
++                        "params": {"sessionId": session_id},
++                    }
++                )
++                remote_supported = True
++            except ACPAdapterError as exc:
++                remote_supported = False
++                remote_error = str(exc)
++        self._sessions.pop(session_id, None)
++        self._cancelled.discard(session_id)
++        return {
++            "session_id": session_id,
++            "closed": True,
++            "remote_close_supported": bool(remote_supported),
++            "remote_close_error": remote_error,
++        }
++
+     # -- 内部: adapt to HarnessRunResult (不反向污染 canonical contract) ---------
+     def to_harness_result(self, session_id: str, turn_result: dict[str, Any]) -> Any:
+         """ACP turn -> HarnessRunResult (延迟导入,避免 schema 泄漏)。"""
+-        from obase.harness_adapter import HarnessRunResult
++        from obase.harness_adapter import HarnessRunResult, normalize_status
+ 
+         session = self._sessions.get(session_id)
+-        status = str(turn_result.get("status", "ok"))
+-        if status not in ("ok", "error", "cancelled", "running"):
+-            status = "ok"
+         return HarnessRunResult(
+             run_id=session.run_id if session else session_id,
+-            status=status,
++            status=normalize_status(turn_result.get("status", "completed")),
+             output=str(turn_result.get("output", "")),
+             usage=dict(turn_result.get("usage") or {}),
+             error=turn_result.get("error"),
+diff --git a/obase/cognitive_store.py b/obase/cognitive_store.py
+index edf1820..01374af 100644
+--- a/obase/cognitive_store.py
++++ b/obase/cognitive_store.py
+@@ -1,197 +1,340 @@
+-"""
+-认知状态存储基础设施
+-====================
+-obase/cognitive_store.py
++"""obase.cognitive_store — 向量与文本混合存储适配器 (MemoryChunk; PgVector / SQLite).
++
++定义 MemoryChunk 结构，提供两种后端接口：
++- PgVectorMemoryStore : pgvector HNSW 近邻检索（经 obase.persistence.vector.vector_search）
++- SqliteMemoryStore   : 零依赖 SQLite 落盘（JSON 序列化 embedding，余弦手工计算），
++                        用于无 Postgres 的轻量/测试环境
++
++Example:
++    >>> store = SqliteMemoryStore("/tmp/mem.db", dim=4)
++    >>> await store.upsert(MemoryChunk(chunk_id="c1", content="hello", embedding=[1.0, 0, 0, 0]))
++    >>> hits = await store.search([1.0, 0, 0, 0], top_k=5)
++    >>> hits[0][0].chunk_id
++    'c1'
+ """
+ 
+ from __future__ import annotations
+ 
+-from datetime import UTC, datetime
+-from typing import Protocol, runtime_checkable
+-from uuid import UUID
++import asyncio
++import json
++import math
++import sqlite3
++import time
++from dataclasses import dataclass, field
++from pathlib import Path
++from typing import Any, Protocol, runtime_checkable
++
++__all__ = [
++    "MemoryChunk",
++    "MemoryStore",
++    "PgVectorMemoryStore",
++    "SqliteMemoryStore",
++    "make_memory_store",
++]
+ 
+-from services.models import InteractionEvent, KCMastery
+-from sqlalchemy import insert, select, update
+-from sqlalchemy.ext.asyncio import AsyncSession
+ 
+-from obase.cognitive_types import KCState, fsrs_new_card, new_state_from_prior
+-from obase.prior_provider import PriorProvider
++@dataclass
++class MemoryChunk:
++    """统一记忆块结构：文本 + 可选向量 + 元数据。"""
++
++    chunk_id: str
++    content: str
++    embedding: list[float] | None = None
++    metadata: dict[str, Any] = field(default_factory=dict)
++    path: str | None = None
++    created_at: float = field(default_factory=time.time)
+ 
+ 
+ @runtime_checkable
+-class BaseCognitiveStore(Protocol):
+-    """认知状态存储协议。"""
+-
+-    async def get_or_create(
+-        self, student_id: UUID, kc_id: str, question_type: str = "solve"
+-    ) -> tuple[KCState, dict]:
+-        """获取或创建认知状态和 FSRS 卡片。"""
+-        ...
+-
+-    async def get_all_states(self, student_id: UUID) -> dict[str, tuple[KCState, dict]]:
+-        """获取学生所有知识点的认知状态。"""
+-        ...
+-
+-    async def save(self, student_id: UUID, kc_id: str, state: KCState, card_dict: dict) -> None:
+-        """保存更新后的状态。"""
+-        ...
+-
+-    async def append_event(self, student_id: UUID, kc_id: str, event_data: dict) -> None:
+-        """追加交互事件（只增不改）。"""
+-        ...
+-
+-
+-class InMemoryStore:
+-    """内存版状态存储（用于测试）。"""
+-
+-    def __init__(self):
+-        self._states: dict[str, KCState] = {}
+-        self._cards: dict[str, dict] = {}
+-        self._events: list[dict] = []
+-
+-    def _key(self, student_id: UUID, kc_id: str) -> str:
+-        return f"{student_id}::{kc_id}"
+-
+-    async def get_or_create(
+-        self, student_id: UUID, kc_id: str, question_type: str = "solve"
+-    ) -> tuple[KCState, dict]:
+-        k = self._key(student_id, kc_id)
+-        if k not in self._states:
+-            # 优先使用 PriorProvider，如果它已经预热 (例如在测试中或应用启动时)
+-            if PriorProvider._is_warmed:
+-                prior = await PriorProvider.get_prior(None, kc_id, question_type)
+-            else:
+-                # 兼容性 Fallback
+-                from data.guangdong_math_kc import get_bkt_prior
+-
+-                prior = get_bkt_prior(kc_id)
+-
+-            self._states[k] = new_state_from_prior(kc_id=kc_id, prior=prior)
+-            self._cards[k] = fsrs_new_card()
+-        return self._states[k], self._cards[k]
+-
+-    async def get_all_states(self, student_id: UUID) -> dict[str, tuple[KCState, dict]]:
+-        prefix = f"{student_id}::"
+-        return {
+-            k[len(prefix) :]: (self._states[k], self._cards[k])
+-            for k in self._states
+-            if k.startswith(prefix)
+-        }
+-
+-    async def save(self, student_id: UUID, kc_id: str, state: KCState, card_dict: dict) -> None:
+-        k = self._key(student_id, kc_id)
+-        self._states[k] = state
+-        self._cards[k] = card_dict
+-
+-    async def append_event(self, student_id: UUID, kc_id: str, event_data: dict) -> None:
+-        event = event_data.copy()
+-        event["student_id"] = student_id
+-        event["knowledge_point"] = kc_id
+-        if "occurred_at" not in event:
+-            event["occurred_at"] = datetime.now(UTC)
+-        self._events.append(event)
+-
+-
+-class PgStore:
+-    """PostgreSQL 状态存储。"""
+-
+-    def __init__(self, session: AsyncSession):
+-        self.session = session
+-
+-    async def get_or_create(
+-        self, student_id: UUID, kc_id: str, question_type: str = "solve"
+-    ) -> tuple[KCState, dict]:
+-        stmt = select(KCMastery).where(
+-            KCMastery.student_id == student_id, KCMastery.knowledge_point == kc_id
+-        )
+-        result = await self.session.execute(stmt)
+-        row = result.scalar_one_or_none()
+-
+-        if row:
+-            return self._row_to_entry(row)
+-        else:
+-            prior = await PriorProvider.get_prior(self.session, kc_id, question_type)
+-            state = new_state_from_prior(kc_id=kc_id, prior=prior)
+-            card = fsrs_new_card()
+-            return state, card
+-
+-    async def get_all_states(self, student_id: UUID) -> dict[str, tuple[KCState, dict]]:
+-        stmt = select(KCMastery).where(KCMastery.student_id == student_id)
+-        result = await self.session.execute(stmt)
+-        rows = result.scalars().all()
+-        return {row.knowledge_point: self._row_to_entry(row) for row in rows}
+-
+-    def _row_to_entry(self, row: KCMastery) -> tuple[KCState, dict]:
+-        state = KCState(
+-            kc_id=row.knowledge_point,
+-            p_init=row.p_init,
+-            p_transit=row.p_transit,
+-            p_guess=row.p_guess,
+-            p_slip=row.p_slip,
+-            p_mastery=row.p_mastery,
+-            long_term_mastery=row.long_term_mastery,
+-            last_interaction_ts=row.last_interaction_at.timestamp()
+-            if row.last_interaction_at
+-            else None,
+-            n_attempts=row.n_attempts or 0,
+-            p_recognition=row.p_recognition,
+-            p_recognition_init=row.p_recognition_init or 0.20,
+-        )
+-        card = row.fsrs_card_json or fsrs_new_card()
+-        return state, card
+-
+-    async def save(self, student_id: UUID, kc_id: str, state: KCState, card_dict: dict) -> None:
+-        last_interaction_at = (
+-            datetime.fromtimestamp(state.last_interaction_ts, UTC)
+-            if state.last_interaction_ts
+-            else datetime.now(UTC)
++class MemoryStore(Protocol):
++    """混合存储协议：upsert / search / delete / get / count。"""
++
++    async def upsert(self, chunk: MemoryChunk) -> None: ...
++    async def search(
++        self, vector: list[float], *, top_k: int = 10
++    ) -> list[tuple[MemoryChunk, float]]: ...
++    async def delete(self, chunk_id: str) -> bool: ...
++    async def get(self, chunk_id: str) -> MemoryChunk | None: ...
++    async def count(self) -> int: ...
++
++
++def _embedding_json(chunk: MemoryChunk) -> str | None:
++    return json.dumps(chunk.embedding) if chunk.embedding is not None else None
++
++
++def _metadata_json(chunk: MemoryChunk) -> str:
++    return json.dumps(chunk.metadata, ensure_ascii=False, default=str)
++
++
++# ---------------------------------------------------------------------------
++# PgVector 后端
++# ---------------------------------------------------------------------------
++
++
++class PgVectorMemoryStore:
++    """pgvector 后端：表结构由调用方保证（或经 ensure_table 建出）。
++
++    Table schema 约定:
++        chunk_id text primary key, content text, embedding vector(dim),
++        metadata jsonb, path text, created_at timestamptz default now()
++    """
++
++    def __init__(
++        self,
++        pool: Any,
++        *,
++        table: str = "memory_chunk",
++        vector_column: str = "embedding",
++        dim: int = 1536,
++    ) -> None:
++        self.pool = pool
++        self.table = table
++        self.vector_column = vector_column
++        self.dim = dim
++
++    async def upsert(self, chunk: MemoryChunk) -> None:
++        from obase.persistence import transaction
++
++        vec = chunk.embedding
++        if vec is not None and len(vec) != self.dim:
++            raise ValueError(f"embedding dim {len(vec)} != configured {self.dim}")
++        vec_sql = _fmt_vec(vec) if vec else "NULL"
++        async with transaction(self.pool) as tx:
++            await tx.execute(
++                f"""
++                INSERT INTO "{self.table}"
++                (chunk_id, content, {self.vector_column}, metadata, path, created_at)
++                VALUES ($1, $2, {vec_sql}, $3::jsonb, $4, NOW())
++                ON CONFLICT (chunk_id) DO UPDATE SET
++                    content = EXCLUDED.content,
++                    {self.vector_column} = EXCLUDED.{self.vector_column},
++                    metadata = EXCLUDED.metadata,
++                    path = EXCLUDED.path
++                """,
++                chunk.chunk_id,
++                chunk.content,
++                _metadata_json(chunk),
++                chunk.path,
++            )
++
++    async def search(
++        self, vector: list[float], *, top_k: int = 10
++    ) -> list[tuple[MemoryChunk, float]]:
++        from obase.persistence import vector_search
++
++        if len(vector) != self.dim:
++            raise ValueError(f"query dim {len(vector)} != configured {self.dim}")
++        rows = await vector_search(
++            pool=self.pool,
++            table=self.table,
++            vector_column=self.vector_column,
++            query_vector=vector,
++            metric="cosine",
++            top_k=top_k,
+         )
+-        stmt = (
+-            update(KCMastery)
+-            .where(KCMastery.student_id == student_id, KCMastery.knowledge_point == kc_id)
+-            .values(
+-                p_mastery=state.p_mastery,
+-                long_term_mastery=state.long_term_mastery,
+-                p_recognition=state.p_recognition,
+-                fsrs_card_json=card_dict,
+-                last_interaction_at=last_interaction_at,
+-                n_attempts=state.n_attempts,
+-                updated_at=datetime.now(UTC),
++        out: list[tuple[MemoryChunk, float]] = []
++        for r in rows:
++            meta = r.get("metadata")
++            out.append(
++                (
++                    MemoryChunk(
++                        chunk_id=r["chunk_id"],
++                        content=r.get("content", ""),
++                        metadata=meta if isinstance(meta, dict) else {},
++                        path=r.get("path"),
++                    ),
++                    float(r.get("distance", 0.0)),
++                )
++            )
++        return out
++
++    async def delete(self, chunk_id: str) -> bool:
++        from obase.persistence import transaction
++
++        async with transaction(self.pool) as tx:
++            res = await tx.execute(
++                f'DELETE FROM "{self.table}" WHERE chunk_id = $1', chunk_id
++            )
++        return bool(res)
++
++    async def get(self, chunk_id: str) -> MemoryChunk | None:
++        from obase.persistence import transaction
++
++        async with transaction(self.pool) as tx:
++            row = await tx.fetchrow(
++                f'SELECT * FROM "{self.table}" WHERE chunk_id = $1', chunk_id
+             )
++        if row is None:
++            return None
++        return MemoryChunk(
++            chunk_id=row["chunk_id"],
++            content=row.get("content", ""),
++            metadata=row.get("metadata") or {},
++            path=row.get("path"),
+         )
+-        result = await self.session.execute(stmt)
+-
+-        if result.rowcount == 0:
+-            ins_stmt = insert(KCMastery).values(
+-                student_id=student_id,
+-                knowledge_point=kc_id,
+-                p_init=state.p_init,
+-                p_transit=state.p_transit,
+-                p_guess=state.p_guess,
+-                p_slip=state.p_slip,
+-                p_mastery=state.p_mastery,
+-                long_term_mastery=state.long_term_mastery,
+-                p_recognition=state.p_recognition,
+-                p_recognition_init=state.p_recognition_init,
+-                fsrs_card_json=card_dict,
+-                last_interaction_at=last_interaction_at,
+-                n_attempts=state.n_attempts,
++
++    async def count(self) -> int:
++        from obase.persistence import transaction
++
++        async with transaction(self.pool) as tx:
++            row = await tx.fetchrow(f'SELECT COUNT(*) AS n FROM "{self.table}"')
++        return int(row["n"]) if row else 0
++
++
++def _fmt_vec(v: list[float]) -> str:
++    return "[" + ",".join(str(x) for x in v) + "]::vector"
++
++
++# ---------------------------------------------------------------------------
++# SQLite 后端（零依赖 fallback）
++# ---------------------------------------------------------------------------
++
++
++class SqliteMemoryStore:
++    """SQLite 后端：embedding 以 JSON 文本存储，余弦距离手工计算。
++
++    用于轻量部署 / 测试 / 无 Postgres 环境。线程安全：每操作独立连接。
++    """
++
++    def __init__(self, db_path: str | Path, *, dim: int = 1536) -> None:
++        self.db_path = Path(db_path)
++        self.dim = dim
++        self._init_db()
++
++    def _connect(self) -> sqlite3.Connection:
++        conn = sqlite3.connect(self.db_path)
++        conn.row_factory = sqlite3.Row
++        return conn
++
++    def _init_db(self) -> None:
++        self.db_path.parent.mkdir(parents=True, exist_ok=True)
++        with self._connect() as conn:
++            conn.execute(
++                """
++                CREATE TABLE IF NOT EXISTS memory_chunk (
++                    chunk_id TEXT PRIMARY KEY,
++                    content TEXT NOT NULL,
++                    embedding TEXT,
++                    metadata TEXT NOT NULL DEFAULT '{}',
++                    path TEXT,
++                    created_at REAL NOT NULL
++                )
++                """
++            )
++
++    async def upsert(self, chunk: MemoryChunk) -> None:
++        if chunk.embedding is not None and len(chunk.embedding) != self.dim:
++            raise ValueError(f"embedding dim {len(chunk.embedding)} != configured {self.dim}")
++        await asyncio.to_thread(self._upsert_sync, chunk)
++
++    def _upsert_sync(self, chunk: MemoryChunk) -> None:
++        with self._connect() as conn:
++            conn.execute(
++                """
++                INSERT INTO memory_chunk (chunk_id, content, embedding, metadata, path, created_at)
++                VALUES (?, ?, ?, ?, ?, ?)
++                ON CONFLICT (chunk_id) DO UPDATE SET
++                    content = excluded.content,
++                    embedding = excluded.embedding,
++                    metadata = excluded.metadata,
++                    path = excluded.path
++                """,
++                (
++                    chunk.chunk_id,
++                    chunk.content,
++                    _embedding_json(chunk),
++                    _metadata_json(chunk),
++                    chunk.path,
++                    chunk.created_at,
++                ),
+             )
+-            await self.session.execute(ins_stmt)
+-
+-    async def append_event(self, student_id: UUID, kc_id: str, event_data: dict) -> None:
+-        ins_stmt = insert(InteractionEvent).values(
+-            student_id=student_id,
+-            knowledge_point=kc_id,
+-            question_id=event_data.get("question_id"),
+-            source=event_data.get("source"),
+-            is_correct=event_data.get("is_correct"),
+-            fsrs_rating=event_data.get("fsrs_rating"),
+-            time_spent_seconds=event_data.get("time_spent_seconds"),
+-            days_since_last=event_data.get("days_since_last"),
+-            is_interleaved=event_data.get("is_interleaved", False),
+-            item_difficulty=event_data.get("item_difficulty"),
+-            predicted_confidence=event_data.get("predicted_confidence"),
+-            occurred_at=event_data.get("occurred_at", datetime.now(UTC)),
++
++    async def search(
++        self, vector: list[float], *, top_k: int = 10
++    ) -> list[tuple[MemoryChunk, float]]:
++        if len(vector) != self.dim:
++            raise ValueError(f"query dim {len(vector)} != configured {self.dim}")
++        return await asyncio.to_thread(self._search_sync, vector, top_k)
++
++    def _search_sync(
++        self, vector: list[float], top_k: int
++    ) -> list[tuple[MemoryChunk, float]]:
++        with self._connect() as conn:
++            rows = conn.execute(
++                "SELECT * FROM memory_chunk WHERE embedding IS NOT NULL"
++            ).fetchall()
++        scored: list[tuple[MemoryChunk, float]] = []
++        for row in rows:
++            emb = json.loads(row["embedding"])
++            dist = _cosine_distance(vector, emb)
++            scored.append(
++                (
++                    MemoryChunk(
++                        chunk_id=row["chunk_id"],
++                        content=row["content"],
++                        embedding=emb,
++                        metadata=json.loads(row["metadata"]),
++                        path=row["path"],
++                        created_at=row["created_at"],
++                    ),
++                    dist,
++                )
++            )
++        scored.sort(key=lambda t: t[1])
++        return scored[:top_k]
++
++    async def delete(self, chunk_id: str) -> bool:
++        return await asyncio.to_thread(self._delete_sync, chunk_id)
++
++    def _delete_sync(self, chunk_id: str) -> bool:
++        with self._connect() as conn:
++            cur = conn.execute(
++                "DELETE FROM memory_chunk WHERE chunk_id = ?", (chunk_id,)
++            )
++            return cur.rowcount > 0
++
++    async def get(self, chunk_id: str) -> MemoryChunk | None:
++        return await asyncio.to_thread(self._get_sync, chunk_id)
++
++    def _get_sync(self, chunk_id: str) -> MemoryChunk | None:
++        with self._connect() as conn:
++            row = conn.execute(
++                "SELECT * FROM memory_chunk WHERE chunk_id = ?", (chunk_id,)
++            ).fetchone()
++        if row is None:
++            return None
++        return MemoryChunk(
++            chunk_id=row["chunk_id"],
++            content=row["content"],
++            embedding=json.loads(row["embedding"]) if row["embedding"] else None,
++            metadata=json.loads(row["metadata"]),
++            path=row["path"],
++            created_at=row["created_at"],
+         )
+-        await self.session.execute(ins_stmt)
++
++    async def count(self) -> int:
++        return await asyncio.to_thread(self._count_sync)
++
++    def _count_sync(self) -> int:
++        with self._connect() as conn:
++            row = conn.execute("SELECT COUNT(*) AS n FROM memory_chunk").fetchone()
++        return int(row["n"])
++
++
++def _cosine_distance(a: list[float], b: list[float]) -> float:
++    """1 - cos(a,b)；零向量按最远距离处理。"""
++    dot = sum(x * y for x, y in zip(a, b, strict=False))
++    na = math.sqrt(sum(x * x for x in a))
++    nb = math.sqrt(sum(x * x for x in b))
++    if na == 0 or nb == 0:
++        return 1.0
++    return 1.0 - dot / (na * nb)
++
++
++async def make_memory_store(kind: str, **kwargs: Any) -> MemoryStore:
++    """工厂：kind ∈ {"pgvector", "sqlite"}。"""
++    if kind == "pgvector":
++        return PgVectorMemoryStore(pool=kwargs["pool"], dim=kwargs.get("dim", 1536))
++    if kind == "sqlite":
++        return SqliteMemoryStore(db_path=kwargs["db_path"], dim=kwargs.get("dim", 1536))
++    raise ValueError(f"unknown memory store kind: {kind!r}")
+diff --git a/obase/cost_tracker.py b/obase/cost_tracker.py
+index f24ced4..34ce3f8 100644
+--- a/obase/cost_tracker.py
++++ b/obase/cost_tracker.py
+@@ -290,3 +290,91 @@ def convert_currency(
+     if rate <= 0:
+         raise ValueError(f"rate must be positive, got {rate}")
+     return (amount * Decimal(str(rate))).quantize(Decimal("0.000001"))
++
++
++# ---------------------------------------------------------------------------
++# ContextVar 全局并发安全成本计数器 (SPEC §5.6 C1)
++# ---------------------------------------------------------------------------
++# 全局 ContextVar 持有共享 CostTracker 引用：子 Task 继承父 Context，
++# 各 Task 只 .get() + 对象内累加，无锁竞争、无跨 Task 泄漏。
++# ---------------------------------------------------------------------------
++
++from contextvars import ContextVar  # noqa: E402
++
++_current_tracker: ContextVar[CostTracker | None] = ContextVar(
++    "cost_tracker", default=None
++)
++
++# 3O 范式 Phase 4 兼容别名: omodul 规范 §5.6 C1 直接引用 current_cost.set/.get/.reset。
++current_cost = _current_tracker
++
++
++def get_cost_tracker() -> CostTracker | None:
++    """取当前 Context 绑定的全局成本计数器；无则 None。"""
++    return _current_tracker.get()
++
++
++def bind_cost_tracker(tracker: CostTracker | None) -> None:
++    """把 CostTracker 绑定到当前 Context（子 Task 自动继承同一引用）。"""
++    _current_tracker.set(tracker)
++
++
++def record_cost(
++    category: str,
++    provider: str,
++    model_or_tier: str,
++    unit: str,
++    quantity: float,
++) -> float:
++    """向当前 Context 的全局计数器记录一笔成本；未绑定时静默返回 0.0。"""
++    tracker = _current_tracker.get()
++    if tracker is None:
++        return 0.0
++    return tracker.record(category, provider, model_or_tier, unit, quantity)
++
++
++def record_tokens(
++    provider: str,
++    model_or_tier: str,
++    *,
++    in_tokens: int,
++    out_tokens: int,
++) -> float:
++    """Token 记账便捷入口（USD 单价经 PricingTable 按 unit in/out 查询）。
++
++    未配置单价时回退默认费率（$3/M in + $15/M out），保证开箱即用。
++    未绑定全局计数器时返回 0.0。
++    """
++    tracker = _current_tracker.get()
++    if tracker is None:
++        return 0.0
++    total = 0.0
++    for unit, qty, fallback_rate in (
++        ("in", in_tokens, 3e-6),
++        ("out", out_tokens, 15e-6),
++    ):
++        if qty <= 0:
++            continue
++        try:
++            total += tracker.record(
++                category="llm",
++                provider=provider,
++                model_or_tier=model_or_tier,
++                unit=unit,
++                quantity=qty,
++            )
++        except PricingNotConfiguredError:
++            # 回退默认费率，保持 Token 计数器开箱即用（直接记入 tracker 内部累计）
++            tracker._entries.append(
++                {
++                    "category": "llm",
++                    "provider": provider,
++                    "model_or_tier": model_or_tier,
++                    "unit": unit,
++                    "quantity": qty,
++                    "cost_usd": qty * fallback_rate,
++                }
++            )
++            tracker._total_usd += qty * fallback_rate
++            total += qty * fallback_rate
++    return total
+diff --git a/obase/git.py b/obase/git.py
+index 406f4a6..129d336 100644
+--- a/obase/git.py
++++ b/obase/git.py
+@@ -18,11 +18,18 @@ class GitResult:
+         return self.returncode == 0
+ 
+ 
+-async def run_git(args: list[str], *, cwd: Path, timeout: float = 30) -> GitResult:
++async def run_git(
++    args: list[str],
++    *,
++    cwd: Path,
++    timeout: float = 30,
++    input_text: str | None = None,
++) -> GitResult:
+     """单次 git subprocess 调用。
+     非零退出码返回 GitResult(returncode!=0)，不 raise。
+     超时 raise TimeoutError。
+     cwd 不存在 raise FileNotFoundError。
++    input_text 可选地作为 stdin 传给 git（例如 ``git apply``）。
+ 
+     Example:
+         >>> result = await run_git(["status", "--porcelain"], cwd=Path("/repo"))
+@@ -36,15 +43,21 @@ async def run_git(args: list[str], *, cwd: Path, timeout: float = 30) -> GitResu
+             "git",
+             *args,
+             cwd=cwd,
++            stdin=asyncio.subprocess.PIPE if input_text is not None else None,
+             stdout=asyncio.subprocess.PIPE,
+             stderr=asyncio.subprocess.PIPE,
+         )
+-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
++        stdin = input_text.encode("utf-8") if input_text is not None else None
++        stdout, stderr = await asyncio.wait_for(proc.communicate(stdin), timeout=timeout)
+         return GitResult(
+             stdout=stdout.decode("utf-8", errors="replace"),
+             stderr=stderr.decode("utf-8", errors="replace"),
+             returncode=proc.returncode or 0,
+         )
+     except TimeoutError:
+-        proc.kill()
++        try:
++            proc.kill()
++        except ProcessLookupError:
++            # The subprocess may have exited during the timeout race.
++            pass
+         raise TimeoutError(f"git {args[0]!r} timed out after {timeout}s") from None
+diff --git a/obase/mcp_client.py b/obase/mcp_client.py
+index 7b606d4..0e911a7 100644
+--- a/obase/mcp_client.py
++++ b/obase/mcp_client.py
+@@ -1,25 +1,303 @@
+-"""obase.mcp_client — MCP client handle 提供者."""
++"""obase.mcp_client — MCP client handle 提供者 + skills 扩展 substrate.
++
++WAVE B owner: obase. 支持 io.modelcontextprotocol/skills:
++- negotiate skills extension / list-discover / metadata / content-resource
++- normalize skill capability
++
++只做 substrate (协商/发现/取数/归一化),不做 skill registry/runtime,
++不复制 oskill 内容。client 通过注入传入,不持有业务持久化。
++"""
++
+ from __future__ import annotations
+ 
+ from typing import Any, Protocol, runtime_checkable
+ 
++from obase.tool_governance import MCPServerSpec
++
++SKILLS_EXTENSION_URI = "io.modelcontextprotocol/skills"
++
++__all__ = [
++    "SKILLS_EXTENSION_URI",
++    "McpClientHandle",
++    "McpClientRegistry",
++    "MCPServerSpec",
++    "SkillsExtensionError",
++    "negotiate_skills_extension",
++    "discover_skills",
++    "get_skill_metadata",
++    "get_skill_content",
++    "normalize_skill_capability",
++    "supports_resources",
++    "list_resources",
++    "read_resource",
++]
++
+ 
+ @runtime_checkable
+ class McpClientHandle(Protocol):
+     """MCP client handle Protocol. mcp_* oprim 通过此 handle 调外部 MCP 工具."""
+-    async def list_tools(self) -> list[dict]: ...
+-    async def call_tool(self, name: str, args: dict) -> Any: ...
++
++    async def list_tools(self) -> list[dict[str, Any]]: ...
++    async def call_tool(self, name: str, args: dict[str, Any]) -> Any: ...
++
+ 
+ class McpClientRegistry:
+-    """管理 MCP client 连接."""
++    """管理 MCP client 连接 + 版本化 server contract.
++
++    ``_clients`` 是 (name -> handle) 连接表; ``_specs`` 是 (name -> MCPServerSpec)
++    contract 表。两者同居一个 registry,不引入第二套注册中心。
++    """
++
+     _clients: dict[str, McpClientHandle] = {}
++    _specs: dict[str, MCPServerSpec] = {}
+ 
+     @classmethod
+     def register(cls, name: str, handle: McpClientHandle) -> None:
+         cls._clients[name] = handle
+ 
++    @classmethod
++    def register_server(cls, spec: MCPServerSpec, handle: McpClientHandle) -> None:
++        """Register a client together with its versioned server contract."""
++        cls._specs[spec.name] = spec
++        cls._clients[spec.name] = handle
++
++    @classmethod
++    def register_spec(cls, spec: MCPServerSpec, *, replace: bool = False) -> None:
++        if not replace and spec.name in cls._specs:
++            raise ValueError(f"MCP server {spec.name!r} already registered")
++        cls._specs[spec.name] = spec
++
+     @classmethod
+     def get(cls, name: str) -> McpClientHandle:
+         if name not in cls._clients:
+             raise KeyError(f"MCP client {name!r} not registered.")
+         return cls._clients[name]
++
++    @classmethod
++    def has(cls, name: str) -> bool:
++        """Whether a client handle is currently registered."""
++        return name in cls._clients
++
++    @classmethod
++    def list_clients(cls) -> list[str]:
++        """Registered client names in registration order."""
++        return list(cls._clients)
++
++    @classmethod
++    def unregister(cls, name: str) -> bool:
++        """Drop a client handle (teardown); specs stay for audit.
++
++        Returns True when a handle was actually removed. Never touches
++        ``_specs`` — definitions outlive connections.
++        """
++        return cls._clients.pop(name, None) is not None
++
++    @classmethod
++    def spec(cls, name: str) -> MCPServerSpec:
++        if name not in cls._specs:
++            raise KeyError(f"MCP server spec {name!r} not registered")
++        return cls._specs[name]
++
++    @classmethod
++    def list_specs(cls) -> list[MCPServerSpec]:
++        return list(cls._specs.values())
++
++    @classmethod
++    def invalidate(cls, name: str) -> bool:
++        spec = cls._specs.get(name)
++        if spec is None:
++            return False
++        cls._specs[name] = MCPServerSpec(
++            name=spec.name,
++            endpoint=spec.endpoint,
++            version=spec.version,
++            protocol_version=spec.protocol_version,
++            tools=spec.tools,
++            credential_ref=spec.credential_ref,
++            enabled=False,
++        )
++        return True
++
++    @classmethod
++    def clear(cls) -> None:
++        cls._clients.clear()
++        cls._specs.clear()
++
++
++# ---------------------------------------------------------------------------
++# skills extension substrate (io.modelcontextprotocol/skills)
++# ---------------------------------------------------------------------------
++
++
++class SkillsExtensionError(RuntimeError):
++    """skills 扩展协商/取数错误。"""
++
++
++async def _maybe_await(value: Any) -> Any:
++    import inspect as _inspect
++
++    if _inspect.isawaitable(value):
++        return await value
++    return value
++
++
++async def negotiate_skills_extension(client: McpClientHandle) -> dict[str, Any]:
++    """协商 skills 扩展:探测 server 是否支持 io.modelcontextprotocol/skills。
++
++    探测顺序: client.extensions 属性/方法 -> list_tools 中的 skill 相关工具。
++    返回 {"supported": bool, "via": str, "extension": str}。
++    """
++    # 1. 显式 extensions 声明 (属性或方法)
++    extensions: Any = getattr(client, "extensions", None)
++    if callable(extensions):
++        try:
++            extensions = await _maybe_await(extensions())
++        except Exception:
++            extensions = None
++    if isinstance(extensions, (list, tuple, set)):
++        if SKILLS_EXTENSION_URI in set(extensions):
++            return {"supported": True, "via": "extensions", "extension": SKILLS_EXTENSION_URI}
++    # 2. server info 声明
++    server_info = getattr(client, "server_info", None)
++    if callable(server_info):
++        try:
++            server_info = await _maybe_await(server_info())
++        except Exception:
++            server_info = None
++    if isinstance(server_info, dict):
++        exts = server_info.get("extensions") or server_info.get("capabilities") or []
++        if SKILLS_EXTENSION_URI in set(exts if isinstance(exts, list) else []):
++            return {"supported": True, "via": "server_info", "extension": SKILLS_EXTENSION_URI}
++    # 3. 工具面探测:存在 skill_* 工具即视为支持
++    try:
++        tools = await _maybe_await(client.list_tools())
++    except Exception as exc:
++        raise SkillsExtensionError(f"negotiate: list_tools failed: {exc}") from exc
++    names = {str(t.get("name", "")) for t in tools if isinstance(t, dict)}
++    skill_tools = {n for n in names if n.startswith("skill")}
++    if skill_tools:
++        return {"supported": True, "via": "tools", "extension": SKILLS_EXTENSION_URI}
++    return {"supported": False, "via": "none", "extension": SKILLS_EXTENSION_URI}
++
++
++async def discover_skills(client: McpClientHandle) -> list[dict[str, Any]]:
++    """发现远端 skills:优先 skill_list 工具,否则从 tools 面过滤 skill_*。"""
++    try:
++        result = await _maybe_await(client.call_tool("skill_list", {}))
++    except Exception:
++        result = None
++    if isinstance(result, dict) and isinstance(result.get("skills"), list):
++        return [normalize_skill_capability(s) for s in result["skills"] if isinstance(s, dict)]
++    if isinstance(result, list):
++        return [normalize_skill_capability(s) for s in result if isinstance(s, dict)]
++    try:
++        tools = await _maybe_await(client.list_tools())
++    except Exception as exc:
++        raise SkillsExtensionError(f"discover: list_tools failed: {exc}") from exc
++    return [
++        normalize_skill_capability(t)
++        for t in tools
++        if isinstance(t, dict) and str(t.get("name", "")).startswith("skill")
++    ]
++
++
++async def get_skill_metadata(client: McpClientHandle, skill_id: str) -> dict[str, Any]:
++    """取远端 skill metadata (skill_metadata 工具或 tool schema 回退) 。"""
++    if not skill_id:
++        raise ValueError("get_skill_metadata: skill_id must not be empty")
++    try:
++        result = await _maybe_await(client.call_tool("skill_metadata", {"skill_id": skill_id}))
++        if isinstance(result, dict) and result:
++            candidate = normalize_skill_capability(result)
++            # 仅接受确为目标 skill 的 metadata (名字命中或具名描述),否则回退查找
++            if candidate["name"] == skill_id or (candidate["name"] and candidate["description"]):
++                return candidate
++    except Exception:
++        pass
++    try:
++        tools = await _maybe_await(client.list_tools())
++    except Exception as exc:
++        raise SkillsExtensionError(f"metadata: list_tools failed: {exc}") from exc
++    for tool in tools:
++        if isinstance(tool, dict) and str(tool.get("name", "")) == skill_id:
++            return normalize_skill_capability(tool)
++    raise SkillsExtensionError(f"metadata: skill {skill_id!r} not found")
++
++
++async def get_skill_content(
++    client: McpClientHandle, skill_id: str, *, resource_uri: str | None = None
++) -> dict[str, Any]:
++    """取远端 skill content/resource (skill_content 工具;无则返回 metadata 占位)。"""
++    if not skill_id:
++        raise ValueError("get_skill_content: skill_id must not be empty")
++    args: dict[str, Any] = {"skill_id": skill_id}
++    if resource_uri:
++        args["resource_uri"] = resource_uri
++    try:
++        result = await _maybe_await(client.call_tool("skill_content", args))
++        if isinstance(result, dict):
++            return {"skill_id": skill_id, "content": result.get("content"), "raw": result}
++        return {"skill_id": skill_id, "content": result, "raw": result}
++    except Exception as exc:
++        raise SkillsExtensionError(f"content: skill {skill_id!r} fetch failed: {exc}") from exc
++
++
++def normalize_skill_capability(skill: dict[str, Any]) -> dict[str, Any]:
++    """归一化远端 skill capability (只做形状归一,不持久化,不复制 oskill)。"""
++    if not isinstance(skill, dict):
++        raise ValueError("normalize_skill_capability: skill must be a dict")
++    name = str(skill.get("name") or skill.get("skill_id") or skill.get("id") or "")
++    schema = skill.get("input_schema") or skill.get("inputSchema") or skill.get("schema") or {}
++    return {
++        "name": name,
++        "version": str(skill.get("version", "")),
++        "description": str(skill.get("description", "")),
++        "inputs": schema if isinstance(schema, dict) else {},
++        "outputs": skill.get("outputs") or {},
++        "extension": SKILLS_EXTENSION_URI,
++    }
++
++
++# ---------------------------------------------------------------------------
++# resources substrate (resources/list + resources/read, conditional)
++# ---------------------------------------------------------------------------
++
++
++def supports_resources(client: McpClientHandle) -> bool:
++    """Whether a handle observably implements resources/list+read.
++
++    The base :class:`McpClientHandle` contract only requires tools; resource
++    access is probed (method presence), never assumed. ``False`` means the
++    caller must treat resources as unsupported, not empty.
++    """
++    return callable(getattr(client, "list_resources", None)) and callable(
++        getattr(client, "read_resource", None)
++    )
++
++
++async def list_resources(client: McpClientHandle) -> list[dict[str, Any]]:
++    """List remote resources; fail closed when the handle lacks support."""
++    if not supports_resources(client):
++        raise SkillsExtensionError("resources: handle does not implement resources/list")
++    try:
++        result = await _maybe_await(client.list_resources())  # type: ignore[attr-defined]
++    except Exception as exc:
++        raise SkillsExtensionError(f"resources: list failed: {exc}") from exc
++    if not isinstance(result, list):
++        raise SkillsExtensionError("resources: list returned a non-list payload")
++    return [item for item in result if isinstance(item, dict)]
++
++
++async def read_resource(client: McpClientHandle, uri: str) -> dict[str, Any]:
++    """Read one remote resource by URI; fail closed when unsupported."""
++    if not uri:
++        raise ValueError("read_resource: uri must not be empty")
++    if not supports_resources(client):
++        raise SkillsExtensionError(f"resources: handle does not implement resources/read ({uri!r})")
++    try:
++        result = await _maybe_await(client.read_resource(uri))  # type: ignore[attr-defined]
++    except Exception as exc:
++        raise SkillsExtensionError(f"resources: read {uri!r} failed: {exc}") from exc
++    if isinstance(result, dict):
++        return {"uri": uri, "content": result.get("content"), "raw": result}
++    return {"uri": uri, "content": result, "raw": result}
+diff --git a/obase/mcp_server/__init__.py b/obase/mcp_server/__init__.py
+index 71d78bf..9432938 100644
+--- a/obase/mcp_server/__init__.py
++++ b/obase/mcp_server/__init__.py
+@@ -178,6 +178,15 @@ class MCPServer:
+         """
+         handler = skill_def.handler
+ 
++        # 显式重复注册拒绝（FastMCP 静默覆盖，这里按语义抛错）
++        try:
++            if skill_def.name in self._fastmcp._tool_manager._tools:
++                raise MCPServerError(
++                    f"Skill {skill_def.name!r} already registered"
++                )
++        except AttributeError:  # pragma: no cover - FastMCP 内部结构变动
++            pass
++
+         async def _wrapper(**kwargs: Any) -> Any:
+             return await handler(kwargs)
+ 
+@@ -200,6 +209,40 @@ class MCPServer:
+         tool.parameters = skill_def.input_schema
+         tool.fn_metadata = _DYNAMIC_FUNC_META
+ 
++    # ------------------------------------------------------------------
++    # 工具清单（供 oprim.mcp_register_tool / omodul.mcp_tool_export_workflow）
++    # ------------------------------------------------------------------
++
++    def list_tools(self) -> list[dict[str, Any]]:
++        """列出已注册工具：{name, description, input_schema}。
++
++        Raises:
++            MCPServerError: FastMCP 内部工具表不可访问。
++        """
++        try:
++            tools = self._fastmcp._tool_manager._tools.values()
++        except AttributeError as exc:  # pragma: no cover - FastMCP 内部结构变动
++            raise MCPServerError(f"Cannot access FastMCP tool registry: {exc}") from exc
++        return [
++            {
++                "name": t.name,
++                "description": t.description or "",
++                "input_schema": t.parameters or {},
++            }
++            for t in tools
++        ]
++
++    def has_tool(self, name: str) -> bool:
++        """是否已注册指定工具名。"""
++        try:
++            return name in self._fastmcp._tool_manager._tools
++        except AttributeError:  # pragma: no cover
++            return False
++
++    def tool_names(self) -> list[str]:
++        """已注册工具名列表。"""
++        return [t["name"] for t in self.list_tools()]
++
+     async def serve_stdio(self) -> None:
+         """Run the server using stdio transport.
+ 
+diff --git a/obase/orchestrator.py b/obase/orchestrator.py
+index 9a97928..317be81 100644
+--- a/obase/orchestrator.py
++++ b/obase/orchestrator.py
+@@ -1,13 +1,18 @@
+ from __future__ import annotations
+ 
+ import asyncio
++import hashlib
+ import json
++import os
++import sqlite3
++import time
+ import uuid
+ from collections.abc import Callable, Coroutine
+ from dataclasses import dataclass, field
+ from datetime import UTC, datetime
++from enum import StrEnum
+ from pathlib import Path
+-from typing import Any
++from typing import Any, Protocol
+ 
+ import structlog
+ 
+@@ -37,6 +42,126 @@ class Stage:
+     output_keys: list[str] | None = None
+ 
+ 
++class CheckType(StrEnum):
++    CHECKLIST = "checklist"
++    COMMAND = "command"
++    PREDICATE = "predicate"
++    LLM_REVIEW = "llm_review"
++    MANUAL = "manual"
++
++
++@dataclass
++class Check:
++    type: CheckType
++    payload: dict[str, Any]
++    blocking: bool = True
++    id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
++
++    def to_dict(self) -> dict[str, Any]:
++        return {
++            "id": self.id,
++            "type": self.type.value,
++            "payload": self.payload,
++            "blocking": self.blocking,
++        }
++
++    @classmethod
++    def from_dict(cls, d: dict[str, Any]) -> Check:
++        return cls(
++            type=CheckType(d["type"]),
++            payload=d.get("payload", {}),
++            blocking=d.get("blocking", True),
++            id=d.get("id", uuid.uuid4().hex[:8]),
++        )
++
++
++@dataclass
++class Node:
++    id: str
++    prompt: str = ""
++    in_hook: str | None = None
++    out_hook: str | None = None
++    before_transfer: list[Check] = field(default_factory=list)
++
++
++@dataclass
++class Edge:
++    from_node: str
++    to_node: str
++    condition: str = ""
++    hook: str | None = None
++    max_attempts: int = 3
++
++
++@dataclass
++class Runbook:
++    name: str
++    initial: str
++    nodes: dict[str, Node]
++    edges: list[Edge]
++    version: str = "1"
++
++    def content_hash(self) -> str:
++        payload = {
++            "name": self.name,
++            "initial": self.initial,
++            "version": self.version,
++            "nodes": {
++                k: {
++                    "id": n.id,
++                    "prompt": n.prompt,
++                    "in_hook": n.in_hook,
++                    "out_hook": n.out_hook,
++                    "before_transfer": [c.to_dict() for c in n.before_transfer],
++                }
++                for k, n in self.nodes.items()
++            },
++            "edges": [
++                {
++                    "from_node": e.from_node,
++                    "to_node": e.to_node,
++                    "condition": e.condition,
++                    "hook": e.hook,
++                    "max_attempts": e.max_attempts,
++                }
++                for e in self.edges
++            ],
++        }
++        raw = json.dumps(payload, sort_keys=True, ensure_ascii=False)
++        return hashlib.sha256(raw.encode()).hexdigest()[:16]
++
++
++@dataclass
++class RunEntry:
++    entry_id: str
++    node_id: str
++    entered_at: float
++    checks: list[dict[str, Any]] = field(default_factory=list)
++    dynamic_checks: list[Check] = field(default_factory=list)
++    attempts: dict[str, int] = field(default_factory=dict)
++
++    def to_dict(self) -> dict[str, Any]:
++        return {
++            "entry_id": self.entry_id,
++            "node_id": self.node_id,
++            "entered_at": self.entered_at,
++            "checks": self.checks,
++            "dynamic_checks": [c.to_dict() for c in self.dynamic_checks],
++            "attempts": self.attempts,
++        }
++
++    @classmethod
++    def from_dict(cls, d: dict[str, Any]) -> RunEntry:
++        return cls(
++            entry_id=d["entry_id"],
++            node_id=d["node_id"],
++            entered_at=d["entered_at"],
++            checks=d.get("checks", []),
++            dynamic_checks=[Check.from_dict(c) for c in d.get("dynamic_checks", [])],
++            attempts=d.get("attempts", {}),
++        )
++
++
+ @dataclass
+ class RunState:
+     run_id: str
+@@ -48,6 +173,12 @@ class RunState:
+     paused_at_stage: str | None = None
+     data: dict[str, Any] = field(default_factory=dict)
+     errors: list[dict[str, Any]] = field(default_factory=list)
++    # Runbook (graph) mode — unused by linear Pipeline runs.
++    runbook_hash: str | None = None
++    current_node: str | None = None
++    current_entry_id: str | None = None
++    entries: dict[str, RunEntry] = field(default_factory=dict)
++    transitions: list[dict[str, Any]] = field(default_factory=list)
+ 
+     def to_dict(self) -> dict[str, Any]:
+         return {
+@@ -60,6 +191,11 @@ class RunState:
+             "paused_at_stage": self.paused_at_stage,
+             "data": self.data,
+             "errors": self.errors,
++            "runbook_hash": self.runbook_hash,
++            "current_node": self.current_node,
++            "current_entry_id": self.current_entry_id,
++            "entries": {eid: e.to_dict() for eid, e in self.entries.items()},
++            "transitions": self.transitions,
+         }
+ 
+     @classmethod
+@@ -78,6 +214,11 @@ class RunState:
+             paused_at_stage=d.get("paused_at_stage"),
+             data=d.get("data", {}),
+             errors=d.get("errors", []),
++            runbook_hash=d.get("runbook_hash"),
++            current_node=d.get("current_node"),
++            current_entry_id=d.get("current_entry_id"),
++            entries={eid: RunEntry.from_dict(e) for eid, e in d.get("entries", {}).items()},
++            transitions=d.get("transitions", []),
+         )
+ 
+ 
+@@ -97,6 +238,154 @@ def _load_run_state(run_dir: Path) -> RunState:
+     return RunState.from_dict(json.loads(path.read_text(encoding="utf-8")))
+ 
+ 
++class RunStateBackend(Protocol):
++    """Pluggable persistence for Runbook-driven RunState (start_runbook/runbook_goto/...).
++
++    Linear Pipeline runs (run_pipeline) are unaffected — they keep using
++    ``_save_run_state``/``_load_run_state`` against ``FS.run_dir`` directly.
++    """
++
++    def exists(self, run_id: str) -> bool: ...
++    def save(self, state: RunState) -> None: ...
++    def load(self, run_id: str) -> RunState | None: ...
++
++
++class FileRunStateBackend:
++    """Default backend: wraps the existing FS.run_dir()/run_state.json layout."""
++
++    def exists(self, run_id: str) -> bool:
++        return (FS.run_dir(run_id) / "run_state.json").exists()
++
++    def save(self, state: RunState) -> None:
++        run_dir = FS.run_dir(state.run_id)
++        run_dir.mkdir(parents=True, exist_ok=True)
++        _save_run_state(state, run_dir)
++
++    def load(self, run_id: str) -> RunState | None:
++        run_dir = FS.run_dir(run_id)
++        if not (run_dir / "run_state.json").exists():
++            return None
++        return _load_run_state(run_dir)
++
++
++class SqliteRunStateBackend:
++    """SQLite backend: one row per run_id, RunState.to_dict() stored as a JSON blob.
++
++    Reuses RunState's own (de)serialization rather than a normalized schema —
++    any field added to RunState later round-trips here for free, and this
++    stays a genuine alternative persistence layer without a second, drifting
++    definition of "what a RunState looks like on disk".
++    """
++
++    def __init__(self, db_path: Path | str | None = None) -> None:
++        if db_path is None:
++            root = Path(
++                os.environ.get("THREE_O_RUN_STATE_DIR", Path.home() / ".local/state/3o/runs")
++            )
++            root.mkdir(parents=True, exist_ok=True)
++            db_path = root / "runs.db"
++        self.db_path = Path(db_path)
++        self.db_path.parent.mkdir(parents=True, exist_ok=True)
++        self._init_schema()
++
++    def _connect(self) -> sqlite3.Connection:
++        conn = sqlite3.connect(str(self.db_path), timeout=30.0)
++        conn.execute("PRAGMA journal_mode=WAL")
++        conn.execute("PRAGMA synchronous=NORMAL")
++        return conn
++
++    def _init_schema(self) -> None:
++        conn = self._connect()
++        try:
++            conn.execute(
++                "CREATE TABLE IF NOT EXISTS runs ("
++                "run_id TEXT PRIMARY KEY, state_json TEXT NOT NULL, updated_at REAL NOT NULL)"
++            )
++            conn.commit()
++        finally:
++            conn.close()
++
++    def exists(self, run_id: str) -> bool:
++        conn = self._connect()
++        try:
++            row = conn.execute("SELECT 1 FROM runs WHERE run_id = ?", (run_id,)).fetchone()
++            return row is not None
++        finally:
++            conn.close()
++
++    def save(self, state: RunState) -> None:
++        payload = json.dumps(state.to_dict(), ensure_ascii=False, default=str)
++        conn = self._connect()
++        try:
++            conn.execute(
++                "INSERT INTO runs (run_id, state_json, updated_at) VALUES (?, ?, ?) "
++                "ON CONFLICT(run_id) DO UPDATE SET "
++                "state_json=excluded.state_json, updated_at=excluded.updated_at",
++                (state.run_id, payload, time.time()),
++            )
++            conn.commit()
++        finally:
++            conn.close()
++
++    def load(self, run_id: str) -> RunState | None:
++        conn = self._connect()
++        try:
++            row = conn.execute("SELECT state_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
++        finally:
++            conn.close()
++        if row is None:
++            return None
++        return RunState.from_dict(json.loads(row[0]))
++
++
++def _require_state(backend: RunStateBackend, run_id: str) -> RunState:
++    state = backend.load(run_id)
++    if state is None:
++        raise FileNotFoundError(f"no run state found for run_id={run_id!r}")
++    return state
++
++
++_TERMINAL_STATES = ("completed", "blocked")
++
++
++def project_run_trajectory(state: RunState, context_store: Any, *, user_id: str = "veya") -> str:
++    """Project a finished run's transition history into HierarchicalContext.
++
++    Written to ``3o://user/{user_id}/memories/trajectories/{run_id}``. The L0
++    abstract is built mechanically (no LLM call) — good enough as a one-line
++    index; a caller wanting a richer summary can overwrite it afterward via
++    ``context_store.set_overview``.
++    """
++    uri = f"3o://user/{user_id}/memories/trajectories/{state.run_id}"
++    body = json.dumps(
++        {
++            "run_id": state.run_id,
++            "pipeline_name": state.pipeline_name,
++            "runbook_hash": state.runbook_hash,
++            "state": state.state,
++            "transitions": state.transitions,
++        },
++        ensure_ascii=False,
++        indent=2,
++        default=str,
++    )
++    name = state.pipeline_name[:60]
++    n = len(state.transitions)
++    abstract = f"Run {state.run_id}: '{name}' ended {state.state} after {n} transitions."
++    context_store.write(uri, body, abstract=abstract)
++    return uri
++
++
++def _project_trajectory_if_terminal(state: RunState, context_store: Any | None) -> None:
++    """Best-effort: a failed trajectory write must not undo an already-persisted transition."""
++    if context_store is None or state.state not in _TERMINAL_STATES:
++        return
++    try:
++        project_run_trajectory(state, context_store)
++    except Exception as exc:  # noqa: BLE001
++        log.warning("trajectory_projection_failed", run_id=state.run_id, error=str(exc))
++
++
+ def _filter_input(data: dict[str, Any], keys: list[str]) -> dict[str, Any]:
+     return {k: data[k] for k in keys if k in data}
+ 
+@@ -194,9 +483,7 @@ async def run_pipeline(
+             except Exception as exc:
+                 last_exc = exc
+                 attempts += 1
+-                state.errors.append(
+-                    {"stage": stage.name, "attempt": attempts, "error": str(exc)}
+-                )
++                state.errors.append({"stage": stage.name, "attempt": attempts, "error": str(exc)})
+                 trail.emit("stage_error", stage=stage.name, attempt=attempts, error=str(exc))
+                 if attempts <= stage.max_retries:
+                     await asyncio.sleep(stage.retry_delay)
+@@ -232,3 +519,185 @@ async def run_pipeline(
+     trail.emit("pipeline_done", pipeline=pipeline.name)
+     trail.finalize(state="completed")
+     return state
++
++
++def start_runbook(
++    runbook: Runbook,
++    run_id: str | None = None,
++    resume: bool = True,
++    *,
++    backend: RunStateBackend | None = None,
++) -> RunState:
++    """Start (or resume) a Runbook-driven run. Defaults to the Pipeline's file persistence."""
++    backend = backend or FileRunStateBackend()
++    run_id = run_id or str(uuid.uuid4())
++
++    if resume and backend.exists(run_id):
++        existing = _require_state(backend, run_id)
++        if existing.runbook_hash == runbook.content_hash():
++            return existing
++        raise StageContractViolation(
++            f"Runbook hash mismatch for run {run_id!r}: "
++            f"stored={existing.runbook_hash} current={runbook.content_hash()}. "
++            "Refuse automatic resume."
++        )
++
++    entry_id = uuid.uuid4().hex[:12]
++    state = RunState(
++        run_id=run_id,
++        pipeline_name=runbook.name,
++        started_at=datetime.now(UTC),
++        state="running",
++        runbook_hash=runbook.content_hash(),
++        current_node=runbook.initial,
++        current_entry_id=entry_id,
++    )
++    state.entries[entry_id] = RunEntry(
++        entry_id=entry_id, node_id=runbook.initial, entered_at=time.time()
++    )
++    backend.save(state)
++    return state
++
++
++def runbook_current(
++    runbook: Runbook, run_id: str, *, backend: RunStateBackend | None = None
++) -> dict[str, Any]:
++    """Return the node the run is currently sitting in, plus the edges it may take."""
++    backend = backend or FileRunStateBackend()
++    state = _require_state(backend, run_id)
++    node = runbook.nodes[state.current_node]
++    return {
++        "run_id": run_id,
++        "node": state.current_node,
++        "entry_id": state.current_entry_id,
++        "prompt": node.prompt,
++        "state": state.state,
++        "allowed_next": [e.to_node for e in runbook.edges if e.from_node == state.current_node],
++    }
++
++
++def runbook_goto(
++    runbook: Runbook,
++    run_id: str,
++    target: str,
++    check_runner: Callable[[Check, dict[str, Any]], dict[str, Any]],
++    hook_runner: Callable[[str, dict[str, Any]], Any] | None = None,
++    agent_context: dict[str, Any] | None = None,
++    causal_store: Any | None = None,
++    *,
++    backend: RunStateBackend | None = None,
++    context_store: Any | None = None,
++) -> dict[str, Any]:
++    """Attempt to transition the run from its current node to ``target``.
++
++    Runs ``before_transfer`` checks first; a failing blocking check keeps the
++    run at its current node and records the attempt (capped by
++    ``edge.max_attempts``, after which the run is marked ``blocked``).
++
++    ``context_store`` (a ``HierarchicalContextStore``) is optional: when the
++    run lands in a terminal state (``completed``/``blocked``) its trajectory
++    is projected into ``3o://user/.../memories/trajectories/{run_id}`` —
++    see ``project_run_trajectory``.
++    """
++    backend = backend or FileRunStateBackend()
++    state = _require_state(backend, run_id)
++    if state.state != "running":
++        return {"ok": False, "reason": f"invalid state: {state.state}"}
++
++    edge = next(
++        (e for e in runbook.edges if e.from_node == state.current_node and e.to_node == target),
++        None,
++    )
++    if edge is None:
++        return {"ok": False, "reason": f"no edge {state.current_node} -> {target}"}
++
++    edge_key = f"{edge.from_node}->{edge.to_node}"
++    entry = state.entries[state.current_entry_id]
++    attempts = entry.attempts.get(edge_key, 0)
++    if attempts >= edge.max_attempts:
++        state.state = "blocked"
++        backend.save(state)
++        _project_trajectory_if_terminal(state, context_store)
++        return {"ok": False, "reason": "max_attempts exceeded", "blocked": True}
++
++    node = runbook.nodes[state.current_node]
++    check_results: list[dict[str, Any]] = []
++    for chk in [*node.before_transfer, *entry.dynamic_checks]:
++        result = check_runner(
++            chk, {"run_id": run_id, "node": state.current_node, "agent": agent_context or {}}
++        )
++        check_results.append({"check_id": chk.id, "type": chk.type.value, **result})
++        if chk.blocking and not result.get("passed", False):
++            entry.attempts[edge_key] = attempts + 1
++            entry.checks.extend(check_results)
++            backend.save(state)
++            record_failure = getattr(causal_store, "record_failure", None)
++            if record_failure is not None:
++                record_failure(state.current_node, result.get("message", ""), result)
++            return {
++                "ok": False,
++                "reason": "before_transfer failed",
++                "failed_check": result,
++                "stay_in": state.current_node,
++                "evidence": check_results,
++            }
++
++    if hook_runner is not None:
++        if node.out_hook:
++            hook_runner(node.out_hook, {"run_id": run_id, "to": target})
++        if edge.hook:
++            hook_runner(edge.hook, {"run_id": run_id})
++
++    old_entry = state.current_entry_id
++    new_entry_id = uuid.uuid4().hex[:12]
++    state.transitions.append(
++        {
++            "from": edge.from_node,
++            "to": target,
++            "from_entry": old_entry,
++            "to_entry": new_entry_id,
++            "checks": check_results,
++            "ts": time.time(),
++        }
++    )
++    state.current_node = target
++    state.current_entry_id = new_entry_id
++    state.entries[new_entry_id] = RunEntry(
++        entry_id=new_entry_id, node_id=target, entered_at=time.time()
++    )
++
++    target_node = runbook.nodes[target]
++    if hook_runner is not None and target_node.in_hook:
++        hook_runner(target_node.in_hook, {"run_id": run_id, "node": target})
++
++    if not any(e.from_node == target for e in runbook.edges):
++        state.state = "completed"
++
++    backend.save(state)
++    _project_trajectory_if_terminal(state, context_store)
++    return {
++        "ok": True,
++        "from": edge.from_node,
++        "to": target,
++        "entry_id": new_entry_id,
++        "prompt": target_node.prompt,
++    }
++
++
++def register_dynamic_check(
++    run_id: str, check: Check, *, backend: RunStateBackend | None = None
++) -> None:
++    """Attach a check to the run's current entry, evaluated on the next ``runbook_goto``."""
++    backend = backend or FileRunStateBackend()
++    state = _require_state(backend, run_id)
++    entry = state.entries[state.current_entry_id]
++    entry.dynamic_checks.append(check)
++    backend.save(state)
++
++
++def runbook_history(
++    run_id: str, tail: int = 50, *, backend: RunStateBackend | None = None
++) -> list[dict[str, Any]]:
++    backend = backend or FileRunStateBackend()
++    state = _require_state(backend, run_id)
++    return state.transitions[-tail:]
+diff --git a/obase/versionstore/__init__.py b/obase/versionstore/__init__.py
+index d270cea..e9877b7 100644
+--- a/obase/versionstore/__init__.py
++++ b/obase/versionstore/__init__.py
+@@ -1,14 +1,26 @@
+-"""obase.versionstore — JSONL append-only version store.
++"""obase.versionstore — Agent 快照与配置版本持久化管理存储.
++
++两层能力：
++- jsonl_append / jsonl_read / jsonl_latest : JSONL append-only 基础存储
++- VersionStore : 目录级快照版本库（snapshot / restore / list / delete）
+ 
+ Example:
+     >>> import asyncio
+     >>> from pathlib import Path
+-    >>> from obase.versionstore import jsonl_append, jsonl_read, jsonl_latest
++    >>> from obase.versionstore import jsonl_append, jsonl_read, jsonl_latest, VersionStore
+     >>> asyncio.run(jsonl_append(path=Path("log.jsonl"), entry={"id": "a", "v": 1}))
+     >>> entries = jsonl_read(path=Path("log.jsonl"))
+     >>> latest = jsonl_latest(path=Path("log.jsonl"), by_key="id")
+ """
+ 
+ from obase.versionstore._store import jsonl_append, jsonl_latest, jsonl_read
++from obase.versionstore.snapshot import SnapshotMeta, VersionStore, VersionStoreError
+ 
+-__all__ = ["jsonl_append", "jsonl_latest", "jsonl_read"]
++__all__ = [
++    "SnapshotMeta",
++    "VersionStore",
++    "VersionStoreError",
++    "jsonl_append",
++    "jsonl_latest",
++    "jsonl_read",
++]
+diff --git a/pyproject.toml b/pyproject.toml
+index da40f04..a582ed1 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -4,7 +4,6 @@ version = "0.31.0"
+ requires-python = ">=3.12"
+ dependencies = [
+     "pydantic>=2.0",
+-    "pydantic-settings>=2.0",
+     "pyyaml>=6.0",
+     "tenacity>=8.0",
+     "structlog>=24.0",
+@@ -17,6 +16,7 @@ dependencies = [
+     "mcp>=1.27",
+     "rapidfuzz>=3.0",
+     "httpx>=0.27",
++    "aiosqlite>=0.20", # 3O Paradigm Phase 1 — SQLiteKVStore
+     "asyncpg>=0.29",
+     "pgvector>=0.3",
+ ]
+diff --git a/tests/test_acp_adapter.py b/tests/test_acp_adapter.py
+index ac9d3de..085fa11 100644
+--- a/tests/test_acp_adapter.py
++++ b/tests/test_acp_adapter.py
+@@ -75,7 +75,7 @@ async def test_session_turn_stream_cancel_resume_capabilities(adapter):
+ 
+     hr = adapter.to_harness_result(session.session_id, resumed)
+     assert isinstance(hr, HarnessRunResult)
+-    assert hr.output == "reply:back" and hr.status == "ok"
++    assert hr.output == "reply:back" and hr.status == "completed"
+     assert hr.native_metadata["protocol"] == "acp"
+ 
+ 
+@@ -115,3 +115,70 @@ def test_no_protocol_leak_to_canonical():
+     )
+     for token in ("session/prompt", "sessionId", "ACP_TURN", "ACPSession"):
+         assert token not in canonical
++
++
++class DeclaringPeer(FakeACPPeer):
++    """Peer whose initialize declares MCP attachment/refresh + session close."""
++
++    async def __call__(self, message):
++        if message.get("method") == "initialize":
++            return {
++                "result": {
++                    "capabilities": {
++                        "streaming": True,
++                        "resume": True,
++                        "cancel": True,
++                        "tools": True,
++                        "mcp": {"attach": True, "refresh": True},
++                        "session_close": True,
++                    }
++                }
++            }
++        if message.get("method") == "session/close":
++            return {"result": {"closed": True}}
++        return await super().__call__(message)
++
++
++@pytest.mark.asyncio()
++async def test_capabilities_default_honest_false(adapter):
++    caps = await adapter.capabilities()
++    assert caps.as_dict() == {"streaming": True, "resume": True, "cancel": True, "tools": True}
++    assert caps.supports_mcp_attachment is False
++    assert caps.supports_mcp_refresh is False
++    assert caps.supports_session_close is False
++
++
++@pytest.mark.asyncio()
++async def test_capabilities_from_upstream_declaration():
++    adapter = ACPAgentAdapter(transport=DeclaringPeer())
++    caps = await adapter.capabilities()
++    assert caps.supports_mcp_attachment is True
++    assert caps.supports_mcp_refresh is True
++    assert caps.supports_session_close is True
++
++
++@pytest.mark.asyncio()
++async def test_close_remote_supported_and_idempotent():
++    adapter = ACPAgentAdapter(transport=DeclaringPeer())
++    session = await adapter.new_session()
++    first = await adapter.close(session.session_id)
++    assert first == {
++        "session_id": session.session_id,
++        "closed": True,
++        "remote_close_supported": True,
++        "remote_close_error": None,
++    }
++    second = await adapter.close(session.session_id)
++    assert second["closed"] is True
++    assert second["remote_close_supported"] is False
++
++
++@pytest.mark.asyncio()
++async def test_close_remote_unsupported_still_detaches(adapter):
++    session = await adapter.new_session()
++    result = await adapter.close(session.session_id)
++    assert result["closed"] is True
++    assert result["remote_close_supported"] is False
++    assert result["remote_close_error"]
++    with pytest.raises(ACPAdapterError):
++        await adapter.turn(session.session_id, "after close")
+diff --git a/uv.lock b/uv.lock
+index 3ef8035..f8190e1 100644
+--- a/uv.lock
++++ b/uv.lock
+@@ -129,6 +129,15 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/fb/76/641ae371508676492379f16e2fa48f4e2c11741bd63c48be4b12a6b09cba/aiosignal-1.4.0-py3-none-any.whl", hash = "sha256:053243f8b92b990551949e63930a839ff0cf0b0ebbe0597b0f3fb19e1a0fe82e", size = 7490, upload-time = "2025-07-03T22:54:42.156Z" },
+ ]
+ 
++[[package]]
++name = "aiosqlite"
++version = "0.22.1"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/4e/8a/64761f4005f17809769d23e518d915db74e6310474e733e3593cfc854ef1/aiosqlite-0.22.1.tar.gz", hash = "sha256:043e0bd78d32888c0a9ca90fc788b38796843360c855a7262a532813133a0650", size = 14821, upload-time = "2025-12-23T19:25:43.997Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/00/b7/e3bf5133d697a08128598c8d0abc5e16377b51465a33756de24fa7dee953/aiosqlite-0.22.1-py3-none-any.whl", hash = "sha256:21c002eb13823fad740196c5a2e9d8e62f6243bd9e7e4a1f87fb5e44ecb4fceb", size = 17405, upload-time = "2025-12-23T19:25:42.139Z" },
++]
++
+ [[package]]
+ name = "alembic"
+ version = "1.18.4"
+@@ -363,6 +372,34 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/27/44/d2ef5e87509158ad2187f4dd0852df80695bb1ee0cfe0a684727b01a69e0/bcrypt-5.0.0-cp39-abi3-win_arm64.whl", hash = "sha256:f2347d3534e76bf50bca5500989d6c1d05ed64b440408057a37673282c654927", size = 144953, upload-time = "2025-09-25T19:50:37.32Z" },
+ ]
+ 
++[[package]]
++name = "boto3"
++version = "1.43.68"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "botocore" },
++    { name = "jmespath" },
++    { name = "s3transfer" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/35/40/95db6388539e6194b7d8863e4228263e7a778fff0164b17d0e4530d44ce2/boto3-1.43.68.tar.gz", hash = "sha256:4be7531c45fbf8eb145ecd0f385c7b8f9d66ba2fd0c256522717260e67fca89d", size = 112664, upload-time = "2026-08-10T19:22:07.864Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/96/bd/36dd3f5718160ea7f8ef5a81b461cfb9d0f0b289bb31ed416ae6a1cbfee3/boto3-1.43.68-py3-none-any.whl", hash = "sha256:4be071482312d05ea345ae8a2ea307637d3e2f4fdce44b8ebeb0192929aa2644", size = 140027, upload-time = "2026-08-10T19:22:05.592Z" },
++]
++
++[[package]]
++name = "botocore"
++version = "1.43.68"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "jmespath" },
++    { name = "python-dateutil" },
++    { name = "urllib3" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/e1/dc/ff7e35ecb25e2584e22ce8d5a13c5f991687597fd77d7cc388f2e4768cf3/botocore-1.43.68.tar.gz", hash = "sha256:a6c7ac88724c96f2ad5a7657f87d545d8218a74a1b219ba4397e3d37481941cd", size = 15894825, upload-time = "2026-08-10T19:22:02.501Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/32/48/18dc095a908da94e2389d8e4127f4438b185dfd2dd9190fe6f946b9f41ac/botocore-1.43.68-py3-none-any.whl", hash = "sha256:9985c6eb9b7896f88bd89c07d543accd6985ea772af9d796087012ad40f78420", size = 15579433, upload-time = "2026-08-10T19:21:58.157Z" },
++]
++
+ [[package]]
+ name = "certifi"
+ version = "2026.5.20"
+@@ -897,6 +934,15 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/cb/b1/3846dd7f199d53cb17f49cba7e651e9ce294d8497c8c150530ed11865bb8/iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12", size = 7484, upload-time = "2025-10-18T21:55:41.639Z" },
+ ]
+ 
++[[package]]
++name = "jmespath"
++version = "1.1.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/d3/59/322338183ecda247fb5d1763a6cbe46eff7222eaeebafd9fa65d4bf5cb11/jmespath-1.1.0.tar.gz", hash = "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d", size = 27377, upload-time = "2026-01-22T16:35:26.279Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/14/2f/967ba146e6d58cf6a652da73885f52fc68001525b4197effc174321d70b4/jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64", size = 20419, upload-time = "2026-01-22T16:35:24.919Z" },
++]
++
+ [[package]]
+ name = "jsonschema"
+ version = "4.26.0"
+@@ -1299,9 +1345,10 @@ wheels = [
+ 
+ [[package]]
+ name = "obase"
+-version = "0.15.6"
++version = "0.31.0"
+ source = { editable = "." }
+ dependencies = [
++    { name = "aiosqlite" },
+     { name = "argon2-cffi" },
+     { name = "asyncpg" },
+     { name = "bcrypt" },
+@@ -1342,17 +1389,22 @@ migration = [
+     { name = "alembic" },
+     { name = "sqlalchemy" },
+ ]
++storage = [
++    { name = "boto3" },
++]
+ tts = [
+     { name = "edge-tts" },
+ ]
+ 
+ [package.metadata]
+ requires-dist = [
++    { name = "aiosqlite", specifier = ">=0.20" },
+     { name = "alembic", marker = "extra == 'dev'", specifier = ">=1.13" },
+     { name = "alembic", marker = "extra == 'migration'", specifier = ">=1.13" },
+     { name = "argon2-cffi", specifier = ">=23.0" },
+     { name = "asyncpg", specifier = ">=0.29" },
+     { name = "bcrypt", specifier = ">=4.1" },
++    { name = "boto3", marker = "extra == 'storage'", specifier = ">=1.34" },
+     { name = "docker", marker = "extra == 'docker'", specifier = ">=7.0" },
+     { name = "edge-tts", marker = "extra == 'tts'", specifier = ">=6.1" },
+     { name = "httpx", specifier = ">=0.27" },
+@@ -1379,7 +1431,7 @@ requires-dist = [
+     { name = "types-pyyaml", marker = "extra == 'dev'" },
+     { name = "types-qrcode", marker = "extra == 'dev'" },
+ ]
+-provides-extras = ["migration", "tts", "docker", "cache", "dev"]
++provides-extras = ["migration", "tts", "docker", "cache", "storage", "dev"]
+ 
+ [[package]]
+ name = "packaging"
+@@ -1771,6 +1823,18 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/9d/7a/d968e294073affff457b041c2be9868a40c1c71f4a35fcc1e45e5493067b/pytest_cov-7.1.0-py3-none-any.whl", hash = "sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678", size = 22876, upload-time = "2026-03-21T20:11:14.438Z" },
+ ]
+ 
++[[package]]
++name = "python-dateutil"
++version = "2.9.0.post0"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "six" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432, upload-time = "2024-03-01T18:36:20.211Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892, upload-time = "2024-03-01T18:36:18.57Z" },
++]
++
+ [[package]]
+ name = "python-dotenv"
+ version = "1.2.2"
+@@ -2070,6 +2134,27 @@ wheels = [
+     { url = "https://files.pythonhosted.org/packages/9b/36/9c015cd052fca743dae8cb2aeb16b551444787467db42ceab0fc968865af/ruff-0.15.13-py3-none-win_arm64.whl", hash = "sha256:2471da9bd1068c8c064b5fd9c0c4b6dddffd6369cb1cd68b29993b1709ff1b21", size = 11179336, upload-time = "2026-05-14T13:44:33.026Z" },
+ ]
+ 
++[[package]]
++name = "s3transfer"
++version = "0.19.2"
++source = { registry = "https://pypi.org/simple" }
++dependencies = [
++    { name = "botocore" },
++]
++sdist = { url = "https://files.pythonhosted.org/packages/76/43/35e4d8aa320bffe8287fe8f65f578fa2d2db0a64212f0e710dce58267854/s3transfer-0.19.2.tar.gz", hash = "sha256:ba0309fd86be3c27dbf78cdd813c13c5e1df16e5874b99d2535ebbdfb9892993", size = 165592, upload-time = "2026-07-22T19:30:44.432Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/bc/e7/5c595c75e9f41a44f30e526eda465ea0b4eec93470e074e4a111b253f13a/s3transfer-0.19.2-py3-none-any.whl", hash = "sha256:d8168eccca828cbb2cd573675333f3bddd254313a9c42494b84c76b539e8ba25", size = 90216, upload-time = "2026-07-22T19:30:43.251Z" },
++]
++
++[[package]]
++name = "six"
++version = "1.17.0"
++source = { registry = "https://pypi.org/simple" }
++sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
++wheels = [
++    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
++]
++
+ [[package]]
+ name = "sqlalchemy"
+ version = "2.0.50"

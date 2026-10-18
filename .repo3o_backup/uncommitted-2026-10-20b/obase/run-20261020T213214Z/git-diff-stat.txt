@@ -1,0 +1,13 @@
+ obase/__init__.py              | 458 +++++++++++++++++++++++++++++++++++-
+ obase/acp_adapter.py           |  59 ++++-
+ obase/cognitive_store.py       | 509 ++++++++++++++++++++++++++---------------
+ obase/cost_tracker.py          |  88 +++++++
+ obase/git.py                   |  19 +-
+ obase/mcp_client.py            | 286 ++++++++++++++++++++++-
+ obase/mcp_server/__init__.py   |  43 ++++
+ obase/orchestrator.py          | 477 +++++++++++++++++++++++++++++++++++++-
+ obase/versionstore/__init__.py |  18 +-
+ pyproject.toml                 |   2 +-
+ tests/test_acp_adapter.py      |  69 +++++-
+ uv.lock                        |  89 ++++++-
+ 12 files changed, 1904 insertions(+), 213 deletions(-)

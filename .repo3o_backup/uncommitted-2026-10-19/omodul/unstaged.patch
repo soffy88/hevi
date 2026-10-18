@@ -1,0 +1,467 @@
+diff --git a/omodul/__init__.py b/omodul/__init__.py
+index 688d772..cb7b36e 100644
+--- a/omodul/__init__.py
++++ b/omodul/__init__.py
+@@ -133,6 +133,10 @@ from omodul.index_codebase import index_codebase
+ from omodul.init_project import init_project
+ from omodul.login_provider import login_provider
+ from omodul.mark_draft_order_paid import mark_draft_order_paid
++from omodul.optimize_skill import Config as OptimizeSkillConfig
++from omodul.optimize_skill import InputData as OptimizeSkillInput
++from omodul.optimize_skill import compute_fingerprint_for as optimize_skill_fingerprint
++from omodul.optimize_skill import optimize_skill
+ 
+ # New omodul modules (batch 1.29)
+ from omodul.process_prompt import process_prompt
+@@ -440,7 +444,6 @@ from omodul.force_analysis_workflow import (
+     ForceAnalysisInput,
+     force_analysis_workflow,
+ )
+-
+ from omodul.reading_guide_workflow import (
+     ReadingGuideConfig,
+     ReadingGuideInput,
+diff --git a/omodul/asset_pricing/ez_workflow.py b/omodul/asset_pricing/ez_workflow.py
+index ac71745..16be82a 100644
+--- a/omodul/asset_pricing/ez_workflow.py
++++ b/omodul/asset_pricing/ez_workflow.py
+@@ -156,7 +156,7 @@ def epstein_zin_asset_pricing_workflow(
+         try:
+             agg_val = epstein_zin_aggregator(
+                 C_check,
+-                CE_check,
++                continuation_value=CE_check,
+                 discount=discount,
+                 risk_aversion=risk_aversion,
+                 ies=ies,
+diff --git a/omodul/data_quality.py b/omodul/data_quality.py
+index 4269252..c526178 100644
+--- a/omodul/data_quality.py
++++ b/omodul/data_quality.py
+@@ -151,7 +151,7 @@ def cross_source_consistency_check(
+             if len(common) > 10:
+                 corr_result = oprim.pearson_spearman_corr(
+                     pd.Series(v1.loc[common].values),
+-                    pd.Series(v2.loc[common].values),
++                    y=pd.Series(v2.loc[common].values),
+                 )
+                 c = corr_result.get("pearson_r", np.nan)
+             else:
+diff --git a/omodul/explain_codebase.py b/omodul/explain_codebase.py
+index 01f70b7..7044801 100644
+--- a/omodul/explain_codebase.py
++++ b/omodul/explain_codebase.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ from oprim import glob_match
++from oprim import glob_match
+ import sys
+ import os
+ from pathlib import Path
+diff --git a/omodul/generate_commit_message.py b/omodul/generate_commit_message.py
+index 85a9407..7507433 100644
+--- a/omodul/generate_commit_message.py
++++ b/omodul/generate_commit_message.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ from oprim import count_tokens, git_diff
++from oprim import count_tokens, git_diff
+ import sys
+ import os
+ from pathlib import Path
+diff --git a/omodul/generate_tests.py b/omodul/generate_tests.py
+index f67ac70..aa48248 100644
+--- a/omodul/generate_tests.py
++++ b/omodul/generate_tests.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ from oprim import file_write
++from oprim import file_write
+ import sys
+ import os
+ from pathlib import Path
+diff --git a/omodul/index_codebase.py b/omodul/index_codebase.py
+index 917cd2b..eb0a7c1 100644
+--- a/omodul/index_codebase.py
++++ b/omodul/index_codebase.py
+@@ -3,6 +3,7 @@ omodul.index_codebase — Scan, embed, and vector-write codebase files concurren
+ 
+ Pillars: fingerprint, cost
+ """
++
+ from __future__ import annotations
+ 
+ import asyncio
+@@ -25,12 +26,14 @@ async def _call(fn: Any, **kwargs: Any) -> Any:
+     return result
+ 
+ 
+-def compute_fingerprint_for(config: "Config", input_data: "InputData") -> str:
++def compute_fingerprint_for(config: Config, input_data: InputData) -> str:
+     """Fingerprint over root_path + sorted extensions."""
+-    return compute_fingerprint({
+-        "root_path": input_data.root_path,
+-        "extensions": sorted(config.extensions),
+-    })
++    return compute_fingerprint(
++        {
++            "root_path": input_data.root_path,
++            "extensions": sorted(config.extensions),
++        }
++    )
+ 
+ 
+ class Config(BaseConfig):
+@@ -41,6 +44,7 @@ class Config(BaseConfig):
+ 
+     max_concurrent: int = 5
+     extensions: list[str] = [".py", ".ts", ".js", ".go", ".rs"]
++    incremental: bool = False
+ 
+ 
+ class InputData(BaseModel):
+@@ -48,10 +52,28 @@ class InputData(BaseModel):
+     scanner: Any = None
+     embedder: Any = None
+     vector_writer: Any = None
++    # WAVE G: incremental update mode (None/空 = 全量 rebuild)
++    changed_files: list[dict[str, Any]] | None = None
++    index_revision: str = ""
++    source_revision: str = ""
+ 
+     model_config = ConfigDict(arbitrary_types_allowed=True)
+ 
+ 
++def _freshness_metadata(
++    *, changed: list[dict[str, Any]], prev_index_revision: str
++) -> dict[str, str]:
++    """freshness metadata: source/index revision + last applied change。"""
++    source_revision = compute_fingerprint({"changes": changed})
++    index_revision = compute_fingerprint({"prev": prev_index_revision, "source": source_revision})
++    last = changed[-1] if changed else {}
++    return {
++        "source_revision": source_revision,
++        "index_revision": index_revision,
++        "last_applied_change": (f"{last.get('kind', '')}:{last.get('path', '')}" if last else ""),
++    }
++
++
+ async def index_codebase(
+     config: Config,
+     input_data: InputData,
+@@ -66,10 +88,90 @@ async def index_codebase(
+     try:
+         fp = compute_fingerprint_for(config, input_data)
+ 
++        # WAVE G incremental mode:只处理受影响文件,等价于全量 rebuild 结果
++        changed = list(input_data.changed_files or []) if config.incremental else []
++        if changed:
++            touched = [
++                c.get("path", "")
++                for c in changed
++                if c.get("kind") in ("added", "modified", "renamed") and c.get("path")
++            ]
++            removed = [
++                (c.get("old_path") or c.get("path", ""))
++                for c in changed
++                if c.get("kind") in ("deleted", "renamed")
++            ]
++            inc_results: dict[str, int] = {
++                "indexed": 0,
++                "skipped": 0,
++                "failed": 0,
++                "deleted": 0,
++            }
++            semaphore = asyncio.Semaphore(config.max_concurrent)
++
++            async def embed_one(f: str) -> None:
++                async with semaphore:
++                    p = Path(f)
++                    if not p.exists():
++                        inc_results["skipped"] += 1
++                        return
++                    try:
++                        content = p.read_text(encoding="utf-8", errors="ignore")
++                    except OSError:
++                        inc_results["skipped"] += 1
++                        return
++                    if not content.strip():
++                        inc_results["skipped"] += 1
++                        return
++                    embedding: list = []
++                    if input_data.embedder is not None:
++                        embedding = await _call(input_data.embedder, text=content)
++                    if input_data.vector_writer is not None:
++                        await _call(
++                            input_data.vector_writer,
++                            path=f,
++                            embedding=embedding,
++                            content=content,
++                        )
++                    inc_results["indexed"] += 1
++
++            gathered = await asyncio.gather(
++                *[embed_one(f) for f in touched],
++                return_exceptions=True,
++            )
++            for exc in gathered:
++                if isinstance(exc, BaseException) and not isinstance(exc, asyncio.CancelledError):
++                    inc_results["failed"] += 1
++            for dead in removed:
++                try:
++                    if input_data.vector_writer is not None:
++                        await _call(
++                            input_data.vector_writer,
++                            path=dead,
++                            embedding=[],
++                            content="",
++                            delete=True,
++                        )
++                    inc_results["deleted"] += 1
++                except Exception:
++                    inc_results["failed"] += 1
++            freshness = _freshness_metadata(
++                changed=changed, prev_index_revision=input_data.index_revision
++            )
++            result = build_result(
++                status="completed",
++                error=None,
++                fingerprint=fp,
++                cost_usd=cost.total_usd,
++                **inc_results,
++            )
++            result.update(freshness)
++            return result
++
+         if input_data.scanner is not None:
+-            files: list[str] = await _call(input_data.scanner,
+-                                           root=input_data.root_path,
+-                                           extensions=config.extensions)
++            files: list[str] = await _call(
++                input_data.scanner, root=input_data.root_path, extensions=config.extensions
++            )
+         else:
+             files = []
+ 
+@@ -92,19 +194,16 @@ async def index_codebase(
+                     results["skipped"] += 1
+                     return
+ 
+-                file_fp = compute_fingerprint(
+-                    {"path": f, "mtime": str(p.stat().st_mtime)}
+-                )
++                file_fp = compute_fingerprint({"path": f, "mtime": str(p.stat().st_mtime)})
+ 
+                 embedding: list = []
+                 if input_data.embedder is not None:
+                     embedding = await _call(input_data.embedder, text=content)
+ 
+                 if input_data.vector_writer is not None:
+-                    await _call(input_data.vector_writer,
+-                                path=f,
+-                                embedding=embedding,
+-                                content=content)
++                    await _call(
++                        input_data.vector_writer, path=f, embedding=embedding, content=content
++                    )
+ 
+                 results["indexed"] += 1
+ 
+@@ -116,13 +215,19 @@ async def index_codebase(
+             if isinstance(exc, BaseException) and not isinstance(exc, asyncio.CancelledError):
+                 results["failed"] += 1
+ 
+-        return build_result(
++        freshness = _freshness_metadata(
++            changed=[{"kind": "full-rebuild", "path": input_data.root_path}],
++            prev_index_revision=input_data.index_revision,
++        )
++        result = build_result(
+             status="completed",
+             error=None,
+             fingerprint=fp,
+             cost_usd=cost.total_usd,
+             **results,
+         )
++        result.update(freshness)
++        return result
+ 
+     except asyncio.CancelledError:
+         raise
+diff --git a/omodul/initialize_project.py b/omodul/initialize_project.py
+index f2f196e..86f7069 100644
+--- a/omodul/initialize_project.py
++++ b/omodul/initialize_project.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ from oprim import file_read, file_write, glob_match
++from oprim import file_read, file_write, glob_match
+ import sys
+ import os
+ from pathlib import Path
+diff --git a/omodul/install_plugin.py b/omodul/install_plugin.py
+index fbaccb1..281029d 100644
+--- a/omodul/install_plugin.py
++++ b/omodul/install_plugin.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ from oskill import compose_plugin_manifest
++from oskill import compose_plugin_manifest
+ import json
+ import re
+ import sys
+diff --git a/omodul/migrate_dependency.py b/omodul/migrate_dependency.py
+index c2fecf1..e1701de 100644
+--- a/omodul/migrate_dependency.py
++++ b/omodul/migrate_dependency.py
+@@ -2,6 +2,7 @@
+ 
+ from __future__ import annotations
+ from oprim import file_read, glob_match
++from oprim import file_read, glob_match
+ import json
+ import re
+ import sys
+diff --git a/omodul/refactor_transaction.py b/omodul/refactor_transaction.py
+index 2913fa9..c8a99ab 100644
+--- a/omodul/refactor_transaction.py
++++ b/omodul/refactor_transaction.py
+@@ -3,6 +3,8 @@
+ from __future__ import annotations
+ from oskill import apply_edit_block
+ from oprim import file_read, file_write
++from oskill import apply_edit_block
++from oprim import file_read, file_write
+ import json
+ import re
+ import sys
+diff --git a/omodul/regime.py b/omodul/regime.py
+index 874161e..145dffa 100644
+--- a/omodul/regime.py
++++ b/omodul/regime.py
+@@ -251,12 +251,16 @@ def regime_conditional_dashboard_data(
+             returns_df = pd.DataFrame({"returns": returns})
+             for r1 in regimes:
+                 row = {}
+-                data_r1 = oprim.regime_filter_data(returns_df, regime_labels, r1)["returns"].values
++                data_r1 = oprim.regime_filter_data(
++                    returns_df, regime_labels=regime_labels, target_regime=r1
++                )["returns"].values
+                 for r2 in regimes:
+                     if r1 == r2:
+                         row[r2] = False
+                     else:
+-                        data_r2 = oprim.regime_filter_data(returns_df, regime_labels, r2)["returns"].values
++                        data_r2 = oprim.regime_filter_data(
++                            returns_df, regime_labels=regime_labels, target_regime=r2
++                        )["returns"].values
+                         if len(data_r1) > 10 and len(data_r2) > 10:
+                             shift = oskill.distribution_shift_test(data_r1, data_r2)
+                             row[r2] = shift["shift_detected"]
+diff --git a/omodul/risk/__init__.py b/omodul/risk/__init__.py
+index b6c9a83..2281d2e 100644
+--- a/omodul/risk/__init__.py
++++ b/omodul/risk/__init__.py
+@@ -187,7 +187,7 @@ def tail_risk_analyzer(
+     # Normality test
+     normality_test = None
+     if include_normality_test:
+-        ks = oprim.kolmogorov_smirnov_test(ret.values, "norm", mode="one_sample")
++        ks = oprim.kolmogorov_smirnov_test(ret.values, sample_b="norm", mode="one_sample")
+         normality_test = {
+             "ks_statistic": ks["statistic"],
+             "ks_pvalue": ks["p_value"],
+diff --git a/omodul/run_and_fix.py b/omodul/run_and_fix.py
+index 03f8720..3eddb94 100644
+--- a/omodul/run_and_fix.py
++++ b/omodul/run_and_fix.py
+@@ -3,6 +3,8 @@
+ from __future__ import annotations
+ from oskill import apply_edit_block
+ from oprim import file_read, file_write, bash_exec
++from oskill import apply_edit_block
++from oprim import file_read, file_write, bash_exec
+ import json
+ import re
+ import sys
+diff --git a/omodul/signals.py b/omodul/signals.py
+index 13a64df..0b9049b 100644
+--- a/omodul/signals.py
++++ b/omodul/signals.py
+@@ -64,7 +64,7 @@ def alert_calibration_engine(
+                 successes = int(g_outcomes.sum())
+                 failures = len(g_outcomes) - successes
+                 bandit_state = oprim.bayes_beta_update(
+-                    bandit_prior_alpha, bandit_prior_beta,
++                    bandit_prior_alpha, prior_beta=bandit_prior_beta,
+                     successes=successes, failures=failures,
+                 )
+                 bandit_state["n_observed"] = len(g_outcomes)
+@@ -120,7 +120,7 @@ def thesis_invalidation_monitor(
+             continue
+ 
+         # Latest Brier score
+-        brier = oprim.brier_score_decomposed(preds, outcomes)
++        brier = oprim.brier_score_decomposed(preds, outcomes=outcomes)
+         latest_brier = brier["brier_score"]
+ 
+         # Rolling Brier
+@@ -128,7 +128,7 @@ def thesis_invalidation_monitor(
+         for i in range(rolling_window, len(preds) + 1):
+             w_preds = preds[i - rolling_window:i]
+             w_out = outcomes[i - rolling_window:i]
+-            rb = oprim.brier_score_decomposed(w_preds, w_out)
++            rb = oprim.brier_score_decomposed(w_preds, outcomes=w_out)
+             rolling_briers.append(rb["brier_score"])
+ 
+         # Trend analysis
+diff --git a/omodul/similarity.py b/omodul/similarity.py
+index 97f14c5..a33a024 100644
+--- a/omodul/similarity.py
++++ b/omodul/similarity.py
+@@ -69,11 +69,11 @@ def smart_peer_finder(
+     method_scores: dict[str, np.ndarray] = {}
+ 
+     if "cosine" in sig_methods:
+-        sims = oprim.cosine_similarity_batch(query_sig, sig_matrix)
++        sims = oprim.cosine_similarity_batch(query_sig, database=sig_matrix)
+         method_scores["cosine"] = 1.0 - sims  # distance
+ 
+     if "euclidean" in sig_methods:
+-        dists = oprim.euclidean_distance_matrix(query_sig.reshape(1, -1), sig_matrix)
++        dists = oprim.euclidean_distance_matrix(query_sig.reshape(1, -1), y=sig_matrix)
+         method_scores["euclidean"] = dists[0]
+ 
+     # Time series methods via oskill
+@@ -181,11 +181,11 @@ def event_cascade_clusterer(
+     n = len(embeddings)
+     # Batch: compute full similarity matrix at once
+     dist_matrix = np.zeros((n, n))
+-    sims = oprim.cosine_similarity_batch(embeddings, embeddings)
++    sims = oprim.cosine_similarity_batch(embeddings, database=embeddings)
+     if sims.ndim == 1:
+         # Single query mode - fall back to row-by-row
+         for i in range(n):
+-            row_sims = oprim.cosine_similarity_batch(embeddings[i], embeddings)
++            row_sims = oprim.cosine_similarity_batch(embeddings[i], database=embeddings)
+             dist_matrix[i] = np.clip(1.0 - row_sims, 0.0, 2.0)
+     else:
+         dist_matrix = np.clip(1.0 - sims, 0.0, 2.0)
+diff --git a/omodul/strategy.py b/omodul/strategy.py
+index c56e214..7fcff37 100644
+--- a/omodul/strategy.py
++++ b/omodul/strategy.py
+@@ -305,7 +305,7 @@ def factor_attribution_report(
+                 attr["betas"][f] * fac[f].values for f in attr["factor_names"]
+             )
+             residuals = ret - predicted
+-            ks_test = oprim.kolmogorov_smirnov_test(residuals, "norm", mode="one_sample")
++            ks_test = oprim.kolmogorov_smirnov_test(residuals, sample_b="norm", mode="one_sample")
+             model_result["residual_analysis"] = {
+                 "ks_statistic": ks_test["statistic"],
+                 "ks_pvalue": ks_test["p_value"],

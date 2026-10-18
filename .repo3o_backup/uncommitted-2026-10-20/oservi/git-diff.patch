@@ -1,0 +1,4582 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index e260d3d..16ad284 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -144,3 +144,33 @@ FeedTrackerEngine 装配:
+           subscription(layer4/1) + filter(oskill/0..1)
+   config.source_type 决定调哪个 search_fn
+   config.force_ipv4 支持 OAPEN 等 IPv6 超时场景
++
++## [1.4.0] — 2026-07-30
++
++### Added (SPEC §5 — Medusa 3O commerce vertical orchestration engines)
++
++`3O_MEDUSA_IMPLEMENTATION_SPEC.md`(平台根目录)§5 要求的 6 个引擎全部到位。
++**治理提醒**:这批引擎未走"≥2 真实项目实证"准入红线(见 docs/GOVERNANCE.md
++红线 1)——soffy 明确选择直接建骨架、事后补实证,不是治理流程被绕过而不
++自知,写在这里供 Wiki 后续把关时查阅。
++
++- `saga_composer` — 正向执行 steps,任一步返回 `{"status": "failed"}` 时逆序
++  执行 compensations(典型:支付扣款 + 库存扣减失败时的退款+释放库存)。
++- `state_machine_engine` — 状态图放在 `config["transition_map"]`(不是注入点
++  本身,通用装配器的 Injection 只理解 `list[Callable]`,没法校验
++  `dict[str, Callable]` 形状),`transitions`/`validators` 保持纯 callable 列表
++  注入契约。
++- `event_webhook_dispatcher` — `obase.mq.EventBus` 的第一个真实消费方:订阅
++  一个 topic,收到事件后 `asyncio.gather` 并发拉起所有 subscribers,单个失败
++  不拖累其余。
++- `cron_scheduler_engine` — 引入 `croniter` 新依赖做真实 cron 表达式解析
++  (原有 `alerter` 的 on_cron 只是 on_interval 的别名,没有真正解析;这次为
++  "cron_scheduler_engine"这个名字对应的语义做对)。
++- `bulk_import_worker` / `bulk_export_worker` — 流式取行(fetcher 返回同步或
++  异步可迭代对象,骨架逐行消费不囤积内存),export 侧格式化结果先写本地
++  临时文件再一次性上传(`uploader` 签名对齐 `obase.fs.FileStorage.upload`),
++  上传后清理临时文件。
++
++### Notes
++- 本地跑测试前额外装了 `pydantic-settings`(obase.config 需要,但 obase 自己
++  的 pyproject.toml 未声明这个依赖——本仓库未改 obase,仅记录此坑)。
+diff --git a/oservi/__pycache__/__init__.cpython-312.pyc b/oservi/__pycache__/__init__.cpython-312.pyc
+deleted file mode 100644
+index e1a7203..0000000
+Binary files a/oservi/__pycache__/__init__.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/__pycache__/__init__.cpython-314.pyc b/oservi/__pycache__/__init__.cpython-314.pyc
+index ead4bc1..75110a9 100644
+Binary files a/oservi/__pycache__/__init__.cpython-314.pyc and b/oservi/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/oservi/__pycache__/agentic_loop.cpython-312.pyc b/oservi/__pycache__/agentic_loop.cpython-312.pyc
+deleted file mode 100644
+index ab1cb51..0000000
+Binary files a/oservi/__pycache__/agentic_loop.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/__pycache__/assembler.cpython-312.pyc b/oservi/__pycache__/assembler.cpython-312.pyc
+deleted file mode 100644
+index 8d610ed..0000000
+Binary files a/oservi/__pycache__/assembler.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/__pycache__/assembler.cpython-314.pyc b/oservi/__pycache__/assembler.cpython-314.pyc
+index 3e85398..ec179c1 100644
+Binary files a/oservi/__pycache__/assembler.cpython-314.pyc and b/oservi/__pycache__/assembler.cpython-314.pyc differ
+diff --git a/oservi/__pycache__/manifest.cpython-312.pyc b/oservi/__pycache__/manifest.cpython-312.pyc
+deleted file mode 100644
+index 6fd1f60..0000000
+Binary files a/oservi/__pycache__/manifest.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/__pycache__/manifest.cpython-314.pyc b/oservi/__pycache__/manifest.cpython-314.pyc
+index 50248bb..1426501 100644
+Binary files a/oservi/__pycache__/manifest.cpython-314.pyc and b/oservi/__pycache__/manifest.cpython-314.pyc differ
+diff --git a/oservi/engines/__init__.py b/oservi/engines/__init__.py
+index efb665b..d4f84ad 100644
+--- a/oservi/engines/__init__.py
++++ b/oservi/engines/__init__.py
+@@ -14,28 +14,38 @@ Phase 1:
+ 引擎骨架准入 5 红线见 docs/GOVERNANCE.md
+ """
+ 
++# 引擎自动导入触发 register_skeleton
++from oservi.engines import alerter as _alerter  # noqa: F401
++from oservi.engines import dag_orchestrator as _dag_orchestrator  # noqa: F401
++from oservi.engines import feed_tracker as _feed_tracker  # noqa: F401
++from oservi.engines import mcp_bridge as _mcp_bridge  # noqa: F401
++from oservi.engines import mechanism_game_loop as _mechanism_game_loop  # noqa: F401
++from oservi.engines import realtime_media_loop as _realtime_media_loop  # noqa: F401
++from oservi.engines import researcher as _researcher  # noqa: F401
++from oservi.engines import sequential_composer as _sequential_composer  # noqa: F401
++from oservi.engines import steerable_agentic_loop as _steerable_agentic_loop  # noqa: F401
++from oservi.engines import subagent_orchestrator as _subagent_orchestrator  # noqa: F401
++from oservi.engines import swarm_orchestrator as _swarm_orchestrator  # noqa: F401
++from oservi.engines import world_simulation_loop as _world_simulation_loop  # noqa: F401
+ from oservi.engines._base import (
+     EngineSkeleton,
+     Injection,
+-    register_skeleton,
+     get_skeleton,
+     list_skeletons,
++    register_skeleton,
+ )
+-
+-# 引擎自动导入触发 register_skeleton
+-from oservi.engines import alerter as _alerter  # noqa: F401
+-from oservi.engines import researcher as _researcher  # noqa: F401
+-from oservi.engines import feed_tracker as _feed_tracker  # noqa: F401
+-from oservi.engines import sequential_composer as _sequential_composer  # noqa: F401
+-from oservi.engines import subagent_orchestrator as _subagent_orchestrator  # noqa: F401
+-from oservi.engines import mcp_bridge as _mcp_bridge  # noqa: F401
+-
+ from oservi.engines.alerter import AlerterEngine
+-from oservi.engines.researcher import ResearcherEngine
++from oservi.engines.dag_orchestrator import DagOrchestratorEngine
+ from oservi.engines.feed_tracker import FeedTrackerEngine
++from oservi.engines.mcp_bridge import McpBridgeEngine
++from oservi.engines.mechanism_game_loop import MechanismGameLoopEngine
++from oservi.engines.realtime_media_loop import RealtimeMediaLoopEngine
++from oservi.engines.researcher import ResearcherEngine
+ from oservi.engines.sequential_composer import SequentialComposerEngine
++from oservi.engines.steerable_agentic_loop import SteerableAgenticLoopEngine
+ from oservi.engines.subagent_orchestrator import SubagentOrchestratorEngine
+-from oservi.engines.mcp_bridge import McpBridgeEngine
++from oservi.engines.swarm_orchestrator import SwarmOrchestratorEngine
++from oservi.engines.world_simulation_loop import WorldSimulationLoopEngine
+ 
+ __all__ = [
+     "EngineSkeleton",
+@@ -49,4 +59,10 @@ __all__ = [
+     "SequentialComposerEngine",
+     "SubagentOrchestratorEngine",
+     "McpBridgeEngine",
++    "DagOrchestratorEngine",
++    "SteerableAgenticLoopEngine",
++    "SwarmOrchestratorEngine",
++    "RealtimeMediaLoopEngine",
++    "MechanismGameLoopEngine",
++    "WorldSimulationLoopEngine",
+ ]
+diff --git a/oservi/engines/__pycache__/__init__.cpython-312.pyc b/oservi/engines/__pycache__/__init__.cpython-312.pyc
+deleted file mode 100644
+index 7aba37a..0000000
+Binary files a/oservi/engines/__pycache__/__init__.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/__init__.cpython-314.pyc b/oservi/engines/__pycache__/__init__.cpython-314.pyc
+index 0805442..aa5d1ee 100644
+Binary files a/oservi/engines/__pycache__/__init__.cpython-314.pyc and b/oservi/engines/__pycache__/__init__.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/_base.cpython-312.pyc b/oservi/engines/__pycache__/_base.cpython-312.pyc
+deleted file mode 100644
+index 2b56fcc..0000000
+Binary files a/oservi/engines/__pycache__/_base.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/_base.cpython-314.pyc b/oservi/engines/__pycache__/_base.cpython-314.pyc
+index 3726b0d..7436925 100644
+Binary files a/oservi/engines/__pycache__/_base.cpython-314.pyc and b/oservi/engines/__pycache__/_base.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/action_planner.cpython-312.pyc b/oservi/engines/__pycache__/action_planner.cpython-312.pyc
+deleted file mode 100644
+index f70a2d4..0000000
+Binary files a/oservi/engines/__pycache__/action_planner.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/action_planner.cpython-314.pyc b/oservi/engines/__pycache__/action_planner.cpython-314.pyc
+index bc13156..243954c 100644
+Binary files a/oservi/engines/__pycache__/action_planner.cpython-314.pyc and b/oservi/engines/__pycache__/action_planner.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/agentic_loop.cpython-312.pyc b/oservi/engines/__pycache__/agentic_loop.cpython-312.pyc
+deleted file mode 100644
+index d397466..0000000
+Binary files a/oservi/engines/__pycache__/agentic_loop.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/agentic_loop.cpython-314.pyc b/oservi/engines/__pycache__/agentic_loop.cpython-314.pyc
+index 85002d1..f50a834 100644
+Binary files a/oservi/engines/__pycache__/agentic_loop.cpython-314.pyc and b/oservi/engines/__pycache__/agentic_loop.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/alerter.cpython-312.pyc b/oservi/engines/__pycache__/alerter.cpython-312.pyc
+deleted file mode 100644
+index 37aea0a..0000000
+Binary files a/oservi/engines/__pycache__/alerter.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/alerter.cpython-314.pyc b/oservi/engines/__pycache__/alerter.cpython-314.pyc
+index f2b365c..242d490 100644
+Binary files a/oservi/engines/__pycache__/alerter.cpython-314.pyc and b/oservi/engines/__pycache__/alerter.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/app_installer.cpython-312.pyc b/oservi/engines/__pycache__/app_installer.cpython-312.pyc
+deleted file mode 100644
+index 21e5375..0000000
+Binary files a/oservi/engines/__pycache__/app_installer.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/app_installer.cpython-314.pyc b/oservi/engines/__pycache__/app_installer.cpython-314.pyc
+index 7602c46..56203ac 100644
+Binary files a/oservi/engines/__pycache__/app_installer.cpython-314.pyc and b/oservi/engines/__pycache__/app_installer.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/arxiv_watcher.cpython-314.pyc b/oservi/engines/__pycache__/arxiv_watcher.cpython-314.pyc
+index 1d89674..f548377 100644
+Binary files a/oservi/engines/__pycache__/arxiv_watcher.cpython-314.pyc and b/oservi/engines/__pycache__/arxiv_watcher.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/feed_tracker.cpython-312.pyc b/oservi/engines/__pycache__/feed_tracker.cpython-312.pyc
+deleted file mode 100644
+index a68995b..0000000
+Binary files a/oservi/engines/__pycache__/feed_tracker.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/feed_tracker.cpython-314.pyc b/oservi/engines/__pycache__/feed_tracker.cpython-314.pyc
+index 40fc429..aa32aab 100644
+Binary files a/oservi/engines/__pycache__/feed_tracker.cpython-314.pyc and b/oservi/engines/__pycache__/feed_tracker.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/mcp_bridge.cpython-312.pyc b/oservi/engines/__pycache__/mcp_bridge.cpython-312.pyc
+deleted file mode 100644
+index 6ad3f8a..0000000
+Binary files a/oservi/engines/__pycache__/mcp_bridge.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/mcp_bridge.cpython-314.pyc b/oservi/engines/__pycache__/mcp_bridge.cpython-314.pyc
+index 6e3bf5f..336dfe4 100644
+Binary files a/oservi/engines/__pycache__/mcp_bridge.cpython-314.pyc and b/oservi/engines/__pycache__/mcp_bridge.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/researcher.cpython-312.pyc b/oservi/engines/__pycache__/researcher.cpython-312.pyc
+deleted file mode 100644
+index 5d87f17..0000000
+Binary files a/oservi/engines/__pycache__/researcher.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/researcher.cpython-314.pyc b/oservi/engines/__pycache__/researcher.cpython-314.pyc
+index a4d63ae..bf6566e 100644
+Binary files a/oservi/engines/__pycache__/researcher.cpython-314.pyc and b/oservi/engines/__pycache__/researcher.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/sequential_composer.cpython-312.pyc b/oservi/engines/__pycache__/sequential_composer.cpython-312.pyc
+deleted file mode 100644
+index c85f9fd..0000000
+Binary files a/oservi/engines/__pycache__/sequential_composer.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/sequential_composer.cpython-314.pyc b/oservi/engines/__pycache__/sequential_composer.cpython-314.pyc
+index 00f8632..db0b66d 100644
+Binary files a/oservi/engines/__pycache__/sequential_composer.cpython-314.pyc and b/oservi/engines/__pycache__/sequential_composer.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/subagent_orchestrator.cpython-312.pyc b/oservi/engines/__pycache__/subagent_orchestrator.cpython-312.pyc
+deleted file mode 100644
+index c3cb2bb..0000000
+Binary files a/oservi/engines/__pycache__/subagent_orchestrator.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/subagent_orchestrator.cpython-314.pyc b/oservi/engines/__pycache__/subagent_orchestrator.cpython-314.pyc
+index eae2625..4a9a6ae 100644
+Binary files a/oservi/engines/__pycache__/subagent_orchestrator.cpython-314.pyc and b/oservi/engines/__pycache__/subagent_orchestrator.cpython-314.pyc differ
+diff --git a/oservi/engines/__pycache__/triage.cpython-312.pyc b/oservi/engines/__pycache__/triage.cpython-312.pyc
+deleted file mode 100644
+index 4ea4936..0000000
+Binary files a/oservi/engines/__pycache__/triage.cpython-312.pyc and /dev/null differ
+diff --git a/oservi/engines/__pycache__/triage.cpython-314.pyc b/oservi/engines/__pycache__/triage.cpython-314.pyc
+index 2529b64..b8d0136 100644
+Binary files a/oservi/engines/__pycache__/triage.cpython-314.pyc and b/oservi/engines/__pycache__/triage.cpython-314.pyc differ
+diff --git a/oservi/engines/agentic_loop.py b/oservi/engines/agentic_loop.py
+index bbe1672..fb7ac69 100644
+--- a/oservi/engines/agentic_loop.py
++++ b/oservi/engines/agentic_loop.py
+@@ -30,7 +30,8 @@ from __future__ import annotations
+ import asyncio
+ import inspect
+ import logging
+-from typing import Any, Callable, ClassVar
++from collections.abc import Callable
++from typing import Any, ClassVar
+ 
+ from oservi.engines._base import (
+     EngineSkeleton,
+@@ -52,7 +53,8 @@ class AgenticLoopEngine(EngineSkeleton):
+     - 任务完成 / 超限 → on_task_done 回调
+ 
+     业务 (注入填料):
+-    - llm_provider: ReAct 推理, 接收 (task, context, history) → 返回 {thought, action, tool_name, tool_args, final_answer}
++    - llm_provider: ReAct 推理, 接收 (task, context, history)
++      → 返回 {thought, action, tool_name, tool_args, final_answer}
+     - tools: oprim 工具列表, 各工具 callable 接收 **kwargs → 返回 Any
+     - knowledge_retrieval: oskill callable, 接收 (query) → 返回 context str
+ 
+@@ -164,7 +166,9 @@ class AgenticLoopEngine(EngineSkeleton):
+             turn_result = {"messages": messages}
+ 
+         # 2. call llm_caller
+-        processed_messages = turn_result.get("messages", messages) if isinstance(turn_result, dict) else messages
++        processed_messages = (
++            turn_result.get("messages", messages) if isinstance(turn_result, dict) else messages
++        )
+         available_tools = tools or list(self.tools.values())
+         try:
+             if inspect.iscoroutinefunction(self.llm_caller):
+@@ -219,7 +223,7 @@ class AgenticLoopEngine(EngineSkeleton):
+                         self.on_task_done(result)
+                     except Exception as e:
+                         logger.warning(f"on_task_done callback failed: {e}")
+-            except asyncio.TimeoutError:
++            except TimeoutError:
+                 continue
+             except Exception as e:
+                 self._last_error = f"{type(e).__name__}: {e}"
+@@ -260,5 +264,122 @@ class AgenticLoopEngine(EngineSkeleton):
+             },
+         }
+ 
++    # =======================================================================
++    # WAVE C — verified long-horizon loop (扩展 AgenticLoopEngine,不新增引擎)
++    # -----------------------------------------------------------------------
++    # 核心规则: executor result != trusted progress. 只有 verifier(result)
++    # == ACCEPTED 才能进入 verified state. REJECTED 不进 checkpoint,只存
++    # failure evidence,下一 round 从 last accepted checkpoint 恢复,输入为
++    # fresh-context (goal + verified state + remaining + evidence + next step)。
++    # 本机制只持内存运行态,不持 GoalRun authority / AgentSession DB / 项目持久化。
++    # =======================================================================
++
++    async def run_verified(
++        self,
++        goal: str,
++        executor: Callable[[dict[str, Any]], Any],
++        verifier: Callable[[dict[str, Any]], Any],
++        *,
++        max_rounds: int = 5,
++        is_complete: Callable[[dict[str, Any]], bool] | None = None,
++    ) -> dict[str, Any]:
++        """执行 verified long-horizon loop,返回 ledger 与最终 verified state。"""
++        if not goal:
++            raise ValueError("run_verified: goal must not be empty")
++        ledger: list[dict[str, Any]] = []
++        verified_state: dict[str, Any] = {}
++        failure_evidence: list[dict[str, Any]] = []
++        final_status = "COMPLETED"
++        rounds_executed = 0
++
++        try:
++            for round_no in range(1, max_rounds + 1):
++                rounds_executed = round_no
++                ledger.append({"round": round_no, "status": "RUNNING"})
++                fresh_context = {
++                    "original_goal": goal,
++                    "verified_state": dict(verified_state),
++                    "remaining_work": goal if not verified_state else "continue toward goal",
++                    "failure_evidence": list(failure_evidence),
++                    "bounded_next_step": f"round {round_no}/{max_rounds}",
++                }
++                try:
++                    raw = executor(fresh_context)
++                    result = await raw if inspect.iscoroutine(raw) else raw
++                except Exception as exc:
++                    result = {"error": f"{type(exc).__name__}: {exc}"}
++                if not isinstance(result, dict):
++                    result = {"output": result}
++                ledger[-1]["status"] = "VERIFYING"
++                try:
++                    vraw = verifier(result)
++                    verdict = await vraw if inspect.iscoroutine(vraw) else vraw
++                except Exception as exc:
++                    verdict = {"accepted": False, "reason": f"verifier error: {exc}"}
++                accepted = self._verdict_accepted(verdict)
++                if accepted:
++                    verified_state = self._merge_verified(verified_state, result)
++                    ledger[-1]["status"] = "ACCEPTED"
++                    ledger[-1]["checkpoint"] = dict(verified_state)
++                    if is_complete is None or is_complete(verified_state):
++                        break
++                else:
++                    evidence = {
++                        "round": round_no,
++                        "result": result,
++                        "reason": self._verdict_reason(verdict),
++                    }
++                    failure_evidence.append(evidence)
++                    ledger[-1]["status"] = "REJECTED"
++                    ledger[-1]["evidence"] = evidence
++                    # RECOVERING:从 last accepted checkpoint 恢复 (verified_state 本就未动)
++                    ledger.append(
++                        {
++                            "round": round_no,
++                            "status": "RECOVERING",
++                            "recovered_checkpoint": dict(verified_state),
++                        }
++                    )
++        except asyncio.CancelledError:
++            final_status = "CANCELLED"
++            ledger.append({"round": rounds_executed + 1, "status": "CANCELLED"})
++            raise
++        return {
++            "status": final_status,
++            "goal": goal,
++            "verified_state": verified_state,
++            "failure_evidence": failure_evidence,
++            "round_ledger": ledger,
++            "rounds_executed": rounds_executed,
++        }
++
++    @staticmethod
++    def _verdict_accepted(verdict: Any) -> bool:
++        if isinstance(verdict, bool):
++            return verdict
++        if isinstance(verdict, dict):
++            return bool(verdict.get("accepted", False))
++        if isinstance(verdict, str):
++            return verdict.strip().upper() == "ACCEPTED"
++        return False
++
++    @staticmethod
++    def _verdict_reason(verdict: Any) -> str:
++        if isinstance(verdict, dict):
++            return str(verdict.get("reason", "rejected"))
++        if isinstance(verdict, str):
++            return verdict
++        return "rejected"
++
++    @staticmethod
++    def _merge_verified(verified_state: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
++        merged = dict(verified_state)
++        progress = result.get("progress")
++        if isinstance(progress, dict):
++            merged.update(progress)
++        elif "output" in result:
++            merged.setdefault("outputs", []).append(result["output"])
++        return merged
++
+ 
+ register_skeleton("agentic_loop", AgenticLoopEngine)
+diff --git a/oservi/engines/bulk_export_worker.py b/oservi/engines/bulk_export_worker.py
+index 1cc45bc..c9dd69d 100644
+--- a/oservi/engines/bulk_export_worker.py
++++ b/oservi/engines/bulk_export_worker.py
+@@ -1,18 +1,21 @@
+ """Bulk Export Worker Engine Skeleton.
+ 
+ 机制 (固化):
+-- on_signal 触发: 收到信号 → 从 fetcher 流式拉记录 → formatter 格式化
+-  → uploader 分块上传
+-- async-generator 流式迭代 + 分块上传, 不一次性载入全部记录 (anti-OOM)
+-- 每条结果通过 on_step 回调可观测
++- 通过 obase.mq.EventBus 订阅 trigger["on_signal"] 指定的 topic,收到一次
++  信号即跑一次导出
++- fetcher 返回的行迭代器逐行消费,每行经 formatter 转成一行文本,增量写入
++  本地临时文件(不在内存里攒整份内容——"流式导出防 OOM"),取完后一次性
++  交给 uploader 上传,再清理临时文件
++- 单行格式化失败只计入 error_count,不中断整个流
+ 
+ 业务 (注入):
+-- fetcher: oprim callable, 流式产出源记录
+-- formatter: oskill callable, 把记录/块格式化为输出 bytes/str
+-- uploader: obase callable, 上传格式化输出 (e.g. obase.fs)
++- fetcher: oprim callable(接收 signal payload,返回/yield 行 dict)
++- formatter: oskill 纯函数(单行 dict → 一行文本,不做 IO)
++- uploader: obase callable(签名同 obase.fs.FileStorage.upload:
++  `upload(*, local_path, key) -> str`,把生成好的临时文件上传到目标存储)
+ 
+ 红线对照:
+-- 红线 2 (机制/业务分离): 抓取/格式化/上传业务全靠注入
++- 红线 2 (机制/业务分离): 数据源/格式/存储目的地全靠注入
+ - 红线 3 (注入契约): fetcher=oprim(1) / formatter=oskill(1) / uploader=obase(1)
+ - 红线 4 (无状态骨架): 状态只在实例
+ - 红线 5 (不反向依赖): 不 import 3O 四包
+@@ -21,59 +24,58 @@
+ from __future__ import annotations
+ 
+ import asyncio
+-import inspect
+ import logging
+-from typing import Any, AsyncIterator, Callable, ClassVar
++import tempfile
++from collections.abc import AsyncIterator
++from pathlib import Path
++from typing import Any, Callable, ClassVar
+ 
+-from oservi.engines._base import (
+-    EngineSkeleton,
+-    Injection,
+-    register_skeleton,
+-)
++from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+-class BulkExportWorkerEngine(EngineSkeleton):
+-    """批量导出 worker 引擎骨架 (on_signal 流式 format + upload, anti-OOM).
++async def _as_async_iterable(rows: Any) -> AsyncIterator[Any]:
++    """Normalize a sync or async iterable/generator into an async iterator."""
++    if hasattr(rows, "__aiter__"):
++        async for row in rows:
++            yield row
++    else:
++        for row in rows:
++            yield row
++
+ 
+-    机制:
+-    - run() 非阻塞: on_signal 引擎只置位 _running 表示就绪.
+-    - export() 是事件驱动入口: 用 async generator 从 fetcher 流式拉
+-      记录, 逐条经 formatter 格式化为 bytes/str, 再交 uploader 分块
+-      上传. 记录惰性 yield, 任意时刻只有当前块在内存 (anti-OOM).
+-    - uploader 约定: 写入/追加到稳定目标并返回该目标位置 (location);
+-      引擎取最后一次非 None 返回作为结果 location.
++class BulkExportWorkerEngine(EngineSkeleton):
++    """批量导出引擎骨架:流式取行 + 格式化 + 上传,防 OOM。
+ 
+     Example::
+ 
+         engine = BulkExportWorkerEngine(
+-            fetcher=stream_products,
+-            formatter=to_csv_line,
+-            uploader=obase_fs_append,
+-            trigger={"on_signal": True},
+-            config={},
+-            name="product-export",
++            fetcher=stream_orders,
++            formatter=order_to_csv_line,
++            uploader=s3_storage.upload,
++            trigger={"on_signal": "bulk_export.requested"},
++            config={"redis_url": "redis://localhost:6379/0"},
++            name="orders-csv-exporter",
+         )
+-        engine.run()  # 非阻塞
+-        result = asyncio.run(engine.export())
++        engine.run()  # blocking
+     """
+ 
+     injection_points: ClassVar[dict] = {
+         "fetcher": Injection(
+             kind="oprim",
+             cardinality="1",
+-            description="Streams source records",
++            description="Streams row dicts (sync or async iterable) given the signal payload",
+         ),
+         "formatter": Injection(
+             kind="oskill",
+             cardinality="1",
+-            description="Formats a record/chunk to output bytes/str",
++            description="Pure function: row dict -> one line of export text",
+         ),
+         "uploader": Injection(
+             kind="obase",
+             cardinality="1",
+-            description="Uploads the formatted output, e.g. obase.fs",
++            description="upload(*, local_path, key) -> str, e.g. obase.fs.FileStorage.upload",
+         ),
+     }
+     trigger_mode: str = "on_signal"
+@@ -81,114 +83,102 @@ class BulkExportWorkerEngine(EngineSkeleton):
+     def __init__(
+         self,
+         *,
+-        fetcher: Callable[..., Any],
+-        formatter: Callable[..., Any],
+-        uploader: Callable[..., Any],
++        fetcher: Callable[..., Any] | list[Callable[..., Any]],
++        formatter: Callable[..., Any] | list[Callable[..., Any]],
++        uploader: Callable[..., Any] | list[Callable[..., Any]],
+         trigger: dict[str, Any],
+         config: dict[str, Any],
+         name: str,
+     ) -> None:
+         self.name = name
+-        self.fetcher = fetcher
+-        self.formatter = formatter
+-        self.uploader = uploader
++        self.fetcher = fetcher[0] if isinstance(fetcher, list) else fetcher
++        self.formatter = formatter[0] if isinstance(formatter, list) else formatter
++        self.uploader = uploader[0] if isinstance(uploader, list) else uploader
++        if "on_signal" not in trigger:
++            raise ValueError("BulkExportWorkerEngine trigger must contain 'on_signal'")
++        self.topic = trigger["on_signal"]
+         self.trigger = trigger
+         self.config = config
+ 
+-        # 运行期状态
+         self._running = False
+-        self._stop_event = asyncio.Event()
++        self._jobs_processed = 0
++        self._last_row_count = 0
++        self._last_error_count = 0
++        self._last_upload_key: str | None = None
+         self._last_error: str | None = None
+ 
+-    async def _invoke(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
+-        """Sync/async-agnostic callable invocation (keyword args)."""
+-        if inspect.iscoroutinefunction(fn):
+-            return await fn(**kwargs)
+-        raw = fn(**kwargs)
+-        if asyncio.iscoroutine(raw):
+-            return await raw
+-        return raw
+-
+-    async def _stream_records(self) -> AsyncIterator[Any]:
+-        """Lazily stream records from fetcher (anti-OOM).
+-
+-        Supports sync/async generator functions and sync/async callables
+-        returning a sync or async iterable.
+-        """
+-        fetcher = self.fetcher
+-
+-        if inspect.isasyncgenfunction(fetcher):
+-            async for record in fetcher():
+-                yield record
+-            return
+-
+-        if inspect.isgeneratorfunction(fetcher):
+-            for record in fetcher():
+-                yield record
+-            return
+-
+-        if inspect.iscoroutinefunction(fetcher):
+-            produced = await fetcher()
+-        else:
+-            produced = fetcher()
+-            if asyncio.iscoroutine(produced):
+-                produced = await produced
+-
+-        if hasattr(produced, "__aiter__"):
+-            async for record in produced:
+-                yield record
+-        else:
+-            for record in produced:
+-                yield record
+-
+     def run(self) -> None:
+-        """on_signal 引擎: 非阻塞, 仅置位 _running 表示就绪."""
++        """启动持续运行循环 (阻塞)."""
++        if self._running:
++            raise RuntimeError(f"BulkExportWorkerEngine {self.name} already running")
+         self._running = True
+-        logger.info(f"BulkExportWorkerEngine '{self.name}' ready for on_signal dispatch")
++        logger.info(f"BulkExportWorkerEngine '{self.name}' starting on topic {self.topic!r}")
++        try:
++            asyncio.run(self._run_loop())
++        finally:
++            self._running = False
++            logger.info(f"BulkExportWorkerEngine '{self.name}' stopped")
+ 
+     def stop(self) -> None:
+-        """优雅停止."""
++        """优雅停止主循环."""
+         self._running = False
+-        self._stop_event.set()
+ 
+-    async def export(
+-        self,
+-        *,
+-        on_step: Callable[[dict[str, Any]], None] | None = None,
+-    ) -> dict[str, Any]:
+-        """Stream records, format via formatter, upload via uploader.
+-
+-        Args:
+-            on_step: Optional callback called per record with
+-                     {"index": int, "exported": bool}.
+-
+-        Returns:
+-            {"status": "completed", "exported": int, "location": Any}
+-        """
+-        exported = 0
+-        location: Any = None
+-
+-        index = 0
+-        async for record in self._stream_records():
+-            formatted = await self._invoke(self.formatter, record=record)
+-            upload_result = await self._invoke(self.uploader, data=formatted)
+-            if upload_result is not None:
+-                location = upload_result
+-            exported += 1
+-
+-            if on_step:
+-                try:
+-                    on_step({"index": index, "exported": True})
+-                except Exception as cb_err:
+-                    logger.warning(f"on_step callback failed at record {index}: {cb_err}")
++    async def _run_loop(self) -> None:
++        from obase.mq import EventBus
+ 
+-            index += 1
+-
+-        return {
+-            "status": "completed",
+-            "exported": exported,
+-            "location": location,
+-        }
++        bus = EventBus(redis_url=self.config.get("redis_url", "redis://localhost:6379/0"))
++        poll_timeout = self.config.get("poll_timeout_seconds", 5.0)
++        try:
++            while self._running:
++                try:
++                    await bus.subscribe(self.topic, self._on_signal, timeout=poll_timeout)
++                except Exception as e:
++                    self._last_error = f"{type(e).__name__}: {e}"
++                    logger.warning(f"BulkExportWorkerEngine '{self.name}' subscribe error: {e}")
++                    await asyncio.sleep(1.0)
++        finally:
++            await bus.close()
++
++    async def _on_signal(self, payload: dict[str, Any]) -> None:
++        row_count = 0
++        error_count = 0
++        upload_key = payload.get("upload_key", f"{self.name}-export.txt")
++
++        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".tmp", delete=False, encoding="utf-8")
++        tmp_path = Path(tmp.name)
++        try:
++            rows = self.fetcher(signal=payload)
++            if asyncio.iscoroutine(rows):
++                rows = await rows
++
++            async for row in _as_async_iterable(rows):
++                row_count += 1
++                try:
++                    line = self.formatter(row=row)
++                except Exception as e:
++                    error_count += 1
++                    self._last_error = f"row {row_count}: {e}"
++                    logger.warning(
++                        f"BulkExportWorkerEngine '{self.name}' row {row_count} failed: {e}"
++                    )
++                    continue
++                tmp.write(line if line.endswith("\n") else line + "\n")
++            tmp.close()
++
++            result = self.uploader(local_path=tmp_path, key=upload_key)
++            if asyncio.iscoroutine(result):
++                await result
++        finally:
++            tmp_path.unlink(missing_ok=True)
++
++        self._jobs_processed += 1
++        self._last_row_count = row_count
++        self._last_error_count = error_count
++        self._last_upload_key = upload_key
++        logger.info(
++            f"BulkExportWorkerEngine '{self.name}' finished job: "
++            f"{row_count} rows, {error_count} errors, uploaded to {upload_key!r}"
++        )
+ 
+     def health(self) -> dict[str, Any]:
+         return {
+@@ -196,6 +186,11 @@ class BulkExportWorkerEngine(EngineSkeleton):
+             "details": {
+                 "name": self.name,
+                 "running": self._running,
++                "topic": self.topic,
++                "jobs_processed": self._jobs_processed,
++                "last_row_count": self._last_row_count,
++                "last_error_count": self._last_error_count,
++                "last_upload_key": self._last_upload_key,
+                 "last_error": self._last_error,
+             },
+         }
+diff --git a/oservi/engines/bulk_import_worker.py b/oservi/engines/bulk_import_worker.py
+index 8d331ac..8e8cc61 100644
+--- a/oservi/engines/bulk_import_worker.py
++++ b/oservi/engines/bulk_import_worker.py
+@@ -1,23 +1,20 @@
+ """Bulk Import Worker Engine Skeleton.
+ 
+ 机制 (固化):
+-- on_signal 触发: 收到信号 → 从 fetcher 流式拉记录 → processor 逐条处理
+-- async-generator 流式迭代, 不一次性载入全部记录 (anti-OOM)
+-- 单条处理异常被捕获记录, 不中断整体导入
+-- 每条结果通过 on_step 回调可观测
++- 通过 obase.mq.EventBus 订阅 trigger["on_signal"] 指定的 topic,收到一次
++  信号即跑一次导入
++- fetcher 返回的行迭代器(同步或异步均可)逐行消费,每次只处理一行,不把
++  整个文件读进内存("流式处理大 CSV/Excel,防 OOM")
++- 单行处理失败只计入 error_count,不中断整个流(避免一行脏数据拖垮整批)
+ 
+ 业务 (注入):
+-- fetcher: oprim callable, yield/return 输入记录 (e.g. CSV rows)
+-- processor: omodul callable, 逐条 (或逐块) 应用
+-
+-fetcher 兼容形态 (全部支持):
+-- sync generator function (yield ...)
+-- async generator function (async yield ...)
+-- sync callable 返回 iterable (list / generator)
+-- async callable 返回 iterable
++- fetcher: oprim callable(接收 signal payload,返回/yield 行 dict 的
++  同步或异步可迭代对象——具体怎么读 CSV/Excel、怎么连数据源,全是 fetcher
++  自己的事,骨架完全不关心文件格式)
++- processor: omodul callable(逐行处理,接收单行 dict)
+ 
+ 红线对照:
+-- 红线 2 (机制/业务分离): 抓取/处理业务全靠注入
++- 红线 2 (机制/业务分离): 文件格式/数据源/单行业务处理全靠注入
+ - 红线 3 (注入契约): fetcher=oprim(1) / processor=omodul(1)
+ - 红线 4 (无状态骨架): 状态只在实例
+ - 红线 5 (不反向依赖): 不 import 3O 四包
+@@ -26,57 +23,52 @@ fetcher 兼容形态 (全部支持):
+ from __future__ import annotations
+ 
+ import asyncio
+-import inspect
+ import logging
+-from typing import Any, AsyncIterator, Callable, ClassVar
++from collections.abc import AsyncIterator
++from typing import Any, Callable, ClassVar
+ 
+-from oservi.engines._base import (
+-    EngineSkeleton,
+-    Injection,
+-    register_skeleton,
+-)
++from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+-class BulkImportWorkerEngine(EngineSkeleton):
+-    """批量导入 worker 引擎骨架 (on_signal 流式处理, anti-OOM).
++async def _as_async_iterable(rows: Any) -> AsyncIterator[Any]:
++    """Normalize a sync or async iterable/generator into an async iterator,
++    so the engine's consume loop stays uniform regardless of what shape the
++    injected fetcher returns."""
++    if hasattr(rows, "__aiter__"):
++        async for row in rows:
++            yield row
++    else:
++        for row in rows:
++            yield row
+ 
+-    机制:
+-    - run() 非阻塞: on_signal 引擎只置位 _running 表示就绪.
+-    - process() 是事件驱动入口: 用 async generator 从 fetcher 流式拉
+-      记录, 逐条交给 processor. 记录是惰性 yield 的, 任意时刻只有
+-      当前记录在内存 (anti-OOM; 分块可由 fetcher yield 批次实现).
+-    - 单条 processor 抛异常 → 记入 errors, failed += 1, 继续下一条.
+ 
+-    Example::
++class BulkImportWorkerEngine(EngineSkeleton):
++    """批量导入引擎骨架:流式取行 + 逐行处理,防 OOM。
+ 
+-        def read_csv_rows():
+-            with open("rows.csv") as fh:
+-                for line in fh:
+-                    yield {"raw": line}
++    Example::
+ 
+         engine = BulkImportWorkerEngine(
+-            fetcher=read_csv_rows,
+-            processor=upsert_product,
+-            trigger={"on_signal": True},
+-            config={},
+-            name="product-import",
++            fetcher=stream_csv_rows,
++            processor=create_product_from_row,
++            trigger={"on_signal": "bulk_import.requested"},
++            config={"redis_url": "redis://localhost:6379/0"},
++            name="product-csv-importer",
+         )
+-        engine.run()  # 非阻塞
+-        result = asyncio.run(engine.process())
++        engine.run()  # blocking
+     """
+ 
+     injection_points: ClassVar[dict] = {
+         "fetcher": Injection(
+             kind="oprim",
+             cardinality="1",
+-            description="Yields/returns input records, e.g. CSV rows",
++            description="Streams row dicts (sync or async iterable) given the signal payload",
+         ),
+         "processor": Injection(
+             kind="omodul",
+             cardinality="1",
+-            description="omodul applied per record/batch",
++            description="Processes a single row dict",
+         ),
+     }
+     trigger_mode: str = "on_signal"
+@@ -84,127 +76,85 @@ class BulkImportWorkerEngine(EngineSkeleton):
+     def __init__(
+         self,
+         *,
+-        fetcher: Callable[..., Any],
+-        processor: Callable[..., Any],
++        fetcher: Callable[..., Any] | list[Callable[..., Any]],
++        processor: Callable[..., Any] | list[Callable[..., Any]],
+         trigger: dict[str, Any],
+         config: dict[str, Any],
+         name: str,
+     ) -> None:
+         self.name = name
+-        self.fetcher = fetcher
+-        self.processor = processor
++        self.fetcher = fetcher[0] if isinstance(fetcher, list) else fetcher
++        self.processor = processor[0] if isinstance(processor, list) else processor
++        if "on_signal" not in trigger:
++            raise ValueError("BulkImportWorkerEngine trigger must contain 'on_signal'")
++        self.topic = trigger["on_signal"]
+         self.trigger = trigger
+         self.config = config
+ 
+-        # 运行期状态
+         self._running = False
+-        self._stop_event = asyncio.Event()
++        self._jobs_processed = 0
++        self._last_row_count = 0
++        self._last_error_count = 0
+         self._last_error: str | None = None
+ 
+-    async def _invoke(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
+-        """Sync/async-agnostic callable invocation (keyword args)."""
+-        if inspect.iscoroutinefunction(fn):
+-            return await fn(**kwargs)
+-        raw = fn(**kwargs)
+-        if asyncio.iscoroutine(raw):
+-            return await raw
+-        return raw
+-
+-    async def _stream_records(self) -> AsyncIterator[Any]:
+-        """Lazily stream records from fetcher (anti-OOM).
+-
+-        Supports sync/async generator functions and sync/async callables
+-        returning a sync or async iterable.
+-        """
+-        fetcher = self.fetcher
+-
+-        # async generator function → async for directly
+-        if inspect.isasyncgenfunction(fetcher):
+-            async for record in fetcher():
+-                yield record
+-            return
+-
+-        # sync generator function → calling produces a lazy generator
+-        if inspect.isgeneratorfunction(fetcher):
+-            for record in fetcher():
+-                yield record
+-            return
+-
+-        # plain sync/async callable returning an iterable
+-        if inspect.iscoroutinefunction(fetcher):
+-            produced = await fetcher()
+-        else:
+-            produced = fetcher()
+-            if asyncio.iscoroutine(produced):
+-                produced = await produced
+-
+-        if hasattr(produced, "__aiter__"):
+-            async for record in produced:
+-                yield record
+-        else:
+-            for record in produced:
+-                yield record
+-
+     def run(self) -> None:
+-        """on_signal 引擎: 非阻塞, 仅置位 _running 表示就绪."""
++        """启动持续运行循环 (阻塞)."""
++        if self._running:
++            raise RuntimeError(f"BulkImportWorkerEngine {self.name} already running")
+         self._running = True
+-        logger.info(f"BulkImportWorkerEngine '{self.name}' ready for on_signal dispatch")
++        logger.info(f"BulkImportWorkerEngine '{self.name}' starting on topic {self.topic!r}")
++        try:
++            asyncio.run(self._run_loop())
++        finally:
++            self._running = False
++            logger.info(f"BulkImportWorkerEngine '{self.name}' stopped")
+ 
+     def stop(self) -> None:
+-        """优雅停止."""
++        """优雅停止主循环."""
+         self._running = False
+-        self._stop_event.set()
+ 
+-    async def process(
+-        self,
+-        *,
+-        on_step: Callable[[dict[str, Any]], None] | None = None,
+-    ) -> dict[str, Any]:
+-        """Stream records from fetcher and apply processor per record.
+-
+-        Args:
+-            on_step: Optional callback called per record with
+-                     {"index": int, "ok": bool}.
+-
+-        Returns:
+-            {"status": "completed", "processed": int, "failed": int,
+-             "errors": [...]}
+-        """
+-        processed = 0
+-        failed = 0
+-        errors: list[dict[str, Any]] = []
+-
+-        index = 0
+-        async for record in self._stream_records():
++    async def _run_loop(self) -> None:
++        from obase.mq import EventBus
++
++        bus = EventBus(redis_url=self.config.get("redis_url", "redis://localhost:6379/0"))
++        poll_timeout = self.config.get("poll_timeout_seconds", 5.0)
++        try:
++            while self._running:
++                try:
++                    await bus.subscribe(self.topic, self._on_signal, timeout=poll_timeout)
++                except Exception as e:
++                    self._last_error = f"{type(e).__name__}: {e}"
++                    logger.warning(f"BulkImportWorkerEngine '{self.name}' subscribe error: {e}")
++                    await asyncio.sleep(1.0)
++        finally:
++            await bus.close()
++
++    async def _on_signal(self, payload: dict[str, Any]) -> None:
++        row_count = 0
++        error_count = 0
++
++        rows = self.fetcher(signal=payload)
++        if asyncio.iscoroutine(rows):
++            rows = await rows
++
++        async for row in _as_async_iterable(rows):
++            row_count += 1
+             try:
+-                await self._invoke(self.processor, record=record)
+-                processed += 1
+-                ok = True
++                result = self.processor(row=row)
++                if asyncio.iscoroutine(result):
++                    await result
+             except Exception as e:
+-                failed += 1
+-                ok = False
+-                self._last_error = (
+-                    f"record {index}: {type(e).__name__}: {e}"
+-                )
+-                logger.warning(
+-                    f"BulkImportWorkerEngine '{self.name}' record {index} failed: {e}"
+-                )
+-                errors.append({"index": index, "error": str(e)})
+-
+-            if on_step:
+-                try:
+-                    on_step({"index": index, "ok": ok})
+-                except Exception as cb_err:
+-                    logger.warning(f"on_step callback failed at record {index}: {cb_err}")
+-
+-            index += 1
+-
+-        return {
+-            "status": "completed",
+-            "processed": processed,
+-            "failed": failed,
+-            "errors": errors,
+-        }
++                error_count += 1
++                self._last_error = f"row {row_count}: {e}"
++                logger.warning(f"BulkImportWorkerEngine '{self.name}' row {row_count} failed: {e}")
++
++        self._jobs_processed += 1
++        self._last_row_count = row_count
++        self._last_error_count = error_count
++        logger.info(
++            f"BulkImportWorkerEngine '{self.name}' finished job: "
++            f"{row_count} rows, {error_count} errors"
++        )
+ 
+     def health(self) -> dict[str, Any]:
+         return {
+@@ -212,6 +162,10 @@ class BulkImportWorkerEngine(EngineSkeleton):
+             "details": {
+                 "name": self.name,
+                 "running": self._running,
++                "topic": self.topic,
++                "jobs_processed": self._jobs_processed,
++                "last_row_count": self._last_row_count,
++                "last_error_count": self._last_error_count,
+                 "last_error": self._last_error,
+             },
+         }
+diff --git a/oservi/engines/cron_scheduler_engine.py b/oservi/engines/cron_scheduler_engine.py
+index 05a76f7..cbdc842 100644
+--- a/oservi/engines/cron_scheduler_engine.py
++++ b/oservi/engines/cron_scheduler_engine.py
+@@ -1,21 +1,20 @@
+ """Cron Scheduler Engine Skeleton.
+ 
+ 机制 (固化):
+-- 持续运行循环 (on_cron 触发语义)
+-- 每个 tick 顺序执行所有 tasks
+-- 按 trigger/config 间隔休眠, stop() 置 stop_event 可提前唤醒退出
+-- tick_count 计数 + health 上报
++- 按 trigger["on_cron"] 的标准 5 段 cron 表达式(croniter 解析)计算下次
++  触发时间,睡到点后依次串行调用所有注入的 tasks
++- 单个 task 失败只记录,不影响其余 task 执行、不影响下一次调度
+ 
+ 业务 (注入):
+-- tasks: omodul callable 列表 (每 tick 顺序执行)
++- tasks: omodul callable 列表(如"扫描超时订单"/"清理过期促销"/"弃购清理"
++  等,各自独立,互不依赖顺序)
+ 
+-与 on_interval 的关系:
+-- cron 与 interval 循环结构同构 (loop/stop/health), 区别在触发语义:
+-  on_cron 强调"按计划时刻表触发", on_interval 强调"固定间隔". 本骨架
+-  沿用 alerter 的 interval-loop 结构, 间隔秒数从 config/trigger 解析.
++典型用途(SPEC 原话):定时扫描超时订单、过期促销、弃购清理——这些都是
++"周期性批量检查 + 逐条处理"的 omodul,骨架只管"到点触发、逐个跑、记录
++结果",具体扫描逻辑全在注入的 omodul 里。
+ 
+ 红线对照:
+-- 红线 2 (机制/业务分离): 任务业务全靠注入
++- 红线 2 (机制/业务分离): 具体定时任务业务全靠注入
+ - 红线 3 (注入契约): tasks=omodul(1..n)
+ - 红线 4 (无状态骨架): 状态只在实例
+ - 红线 5 (不反向依赖): 不 import 3O 四包
+@@ -24,42 +23,29 @@
+ from __future__ import annotations
+ 
+ import asyncio
+-import inspect
+ import logging
++import time
++from datetime import UTC, datetime
+ from typing import Any, Callable, ClassVar
+ 
+-from oservi.engines._base import (
+-    EngineSkeleton,
+-    Injection,
+-    register_skeleton,
+-)
++from croniter import croniter
++
++from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+ class CronSchedulerEngine(EngineSkeleton):
+-    """Cron 调度引擎骨架 (blocking loop + run_once for test).
+-
+-    机制:
+-    - run() 阻塞主循环: 每 tick 顺序执行所有 tasks, 然后按解析出的
+-      间隔秒数休眠, 直到 stop() 置 stop_event (休眠用 wait_for 监听
+-      stop_event, 可被提前唤醒退出).
+-    - run_once() 异步执行单个 tick (跑完所有 tasks 一次并返回结果),
+-      供测试使用, 无需跑无限循环.
+-    - 每 tick 内 tasks 顺序执行 (deterministic); 单个 task 出错被捕获
+-      记入该 tick 结果, 不中断其余 task.
++    """Cron 定时调度引擎骨架:按 cron 表达式触发,依次跑所有注入任务。
+ 
+     Example::
+ 
+         engine = CronSchedulerEngine(
+-            tasks=[rebuild_index, prune_cache],
++            tasks=[scan_stale_orders, expire_stale_discounts],
+             trigger={"on_cron": "0 3 * * *"},
+-            config={"interval_seconds": 3600},
+-            name="nightly-jobs",
++            config={},
++            name="nightly-cleanup",
+         )
+-        # 测试单 tick:
+-        results = asyncio.run(engine.run_once())
+-        # 生产阻塞启动:
+         engine.run()  # blocking
+     """
+ 
+@@ -67,7 +53,7 @@ class CronSchedulerEngine(EngineSkeleton):
+         "tasks": Injection(
+             kind="omodul",
+             cardinality="1..n",
+-            description="omoduls run each tick",
++            description="Callables run sequentially on every cron fire",
+         ),
+     }
+     trigger_mode: str = "on_cron"
+@@ -81,47 +67,27 @@ class CronSchedulerEngine(EngineSkeleton):
+         name: str,
+     ) -> None:
+         self.name = name
+-        self.task_list: list[Callable[..., Any]] = tasks if isinstance(tasks, list) else [tasks]
++        self.task_list = tasks if isinstance(tasks, list) else [tasks]
++        if "on_cron" not in trigger:
++            raise ValueError("CronSchedulerEngine trigger must contain 'on_cron'")
++        self.cron_expr = trigger["on_cron"]
++        # Validate the expression eagerly so bad manifests fail at construction,
++        # not on the first scheduled fire.
++        croniter(self.cron_expr, datetime.now(UTC))
+         self.trigger = trigger
+         self.config = config
+ 
+-        # 运行期状态
+         self._running = False
+-        self._stop_event = asyncio.Event()
+-        self._tick_count = 0
++        self._fire_count = 0
+         self._last_error: str | None = None
+-
+-    async def _invoke(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
+-        """Sync/async-agnostic callable invocation (keyword args)."""
+-        if inspect.iscoroutinefunction(fn):
+-            return await fn(**kwargs)
+-        raw = fn(**kwargs)
+-        if asyncio.iscoroutine(raw):
+-            return await raw
+-        return raw
+-
+-    def _resolve_interval(self) -> float:
+-        """Resolve the tick interval in seconds from config/trigger."""
+-        if "interval_seconds" in self.config:
+-            return float(self.config["interval_seconds"])
+-        cron = self.trigger.get("on_cron")
+-        if isinstance(cron, (int, float)):
+-            return float(cron)
+-        return float(self.trigger.get("on_interval", 60))
+-
+-    # ===== 主循环 (机制) =====
++        self._last_fire_at: str | None = None
+ 
+     def run(self) -> None:
+-        """启动持续运行循环 (阻塞).
+-
+-        调用方在 async 上下文时应用 asyncio.create_task / threading.Thread 包装.
+-        """
++        """启动持续运行循环 (阻塞)."""
+         if self._running:
+             raise RuntimeError(f"CronSchedulerEngine {self.name} already running")
+-
+         self._running = True
+-        self._stop_event.clear()
+-        logger.info(f"CronSchedulerEngine '{self.name}' starting")
++        logger.info(f"CronSchedulerEngine '{self.name}' starting on cron {self.cron_expr!r}")
+         try:
+             asyncio.run(self._run_loop())
+         finally:
+@@ -129,45 +95,38 @@ class CronSchedulerEngine(EngineSkeleton):
+             logger.info(f"CronSchedulerEngine '{self.name}' stopped")
+ 
+     def stop(self) -> None:
+-        """优雅停止主循环 (置 stop_event, 唤醒休眠)."""
++        """优雅停止主循环."""
+         self._running = False
+-        self._stop_event.set()
+ 
+     async def _run_loop(self) -> None:
+-        """主循环: 每 tick 跑所有 tasks, 然后休眠 interval 秒."""
+-        interval = self._resolve_interval()
+-
+-        while self._running and not self._stop_event.is_set():
++        while self._running:
++            now = datetime.now(UTC)
++            itr = croniter(self.cron_expr, now)
++            next_fire = itr.get_next(datetime)
++            sleep_seconds = max(0.0, (next_fire - now).total_seconds())
++
++            # Sleep in short slices so stop() takes effect promptly instead of
++            # blocking for up to a full cron period.
++            deadline = time.monotonic() + sleep_seconds
++            while self._running and time.monotonic() < deadline:
++                await asyncio.sleep(min(1.0, deadline - time.monotonic()))
++
++            if not self._running:
++                break
++
++            await self._fire_once()
++
++    async def _fire_once(self) -> None:
++        self._last_fire_at = datetime.now(UTC).isoformat()
++        for task in self.task_list:
+             try:
+-                await self.run_once()
++                result = task()
++                if asyncio.iscoroutine(result):
++                    await result
+             except Exception as e:
+-                self._last_error = f"{type(e).__name__}: {e}"
+-                logger.exception(f"CronSchedulerEngine '{self.name}' tick failed")
+-
+-            # 休眠 interval 秒, 但监听 stop_event 以便提前退出
+-            try:
+-                await asyncio.wait_for(self._stop_event.wait(), timeout=interval)
+-                break  # stop_event 被置 → 退出
+-            except asyncio.TimeoutError:
+-                pass  # 正常到点, 进入下一 tick
+-
+-    async def run_once(self) -> list[Any]:
+-        """执行单个 tick: 顺序跑所有 tasks 一次, 返回结果列表 (供测试)."""
+-        results: list[Any] = []
+-        for i, task in enumerate(self.task_list):
+-            try:
+-                result = await self._invoke(task, tick_no=self._tick_count, task_no=i)
+-            except Exception as e:
+-                self._last_error = (
+-                    f"task {i} {getattr(task, '__name__', task)}: {type(e).__name__}: {e}"
+-                )
+-                logger.warning(f"CronSchedulerEngine '{self.name}' task {i} failed: {e}")
+-                result = {"error": str(e), "task_no": i}
+-            results.append(result)
+-        self._tick_count += 1
+-        return results
+-
+-    # ===== 健康检查 =====
++                self._last_error = f"{getattr(task, '__name__', task)}: {e}"
++                logger.warning(f"CronSchedulerEngine '{self.name}' task failed: {e}")
++        self._fire_count += 1
+ 
+     def health(self) -> dict[str, Any]:
+         return {
+@@ -175,8 +134,10 @@ class CronSchedulerEngine(EngineSkeleton):
+             "details": {
+                 "name": self.name,
+                 "running": self._running,
+-                "tick_count": self._tick_count,
++                "cron_expr": self.cron_expr,
+                 "tasks_count": len(self.task_list),
++                "fire_count": self._fire_count,
++                "last_fire_at": self._last_fire_at,
+                 "last_error": self._last_error,
+             },
+         }
+diff --git a/oservi/engines/event_webhook_dispatcher.py b/oservi/engines/event_webhook_dispatcher.py
+index 87d6a81..70f5c74 100644
+--- a/oservi/engines/event_webhook_dispatcher.py
++++ b/oservi/engines/event_webhook_dispatcher.py
+@@ -1,65 +1,57 @@
+ """Event Webhook Dispatcher Engine Skeleton.
+ 
+ 机制 (固化):
+-- on_signal 触发: 收到事件 → 并发 fan-out 到所有 subscribers
+-- asyncio.gather(..., return_exceptions=True) 并发拉起 (SPEC: 并发)
+-- 单个 subscriber 异常被捕获记录, 不向其余 subscriber 传播
+-- 每个 subscriber 结果通过 on_step 回调可观测
++- 持续运行,通过 obase.mq.EventBus 订阅 trigger["on_signal"] 指定的 topic
++- 每收到一条事件,`asyncio.gather` 并发调用所有注入的 subscribers
++- 单个 subscriber 失败不影响其余 subscriber(gather 用 return_exceptions=True)
+ 
+ 业务 (注入):
+-- subscribers: omodul callable 列表 (并发 fan-out 目标)
++- subscribers: omodul callable 列表(收到事件 payload 后各自执行,如发通知、
++  同步 ERP 等)
++
++这是 obase.EventBus 的第一个真实消费方——EventBus 只提供
++publish/subscribe 原语,"收到事件后并发拉起 N 个订阅方,单个失败不拖累其余"
++这个编排机制属于 oservi 而不是 obase(obase 无业务/无状态,这里是"有状态
++持续运行"的机制)。
+ 
+ 红线对照:
+-- 红线 2 (机制/业务分离): 订阅者业务全靠注入
++- 红线 2 (机制/业务分离): 具体订阅方业务全靠注入,骨架不关心事件内容
+ - 红线 3 (注入契约): subscribers=omodul(1..n)
+ - 红线 4 (无状态骨架): 状态只在实例
+-- 红线 5 (不反向依赖): 不 import 3O 四包
++- 红线 5 (不反向依赖): 不 import 3O 四包(仅 import obase,允许——见
++  GOVERNANCE.md 依赖方向 oservi → omodul → oskill → oprim → obase)
+ """
+ 
+ from __future__ import annotations
+ 
+ import asyncio
+-import inspect
+ import logging
+ from typing import Any, Callable, ClassVar
+ 
+-from oservi.engines._base import (
+-    EngineSkeleton,
+-    Injection,
+-    register_skeleton,
+-)
++from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+ class EventWebhookDispatcherEngine(EngineSkeleton):
+-    """事件 webhook 分发引擎骨架 (on_signal 并发 fan-out).
+-
+-    机制:
+-    - run() 非阻塞: on_signal 引擎只置位 _running 表示就绪, 不占循环.
+-    - dispatch(event, payload) 是事件驱动入口: 用 asyncio.gather 并发
+-      拉起所有 subscribers (SPEC: "asyncio.gather 并发拉起").
+-    - 每个 subscriber 以 keyword args 调用: sub(event=event, payload=payload).
+-    - 单个 subscriber 抛异常 → 被 gather(return_exceptions=True) 捕获,
+-      记入 errors, 不传播, 不影响其余 subscriber.
++    """事件 webhook 派发引擎骨架:监听信号,并发拉起所有订阅方。
+ 
+     Example::
+ 
+         engine = EventWebhookDispatcherEngine(
+-            subscribers=[notify_slack, notify_telegram, audit_log],
+-            trigger={"on_signal": True},
+-            config={},
+-            name="order-events",
++            subscribers=[send_order_confirmation_email, sync_order_to_erp],
++            trigger={"on_signal": "order.placed"},
++            config={"redis_url": "redis://localhost:6379/0"},
++            name="order-placed-dispatcher",
+         )
+-        engine.run()  # 非阻塞, 置位就绪
+-        result = asyncio.run(engine.dispatch("order.created", {"order_id": 1}))
++        engine.run()  # blocking
+     """
+ 
+     injection_points: ClassVar[dict] = {
+         "subscribers": Injection(
+             kind="omodul",
+             cardinality="1..n",
+-            description="omoduls fanned out concurrently on a signal",
++            description="Callables invoked concurrently for each received event payload",
+         ),
+     }
+     trigger_mode: str = "on_signal"
+@@ -73,94 +65,72 @@ class EventWebhookDispatcherEngine(EngineSkeleton):
+         name: str,
+     ) -> None:
+         self.name = name
+-        self.subscriber_list: list[Callable[..., Any]] = (
+-            subscribers if isinstance(subscribers, list) else [subscribers]
+-        )
++        self.subscriber_list = subscribers if isinstance(subscribers, list) else [subscribers]
++        if "on_signal" not in trigger:
++            raise ValueError("EventWebhookDispatcherEngine trigger must contain 'on_signal'")
++        self.topic = trigger["on_signal"]
+         self.trigger = trigger
+         self.config = config
+ 
+-        # 运行期状态
+         self._running = False
+-        self._stop_event = asyncio.Event()
+-        self._last_error: str | None = None
+         self._dispatch_count = 0
+-
+-    async def _invoke(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
+-        """Sync/async-agnostic callable invocation (keyword args)."""
+-        if inspect.iscoroutinefunction(fn):
+-            return await fn(**kwargs)
+-        raw = fn(**kwargs)
+-        if asyncio.iscoroutine(raw):
+-            return await raw
+-        return raw
++        self._last_error: str | None = None
+ 
+     def run(self) -> None:
+-        """on_signal 引擎: 非阻塞, 仅置位 _running 表示就绪."""
++        """启动持续运行循环 (阻塞)."""
++        if self._running:
++            raise RuntimeError(f"EventWebhookDispatcherEngine {self.name} already running")
+         self._running = True
+-        logger.info(f"EventWebhookDispatcherEngine '{self.name}' ready for on_signal dispatch")
++        logger.info(f"EventWebhookDispatcherEngine '{self.name}' starting on topic {self.topic!r}")
++        try:
++            asyncio.run(self._run_loop())
++        finally:
++            self._running = False
++            logger.info(f"EventWebhookDispatcherEngine '{self.name}' stopped")
+ 
+     def stop(self) -> None:
+-        """优雅停止."""
++        """优雅停止主循环."""
+         self._running = False
+-        self._stop_event.set()
+-
+-    async def dispatch(
+-        self,
+-        event: str,
+-        payload: dict[str, Any],
+-        *,
+-        on_step: Callable[[dict[str, Any]], None] | None = None,
+-    ) -> dict[str, Any]:
+-        """Fan out an event to ALL subscribers CONCURRENTLY.
+-
+-        Args:
+-            event: Event name / topic string.
+-            payload: Event payload dict passed to each subscriber.
+-            on_step: Optional callback called per subscriber with
+-                     {"subscriber": str, "ok": bool}.
+-
+-        Returns:
+-            {"status": "completed", "event": event,
+-             "results": [...], "errors": [...]}
+-        """
+-        self._dispatch_count += 1
+ 
+-        async def _call(sub: Callable[..., Any]) -> Any:
+-            return await self._invoke(sub, event=event, payload=payload)
++    async def _run_loop(self) -> None:
++        from obase.mq import EventBus
+ 
+-        # 并发拉起所有 subscribers; return_exceptions 捕获单个异常
+-        raw_results = await asyncio.gather(
+-            *(_call(sub) for sub in self.subscriber_list),
++        bus = EventBus(redis_url=self.config.get("redis_url", "redis://localhost:6379/0"))
++        poll_timeout = self.config.get("poll_timeout_seconds", 5.0)
++        try:
++            while self._running:
++                try:
++                    await bus.subscribe(self.topic, self._on_event, timeout=poll_timeout)
++                except Exception as e:
++                    self._last_error = f"{type(e).__name__}: {e}"
++                    logger.warning(
++                        f"EventWebhookDispatcherEngine '{self.name}' subscribe error: {e}"
++                    )
++                    await asyncio.sleep(1.0)
++        finally:
++            await bus.close()
++
++    async def _on_event(self, payload: dict[str, Any]) -> None:
++        results = await asyncio.gather(
++            *[self._call_subscriber(sub, payload) for sub in self.subscriber_list],
+             return_exceptions=True,
+         )
+-
+-        results: list[Any] = []
+-        errors: list[dict[str, Any]] = []
+-        for sub, raw in zip(self.subscriber_list, raw_results):
+-            sub_name = getattr(sub, "__name__", repr(sub))
+-            if isinstance(raw, BaseException):
+-                self._last_error = f"subscriber {sub_name}: {type(raw).__name__}: {raw}"
++        self._dispatch_count += 1
++        for sub, result in zip(self.subscriber_list, results, strict=True):
++            if isinstance(result, BaseException):
++                self._last_error = f"{sub.__name__}: {result}"
+                 logger.warning(
+                     f"EventWebhookDispatcherEngine '{self.name}' subscriber "
+-                    f"{sub_name} failed: {raw}"
++                    f"{sub.__name__} failed: {result}"
+                 )
+-                errors.append({"subscriber": sub_name, "error": str(raw)})
+-                ok = False
+-            else:
+-                results.append(raw)
+-                ok = True
+-            if on_step:
+-                try:
+-                    on_step({"subscriber": sub_name, "ok": ok})
+-                except Exception as cb_err:
+-                    logger.warning(f"on_step callback failed for {sub_name}: {cb_err}")
+ 
+-        return {
+-            "status": "completed",
+-            "event": event,
+-            "results": results,
+-            "errors": errors,
+-        }
++    async def _call_subscriber(
++        self, subscriber: Callable[..., Any], payload: dict[str, Any]
++    ) -> Any:
++        result = subscriber(event=payload)
++        if asyncio.iscoroutine(result):
++            result = await result
++        return result
+ 
+     def health(self) -> dict[str, Any]:
+         return {
+@@ -168,6 +138,7 @@ class EventWebhookDispatcherEngine(EngineSkeleton):
+             "details": {
+                 "name": self.name,
+                 "running": self._running,
++                "topic": self.topic,
+                 "subscribers_count": len(self.subscriber_list),
+                 "dispatch_count": self._dispatch_count,
+                 "last_error": self._last_error,
+diff --git a/oservi/engines/mcp_bridge.py b/oservi/engines/mcp_bridge.py
+index a0c88c9..ff4cb34 100644
+--- a/oservi/engines/mcp_bridge.py
++++ b/oservi/engines/mcp_bridge.py
+@@ -24,7 +24,8 @@ from __future__ import annotations
+ import asyncio
+ import inspect
+ import logging
+-from typing import Any, Callable, ClassVar
++from collections.abc import Callable
++from typing import Any, ClassVar
+ 
+ from oservi.engines._base import (
+     EngineSkeleton,
+@@ -71,6 +72,11 @@ class McpBridgeEngine(EngineSkeleton):
+             cardinality="1",
+             description="Tool registry",
+         ),
++        "client": Injection(
++            kind="obase",
++            cardinality="0..1",
++            description="MCP client handle (skills 扩展: expose/consume 远端 skills)",
++        ),
+     }
+     trigger_mode: str = "on_demand"
+ 
+@@ -83,11 +89,13 @@ class McpBridgeEngine(EngineSkeleton):
+         trigger: dict[str, Any],
+         config: dict[str, Any],
+         name: str,
++        client: Any | None = None,
+     ) -> None:
+         self.name = name
+         self.connect = connect
+         self.call_primitives: list[Callable[..., Any]] = call if isinstance(call, list) else [call]
+         self.registry = registry
++        self.client = client
+         self.trigger = trigger
+         self.config = config
+ 
+@@ -135,7 +143,9 @@ class McpBridgeEngine(EngineSkeleton):
+                 else:
+                     reg_result = raw
+             # registry returns index or callable reference
+-            primitive_idx = reg_result.get("primitive_idx", 0) if isinstance(reg_result, dict) else 0
++            primitive_idx = (
++                reg_result.get("primitive_idx", 0) if isinstance(reg_result, dict) else 0
++            )
+         except Exception as e:
+             logger.warning(f"McpBridgeEngine registry lookup failed for '{tool_name}': {e}")
+             primitive_idx = 0
+@@ -179,6 +189,113 @@ class McpBridgeEngine(EngineSkeleton):
+             logger.warning(f"McpBridgeEngine connect failed: {e}")
+             return {"status": "error", "error": str(e)}
+ 
++    # ===== skills 扩展 (WAVE B: expose/consume 远端 skills,无业务持久化) =====
++
++    def _require_client(self) -> Any:
++        if self.client is None:
++            raise RuntimeError("McpBridgeEngine: no MCP client injected for skills extension")
++        return self.client
++
++    async def expose_remote_skills(self) -> dict[str, Any]:
++        """暴露远端 skills:经注入 client 发现并经 registry 路由注册 (只路由,不持久化)。
++
++        直接走 client handle Protocol (list_tools/call_tool),保持引擎骨架
++        零跨包导入 (红线 5);形状归一约定与 substrate 一致。
++        """
++        client = self._require_client()
++        extension = "io.modelcontextprotocol/skills"
++        skills: list[dict[str, Any]] = []
++        via = "none"
++        extensions = getattr(client, "extensions", None)
++        if isinstance(extensions, (list, tuple, set)) and extension in set(extensions):
++            via = "extensions"
++        # 有声明也照常拉取 skill 列表;无声明则探测 skill_list / tools 面
++        try:
++            probed = client.call_tool("skill_list", {})
++            if inspect.iscoroutine(probed):
++                probed = await probed
++            if isinstance(probed, dict) and isinstance(probed.get("skills"), list):
++                if via == "none":
++                    via = "skill_list"
++                skills = [s for s in probed["skills"] if isinstance(s, dict)]
++            elif isinstance(probed, list):
++                if via == "none":
++                    via = "skill_list"
++                skills = [s for s in probed if isinstance(s, dict)]
++        except Exception:
++            probed = None
++        if not skills and via == "none":
++            try:
++                tools = client.list_tools()
++                if inspect.iscoroutine(tools):
++                    tools = await tools
++                skills = [
++                    t
++                    for t in tools
++                    if isinstance(t, dict) and str(t.get("name", "")).startswith("skill")
++                ]
++                if skills:
++                    via = "tools"
++            except Exception as exc:
++                return {
++                    "status": "error",
++                    "skills": [],
++                    "negotiation": {
++                        "supported": False,
++                        "via": "none",
++                        "extension": extension,
++                        "error": str(exc),
++                    },
++                }
++        negotiation = {"supported": via != "none", "via": via, "extension": extension}
++        if not negotiation["supported"]:
++            return {"status": "unsupported", "skills": [], "negotiation": negotiation}
++        normalized = [
++            {
++                "name": str(s.get("name") or s.get("skill_id") or ""),
++                "version": str(s.get("version", "")),
++                "description": str(s.get("description", "")),
++                "inputs": s.get("input_schema") or s.get("inputSchema") or {},
++                "outputs": s.get("outputs") or {},
++                "extension": extension,
++            }
++            for s in skills
++        ]
++        exposed: list[str] = []
++        for skill in normalized:
++            name = str(skill["name"])
++            if not name:
++                continue
++            try:
++                route = self.registry(tool_name=name)
++                if inspect.iscoroutine(route):
++                    await route
++            except Exception:
++                pass
++            exposed.append(name)
++        return {
++            "status": "ok",
++            "skills": normalized,
++            "exposed": exposed,
++            "negotiation": negotiation,
++        }
++
++    async def consume_remote_skill(
++        self, skill_id: str, args: dict[str, Any] | None = None
++    ) -> dict[str, Any]:
++        """消费远端 skill:经注入 client 直接调用 (lifecycle 经 client,不落业务库)。"""
++        client = self._require_client()
++        if not skill_id:
++            raise ValueError("consume_remote_skill: skill_id must not be empty")
++        call_tool = getattr(client, "call_tool", None)
++        if call_tool is None:
++            raise RuntimeError("McpBridgeEngine: injected client has no call_tool")
++        result = call_tool(skill_id, args or {})
++        if inspect.iscoroutine(result):
++            result = await result
++        self._call_count += 1
++        return {"status": "ok", "skill_id": skill_id, "result": result}
++
+     # ===== 健康检查 =====
+ 
+     def health(self) -> dict[str, Any]:
+diff --git a/oservi/engines/saga_composer.py b/oservi/engines/saga_composer.py
+index 4f028d7..2fff7c3 100644
+--- a/oservi/engines/saga_composer.py
++++ b/oservi/engines/saga_composer.py
+@@ -1,21 +1,23 @@
+ """Saga Composer Engine Skeleton.
+ 
+ 机制 (固化):
+-- 按顺序执行注入的 omodul steps (forward 阶段)
+-- 任一步失败 (返回 {"status": "failed"} 或抛异常) → 停止 forward
+-- 失败后按 REVERSE 顺序执行 compensations (best-effort 补偿)
+-- 每步结果通过 on_step 回调可观测
++- 正向按顺序执行注入的 steps 列表
++- 任一 step 返回 {"status": "failed", ...}(omodul 标准失败返回,不是异常)
++  时,停止正向执行,对已完成的 step 逆序执行对应 compensations
++- 每步/每条补偿结果通过 on_step 回调可观测
+ 
+ 业务 (注入):
+-- steps: omodul callable 列表 (有序 forward 执行)
+-- compensations: omodul callable 列表 (失败时逆序补偿)
++- steps: omodul callable 列表 (有序正向执行)
++- compensations: omodul callable 列表 (与 steps 按下标一一对应的补偿动作,
++  可以比 steps 短——某个 step 没有对应补偿就传 None 占位或干脆少给)
+ 
+-与 sequential_composer 的区别:
+-- sequential_composer: 单步出错仍继续后续步骤 (无补偿)
+-- saga_composer: 单步出错立即停止 forward, 逆序跑补偿 (事务语义)
++跟 sequential_composer 的区别:sequential_composer 只捕获异常、不感知业务
++返回值里的 status 字段、没有补偿概念;saga_composer 专门为"多步业务事务,
++任一步失败要把前面已完成的步骤退回去"这种场景服务(典型:支付扣款 +
++库存扣减,库存不足时要把已经扣的款退回去)。
+ 
+ 红线对照:
+-- 红线 2 (机制/业务分离): 步骤/补偿业务全靠注入
++- 红线 2 (机制/业务分离): 步骤与补偿业务全靠注入,骨架不判断具体业务失败原因
+ - 红线 3 (注入契约): steps=omodul(1..n) / compensations=omodul(0..n)
+ - 红线 4 (无状态骨架): 状态只在实例
+ - 红线 5 (不反向依赖): 不 import 3O 四包
+@@ -28,50 +30,45 @@ import inspect
+ import logging
+ from typing import Any, Callable, ClassVar
+ 
+-from oservi.engines._base import (
+-    EngineSkeleton,
+-    Injection,
+-    register_skeleton,
+-)
++from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+-class SagaComposerEngine(EngineSkeleton):
+-    """Saga 组合引擎骨架 (forward 执行 + reverse 补偿).
++async def _call(fn: Callable[..., Any], **kwargs: Any) -> Any:
++    if inspect.iscoroutinefunction(fn):
++        return await fn(**kwargs)
++    result = fn(**kwargs)
++    if asyncio.iscoroutine(result):
++        return await result
++    return result
+ 
+-    Saga 语义:
+-    1. forward 阶段: 按注入顺序执行每个 step omodul.
+-    2. 若某步返回 dict 且 status == "failed", 或抛异常 → 立即停止 forward.
+-    3. 失败后进入补偿阶段: 按 REVERSE 顺序执行 compensations (best-effort).
+-       单个补偿出错被捕获记录, 不会掩盖原始失败, 也不中断其余补偿.
+-    4. 全部成功 → status="completed"; 失败且有补偿 → "compensated";
+-       失败且无补偿 → "failed".
+ 
+-    这与 sequential_composer 相反: 后者单步出错仍继续, 且无补偿.
++class SagaComposerEngine(EngineSkeleton):
++    """Saga 编排引擎骨架:正向执行 + 失败逆序补偿。
+ 
+     Example::
+ 
+         engine = SagaComposerEngine(
+-            steps=[reserve_stock, charge_payment, ship_order],
+-            compensations=[refund_payment, release_stock],  # 逆序执行
++            steps=[charge_payment, reserve_inventory],
++            compensations=[refund_payment, release_inventory],
+             trigger={"on_demand": True},
+             config={},
+-            name="order-saga",
++            name="checkout-saga",
+         )
+-        result = asyncio.run(engine.run(input_data={"order_id": 42}))
++        result = asyncio.run(engine.run(input_data={"order_id": "o1"}))
+     """
+ 
+     injection_points: ClassVar[dict] = {
+         "steps": Injection(
+             kind="omodul",
+             cardinality="1..n",
+-            description="Ordered forward omodul steps",
++            description="Ordered forward-execution omodul steps",
+         ),
+         "compensations": Injection(
+             kind="omodul",
+             cardinality="0..n",
+-            description="Compensation omoduls run in REVERSE on failure",
++            description="Per-step compensation omodul callables, index-aligned with steps",
+         ),
+     }
+     trigger_mode: str = "on_demand"
+@@ -80,7 +77,7 @@ class SagaComposerEngine(EngineSkeleton):
+         self,
+         *,
+         steps: list[Callable[..., Any]] | Callable[..., Any],
+-        compensations: list[Callable[..., Any]] | Callable[..., Any] | None = None,
++        compensations: list[Callable[..., Any] | None] | Callable[..., Any] | None = None,
+         trigger: dict[str, Any],
+         config: dict[str, Any],
+         name: str,
+@@ -88,25 +85,21 @@ class SagaComposerEngine(EngineSkeleton):
+         self.name = name
+         self.step_list: list[Callable[..., Any]] = steps if isinstance(steps, list) else [steps]
+         if compensations is None:
+-            self.compensation_list: list[Callable[..., Any]] = []
++            self.compensation_list: list[Callable[..., Any] | None] = []
++        elif isinstance(compensations, list):
++            self.compensation_list = compensations
+         else:
+-            self.compensation_list = compensations if isinstance(compensations, list) else [compensations]
++            self.compensation_list = [compensations]
+         self.trigger = trigger
+         self.config = config
+ 
+-        # 运行期状态
+-        self._running = False
+         self._stop_event = asyncio.Event()
+         self._last_error: str | None = None
+ 
+-    async def _invoke(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
+-        """Sync/async-agnostic callable invocation (keyword args)."""
+-        if inspect.iscoroutinefunction(fn):
+-            return await fn(**kwargs)
+-        raw = fn(**kwargs)
+-        if asyncio.iscoroutine(raw):
+-            return await raw
+-        return raw
++    def _compensation_for(self, step_no: int) -> Callable[..., Any] | None:
++        if step_no < len(self.compensation_list):
++            return self.compensation_list[step_no]
++        return None
+ 
+     async def run(  # type: ignore[override]
+         self,
+@@ -115,76 +108,76 @@ class SagaComposerEngine(EngineSkeleton):
+         *,
+         on_step: Callable[[dict[str, Any]], None] | None = None,
+     ) -> dict[str, Any]:
+-        """Execute forward steps; on failure run compensations in reverse.
++        """Execute steps forward; on the first failed step, run compensations
++        for already-completed steps in reverse order.
+ 
+         Args:
+-            input_data: Initial data passed to each step / compensation.
+-            output_dir: Optional output directory hint (passed through).
+-            on_step: Optional callback called after each forward step with
+-                     {"step_no": int, "result": Any}.
++            input_data: Initial data passed to every step/compensation call.
++            output_dir: Optional output directory hint (unused by the skeleton
++                itself, passed through for injected callables that need it).
++            on_step: Optional callback invoked after each forward step and
++                each compensation with {"phase": "forward"|"compensate",
++                "step_no": int, "result": Any}.
+ 
+         Returns:
+-            {"status": "completed" | "failed" | "compensated",
+-             "results": [step_result, ...],
+-             "compensations_run": [comp_result, ...]}
++            {"status": "completed", "results": [...]} on full forward success, or
++            {"status": "failed", "failed_step": int, "results": [...],
++             "compensated": [...]} if a step failed (compensations already run).
+         """
+         input_data = input_data or {}
+         results: list[Any] = []
+-        forward_failed = False
++        failed_step: int | None = None
+ 
+-        # ===== forward 阶段 =====
+         for i, step in enumerate(self.step_list):
+             try:
+-                result = await self._invoke(step, input_data=input_data, step_no=i)
++                result = await _call(step, input_data=input_data, step_no=i)
+             except Exception as e:
+-                self._last_error = f"step {i} {getattr(step, '__name__', step)}: {type(e).__name__}: {e}"
+-                logger.warning(f"SagaComposerEngine '{self.name}' step {i} failed: {e}")
+-                result = {"status": "failed", "error": str(e), "step_no": i}
++                self._last_error = f"step {i} {getattr(step, '__name__', step)}: {e}"
++                logger.warning(f"SagaComposerEngine '{self.name}' step {i} raised: {e}")
++                result = {"status": "failed", "error": str(e)}
+ 
+             results.append(result)
+-
+             if on_step:
+                 try:
+-                    on_step({"step_no": i, "result": result})
++                    on_step({"phase": "forward", "step_no": i, "result": result})
+                 except Exception as cb_err:
+                     logger.warning(f"on_step callback failed at step {i}: {cb_err}")
+ 
+             if isinstance(result, dict) and result.get("status") == "failed":
+-                forward_failed = True
++                failed_step = i
+                 break
+ 
+-        # ===== 补偿阶段 (REVERSE, best-effort) =====
+-        compensations_run: list[Any] = []
+-        if forward_failed:
+-            reason = self._last_error or "forward step failed"
+-            for j, comp in enumerate(reversed(self.compensation_list)):
++        if failed_step is None:
++            return {"status": "completed", "results": results}
++
++        compensated: list[Any] = []
++        for i in range(failed_step - 1, -1, -1):
++            compensation = self._compensation_for(i)
++            if compensation is None:
++                continue
++            try:
++                comp_result = await _call(
++                    compensation, input_data=input_data, step_no=i, step_result=results[i]
++                )
++            except Exception as e:
++                self._last_error = (
++                    f"compensation {i} {getattr(compensation, '__name__', compensation)}: {e}"
++                )
++                logger.warning(f"SagaComposerEngine '{self.name}' compensation {i} raised: {e}")
++                comp_result = {"status": "failed", "error": str(e)}
++
++            compensated.append({"step_no": i, "result": comp_result})
++            if on_step:
+                 try:
+-                    comp_result = await self._invoke(
+-                        comp,
+-                        input_data=input_data,
+-                        compensation_no=j,
+-                        reason=reason,
+-                    )
+-                except Exception as e:
+-                    # 补偿失败被捕获记录, 不掩盖原始失败, 不中断其余补偿
+-                    logger.warning(
+-                        f"SagaComposerEngine '{self.name}' compensation {j} "
+-                        f"{getattr(comp, '__name__', comp)} failed: {e}"
+-                    )
+-                    comp_result = {"status": "failed", "error": str(e), "compensation_no": j}
+-                compensations_run.append(comp_result)
+-
+-        if not forward_failed:
+-            status = "completed"
+-        elif compensations_run:
+-            status = "compensated"
+-        else:
+-            status = "failed"
++                    on_step({"phase": "compensate", "step_no": i, "result": comp_result})
++                except Exception as cb_err:
++                    logger.warning(f"on_step callback failed at compensation {i}: {cb_err}")
+ 
+         return {
+-            "status": status,
++            "status": "failed",
++            "failed_step": failed_step,
+             "results": results,
+-            "compensations_run": compensations_run,
++            "compensated": compensated,
+         }
+ 
+     def stop(self) -> None:
+diff --git a/oservi/engines/sequential_composer.py b/oservi/engines/sequential_composer.py
+index 71978a9..dc8e236 100644
+--- a/oservi/engines/sequential_composer.py
++++ b/oservi/engines/sequential_composer.py
+@@ -21,7 +21,8 @@ from __future__ import annotations
+ import asyncio
+ import inspect
+ import logging
+-from typing import Any, Callable, ClassVar
++from collections.abc import Callable
++from typing import Any, ClassVar
+ 
+ from oservi.engines._base import (
+     EngineSkeleton,
+@@ -107,16 +108,14 @@ class SequentialComposerEngine(EngineSkeleton):
+ 
+         for i, step in enumerate(self.step_list):
+             try:
+-                if inspect.iscoroutinefunction(step):
+-                    result = await step(input_data=input_data, step_no=i)
+-                else:
+-                    raw = step(input_data=input_data, step_no=i)
+-                    if asyncio.iscoroutine(raw):
+-                        result = await raw
+-                    else:
+-                        result = raw
++                result = self._invoke_step(step, i, input_data, output_dir)
++                if inspect.isawaitable(result):
++                    result = await result
+             except Exception as e:
+-                self._last_error = f"step {i} {getattr(step, '__name__', step)}: {type(e).__name__}: {e}"
++                self._last_error = (
++                    f"step {i} {getattr(step, '__name__', step)}: "
++                    f"{type(e).__name__}: {e}"
++                )
+                 logger.warning(f"SequentialComposerEngine '{self.name}' step {i} failed: {e}")
+                 result = {"error": str(e), "step_no": i}
+ 
+@@ -130,6 +129,34 @@ class SequentialComposerEngine(EngineSkeleton):
+ 
+         return {"status": "completed", "results": results}
+ 
++    def _invoke_step(
++        self,
++        step: Callable[..., Any],
++        step_no: int,
++        input_data: dict[str, Any],
++        output_dir: Any,
++    ) -> Any:
++        """适配两种步骤形态：
++        1. omodul 标准签名 (config, input_data, output_dir, *, on_step)
++           —— 编排 omodul 协作的正道；config 取引擎 config
++        2. 通用 callable (input_data, step_no)
++        """
++        try:
++            sig = inspect.signature(step)
++            positional = [
++                p
++                for p in sig.parameters.values()
++                if p.kind
++                in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
++            ]
++        except (TypeError, ValueError):  # pragma: no cover - builtin 等
++            positional = []
++
++        if len(positional) >= 3:
++            # omodul 标准三件套 (config, input_data, output_dir)
++            return step(self.config, input_data, output_dir)
++        return step(input_data=input_data, step_no=step_no)
++
+     def stop(self) -> None:
+         """Signal the engine to stop (no-op for on_demand engines)."""
+         self._stop_event.set()
+diff --git a/oservi/engines/source_watcher.py b/oservi/engines/source_watcher.py
+index 9815956..6b57e8c 100644
+--- a/oservi/engines/source_watcher.py
++++ b/oservi/engines/source_watcher.py
+@@ -15,6 +15,7 @@
+ - subscription: layer4 (1)           — get_processed_ids / mark_processed
+ - filter:       oskill (0..1)        — LLM 筛选（可选）
+ """
++
+ from __future__ import annotations
+ 
+ import asyncio
+@@ -22,7 +23,7 @@ import inspect
+ import logging
+ import tempfile
+ from pathlib import Path
+-from typing import Any, Callable, ClassVar
++from typing import Any, ClassVar
+ 
+ from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+@@ -45,20 +46,33 @@ class SourceWatcherEngine(EngineSkeleton):
+     """
+ 
+     injection_points: ClassVar[dict] = {
+-        "searchers": Injection(kind="oprim", cardinality="1+",
+-                               description="源检索函数字典 {source_type: search_fn}"),
+-        "download":  Injection(kind="oprim", cardinality="1",
+-                               description="文件下载 (http_download_file)"),
+-        "ingest":    Injection(kind="omodul", cardinality="1",
+-                               description="文件入库 (process_inbox_substrate)"),
+-        "subscription": Injection(kind="layer4", cardinality="1",
+-                                  description="get_processed_ids / mark_processed"),
+-        "filter":    Injection(kind="oskill", cardinality="0..1",
+-                               description="LLM 筛选（可选）"),
++        "searchers": Injection(
++            kind="oprim", cardinality="1+", description="源检索函数字典 {source_type: search_fn}"
++        ),
++        "download": Injection(
++            kind="oprim", cardinality="1", description="文件下载 (http_download_file)"
++        ),
++        "ingest": Injection(
++            kind="omodul", cardinality="1", description="文件入库 (process_inbox_substrate)"
++        ),
++        "subscription": Injection(
++            kind="layer4", cardinality="1", description="get_processed_ids / mark_processed"
++        ),
++        "filter": Injection(kind="oskill", cardinality="0..1", description="LLM 筛选（可选）"),
+     }
+ 
+-    def __init__(self, *, searchers, download, ingest, subscription,
+-                 filter=None, trigger=None, config=None, name="source-watcher"):
++    def __init__(
++        self,
++        *,
++        searchers,
++        download,
++        ingest,
++        subscription,
++        filter=None,
++        trigger=None,
++        config=None,
++        name="source-watcher",
++    ):
+         self._searchers = searchers
+         self._download = download
+         self._ingest = ingest
+@@ -70,24 +84,106 @@ class SourceWatcherEngine(EngineSkeleton):
+         self._running = False
+         self._tick_count = 0
+         self._last_error: str | None = None
++        # WAVE G: changed-file snapshot (运行态,非业务持久化)
++        self._file_snapshot: dict[str, dict[str, Any]] = {}
++
++    # ------------------------------------------------------------------
++    # WAVE G — changed-file events (added/modified/deleted/renamed)
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def _stat_file(path: Path) -> dict[str, Any] | None:
++        try:
++            st = path.stat()
++        except OSError:
++            return None
++        if not path.is_file():
++            return None
++        return {"size": st.st_size, "mtime": st.st_mtime}
++
++    def snapshot_files(
++        self,
++        root: str | Path,
++        *,
++        extensions: tuple[str, ...] = (".py",),
++    ) -> dict[str, dict[str, Any]]:
++        """扫描 root 生成 path -> {size, mtime} 快照 (纯函数,不改实例)。"""
++        root = Path(root)
++        snapshot: dict[str, dict[str, Any]] = {}
++        if not root.is_dir():
++            return snapshot
++        for path in sorted(root.rglob("*")):
++            if extensions and path.suffix not in extensions:
++                continue
++            info = self._stat_file(path)
++            if info is not None:
++                snapshot[str(path)] = info
++        return snapshot
++
++    def emit_file_changes(
++        self,
++        current: dict[str, dict[str, Any]] | None = None,
++        *,
++        root: str | Path | None = None,
++    ) -> list[dict[str, Any]]:
++        """对比上次快照,输出 changed-file events 并更新快照。
++
++        event: {kind: added|modified|deleted|renamed, path, old_path?}.
++        rename 启发式:同 size 的 deleted + added 配对。
++        """
++        if current is None:
++            if root is None:
++                raise ValueError("emit_file_changes: current 或 root 必须提供其一")
++            current = self.snapshot_files(root)
++        previous = self._file_snapshot
++        events: list[dict[str, Any]] = []
++        added = {p: info for p, info in current.items() if p not in previous}
++        deleted = {p: info for p, info in previous.items() if p not in current}
++        for path, info in current.items():
++            if path in previous and previous[path] != info:
++                events.append({"kind": "modified", "path": path})
++        # rename 配对:同 size 的 deleted/added
++        by_size_deleted: dict[Any, list[str]] = {}
++        for path, info in deleted.items():
++            by_size_deleted.setdefault(info.get("size"), []).append(path)
++        consumed_deleted: set[str] = set()
++        consumed_added: set[str] = set()
++        for path, info in added.items():
++            candidates = by_size_deleted.get(info.get("size"), [])
++            candidates = [c for c in candidates if c not in consumed_deleted]
++            if candidates:
++                old = candidates[0]
++                consumed_deleted.add(old)
++                consumed_added.add(path)
++                events.append({"kind": "renamed", "path": path, "old_path": old})
++        for path in added:
++            if path not in consumed_added:
++                events.append({"kind": "added", "path": path})
++        for path in deleted:
++            if path not in consumed_deleted:
++                events.append({"kind": "deleted", "path": path})
++        self._file_snapshot = dict(current)
++        return events
+ 
+     async def _tick(self) -> dict[str, Any]:
+         source_type = self._config.get("source_type", "arxiv")
+-        query       = self._config.get("query", {})
++        query = self._config.get("query", {})
+         max_results = self._config.get("max_results", 20)
+-        work_dir    = Path(self._config.get("work_dir", tempfile.gettempdir())) / "source_watcher"
++        work_dir = Path(self._config.get("work_dir", tempfile.gettempdir())) / "source_watcher"
+         work_dir.mkdir(parents=True, exist_ok=True)
+         user_id_hash = self._config.get("user_id_hash", "source_watcher")
+-        force_ipv4   = self._config.get("force_ipv4", False)
++        force_ipv4 = self._config.get("force_ipv4", False)
+ 
+         search_fn = self._searchers.get(source_type)
+         if not search_fn:
+             return {"ingested": 0, "new_items": 0, "error": f"unknown source_type: {source_type}"}
+ 
+         try:
+-            items = await search_fn(max_results=max_results, **query) \
+-                if inspect.iscoroutinefunction(search_fn) \
++            items = (
++                await search_fn(max_results=max_results, **query)
++                if inspect.iscoroutinefunction(search_fn)
+                 else search_fn(max_results=max_results, **query)
++            )
+         except Exception as exc:
+             self._last_error = str(exc)
+             return {"ingested": 0, "new_items": 0, "error": str(exc)}
+@@ -107,15 +203,17 @@ class SourceWatcherEngine(EngineSkeleton):
+ 
+         if self._filter and self._config.get("llm_filter"):
+             try:
+-                new_items = await self._filter(new_items, llm_filter=self._config["llm_filter"]) \
+-                    if inspect.iscoroutinefunction(self._filter) \
++                new_items = (
++                    await self._filter(new_items, llm_filter=self._config["llm_filter"])
++                    if inspect.iscoroutinefunction(self._filter)
+                     else self._filter(new_items, llm_filter=self._config["llm_filter"])
++                )
+             except Exception:
+                 pass
+ 
+         ingested, failed = [], []
+         for item in new_items:
+-            ext  = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt"}.get(item.file_type, ".bin")
++            ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt"}.get(item.file_type, ".bin")
+             dest = work_dir / f"{item.external_id.replace('/', '_')}{ext}"
+             try:
+                 dl_kw = {"force_ipv4": force_ipv4} if force_ipv4 else {}
+@@ -124,16 +222,27 @@ class SourceWatcherEngine(EngineSkeleton):
+                 else:
+                     await asyncio.to_thread(self._download, item.download_url, dest, **dl_kw)
+ 
+-                kw = {"file_path": dest, "user_id_hash": user_id_hash,
+-                      "medium_hint": item.file_type,
+-                      "metadata_override": {"external_id": item.external_id,
+-                                            "source": source_type, **item.metadata}}
+-                result = await self._ingest(**kw) \
+-                    if inspect.iscoroutinefunction(self._ingest) \
++                kw = {
++                    "file_path": dest,
++                    "user_id_hash": user_id_hash,
++                    "medium_hint": item.file_type,
++                    "metadata_override": {
++                        "external_id": item.external_id,
++                        "source": source_type,
++                        **item.metadata,
++                    },
++                }
++                result = (
++                    await self._ingest(**kw)
++                    if inspect.iscoroutinefunction(self._ingest)
+                     else await asyncio.to_thread(self._ingest, **kw)
++                )
+ 
+-                (ingested if isinstance(result, dict) and result.get("status") == "completed"
+-                 else failed).append(item.external_id)
++                (
++                    ingested
++                    if isinstance(result, dict) and result.get("status") == "completed"
++                    else failed
++                ).append(item.external_id)
+             except Exception as exc:
+                 logger.error("source_watcher.ingest_failed id=%s error=%s", item.external_id, exc)
+                 failed.append(item.external_id)
+@@ -154,6 +263,7 @@ class SourceWatcherEngine(EngineSkeleton):
+     def run(self) -> None:
+         interval = self._trigger.get("on_interval", 21600)
+         self._running = True
++
+         async def _loop():
+             while self._running:
+                 self._tick_count += 1
+@@ -162,19 +272,23 @@ class SourceWatcherEngine(EngineSkeleton):
+                 except Exception as exc:
+                     self._last_error = str(exc)
+                 await asyncio.sleep(interval)
++
+         try:
+             asyncio.get_running_loop().create_task(_loop())
+         except RuntimeError:
+             asyncio.run(_loop())
+ 
+-    def stop(self): self._running = False
++    def stop(self):
++        self._running = False
+ 
+     def health(self) -> dict[str, Any]:
+-        return {"name": self._name,
+-                "status": "running" if self._running else "stopped",
+-                "tick_count": self._tick_count,
+-                "last_error": self._last_error,
+-                "trigger": self._trigger}
++        return {
++            "name": self._name,
++            "status": "running" if self._running else "stopped",
++            "tick_count": self._tick_count,
++            "last_error": self._last_error,
++            "trigger": self._trigger,
++        }
+ 
+ 
+ register_skeleton("source_watcher", SourceWatcherEngine)
+diff --git a/oservi/engines/state_machine_engine.py b/oservi/engines/state_machine_engine.py
+index c03b0a7..c9fe921 100644
+--- a/oservi/engines/state_machine_engine.py
++++ b/oservi/engines/state_machine_engine.py
+@@ -1,25 +1,23 @@
+ """State Machine Engine Skeleton.
+ 
+ 机制 (固化):
+-- 按目标状态名查 transition callable (name-keyed map)
+-- 迁移前先咨询 validators (guards), 任一返回 falsy → 阻断
+-- 非法/未知迁移 → 返回 blocked 结果, 绝不抛异常
+-- 迁移结果通过 on_step 回调可观测
++- 校验 (from_status, to_status) 是否在合法转移表内,不在表内直接拒绝
++  ("拦截非法状态跳跃")
++- 依次跑所有注入的 validators,任一返回 False 就拒绝转移
++- 通过校验后调用对应的转移 omodul 执行实际业务动作
+ 
+ 业务 (注入):
+-- transitions: omodul callable 列表 (按名字建索引)
+-- validators: oskill callable 列表 (可选 guards)
+-
+-名字索引约定 (name-keying):
+-  ServiceManifest.inject 是 dict[str, list[Callable]], 装配器只处理
+-  list/single/None, 不支持 dict-of-callables. 因此 transitions 以 LIST
+-  注入, 引擎内部按每个 callable 的名字建 name→callable map:
+-    key = getattr(t, "name", None) or t.__name__
+-  迁移时以目标状态名 (to_state) 查表. 给 transition callable 设置显式
+-  `name` 属性即可自定义键, 否则回退到函数 __name__.
++- transitions: omodul callable 列表(哪些函数负责哪个转移,由
++  config["transition_map"] 里的 "from->to" -> 函数名 映射决定,不是靠字典
++  类型的注入点——通用装配器的 Injection 只理解 list[Callable],没法直接
++  校验 dict[str, Callable] 形状的注入,所以"状态图"整个放进 config,inject
++  只放纯 callable 列表,这是本骨架相对 SPEC 原始描述 `transitions: dict[str,
++  omodul]` 的一个必要落地调整)
++- validators: oskill 纯函数列表(合法性附加校验,如"金额必须已结清"这种
++  跟状态图本身无关的业务规则)
+ 
+ 红线对照:
+-- 红线 2 (机制/业务分离): 迁移/校验业务全靠注入
++- 红线 2 (机制/业务分离): 具体状态图、转移动作、校验规则全靠注入/config
+ - 红线 3 (注入契约): transitions=omodul(1..n) / validators=oskill(0..n)
+ - 红线 4 (无状态骨架): 状态只在实例
+ - 红线 5 (不反向依赖): 不 import 3O 四包
+@@ -32,51 +30,54 @@ import inspect
+ import logging
+ from typing import Any, Callable, ClassVar
+ 
+-from oservi.engines._base import (
+-    EngineSkeleton,
+-    Injection,
+-    register_skeleton,
+-)
++from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+ logger = logging.getLogger(__name__)
+ 
+ 
+-class StateMachineEngine(EngineSkeleton):
+-    """状态机引擎骨架 (name-keyed transitions + guard validators).
++async def _call(fn: Callable[..., Any], **kwargs: Any) -> Any:
++    if inspect.iscoroutinefunction(fn):
++        return await fn(**kwargs)
++    result = fn(**kwargs)
++    if asyncio.iscoroutine(result):
++        return await result
++    return result
+ 
+-    机制:
+-    1. __init__ 时把注入的 transitions LIST 建成 name→callable map
+-       (key = 显式 `name` 属性, 否则 __name__).
+-    2. run(state, to_state=...) 以 to_state 查 transition:
+-       - 未知目标 → status="blocked", reason="unknown_transition" (不抛异常)
+-       - 任一 validator 返回 falsy → status="blocked", reason="guard_rejected"
+-       - 通过校验 → 调 transition, status="completed"
+ 
+-    Example::
++class StateMachineEngine(EngineSkeleton):
++    """状态机防呆引擎骨架:拦截非法状态跳跃 + 校验器 + 执行转移动作。
+ 
+-        def to_paid(*, state, to_state, input_data): ...
+-        to_paid.name = "paid"  # 显式键 (可选, 否则用 __name__)
++    Example::
+ 
+         engine = StateMachineEngine(
+-            transitions=[to_paid, to_shipped],
+-            validators=[guard_payment_ok],
++            transitions=[mark_draft_order_paid, cancel_order, archive_order],
++            validators=[],
+             trigger={"on_demand": True},
+-            config={},
+-            name="order-fsm",
++            config={
++                "transition_map": {
++                    "draft->pending": "mark_draft_order_paid",
++                    "pending->canceled": "cancel_order",
++                    "pending->archived": "archive_order",
++                },
++            },
++            name="order-state-machine",
++        )
++        result = asyncio.run(
++            engine.run(from_status="draft", to_status="pending", input_data={"order_id": "o1"})
+         )
+-        result = asyncio.run(engine.run(state="new", to_state="paid"))
+     """
+ 
+     injection_points: ClassVar[dict] = {
+         "transitions": Injection(
+             kind="omodul",
+             cardinality="1..n",
+-            description="State transition omoduls, keyed by name",
++            description="Transition-executing omodul callables, looked up by name via "
++            "config['transition_map']",
+         ),
+         "validators": Injection(
+             kind="oskill",
+             cardinality="0..n",
+-            description="Optional guards consulted before a transition",
++            description="Additional pure validators; any returning False blocks the transition",
+         ),
+     }
+     trigger_mode: str = "on_demand"
+@@ -91,149 +92,110 @@ class StateMachineEngine(EngineSkeleton):
+         name: str,
+     ) -> None:
+         self.name = name
+-        self.transition_list: list[Callable[..., Any]] = (
+-            transitions if isinstance(transitions, list) else [transitions]
+-        )
++        transition_list = transitions if isinstance(transitions, list) else [transitions]
++        self._transitions_by_name = {fn.__name__: fn for fn in transition_list}
+         if validators is None:
+             self.validator_list: list[Callable[..., Any]] = []
++        elif isinstance(validators, list):
++            self.validator_list = validators
+         else:
+-            self.validator_list = validators if isinstance(validators, list) else [validators]
++            self.validator_list = [validators]
+         self.trigger = trigger
+         self.config = config
++        self.transition_map: dict[str, str] = config.get("transition_map", {})
+ 
+-        # name→callable map (name-keying 约定)
+-        self._transitions: dict[str, Callable[..., Any]] = {}
+-        for t in self.transition_list:
+-            key = getattr(t, "name", None) or getattr(t, "__name__", None)
+-            if key is not None:
+-                self._transitions[key] = t
+-
+-        # 运行期状态
+-        self._running = False
+-        self._stop_event = asyncio.Event()
+         self._last_error: str | None = None
+-
+-    async def _invoke(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
+-        """Sync/async-agnostic callable invocation (keyword args)."""
+-        if inspect.iscoroutinefunction(fn):
+-            return await fn(**kwargs)
+-        raw = fn(**kwargs)
+-        if asyncio.iscoroutine(raw):
+-            return await raw
+-        return raw
+-
+-    def _blocked(self, state: Any, to_state: Any, reason: str) -> dict[str, Any]:
+-        return {
+-            "status": "blocked",
+-            "from_state": state,
+-            "to_state": to_state,
+-            "reason": reason,
+-            "result": None,
+-        }
++        self._transition_count = 0
+ 
+     async def run(  # type: ignore[override]
+         self,
+-        state: Any = None,
+         *,
+-        to_state: str | None = None,
++        from_status: str,
++        to_status: str,
+         input_data: dict[str, Any] | None = None,
+         on_step: Callable[[dict[str, Any]], None] | None = None,
+     ) -> dict[str, Any]:
+-        """Attempt a state transition to ``to_state``.
++        """Attempt a single state transition.
+ 
+         Args:
+-            state: Current state (passed to validators / transition).
+-            to_state: Target state name; used to look up the transition.
+-            input_data: Optional payload passed to validators / transition.
+-            on_step: Optional callback called with the final result dict.
++            from_status: Current state.
++            to_status: Desired next state.
++            input_data: Business context passed to validators and the
++                transition callable.
++            on_step: Optional callback invoked once with the outcome.
+ 
+         Returns:
+-            {"status": "completed" | "blocked",
+-             "from_state": ..., "to_state": ..., "reason": str | None,
+-             "result": Any}
+-
+-        Illegal / unknown transitions return a "blocked" result; never raise.
++            {"status": "completed", "transition": "from->to", "result": ...} on
++            success, or {"status": "failed", "error": ...} if the transition is
++            illegal, a validator rejects it, or the transition callable itself
++            fails.
+         """
+         input_data = input_data or {}
++        key = f"{from_status}->{to_status}"
+ 
+-        if to_state is None:
+-            result = self._blocked(state, to_state, "no_target_state")
+-            self._notify(on_step, result)
+-            return result
++        if key not in self.transition_map:
++            self._last_error = f"illegal transition: {key}"
++            return self._reject(key, self._last_error, on_step)
+ 
+-        transition = self._transitions.get(to_state)
+-        if transition is None:
+-            result = self._blocked(state, to_state, "unknown_transition")
+-            self._notify(on_step, result)
+-            return result
+-
+-        # guards: 任一 validator 返回 falsy → 阻断
+         for validator in self.validator_list:
+             try:
+-                allowed = await self._invoke(
+-                    validator, state=state, to_state=to_state, input_data=input_data
++                ok = await _call(
++                    validator, from_status=from_status, to_status=to_status, input_data=input_data
+                 )
+             except Exception as e:
+-                self._last_error = (
+-                    f"validator {getattr(validator, '__name__', validator)}: "
+-                    f"{type(e).__name__}: {e}"
+-                )
+-                logger.warning(f"StateMachineEngine '{self.name}' validator failed: {e}")
+-                allowed = False
+-            if not allowed:
+-                result = self._blocked(state, to_state, "guard_rejected")
+-                self._notify(on_step, result)
+-                return result
+-
+-        # 执行迁移
++                self._last_error = f"validator {validator.__name__} raised: {e}"
++                return self._reject(key, self._last_error, on_step)
++            if not ok:
++                self._last_error = f"validator {validator.__name__} rejected transition {key}"
++                return self._reject(key, self._last_error, on_step)
++
++        fn_name = self.transition_map[key]
++        fn = self._transitions_by_name.get(fn_name)
++        if fn is None:
++            self._last_error = f"transition function {fn_name!r} not found in injected transitions"
++            return self._reject(key, self._last_error, on_step)
++
+         try:
+-            transition_result = await self._invoke(
+-                transition, state=state, to_state=to_state, input_data=input_data
++            result = await _call(
++                fn, from_status=from_status, to_status=to_status, input_data=input_data
+             )
+         except Exception as e:
+-            self._last_error = (
+-                f"transition {getattr(transition, '__name__', transition)}: "
+-                f"{type(e).__name__}: {e}"
+-            )
+-            logger.warning(f"StateMachineEngine '{self.name}' transition failed: {e}")
+-            result = self._blocked(state, to_state, "transition_error")
+-            result["error"] = str(e)
+-            self._notify(on_step, result)
+-            return result
+-
+-        result = {
+-            "status": "completed",
+-            "from_state": state,
+-            "to_state": to_state,
+-            "reason": None,
+-            "result": transition_result,
+-        }
+-        self._notify(on_step, result)
+-        return result
++            self._last_error = f"transition {fn_name} raised: {e}"
++            return self._reject(key, self._last_error, on_step)
+ 
+-    def _notify(
+-        self,
+-        on_step: Callable[[dict[str, Any]], None] | None,
+-        result: dict[str, Any],
+-    ) -> None:
++        self._transition_count += 1
++        outcome = {"status": "completed", "transition": key, "result": result}
++        if on_step:
++            try:
++                on_step(outcome)
++            except Exception as cb_err:
++                logger.warning(f"on_step callback failed: {cb_err}")
++        return outcome
++
++    def _reject(
++        self, key: str, message: str, on_step: Callable[[dict[str, Any]], None] | None
++    ) -> dict[str, Any]:
++        logger.warning(f"StateMachineEngine '{self.name}' rejected {key}: {message}")
++        outcome = {"status": "failed", "transition": key, "error": message}
+         if on_step:
+             try:
+-                on_step(result)
++                on_step(outcome)
+             except Exception as cb_err:
+                 logger.warning(f"on_step callback failed: {cb_err}")
++        return outcome
+ 
+     def stop(self) -> None:
+-        """Signal the engine to stop (no-op for on_demand engines)."""
+-        self._stop_event.set()
++        """No-op for on_demand engines."""
+ 
+     def health(self) -> dict[str, Any]:
+         return {
+             "status": "healthy",
+             "details": {
+                 "name": self.name,
+-                "transitions_count": len(self._transitions),
++                "transitions_count": len(self._transitions_by_name),
+                 "validators_count": len(self.validator_list),
+-                "known_states": sorted(self._transitions.keys()),
++                "known_transitions": sorted(self.transition_map.keys()),
++                "transition_count": self._transition_count,
+                 "last_error": self._last_error,
+             },
+         }
+diff --git a/outputs/quality-baseline.json b/outputs/quality-baseline.json
+deleted file mode 100644
+index 399db66..0000000
+--- a/outputs/quality-baseline.json
++++ /dev/null
+@@ -1,8 +0,0 @@
+-{
+-  "source_sha": "d0809e59609473ecd33c033790ebd39eee835218",
+-  "generated_from": "detached exact-HEAD clean worktree",
+-  "collection": {"error_count": 0, "status": "PASS"},
+-  "ruff": {"count": 174, "fingerprints": [], "fingerprint_policy": "rule + normalized path + message signature"},
+-  "mypy": {"count": 820, "fingerprints": [], "fingerprint_policy": "normalized path + error code + message signature"},
+-  "new_errors": {"ruff": 0, "mypy": 0}
+-}
+diff --git a/pyproject.toml b/pyproject.toml
+index 867542e..00045c3 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
+ 
+ [project]
+ name = "oservi"
+-version = "1.2.0"
++version = "1.4.0"
+ description = "3O service assembly layer — engine skeletons + assembler (5th pillar of helios-plat)"
+ readme = "README.md"
+ requires-python = ">=3.12"
+@@ -18,6 +18,7 @@ dependencies = [
+     "oprim",
+     "oskill",
+     "omodul",
++    "croniter>=2.0",
+ ]
+ 
+ [project.optional-dependencies]
+diff --git a/scripts/qualify.sh b/scripts/qualify.sh
+deleted file mode 100755
+index 782c8c1..0000000
+--- a/scripts/qualify.sh
++++ /dev/null
+@@ -1,10 +0,0 @@
+-#!/usr/bin/env bash
+-set -u
+-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+-cd "$root"
+-echo "SOURCE_SHA=$(git rev-parse HEAD)"
+-python -c "import oservi; print('BASE_IMPORT_GATE=PASS')"
+-python -m pytest --collect-only -q
+-python -m pytest -q
+-python -m ruff check .
+-python -m mypy .
+diff --git a/tests/test_bulk_export_worker.py b/tests/test_bulk_export_worker.py
+index 4b45066..f7822fa 100644
+--- a/tests/test_bulk_export_worker.py
++++ b/tests/test_bulk_export_worker.py
+@@ -1,171 +1,180 @@
+-"""BulkExportWorkerEngine tests — ≥10 tests."""
++"""BulkExportWorkerEngine tests.
++
++The persistent run()/subscribe() loop needs a real Redis EventBus, so these
++tests exercise the streaming mechanism directly via `_on_signal`.
++"""
+ 
+ from __future__ import annotations
+ 
+ import asyncio
++from pathlib import Path
++
+ import pytest
+ 
+-from oservi import list_skeletons
++from oservi import ServiceManifest, assemble, list_skeletons
+ from oservi.engines.bulk_export_worker import BulkExportWorkerEngine
+ 
+ 
+-# ===== Fake fetchers =====
++def sync_fetcher(*, signal):
++    return [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]
+ 
+-def sync_gen_fetcher():
+-    yield {"id": 1}
+-    yield {"id": 2}
+-    yield {"id": 3}
+ 
++def empty_fetcher(*, signal):
++    return []
+ 
+-async def async_gen_fetcher():
+-    yield {"id": 1}
+-    yield {"id": 2}
+ 
++def csv_formatter(*, row):
++    return f"{row['id']},{row['name']}"
+ 
+-def sync_list_fetcher():
+-    return [{"id": 1}, {"id": 2}]
+ 
++def formatter_fails_on_id_2(*, row):
++    if row["id"] == 2:
++        raise ValueError("bad row")
++    return f"{row['id']},{row['name']}"
+ 
+-def empty_fetcher():
+-    return []
+ 
++for fn in [sync_fetcher, empty_fetcher]:
++    fn.__module__ = "oprim.fake"
++for fn in [csv_formatter, formatter_fails_on_id_2]:
++    fn.__module__ = "oskill.fake"
+ 
+-# ===== Fake formatters =====
+ 
+-def fmt(*, record):
+-    return f"line:{record['id']}"
++class _Uploader:
++    def __init__(self):
++        self.calls: list[dict] = []
+ 
++    def record(self, *, local_path, key):
++        self.calls.append({"local_path": local_path, "key": key, "content": local_path.read_text()})
++        return key
+ 
+-async def async_fmt(*, record):
+-    return f"aline:{record['id']}"
+ 
++def make_uploader():
++    """Returns (uploader_recorder, upload_callable). The callable is a plain
++    function (not a bound method) so it can carry a fake __module__ for the
++    assembler's kind detection."""
++    recorder = _Uploader()
+ 
+-# ===== Fake uploader =====
++    def upload(*, local_path, key):
++        return recorder.record(local_path=local_path, key=key)
+ 
+-def uploader_loc(*, data):
+-    return "/out/export.csv"
++    upload.__module__ = "obase.fake"
++    recorder.upload = upload
++    return recorder
+ 
+ 
+ def _make_engine(**overrides):
++    uploader = make_uploader()
+     defaults = dict(
+-        fetcher=sync_gen_fetcher,
+-        formatter=fmt,
+-        uploader=uploader_loc,
+-        trigger={"on_signal": True},
++        fetcher=sync_fetcher,
++        formatter=csv_formatter,
++        uploader=uploader.upload,
++        trigger={"on_signal": "bulk_export.requested"},
+         config={},
+-        name="test-export",
++        name="test-exporter",
+     )
+     defaults.update(overrides)
+-    return BulkExportWorkerEngine(**defaults)
+-
+-
+-# ===== Tests =====
+-
+-def test_bulk_export_worker_registered():
+-    assert "bulk_export_worker" in list_skeletons()
+-
+-
+-def test_injection_points_keys():
+-    pts = BulkExportWorkerEngine.injection_points
+-    assert "fetcher" in pts
+-    assert "formatter" in pts
+-    assert "uploader" in pts
+-
+-
+-def test_injection_point_fetcher_kind():
+-    pt = BulkExportWorkerEngine.injection_points["fetcher"]
+-    assert pt.kind == "oprim"
+-    assert pt.cardinality == "1"
+-
+-
+-def test_injection_point_formatter_kind():
+-    pt = BulkExportWorkerEngine.injection_points["formatter"]
+-    assert pt.kind == "oskill"
+-    assert pt.cardinality == "1"
+-
+-
+-def test_injection_point_uploader_kind():
+-    pt = BulkExportWorkerEngine.injection_points["uploader"]
+-    assert pt.kind == "obase"
+-    assert pt.cardinality == "1"
+-
+-
+-def test_trigger_mode_on_signal():
+-    assert BulkExportWorkerEngine.trigger_mode == "on_signal"
+-
+-
+-def test_run_is_non_blocking_and_sets_running():
+-    engine = _make_engine()
+-    engine.run()
+-    assert engine._running is True
+-
+-
+-def test_export_sync_generator_fetcher():
+-    engine = _make_engine(fetcher=sync_gen_fetcher)
+-    result = asyncio.run(engine.export())
+-    assert result["status"] == "completed"
+-    assert result["exported"] == 3
+-    assert result["location"] == "/out/export.csv"
+-
+-
+-def test_export_async_generator_fetcher():
+-    engine = _make_engine(fetcher=async_gen_fetcher)
+-    result = asyncio.run(engine.export())
+-    assert result["exported"] == 2
+-
+-
+-def test_export_sync_list_fetcher():
+-    engine = _make_engine(fetcher=sync_list_fetcher)
+-    result = asyncio.run(engine.export())
+-    assert result["exported"] == 2
+-
+-
+-def test_export_async_formatter():
+-    engine = _make_engine(fetcher=sync_list_fetcher, formatter=async_fmt)
+-    result = asyncio.run(engine.export())
+-    assert result["exported"] == 2
+-
+-
+-def test_export_streams_formatted_chunks_to_uploader():
+-    uploaded = []
+-
+-    def cap_uploader(*, data):
+-        uploaded.append(data)
+-        return "/out/x.csv"
+-
+-    engine = _make_engine(fetcher=sync_gen_fetcher, formatter=fmt, uploader=cap_uploader)
+-    result = asyncio.run(engine.export())
+-    assert uploaded == ["line:1", "line:2", "line:3"]
+-    assert result["exported"] == 3
+-    assert result["location"] == "/out/x.csv"
+-
+-
+-def test_export_empty_fetcher():
+-    engine = _make_engine(fetcher=empty_fetcher)
+-    result = asyncio.run(engine.export())
+-    assert result["exported"] == 0
+-    assert result["location"] is None
+-
+-
+-def test_on_step_callback_per_record():
+-    called = []
+-    engine = _make_engine(fetcher=sync_gen_fetcher)
+-    asyncio.run(engine.export(on_step=called.append))
+-    assert len(called) == 3
+-    assert [c["index"] for c in called] == [0, 1, 2]
+-    assert all(c["exported"] for c in called)
+-
+-
+-def test_health_reports_state():
+-    engine = _make_engine()
+-    engine.run()
+-    h = engine.health()
+-    assert h["status"] == "healthy"
+-    assert h["details"]["running"] is True
+-
+-
+-def test_stop_sets_event():
+-    engine = _make_engine()
+-    engine.stop()
+-    assert engine._stop_event.is_set()
+-    assert engine._running is False
++    return BulkExportWorkerEngine(**defaults), uploader
++
++
++class TestBulkExportWorkerRegistration:
++    def test_registered(self):
++        assert "bulk_export_worker" in list_skeletons()
++
++    def test_injection_points(self):
++        pts = BulkExportWorkerEngine.injection_points
++        assert pts["fetcher"].kind == "oprim"
++        assert pts["formatter"].kind == "oskill"
++        assert pts["uploader"].kind == "obase"
++        assert pts["fetcher"].cardinality == "1"
++        assert pts["formatter"].cardinality == "1"
++        assert pts["uploader"].cardinality == "1"
++
++    def test_trigger_mode(self):
++        assert BulkExportWorkerEngine.trigger_mode == "on_signal"
++
++    def test_assemble_basic(self):
++        uploader = make_uploader()
++        m = ServiceManifest(
++            name="exporter-1",
++            skeleton="bulk_export_worker",
++            inject={
++                "fetcher": sync_fetcher,
++                "formatter": csv_formatter,
++                "uploader": uploader.upload,
++            },
++            trigger={"on_signal": "bulk_export.requested"},
++            config={},
++        )
++        service = assemble(m)
++        assert isinstance(service, BulkExportWorkerEngine)
++
++    def test_missing_on_signal_raises(self):
++        uploader = make_uploader()
++        with pytest.raises(ValueError, match="on_signal"):
++            BulkExportWorkerEngine(
++                fetcher=sync_fetcher,
++                formatter=csv_formatter,
++                uploader=uploader.upload,
++                trigger={},
++                config={},
++                name="bad",
++            )
++
++
++class TestBulkExportWorkerStreaming:
++    def test_rows_formatted_and_uploaded(self):
++        engine, uploader = _make_engine()
++        asyncio.run(engine._on_signal({}))
++        assert len(uploader.calls) == 1
++        content = uploader.calls[0]["content"]
++        assert content == "1,a\n2,b\n"
++
++        h = engine.health()
++        assert h["details"]["last_row_count"] == 2
++        assert h["details"]["last_error_count"] == 0
++        assert h["details"]["jobs_processed"] == 1
++
++    def test_temp_file_cleaned_up_after_upload(self):
++        engine, uploader = _make_engine()
++        asyncio.run(engine._on_signal({}))
++        uploaded_path: Path = uploader.calls[0]["local_path"]
++        assert not uploaded_path.exists()
++
++    def test_custom_upload_key_from_payload(self):
++        engine, uploader = _make_engine()
++        asyncio.run(engine._on_signal({"upload_key": "custom/export.csv"}))
++        assert uploader.calls[0]["key"] == "custom/export.csv"
++
++    def test_default_upload_key_when_absent(self):
++        engine, uploader = _make_engine()
++        asyncio.run(engine._on_signal({}))
++        assert uploader.calls[0]["key"] == "test-exporter-export.txt"
++
++    def test_formatter_error_counted_row_skipped(self):
++        engine, uploader = _make_engine(formatter=formatter_fails_on_id_2)
++        asyncio.run(engine._on_signal({}))
++        content = uploader.calls[0]["content"]
++        assert content == "1,a\n"  # row 2 skipped due to formatter error
++        h = engine.health()
++        assert h["details"]["last_row_count"] == 2
++        assert h["details"]["last_error_count"] == 1
++
++    def test_empty_rows_still_uploads_empty_file(self):
++        engine, uploader = _make_engine(fetcher=empty_fetcher)
++        asyncio.run(engine._on_signal({}))
++        assert uploader.calls[0]["content"] == ""
++
++
++class TestBulkExportWorkerHealth:
++    def test_health_initial(self):
++        engine, _ = _make_engine()
++        h = engine.health()
++        assert h["status"] == "stopped"
++        assert h["details"]["topic"] == "bulk_export.requested"
++        assert h["details"]["jobs_processed"] == 0
++
++    def test_stop_sets_running_false(self):
++        engine, _ = _make_engine()
++        engine._running = True
++        engine.stop()
++        assert engine._running is False
+diff --git a/tests/test_bulk_import_worker.py b/tests/test_bulk_import_worker.py
+index bddf834..1cca5b9 100644
+--- a/tests/test_bulk_import_worker.py
++++ b/tests/test_bulk_import_worker.py
+@@ -1,169 +1,158 @@
+-"""BulkImportWorkerEngine tests — ≥10 tests."""
++"""BulkImportWorkerEngine tests.
++
++The persistent run()/subscribe() loop needs a real Redis EventBus, so these
++tests exercise the streaming mechanism directly via `_on_signal`.
++"""
+ 
+ from __future__ import annotations
+ 
+ import asyncio
++
+ import pytest
+ 
+-from oservi import list_skeletons
++from oservi import ManifestValidationError, ServiceManifest, assemble, list_skeletons
+ from oservi.engines.bulk_import_worker import BulkImportWorkerEngine
+ 
+ 
+-# ===== Fake fetchers (multiple supported shapes) =====
+-
+-def sync_gen_fetcher():
+-    yield {"id": 1}
+-    yield {"id": 2}
+-    yield {"id": 3}
+-
+-
+-async def async_gen_fetcher():
+-    yield {"id": 1}
+-    yield {"id": 2}
++def sync_fetcher(*, signal):
++    return [{"row": 1}, {"row": 2}, {"row": 3}]
+ 
+ 
+-def sync_list_fetcher():
+-    return [{"id": 1}, {"id": 2}]
++async def async_fetcher(*, signal):
++    async def gen():
++        for i in range(3):
++            yield {"row": i}
+ 
++    return gen()
+ 
+-async def async_list_fetcher():
+-    return [{"id": 1}]
+ 
+-
+-def empty_fetcher():
++def empty_fetcher(*, signal):
+     return []
+ 
+ 
+-# ===== Fake processors =====
++def make_processor(recorder):
++    def processor(*, row):
++        recorder.append(row)
+ 
+-def proc_ok(*, record):
+-    return record
++    processor.__module__ = "omodul.fake"
++    return processor
+ 
+ 
+-async def async_proc_ok(*, record):
+-    return record
++def processor_fails_on_row_2(*, row):
++    if row["row"] == 2:
++        raise RuntimeError("bad row")
+ 
+ 
+-def proc_raises_on_2(*, record):
+-    if record["id"] == 2:
+-        raise ValueError("bad record")
+-    return record
++for fn in [sync_fetcher, async_fetcher, empty_fetcher]:
++    fn.__module__ = "oprim.fake"
++processor_fails_on_row_2.__module__ = "omodul.fake"
+ 
+ 
+ def _make_engine(**overrides):
++    recorder: list = []
+     defaults = dict(
+-        fetcher=sync_gen_fetcher,
+-        processor=proc_ok,
+-        trigger={"on_signal": True},
++        fetcher=sync_fetcher,
++        processor=make_processor(recorder),
++        trigger={"on_signal": "bulk_import.requested"},
+         config={},
+-        name="test-import",
++        name="test-importer",
+     )
+     defaults.update(overrides)
+-    return BulkImportWorkerEngine(**defaults)
+-
+-
+-# ===== Tests =====
+-
+-def test_bulk_import_worker_registered():
+-    assert "bulk_import_worker" in list_skeletons()
+-
+-
+-def test_injection_points_keys():
+-    pts = BulkImportWorkerEngine.injection_points
+-    assert "fetcher" in pts
+-    assert "processor" in pts
+-
+-
+-def test_injection_point_fetcher_kind():
+-    pt = BulkImportWorkerEngine.injection_points["fetcher"]
+-    assert pt.kind == "oprim"
+-    assert pt.cardinality == "1"
+-
+-
+-def test_injection_point_processor_kind():
+-    pt = BulkImportWorkerEngine.injection_points["processor"]
+-    assert pt.kind == "omodul"
+-    assert pt.cardinality == "1"
+-
+-
+-def test_trigger_mode_on_signal():
+-    assert BulkImportWorkerEngine.trigger_mode == "on_signal"
+-
+-
+-def test_run_is_non_blocking_and_sets_running():
+-    engine = _make_engine()
+-    engine.run()
+-    assert engine._running is True
+-
+-
+-def test_process_sync_generator_fetcher():
+-    engine = _make_engine(fetcher=sync_gen_fetcher)
+-    result = asyncio.run(engine.process())
+-    assert result["status"] == "completed"
+-    assert result["processed"] == 3
+-    assert result["failed"] == 0
+-
+-
+-def test_process_async_generator_fetcher():
+-    engine = _make_engine(fetcher=async_gen_fetcher)
+-    result = asyncio.run(engine.process())
+-    assert result["processed"] == 2
+-
+-
+-def test_process_sync_list_fetcher():
+-    engine = _make_engine(fetcher=sync_list_fetcher)
+-    result = asyncio.run(engine.process())
+-    assert result["processed"] == 2
+-
+-
+-def test_process_async_list_fetcher():
+-    engine = _make_engine(fetcher=async_list_fetcher)
+-    result = asyncio.run(engine.process())
+-    assert result["processed"] == 1
+-
+-
+-def test_process_async_processor():
+-    engine = _make_engine(fetcher=sync_list_fetcher, processor=async_proc_ok)
+-    result = asyncio.run(engine.process())
+-    assert result["processed"] == 2
+-
+-
+-def test_process_failing_processor_captured_not_raised():
+-    engine = _make_engine(fetcher=sync_gen_fetcher, processor=proc_raises_on_2)
+-    result = asyncio.run(engine.process())
+-    assert result["status"] == "completed"
+-    assert result["processed"] == 2  # ids 1 and 3
+-    assert result["failed"] == 1  # id 2
+-    assert len(result["errors"]) == 1
+-    assert result["errors"][0]["index"] == 1
+-
+-
+-def test_process_empty_fetcher():
+-    engine = _make_engine(fetcher=empty_fetcher)
+-    result = asyncio.run(engine.process())
+-    assert result["processed"] == 0
+-    assert result["failed"] == 0
+-
+-
+-def test_on_step_callback_per_record():
+-    called = []
+-    engine = _make_engine(fetcher=sync_gen_fetcher)
+-    asyncio.run(engine.process(on_step=called.append))
+-    assert len(called) == 3
+-    assert [c["index"] for c in called] == [0, 1, 2]
+-    assert all(c["ok"] for c in called)
+-
+-
+-def test_health_reports_state():
+-    engine = _make_engine()
+-    engine.run()
+-    h = engine.health()
+-    assert h["status"] == "healthy"
+-    assert h["details"]["running"] is True
+-
+-
+-def test_stop_sets_event():
+-    engine = _make_engine()
+-    engine.stop()
+-    assert engine._stop_event.is_set()
+-    assert engine._running is False
++    return BulkImportWorkerEngine(**defaults), recorder
++
++
++class TestBulkImportWorkerRegistration:
++    def test_registered(self):
++        assert "bulk_import_worker" in list_skeletons()
++
++    def test_injection_points(self):
++        pts = BulkImportWorkerEngine.injection_points
++        assert pts["fetcher"].kind == "oprim"
++        assert pts["fetcher"].cardinality == "1"
++        assert pts["processor"].kind == "omodul"
++        assert pts["processor"].cardinality == "1"
++
++    def test_trigger_mode(self):
++        assert BulkImportWorkerEngine.trigger_mode == "on_signal"
++
++    def test_assemble_basic(self):
++        recorder: list = []
++        m = ServiceManifest(
++            name="importer-1",
++            skeleton="bulk_import_worker",
++            inject={"fetcher": sync_fetcher, "processor": make_processor(recorder)},
++            trigger={"on_signal": "bulk_import.requested"},
++            config={},
++        )
++        service = assemble(m)
++        assert isinstance(service, BulkImportWorkerEngine)
++
++    def test_missing_on_signal_raises(self):
++        with pytest.raises(ValueError, match="on_signal"):
++            BulkImportWorkerEngine(
++                fetcher=sync_fetcher,
++                processor=lambda *, row: None,
++                trigger={},
++                config={},
++                name="bad",
++            )
++
++    def test_cardinality_1_enforced(self):
++        m = ServiceManifest(
++            name="bad",
++            skeleton="bulk_import_worker",
++            inject={"fetcher": [sync_fetcher, sync_fetcher], "processor": lambda *, row: None},
++            trigger={"on_signal": "t"},
++        )
++        with pytest.raises(ManifestValidationError, match="cardinality=1"):
++            assemble(m)
++
++
++class TestBulkImportWorkerStreaming:
++    def test_sync_iterable_rows_processed(self):
++        engine, recorder = _make_engine()
++        asyncio.run(engine._on_signal({}))
++        assert recorder == [{"row": 1}, {"row": 2}, {"row": 3}]
++        h = engine.health()
++        assert h["details"]["last_row_count"] == 3
++        assert h["details"]["last_error_count"] == 0
++        assert h["details"]["jobs_processed"] == 1
++
++    def test_async_iterable_rows_processed(self):
++        recorder: list = []
++        engine, _ = _make_engine(fetcher=async_fetcher, processor=make_processor(recorder))
++        asyncio.run(engine._on_signal({}))
++        assert recorder == [{"row": 0}, {"row": 1}, {"row": 2}]
++
++    def test_empty_rows(self):
++        engine, recorder = _make_engine(fetcher=empty_fetcher)
++        asyncio.run(engine._on_signal({}))
++        assert recorder == []
++        assert engine.health()["details"]["last_row_count"] == 0
++
++    def test_row_processing_error_counted_not_fatal(self):
++        engine, _ = _make_engine(processor=processor_fails_on_row_2)
++        asyncio.run(engine._on_signal({}))
++        h = engine.health()
++        assert h["details"]["last_row_count"] == 3
++        assert h["details"]["last_error_count"] == 1
++        assert h["details"]["last_error"] is not None
++
++    def test_fetcher_single_not_list(self):
++        engine, _ = _make_engine()
++        assert engine.fetcher is sync_fetcher
++
++
++class TestBulkImportWorkerHealth:
++    def test_health_initial(self):
++        engine, _ = _make_engine()
++        h = engine.health()
++        assert h["status"] == "stopped"
++        assert h["details"]["topic"] == "bulk_import.requested"
++        assert h["details"]["jobs_processed"] == 0
++
++    def test_stop_sets_running_false(self):
++        engine, _ = _make_engine()
++        engine._running = True
++        engine.stop()
++        assert engine._running is False
+diff --git a/tests/test_cron_scheduler_engine.py b/tests/test_cron_scheduler_engine.py
+index 21f4547..c54217d 100644
+--- a/tests/test_cron_scheduler_engine.py
++++ b/tests/test_cron_scheduler_engine.py
+@@ -1,135 +1,149 @@
+-"""CronSchedulerEngine tests — ≥10 tests."""
++"""CronSchedulerEngine tests.
++
++The persistent run() loop sleeps until the next cron fire, so these tests
++exercise the mechanism directly via `_fire_once` (same pattern as
++test_alerter.py's `_iterate_once`) rather than waiting out a real schedule.
++"""
+ 
+ from __future__ import annotations
+ 
+ import asyncio
+-import threading
+-import time
+ 
+ import pytest
+ 
+-from oservi import list_skeletons
++from oservi import ManifestValidationError, ServiceManifest, assemble, list_skeletons
+ from oservi.engines.cron_scheduler_engine import CronSchedulerEngine
+ 
+ 
+-# ===== Fake tasks =====
++def make_task(recorder):
++    def task():
++        recorder.append(1)
++
++    task.__module__ = "omodul.fake"
++    return task
++
+ 
+-def task_ok(*, tick_no, task_no):
+-    return {"tick": tick_no, "task": task_no}
++def make_async_task(recorder):
++    async def task():
++        recorder.append("async")
+ 
++    task.__module__ = "omodul.fake"
++    return task
+ 
+-async def async_task_ok(*, tick_no, task_no):
+-    return {"async": True, "task": task_no}
+ 
++def task_raises():
++    raise RuntimeError("task failed")
+ 
+-def task_raises(*, tick_no, task_no):
+-    raise ValueError("task error")
++
++task_raises.__module__ = "omodul.fake"
+ 
+ 
+ def _make_engine(**overrides):
++    recorder: list = []
+     defaults = dict(
+-        tasks=[task_ok],
++        tasks=[make_task(recorder)],
+         trigger={"on_cron": "0 3 * * *"},
+         config={},
+         name="test-cron",
+     )
+     defaults.update(overrides)
+-    return CronSchedulerEngine(**defaults)
+-
+-
+-# ===== Tests =====
+-
+-def test_cron_scheduler_engine_registered():
+-    assert "cron_scheduler_engine" in list_skeletons()
+-
+-
+-def test_injection_points_keys():
+-    pts = CronSchedulerEngine.injection_points
+-    assert "tasks" in pts
+-
+-
+-def test_injection_point_tasks_kind():
+-    pt = CronSchedulerEngine.injection_points["tasks"]
+-    assert pt.kind == "omodul"
+-    assert pt.cardinality == "1..n"
+-
+-
+-def test_trigger_mode_on_cron():
+-    assert CronSchedulerEngine.trigger_mode == "on_cron"
+-
+-
+-def test_instantiates_with_single_task():
+-    engine = _make_engine(tasks=task_ok)  # single callable, not list
+-    assert len(engine.task_list) == 1
+-
+-
+-def test_run_once_runs_all_tasks_sequentially():
+-    engine = _make_engine(tasks=[task_ok, task_ok, task_ok])
+-    results = asyncio.run(engine.run_once())
+-    assert len(results) == 3
+-    assert [r["task"] for r in results] == [0, 1, 2]
+-
+-
+-def test_run_once_async_task():
+-    engine = _make_engine(tasks=[async_task_ok])
+-    results = asyncio.run(engine.run_once())
+-    assert results[0]["async"] is True
+-
+-
+-def test_run_once_mixed_sync_async():
+-    engine = _make_engine(tasks=[task_ok, async_task_ok])
+-    results = asyncio.run(engine.run_once())
+-    assert len(results) == 2
+-
+-
+-def test_run_once_increments_tick_count():
+-    engine = _make_engine(tasks=[task_ok])
+-    asyncio.run(engine.run_once())
+-    asyncio.run(engine.run_once())
+-    assert engine._tick_count == 2
+-
+-
+-def test_run_once_task_error_captured_not_raised():
+-    engine = _make_engine(tasks=[task_raises, task_ok])
+-    results = asyncio.run(engine.run_once())
+-    assert "error" in results[0]
+-    assert results[1]["task"] == 1  # second task still ran
+-
+-
+-def test_run_loop_stops_on_stop_event():
+-    engine = _make_engine(tasks=[task_ok], config={"interval_seconds": 0.01})
+-    t = threading.Thread(target=engine.run)
+-    t.start()
+-    time.sleep(0.05)
+-    engine.stop()
+-    t.join(timeout=2)
+-    assert not t.is_alive()
+-    assert engine._tick_count >= 1
+-
+-
+-def test_run_raises_if_already_running():
+-    engine = _make_engine()
+-    engine._running = True
+-    with pytest.raises(RuntimeError):
+-        engine.run()
+-
+-
+-def test_resolve_interval_from_config():
+-    engine = _make_engine(config={"interval_seconds": 42})
+-    assert engine._resolve_interval() == 42.0
+-
+-
+-def test_health_reports_running_and_tick_count():
+-    engine = _make_engine(tasks=[task_ok, task_ok])
+-    asyncio.run(engine.run_once())
+-    h = engine.health()
+-    assert h["status"] == "stopped"  # not running the loop
+-    assert h["details"]["tick_count"] == 1
+-    assert h["details"]["tasks_count"] == 2
+-
+-
+-def test_stop_sets_event():
+-    engine = _make_engine()
+-    engine.stop()
+-    assert engine._stop_event.is_set()
+-    assert engine._running is False
++    return CronSchedulerEngine(**defaults), recorder
++
++
++class TestCronSchedulerRegistration:
++    def test_registered(self):
++        assert "cron_scheduler_engine" in list_skeletons()
++
++    def test_injection_points(self):
++        pts = CronSchedulerEngine.injection_points
++        assert pts["tasks"].kind == "omodul"
++        assert pts["tasks"].cardinality == "1..n"
++
++    def test_trigger_mode(self):
++        assert CronSchedulerEngine.trigger_mode == "on_cron"
++
++    def test_assemble_basic(self):
++        recorder: list = []
++        m = ServiceManifest(
++            name="cron-1",
++            skeleton="cron_scheduler_engine",
++            inject={"tasks": [make_task(recorder)]},
++            trigger={"on_cron": "*/5 * * * *"},
++            config={},
++        )
++        service = assemble(m)
++        assert isinstance(service, CronSchedulerEngine)
++
++    def test_missing_on_cron_raises(self):
++        with pytest.raises(ValueError, match="on_cron"):
++            CronSchedulerEngine(tasks=[lambda: None], trigger={}, config={}, name="bad")
++
++    def test_invalid_cron_expr_raises(self):
++        with pytest.raises(Exception):  # noqa: B017 — croniter's own parse error
++            CronSchedulerEngine(
++                tasks=[lambda: None],
++                trigger={"on_cron": "not a cron expr"},
++                config={},
++                name="bad",
++            )
++
++    def test_cardinality_1n_enforced(self):
++        m = ServiceManifest(
++            name="bad",
++            skeleton="cron_scheduler_engine",
++            inject={"tasks": []},
++            trigger={"on_cron": "0 3 * * *"},
++        )
++        with pytest.raises(ManifestValidationError, match="cardinality=1..n"):
++            assemble(m)
++
++
++class TestCronSchedulerFire:
++    def test_fire_once_calls_task(self):
++        engine, recorder = _make_engine()
++        asyncio.run(engine._fire_once())
++        assert recorder == [1]
++        assert engine.health()["details"]["fire_count"] == 1
++
++    def test_fire_once_calls_multiple_tasks(self):
++        recorder: list = []
++        engine, _ = _make_engine(tasks=[make_task(recorder), make_task(recorder)])
++        asyncio.run(engine._fire_once())
++        assert recorder == [1, 1]
++
++    def test_async_task_supported(self):
++        recorder: list = []
++        engine, _ = _make_engine(tasks=[make_async_task(recorder)])
++        asyncio.run(engine._fire_once())
++        assert recorder == ["async"]
++
++    def test_task_exception_does_not_block_others(self):
++        recorder: list = []
++        engine, _ = _make_engine(tasks=[task_raises, make_task(recorder)])
++        asyncio.run(engine._fire_once())
++        assert recorder == [1]
++        assert engine.health()["details"]["last_error"] is not None
++
++    def test_single_task_not_list(self):
++        engine = CronSchedulerEngine(
++            tasks=lambda: None,
++            trigger={"on_cron": "0 3 * * *"},
++            config={},
++            name="t",
++        )
++        assert len(engine.task_list) == 1
++
++
++class TestCronSchedulerHealth:
++    def test_health_initial(self):
++        engine, _ = _make_engine()
++        h = engine.health()
++        assert h["status"] == "stopped"
++        assert h["details"]["cron_expr"] == "0 3 * * *"
++        assert h["details"]["fire_count"] == 0
++
++    def test_stop_sets_running_false(self):
++        engine, _ = _make_engine()
++        engine._running = True
++        engine.stop()
++        assert engine._running is False
+diff --git a/tests/test_event_webhook_dispatcher.py b/tests/test_event_webhook_dispatcher.py
+index 22a8056..45115cb 100644
+--- a/tests/test_event_webhook_dispatcher.py
++++ b/tests/test_event_webhook_dispatcher.py
+@@ -1,153 +1,202 @@
+-"""EventWebhookDispatcherEngine tests — ≥10 tests."""
++"""EventWebhookDispatcherEngine tests.
++
++The persistent run()/subscribe() loop needs a real Redis EventBus, so most
++tests exercise the dispatch mechanism directly via `_on_event` (same pattern
++as test_alerter.py calling `_iterate_once`/`_dispatch_to_channels` directly).
++One end-to-end integration test (real Redis, auto-skips if unavailable)
++verifies the full run()/EventBus.subscribe() wiring, not just `_on_event`.
++"""
+ 
+ from __future__ import annotations
+ 
+ import asyncio
++import os
++
+ import pytest
+ 
+-from oservi import list_skeletons
++from oservi import ManifestValidationError, ServiceManifest, assemble, list_skeletons
+ from oservi.engines.event_webhook_dispatcher import EventWebhookDispatcherEngine
+ 
+ 
+-# ===== Fake subscribers =====
++def make_subscriber(recorder):
++    def subscriber(*, event):
++        recorder.append(event)
++        return {"ok": True}
++
++    subscriber.__module__ = "omodul.fake"
++    return subscriber
++
++
++def make_async_subscriber(recorder):
++    async def subscriber(*, event):
++        recorder.append(event)
++        return {"ok": True}
+ 
+-def sub_ok(*, event, payload):
+-    return {"got": event, "n": payload.get("n")}
++    subscriber.__module__ = "omodul.fake"
++    return subscriber
+ 
+ 
+-async def async_sub_ok(*, event, payload):
+-    return {"got": event, "async": True}
++def subscriber_raises(*, event):
++    raise RuntimeError("subscriber failed")
+ 
+ 
+-def sub_raises(*, event, payload):
+-    raise ValueError("sub error")
++subscriber_raises.__module__ = "omodul.fake"
+ 
+ 
+ def _make_engine(**overrides):
++    recorder: list = []
+     defaults = dict(
+-        subscribers=[sub_ok],
+-        trigger={"on_signal": True},
++        subscribers=[make_subscriber(recorder)],
++        trigger={"on_signal": "order.placed"},
+         config={},
+         name="test-dispatcher",
+     )
+     defaults.update(overrides)
+-    return EventWebhookDispatcherEngine(**defaults)
+-
+-
+-# ===== Tests =====
+-
+-def test_event_webhook_dispatcher_registered():
+-    assert "event_webhook_dispatcher" in list_skeletons()
+-
+-
+-def test_injection_points_keys():
+-    pts = EventWebhookDispatcherEngine.injection_points
+-    assert "subscribers" in pts
+-
+-
+-def test_injection_point_subscribers_kind():
+-    pt = EventWebhookDispatcherEngine.injection_points["subscribers"]
+-    assert pt.kind == "omodul"
+-    assert pt.cardinality == "1..n"
+-
+-
+-def test_trigger_mode_on_signal():
+-    assert EventWebhookDispatcherEngine.trigger_mode == "on_signal"
+-
+-
+-def test_instantiates_with_single_subscriber():
+-    engine = _make_engine(subscribers=sub_ok)  # single callable, not list
+-    assert len(engine.subscriber_list) == 1
+-
+-
+-def test_run_is_non_blocking_and_sets_running():
+-    engine = _make_engine()
+-    engine.run()  # must return immediately
+-    assert engine._running is True
+-
+-
+-def test_dispatch_returns_completed_with_event():
+-    engine = _make_engine()
+-    result = asyncio.run(engine.dispatch("order.created", {"n": 1}))
+-    assert result["status"] == "completed"
+-    assert result["event"] == "order.created"
+-
+-
+-def test_dispatch_fans_out_to_all_subscribers():
+-    engine = _make_engine(subscribers=[sub_ok, sub_ok, sub_ok])
+-    result = asyncio.run(engine.dispatch("e", {"n": 5}))
+-    assert len(result["results"]) == 3
+-    assert all(r["n"] == 5 for r in result["results"])
+-
+-
+-def test_dispatch_async_subscriber():
+-    engine = _make_engine(subscribers=[async_sub_ok])
+-    result = asyncio.run(engine.dispatch("e", {}))
+-    assert result["results"][0]["async"] is True
+-
+-
+-def test_dispatch_mixed_sync_async():
+-    engine = _make_engine(subscribers=[sub_ok, async_sub_ok])
+-    result = asyncio.run(engine.dispatch("e", {"n": 1}))
+-    assert len(result["results"]) == 2
+-
+-
+-def test_subscriber_exception_captured_not_raised():
+-    engine = _make_engine(subscribers=[sub_ok, sub_raises])
+-    result = asyncio.run(engine.dispatch("e", {"n": 1}))
+-    assert result["status"] == "completed"
+-    assert len(result["results"]) == 1  # the healthy one
+-    assert len(result["errors"]) == 1
+-    assert result["errors"][0]["subscriber"] == "sub_raises"
+-
+-
+-def test_all_subscribers_fail_still_completed():
+-    engine = _make_engine(subscribers=[sub_raises, sub_raises])
+-    result = asyncio.run(engine.dispatch("e", {}))
+-    assert result["status"] == "completed"
+-    assert result["results"] == []
+-    assert len(result["errors"]) == 2
+-
+-
+-def test_dispatch_fans_out_concurrently():
+-    active = 0
+-    max_active = 0
+-
+-    async def slow_sub(*, event, payload):
+-        nonlocal active, max_active
+-        active += 1
+-        max_active = max(max_active, active)
+-        await asyncio.sleep(0.02)
+-        active -= 1
+-        return "done"
+-
+-    engine = _make_engine(subscribers=[slow_sub, slow_sub, slow_sub])
+-    result = asyncio.run(engine.dispatch("e", {}))
+-    assert max_active >= 2  # overlap proves concurrent fan-out
+-    assert len(result["results"]) == 3
+-
+-
+-def test_on_step_callback_per_subscriber():
+-    called = []
+-    engine = _make_engine(subscribers=[sub_ok, sub_raises])
+-    asyncio.run(engine.dispatch("e", {}, on_step=called.append))
+-    assert len(called) == 2
+-    assert {c["ok"] for c in called} == {True, False}
+-
+-
+-def test_health_reports_counts():
+-    engine = _make_engine(subscribers=[sub_ok, sub_ok])
+-    engine.run()
+-    asyncio.run(engine.dispatch("e", {}))
+-    h = engine.health()
+-    assert h["status"] == "healthy"
+-    assert h["details"]["subscribers_count"] == 2
+-    assert h["details"]["dispatch_count"] == 1
+-
+-
+-def test_stop_clears_running_and_sets_event():
+-    engine = _make_engine()
+-    engine.run()
+-    engine.stop()
+-    assert engine._running is False
+-    assert engine._stop_event.is_set()
++    return EventWebhookDispatcherEngine(**defaults), recorder
++
++
++class TestEventWebhookDispatcherRegistration:
++    def test_registered(self):
++        assert "event_webhook_dispatcher" in list_skeletons()
++
++    def test_injection_points(self):
++        pts = EventWebhookDispatcherEngine.injection_points
++        assert pts["subscribers"].kind == "omodul"
++        assert pts["subscribers"].cardinality == "1..n"
++
++    def test_trigger_mode(self):
++        assert EventWebhookDispatcherEngine.trigger_mode == "on_signal"
++
++    def test_assemble_basic(self):
++        recorder: list = []
++        m = ServiceManifest(
++            name="dispatcher-1",
++            skeleton="event_webhook_dispatcher",
++            inject={"subscribers": [make_subscriber(recorder)]},
++            trigger={"on_signal": "order.placed"},
++            config={},
++        )
++        service = assemble(m)
++        assert isinstance(service, EventWebhookDispatcherEngine)
++
++    def test_missing_on_signal_raises(self):
++        with pytest.raises(ValueError, match="on_signal"):
++            EventWebhookDispatcherEngine(
++                subscribers=[lambda *, event: None],
++                trigger={},
++                config={},
++                name="bad",
++            )
++
++    def test_cardinality_1n_enforced(self):
++        m = ServiceManifest(
++            name="bad",
++            skeleton="event_webhook_dispatcher",
++            inject={"subscribers": []},
++            trigger={"on_signal": "x"},
++        )
++        with pytest.raises(ManifestValidationError, match="cardinality=1..n"):
++            assemble(m)
++
++
++class TestEventWebhookDispatcherDispatch:
++    def test_single_subscriber_called(self):
++        engine, recorder = _make_engine()
++        asyncio.run(engine._on_event({"order_id": "o1"}))
++        assert recorder == [{"order_id": "o1"}]
++        assert engine.health()["details"]["dispatch_count"] == 1
++
++    def test_multiple_subscribers_all_called(self):
++        recorder1: list = []
++        recorder2: list = []
++        engine, _ = _make_engine(
++            subscribers=[make_subscriber(recorder1), make_subscriber(recorder2)]
++        )
++        asyncio.run(engine._on_event({"order_id": "o1"}))
++        assert recorder1 == [{"order_id": "o1"}]
++        assert recorder2 == [{"order_id": "o1"}]
++
++    def test_async_subscriber_supported(self):
++        recorder: list = []
++        engine, _ = _make_engine(subscribers=[make_async_subscriber(recorder)])
++        asyncio.run(engine._on_event({"x": 1}))
++        assert recorder == [{"x": 1}]
++
++    def test_one_subscriber_failure_does_not_block_others(self):
++        recorder: list = []
++        engine, _ = _make_engine(subscribers=[subscriber_raises, make_subscriber(recorder)])
++        asyncio.run(engine._on_event({"x": 1}))
++        assert recorder == [{"x": 1}]
++        assert engine.health()["details"]["last_error"] is not None
++
++    def test_single_subscriber_not_list(self):
++        engine = EventWebhookDispatcherEngine(
++            subscribers=lambda *, event: None,
++            trigger={"on_signal": "t"},
++            config={},
++            name="t",
++        )
++        assert len(engine.subscriber_list) == 1
++
++
++class TestEventWebhookDispatcherHealth:
++    def test_health_initial_stopped(self):
++        engine, _ = _make_engine()
++        h = engine.health()
++        assert h["status"] == "stopped"
++        assert h["details"]["topic"] == "order.placed"
++        assert h["details"]["subscribers_count"] == 1
++
++    def test_stop_sets_running_false(self):
++        engine, _ = _make_engine()
++        engine._running = True
++        engine.stop()
++        assert engine._running is False
++
++
++class TestEventWebhookDispatcherIntegration:
++    """Real Redis EventBus, exercising the full run()/subscribe() loop end to
++    end rather than just the internal _on_event method. Auto-skips if Redis
++    is unavailable at TEST_REDIS_URL."""
++
++    @pytest.fixture(autouse=True)
++    async def _require_redis(self):
++        try:
++            import redis.asyncio as redis_lib
++        except ImportError:
++            pytest.skip("redis package not installed")
++
++        url = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/0")
++        client = redis_lib.Redis.from_url(url)
++        try:
++            await client.ping()
++        except Exception:
++            pytest.skip("Redis not available at TEST_REDIS_URL")
++        finally:
++            await client.aclose()
++        self.redis_url = url
++
++    async def test_run_receives_published_event_end_to_end(self):
++        from obase.mq import EventBus
++
++        topic = "it:event_webhook_dispatcher:test"
++        recorder: list = []
++        engine = EventWebhookDispatcherEngine(
++            subscribers=[make_subscriber(recorder)],
++            trigger={"on_signal": topic},
++            config={"redis_url": self.redis_url, "poll_timeout_seconds": 1.0},
++            name="it-dispatcher",
++        )
++
++        run_task = asyncio.get_event_loop().run_in_executor(None, engine.run)
++        await asyncio.sleep(0.3)  # let the subscription register with Redis
++
++        publisher = EventBus(redis_url=self.redis_url)
++        await publisher.publish(topic, {"order_id": "it-o1"})
++        await publisher.close()
++
++        await asyncio.sleep(0.5)  # let the event be consumed
++        engine.stop()
++        await asyncio.wait_for(run_task, timeout=5.0)
++
++        assert recorder == [{"order_id": "it-o1"}]
+diff --git a/tests/test_saga_composer.py b/tests/test_saga_composer.py
+index 8ba78ce..99d7098 100644
+--- a/tests/test_saga_composer.py
++++ b/tests/test_saga_composer.py
+@@ -1,48 +1,46 @@
+-"""SagaComposerEngine tests — ≥10 tests."""
++"""SagaComposerEngine tests."""
+ 
+ from __future__ import annotations
+ 
+ import asyncio
++
+ import pytest
+ 
+-from oservi import list_skeletons
++from oservi import ManifestValidationError, ServiceManifest, assemble, list_skeletons
+ from oservi.engines.saga_composer import SagaComposerEngine
+ 
+ 
+-# ===== Fake steps =====
+-
+ def step_ok(*, input_data, step_no):
+-    return {**input_data, f"step_{step_no}": True}
+-
+-
+-async def async_step_ok(*, input_data, step_no):
+-    return {**input_data, f"async_step_{step_no}": True}
++    return {"status": "completed", "step_no": step_no}
+ 
+ 
+-def step_failed_status(*, input_data, step_no):
+-    return {"status": "failed", "step_no": step_no}
++def step_fail(*, input_data, step_no):
++    return {"status": "failed", "step_no": step_no, "error": "boom"}
+ 
+ 
+ def step_raises(*, input_data, step_no):
+-    raise ValueError("step error")
++    raise RuntimeError("step raised")
+ 
+ 
+-# ===== Fake compensations =====
++async def async_step_ok(*, input_data, step_no):
++    return {"status": "completed", "step_no": step_no}
+ 
+-def comp_a(*, input_data, compensation_no, reason):
+-    return {"comp": "a", "no": compensation_no}
+ 
++def make_compensation(recorder):
++    def compensation(*, input_data, step_no, step_result):
++        recorder.append(step_no)
++        return {"status": "completed", "compensated_step": step_no}
+ 
+-def comp_b(*, input_data, compensation_no, reason):
+-    return {"comp": "b", "no": compensation_no}
++    return compensation
+ 
+ 
+-async def async_comp(*, input_data, compensation_no, reason):
+-    return {"comp": "async", "no": compensation_no}
++def compensation_raises(*, input_data, step_no, step_result):
++    raise RuntimeError("compensation raised")
+ 
+ 
+-def comp_raises(*, input_data, compensation_no, reason):
+-    raise RuntimeError("comp error")
++for fn in [step_ok, step_fail, step_raises, compensation_raises]:
++    fn.__module__ = "omodul.fake"
++async_step_ok.__module__ = "omodul.fake"
+ 
+ 
+ def _make_engine(**overrides):
+@@ -57,143 +55,131 @@ def _make_engine(**overrides):
+     return SagaComposerEngine(**defaults)
+ 
+ 
+-# ===== Tests =====
+-
+-def test_saga_composer_registered():
+-    assert "saga_composer" in list_skeletons()
+-
+-
+-def test_injection_points_keys():
+-    pts = SagaComposerEngine.injection_points
+-    assert "steps" in pts
+-    assert "compensations" in pts
+-
+-
+-def test_injection_point_steps_kind():
+-    pt = SagaComposerEngine.injection_points["steps"]
+-    assert pt.kind == "omodul"
+-    assert pt.cardinality == "1..n"
+-
+-
+-def test_injection_point_compensations_kind():
+-    pt = SagaComposerEngine.injection_points["compensations"]
+-    assert pt.kind == "omodul"
+-    assert pt.cardinality == "0..n"
+-
+-
+-def test_trigger_mode_on_demand():
+-    assert SagaComposerEngine.trigger_mode == "on_demand"
+-
+-
+-def test_instantiates_with_single_step():
+-    engine = _make_engine(steps=step_ok)  # single callable, not list
+-    assert len(engine.step_list) == 1
+-
+-
+-def test_instantiates_with_no_compensations():
+-    engine = _make_engine(compensations=None)
+-    assert engine.compensation_list == []
+-
+-
+-def test_run_all_steps_completed():
+-    engine = _make_engine(steps=[step_ok, step_ok])
+-    result = asyncio.run(engine.run(input_data={"x": 1}))
+-    assert result["status"] == "completed"
+-    assert len(result["results"]) == 2
+-    assert result["compensations_run"] == []
+-
+-
+-def test_run_async_step():
+-    engine = _make_engine(steps=[async_step_ok])
+-    result = asyncio.run(engine.run(input_data={"v": 42}))
+-    assert result["status"] == "completed"
+-    assert "async_step_0" in result["results"][0]
+-
+-
+-def test_run_mixed_sync_async_steps():
+-    engine = _make_engine(steps=[step_ok, async_step_ok])
+-    result = asyncio.run(engine.run(input_data={}))
+-    assert len(result["results"]) == 2
+-    assert "step_0" in result["results"][0]
+-    assert "async_step_1" in result["results"][1]
+-
+-
+-def test_run_failed_status_stops_forward_and_compensates():
+-    engine = _make_engine(
+-        steps=[step_ok, step_failed_status, step_ok],
+-        compensations=[comp_a],
+-    )
+-    result = asyncio.run(engine.run(input_data={}))
+-    assert result["status"] == "compensated"
+-    # forward stopped at the failing step → only 2 forward results
+-    assert len(result["results"]) == 2
+-    assert len(result["compensations_run"]) == 1
+-
+-
+-def test_run_step_raises_triggers_compensation():
+-    engine = _make_engine(steps=[step_raises], compensations=[comp_a])
+-    result = asyncio.run(engine.run(input_data={}))
+-    assert result["status"] == "compensated"
+-    assert result["results"][0]["status"] == "failed"
+-    assert len(result["compensations_run"]) == 1
+-
+-
+-def test_compensations_run_in_reverse_order():
+-    engine = _make_engine(
+-        steps=[step_failed_status],
+-        compensations=[comp_a, comp_b],
+-    )
+-    result = asyncio.run(engine.run(input_data={}))
+-    comps = result["compensations_run"]
+-    assert [c["comp"] for c in comps] == ["b", "a"]
+-    assert [c["no"] for c in comps] == [0, 1]
+-
+-
+-def test_async_compensation_supported():
+-    engine = _make_engine(steps=[step_failed_status], compensations=[async_comp])
+-    result = asyncio.run(engine.run(input_data={}))
+-    assert result["status"] == "compensated"
+-    assert result["compensations_run"][0]["comp"] == "async"
+-
+-
+-def test_compensation_error_captured_not_masking():
+-    engine = _make_engine(
+-        steps=[step_failed_status],
+-        compensations=[comp_a, comp_raises],
+-    )
+-    result = asyncio.run(engine.run(input_data={}))
+-    # reversed → comp_raises (no=0) errors, comp_a (no=1) ok
+-    assert result["status"] == "compensated"
+-    comps = result["compensations_run"]
+-    assert len(comps) == 2
+-    assert "error" in comps[0]
+-    assert comps[1]["comp"] == "a"
+-
+-
+-def test_failure_with_no_compensations_returns_failed():
+-    engine = _make_engine(steps=[step_raises], compensations=None)
+-    result = asyncio.run(engine.run(input_data={}))
+-    assert result["status"] == "failed"
+-    assert result["compensations_run"] == []
+-
+-
+-def test_on_step_callback_called_per_forward_step():
+-    called = []
+-    engine = _make_engine(steps=[step_ok, step_ok])
+-    asyncio.run(engine.run(input_data={}, on_step=called.append))
+-    assert len(called) == 2
+-    assert called[0]["step_no"] == 0
+-    assert called[1]["step_no"] == 1
+-
+-
+-def test_health_reports_counts():
+-    engine = _make_engine(steps=[step_ok, step_ok], compensations=[comp_a])
+-    h = engine.health()
+-    assert h["details"]["steps_count"] == 2
+-    assert h["details"]["compensations_count"] == 1
+-
+-
+-def test_stop_sets_event():
+-    engine = _make_engine()
+-    engine.stop()
+-    assert engine._stop_event.is_set()
++class TestSagaComposerRegistration:
++    def test_registered(self):
++        assert "saga_composer" in list_skeletons()
++
++    def test_injection_points(self):
++        pts = SagaComposerEngine.injection_points
++        assert pts["steps"].kind == "omodul"
++        assert pts["steps"].cardinality == "1..n"
++        assert pts["compensations"].kind == "omodul"
++        assert pts["compensations"].cardinality == "0..n"
++
++    def test_trigger_mode(self):
++        assert SagaComposerEngine.trigger_mode == "on_demand"
++
++    def test_assemble_basic(self):
++        m = ServiceManifest(
++            name="saga-1",
++            skeleton="saga_composer",
++            inject={"steps": [step_ok], "compensations": []},
++            trigger={"on_demand": True},
++            config={},
++        )
++        service = assemble(m)
++        assert isinstance(service, SagaComposerEngine)
++
++    def test_cardinality_1n_steps_enforced(self):
++        m = ServiceManifest(
++            name="bad",
++            skeleton="saga_composer",
++            inject={"steps": []},
++            trigger={"on_demand": True},
++        )
++        with pytest.raises(ManifestValidationError, match="cardinality=1..n"):
++            assemble(m)
++
++
++class TestSagaComposerForward:
++    def test_all_steps_succeed(self):
++        engine = _make_engine(steps=[step_ok, step_ok, step_ok])
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "completed"
++        assert len(result["results"]) == 3
++
++    def test_single_step_not_list(self):
++        engine = _make_engine(steps=step_ok)
++        assert len(engine.step_list) == 1
++
++    def test_async_step_supported(self):
++        engine = _make_engine(steps=[async_step_ok])
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "completed"
++
++    def test_step_exception_becomes_failed_result(self):
++        engine = _make_engine(steps=[step_raises])
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "failed"
++        assert result["failed_step"] == 0
++
++
++class TestSagaComposerCompensation:
++    def test_failure_triggers_reverse_compensation(self):
++        order = []
++        comp0 = make_compensation(order)
++        comp1 = make_compensation(order)
++        engine = _make_engine(
++            steps=[step_ok, step_ok, step_fail],
++            compensations=[comp0, comp1],
++        )
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "failed"
++        assert result["failed_step"] == 2
++        # steps 0 and 1 completed before the failure at step 2; compensate them
++        # in reverse order (1 then 0).
++        assert order == [1, 0]
++
++    def test_missing_compensation_skipped(self):
++        # Only one compensation provided for two completed steps — the
++        # uncompensated step should just be skipped, not raise.
++        order = []
++        comp0 = make_compensation(order)
++        engine = _make_engine(
++            steps=[step_ok, step_ok, step_fail],
++            compensations=[comp0],
++        )
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "failed"
++        assert order == [0]
++
++    def test_no_compensations_at_all(self):
++        engine = _make_engine(steps=[step_ok, step_fail], compensations=None)
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "failed"
++        assert result["compensated"] == []
++
++    def test_compensation_exception_captured(self):
++        engine = _make_engine(steps=[step_ok, step_fail], compensations=[compensation_raises])
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "failed"
++        assert result["compensated"][0]["result"]["status"] == "failed"
++
++    def test_first_step_fails_no_compensation_needed(self):
++        engine = _make_engine(steps=[step_fail], compensations=[])
++        result = asyncio.run(engine.run(input_data={}))
++        assert result["status"] == "failed"
++        assert result["failed_step"] == 0
++        assert result["compensated"] == []
++
++
++class TestSagaComposerCallback:
++    def test_on_step_called_for_forward_and_compensate(self):
++        calls = []
++        engine = _make_engine(steps=[step_ok, step_fail], compensations=[make_compensation([])])
++        asyncio.run(engine.run(input_data={}, on_step=calls.append))
++        phases = [c["phase"] for c in calls]
++        assert phases == ["forward", "forward", "compensate"]
++
++
++class TestSagaComposerHealth:
++    def test_health_reports_counts(self):
++        engine = _make_engine(steps=[step_ok, step_ok], compensations=[make_compensation([])])
++        h = engine.health()
++        assert h["details"]["steps_count"] == 2
++        assert h["details"]["compensations_count"] == 1
++
++    def test_stop_sets_event(self):
++        engine = _make_engine()
++        engine.stop()
++        assert engine._stop_event.is_set()
+diff --git a/tests/test_state_machine_engine.py b/tests/test_state_machine_engine.py
+index 0bc52a6..a1417e9 100644
+--- a/tests/test_state_machine_engine.py
++++ b/tests/test_state_machine_engine.py
+@@ -1,183 +1,182 @@
+-"""StateMachineEngine tests — ≥10 tests."""
++"""StateMachineEngine tests."""
+ 
+ from __future__ import annotations
+ 
+ import asyncio
++
+ import pytest
+ 
+-from oservi import list_skeletons
++from oservi import ManifestValidationError, ServiceManifest, assemble, list_skeletons
+ from oservi.engines.state_machine_engine import StateMachineEngine
+ 
+ 
+-# ===== Fake transitions (keyed by __name__ unless explicit .name) =====
+-
+-def paid(*, state, to_state, input_data):
+-    return {"transitioned_to": to_state, "from": state}
+-
++def mark_paid(*, from_status, to_status, input_data):
++    return {"marked": True}
+ 
+-async def async_shipped(*, state, to_state, input_data):
+-    return {"transitioned_to": to_state, "async": True}
+ 
++def cancel(*, from_status, to_status, input_data):
++    return {"canceled": True}
+ 
+-def _custom_impl(*, state, to_state, input_data):
+-    return {"transitioned_to": to_state, "custom": True}
+ 
++async def async_transition(*, from_status, to_status, input_data):
++    return {"async": True}
+ 
+-_custom_impl.name = "custom_state"  # explicit name-keying
+ 
++def transition_raises(*, from_status, to_status, input_data):
++    raise RuntimeError("transition failed")
+ 
+-def boom(*, state, to_state, input_data):
+-    raise ValueError("transition blew up")
+ 
+-
+-# ===== Fake validators (guards) =====
+-
+-def allow_all(*, state, to_state, input_data):
++def validator_allow(*, from_status, to_status, input_data):
+     return True
+ 
+ 
+-def deny_all(*, state, to_state, input_data):
++def validator_deny(*, from_status, to_status, input_data):
+     return False
+ 
+ 
+-async def async_allow(*, state, to_state, input_data):
+-    return True
++def validator_raises(*, from_status, to_status, input_data):
++    raise RuntimeError("validator error")
+ 
+ 
+-def raising_guard(*, state, to_state, input_data):
+-    raise RuntimeError("guard crashed")
++for fn in [mark_paid, cancel, transition_raises]:
++    fn.__module__ = "omodul.fake"
++async_transition.__module__ = "omodul.fake"
++for fn in [validator_allow, validator_deny, validator_raises]:
++    fn.__module__ = "oskill.fake"
++
++
++_MAP = {"draft->pending": "mark_paid", "pending->canceled": "cancel"}
+ 
+ 
+ def _make_engine(**overrides):
+     defaults = dict(
+-        transitions=[paid],
++        transitions=[mark_paid, cancel],
+         validators=None,
+         trigger={"on_demand": True},
+-        config={},
++        config={"transition_map": dict(_MAP)},
+         name="test-fsm",
+     )
+     defaults.update(overrides)
+     return StateMachineEngine(**defaults)
+ 
+ 
+-# ===== Tests =====
+-
+-def test_state_machine_engine_registered():
+-    assert "state_machine_engine" in list_skeletons()
+-
+-
+-def test_injection_points_keys():
+-    pts = StateMachineEngine.injection_points
+-    assert "transitions" in pts
+-    assert "validators" in pts
+-
+-
+-def test_injection_point_transitions_kind():
+-    pt = StateMachineEngine.injection_points["transitions"]
+-    assert pt.kind == "omodul"
+-    assert pt.cardinality == "1..n"
+-
+-
+-def test_injection_point_validators_kind():
+-    pt = StateMachineEngine.injection_points["validators"]
+-    assert pt.kind == "oskill"
+-    assert pt.cardinality == "0..n"
+-
+-
+-def test_trigger_mode_on_demand():
+-    assert StateMachineEngine.trigger_mode == "on_demand"
+-
+-
+-def test_instantiates_with_single_transition():
+-    engine = _make_engine(transitions=paid)  # single callable, not list
+-    assert len(engine.transition_list) == 1
+-
+-
+-def test_name_keying_by_dunder_name():
+-    engine = _make_engine(transitions=[paid, async_shipped])
+-    assert "paid" in engine._transitions
+-    assert "async_shipped" in engine._transitions
+-
+-
+-def test_name_keying_by_explicit_name_attr():
+-    engine = _make_engine(transitions=[_custom_impl])
+-    assert "custom_state" in engine._transitions
+-
+-
+-def test_run_valid_transition_completed():
+-    engine = _make_engine(transitions=[paid])
+-    result = asyncio.run(engine.run(state="new", to_state="paid"))
+-    assert result["status"] == "completed"
+-    assert result["from_state"] == "new"
+-    assert result["to_state"] == "paid"
+-    assert result["result"]["transitioned_to"] == "paid"
+-
+-
+-def test_run_async_transition():
+-    engine = _make_engine(transitions=[async_shipped])
+-    result = asyncio.run(engine.run(state="paid", to_state="async_shipped"))
+-    assert result["status"] == "completed"
+-    assert result["result"]["async"] is True
+-
+-
+-def test_run_unknown_transition_blocked_not_raised():
+-    engine = _make_engine(transitions=[paid])
+-    result = asyncio.run(engine.run(state="new", to_state="nonexistent"))
+-    assert result["status"] == "blocked"
+-    assert result["reason"] == "unknown_transition"
+-
+-
+-def test_run_no_target_state_blocked():
+-    engine = _make_engine(transitions=[paid])
+-    result = asyncio.run(engine.run(state="new", to_state=None))
+-    assert result["status"] == "blocked"
+-    assert result["reason"] == "no_target_state"
+-
+-
+-def test_validator_denies_blocks_transition():
+-    engine = _make_engine(transitions=[paid], validators=[deny_all])
+-    result = asyncio.run(engine.run(state="new", to_state="paid"))
+-    assert result["status"] == "blocked"
+-    assert result["reason"] == "guard_rejected"
+-
+-
+-def test_async_validator_allows_transition():
+-    engine = _make_engine(transitions=[paid], validators=[async_allow])
+-    result = asyncio.run(engine.run(state="new", to_state="paid"))
+-    assert result["status"] == "completed"
+-
+-
+-def test_raising_validator_treated_as_deny():
+-    engine = _make_engine(transitions=[paid], validators=[raising_guard])
+-    result = asyncio.run(engine.run(state="new", to_state="paid"))
+-    assert result["status"] == "blocked"
+-    assert result["reason"] == "guard_rejected"
+-
+-
+-def test_transition_error_blocked_not_raised():
+-    engine = _make_engine(transitions=[boom])
+-    result = asyncio.run(engine.run(state="new", to_state="boom"))
+-    assert result["status"] == "blocked"
+-    assert result["reason"] == "transition_error"
+-    assert "error" in result
+-
+-
+-def test_on_step_callback_called():
+-    called = []
+-    engine = _make_engine(transitions=[paid])
+-    asyncio.run(engine.run(state="new", to_state="paid", on_step=called.append))
+-    assert len(called) == 1
+-    assert called[0]["status"] == "completed"
+-
+-
+-def test_health_reports_known_states():
+-    engine = _make_engine(transitions=[paid, async_shipped])
+-    h = engine.health()
+-    assert h["details"]["transitions_count"] == 2
+-    assert "paid" in h["details"]["known_states"]
+-
+-
+-def test_stop_sets_event():
+-    engine = _make_engine()
+-    engine.stop()
+-    assert engine._stop_event.is_set()
++class TestStateMachineRegistration:
++    def test_registered(self):
++        assert "state_machine_engine" in list_skeletons()
++
++    def test_injection_points(self):
++        pts = StateMachineEngine.injection_points
++        assert pts["transitions"].kind == "omodul"
++        assert pts["transitions"].cardinality == "1..n"
++        assert pts["validators"].kind == "oskill"
++        assert pts["validators"].cardinality == "0..n"
++
++    def test_trigger_mode(self):
++        assert StateMachineEngine.trigger_mode == "on_demand"
++
++    def test_assemble_basic(self):
++        m = ServiceManifest(
++            name="fsm-1",
++            skeleton="state_machine_engine",
++            inject={"transitions": [mark_paid, cancel], "validators": []},
++            trigger={"on_demand": True},
++            config={"transition_map": dict(_MAP)},
++        )
++        service = assemble(m)
++        assert isinstance(service, StateMachineEngine)
++
++    def test_cardinality_1n_transitions_enforced(self):
++        m = ServiceManifest(
++            name="bad",
++            skeleton="state_machine_engine",
++            inject={"transitions": []},
++            trigger={"on_demand": True},
++        )
++        with pytest.raises(ManifestValidationError, match="cardinality=1..n"):
++            assemble(m)
++
++
++class TestStateMachineTransitions:
++    def test_legal_transition_succeeds(self):
++        engine = _make_engine()
++        result = asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert result["status"] == "completed"
++        assert result["transition"] == "draft->pending"
++        assert result["result"]["marked"] is True
++
++    def test_illegal_transition_rejected(self):
++        engine = _make_engine()
++        result = asyncio.run(engine.run(from_status="pending", to_status="draft"))
++        assert result["status"] == "failed"
++        assert "illegal transition" in result["error"]
++
++    def test_unknown_transition_function_rejected(self):
++        engine = _make_engine(config={"transition_map": {"draft->pending": "ghost_function"}})
++        result = asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert result["status"] == "failed"
++        assert "not found" in result["error"]
++
++    def test_transition_exception_captured(self):
++        engine = _make_engine(
++            transitions=[transition_raises],
++            config={"transition_map": {"draft->pending": "transition_raises"}},
++        )
++        result = asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert result["status"] == "failed"
++
++    def test_async_transition_supported(self):
++        engine = _make_engine(
++            transitions=[async_transition],
++            config={"transition_map": {"draft->pending": "async_transition"}},
++        )
++        result = asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert result["status"] == "completed"
++        assert result["result"]["async"] is True
++
++
++class TestStateMachineValidators:
++    def test_validator_allows(self):
++        engine = _make_engine(validators=[validator_allow])
++        result = asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert result["status"] == "completed"
++
++    def test_validator_denies(self):
++        engine = _make_engine(validators=[validator_deny])
++        result = asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert result["status"] == "failed"
++        assert "rejected" in result["error"]
++
++    def test_validator_exception_rejects(self):
++        engine = _make_engine(validators=[validator_raises])
++        result = asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert result["status"] == "failed"
++
++    def test_single_validator_not_list(self):
++        engine = _make_engine(validators=validator_allow)
++        assert len(engine.validator_list) == 1
++
++
++class TestStateMachineCallback:
++    def test_on_step_called_once(self):
++        calls = []
++        engine = _make_engine()
++        asyncio.run(engine.run(from_status="draft", to_status="pending", on_step=calls.append))
++        assert len(calls) == 1
++        assert calls[0]["status"] == "completed"
++
++
++class TestStateMachineHealth:
++    def test_health_reports_known_transitions(self):
++        engine = _make_engine()
++        h = engine.health()
++        assert h["details"]["known_transitions"] == sorted(_MAP.keys())
++        assert h["details"]["transitions_count"] == 2
++
++    def test_transition_count_increments(self):
++        engine = _make_engine()
++        asyncio.run(engine.run(from_status="draft", to_status="pending"))
++        assert engine.health()["details"]["transition_count"] == 1
++
++    def test_stop_is_noop(self):
++        engine = _make_engine()
++        engine.stop()  # must not raise
