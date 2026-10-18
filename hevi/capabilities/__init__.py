@@ -52,6 +52,9 @@ register_explainer_script_capability()
 register_explainer_visual_plan_capability()
 register_explainer_render_capability()
 
+# Stickman line (feat/stickman-flow): topic_scout, structure_clone, proposal, render_local, flow_pack, flow_import
+from hevi.stickman.capabilities import register_stickman_capabilities_once
+register_stickman_capabilities_once()
 
 
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,

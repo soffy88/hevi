@@ -71,6 +71,7 @@ from hevi.api.routers.screenshot_studio import router as screenshot_studio_route
 from hevi.api.routers.ws import router as ws_router
 from hevi.storyplan.api import router as storyplan_router
 from hevi.api.routers.golive3 import router as golive3_router
+from hevi.api.routers.stickman import router as stickman_router
 from hevi.core.config import settings
 from hevi.core.ws_manager import connection_manager
 from hevi.events import EventConsumer, EventGateway
@@ -223,6 +224,7 @@ app.include_router(freezone_router, prefix="/api")
 app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提升/修复/画像/草图)
 app.include_router(storyplan_router, prefix="/api")
 app.include_router(golive3_router, prefix="/api")
+app.include_router(stickman_router, prefix="/api")
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
 mount_mcp(app)
