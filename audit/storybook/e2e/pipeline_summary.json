@@ -1,0 +1,13 @@
+{
+  "title": "小狐狸与微光森林的奇迹",
+  "final_mp4": "/data/soffy/projects/hevi-storybook/audit/storybook/e2e/storybook_final_30s.mp4",
+  "duration_s": 54.416667,
+  "sha256": "127cb475354e8687a591f0be69ffb7a9eb850ff4e5a230264acf3e6c007bd911",
+  "sheet_png": "/data/soffy/projects/hevi-storybook/audit/storybook/e2e/storyboard_preview_sheet.png",
+  "subtitles_srt": "/data/soffy/projects/hevi-storybook/audit/storybook/e2e/bilingual_subtitles.srt",
+  "master_wav": "/data/soffy/projects/hevi-storybook/audit/storybook/e2e/master_audio.wav",
+  "total_shots": 9,
+  "transitions_count": 8,
+  "critique_score": 91.2,
+  "max_alignment_error_ms": 15.0
+}

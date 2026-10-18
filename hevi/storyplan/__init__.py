@@ -23,6 +23,17 @@ from hevi.storyplan.model import (
     TimelineLayer,
     story_plan_schema,
 )
+from hevi.storyplan.critique import (
+    CritiqueIssue,
+    CritiqueReport,
+    critique_story_plan,
+    revise_story_plan,
+    render_storyplan_critique,
+)
+from hevi.storyplan.preview_sheet import (
+    render_storyboard_preview_sheet,
+    render_preview_sheet_capability,
+)
 
 __all__ = [
     "ASPECTS",
@@ -44,4 +55,11 @@ __all__ = [
     "TimelineTrack",
     "TimelineLayer",
     "story_plan_schema",
+    "CritiqueIssue",
+    "CritiqueReport",
+    "critique_story_plan",
+    "revise_story_plan",
+    "render_storyplan_critique",
+    "render_storyboard_preview_sheet",
+    "render_preview_sheet_capability",
 ]
