@@ -24,6 +24,8 @@ def test_measurement_contract_uses_real_frames_and_normal_video_passes(tmp_path:
     assert measured.analysis_frames == 10
     assert measured.frame_count > 0
     assert measured.black_frame_ratio == 0
+    assert measured.freeze_frame_ratio < 0.9
+    assert measured.camera_motion_score > 0.006
     assert evaluate_visual_quality(measured).status in {"PASS", "WARN"}
 
 

@@ -1,0 +1,9 @@
+实现+入库任务。依据 ~/projects/hevi/REPO_3O_REPORT.md 与 ~/projects/platform/3O 下的 3O 规范（HELIOS_3O_SPEC_v3_0.md、3O_MEDUSA_IMPLEMENTATION_SPEC.md、auto_import_oprim.py / auto_import_omodul.py 等入库脚本及已有元素目录作为样板）。
+目标：把报告里 6 个候选项目（kokoro、AI-Youtube-Shorts-Generator、local-deep-research、podcastfy、short-video-factory、DigUp）需要内化的 3O 元素（obase/oprim/oskill/omodul/oservi）全部实现并入库。顺序：先 P1（kokoro→Shorts→local-deep-research），再 P2。
+要求：
+1) 动手前先查元素库里是否已有同类元素，遵守单源收敛，能复用/扩展就不新建；Shorts 相关与 hevi-svfactory 已有能力合并。
+2) 严格按规范的目录结构、命名、元数据、契约和测试要求写；参考对应 GitHub 仓库的核心算法重写为原生代码，只内化核心算法，GUI/前端/下载器不做。模型权重类只写适配器，不提交权重。
+3) 每个元素写单元测试并跑通；用规范规定的入库脚本/流程入库，确认入库成功（能查询到）。
+4) 在各相关仓库新建分支提交 commit，不 push，不动 main。
+5) 写中文报告 ~/projects/hevi/REPO_3O_IMPL.md：每个元素名|类型|所属候选|路径|测试结果|入库状态，以及跳过/阻塞项和原因。
+完成后末行打印 REPO3O_IMPL DONE；卡住超过两次同一问题就记入报告并跳过继续。

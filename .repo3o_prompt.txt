@@ -1,0 +1,4 @@
+只读评估任务（不改任何代码）。先完整阅读 ~/projects/platform/3O 下的 3O 范式文件，理解其定义与内化标准。
+再读 ~/projects/hevi/REPO_FIT_REPORT.md（6个候选开源项目：DigUp、local-deep-research、kokoro、short-video-factory、AI-Youtube-Shorts-Generator、podcastfy 与目标项目 hevi / Easel / AII-stratum 的适配评估），必要时查看候选项目 GitHub README 与目标项目代码。
+按 3O 范式判断：每个候选项目哪些能力/模块/思路可以用 3O 范式内化为目标项目自身能力（而不是外部依赖），哪些只适合外接调用或不值得做。每项给出：候选|目标项目|可内化的具体能力|按3O范式如何内化(对应3O各环节)|不内化/外接的部分及原因|工作量|优先级。
+输出中文报告到 ~/projects/hevi/REPO_3O_REPORT.md：先一张总表，再按目标项目列落地顺序。末行打印 REPO3O DONE。

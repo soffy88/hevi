@@ -83,8 +83,15 @@ def _decode_samples(path: Path, frame_count: int, fps: float, max_frames: int) -
         stream: Any = next(s for s in container.streams if s.type == "video")
         for index in _sample_indices(frame_count, max_frames):
             target_seconds = index / max(fps, 1e-6)
-            timestamp = int(target_seconds * av.time_base)
-            container.seek(max(0, timestamp), stream=stream, backward=True)
+            # With an explicit stream, PyAV interprets seek offsets in that
+            # stream's time_base (not AV_TIME_BASE). Mixing these units can
+            # repeatedly decode the wrong GOP and report a false freeze.
+            if stream.time_base is not None:
+                timestamp = int(target_seconds / float(stream.time_base))
+                container.seek(max(0, timestamp), stream=stream, backward=True)
+            else:
+                timestamp = int(target_seconds * av.time_base)
+                container.seek(max(0, timestamp), backward=True)
             frame: Any = None
             for candidate in container.decode(stream):
                 if candidate.pts is None or stream.time_base is None:

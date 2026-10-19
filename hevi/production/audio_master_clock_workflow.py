@@ -173,26 +173,46 @@ async def prepare_audio_master_clock(
     provider_voice = CURATED_VOICES.get(voice.voice_id, voice.voice_id)
     if not provider_voice:
         raise ValueError("Layer4 voice identity resolved to an empty provider voice")
+    tts_provider = str(config.get("tts_engine") or config.get("audio_provider") or "edge_tts").strip().lower()
+    local_voice = str(config.get("local_tts_voice") or "alba").strip()
+    tts_voice = provider_voice if tts_provider == "edge_tts" else local_voice
     audio_path = output_dir / "tts_master.wav"
-    tts_request = f"{text}|voice={voice.voice_id}|provider_voice={provider_voice}"
+    tts_request = f"{text}|provider={tts_provider}|voice={tts_voice}|identity={voice.voice_id}"
 
     async def _run_tts() -> Path:
-        line = SimpleNamespace(text=text, voice=voice.voice_id, emotion=None)
-        return await edge_tts_synthesize_smart(
-            config={"language": config.get("language") or "en-US"},
-            script=[line], output_path=audio_path, voice=voice.voice_id,
+        if tts_provider == "edge_tts":
+            line = SimpleNamespace(text=text, voice=voice.voice_id, emotion=None)
+            return await edge_tts_synthesize_smart(
+                config={"language": config.get("language") or "en-US"},
+                script=[line], output_path=audio_path, voice=voice.voice_id,
+            )
+        # Reuse the existing HEVI speech-engine adapter. Provider changes are
+        # explicit in task config and in the durable provider/usage records.
+        from hevi.audio.task_adapter import _synthesize_with_engine
+
+        line = SimpleNamespace(text=text, voice=local_voice, emotion=None)
+        await _synthesize_with_engine(
+            tts_provider,
+            line=line,
+            output_path=audio_path,
+            config={**config, "voice": local_voice, "language": config.get("language") or "en-US"},
+            emotion=None,
         )
+        if not audio_path.is_file() or audio_path.stat().st_size == 0:
+            raise RuntimeError(f"TTS provider {tts_provider} produced no audio artifact")
+        return audio_path
 
     _, tts_durable = await _record_provider_call(
-        task=task, provider="edge_tts", model=provider_voice,
-        operation="tts_synthesis", endpoint="edge_tts", request=tts_request,
-        artifact_ref="tts_audio", invoke=_run_tts,
+        task=task, provider=tts_provider, model=tts_voice,
+        operation="tts_synthesis",
+        endpoint="edge_tts" if tts_provider == "edge_tts" else f"local:{tts_provider}",
+        request=tts_request, artifact_ref="tts_audio", invoke=_run_tts,
     )
     audio_probe = _probe_audio(audio_path)
     tts_artifact = _artifact(
         audio_path, kind="audio", media_type="audio/wav", role="tts_audio",
         production_id=production_id,
-        metadata={"provider": "edge_tts", "voice": provider_voice,
+        metadata={"provider": tts_provider, "voice": tts_voice,
                   "voice_authority": "HEVI_LAYER4", **audio_probe},
     )
 
@@ -226,7 +246,7 @@ async def prepare_audio_master_clock(
                   "segments": len(cues), "words": len(asr_holder["words"]), "cer": cer},
     )
     report = {
-        "tts_provider": "edge_tts", "tts_voice": provider_voice, "tts_audio_probe": audio_probe,
+        "tts_provider": tts_provider, "tts_voice": tts_voice, "tts_audio_probe": audio_probe,
         "asr_provider": "faster_whisper", "asr_timestamp_unit": "milliseconds",
         "asr_timestamp_normalization": "PASS", "asr_timestamp_monotonicity": "PASS",
         "asr_transcript_cer": cer, "asr_transcript_quality": "MEASURED",

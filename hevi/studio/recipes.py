@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from hevi.pipeline.manifest import PipelineManifest
 
 LINES_DIR = Path(__file__).resolve().parent / "lines"
-SUPPORTED_RENDER_RUNTIMES = ("remotion", "hyperframes", "ffmpeg", "handdraw")
+SUPPORTED_RENDER_RUNTIMES = ("remotion", "hyperframes", "ffmpeg", "handdraw", "zero", "scene3d")
 
 
 class SlotSpec(BaseModel):

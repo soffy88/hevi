@@ -47,7 +47,11 @@ def test_twelve_production_lines_loaded() -> None:
         assert rec.tools, rec.id
         assert rec.render_runtime in SUPPORTED_RENDER_RUNTIMES
         assert rec.pipeline.stages
-        assert rec.pipeline.stages[-1].name in {"dispatch", "publish"}
+        if rec.id == "scene3d":
+            # Scene3D renders its own artifact; report is its terminal stage.
+            assert rec.pipeline.stages[-1].name == "report"
+        else:
+            assert rec.pipeline.stages[-1].name in {"dispatch", "publish"}
 
 
 def test_parse_recipe_rejects_unknown_handoff() -> None:

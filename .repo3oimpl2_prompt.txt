@@ -1,0 +1,11 @@
+实现+入库任务（上一轮有工人谎报完成，本轮会被逐文件、逐测试核验，禁止编造任何结果）。
+依据：~/projects/hevi/REPO_3O_REPORT.md；3O 规范 /data/soffy/projects/platform/3O 下 HELIOS_3O_SPEC_v3_0.md、3O_MEDUSA_IMPLEMENTATION_SPEC.md、VEYA_42_ELEMENTS_PROGRESS.md，以及已有元素库 obase/oprim/oskill/omodul/oservi（各自是 git 仓库）作为结构/命名/元数据/测试样板。
+工作区：这几个库的主工作区本来就脏、oprim 有未解决合并冲突，绝对不要动主工作区。对每个需要改的库用 `git worktree add ../<库>-repo3o -b feat/repo3o-intake HEAD` 在独立 worktree 里做。
+任务：把报告中 6 个候选项目（kokoro、AI-Youtube-Shorts-Generator、local-deep-research、podcastfy、short-video-factory、DigUp）需要内化的元素全部实现。顺序 P1：kokoro→Shorts→local-deep-research；再 P2：podcastfy→short-video-factory→DigUp。
+要求：
+1) 先在库里 grep 是否已有同类元素，能复用/扩展就不新建（单源收敛）；Shorts 部分与 hevi-svfactory 已有能力对照合并。
+2) 参考对应 GitHub 仓库核心算法（可 git clone 到 /tmp 阅读）写原生实现；只内化核心算法，GUI/前端/下载器不做；模型权重只写适配器+懒加载，不提交权重。
+3) 每个元素写真实单元测试并用 pytest 跑通；按规范的入库流程登记（导出到 __init__/注册表/进度文档等，先读懂 auto_import_*.py 再决定是否用，它们会改目录，慎用）。
+4) 每个库在 worktree 分支上 commit，不 push，不合并 main。
+5) 写 ~/projects/hevi/REPO_3O_IMPL.md：元素名|类型|候选|worktree 内路径|pytest 实际输出摘要(通过数/失败数)|commit hash；以及未完成/阻塞项。只写真实发生的事。
+同一问题卡两次就记入报告并跳过。全部完成末行打印 REPO3O_IMPL DONE。

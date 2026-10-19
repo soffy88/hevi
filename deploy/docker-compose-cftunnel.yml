@@ -206,7 +206,8 @@ services:
       # 归 hevi(999),cftunnel API 跑在 1000:1000 → 挂载到宿主卷让 UID 1000 可写。
       - /home/soffy/projects/hevi/hevi-remotion/src/data:/app/hevi-remotion/src/data
     ports:
-      - "8201:8000"
+      # Host-side Cloudflare Tunnel only; do not expose the API publicly.
+      - "127.0.0.1:8201:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: >
@@ -225,11 +226,12 @@ services:
       dockerfile: ../deploy/Dockerfile.web
       args:
         NEXT_PUBLIC_DEPLOY_ENV: production
-        NEXT_PUBLIC_API_BASE: https://api-prod.sxueji.com
+        NEXT_PUBLIC_API_BASE: https://hevi.kanpan.co
         NEXT_PUBLIC_USE_MOCK: "false"
     restart: unless-stopped
     ports:
-      - "3200:3000"
+      # Host-side Cloudflare Tunnel only; keep Next.js bound to loopback.
+      - "127.0.0.1:3200:3000"
     depends_on:
       hevi-api:
         condition: service_healthy
