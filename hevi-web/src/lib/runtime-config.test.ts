@@ -11,6 +11,13 @@ describe('frontend API route isolation', () => {
     expect(resolveApiBase('production', undefined)).toBe(PRODUCTION_API_BASE);
   });
 
+  it('uses the deployed same-origin /api route for production requests', () => {
+    expect(PRODUCTION_API_BASE).toBe('https://hevi.kanpan.co');
+    expect(resolveApiBase('production', 'https://hevi.kanpan.co')).toBe(
+      'https://hevi.kanpan.co',
+    );
+  });
+
   it('accepts independent demo and staging origins', () => {
     const demo = resolveApiBase('demo', 'https://demo-api.example.test');
     const staging = resolveApiBase('staging', 'https://staging-api.example.test');

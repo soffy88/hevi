@@ -1027,12 +1027,33 @@ export interface ShortdramaRunStatus {
   characters?: ShortdramaCharacterBindingState[];
   season_plan?: SeasonPlanLite;
   gate?: ShortdramaGateResult;
+  story_brief?: {
+    theme?: string;
+    conflict_engine?: string;
+    escalation_mechanism?: string;
+    audience_payoff?: string;
+  };
+  episode_map?: Array<{ ep_number: number; goal?: string; hook?: string }>;
+  director_brief?: {
+    visual_direction?: string;
+    tone?: string;
+    visual_constraints: string[];
+  };
 }
+
+export type ProductionFormVal =
+  | 'live_action'
+  | 'dynamic_comic_2d'
+  | 'stylized_3d'
+  | 'inkwash'
+  | 'paper_stop_motion';
 
 export interface ShortdramaRunRequest {
   source_name: string;
   raw_text: string;
   target_episodes?: number;
+  production_form?: ProductionFormVal;
+  genre?: string;
 }
 
 // 提交绑定时用的选择(mode="auto" 默认自动生成参考图 | "existing" 复用已有角色/刚上传的)
@@ -1509,6 +1530,79 @@ export interface ProviderPreset {
   context_window: number;
   api_key_env: string | null;
   strategy: Record<string, unknown>;
+}
+
+// 兼容导演流水线中的长文本审阅草稿 DTO；这些对象由 UI 编辑后交回导演流程。
+export interface DpSceneScriptDialogueLine {
+  character_name: string;
+  text: string;
+  target_name: string;
+}
+
+export interface DpSceneScriptSegment {
+  segment_id: string;
+  order: number;
+  t_start_s: number;
+  t_end_s: number;
+  narrative_text: string;
+  camera_movement: string;
+  offscreen_trigger: string;
+  beat_description: string;
+  handoff_in: string;
+  handoff_out: string;
+  dialogue: DpSceneScriptDialogueLine[];
+}
+
+export interface DpSceneScript {
+  scene_ref: string | number;
+  characters_present: string[];
+  total_duration_s: number;
+  no_cut_to: string[];
+  segments: DpSceneScriptSegment[];
+}
+
+export interface DpSceneScriptSet {
+  scripts: DpSceneScript[];
+}
+
+export interface DpCharacterVolumeEntry {
+  name: string;
+  profile_text: string;
+  identity_lock_sentence: string;
+  assumed_details: string[];
+}
+
+export interface DpWorldVolumeEntry {
+  name: string;
+  profile_text: string;
+  negative_list: string[];
+  assumed_details: string[];
+}
+
+export interface DpVisualVolume {
+  style_manifesto: string;
+  camera_persona: {
+    persona_id: string;
+    persona_rationale: string;
+    behavior_derivation_text: string;
+  };
+  photographic_flaw_aesthetics: string[];
+  negative_list: string[];
+  assumed_details: string[];
+}
+
+export interface DpSoundVolume {
+  ambient_soundscape_text: string;
+  music_stance_text: string;
+  negative_list: string[];
+  assumed_details: string[];
+}
+
+export interface DpWorldBible {
+  characters: DpCharacterVolumeEntry[];
+  world: DpWorldVolumeEntry[];
+  visual: DpVisualVolume;
+  sound: DpSoundVolume;
 }
 
 // ── MPT 集成 (MoneyPrinterTurbo) ─────────────────────────────────

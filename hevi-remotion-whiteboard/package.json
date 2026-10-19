@@ -1,0 +1,6 @@
+{
+  "name": "hevi-remotion-whiteboard-runtime",
+  "private": true,
+  "description": "Runtime deps for render.js / render.html (installed 2026-10-19)",
+  "dependencies": { "playwright": "1.56.1", "lz-string": "1.5.0", "roughjs": "4.6.6" }
+}

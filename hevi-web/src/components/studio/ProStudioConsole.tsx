@@ -215,16 +215,26 @@ function LivestreamTab({
   onStatus: (v: Record<string, unknown> | null) => void;
 }) {
   const [sessionId, setSessionId] = useState('');
+  const [script, setScript] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function start() {
+    if (!script.trim()) {
+      setError('请先填写直播脚本，再启动直播。');
+      return;
+    }
     setLoading(true);
+    setError(null);
     try {
-      const data = await proStudioApi.livestreamStart({});
+      const data = await proStudioApi.livestreamStart({ script: script.trim() });
       setSessionId(data.session_id);
       onStatus(data);
-    } catch { /* ignore */ }
-    setLoading(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '直播启动失败');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function stop() {
@@ -240,10 +250,22 @@ function LivestreamTab({
 
   return (
     <div className="space-y-4">
+      <label className="block space-y-1 text-sm">
+        <span className="text-zinc-300">直播脚本（必填）</span>
+        <textarea
+          value={script}
+          onChange={(event) => setScript(event.target.value)}
+          rows={4}
+          placeholder="输入本场直播要讲述的内容…"
+          disabled={loading || !!sessionId}
+          className="w-full rounded border border-zinc-700 bg-zinc-900 p-3 text-zinc-100"
+        />
+      </label>
+      {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
       <div className="flex gap-2">
         <button
           onClick={start}
-          disabled={loading || !!sessionId}
+          disabled={loading || !!sessionId || !script.trim()}
           className="px-4 py-2 bg-green-600 hover:bg-green-500 rounded text-sm disabled:opacity-50"
         >
           ▶️ 开始直播

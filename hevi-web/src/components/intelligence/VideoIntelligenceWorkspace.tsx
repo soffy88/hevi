@@ -195,7 +195,7 @@ function BenchmarksView({ benchmarks }: { benchmarks: Row[] }) {
             </div>
           ))}
           <div className="vi-matrix">
-            {DIMENSIONS.map(dimension => <span key={dimension}><b>{dimension.replaceAll('_', ' ')}</b><em>{rows(item.entries).length ? dimensionValue(rows(item.entries)[0], dimension) : 'NOT_OBSERVED'}</em></span>)}
+            {DIMENSIONS.map(dimension => <span key={dimension}><b>{dimension.replace(/_/g, ' ')}</b><em>{rows(item.entries).length ? dimensionValue(rows(item.entries)[0], dimension) : 'NOT_OBSERVED'}</em></span>)}
             <span><b>cost</b><em>see entries</em></span><span><b>latency</b><em>see entries</em></span>
           </div>
         </article>

@@ -39,8 +39,11 @@ function animatedStyle(layer: MotionLayer, frame: number): React.CSSProperties {
     extrapolateRight: 'clamp',
   });
   const opacity = layer.animation === 'fade' || !layer.animation ? progress : 1;
-  const translate = layer.animation === 'translate' ? (1 - progress) * 48 : 0;
-  const scale = layer.animation === 'scale' ? 0.86 + progress * 0.14 : 1;
+  // Keep the visual alive after its entrance: the old implementation clamped
+  // every transform after 15 frames, leaving 6-8 second scenes effectively frozen.
+  const ambient = Math.sin((local / span) * Math.PI * 2);
+  const translate = (layer.animation === 'translate' ? (1 - progress) * 48 : 0) + ambient * 7;
+  const scale = layer.animation === 'scale' ? 0.86 + progress * 0.14 + ambient * 0.045 : 1;
   return {
     opacity,
     transform: `translateY(${translate}px) scale(${scale})`,
@@ -61,9 +64,24 @@ export const MotionGraphics: React.FC<MotionGraphicsProps> = ({ spec, audio_src 
   return (
     <AbsoluteFill style={{ backgroundColor: '#101827', fontFamily: 'Arial, sans-serif' }}>
       {audio_src && <Audio src={audio_src} />}
-      {backgrounds.map((layer) => (
-        <AbsoluteFill key={layer.id} style={{ backgroundColor: layer.color ?? '#101827' }} />
-      ))}
+      {backgrounds.map((layer) => {
+        // Three slow ambient sweeps per clip are visible at 64x64 quality-analysis
+        // resolution; a one-time 15-frame fade was effectively static for the rest.
+        const progress = 0.5 + 0.5 * Math.sin((frame / Math.max(1, spec.duration_frames - 1)) * Math.PI * 6);
+        const position = `${Math.round(progress * 100)}% ${Math.round(50 + Math.sin(progress * Math.PI * 2) * 18)}%`;
+        const base = layer.color ?? '#101827';
+        return (
+          <AbsoluteFill
+            key={layer.id}
+            style={{
+              backgroundColor: base,
+              backgroundImage: `radial-gradient(ellipse at ${position}, rgba(46, 126, 176, 0.72), transparent 58%), linear-gradient(135deg, ${base}, #142b40 58%, #0b1220)`,
+              backgroundSize: '240% 240%, 100% 100%',
+              backgroundPosition: `${position}, center`,
+            }}
+          />
+        );
+      })}
       {foreground.map((layer) => {
         const style = animatedStyle(layer, frame);
         if (layer.type === 'image' && layer.src) {
