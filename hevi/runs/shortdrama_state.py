@@ -24,6 +24,9 @@ def dump_shortdrama_state(record: dict[str, Any]) -> dict[str, Any]:
         state["plan"] = record["plan"].model_dump(mode="json")
     if record.get("gate") is not None:
         state["gate"] = record["gate"].model_dump(mode="json")
+    for field in ("story_brief", "episode_map", "director_brief"):
+        if record.get(field) is not None:
+            state[field] = record[field]
     return state
 
 
@@ -38,6 +41,8 @@ def load_shortdrama_record(row: dict[str, Any]) -> dict[str, Any]:
         "source_name": input_data["source_name"],
         "raw_text": input_data["raw_text"],
         "target_episodes": input_data["target_episodes"],
+        "production_form": input_data.get("production_form", "live_action"),
+        "genre": input_data.get("genre"),
         "created_at": row["created_at"],
         "story": StoryGraph.model_validate(state["story"]) if state.get("story") else None,
         "plan": SeasonPlan.model_validate(state["plan"]) if state.get("plan") else None,
@@ -47,6 +52,9 @@ def load_shortdrama_record(row: dict[str, Any]) -> dict[str, Any]:
         "task_ids": row.get("task_ids") or [],
         "error": state.get("error"),
         "progress": state.get("progress"),
+        "story_brief": state.get("story_brief"),
+        "episode_map": state.get("episode_map"),
+        "director_brief": state.get("director_brief"),
         "completed_at": row.get("completed_at"),
     }
 
@@ -77,6 +85,8 @@ class ShortdramaRunStore:
         source_name: str,
         raw_text: str,
         target_episodes: int,
+        production_form: str = "live_action",
+        genre: str | None = None,
         run_id: str | None = None,
     ) -> dict[str, Any]:
         row = await self._repository.create(
@@ -89,6 +99,8 @@ class ShortdramaRunStore:
                     "source_name": source_name,
                     "raw_text": raw_text,
                     "target_episodes": target_episodes,
+                    "production_form": production_form,
+                    "genre": genre,
                 },
                 "state_json": {"bindings": {}},
             }

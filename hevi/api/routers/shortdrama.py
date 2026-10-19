@@ -32,7 +32,8 @@ from hevi.runs.repository import AutomationRunRepository
 from hevi.runs.shortdrama_state import ShortdramaRunStore, load_shortdrama_record
 from hevi.season_planner.dispatch import dispatch_season
 from hevi.season_planner.planner import build_season_plan
-from hevi.season_planner.schemas import EpisodePlan
+from hevi.season_planner.schemas import EpisodePlan, ProductionForm, PRODUCTION_FORM_PROMPTS
+from hevi.season_planner.story_develop import develop_story
 from hevi.season_planner.tongjian_bridge import render_episode
 from hevi.series.repository import SeriesRepository
 from hevi.series.series_service import SeriesService
@@ -108,6 +109,8 @@ class RunRequest(BaseModel):
     source_name: str
     raw_text: str
     target_episodes: int = 3
+    production_form: ProductionForm = ProductionForm.LIVE_ACTION
+    genre: str | None = None
 
 
 class CharacterBinding(BaseModel):
@@ -133,6 +136,8 @@ def _init_run(
     raw_text: str,
     target_episodes: int,
     user_id: str,
+    production_form: str = ProductionForm.LIVE_ACTION.value,
+    genre: str | None = None,
     cache: bool = True,
 ) -> dict[str, Any]:
     rec: dict[str, Any] = {
@@ -142,6 +147,8 @@ def _init_run(
         "source_name": source_name,
         "raw_text": raw_text,
         "target_episodes": target_episodes,
+        "production_form": production_form,
+        "genre": genre,
         "created_at": datetime.now(UTC),
         "story": None,
         "plan": None,
@@ -182,6 +189,21 @@ async def _plan_pipeline(run_id: str, store: ShortdramaRunStore | None = None) -
     rec["status"] = "RUNNING"
     await _persist_record(store, rec)
     try:
+        # Story-development output is part of the persisted run contract and
+        # must be generated from the selected production form, not silently
+        # omitted while the frontend advertises it.
+        brief, episode_map, director_brief = await develop_story(
+            source_name=rec["source_name"],
+            raw_text=rec["raw_text"],
+            production_form=rec.get("production_form", ProductionForm.LIVE_ACTION.value),
+            genre=rec.get("genre"),
+            target_episodes=rec["target_episodes"],
+        )
+        rec["story_brief"] = brief.model_dump(mode="json")
+        rec["episode_map"] = [episode.model_dump(mode="json") for episode in episode_map]
+        rec["director_brief"] = director_brief.model_dump(mode="json")
+        await _persist_record(store, rec)
+
         story = await extract_story_graph(source_name=rec["source_name"], raw_text=rec["raw_text"])
         if not story.characters or not story.events:
             rec["status"] = "FAILED"
@@ -285,7 +307,12 @@ def _rec_to_status(rec: dict[str, Any]) -> dict[str, Any]:
         "task_ids": rec.get("task_ids") or [],
         "error": rec.get("error"),
         "progress": rec.get("progress"),
+        "production_form": rec.get("production_form", ProductionForm.LIVE_ACTION.value),
+        "genre": rec.get("genre"),
     }
+    for field in ("story_brief", "episode_map", "director_brief"):
+        if rec.get(field) is not None:
+            out[field] = rec[field]
     if rec.get("story") is not None:
         out["story_graph"] = _story_summary(rec["story"])
         out["characters"] = _character_bindings(rec)
@@ -326,6 +353,8 @@ async def start_run(
         raw_text=body.raw_text,
         target_episodes=body.target_episodes,
         user_id=str(user["id"]),
+        production_form=body.production_form.value,
+        genre=body.genre,
         cache=real_store is None,
     )
     if real_store is not None:
@@ -334,6 +363,8 @@ async def start_run(
             source_name=body.source_name,
             raw_text=body.raw_text,
             target_episodes=body.target_episodes,
+            production_form=body.production_form.value,
+            genre=body.genre,
             run_id=run_id,
         )
     background_tasks.add_task(_plan_pipeline, run_id, real_store)
@@ -638,7 +669,11 @@ async def _confirm_pipeline(
             portrait_dir = _OUTPUT_DIR / run_id / "subjects" / c.char_id
             portrait_dir.mkdir(parents=True, exist_ok=True)
             portrait_path = portrait_dir / "portrait.png"
-            prompt = f"{_ART_DIRECTION}, {c.name}, {c.description or '角色肖像'}"
+            art_direction = PRODUCTION_FORM_PROMPTS.get(
+                rec.get("production_form", ProductionForm.LIVE_ACTION.value),
+                _ART_DIRECTION,
+            )
+            prompt = f"{art_direction}, {c.name}, {c.description or '角色肖像'}"
             # 阿里云 qwen-image 偶发算法侧内部错误(2026-07-12 真实撞见:'DashscopeLogger'
             # object has no attribute 'warning',对方服务端 bug),单次瞬时失败不该
             # 拖垮整条派发——重试几次,仍失败才真的放弃这个角色。
