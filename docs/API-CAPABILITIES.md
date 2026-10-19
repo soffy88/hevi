@@ -75,14 +75,6 @@
 | POST | `/api/backlot/runs/{run_id}/shots/{scene_id}/decision` | Decide Shot |
 | GET | `/api/backlot/runs/{run_id}/status` | Get Run Status |
 
-## capabilities
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/capabilities` | List every registered capability (name, kind, aspects, line, cost hint) |
-| GET | `/api/capabilities/{name}` | Describe a single capability by name (422-equivalent via 404 on miss) |
-| POST | `/api/capabilities/{name}/preview` | Render a 3-second preview clip for `name` and return it as an MP4 |
-
 ## canvas
 
 | 方法 | 路径 | 说明 |
@@ -100,6 +92,14 @@
 | GET | `/api/canvas/{graph_id}` | Get Graph |
 | PATCH | `/api/canvas/{graph_id}` | Update Graph |
 | POST | `/api/canvas/{graph_id}/execute` | Execute Graph |
+
+## capabilities
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/capabilities` | List Capabilities Endpoint |
+| GET | `/api/capabilities/{name}` | Get Capability Endpoint |
+| POST | `/api/capabilities/{name}/preview` | Preview Capability Endpoint |
 
 ## cinematic
 
@@ -253,6 +253,17 @@
 | POST | `/api/history-series/produce` | Produce |
 | POST | `/api/history-series/produce-daily` | Produce Daily |
 | GET | `/api/history-series/queue` | Get Queue |
+
+## huobao
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/huobao/capabilities` | Capabilities List |
+| POST | `/api/huobao/capabilities/{name}/preview` | Capability Preview |
+| POST | `/api/huobao/estimate` | Estimate Endpoint |
+| POST | `/api/huobao/merge/validate` | Merge Validate Endpoint |
+| POST | `/api/huobao/retry` | Retry Endpoint |
+| POST | `/api/huobao/rewrite` | Rewrite Endpoint |
 
 ## identities
 
@@ -487,6 +498,27 @@
 | GET | `/api/tasks/{task_id}/shots/{shot_index}/spec` | Get Shot Spec |
 | PATCH | `/api/tasks/{task_id}/shots/{shot_index}/spec` | Patch Shot Spec |
 
+## stickdir
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/stickdir/options` | Options |
+| POST | `/api/stickdir/proposal` | Create Proposal |
+| POST | `/api/stickdir/render` | Render Proposal Endpoint |
+
+## stickman
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/stickman/credits` | Api Get Credits |
+| POST | `/api/stickman/flow_import` | Api Flow Import |
+| POST | `/api/stickman/flow_pack` | Api Flow Pack |
+| POST | `/api/stickman/proposal/approve` | Api Approve Proposal |
+| POST | `/api/stickman/proposal/create` | Api Create Proposal |
+| POST | `/api/stickman/render_local` | Api Render Local |
+| POST | `/api/stickman/structure_clone` | Api Structure Clone |
+| POST | `/api/stickman/topic_scout` | Api Topic Scout |
+
 ## stream-edit
 
 | 方法 | 路径 | 说明 |
@@ -618,6 +650,13 @@
 | PUT | `/api/subjects/{subject_id}/references` | Reorder Subject References |
 | POST | `/api/subjects/{subject_id}/voice` | Upload Subject Voice |
 | POST | `/api/subjects/{subject_id}/wardrobe` | Upload Subject Wardrobe |
+
+## svfactory-batch
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/batch` | Start Batch Production |
+| GET | `/api/batch/{batch_id}` | Get Batch Status |
 
 ## system
 
