@@ -50,6 +50,7 @@ register_manga_capabilities()
 
 import hevi.capabilities.brandfilm  # noqa: E402,F401
 import hevi.capabilities.webrender  # noqa: E402,F401
+import hevi.capabilities.motion_taste  # noqa: E402,F401
 
 # Explainer line capabilities (explainer.script, explainer.visual_plan, explainer.render)
 from hevi.explainer.script import register_explainer_script_capability
