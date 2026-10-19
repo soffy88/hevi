@@ -126,3 +126,10 @@ STORYPLAN_FIX.md
 
 audit/live_host/halfbody/*.wav
 audit/live_host/halfbody/*.mp4
+
+# WIP: large generated / agent work products (2026-10-19)
+artifacts/
+outputs/
+.veya-project/
+.tmp_merge_backup/
+output_e2e/
