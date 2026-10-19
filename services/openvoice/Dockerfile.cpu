@@ -1,0 +1,21 @@
+# CPU runtime for the HEVI OpenVoice provider (OpenVoice v1 checkpoints from model_spec.json).
+FROM python:3.11-slim
+ARG OPENVOICE_COMMIT=74a1d14
+RUN apt-get update && apt-get install -y --no-install-recommends git ffmpeg libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /service
+COPY requirements.cpu.txt ./requirements.cpu.txt
+RUN pip install --no-cache-dir torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements.cpu.txt
+RUN git clone https://github.com/myshell-ai/OpenVoice /opt/OpenVoice \
+    && git -C /opt/OpenVoice checkout ${OPENVOICE_COMMIT} \
+    && python -c "import jieba; jieba.initialize()" 
+ENV PYTHONPATH=/opt/OpenVoice OPENVOICE_DEVICE=cpu OMP_NUM_THREADS=4
+COPY app ./app
+COPY model_bootstrap.py ./model_bootstrap.py
+COPY model_spec.json ./model_spec.json
+RUN mkdir -p /models/openvoice /data/openvoice && chown -R 10001:10001 /models /data/openvoice /tmp
+ENV OPENVOICE_MODEL_DIR=/models/openvoice OPENVOICE_DATA_DIR=/data/openvoice HOME=/tmp
+EXPOSE 8091
+USER 10001:10001
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8091", "--app-dir", "/service"]

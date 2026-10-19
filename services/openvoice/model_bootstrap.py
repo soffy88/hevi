@@ -23,7 +23,7 @@ def _load_spec() -> dict[str, Any]:
     path = Path(os.getenv("OPENVOICE_MODEL_SPEC", str(DEFAULT_SPEC)))
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except OSError, ValueError:
+    except (OSError, ValueError):
         return {}
 
 
@@ -62,7 +62,7 @@ def model_integrity() -> dict[str, Any]:
         }
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except OSError, ValueError:
+    except (OSError, ValueError):
         return {
             "status": "BLOCKED_MODEL_CORRUPT",
             "reason": "invalid_model_manifest",

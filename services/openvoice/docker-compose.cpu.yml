@@ -1,0 +1,30 @@
+# HEVI OpenVoice provider, CPU mode. Started 2026-10-19 (GPU driver broken; CPU only).
+# docker compose -f services/openvoice/docker-compose.cpu.yml up -d --build
+name: hevi-openvoice
+services:
+  openvoice:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+      network: host
+    image: hevi-openvoice:cpu
+    container_name: hevi-openvoice
+    restart: unless-stopped
+    environment:
+      OPENVOICE_DEVICE: cpu
+      OMP_NUM_THREADS: "4"
+      OPENVOICE_REFERENCE_DIRS: /refs/data:/refs/assets
+    volumes:
+      - /home/soffy/models/openvoice:/models/openvoice:ro
+      - /home/soffy/openvoice-data:/data/openvoice
+      - /home/soffy/projects/hevi/data:/refs/data:ro
+      - /home/soffy/projects/hevi/assets:/refs/assets:ro
+    ports:
+      - "8091:8091"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 3G
