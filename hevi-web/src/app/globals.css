@@ -751,7 +751,7 @@ html, body {
 .hevi-home__cat {
   padding: 7px 16px; border-radius: 99px; border: 1px solid var(--border);
   background: var(--card); color: var(--muted-foreground); font-size: var(--text-sm); cursor: pointer;
-  transition: all var(--duration-fast, 120ms);
+  transition: border-color var(--duration-fast, 120ms) ease-out, background-color var(--duration-fast, 120ms) ease-out, color var(--duration-fast, 120ms) ease-out;
 }
 .hevi-home__cat:hover { border-color: var(--primary); }
 .hevi-home__cat[data-active="true"] { background: var(--primary); color: var(--primary-foreground, #fff); border-color: transparent; font-weight: 600; }
@@ -1131,7 +1131,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .tj-demos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .tj-demo-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid color-mix(in oklch, oklch(0.70 0.12 60) 35%, var(--border));
   background: color-mix(in oklch, oklch(0.70 0.12 60) 8%, var(--card)); color: oklch(0.72 0.12 60);
-  font-size: var(--text-xs); cursor: pointer; transition: all 0.15s; }
+  font-size: var(--text-xs); cursor: pointer; transition: background-color 0.15s ease-out; }
 .tj-demo-btn:hover { background: color-mix(in oklch, oklch(0.70 0.12 60) 15%, var(--card)); }
 
 /* 输入字段 */
@@ -1348,7 +1348,7 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .ex-demos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .ex-demo-btn { padding: 6px 14px; border-radius: 8px; border: 1px solid color-mix(in oklch, oklch(0.78 0.14 85) 35%, var(--border));
   background: color-mix(in oklch, oklch(0.78 0.14 85) 8%, var(--card)); color: oklch(0.72 0.14 85);
-  font-size: var(--text-xs); cursor: pointer; transition: all 0.15s; }
+  font-size: var(--text-xs); cursor: pointer; transition: background-color 0.15s ease-out; }
 .ex-demo-btn:hover { background: color-mix(in oklch, oklch(0.78 0.14 85) 15%, var(--card)); }
 
 /* 配方卡片(SPEC v4.0 §2.3) */
@@ -2009,4 +2009,13 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 @media (max-width: 760px) {
   .vi-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vi-split { grid-template-columns: 1fr; }
+}
+
+/* reduced motion (Taste R1 7.8): drop movement, keep fades */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

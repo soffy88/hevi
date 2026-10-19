@@ -136,7 +136,7 @@ export function AnimateWorkbench() {
             <div className="text-right">
               <p className="text-2xl font-bold text-blue-400">{progress}%</p>
               <div className="mt-1 h-2 w-48 overflow-hidden rounded-full bg-zinc-800">
-                <div className="h-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
+                <div className="h-full bg-blue-500 transition-[width] duration-150 ease-out" style={{ width: `${progress}%` }} />
               </div>
             </div>
           </div>
