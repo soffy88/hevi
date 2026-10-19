@@ -19,7 +19,7 @@ pydantic-settings==2.6.0
 
 # Async Utilities
 asyncio-mqtt==0.18.0
-aioredis==2.0.1
+redis>=5.2.0
 
 # Audio Processing (for TTS and ASR)
 pydub==0.25.1

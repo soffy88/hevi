@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -21,8 +22,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT_ROOT = ROOT / "output" / "real_content_chain" / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-ART = ROOT / "artifacts" / "qualification" / "real-content-production-line.json"
+OUT_ROOT = Path(os.getenv("HEVI_QUALIFICATION_OUTPUT_DIR") or (ROOT / "output" / "real_content_chain" / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")))
+ART = Path(os.getenv("HEVI_QUALIFICATION_ARTIFACT") or (ROOT / "artifacts" / "qualification" / "real-content-production-line.json"))
 
 sys.path.insert(0, str(ROOT))
 
@@ -41,7 +42,7 @@ from hevi.quality.taxonomy import FailureCode  # noqa: E402
 TOPIC = "HEVI Real Content Production Line Qualification Sample"
 NARRATION = (
     "Welcome to the HEVI real content production line. "
-    "This sample proves free edge text to speech, local remotion visuals, "
+    "This sample proves local speech synthesis, local remotion visuals, "
     "and subtitles timed from the actual audio master clock."
 )
 PRODUCTION_ID = f"real-content-{uuid.uuid4().hex[:12]}"
@@ -124,7 +125,8 @@ def _build_task(output_dir: Path) -> dict[str, Any]:
             },
             "source": "local_media",
             "video_provider": "remotion",
-            "audio_provider": "edge_tts",
+            "audio_provider": os.getenv("HEVI_REAL_CONTENT_TTS_PROVIDER", "edge_tts").strip().lower(),
+            "local_tts_voice": os.getenv("HEVI_LOCAL_TTS_VOICE", "alba").strip(),
             "visual_mode": "local_media",
             "asr_model_dir": str(Path.home() / "models/faster-whisper-large-v3-turbo"),
         },
@@ -264,7 +266,8 @@ async def main() -> int:
     t0 = time.time()
     result = await execute_local_media_task(task, pool=None)
     elapsed = time.time() - t0
-    edge_after_golden = [r for r in _list_ledger(ledger) if r.get("provider") == "edge_tts"]
+    tts_provider = str(task["config_json"]["audio_provider"])
+    tts_after_golden = [r for r in _list_ledger(ledger) if r.get("provider") == tts_provider]
     step("GOLDEN_PATH", status=result.get("status"), elapsed_s=round(elapsed, 2))
 
     if result.get("status") != "completed":
@@ -315,10 +318,10 @@ async def main() -> int:
         "cer": audio_report.get("asr_transcript_cer"),
     }
     acc["TTS_PROVIDER_IDENTITY"] = {
-        "PASS": acc["REAL_TTS"]["provider"] == "edge_tts",
-        "requested_provider": "edge_tts",
+        "PASS": acc["REAL_TTS"]["provider"] == tts_provider,
+        "requested_provider": tts_provider,
         "actual_provider": acc["REAL_TTS"]["provider"],
-        "substituted": acc["REAL_TTS"]["provider"] != "edge_tts",
+        "substituted": acc["REAL_TTS"]["provider"] != tts_provider,
         "second_voice_authority": audio_report.get("second_voice_authority", 0),
     }
     step("REAL_TTS", provider=acc["TTS_PROVIDER_IDENTITY"]["actual_provider"])
@@ -503,7 +506,7 @@ async def main() -> int:
 
     # 2) Real re-run of ONLY the failed visual_quality node (TTS/motion not re-entered)
     rows_pre_retake = _list_ledger(ledger)
-    edge_pre = [r for r in rows_pre_retake if r.get("provider") == "edge_tts"]
+    tts_pre = [r for r in rows_pre_retake if r.get("provider") == tts_provider]
 
     # Build a task config that preserves audio/motion caches but forces quality recompute
     retake_config = dict(config)
@@ -523,17 +526,17 @@ async def main() -> int:
     }
     retake_result = await execute_visual_quality_task(retake_task, pool=None)
     rows_post = _list_ledger(ledger)
-    edge_post = [r for r in rows_post if r.get("provider") == "edge_tts"]
+    tts_post = [r for r in rows_post if r.get("provider") == tts_provider]
 
     # Idempotent re-run of golden path: must short-circuit, no new TTS
     t_idem = time.time()
     idem = await execute_local_media_task({**task, "config_json": dict(result.get("config_json") or {})}, pool=None)
     idem_elapsed = time.time() - t_idem
     rows_idem = _list_ledger(ledger)
-    edge_idem = [r for r in rows_idem if r.get("provider") == "edge_tts"]
+    tts_idem = [r for r in rows_idem if r.get("provider") == tts_provider]
 
-    duplicate_tts = len(edge_idem) - len(edge_after_golden)
-    retake_tts_delta = len(edge_post) - len(edge_pre)
+    duplicate_tts = len(tts_idem) - len(tts_after_golden)
+    retake_tts_delta = len(tts_post) - len(tts_pre)
 
     acc["RETAKE_PATH"] = {
         "PASS": bool(
@@ -547,7 +550,7 @@ async def main() -> int:
         "failed_node_rerun": retake_result.get("status"),
         "only_failed_node_reran": retake_tts_delta == 0,
         "tts_calls_delta_during_retake": retake_tts_delta,
-        "notes": "RepairController decided repair on injected DELIVERY_INTEGRITY; only execute_visual_quality_task re-entered; edge_tts not re-invoked.",
+        "notes": f"RepairController decided repair on injected DELIVERY_INTEGRITY; only execute_visual_quality_task re-entered; {tts_provider} not re-invoked.",
     }
     step("RETAKE_PATH", status=retake_result.get("status"), tts_delta=retake_tts_delta)
 
@@ -560,8 +563,8 @@ async def main() -> int:
         "restart_status": idem.get("status"),
         "short_circuit_elapsed_s": round(idem_elapsed, 3),
         "original_elapsed_s": round(elapsed, 3),
-        "tts_calls_after_golden_path": len(edge_after_golden),
-        "tts_calls_after_idempotent_rerun": len(edge_idem),
+        "tts_calls_after_golden_path": len(tts_after_golden),
+        "tts_calls_after_idempotent_rerun": len(tts_idem),
         "duplicate_expensive_side_effect": duplicate_tts,
         "cache_short_circuit": idem_elapsed < elapsed,
     }
