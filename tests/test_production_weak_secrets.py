@@ -32,8 +32,8 @@ def _prod_settings(**overrides: str) -> Settings:
     return Settings(**fields)  # type: ignore[arg-type]
 
 
-def test_development_allows_weak_defaults() -> None:
-    s = Settings(app_env="development", jwt_secret=STRONG_JWT)
+def test_development_allows_explicit_weak_compatibility_secret() -> None:
+    s = Settings(app_env="development", jwt_secret=STRONG_JWT, vault_minio_secret_key="hevi1234")
     assert s.app_env == "development"
     assert s.vault_minio_secret_key == "hevi1234"
 
@@ -44,9 +44,9 @@ def test_empty_jwt_raises_configuration_error() -> None:
     assert "JWT_SECRET" in str(exc_info.value)
 
 
-def test_production_rejects_weak_defaults_without_echoing_values() -> None:
+def test_production_rejects_explicit_weak_secrets_without_echoing_values() -> None:
     with pytest.raises(ConfigurationError) as exc_info:
-        Settings(app_env="production", jwt_secret=STRONG_JWT)
+        _prod_settings(database_url="postgresql+asyncpg://hevi:hevi@localhost:5432/hevi", vault_minio_secret_key="hevi1234")
     err = str(exc_info.value)
     assert "PRODUCTION_WEAK_SECRET" in err
     assert "DATABASE_URL" in err

@@ -1,9 +1,11 @@
 """
 Rate Limiting service for microservices architecture
 """
-from typing import Optional
-from datetime import datetime, timedelta
-import aioredis
+from datetime import datetime
+from typing import Any
+
+import redis.asyncio as aioredis
+
 from ..core.config import settings
 from .base import BaseService
 
@@ -13,12 +15,12 @@ class RateLimitService(BaseService):
     Service class for handling API rate limiting using Redis
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.redis_url = settings.redis_url
-        self._redis = None
+        self._redis: Any = None
         
-    async def connect(self):
+    async def connect(self) -> Any:
         """Establish connection to Redis"""
         if self._redis is None:
             self._redis = aioredis.from_url(self.redis_url, decode_responses=True)
@@ -78,7 +80,7 @@ class RateLimitService(BaseService):
         key: str, 
         max_requests: int, 
         window_seconds: int
-    ) -> dict:
+    ) -> dict[str, int | bool]:
         """
         Get rate limit information without incrementing the counter
         """

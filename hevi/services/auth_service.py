@@ -1,13 +1,13 @@
 """
 Authentication and Authorization service for microservices architecture
 """
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from typing import Any
+
 import jwt
-from ..auth.jwt_handler import create_access_token, verify_token
-from ..auth.auth_service import AuthService
-from .base import BaseService
+
+from ..auth.jwt_handler import decode_access_token, sign_access_token
 from ..core.config import settings
+from .base import BaseService
 
 
 class AuthServiceMicroservice(BaseService):
@@ -15,37 +15,35 @@ class AuthServiceMicroservice(BaseService):
     Authentication and Authorization service for microservices architecture
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.jwt_secret = settings.jwt_secret
         self.jwt_algorithm = settings.jwt_algorithm
         self.token_expiry = settings.jwt_expire_minutes
         
-    async def create_token(self, user_data: Dict[str, Any]) -> str:
+    async def create_token(self, user_data: dict[str, Any]) -> str:
         """
         Create a JWT token for a user
         """
         try:
-            token = create_access_token(
-                data=user_data,
-                expires_delta=timedelta(minutes=self.token_expiry)
-            )
-            return token
+            user_id = user_data.get("sub") or user_data.get("user_id") or user_data.get("id")
+            if user_id is None or str(user_id).strip() == "":
+                raise ValueError("user_data must include sub, user_id, or id")
+            return sign_access_token(str(user_id))
         except Exception as e:
             self.logger.error(f"Token creation failed: {e}")
             raise
     
-    async def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+    async def verify_token(self, token: str) -> dict[str, Any] | None:
         """
         Verify a JWT token and return the payload
         """
         try:
-            payload = verify_token(token)
-            return payload
+            return decode_access_token(token)
         except jwt.ExpiredSignatureError:
             self.logger.warning("Token has expired")
             return None
-        except jwt.JWTError as e:
+        except jwt.InvalidTokenError as e:
             self.logger.warning(f"Token verification failed: {e}")
             return None
         except Exception as e:
@@ -62,19 +60,16 @@ class AuthServiceMicroservice(BaseService):
                 return False
             
             user_id = payload.get("sub")
-            if not user_id:
-                return False
-            
             # Basic validation - in a real implementation, this would check
-            # against a permission matrix or RBAC system
-            # For now, just ensure the user exists and token is valid
-            return True
+            # against a permission matrix or RBAC system. For now, ensure the
+            # token identifies a user.
+            return bool(user_id)
             
         except Exception as e:
             self.logger.error(f"Access validation failed: {e}")
             return False
     
-    async def refresh_token(self, refresh_token: str) -> Optional[str]:
+    async def refresh_token(self, refresh_token: str) -> str | None:
         """
         Refresh an access token using a refresh token
         """

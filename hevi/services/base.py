@@ -14,7 +14,7 @@ class BaseService(ABC):
     Abstract base class for all services providing common functionality
     """
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
         
     @asynccontextmanager
