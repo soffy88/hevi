@@ -91,9 +91,11 @@ services:
         NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
     restart: unless-stopped
     # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 全部分配给 hevi-gen-engine。
-    # 用户覆盖:镜像默认 hevi(999),但持久化卷(output/data/assets)宿主持有为
-    # 1000:1000,不加此行则 slate/timeline/memory 全部落盘 Permission denied。
-    user: "1000:1000"
+    # 运行用户:方案 A 部署实测——主仓原有 user: "1000:1000" 覆盖在本机使容器
+    # 起不来(UID 1000 无 passwd 条目,torch 导入时 getpass.getuser() 抛
+    # OSError: No username set in the environment,应用启动失败)。按部署口径
+    # 改回 pubfix 行为:不覆盖,使用镜像默认用户 hevi(999);数据目录在镜像
+    # 构建时已 chown 1000:1000 + o+w,落盘权限由该机制保障(pubfix 已实证)。
     deploy:
       resources:
         limits:
