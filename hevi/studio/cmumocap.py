@@ -45,6 +45,14 @@ TRIALS: dict[str, tuple[str, str, str, str]] = {
     "dance_spin": ("005", "05_02", "xy", "它转了个圈"),
     "dance_glide": ("005", "05_10", "xy", "它跳起舞来"),
     "twist": ("141", "141_12", "xy", "它扭动身体"),
+    # Phase-2 additions (2026-10-20, motion-library internalization): trials
+    # verified against the CMU search index descriptions.
+    "sprint": ("127", "127_03", "zy", "它全速冲刺"),  # CMU: "Run"
+    "punch": ("013", "13_17", "xy", "它打起了拳击"),  # CMU: "boxing"
+    "roll": ("111", "111_21", "xy", "它翻滚了一下"),  # CMU: "Roll over"
+    "knockdown": ("090", "90_16", "zy", "它面朝下倒了下去"),  # CMU: "fall on face"
+    "getup": ("111", "111_06", "xy", "它从地上爬了起来"),  # CMU: "Get up from floor"
+    "victory": ("016", "16_03", "xy", "它高高跳起"),  # CMU: "high jump" (celebration)
 }
 
 #: joints we keep, mapped to the CMU names we resolve below
