@@ -8,7 +8,9 @@ into the job dir and keeps ``job.json`` / ``delivery.json`` current:
   characters.json           人物档案 (图像一致性的锚)
   images/                   定妆图 + 每镜场景图 (image.gpt_generate / gpt_edit)
   narration.wav             旁白母带 (LuxTTS)
-  alignment.json            实测词级时间戳 (ElevenLabs forced alignment)
+  alignment.json            实测词级时间戳 (按 HEVI_TTS_ALIGNMENT_PROVIDER
+                            选档: 默认 whisper_local 本地 ASR 免费档;
+                            elevenlabs_forced 为付费精度档)
   shots.json                分镜表 — 每镜同时带 first_frame / motion_prompt /
                             duration, 即 PixStag 镜头包的交接字段
   film.mp4                  render_route="hyperframes" 的代码合成成片
@@ -47,6 +49,7 @@ from __future__ import annotations
 import contextlib
 import html
 import json
+import os
 import re
 import subprocess
 import sys
@@ -1095,14 +1098,46 @@ async def run_story_film(
 
     # -- 4. alignment ---------------------------------------------------------
     async def _alignment():
-        from hevi.audio.forced_alignment import forced_align_words
         from hevi.audio.tts_alignment import probe_duration_ms
 
-        words, cost = await forced_align_words(
-            audio_path=narration_path, text=full_text
+        # Alignment provider tiers, selected by HEVI_TTS_ALIGNMENT_PROVIDER
+        # (same env switch as hevi.audio.tts_alignment).  storyfilm defaults
+        # to whisper_local: local faster-whisper ASR measurement, free, no
+        # key - validated against the ElevenLabs ground truth of the pilot
+        # narration (median word-start deviation 60 ms, P90 ~100 ms; the
+        # timestamps only cut shots at second scale).  Setting
+        # elevenlabs_forced keeps the paid precision tier (Monid) available.
+        provider = (
+            os.getenv("HEVI_TTS_ALIGNMENT_PROVIDER", "whisper_local")
+            .strip()
+            .lower()
         )
+        if provider in {"elevenlabs", "elevenlabs_forced", "forced"}:
+            from hevi.audio.forced_alignment import forced_align_words
+
+            words, cost = await forced_align_words(
+                audio_path=narration_path, text=full_text
+            )
+            source = "elevenlabs_forced_alignment"
+            tier = "elevenlabs_forced"
+        elif provider in {"whisper", "whisper_local", "whisper_asr"}:
+            from hevi.audio.whisper_alignment import whisper_align_words
+
+            words, _no_cost = await whisper_align_words(
+                audio_path=narration_path, text=full_text
+            )
+            source = "whisper_asr_local"
+            tier = "whisper_local"
+            cost = 0.0  # local CPU inference: honestly zero, recorded as such
+        else:
+            raise StoryFilmError(
+                f"unsupported HEVI_TTS_ALIGNMENT_PROVIDER={provider!r} for "
+                "storyfilm alignment; choose whisper_local (free, default) "
+                "or elevenlabs_forced"
+            )
         payload = {
-            "alignment_source": "elevenlabs_forced_alignment",
+            "alignment_source": source,
+            "alignment_provider": tier,
             "is_estimated": False,
             "duration_ms": probe_duration_ms(narration_path),
             "words": [

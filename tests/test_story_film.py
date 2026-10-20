@@ -201,7 +201,16 @@ def test_build_pixstag_package_shape() -> None:
 
 
 def _patch_all_stages(monkeypatch: pytest.MonkeyPatch) -> None:
-    from hevi.audio import forced_alignment, lux_tts_service, tts_alignment
+    from hevi.audio import (
+        forced_alignment,
+        lux_tts_service,
+        tts_alignment,
+        whisper_alignment,
+    )
+
+    # Default alignment tier for storyfilm is whisper_local; make sure a
+    # developer-shell env var cannot flip these tests to the paid tier.
+    monkeypatch.delenv("HEVI_TTS_ALIGNMENT_PROVIDER", raising=False)
     from hevi.image import gpt_image_service
 
     async def fake_story(premise, *, style, max_shots):
@@ -240,6 +249,14 @@ def _patch_all_stages(monkeypatch: pytest.MonkeyPatch) -> None:
         return words, 0.0012
 
     monkeypatch.setattr(forced_alignment, "forced_align_words", fake_align)
+
+    async def fake_whisper_align(*, audio_path, text, **_):
+        words, _paid_cost = await fake_align(audio_path=audio_path, text=text)
+        return words, None
+
+    monkeypatch.setattr(
+        whisper_alignment, "whisper_align_words", fake_whisper_align
+    )
     monkeypatch.setattr(
         tts_alignment, "probe_duration_ms", lambda p: 3200
     )
@@ -284,8 +301,14 @@ def test_story_film_render_hyperframes_writes_all_artifacts(
     assert result.duration_s > 0
     assert result.qa["title"] == "咪咪回家"
     assert result.qa["stages"]["render"] == "ok"
-    # 0.0022 story + 0.0107 key still + 3 x 0.023 edits + 0.0012 alignment = 0.0831
-    assert result.qa["total_cost_usd"] == pytest.approx(0.0831, abs=1e-4)
+    # 0.0022 story + 0.0107 key still + 3 x 0.023 edits + 0 alignment
+    # (default tier is the free whisper_local ASR measurement) = 0.0819
+    assert result.qa["total_cost_usd"] == pytest.approx(0.0819, abs=1e-4)
+    alignment = json.loads(
+        (out_dir / "alignment.json").read_text(encoding="utf-8")
+    )
+    assert alignment["alignment_source"] == "whisper_asr_local"
+    assert alignment["alignment_provider"] == "whisper_local"
 
     for name in (
         "story.json", "story.md", "characters.json", "shots.json",
@@ -308,6 +331,7 @@ def test_story_film_render_hyperframes_writes_all_artifacts(
             kb["cx_start"] != kb["cx_end"]
         )
     delivery = json.loads((out_dir / "delivery.json").read_text(encoding="utf-8"))
+    assert delivery["stages"]["alignment"]["cost"] == 0
     assert delivery["mastering"]["gain_db"] == -1.6
     assert "duration_check" in delivery
     assert "story_length" in delivery
@@ -341,6 +365,32 @@ def test_story_film_render_pixstag_package(
     assert pkg["kind"] == "pixstag_shot_package"
     assert len(pkg["shots"]) == 3
     assert result.qa["stages"]["gates"] == "skipped"
+
+
+def test_story_film_alignment_elevenlabs_forced_tier(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _patch_all_stages(monkeypatch)
+    monkeypatch.setenv("HEVI_TTS_ALIGNMENT_PROVIDER", "elevenlabs_forced")
+    cap = caps.get("story.film_from_prompt")
+    out_dir = tmp_path / "job3"
+    result = cap.render_safe(
+        {"premise": "一只小猫在雨夜里找回家的路", "max_shots": 3},
+        out_dir,
+        duration=0.0,
+        aspect="9:16",
+        seed=5,
+    )
+    # Paid precision tier: 0.0022 story + 0.0107 key still + 3 x 0.023
+    # edits + 0.0012 ElevenLabs forced alignment = 0.0831
+    assert result.qa["total_cost_usd"] == pytest.approx(0.0831, abs=1e-4)
+    alignment = json.loads(
+        (out_dir / "alignment.json").read_text(encoding="utf-8")
+    )
+    assert alignment["alignment_source"] == "elevenlabs_forced_alignment"
+    assert alignment["alignment_provider"] == "elevenlabs_forced"
+    delivery = json.loads((out_dir / "delivery.json").read_text(encoding="utf-8"))
+    assert delivery["stages"]["alignment"]["cost"] == pytest.approx(0.0012)
 
 
 # ---------------------------------------------------------------------------
