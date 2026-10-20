@@ -168,3 +168,8 @@ _blender_clay.register_blender_clay_capabilities_once()
 # (numbered style -> assembled prompt -> Monid GPT-Image backend).
 from . import handraw_styles as _handraw_styles  # noqa: E402,F401
 _handraw_styles.register_handraw_style_capabilities_once()
+
+# Structured review sheet (qa.review_sheet): cross-line review comments
+# with statuses + frame grabs assembled into a review sheet.
+from . import review_sheet as _review_sheet  # noqa: E402,F401
+_review_sheet.register_review_sheet_capabilities_once()

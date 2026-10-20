@@ -1167,5 +1167,17 @@
     "line": "handraw_style",
     "cpu_cost_hint": 0.0,
     "description": "Generate an image in a numbered handraw-style visual style: style_id + theme (+ optional layout_id/color_id) are assembled into a bilingual prompt by the library's gpt-image-2 activation rules and rendered via the Monid GPT-Image backend. Use for styled stills and covers where a named, reproducible look is wanted instead of a hand-written prompt."
+  },
+  {
+    "name": "qa.review_sheet",
+    "kind": "video",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "qa",
+    "cpu_cost_hint": 0.5,
+    "description": "Generic cross-line review sheet (local, offline): takes review comments on a media file — either a comment list ({film, shot, timestamp_s, scene, element, comment, status in pending|working|done|reopened|cancelled}) or an append-only event log (comment|claim|done|reopen|cancel, folded in order into current status + thread) — grabs one frame per comment at its timestamp_s, and writes review_sheet.json (ffprobe info + normalised records with frame paths) plus a human review.md sheet under out_dir. Any invalid record or a timestamp past the media duration rejects the whole sheet with CapabilityError (no silent clamping). Result mp4 points back at the source media; qa carries the report paths, comment count, by_status counts and pass."
   }
 ]
