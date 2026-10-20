@@ -8,6 +8,7 @@
 
 自动补全纯 CPU、零付费调用、确定性:同一 (prompt, line, seed) 永远产出同一 brief。
 补全后是普通 JSON,可人工改完再渲染。
+同名 disambiguation：本模块的 DirectorBrief 是导演决策 brief（运动轨迹/物理/主光/BPM 拍点/禁止项）；hevi.creative.director_brief.DirectorBrief 是 S1 哈希契约，hevi.season_planner.schemas.DirectorBrief 是短剧导演阐述，三者互不通用。
 """
 
 from __future__ import annotations

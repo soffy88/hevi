@@ -1,0 +1,1073 @@
+[
+  {
+    "name": "agent.ops_bridge",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "agent",
+    "cpu_cost_hint": 0.05,
+    "description": "Agent 画布操作桥：只读 + 写(CAS/幂等) + 付费 propose 闸"
+  },
+  {
+    "name": "qa.kids_gate",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anime",
+    "cpu_cost_hint": 0.1,
+    "description": "幼儿动漫安全与节奏质检闸门"
+  },
+  {
+    "name": "qa.kids_gate.extended",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anime",
+    "cpu_cost_hint": 0.2,
+    "description": "幼儿动漫安全与节奏质检闸门 + §3.6 续作 QC（连续性/调色/转场/口语语言）"
+  },
+  {
+    "name": "kids.review_sheet",
+    "kind": "overlay",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anime",
+    "cpu_cost_hint": 0.5,
+    "description": "分镜审稿表网格 PNG 渲染（每格镜号/时长/台词/机位/景别/缩略图）"
+  },
+  {
+    "name": "kids.render_local",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anime",
+    "cpu_cost_hint": 2.0,
+    "description": "本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）。验收专用合成片（纯色底+镜号台词叠加），非生产渲染；生产混剪走 svfactory.render"
+  },
+  {
+    "name": "kids.annotation_revision",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anime",
+    "cpu_cost_hint": 0.1,
+    "description": "帧标注 → 确定性 ShotSpecPatch（§3.5 映射）"
+  },
+  {
+    "name": "kids.story_gate",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anime",
+    "cpu_cost_hint": 0.0,
+    "description": "幼儿故事闸门：6 节拍结构 + 因果转场比 + 单主题 + 固定角色一致性"
+  },
+  {
+    "name": "kids.consistency_manifest",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anime",
+    "cpu_cost_hint": 0.0,
+    "description": "幼儿一致性清单：schema 校验 + 与 ShotSpec 双向绑定"
+  },
+  {
+    "name": "anatomy_explainer",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "anatomy",
+    "cpu_cost_hint": 1.5,
+    "description": "幼儿科普机械科普动画（动态等距小机器；mode=3d 为可转动的三维转台）"
+  },
+  {
+    "name": "director_brief",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "director",
+    "cpu_cost_hint": 0.05,
+    "description": "线路无关的 DirectorBrief 生成与自动补全。此 DirectorBrief 指 hevi.director_lens.brief.DirectorBrief（运动轨迹/物理/主光/BPM 拍点/禁止项等导演决策），不是 hevi.creative.director_brief 的 S1 哈希契约 DirectorBrief，也不是 hevi.season_planner.schemas.DirectorBrief（短剧导演阐述）"
+  },
+  {
+    "name": "director_check",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "director",
+    "cpu_cost_hint": 0.1,
+    "description": "全线通用的出片前自检闸门 (PPT同步/静止冻结/拍点对齐/声画对齐等)"
+  },
+  {
+    "name": "motion_director",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "director",
+    "cpu_cost_hint": 0.5,
+    "description": "动效导演层完整渲染 pipeline (导演版 vs 基线版 + 逐帧审片 HTML)"
+  },
+  {
+    "name": "story_plan",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storyplan",
+    "cpu_cost_hint": 0.1,
+    "description": "一句话自动补全叙事/分镜/时间线三层结构 StoryPlan"
+  },
+  {
+    "name": "story_check",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storyplan",
+    "cpu_cost_hint": 0.1,
+    "description": "StoryPlan 结构自检门 (钩子、声画对齐、冗余、六项必填、闭环、幼儿安全)"
+  },
+  {
+    "name": "take_select",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storyplan",
+    "cpu_cost_hint": 0.1,
+    "description": "选段器 take_select：多候选 take 按帧评分与子区间选中"
+  },
+  {
+    "name": "storyplan.critique",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storyplan",
+    "cpu_cost_hint": 0.2,
+    "description": "剧本自审轮：挑剔观众+动画导演双重视角批判与自动修订"
+  },
+  {
+    "name": "storyboard.preview_sheet",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "storyplan",
+    "cpu_cost_hint": 0.3,
+    "description": "分镜预览图：按镜头组生成漫画格分镜表（景别远中特、画面描述、台词，铅笔线淡彩风格）"
+  },
+  {
+    "name": "transitions.storybook",
+    "kind": "transition",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "handdraw",
+    "cpu_cost_hint": 2.0,
+    "description": "绘本转场：翻页、湿笔刷晕开、纸页撕裂、铅笔线自绘、水彩晕染"
+  },
+  {
+    "name": "storybook.voice_align",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "audio",
+    "cpu_cost_hint": 2.0,
+    "description": "绘本配音对齐：按本地TTS实际时长重排镜头，双语字幕逐句对齐(<150ms)，旁白角色多音色语气，BGM避让留白"
+  },
+  {
+    "name": "scene3d_asset_import",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "scene3d",
+    "cpu_cost_hint": 0.05,
+    "description": "导入并校验一件 GLB 资产（读三角面/顶点/贴图/骨骼/动画剪辑，返回清单记录）。"
+  },
+  {
+    "name": "scene3d_template",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "scene3d",
+    "cpu_cost_hint": 1.5,
+    "description": "渲染幼儿向 3D 场景模板（小星球 / 小镇街道 / 游乐园一角，含环绕/推近/跟随相机预设）。"
+  },
+  {
+    "name": "scene3d_character_anim",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "scene3d",
+    "cpu_cost_hint": 1.8,
+    "description": "渲染带骨骼 GLB 角色的行走镜头（AnimationMixer 确定性时间步驱动，肢体位移被实测校验）。"
+  },
+  {
+    "name": "scene3d.planet_orbit",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "scene3d",
+    "cpu_cost_hint": 1.6,
+    "description": "漂浮 toon 小星球环绕镜头（小王子风格，CPU/SwiftShader 出片）。"
+  },
+  {
+    "name": "scene3d.fox_wheat",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "16:9"
+    ],
+    "line": "scene3d",
+    "cpu_cost_hint": 0.8,
+    "description": "麦田里的小狐狸竖屏镜头，风吹草动 + 暖色 bloom。"
+  },
+  {
+    "name": "scene3d.star_sea",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "16:9"
+    ],
+    "line": "scene3d",
+    "cpu_cost_hint": 1.2,
+    "description": "穿过星海推进镜头，星空粒子 + 大气雾 + bloom。"
+  },
+  {
+    "name": "svfactory.montage",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "svfactory",
+    "cpu_cost_hint": 0.1,
+    "description": "素材文件夹确定性自动混剪（按时长选段、裁画幅、防连击、seed 去重）"
+  },
+  {
+    "name": "svfactory.render",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "svfactory",
+    "cpu_cost_hint": 2.0,
+    "description": "本地 CPU 串行短片渲染（Piper TTS + 混剪 + libass 幼儿大字描边字幕 + kids_gate）。输入为脚本文本+素材目录的真实素材混剪，与 kids.render_local（manifest 驱动验收片）无关"
+  },
+  {
+    "name": "handdraw.full",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 120.0,
+    "description": "幼儿向手绘动画；正 duration 为精确时长预览，0 为完整交付。"
+  },
+  {
+    "name": "handdraw.storyboard",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 4.0,
+    "description": "仅生成分镜插画+口播稿（CPU 矢量插画），不渲染视频。"
+  },
+  {
+    "name": "handdraw.narration",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 30.0,
+    "description": "整篇 CosyVoice/piper 旁白母带 + 时间戳对齐 JSON，不渲染画面。"
+  },
+  {
+    "name": "handdraw.illustration",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 2.0,
+    "description": "单张 CPU 矢量风格插画 PNG（指定手绘风格）。"
+  },
+  {
+    "name": "particle_text",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "partsci",
+    "cpu_cost_hint": 1.2,
+    "description": "文字粒子化科普动画（确定性 Canvas 2D + 确定性 PRNG）"
+  },
+  {
+    "name": "particle_science_scene",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "partsci",
+    "cpu_cost_hint": 1.5,
+    "description": "儿童科普场景粒子动画（六层视差构图 + 语义配色）"
+  },
+  {
+    "name": "parallax_layers",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "partsci",
+    "cpu_cost_hint": 1.0,
+    "description": "六层视差构图系统（远景/中远/主体/前景/粒子/字幕层）"
+  },
+  {
+    "name": "assets.library",
+    "kind": "asset",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "universal"
+    ],
+    "line": "golive3",
+    "cpu_cost_hint": 0.1,
+    "description": "项目内可复用资产库（角色/场景/道具 CRUD 与音色绑定，集成 ReferenceStore）。"
+  },
+  {
+    "name": "assets.extract",
+    "kind": "extractor",
+    "aspects": [
+      "universal"
+    ],
+    "line": "golive3",
+    "cpu_cost_hint": 0.2,
+    "description": "从剧本自动抽取角色、场景与道具（复用 hevi.creative.layer4 ImportModule）。"
+  },
+  {
+    "name": "image.multi_ref_compose",
+    "kind": "overlay",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "golive3",
+    "cpu_cost_hint": 0.5,
+    "description": "多参考图融合与占位符解析（支持 capability_guard 与 provider 上限校验）。"
+  },
+  {
+    "name": "style.project_snapshot",
+    "kind": "style",
+    "aspects": [
+      "universal"
+    ],
+    "line": "golive3",
+    "cpu_cost_hint": 0.1,
+    "description": "项目级风格快照（生成不可变持久化版本快照ID，支持版本回溯）。"
+  },
+  {
+    "name": "storyboard.shot_groups",
+    "kind": "storyboard",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "golive3",
+    "cpu_cost_hint": 0.2,
+    "description": "分镜镜头组拆分（复用 hevi.storyplan 模型，生成视频提示词与首尾帧约束）。"
+  },
+  {
+    "name": "manga.name_layout",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "B5",
+      "1:1",
+      "4:5",
+      "16:9"
+    ],
+    "line": "",
+    "cpu_cost_hint": 0.1,
+    "description": ""
+  },
+  {
+    "name": "manga.room_bg",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "manga.location_bg",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.5,
+    "description": ""
+  },
+  {
+    "name": "brandfilm.line",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 12.0,
+    "description": ""
+  },
+  {
+    "name": "satori.title_card",
+    "kind": "title",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "webrender",
+    "cpu_cost_hint": 0.1,
+    "description": "Satori + resvg CPU 静态卡片/标题卡渲染"
+  },
+  {
+    "name": "motion.review",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "motion_taste",
+    "cpu_cost_hint": 0.05,
+    "description": "动画评审（review-animations）：按十项硬标准审查动画代码，输出 findings 表 + Block/Approve 结论。规则见 docs/rules/animation_taste.md。"
+  },
+  {
+    "name": "motion.audit_plan",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "motion_taste",
+    "cpu_cost_hint": 0.05,
+    "description": "全库动画审计（improve-animations）：扫描目录的动效代码，输出按影响/成本排序的审计表 + plans/ 下可执行的改进计划。"
+  },
+  {
+    "name": "motion.perfcheck",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "motion_taste",
+    "cpu_cost_hint": 0.05,
+    "description": "动画性能诊断（animation-performance）：按帧预算因果表定位掉帧原因（属性层级/线程/CSS 变量风暴/blur/will-change）。"
+  },
+  {
+    "name": "explainer.script",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "explainer",
+    "cpu_cost_hint": 0.05,
+    "description": "文章/资料转化为口播稿，支持自动分段、口语化重构、时长估算与版本增量编辑。能力线：纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion 依赖），与 Studio explainer 线（assembly+Remotion 生产核，供 6 条 Studio 线与 API）是两条独立链；本线供能力目录按名调用与 lanshu styled explainer。"
+  },
+  {
+    "name": "explainer.visual_plan",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "explainer",
+    "cpu_cost_hint": 0.1,
+    "description": "节奏驱动视觉规划：依据音频词级时间戳排镜，支持关键词高亮、配图卡片、流程图逐层展开、主讲人布局切换与转场。能力线：纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion 依赖），与 Studio explainer 线（assembly+Remotion 生产核，供 6 条 Studio 线与 API）是两条独立链；本线供能力目录按名调用与 lanshu styled explainer。"
+  },
+  {
+    "name": "explainer.render",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "explainer",
+    "cpu_cost_hint": 0.2,
+    "description": "解说视频快速低清预览帧与纯 CPU 本地 FFmpeg MP4 最终视频渲染。能力线：纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion 依赖），与 Studio explainer 线（assembly+Remotion 生产核，供 6 条 Studio 线与 API）是两条独立链；本线供能力目录按名调用与 lanshu styled explainer。"
+  },
+  {
+    "name": "stickman.topic_scout",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "stickman",
+    "cpu_cost_hint": 0.1,
+    "description": "对标频道数据少发高爆打分排序器（离线纯算法）"
+  },
+  {
+    "name": "stickman.structure_clone",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "stickman",
+    "cpu_cost_hint": 0.2,
+    "description": "五段心跳骨架时间比例自适应克隆与反抄袭生成器"
+  },
+  {
+    "name": "stickman.proposal",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "stickman",
+    "cpu_cost_hint": 0.1,
+    "description": "火柴人导演提案与状态机（草稿/批准权限隔离）"
+  },
+  {
+    "name": "stickman.render_local",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "stickman",
+    "cpu_cost_hint": 1.5,
+    "description": "CPU-only 程序化火柴人本地渲染（白底黑线/彩色故事两套+双语字幕+微缩放转场）"
+  },
+  {
+    "name": "stickman.flow_pack",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "stickman",
+    "cpu_cost_hint": 0.1,
+    "description": "Flow Omni Flash 720P 任务包导出器（画风锁定+积分台账）"
+  },
+  {
+    "name": "stickman.flow_import",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "stickman",
+    "cpu_cost_hint": 0.8,
+    "description": "Flow 外部成品导入校验、双语字幕压制与微转场拼接器"
+  },
+  {
+    "name": "riso.versus",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.title",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.number",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.compare",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.converge",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.network",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.focus",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.steps",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.shot",
+    "kind": "shot",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "riso.quote",
+    "kind": "overlay",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 1.2,
+    "description": ""
+  },
+  {
+    "name": "audio.forced_align",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "multimodel",
+    "cpu_cost_hint": 0.0,
+    "description": "Measured word-level {text, start_ms, end_ms} timestamps from real audio via ElevenLabs forced alignment (Monid). Use instead of LuxTTS estimated timings when millisecond accuracy matters (subtitle burn, word-level cuts). Result marks is_estimated=False."
+  },
+  {
+    "name": "image.gpt_generate",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "multimodel",
+    "cpu_cost_hint": 0.0,
+    "description": "GPT-Image 2.5 text-to-image stills (Monid). Use for high-aesthetic studio scenes and character sheets when the local GPU route is unavailable."
+  },
+  {
+    "name": "image.gpt_edit",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "multimodel",
+    "cpu_cost_hint": 0.0,
+    "description": "GPT-Image 2.5 reference-based edit from up to 16 images (Monid). The character-consistency workflow: same face/clothing/scene across poses and angles."
+  },
+  {
+    "name": "story.film_from_prompt",
+    "kind": "line",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "storyfilm",
+    "cpu_cost_hint": 1.0,
+    "description": "One-sentence-to-film orchestration: premise → story draft (hook, character profiles, beats) → GPT-Image character + scene stills → LuxTTS narration → measured word alignment → timed shots (first_frame/motion_prompt/duration) → HyperFrames film with gates, or a PixStag shot package for the live-action line. Stage evidence + costs land in the job dir (delivery.json)."
+  },
+  {
+    "name": "audio.earshot_gate",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "earshot",
+    "cpu_cost_hint": 0.5,
+    "description": "Audio gate (earshot measure, model-free, local): true peak, integrated LUFS vs target, hard-clipping and silence checks. The picture-side counterpart is film_gate. Writes earshot_gate_report.json; qa['pass'] is the verdict. Use on final mixes / narration before delivery."
+  },
+  {
+    "name": "audio.sfx_render",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "earshot",
+    "cpu_cost_hint": 0.2,
+    "description": "Render one of earshot's 201 code-defined sound effects by id to wav (48 kHz). Fully local and offline: the bank is synthesis recipes, no samples and no model download. Use for UI clicks, whooshes, hits and stingers in code-animated films."
+  },
+  {
+    "name": "video.pixstag_generate",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1",
+      "4:3",
+      "3:4",
+      "21:9"
+    ],
+    "line": "livefilm",
+    "cpu_cost_hint": 0.0,
+    "description": "PixStag v2 external video render (MiniMax-H3 / doubao-seedance, via https://pixstag.com). Live-action story films: hevi produces shot packages (first frame + motion prompt + duration) and this renders each shot to mp4. Needs PIXSTAG_API_KEY; billed in credits (720P=1/s)."
+  },
+  {
+    "name": "video.hyperframes_styles",
+    "kind": "video",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "hyperframes",
+    "cpu_cost_hint": 0.0,
+    "description": "creator-style-kit style catalogue (18 styles): use to pick a 9:16 HyperFrames style by content type (id, Chinese/English name, best_for, essence, palette, motion grammar, hard rules). Writes styles_catalogue.json regenerated from the kit checkout."
+  },
+  {
+    "name": "video.hyperframes_styled_render",
+    "kind": "video",
+    "aspects": [
+      "9:16"
+    ],
+    "line": "hyperframes",
+    "cpu_cost_hint": 1.5,
+    "description": "Apply a creator-style-kit style to a beats list and render a deterministic 1080x1920 HyperFrames video (fonts/palette/motion/CC0 cue kit from the style; seek-based Chromium capture). Use video.hyperframes_styles first when the style is undecided."
+  },
+  {
+    "name": "story.branch_forecast",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storybranch",
+    "cpu_cost_hint": 0.1,
+    "description": "Plot-line forecasting before writing: from the current story state (canon facts, characters, recent summaries, author intent) generate 2-5 isolated future branches, each with beats, key character decisions, estimated state changes, risks and an intent-match score (0-1), plus a lateral comparison table. Writes branches.json with the story-state hash for staleness detection. Generator is injectable (set_generator_fn wins); otherwise the default Monid gpt-4o-mini backend runs when MONID_API_KEY is available (per-call small fee), and without a key the deterministic local placeholder runs instead (no LLM, no network, no cost). qa['generator'] always names what ran."
+  },
+  {
+    "name": "story.branch_adopt",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storybranch",
+    "cpu_cost_hint": 0.05,
+    "description": "Adopt one forecasted branch into a plan file (branch_plan.json): stores the adopted branch, its story hash and the comparison table. The canon itself is never modified; a supplied canon_path is verified byte-identical before/after. Stale forecasts (story hash mismatch) are refused unless allow_stale is set."
+  },
+  {
+    "name": "text.style_extract",
+    "kind": "text",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "textcraft",
+    "cpu_cost_hint": 0.0,
+    "description": "Deterministic statistical style profile of a sample text: sentence/paragraph length distributions, punctuation and function-word frequencies, modal-particle and tone ratios. Writes profile.json. Use as the first step of style transfer or to compare two authors' styles."
+  },
+  {
+    "name": "text.style_transfer",
+    "kind": "text",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "textcraft",
+    "cpu_cost_hint": 0.0,
+    "description": "Rewrite text toward a style profile (from sample_text or a profile dict). The rewrite is performed by the injected backend (set_rewrite_fn) when one is installed, otherwise by the default Monid gpt-4o-mini backend (per-call small fee, same MONID_API_KEY as story.film_from_prompt); with neither available the render raises CapabilityError. Writes profile.json + rewritten.txt."
+  },
+  {
+    "name": "text.humanize",
+    "kind": "text",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "textcraft",
+    "cpu_cost_hint": 0.0,
+    "description": "Deterministic de-AI polish for Chinese text: removes template clichés (值得注意的是/总而言之/…), applies colloquial swaps, splits over-long sentences and diversifies punctuation. Writes humanized.txt + humanize_report.json with per-category change counts."
+  },
+  {
+    "name": "story.foreshadow",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storybible",
+    "cpu_cost_hint": 0.0,
+    "description": "Foreshadowing ledger for one work (file-based story bible). action=plant records a setup with its expected payoff window (expected_start..expected_end chapters); payoff/abandon move it through its lifecycle; list queries entries; check_overdue returns the alarm list of setups still open past their window at current_chapter. Use to keep long serials from dropping planted setups."
+  },
+  {
+    "name": "story.canon_check",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "storybible",
+    "cpu_cost_hint": 0.0,
+    "description": "Canon ledger + pre-writing consistency check for one work. action=add_fact confirms a fact (fact/subject/attribute/value/source_chapter/tags) into canon — a conflicting value for the same subject+attribute is rejected; action=list dumps canon; action=check compares a draft chapter's claims (subject/attribute/value list) against canon and reports contradictions (ok=false) before the chapter is written."
+  },
+  {
+    "name": "novel.create",
+    "kind": "line",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "novel",
+    "cpu_cost_hint": 0.0,
+    "description": "Create a long-form serial novel from a creative brief (genre / protagonist / core conflict / chapter count / per-chapter target chars). Produces a file-based book directory: book.json with world setting, character profiles and a full chapter outline. LLM backend: an injected llm_fn (set_llm_fn) if installed, otherwise the default Monid gpt-4o-mini backend (per-call small fee, same MONID_API_KEY as story.film_from_prompt)."
+  },
+  {
+    "name": "novel.write_chapter",
+    "kind": "line",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "novel",
+    "cpu_cost_hint": 0.0,
+    "description": "Write one chapter of an existing book: pre-write analysis (chapter intent + previous-chapter summary + continuity facts) → draft → generation-side word-count governance (one expand round when >20% short, one shrink round when >20% over, never more) → chapter file on disk and book.json progress updated. LLM backend: injected llm_fn (set_llm_fn) or the default Monid gpt-4o-mini backend (per-call small fee)."
+  },
+  {
+    "name": "novel.continue_work",
+    "kind": "line",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "novel",
+    "cpu_cost_hint": 0.0,
+    "description": "Import an existing novel as plain text: split into chapters (第X章 / Chapter X markers), build the continuation context (last-chapter summary + character table in continuation.json), preserve the imported chapters on disk, then write the next chapter from the breakpoint through the same write_chapter path (with word-count governance). LLM backend: injected llm_fn (set_llm_fn) or the default Monid gpt-4o-mini backend (per-call small fee)."
+  },
+  {
+    "name": "story.short_package",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "shortstory",
+    "cpu_cost_hint": 0.5,
+    "description": "Short-story one-stop package: premise -> outline -> draft -> structured self-review (hook/conflict/ending checklist scores) -> blurb & selling points (title candidates, one-line pitch, synopsis) -> dedicated cover step (cover prompt always; cover.png via image.gpt_generate when available, otherwise prompt-only degradation noted in qa). All artifacts land in the job dir (package.json is the ledger)."
+  },
+  {
+    "name": "text.translate_long",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "longtranslate",
+    "cpu_cost_hint": 0.5,
+    "description": "Long-text translation pipeline: paragraph-aware chunking (configurable per-chunk character ceiling, context overlap between adjacent chunks) -> per-chunk translation -> glossary consistency post-check (missing required target terms are reported as warnings) -> full translation plus segment-by-segment bilingual output (Markdown + JSON) and a translation report in the job dir. 文档级长文翻译（整篇文本→双语对照文档）；视频字幕段级译制走 hevi/production/media_workflows.video_localization_workflow（后端 voicepro_translate），两者勿混用。"
+  },
+  {
+    "name": "play.world_init",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "playworld",
+    "cpu_cost_hint": 0.0,
+    "description": "Create a file-based interactive world (JSON state: setting, characters, flags/items, location, turn 0, opening choices). Refuses to overwrite an existing world file."
+  },
+  {
+    "name": "play.world_step",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "playworld",
+    "cpu_cost_hint": 0.0,
+    "description": "Advance an interactive world by one turn: supply an action (free text and/or choice_id) plus narrator output (narration, next choices, optional image_prompt hook and state_delta). State is validated and persisted atomically; turn count grows."
+  },
+  {
+    "name": "job.run_background",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "jobguard",
+    "cpu_cost_hint": 0.0,
+    "description": "Run a registered capability in a background thread and guard it to completion: status lands in jobs/<job_id>/status.json, a completion notification is always written, and an optional webhook_url gets a best-effort POST."
+  },
+  {
+    "name": "job.status",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "jobguard",
+    "cpu_cost_hint": 0.0,
+    "description": "Read one background job's status record (running/succeeded/failed, times, artifacts, error)."
+  },
+  {
+    "name": "job.notifications",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "jobguard",
+    "cpu_cost_hint": 0.0,
+    "description": "List recent background-job completion notifications from jobs/notifications.jsonl."
+  },
+  {
+    "name": "huobao.character_ref",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 190.0,
+    "description": "生成国风动漫风格的角色参考关键帧（CPU SD-Turbo，固定 seed 保证跨镜一致）。"
+  },
+  {
+    "name": "huobao.scene_ref",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 190.0,
+    "description": "生成纯背景无人物场景参考关键帧（CPU SD-Turbo，固定 seed）。"
+  },
+  {
+    "name": "huobao.shot",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "",
+    "cpu_cost_hint": 200.0,
+    "description": "渲染单镜头：解析 @角色/@场景/@道具 引用，生成关键帧并用 Piper 配音合成短视频段（CPU）。"
+  }
+]

@@ -541,7 +541,7 @@ register(
         params_schema={"type": "object", "required": ["manifest_path"]},
         cpu_cost_hint=2.0,
         render=_render_local_episode,
-        description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）",
+        description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）。验收专用合成片（纯色底+镜号台词叠加），非生产渲染；生产混剪走 svfactory.render",
         line="anime",
     )
 )
@@ -727,7 +727,7 @@ register(Capability(
     params_schema={"type": "object"},
     cpu_cost_hint=0.05,
     render=_render_director_brief,
-    description="线路无关的 DirectorBrief 生成与自动补全",
+    description="线路无关的 DirectorBrief 生成与自动补全。此 DirectorBrief 指 hevi.director_lens.brief.DirectorBrief（运动轨迹/物理/主光/BPM 拍点/禁止项等导演决策），不是 hevi.creative.director_brief 的 S1 哈希契约 DirectorBrief，也不是 hevi.season_planner.schemas.DirectorBrief（短剧导演阐述）",
     line="director"
 ))
 
@@ -792,7 +792,9 @@ register(Capability(
 # registry and were therefore invisible to GET /api/capabilities and to
 # ShotSpec.  Re-declare them here against the canonical Capability type so all
 # lines resolve them through get()/resolve() like every other capability.
-# The private module registry is left untouched (its own tests still pass).
+# The private module registry has since been removed: hevi/storyplan/
+# capabilities.py is now only a forwarding shim onto this unified registry,
+# which is the single source of truth for these registrations.
 def _render_story_plan(
     params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
 ) -> CapabilityResult:

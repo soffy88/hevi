@@ -192,6 +192,9 @@ async def _translate(
     config: dict[str, Any],
     input_data: dict[str, Any],
 ) -> tuple[list[TranscriptSegment], str]:
+    """视频字幕段级译制（TranscriptSegment 逐段翻译，后端 voicepro_translate）；
+    文档级长文翻译（整篇文本→双语对照文档）走 hevi/capabilities/longtranslate.py
+    的 text.translate_long，两者勿混用。"""
     explicit = input_data.get("translated_segments") or input_data.get("translated")
     if explicit:
         return _coerce_translation(explicit, source), "supplied"

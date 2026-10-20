@@ -11,6 +11,7 @@ owns none of them.
   validation only, so S2+ stages can consume it without a second authority.
 
 Constraint ledger is not duplicated: `constraints` reads through to the pack.
+同名 disambiguation：本模块的 DirectorBrief 是 S1 哈希契约（brief/thesis/treatment 内容哈希钉扎）；hevi.director_lens.brief.DirectorBrief 是导演决策 brief（运动轨迹/物理/主光/BPM/禁止项），hevi.season_planner.schemas.DirectorBrief 是短剧导演阐述，三者互不通用。
 """
 
 from __future__ import annotations

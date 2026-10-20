@@ -253,7 +253,6 @@ def comic_narration_workflow(
                     duration=0.0,
                     seed=str(seed_1),
                 )
-                import shutil
                 shutil.copyfile(cap_res.png, cand1_path)
                 shutil.copyfile(cap_res.png, cand2_path)
         elif bg_source == "locscout":
@@ -265,7 +264,6 @@ def comic_narration_workflow(
                     duration=0.0,
                     seed=str(seed_1),
                 )
-                import shutil
                 shutil.copyfile(cap_res.png, cand1_path)
                 shutil.copyfile(cap_res.png, cand2_path)
         else:

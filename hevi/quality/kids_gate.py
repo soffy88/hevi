@@ -302,14 +302,74 @@ def check_photosensitive_flash(video_path: Path) -> GateResult:
     return res
 
 
+# 幼儿档响度 profile（本函数专用阈值，与 earshot_gate 的成人/通用档
+# -14±2 LUFS 区分：幼儿档 -16±1 LUFS、真峰值 <= -1.5 dBTP）。
+KIDS_LOUDNESS_TARGET_LUFS = -16.0
+KIDS_LOUDNESS_TOLERANCE_LU = 1.0
+KIDS_TRUE_PEAK_CEILING_DBTP = -1.5
+
+
 def check_loudness(video_path: Path) -> GateResult:
-    """Check loudness using ffmpeg ebur128."""
+    """Check loudness against the kids profile (-16±1 LUFS, peak <= -1.5 dBTP).
+
+    测量单一实现：优先用 earshot 的 measure（hevi.audio.earshot_client，
+    与 audio.earshot_gate 同一测量路径）取得 LUFS/真峰值，本函数只做
+    幼儿档阈值判定。earshot 不可用（导入失败/venv 缺失/测量异常）时
+    回落 ffmpeg ebur128 自有测量兜底，不让 kids_gate 整体哑火。
+    测量来源记入 metrics["loudness_source"]："earshot" | "ebur128_fallback"。
+    相邻短时响度跳变（惊吓音）检查需要短时序列、earshot measure 不提供，
+    故该项只在 ebur128 兜底路径执行。
+
+    单声道校正（实测确诊）：earshot 的加载器把单声道按双声道复制计量，
+    BS.1770 能量翻倍使集成 LUFS 恒高 +3.01 LU（真峰值不受影响，两路
+    恒一致；立体声文件两路零偏差）。故单声道源在 earshot 路径减
+    10*log10(2) 校正回真单声道值，与 ebur128 标定（本 profile 的
+    -16±1 即按 ebur128 标定）保持一致；校正量记入
+    metrics["loudness_mono_correction_db"]。
+    """
     res = GateResult(passed=True)
     stats = probe_video_stats(video_path)
     if not stats["has_audio"]:
         res.metrics["has_audio"] = False
+        res.metrics["loudness_source"] = "not_measured"
         return res
 
+    # 首选路径：earshot measure
+    try:
+        from hevi.audio.earshot_client import measure as _earshot_measure
+
+        m = _earshot_measure(Path(video_path))
+        i_lufs = m.get("lufs")
+        true_peak = m.get("true_peak_dbtp")
+        if i_lufs is None or true_peak is None:
+            raise ValueError(f"earshot measure missing lufs/true_peak: {m!r}")
+        i_lufs = float(i_lufs)
+        true_peak = float(true_peak)
+        channels = _audio_channels(Path(video_path))
+        if channels == 1:
+            import math
+
+            correction = 10.0 * math.log10(2.0)
+            i_lufs -= correction
+            res.metrics["loudness_mono_correction_db"] = round(-correction, 2)
+        res.metrics["integrated_lufs"] = i_lufs
+        res.metrics["true_peak_dbtp"] = true_peak
+        res.metrics["loudness_source"] = "earshot"
+        if not (
+            KIDS_LOUDNESS_TARGET_LUFS - KIDS_LOUDNESS_TOLERANCE_LU
+            <= i_lufs
+            <= KIDS_LOUDNESS_TARGET_LUFS + KIDS_LOUDNESS_TOLERANCE_LU
+        ):
+            res.passed = False
+            res.violations.append(f"整体响度 {i_lufs:.1f} LUFS 超出 -16±1 LUFS 范围")
+        if true_peak > KIDS_TRUE_PEAK_CEILING_DBTP:
+            res.passed = False
+            res.violations.append(f"真峰值 {true_peak:.1f} dBTP 超过 -1.5 dBTP 限制")
+        return res
+    except Exception:
+        pass  # 回落 ebur128 兜底（下方原实现）
+
+    res.metrics["loudness_source"] = "ebur128_fallback"
     cmd = [
         "ffmpeg", "-nostats", "-hide_banner", "-i", str(video_path),
         "-af", "ebur128=peak=true", "-f", "null", "-"
@@ -360,6 +420,22 @@ def check_loudness(video_path: Path) -> GateResult:
 
     return res
 
+
+def _audio_channels(path: Path) -> int | None:
+    """ffprobe 取音轨声道数（取不到返回 None，不校正）。"""
+    try:
+        cmd = [
+            "ffprobe", "-v", "error", "-select_streams", "a:0",
+            "-show_entries", "stream=channels", "-of", "json", str(path),
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        data = json.loads(res.stdout or "{}")
+        streams = data.get("streams") or []
+        if streams and streams[0].get("channels"):
+            return int(streams[0]["channels"])
+    except Exception:
+        pass
+    return None
 
 def check_speech_rate(srt_path: Path | None) -> GateResult:
     res = GateResult(passed=True)

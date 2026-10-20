@@ -3,6 +3,7 @@
 
 配音/数字人按 job 写到 public/runs/<job_id>/,避免并发互踩。Remotion 仍静态读
 src/data/run_manifest.json,所以渲染段用锁把该 job 的 manifest 拷进规范路径。
+双实现互指：本模块是 Studio explainer 线的 Remotion 渲染编排（assembly+Remotion 生产核）；能力目录的 explainer.render 是 hevi/explainer/render_engine.py 的纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion），两条链独立，勿混用。
 """
 
 from __future__ import annotations

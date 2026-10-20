@@ -69,6 +69,55 @@ from hevi.riso.capabilities import register_riso_capabilities
 register_riso_capabilities()
 
 
+# Multi-model pipeline (cloud providers via Monid, 2026-10-20):
+# audio.forced_align / image.gpt_generate / image.gpt_edit
+from . import multimodel as _multimodel  # noqa: E402,F401
+_multimodel.register_multimodel_capabilities_once()
+from . import storyfilm as _storyfilm  # noqa: E402,F401
+_storyfilm.register_storyfilm_capabilities_once()
+
+# Earshot audio gate + SFX bank (feat/earshot): model-free, local
+from . import earshot_gate as _earshot_gate  # noqa: E402,F401
+_earshot_gate.register_earshot_capabilities_once()
+
+# PixStag external render (live-action story films, 2026-10-20):
+# video.pixstag_generate - hevi ships shot packages, PixStag renders them
+from . import pixstag as _pixstag  # noqa: E402,F401
+_pixstag.register_pixstag_capabilities_once()
+
+# creator-style-kit (HyperFrames line, 2026-10-20):
+# video.hyperframes_styles / video.hyperframes_styled_render - 18 styles
+from . import csk_styles as _csk_styles  # noqa: E402,F401
+_csk_styles.register_csk_capabilities_once()
+
+# Story/writing internalization (InkOS gap analysis, 2026-10-20; clean-room):
+# storybranch / textcraft / storybible / novelpipeline / shortstory /
+# longtranslate / playworld / jobguard
+from . import storybranch as _storybranch  # noqa: E402,F401
+_storybranch.register_storybranch_capabilities_once()
+from . import textcraft as _textcraft  # noqa: E402,F401
+_textcraft.register_textcraft_capabilities_once()
+from . import storybible as _storybible  # noqa: E402,F401
+_storybible.register_storybible_capabilities_once()
+from . import novelpipeline as _novelpipeline  # noqa: E402,F401
+_novelpipeline.register_novelpipeline_capabilities_once()
+from . import shortstory as _shortstory  # noqa: E402,F401
+_shortstory.register_shortstory_capabilities_once()
+from . import longtranslate as _longtranslate  # noqa: E402,F401
+_longtranslate.register_longtranslate_capabilities_once()
+from . import playworld as _playworld  # noqa: E402,F401
+_playworld.register_playworld_capabilities_once()
+from . import jobguard as _jobguard  # noqa: E402,F401
+_jobguard.register_jobguard_capabilities_once()
+
+# Huobao line (character_ref / scene_ref / shot): previously registered only
+# as an import side effect of the API routers, so the catalogue missed it.
+# register_huobao_capabilities() is idempotent; wiring it here makes the
+# registry the single source the catalogue is generated from.
+from hevi.huobao.capabilities import register_huobao_capabilities as _register_huobao  # noqa: E402
+_register_huobao()
+
+
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
 # ``registry.register`` is import-triggered for these three so every line can

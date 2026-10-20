@@ -8,6 +8,7 @@ import re
 from typing import Any
 from pydantic import BaseModel, Field
 from hevi.storyplan.model import StoryPlan, NEW_INFO_REQUIRED_FIELDS
+from hevi.quality.kids_gate import FORBIDDEN_WORDS
 import jieba
 
 
@@ -25,13 +26,11 @@ class StoryCheckReport(BaseModel):
     summary: str = ""
 
 
-# 幼儿内容安全违禁词表（kids_gate 核心，覆盖 15 类词根）
-FORBIDDEN_KIDS_WORDS = [
-    "揍", "踢", "勒脖子", "踹飞", "鞭打", "毒药", "炸弹",
-    "陌生人", "辱骂", "鬼怪", "血", "刀", "枪", "恐怖", "吓死人",
-    "暴力", "武器", "死", "杀", "玩火", "爬窗", "独自外出",
-    "嘲笑", "笨", "蠢", "羞辱", "广告", "惊吓",
-]
+# 幼儿内容安全违禁词表单一来源：hevi.quality.kids_gate.FORBIDDEN_WORDS
+# （由 hevi/kids/data/kids_safety_rules.json 的 categories 扁平化而来）。
+# 此处只保留旧名别名供既有导入兼容，不再自备词表独立维护
+# （先例：hevi/kids/story_gate.py 同样直接复用 FORBIDDEN_WORDS）。
+FORBIDDEN_KIDS_WORDS = FORBIDDEN_WORDS
 
 
 def run_story_check(plan: StoryPlan, *, hook_window_sec: float = 3.5, max_chars_per_sec: float = 3.5) -> StoryCheckReport:
