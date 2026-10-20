@@ -30,6 +30,7 @@ SKILL_DIRS = (
     "lanshu-explainer",
     "story-to-film",
     "writing-market-research",
+    "motion-canvas",
 )
 
 _HOST_DIRS = {
