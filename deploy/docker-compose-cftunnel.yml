@@ -135,7 +135,7 @@ services:
       # 面部生理+运镜曲线。每镜一次 LLM 调用(并发,后台路径),分镜生成会明显变慢+花钱。见
       # config.performance_track_tier。不想填时删掉这行或设 L0。
       PERFORMANCE_TRACK_TIER: "L2"
-      HEVI_EXPLAINER_TTS_PROVIDER: edge_tts
+      HEVI_EXPLAINER_TTS_PROVIDER: voicebox
       HEVI_AUDIO_PROVIDER: voicebox
       # 数字人:EchoMimicV2(宿主机 Comfy 8188)。容器走 host.docker.internal,
       # 宿主脚本仍用 127.0.0.1。失败不要静默占位圈。
@@ -188,9 +188,6 @@ services:
       - /home/soffy/projects/hevi/hevi/digital_human/line_tts.py:/app/hevi/digital_human/line_tts.py:ro
       - /home/soffy/projects/hevi/hevi/providers/echo_mimic:/app/hevi/providers/echo_mimic:ro
       - /home/soffy/projects/hevi/hevi/providers/h3_local/comfy_client.py:/app/hevi/providers/h3_local/comfy_client.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/assembly.py:/app/hevi/explainer/assembly.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/render.py:/app/hevi/explainer/render.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/echo_avatar.py:/app/hevi/explainer/echo_avatar.py:ro
       - /home/soffy/projects/hevi/hevi/tongjian/scene_render_avatar.py:/app/hevi/tongjian/scene_render_avatar.py:ro
       # 主机已有的 HF 缓存(含 openai/clip-vit-base-patch32)只读挂进来,让
       # subjects/subject_embed.py 能算角色身份向量(local_files_only=True)——
