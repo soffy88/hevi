@@ -1179,5 +1179,16 @@
     "line": "qa",
     "cpu_cost_hint": 0.5,
     "description": "Generic cross-line review sheet (local, offline): takes review comments on a media file — either a comment list ({film, shot, timestamp_s, scene, element, comment, status in pending|working|done|reopened|cancelled}) or an append-only event log (comment|claim|done|reopen|cancel, folded in order into current status + thread) — grabs one frame per comment at its timestamp_s, and writes review_sheet.json (ffprobe info + normalised records with frame paths) plus a human review.md sheet under out_dir. Any invalid record or a timestamp past the media duration rejects the whole sheet with CapabilityError (no silent clamping). Result mp4 points back at the source media; qa carries the report paths, comment count, by_status counts and pass."
+  },
+  {
+    "name": "motion.rhythm_sheet",
+    "kind": "line",
+    "aspects": [
+      "16:9",
+      "9:16"
+    ],
+    "line": "motion_taste",
+    "cpu_cost_hint": 0.2,
+    "description": "发布片节奏单校验/验收（launch rhythm）：按 docs/rules/launch_rhythm.md 的硬规则校验 RhythmSheet（覆盖/钩子≤3s/中段爆发/hero/停顿/对比/死段）；给定 media_path 时再逐段实测音频 RMS 与画面运动量、比对计划能量曲线形状并检出死段。只校验不测片时不传 media_path。报告落 rhythm_sheet_report.json，qa['ok'] 为校验结论。"
   }
 ]

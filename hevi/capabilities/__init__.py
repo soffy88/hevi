@@ -173,3 +173,10 @@ _handraw_styles.register_handraw_style_capabilities_once()
 # with statuses + frame grabs assembled into a review sheet.
 from . import review_sheet as _review_sheet  # noqa: E402,F401
 _review_sheet.register_review_sheet_capabilities_once()
+
+
+# Launch-film rhythm sheet (motion.rhythm_sheet): validate a RhythmSheet
+# against docs/rules/launch_rhythm.md, and measure a finished film
+# per-stretch (audio energy / picture motion) against the plan.
+from . import rhythm_sheet as _rhythm_sheet  # noqa: E402,F401
+_rhythm_sheet.register_rhythm_sheet_capabilities()
