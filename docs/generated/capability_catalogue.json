@@ -1190,5 +1190,17 @@
     "line": "motion_taste",
     "cpu_cost_hint": 0.2,
     "description": "发布片节奏单校验/验收（launch rhythm）：按 docs/rules/launch_rhythm.md 的硬规则校验 RhythmSheet（覆盖/钩子≤3s/中段爆发/hero/停顿/对比/死段）；给定 media_path 时再逐段实测音频 RMS 与画面运动量、比对计划能量曲线形状并检出死段。只校验不测片时不传 media_path。报告落 rhythm_sheet_report.json，qa['ok'] 为校验结论。"
+  },
+  {
+    "name": "audio.score_render",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "audio",
+    "cpu_cost_hint": 0.6,
+    "description": "Score-rendered accompaniment (ABC -> local numpy synth, offline, seed-deterministic): parse an ABC score, fit !mark:name! sync points to picture times from 'align' (per-span tempo bending, <5 ms residual), and render piano/pluck/strings/bass/sine + GM-subset drums with dynamics, rit/fermata/breath tempo shaping and !hit! impacts. Direction mode: product + scenes (+ optional style pulse/piano/cinematic/lofi) generates the ABC (generated_score.abc) and runs the same pipeline. Writes score.wav + score_sidecar.json (marks, stretches with bend % and measured RMS, warnings)."
   }
 ]

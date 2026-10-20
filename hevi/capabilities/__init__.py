@@ -180,3 +180,10 @@ _review_sheet.register_review_sheet_capabilities_once()
 # per-stretch (audio energy / picture motion) against the plan.
 from . import rhythm_sheet as _rhythm_sheet  # noqa: E402,F401
 _rhythm_sheet.register_rhythm_sheet_capabilities()
+
+
+# Score-driven music composition (audio.score_render): ABC notation
+# scores fitted to picture marks, rendered locally with numpy synths;
+# plus a category/scene direction fallback that drafts the score.
+from . import score_render as _score_render  # noqa: E402,F401
+_score_render.register_score_render_capabilities_once()
