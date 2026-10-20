@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import random
+import zlib
 from itertools import pairwise
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from scipy import ndimage
 
+from hevi.layer4_legacy.handdraw.rough_stroke import roughen_polyline
 from hevi.layer4_legacy.handdraw.styles import HanddrawStyleConfig, get_style_config
 
 SUPERSAMPLE = 2
@@ -251,6 +253,98 @@ def _render_outline(
     points = _shape_points(shape)
     closed = [*points, points[0]]
     _stamp_stroke(mask, closed, recipe.stroke_width, recipe, taper=recipe.taper > 0)
+    return mask
+
+
+def _render_outline_rough(
+    shape: dict[str, Any],
+    size: tuple[int, int],
+    recipe: _Recipe,
+    *,
+    roughness: float,
+    bowing: float,
+    seed: int,
+) -> np.ndarray:
+    """Outline drawn with the rough technique: jittered, bowed, double-stroked.
+
+    Each pass is stamped narrower than the legacy stroke so the two passes
+    stay distinguishable instead of merging into one thick line.
+    """
+    mask = np.zeros((size[1], size[0]), dtype=bool)
+    points = _shape_points(shape)
+    result = roughen_polyline(
+        points, roughness=roughness, bowing=bowing, seed=seed, double_stroke=True, closed=True
+    )
+    for one_pass in result.passes:
+        _stamp_stroke(
+            mask, [*one_pass, one_pass[0]], recipe.stroke_width * 0.62, recipe,
+            taper=recipe.taper > 0,
+        )
+    return mask
+
+
+def _stamp_rough(
+    mask: np.ndarray,
+    points: list[tuple[float, float]],
+    width: float,
+    recipe: _Recipe,
+    *,
+    roughness: float,
+    bowing: float,
+    seed: int,
+) -> None:
+    result = roughen_polyline(
+        points, roughness=roughness, bowing=bowing, seed=seed, double_stroke=True, closed=False
+    )
+    for one_pass in result.passes:
+        _stamp_stroke(mask, list(one_pass), width * 0.62, recipe)
+
+
+def _decor_outline_rough(
+    decor: dict[str, Any],
+    size: tuple[int, int],
+    recipe: _Recipe,
+    *,
+    roughness: float,
+    bowing: float,
+    seed: int,
+) -> np.ndarray:
+    mask = np.zeros((size[1], size[0]), dtype=bool)
+    kind = decor["kind"]
+    if kind == "line":
+        _stamp_rough(
+            mask, [(float(x), float(y)) for x, y in decor["points"]],
+            recipe.stroke_width * decor.get("scale", 0.7), recipe,
+            roughness=roughness, bowing=bowing, seed=seed,
+        )
+    elif kind == "arc":
+        cx, cy, rx, ry = decor["box"]
+        start, end = decor["start"], decor["end"]
+        steps = max(12, int(abs(end - start) / 3))
+        points = [
+            (
+                cx + rx * math.cos(math.radians(start + (end - start) * i / steps)),
+                cy + ry * math.sin(math.radians(start + (end - start) * i / steps)),
+            )
+            for i in range(steps + 1)
+        ]
+        _stamp_rough(
+            mask, points, recipe.stroke_width * decor.get("scale", 0.6), recipe,
+            roughness=roughness, bowing=bowing, seed=seed,
+        )
+    elif kind == "rays":
+        cx, cy, r0, r1 = decor["box"]
+        for ray_idx, angle in enumerate(decor["angles"]):
+            rad = math.radians(angle)
+            _stamp_rough(
+                mask,
+                [(cx + r0 * math.cos(rad), cy + r0 * math.sin(rad)),
+                 (cx + r1 * math.cos(rad), cy + r1 * math.sin(rad))],
+                recipe.stroke_width * decor.get("scale", 0.55), recipe,
+                roughness=roughness, bowing=bowing, seed=seed + ray_idx,
+            )
+    else:
+        raise ValueError(kind)
     return mask
 
 
@@ -783,8 +877,24 @@ def _convex_hull(points: list[tuple[float, float]]) -> list[tuple[float, float]]
 
 
 def _render_scene(
-    scene_key: str, cfg: HanddrawStyleConfig, size: tuple[int, int], seed: int = 0
+    scene_key: str,
+    cfg: HanddrawStyleConfig,
+    size: tuple[int, int],
+    seed: int = 0,
+    *,
+    stroke_style: str = "legacy",
+    rough_roughness: float = 2.0,
+    rough_bowing: float = 2.0,
 ) -> tuple[Image.Image, list[dict[str, Any]]]:
+    if stroke_style not in ("legacy", "rough"):
+        raise ValueError(
+            f"unsupported stroke_style: {stroke_style!r} (expected 'legacy' or 'rough')"
+        )
+    if stroke_style == "rough":
+        for _name, _value in (("rough_roughness", rough_roughness), ("rough_bowing", rough_bowing)):
+            if not isinstance(_value, (int, float)) or isinstance(_value, bool) \
+                    or not math.isfinite(float(_value)) or float(_value) < 0:
+                raise ValueError(f"{_name} must be a finite number >= 0, got {_value!r}")
     rng = random.Random(f"{scene_key}:{cfg.style_id}:v2:{int(seed)}")
     recipe = _Recipe(cfg, rng)
     spec = ILLUSTRATION_BUILDERS[scene_key]()
@@ -868,12 +978,27 @@ def _render_scene(
             base.alpha_composite(Image.fromarray(layer))
             fill_rgba = np.array(base)
 
-    # 2. Ink layer.
+    # 2. Ink layer.  The legacy branch is the original code path, untouched;
+    # stroke_style="rough" swaps only how outlines/decor are stamped.
     ink_mask = np.zeros((big[1], big[0]), dtype=bool)
-    for shape in scaled_shapes:
-        ink_mask |= _render_outline(shape, big, recipe)
-    for decor in scaled_decor:
-        ink_mask |= _decor_outline(decor, big, recipe)
+    if stroke_style == "rough":
+        base_seed = int(seed) * 10007 + zlib.crc32(f"{scene_key}:{cfg.style_id}".encode())
+        r_rough = min(50.0, float(rough_roughness) * scale)
+        r_bow = min(50.0, float(rough_bowing) * scale)
+        for shape_idx, shape in enumerate(scaled_shapes):
+            ink_mask |= _render_outline_rough(
+                shape, big, recipe, roughness=r_rough, bowing=r_bow, seed=base_seed + shape_idx
+            )
+        for decor_idx, decor in enumerate(scaled_decor):
+            ink_mask |= _decor_outline_rough(
+                decor, big, recipe, roughness=r_rough, bowing=r_bow,
+                seed=base_seed + 1000 + decor_idx,
+            )
+    else:
+        for shape in scaled_shapes:
+            ink_mask |= _render_outline(shape, big, recipe)
+        for decor in scaled_decor:
+            ink_mask |= _decor_outline(decor, big, recipe)
 
     composed = Image.fromarray(fill_rgba)
     if recipe.sid == "8":
@@ -962,14 +1087,29 @@ def build_scene_illustration(
     style_id: str | int = "8",
     size: tuple[int, int] = (600, 600),
     seed: int = 0,
+    *,
+    stroke_style: str = "legacy",
+    rough_roughness: float = 2.0,
+    rough_bowing: float = 2.0,
 ) -> dict[str, Any]:
-    """Generate a transparent, style-differentiated illustration plus part metadata."""
+    """Generate a transparent, style-differentiated illustration plus part metadata.
+
+    ``stroke_style`` is ``"legacy"`` (default; output identical to before
+    this option existed) or ``"rough"`` (rough-style hand-drawn strokes:
+    vertex jitter + segment bowing + double stroke, see
+    :mod:`hevi.layer4_legacy.handdraw.rough_stroke`).  ``rough_roughness``
+    / ``rough_bowing`` are in output-image coordinates and only take
+    effect with ``stroke_style="rough"``.
+    """
     if scene_key not in ILLUSTRATION_BUILDERS:
         raise ValueError(
             f"Unknown scene key '{scene_key}'. Supported: {sorted(ILLUSTRATION_BUILDERS)}"
         )
     cfg = get_style_config(style_id)
-    image, parts = _render_scene(scene_key, cfg, size, seed=seed)
+    image, parts = _render_scene(
+        scene_key, cfg, size, seed=seed,
+        stroke_style=stroke_style, rough_roughness=rough_roughness, rough_bowing=rough_bowing,
+    )
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path)
@@ -979,4 +1119,5 @@ def build_scene_illustration(
         "height": image.height,
         "parts": parts,
         "style_id": cfg.style_id,
+        "stroke_style": stroke_style,
     }

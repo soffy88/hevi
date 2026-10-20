@@ -49,6 +49,9 @@ def _render_handdraw(
     seed: int,
     prefer_cosy: bool,
     duration: float = 0.0,
+    stroke_style: str = "legacy",
+    rough_roughness: float = 2.0,
+    rough_bowing: float = 2.0,
 ) -> CapabilityResult:
     """Render a topic-grounded preschool video or an exact-duration preview."""
     from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
@@ -60,6 +63,8 @@ def _render_handdraw(
         raise CapabilityError(f"unsupported style_id: {style_id}")
     if hand_preset not in SUPPORTED_HANDS:
         raise CapabilityError(f"unsupported hand_preset: {hand_preset}")
+    if stroke_style not in ("legacy", "rough"):
+        raise CapabilityError(f"unsupported stroke_style: {stroke_style}")
 
     spec = select_kids_storyboard(topic)
     if not 0 <= float(duration) <= 3:
@@ -77,6 +82,9 @@ def _render_handdraw(
         prefer_cosy=prefer_cosy,
         seed=seed,
         preview_duration=float(duration) if duration > 0 else None,
+        stroke_style=stroke_style,
+        rough_roughness=rough_roughness,
+        rough_bowing=rough_bowing,
     )
 
     mp4 = Path(result["video_path"])
@@ -96,6 +104,7 @@ def _render_handdraw(
             "style_id": result["style_id"],
             "hand_preset": result["hand_preset"],
             "seed": seed,
+            "stroke_style": stroke_style,
             "srt": str(srt),
             "verification": result["verification_path"],
             "kids_safety_report": result.get("kids_safety_path"),
@@ -114,6 +123,9 @@ def _render_canvas(
     seed: int,
     prefer_cosy: bool = True,
     duration: float = 0.0,
+    stroke_style: str = "legacy",
+    rough_roughness: float = 2.0,
+    rough_bowing: float = 2.0,
 ) -> CapabilityResult:
     if not topic or not str(topic).strip():
         raise CapabilityError("handdraw capability requires a non-empty 'topic'")
@@ -130,6 +142,9 @@ def _render_canvas(
             seed=seed,
             prefer_cosy=prefer_cosy,
             duration=duration,
+            stroke_style=stroke_style,
+            rough_roughness=rough_roughness,
+            rough_bowing=rough_bowing,
         )
     except UnsupportedKidsTopicError as exc:
         raise CapabilityError(str(exc)) from exc
@@ -148,6 +163,9 @@ _PARAMS = {
         "aspect": {"type": "string", "enum": list(ASPECTS)},
         "style_id": {"type": "string", "enum": list(SUPPORTED_STYLES)},
         "hand_preset": {"type": "string", "enum": list(SUPPORTED_HANDS)},
+        "stroke_style": {"type": "string", "enum": ["legacy", "rough"]},
+        "rough_roughness": {"type": "number", "minimum": 0, "maximum": 25},
+        "rough_bowing": {"type": "number", "minimum": 0, "maximum": 25},
     },
 }
 
@@ -168,8 +186,11 @@ def _register() -> None:
                 out_dir=out_dir,
                 seed=int(seed),
                 duration=float(duration),
+                stroke_style=str((params or {}).get("stroke_style") or "legacy"),
+                rough_roughness=float((params or {}).get("rough_roughness") if (params or {}).get("rough_roughness") is not None else 2.0),
+                rough_bowing=float((params or {}).get("rough_bowing") if (params or {}).get("rough_bowing") is not None else 2.0),
             ),
-            description="幼儿向手绘动画；正 duration 为精确时长预览，0 为完整交付。",
+            description="幼儿向手绘动画；正 duration 为精确时长预览，0 为完整交付。可选 stroke_style='rough' 启用 rough 式手绘描边（双描+抖动，默认 legacy 不变）。",
         )
     )
     register(
@@ -184,8 +205,11 @@ def _register() -> None:
                 style_id=str(params.get("style_id") or "8"),
                 out_dir=out_dir,
                 seed=int(seed),
+                stroke_style=str(params.get("stroke_style") or "legacy"),
+                rough_roughness=float(params.get("rough_roughness") if params.get("rough_roughness") is not None else 2.0),
+                rough_bowing=float(params.get("rough_bowing") if params.get("rough_bowing") is not None else 2.0),
             ),
-            description="仅生成分镜插画+口播稿（CPU 矢量插画），不渲染视频。",
+            description="仅生成分镜插画+口播稿（CPU 矢量插画），不渲染视频。可选 stroke_style='rough' 启用 rough 式手绘描边（默认 legacy 不变）。",
         )
     )
     register(
@@ -215,19 +239,27 @@ def _register() -> None:
                 style_id=str(params.get("style_id") or "8"),
                 out_dir=out_dir,
                 seed=int(seed),
+                stroke_style=str(params.get("stroke_style") or "legacy"),
+                rough_roughness=float(params.get("rough_roughness") if params.get("rough_roughness") is not None else 2.0),
+                rough_bowing=float(params.get("rough_bowing") if params.get("rough_bowing") is not None else 2.0),
             ),
-            description="单张 CPU 矢量风格插画 PNG（指定手绘风格）。",
+            description="单张 CPU 矢量风格插画 PNG（指定手绘风格）。可选 stroke_style='rough' 启用 rough 式手绘描边（双描+抖动，默认 legacy 不变）。",
         )
     )
     logger.info("registered 4 handdraw capabilities")
 
 
-def _render_storyboard(topic: str, style_id: str, out_dir: Path, *, seed: int) -> CapabilityResult:
+def _render_storyboard(
+    topic: str, style_id: str, out_dir: Path, *, seed: int,
+    stroke_style: str = "legacy", rough_roughness: float = 2.0, rough_bowing: float = 2.0,
+) -> CapabilityResult:
     from hevi.layer4_legacy.handdraw.illustrator import build_scene_illustration
     from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
 
     if style_id not in SUPPORTED_STYLES:
         raise CapabilityError(f"unsupported style_id: {style_id}")
+    if stroke_style not in ("legacy", "rough"):
+        raise CapabilityError(f"unsupported stroke_style: {stroke_style}")
     spec = select_kids_storyboard(topic)
 
     out_dir = Path(out_dir).resolve()
@@ -238,7 +270,8 @@ def _render_storyboard(topic: str, style_id: str, out_dir: Path, *, seed: int) -
         scene_key = page["scene_key"]
         path = illu_dir / f"scene_{p_idx + 1}_{scene_key}.png"
         build_scene_illustration(
-            scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800), seed=seed
+            scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800), seed=seed,
+            stroke_style=stroke_style, rough_roughness=rough_roughness, rough_bowing=rough_bowing,
         )
         if not path.is_file():
             raise CapabilityError(f"illustration not produced: {path}")
@@ -257,6 +290,7 @@ def _render_storyboard(topic: str, style_id: str, out_dir: Path, *, seed: int) -
             "script": str(script_path),
             "style_id": style_id,
             "seed": seed,
+            "stroke_style": stroke_style,
             "pages": len(spec["pages"]),
         },
     )
@@ -290,12 +324,17 @@ def _render_narration(topic: str, out_dir: Path, *, seed: int) -> CapabilityResu
     )
 
 
-def _render_illustration(topic: str, style_id: str, out_dir: Path, *, seed: int) -> CapabilityResult:
+def _render_illustration(
+    topic: str, style_id: str, out_dir: Path, *, seed: int,
+    stroke_style: str = "legacy", rough_roughness: float = 2.0, rough_bowing: float = 2.0,
+) -> CapabilityResult:
     from hevi.layer4_legacy.handdraw.illustrator import build_scene_illustration
     from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
 
     if style_id not in SUPPORTED_STYLES:
         raise CapabilityError(f"unsupported style_id: {style_id}")
+    if stroke_style not in ("legacy", "rough"):
+        raise CapabilityError(f"unsupported stroke_style: {stroke_style}")
     spec = select_kids_storyboard(topic)
 
     out_dir = Path(out_dir).resolve()
@@ -306,7 +345,8 @@ def _render_illustration(topic: str, style_id: str, out_dir: Path, *, seed: int)
     scene_key = page["scene_key"]
     path = illu_dir / f"scene_1_{scene_key}.png"
     meta = build_scene_illustration(
-        scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800), seed=seed
+        scene_key=scene_key, output_path=path, style_id=style_id, size=(800, 800), seed=seed,
+        stroke_style=stroke_style, rough_roughness=rough_roughness, rough_bowing=rough_bowing,
     )
     if not path.is_file():
         raise CapabilityError(f"illustration not produced: {path}")
@@ -318,6 +358,7 @@ def _render_illustration(topic: str, style_id: str, out_dir: Path, *, seed: int)
             "scene_key": scene_key,
             "style_id": style_id,
             "seed": seed,
+            "stroke_style": stroke_style,
             "parts": [p["id"] for p in meta["parts"]],
         },
     )
