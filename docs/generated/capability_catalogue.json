@@ -799,6 +799,30 @@
     "description": "Render one of earshot's 201 code-defined sound effects by id to wav (48 kHz). Fully local and offline: the bank is synthesis recipes, no samples and no model download. Use for UI clicks, whooshes, hits and stingers in code-animated films."
   },
   {
+    "name": "qa.export_gate",
+    "kind": "video",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "export_qa",
+    "cpu_cost_hint": 1.0,
+    "description": "Unified pre-delivery export QA gate (local, offline): container/codecs (mov/mp4 + h264 + aac), resolution/aspect, fps, black-frame ratio (zerolines frame_stats, luma < 12, max 0.1), loudness/true-peak/clipping via earshot measure with audio.earshot_gate thresholds, A/V duration sync (<= 0.5 s), ending integrity (abrupt-cut warn, last-frame black warn) and optional subtitle presence. Writes export_qa_report.json; qa['verdict'] is pass|warn|fail and qa['pass'] is verdict != fail. Use on final exports before delivery."
+  },
+  {
+    "name": "assembly.beat_align",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "assembly",
+    "cpu_cost_hint": 0.5,
+    "description": "BGM beat alignment (librosa, local/offline): detect beat times in an audio file and, given shot durations, return per-seam xfade durations snapped to the nearest beat (base +/- max_shift). No beats -> fallback=true with uniform base durations, never a fake snap. Writes beat_align_report.json; qa carries beats/snapped/fallback."
+  },
+  {
     "name": "video.pixstag_generate",
     "kind": "shot",
     "aspects": [

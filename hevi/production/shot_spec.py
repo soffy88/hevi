@@ -179,6 +179,33 @@ class ShotSpec(BaseModel):
     camera: str | None = None
     subtitle_style: str | None = None
     duration: float | None = None
+    # 素材余量(handles):采用时长(duration)之外、生成时多要的首/尾余量,
+    # 供生成端多拍一点、装配时按 in 点裁切。默认 0.0 = 旧行为(不带余量)。
+    handle_head_s: float = 0.0
+    handle_tail_s: float = 0.0
+
+    @field_validator("handle_head_s", "handle_tail_s")
+    @classmethod
+    def _handles_non_negative(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError(f"handle must be >= 0, got {v}")
+        return v
+
+    def requested_generation_duration_s(
+        self, use_duration_s: float | None = None
+    ) -> float | None:
+        """请求生成时长 = 采用时长 + handle_head_s + handle_tail_s。
+
+        采用时长默认取 ``duration``;显式传 ``use_duration_s`` 时用它
+        (调用方采用时长与 spec.duration 不一致时)。采用时长未知(None)
+        时返回 None,不臆造时长。
+        """
+        use = self.duration if use_duration_s is None else use_duration_s
+        if use is None:
+            return None
+        if use <= 0:
+            raise ValueError(f"use duration must be > 0, got {use}")
+        return float(use) + self.handle_head_s + self.handle_tail_s
 
     @field_validator("duration")
     @classmethod

@@ -32,6 +32,8 @@ _REPAIR_CORPUS: list[tuple[FailureCode, str]] = [
     (FailureCode.DELIVERY_INTEGRITY, "retry_new_seed"),
     (FailureCode.SAFETY_POLICY, "human_review"),
     (FailureCode.QUALITY_CHECKER_FAILURE, "human_review"),
+    (FailureCode.MISSING_SHOT, "insert_shot"),
+    (FailureCode.ACTION_DISCONTINUITY, "adjust_cut"),
 ]
 
 
@@ -59,6 +61,8 @@ def test_repair_corpus_maps_to_scoped_actions_and_patches() -> None:
             "recompile_prompt",
             "replace_reference",
             "switch_provider",
+            "insert_shot",
+            "adjust_cut",
         }
         if expected_kind in auto_kinds:
             assert decision.should_repair, code
@@ -79,6 +83,12 @@ def test_repair_corpus_maps_to_scoped_actions_and_patches() -> None:
                 assert patch.seed == 4
             if expected_kind == "switch_provider":
                 assert patch.provider_id == "veo3"
+            if expected_kind == "insert_shot":
+                assert patch.insert_shots
+                assert patch.insert_shots[0]["after_shot_index"] == 1
+            if expected_kind == "adjust_cut":
+                assert patch.cut_adjustments
+                assert patch.cut_adjustments[0]["shot_index"] == 1
             hits += 1
         else:
             assert not decision.should_repair, code

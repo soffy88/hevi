@@ -825,16 +825,161 @@ def apply_gain_control(
     return info
 
 
+# ---------------------------------------------------------------------------
+# PixStag handles + beat-dependent tails (W4)
+#
+# Handles: a generated clip should be *longer* than the used (adopted)
+# duration -- generation is requested for use + head + tail, and the
+# returned clip is trimmed at source_in_s (= effective head) for
+# use_duration_s during assembly. PixStag bills integer seconds exactly,
+# so the requested duration is ceil(use+head+tail) clamped to 4..30.
+# ---------------------------------------------------------------------------
+PIXSTAG_HANDLE_HEAD_S = 0.5
+PIXSTAG_HANDLE_TAIL_S = 0.5
+PIXSTAG_DURATION_MIN_S = 4
+PIXSTAG_DURATION_MAX_S = 30
+
+
+def compute_pixstag_timing(
+    use_duration_s: float,
+    *,
+    handle_head_s: float | None = None,
+    handle_tail_s: float | None = None,
+) -> dict[str, Any]:
+    """Timing for one PixStag shot: used duration vs requested duration.
+
+    ``duration`` (the PixStag request, integer seconds) is
+    ``ceil(use + head + tail)`` clamped to 4..30. When the sum exceeds
+    30 s the *used* duration is preserved first: handles are compressed
+    (head first, then tail from what remains) and ``handles_clipped``
+    is set. Below the 4 s floor the handles are kept as-is -- the extra
+    generated padding is harmless because assembly trims by in-point.
+    """
+    from math import ceil
+
+    use = float(use_duration_s)
+    head = PIXSTAG_HANDLE_HEAD_S if handle_head_s is None else float(handle_head_s)
+    tail = PIXSTAG_HANDLE_TAIL_S if handle_tail_s is None else float(handle_tail_s)
+    if use <= 0:
+        raise StoryFilmError(f"pixstag use_duration_s must be > 0, got {use}")
+    if head < 0 or tail < 0:
+        raise StoryFilmError(
+            f"pixstag handles must be >= 0, got head={head} tail={tail}"
+        )
+    clipped = False
+    eff_head, eff_tail = head, tail
+    if use + head + tail > PIXSTAG_DURATION_MAX_S:
+        clipped = True
+        budget = max(0.0, PIXSTAG_DURATION_MAX_S - use)
+        eff_head = min(head, budget)
+        eff_tail = min(tail, max(0.0, budget - eff_head))
+    duration = min(
+        PIXSTAG_DURATION_MAX_S,
+        max(PIXSTAG_DURATION_MIN_S, ceil(use + eff_head + eff_tail)),
+    )
+    return {
+        "use_duration_s": round(use, 4),
+        "handle_head_s": round(eff_head, 4),
+        "handle_tail_s": round(eff_tail, 4),
+        "source_in_s": round(eff_head, 4),
+        "duration": duration,
+        "handles_clipped": clipped,
+    }
+
+
+# Beat-dependent shot tails. Beats in this pipeline carry no explicit
+# beat-type field (the story draft only guarantees narration / visual_en /
+# motion_prompt), so the kind is inferred, in order:
+#   1. an explicit beat["beat_type"|"beat_kind"|"type"|"kind"|"shot_type"]
+#      when a future draft supplies one;
+#   2. keyword inference over motion_prompt + visual_en + narration --
+#      close-up / reaction / emotion wording -> "reaction";
+#      finally / reveal / finds / returns-home wording -> "result";
+#   3. otherwise "default".
+_BEAT_TAIL_S = {"reaction": 0.8, "emotion": 0.8, "result": 0.5, "default": 0.35}
+_LAST_SHOT_TAIL_MIN_S = 1.2
+_REACTION_WORDS = (
+    "close-up", "closeup", "reaction", "tear", "crying", "smile",
+    "surprised", "expression", "face", "hug",
+    "哭", "眼泪", "笑", "惊讶", "愣", "表情", "拥抱", "害怕", "担心",
+)
+_RESULT_WORDS = (
+    "finally", "reveal", "discover", "finds", "arrives", "opens the door",
+    "终于", "发现", "原来", "回到家", "打开门", "结果",
+)
+
+
+def infer_beat_kind(beat: dict[str, Any]) -> str:
+    """Infer the beat kind used for tail sizing (see table above)."""
+    explicit = ""
+    for key in ("beat_type", "beat_kind", "type", "kind", "shot_type"):
+        if beat.get(key):
+            explicit = str(beat[key]).strip().lower()
+            break
+    if explicit:
+        if any(w in explicit for w in ("react", "emot", "close")):
+            return "reaction"
+        if any(w in explicit for w in ("result", "reveal", "payoff", "outcome")):
+            return "result"
+        return "default"
+    text = " ".join(
+        str(beat.get(k) or "")
+        for k in ("motion_prompt", "visual_en", "narration")
+    ).lower()
+    if any(w in text for w in _REACTION_WORDS):
+        return "reaction"
+    if any(w in text for w in _RESULT_WORDS):
+        return "result"
+    return "default"
+
+
+def tail_for_beat(beat: dict[str, Any], *, is_last: bool = False) -> float:
+    """Tail seconds after a beat's narration: reaction/emotion 0.8,
+    result 0.5, default 0.35; the last shot keeps a 1.2 s floor."""
+    tail = _BEAT_TAIL_S.get(infer_beat_kind(beat), _BEAT_TAIL_S["default"])
+    if is_last:
+        tail = max(tail, _LAST_SHOT_TAIL_MIN_S)
+    return tail
+
+
 def build_pixstag_package(
     *, premise: str, draft: dict[str, Any], shots: list[dict[str, Any]],
     aspect: str, narration_path: Path, alignment_path: Path,
 ) -> dict[str, Any]:
     """Handoff package for video.pixstag_generate (live-action route).
 
-    Per shot the consumer needs exactly: first_frame + motion_prompt +
-    duration. Narration/alignment ride along so the final assembly can keep
+    Per shot the consumer needs: first_frame + motion_prompt + the
+    PixStag request ``duration`` (integer seconds). The request duration
+    is NOT the used duration: it is ``ceil(use + head + tail)`` clamped
+    to 4..30 (see compute_pixstag_timing), the returned clip is trimmed
+    at ``source_in_s`` (= effective handle head) for ``use_duration_s``
+    during assembly, and ``duration_s`` keeps the used duration for
+    backwards compatibility. A shot may carry its own
+    ``handle_head_s`` / ``handle_tail_s``; defaults are 0.5 s / 0.5 s.
+    Narration/alignment ride along so the final assembly can keep
     the measured timeline.
     """
+
+    def _pkg_shot(s: dict[str, Any]) -> dict[str, Any]:
+        timing = compute_pixstag_timing(
+            s["duration_s"],
+            handle_head_s=s.get("handle_head_s"),
+            handle_tail_s=s.get("handle_tail_s"),
+        )
+        return {
+            "shot_id": s["shot_id"],
+            "first_frame": s["first_frame"],
+            "motion_prompt": s["motion_prompt"],
+            "duration_s": s["duration_s"],
+            "duration": timing["duration"],
+            "use_duration_s": timing["use_duration_s"],
+            "handle_head_s": timing["handle_head_s"],
+            "handle_tail_s": timing["handle_tail_s"],
+            "source_in_s": timing["source_in_s"],
+            "handles_clipped": timing["handles_clipped"],
+            "narration": s["narration"],
+        }
+
     return {
         "kind": "pixstag_shot_package",
         "title": draft["title"],
@@ -843,19 +988,11 @@ def build_pixstag_package(
         "aspect": aspect,
         "narration_audio": str(narration_path),
         "alignment_json": str(alignment_path),
-        "shots": [
-            {
-                "shot_id": s["shot_id"],
-                "first_frame": s["first_frame"],
-                "motion_prompt": s["motion_prompt"],
-                "duration_s": s["duration_s"],
-                "narration": s["narration"],
-            }
-            for s in shots
-        ],
+        "shots": [_pkg_shot(s) for s in shots],
         "note": (
             "hevi 备齐流程与镜头包; 最终成片由 video.pixstag_generate 逐镜"
-            "生成后按 shots.json 的实测时间轴拼接。"
+            "按 duration(生成时长,含首尾 handles)生成, 回片按 source_in_s "
+            "裁切 use_duration_s 后按 shots.json 的实测时间轴拼接。"
         ),
     }
 
@@ -1170,13 +1307,18 @@ async def run_story_film(
     for i, (beat, img, (start_ms, end_ms)) in enumerate(
         zip(draft["beats"], image_paths, spans, strict=True)
     ):
-        tail = 1.2 if i == len(draft["beats"]) - 1 else 0.35
+        # Tail by beat kind (reaction/emotion hold longer, result beats
+        # a beat less, default 0.35 s; last shot floor 1.2 s) -- the kind
+        # is inferred by tail_for_beat/infer_beat_kind, see their comment.
+        tail = tail_for_beat(beat, is_last=i == len(draft["beats"]) - 1)
         shots.append(
             {
                 "shot_id": f"S{i + 1:02d}",
                 "narration": beat["narration"],
                 "visual_prompt": beat["visual_en"],
                 "motion_prompt": beat["motion_prompt"],
+                "beat_kind": infer_beat_kind(beat),
+                "tail_s": tail,
                 "ken_burns": ken_burns_params(beat["motion_prompt"], i),
                 "image": str(img),
                 "first_frame": str(img),

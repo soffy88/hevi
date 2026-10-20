@@ -80,6 +80,14 @@ _storyfilm.register_storyfilm_capabilities_once()
 from . import earshot_gate as _earshot_gate  # noqa: E402,F401
 _earshot_gate.register_earshot_capabilities_once()
 
+# Unified export QA gate (qa.export_gate): pre-delivery checklist
+from . import export_qa as _export_qa  # noqa: E402,F401
+_export_qa.register_export_qa_capabilities_once()
+
+# BGM beat alignment (assembly line): assembly.beat_align
+from . import beat_align as _beat_align  # noqa: E402,F401
+_beat_align.register_beat_align_capabilities_once()
+
 # PixStag external render (live-action story films, 2026-10-20):
 # video.pixstag_generate - hevi ships shot packages, PixStag renders them
 from . import pixstag as _pixstag  # noqa: E402,F401

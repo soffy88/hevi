@@ -18,7 +18,23 @@ story-to-film / livefilm 线在调用前为每镜落一个镜头包目录,内含
 |---|---|
 | `first_frame.png/jpg` | 该镜关键帧/定妆合成图(≤3MB,jpg/png) |
 | `motion_prompt.txt` | 运动提示词(中文):镜头运动 + 人物表演 + 情绪 |
-| `shot.json` | `{duration: 4..30, ratio: "9:16", resolution: "720P", model: "MiniMax-H3"}` |
+| `shot.json` | `{duration: 4..30, ratio: "9:16", resolution: "720P", model: "MiniMax-H3", use_duration_s, handle_head_s, handle_tail_s, source_in_s, handles_clipped}` |
+
+## 生成时长 ≠ 采用时长(handles 约定)
+
+PixStag 按请求的整数秒精确计费、精确生成,所以镜头包把两个时长分开:
+
+- `use_duration_s`:本镜在成片里**采用**的时长(= 原 `duration_s`,向后兼容保留)。
+- `handle_head_s` / `handle_tail_s`:首/尾**余量**,默认各 0.5 s;shot 自带
+  `handle_head_s`/`handle_tail_s` 时以 shot 的为准(见 `ShotSpec.handle_*_s`)。
+- `duration`:**请求 PixStag 生成的时长**(整数秒)=
+  `ceil(use_duration_s + handle_head_s + handle_tail_s)`,clamp 到 4..30。
+  超过 30 s 时优先保 `use_duration_s`、压缩 handles,并置
+  `handles_clipped: true`(此时 `handle_*_s`/`source_in_s` 是压缩后的有效值)。
+- `source_in_s`:**回片裁切 in 点** = 有效 `handle_head_s`。装配时从回片的
+  `source_in_s` 处起、裁 `use_duration_s` 长的一段入片(例:
+  `ffmpeg -ss <source_in_s> -i clip.mp4 -t <use_duration_s> ...`),
+  首尾余量一律不进入成片。
 
 调用示例(通过能力契约,任何产品线按名字取):
 
@@ -29,7 +45,8 @@ cap = get("video.pixstag_generate")
 result = cap.render_safe(
     {
         "prompt": motion_prompt,            # motion_prompt.txt 内容
-        "duration": shot["duration"],
+        "duration": shot["duration"],       # 生成时长(含 handles,整数秒)
+        # 回片装配:按 shot["source_in_s"] 裁 in 点、取 shot["use_duration_s"] 长
         "ratio": "9:16",
         "resolution": "720P",
         "first_frame_path": str(pkg / "first_frame.png"),

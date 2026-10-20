@@ -26,6 +26,8 @@ class RepairAction(BaseModel):
         "replace_reference",
         "switch_provider",
         "local_edit",
+        "insert_shot",
+        "adjust_cut",
         "rollback_revision",
         "human_review",
     ]
@@ -70,6 +72,8 @@ _ACTION_FOR_CODE: dict[FailureCode, tuple[str, float]] = {
     FailureCode.DELIVERY_INTEGRITY: ("retry_new_seed", 0.8),
     FailureCode.SAFETY_POLICY: ("human_review", 0.0),
     FailureCode.QUALITY_CHECKER_FAILURE: ("human_review", 0.0),
+    FailureCode.MISSING_SHOT: ("insert_shot", 0.6),
+    FailureCode.ACTION_DISCONTINUITY: ("adjust_cut", 0.5),
 }
 
 
@@ -166,6 +170,8 @@ class RepairController:
             "recompile_prompt",
             "replace_reference",
             "switch_provider",
+            "insert_shot",
+            "adjust_cut",
         }
         has_auto_action = any(item.kind in auto_actions for item in actions)
         return RepairDecision(

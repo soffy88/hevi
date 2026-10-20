@@ -24,6 +24,8 @@ class FailureCode(StrEnum):
     DELIVERY_INTEGRITY = "DELIVERY_INTEGRITY"
     SAFETY_POLICY = "SAFETY_POLICY"
     QUALITY_CHECKER_FAILURE = "QUALITY_CHECKER_FAILURE"
+    MISSING_SHOT = "MISSING_SHOT"
+    ACTION_DISCONTINUITY = "ACTION_DISCONTINUITY"
 
 
 _SEVERITY = {
@@ -45,6 +47,8 @@ _SEVERITY = {
     FailureCode.DELIVERY_INTEGRITY: 5.0,
     FailureCode.SAFETY_POLICY: 5.0,
     FailureCode.QUALITY_CHECKER_FAILURE: 5.0,
+    FailureCode.MISSING_SHOT: 4.0,
+    FailureCode.ACTION_DISCONTINUITY: 3.0,
 }
 
 
@@ -65,6 +69,11 @@ _ALIASES = {
     "视线": FailureCode.EYELINE_VIOLATION,
     "崩手": FailureCode.ANATOMY_ARTIFACT,
     "构图": FailureCode.CAMERA_CONTRACT,
+    "动作衔接断裂": FailureCode.ACTION_DISCONTINUITY,
+    "动作衔接": FailureCode.ACTION_DISCONTINUITY,
+    "动作断裂": FailureCode.ACTION_DISCONTINUITY,
+    "缺镜": FailureCode.MISSING_SHOT,
+    "叙事缺口": FailureCode.MISSING_SHOT,
     "动作": FailureCode.ACTION_MISSING,
     "对白缺失": FailureCode.DIALOGUE_MISSING,
     "口型漂移": FailureCode.LIPSYNC_DRIFT,

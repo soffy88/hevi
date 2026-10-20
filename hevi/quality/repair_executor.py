@@ -9,6 +9,7 @@ apply before the next attempt.
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -23,6 +24,10 @@ class RepairPatch(BaseModel):
     regenerate_same_provider: bool = False
     scopes: list[str] = Field(default_factory=list)
     shot_indexes: list[int] = Field(default_factory=list)
+    # 记录型 patch（不直接改产物，只记录意图供导演/任务 worker 落地）：
+    # insert_shot 记录待插入位置，adjust_cut 记录待调整衔接的镜头。
+    insert_shots: list[dict[str, Any]] = Field(default_factory=list)
+    cut_adjustments: list[dict[str, Any]] = Field(default_factory=list)
     applied: list[RepairAction] = Field(default_factory=list)
     consumed: bool = False
 
@@ -94,6 +99,24 @@ def apply_repair_decision(
             patch.recompile_prompt = True
         elif action.kind == "regenerate_same_provider":
             patch.regenerate_same_provider = True
+        elif action.kind == "insert_shot":
+            idxs = scopes_to_shot_indexes([action.scope] if action.scope else [])
+            patch.insert_shots.append(
+                {
+                    "scope": action.scope,
+                    "after_shot_index": idxs[0] if idxs else None,
+                    "reason": action.reason.value,
+                }
+            )
+        elif action.kind == "adjust_cut":
+            idxs = scopes_to_shot_indexes([action.scope] if action.scope else [])
+            patch.cut_adjustments.append(
+                {
+                    "scope": action.scope,
+                    "shot_index": idxs[0] if idxs else None,
+                    "reason": action.reason.value,
+                }
+            )
     patch.shot_indexes = scopes_to_shot_indexes(patch.scopes)
     return patch
 
