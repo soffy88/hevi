@@ -4,7 +4,24 @@ The LuxTTS HTTP contract returns audio and sentence-level timings, not native
 word boundaries. Its alignment output therefore labels duration-weighted word
 timings as estimates. Deployments that explicitly set
 HEVI_TTS_ALIGNMENT_PROVIDER=edge_tts can request Edge's native word boundaries.
+Setting HEVI_TTS_ALIGNMENT_PROVIDER=elevenlabs_forced synthesizes with LuxTTS
+first and then runs ElevenLabs forced alignment (via Monid, MONID_API_KEY) to
+replace the estimates with measured word boundaries.
 All measured durations and persisted timestamps use integer milliseconds.
+
+接线现状表（HEVI_TTS_ALIGNMENT_PROVIDER 三档，synthesize_with_alignment 的模式）:
+
+| 档位 | 音色 | 时间戳性质 | 成本 | 当前实际使用方 |
+|---|---|---|---|---|
+| lux_tts（默认） | LuxTTS 音色（soffy / en_male） | 估时：按时长加权切分，is_estimated=True | 本地服务，无按次费用 | synthesize_with_alignment 默认档（见下注） |
+| edge_tts | Edge TTS 音色（换后端，音色随之更换） | 原生词界（后端返回），实测 | 免费（Edge 在线服务） | 仅显式设置环境变量时 |
+| elevenlabs_forced | LuxTTS 音色不变（soffy / en_male） | 实测：ElevenLabs forced alignment（经 Monid）回填词级时间戳 | Monid 按次计费（约 $0.0012/次量级） | synthesize_with_alignment 显式档（见下注） |
+
+注：synthesize_with_alignment 目前无生产调用方（仅测试在用）。生产链是直调
+hevi.audio.forced_alignment.forced_align_words：storyfilm 管线与能力
+audio.forced_align（hevi/capabilities/multimodel.py）都走这条直调路径。
+explainer 线另有自己的 HEVI_EXPLAINER_TTS_PROVIDER 开关
+（hevi/explainer/voiceover.py），不经过本模块。
 """
 
 from __future__ import annotations
@@ -184,7 +201,10 @@ async def synthesize_with_alignment(
     LuxTTS is the default and actual audio source. Since its HTTP endpoint has no
     word-boundary API, LuxTTS word timestamps are explicitly marked estimated.
     Set HEVI_TTS_ALIGNMENT_PROVIDER=edge_tts only to opt into native Edge word
-    boundaries. Failure of synthesis or duration probing remains fail-loud.
+    boundaries. Set HEVI_TTS_ALIGNMENT_PROVIDER=elevenlabs_forced to keep the
+    LuxTTS audio but replace the estimated word timings with measured ones from
+    ElevenLabs forced alignment (via Monid). Failure of synthesis or duration
+    probing remains fail-loud.
     """
     if not text or not text.strip():
         raise AlignmentUnavailable("empty text")
@@ -201,6 +221,7 @@ async def synthesize_with_alignment(
         synthesis_path = root / f"tts_alignment_{uuid.uuid4().hex}.wav"
 
     provider_mode = os.getenv("HEVI_TTS_ALIGNMENT_PROVIDER", "lux_tts").strip().lower()
+    measured = False
     if provider_mode in {"edge", "edge-tts", "edge_tts"}:
         try:
             audio_path, words, alignment_source = await _synthesize_edge_with_word_boundaries(
@@ -209,6 +230,7 @@ async def synthesize_with_alignment(
                 output_path=configured_output,
             )
             actual_provider = "edge_tts"
+            measured = alignment_source == "edge_tts_word_boundary"
         except Exception as exc:
             raise AlignmentUnavailable(f"explicit Edge TTS alignment failed: {exc}") from exc
     elif provider_mode in {"lux", "lux_tts", "luxtts", "auto"}:
@@ -248,10 +270,32 @@ async def synthesize_with_alignment(
             )
         except Exception as exc:
             raise AlignmentUnavailable(f"LuxTTS synthesis/alignment failed: {exc}") from exc
+    elif provider_mode in {"elevenlabs", "elevenlabs_forced", "forced"}:
+        try:
+            from hevi.audio.forced_alignment import forced_align_words
+
+            synthesis_path.parent.mkdir(parents=True, exist_ok=True)
+            actual_provider = await _synthesize_lux_audio(
+                text=text, voice=voice, output_path=synthesis_path
+            )
+            if not synthesis_path.is_file() or synthesis_path.stat().st_size <= 0:
+                raise RuntimeError("TTS router returned without a non-empty audio artifact")
+            audio_path = synthesis_path
+            words, cost = await forced_align_words(audio_path=audio_path, text=text)
+            alignment_source = "elevenlabs_forced_alignment"
+            measured = True
+            logger.info(
+                "elevenlabs forced alignment measured %d words for audio_id=%s (cost=%s)",
+                len(words),
+                audio_id or audio_path.stem,
+                cost,
+            )
+        except Exception as exc:
+            raise AlignmentUnavailable(f"forced alignment failed: {exc}") from exc
     else:
         raise AlignmentUnavailable(
             f"unsupported HEVI_TTS_ALIGNMENT_PROVIDER={provider_mode!r}; "
-            "choose lux_tts or edge_tts"
+            "choose lux_tts, edge_tts, or elevenlabs_forced"
         )
 
     duration_ms = probe_duration_ms(audio_path)
@@ -268,7 +312,7 @@ async def synthesize_with_alignment(
         words,
         (phrase,),
         alignment_source=alignment_source,
-        is_estimated=alignment_source != "edge_tts_word_boundary",
+        is_estimated=not measured,
         tts_provider=actual_provider,
     )
     return audio_path, alignment
