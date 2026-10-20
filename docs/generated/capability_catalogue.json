@@ -314,7 +314,7 @@
     ],
     "line": "",
     "cpu_cost_hint": 120.0,
-    "description": "幼儿向手绘动画；正 duration 为精确时长预览，0 为完整交付。"
+    "description": "幼儿向手绘动画；正 duration 为精确时长预览，0 为完整交付。可选 stroke_style='rough' 启用 rough 式手绘描边（双描+抖动，默认 legacy 不变）。"
   },
   {
     "name": "handdraw.storyboard",
@@ -325,7 +325,7 @@
     ],
     "line": "",
     "cpu_cost_hint": 4.0,
-    "description": "仅生成分镜插画+口播稿（CPU 矢量插画），不渲染视频。"
+    "description": "仅生成分镜插画+口播稿（CPU 矢量插画），不渲染视频。可选 stroke_style='rough' 启用 rough 式手绘描边（默认 legacy 不变）。"
   },
   {
     "name": "handdraw.narration",
@@ -347,7 +347,19 @@
     ],
     "line": "",
     "cpu_cost_hint": 2.0,
-    "description": "单张 CPU 矢量风格插画 PNG（指定手绘风格）。"
+    "description": "单张 CPU 矢量风格插画 PNG（指定手绘风格）。可选 stroke_style='rough' 启用 rough 式手绘描边（双描+抖动，默认 legacy 不变）。"
+  },
+  {
+    "name": "image.rough_stroke",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "handdraw",
+    "cpu_cost_hint": 0.2,
+    "description": "Rough-style hand-drawn strokes (clean-room Python technique): jitters polyline vertices (roughness), bows segment midpoints (bowing) and double-draws each path, deterministically from the render seed. Writes a transparent PNG plus rough.svg. Also available inside the handdraw line via stroke_style='rough'."
   },
   {
     "name": "particle_text",
@@ -1093,5 +1105,67 @@
     "line": "",
     "cpu_cost_hint": 200.0,
     "description": "渲染单镜头：解析 @角色/@场景/@道具 引用，生成关键帧并用 Piper 配音合成短视频段（CPU）。"
+  },
+  {
+    "name": "image.watercolor_render",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1",
+      "4:3",
+      "3:4"
+    ],
+    "line": "watercolor",
+    "cpu_cost_hint": 0.5,
+    "description": "Procedural watercolour render (pure Python + Pillow, local, $0, no AI image generation): each shape's outline is roughened by iterated midpoint displacement and stacked in ~40 layers at ~4.5% opacity, so centres saturate while edges bleed pale. Deterministic — same seed + params give a byte-identical PNG. Params: shapes (circle/ellipse/rect/polygon/path + colour, with per-shape layers/alpha/displacement/iterations overrides) or scene_preset='sun_mountain_lake'; layers (default 40), alpha per layer (default 0.045), displacement px (default 6), iterations (default 4), width/height/background, flat=true for a flat-fill comparison render. Use for handdraw / HyperFrames backgrounds and scene elements."
+  },
+  {
+    "name": "video.map_route",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "maproute",
+    "cpu_cost_hint": 2.0,
+    "description": "Map-route film (地图路线片): shot table of ordered stops -> geocode (gazetteer/Photon/Nominatim or AMap) -> real route (OSRM or AMap) -> route drawn progressively over real Esri World Street Map basemap tiles in headless Chromium -> MP4. Route progress is driven by word-level narration alignment timestamps when supplied (each stop's narration segment end = arrival at that stop), otherwise by per-stop dwell seconds. Camera moves: dive / follow / static. Free: no key and no paid calls on the default OSM provider; provider 'amap' requires the user's HEVI_AMAP_KEY."
+  },
+  {
+    "name": "video.blender_clay_render",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "blender_clay",
+    "cpu_cost_hint": 75.0,
+    "description": "Blender clay-style 3D render (headless bpy script, Cycles CPU, no GPU): matte clay scene (Principled BSDF roughness 0.9, metallic 0, soft pastel palette, large area light) - a rounded ball character or stacked clay blocks, animated with first/last-frame keyframes (bounce or slide+turn). CPU SLOW - measured on ubuntu26 (20 cores, Blender 4.2.17, 32 samples + OIDN denoise, 480p 9:16 = 480x854): 188s wall for 60 frames = 3.1s/frame, ~75s wall per 1s of 24fps video, so a 2-3s shot takes ~3 minutes. Recommended: 480p (540p max), duration <=3s per shot, hard limit 6s, samples 32 (64 max in schema is ~2x slower). No GPU is used or required. Needs a local Blender binary ($HEVI_BLENDER_BIN / $BLENDER_BIN / PATH / ~/.local/blender/blender / ~/opt/blender/blender); missing binary raises CapabilityError. Local and free: no paid calls."
+  },
+  {
+    "name": "image.handraw_styles",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "handraw_style",
+    "cpu_cost_hint": 0.0,
+    "description": "Catalogue of the handraw-style numbered prompt library (yang0/handraw-style, attribution required): 365 visual styles (FA-FI / legacy 001-365), 167 layouts, 36 theme colors, 16 tones. Use to pick a style/layout/color id before calling image.styled_generate."
+  },
+  {
+    "name": "image.styled_generate",
+    "kind": "shot",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "handraw_style",
+    "cpu_cost_hint": 0.0,
+    "description": "Generate an image in a numbered handraw-style visual style: style_id + theme (+ optional layout_id/color_id) are assembled into a bilingual prompt by the library's gpt-image-2 activation rules and rendered via the Monid GPT-Image backend. Use for styled stills and covers where a named, reproducible look is wanted instead of a hand-written prompt."
   }
 ]

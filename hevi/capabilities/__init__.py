@@ -36,6 +36,11 @@ from . import svfactory as _svfactory  # noqa: E402,F401
 # on the unified registry.  Heavy pipeline imports stay inside the render fns.
 from . import handdraw  # noqa: E402,F401
 
+# Rough-style hand-drawn strokes (clean-room technique, 2026-10-20):
+# image.rough_stroke -- also reachable inside handdraw via stroke_style="rough".
+from . import rough_stroke as _rough_stroke  # noqa: E402,F401
+_rough_stroke.register_rough_stroke_capabilities_once()
+
 # Partsci line (merged from feat/particle-science): importing registers
 # particle_text / particle_science_scene / parallax_layers.
 from hevi.partsci.capabilities import register_partsci_capabilities_once
@@ -144,3 +149,22 @@ __all__ = [
     "contains",
     "Registry",
 ]
+
+
+# Procedural watercolour (image.watercolor_render): pure-Python local $0
+from . import watercolor as _watercolor  # noqa: E402,F401
+_watercolor.register_watercolor_capabilities_once()
+
+# Map-route line (video.map_route): narration-timestamp-driven real-map
+# route animation over the free OSM stack (Photon/OSRM/CARTO), AMap optional.
+from . import maproute as _maproute  # noqa: E402,F401
+_maproute.register_maproute_capabilities_once()
+
+# Blender clay line (video.blender_clay_render): headless bpy, Cycles CPU
+from . import blender_clay as _blender_clay  # noqa: E402,F401
+_blender_clay.register_blender_clay_capabilities_once()
+# Handraw-style numbered prompt library (yang0/handraw-style, MIT with
+# attribution): image.handraw_styles catalogue + image.styled_generate
+# (numbered style -> assembled prompt -> Monid GPT-Image backend).
+from . import handraw_styles as _handraw_styles  # noqa: E402,F401
+_handraw_styles.register_handraw_style_capabilities_once()
