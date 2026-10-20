@@ -414,3 +414,59 @@ def test_audio_filter_sfx_only() -> None:
     )
     assert label == "[aout]"
     assert "volume=-6.0dB" in f
+
+
+@ffmpeg_only
+async def test_assemble_beat_align_passes_full_snapped_list_per_seam(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """回归: assemble_longvideo 必须把逐缝 snapped 列表整表传给
+    build_xfade_chain,不是只取 snapped[0] 当标量 (旧 bug: 只有第一缝贴拍)。
+
+    detect / snap 都打桩成确定值 [0.3, 0.7]; spy 捕获 build_xfade_chain
+    收到的 xfade_d,断言它就是整张列表。
+    """
+    import hevi.assembly.assembler as assembler_mod
+
+    clips = []
+    for i, color in enumerate(["red", "green", "blue"]):
+        c = tmp_path / f"s{i}.mp4"
+        _make_clip(c, 4.0, color)
+        clips.append(c)
+    bgm = tmp_path / "bgm.wav"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=12", str(bgm)],
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setattr(
+        "hevi.assembly.beat_align.detect_beat_times", lambda p: [1.0, 2.0]
+    )
+    monkeypatch.setattr(
+        "hevi.assembly.beat_align.beat_snapped_xfade_durations",
+        lambda durations, *, base_xfade_d, beats, max_shift=0.3: [0.3, 0.7],
+    )
+    captured: dict = {}
+    orig_build = assembler_mod.build_xfade_chain
+
+    def _spy(durations, transition, xfade_d):
+        captured["xfade_d"] = xfade_d
+        return orig_build(durations, transition, xfade_d)
+
+    monkeypatch.setattr(assembler_mod, "build_xfade_chain", _spy)
+
+    out = tmp_path / "final.mp4"
+    await assemble_longvideo(
+        shots=[ShotSegment(c) for c in clips],
+        output_path=out,
+        bgm_path=bgm,
+        width=320,
+        height=240,
+        fps=24,
+        transition="fade",
+        transition_duration=0.5,
+        bgm_beat_align=True,
+        color_normalize=False,
+    )
+    assert out.exists()
+    assert captured["xfade_d"] == [0.3, 0.7]

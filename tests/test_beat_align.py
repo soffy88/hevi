@@ -71,3 +71,20 @@ def test_detect_beat_times_on_synthetic_click_track(tmp_path: Path):
     )
     beats = detect_beat_times(audio)
     assert len(beats) >= 4  # 8s / 0.5s 间隔,应该测出好几个节拍点
+
+
+def test_beat_snapped_multi_seam_uses_per_seam_values():
+    """多缝时每缝用各自的 snap 值,不是第一缝的值铺满全片。
+
+    durations=[5,5,5], base=0.5: 第一缝自然点 5.0,最近节拍 4.7 -> d=0.8;
+    合并后第二缝自然点 9.2,最近节拍 9.6 -> shift +0.4 被 max_shift 夹到
+    d=0.2。两缝必须不同 ([0.8, 0.2]),这正是 assembler 旧 bug
+    (只取 snapped[0]) 会抹掉的差异。
+    """
+    result = beat_snapped_xfade_durations(
+        [5.0, 5.0, 5.0], base_xfade_d=0.5, beats=[4.7, 9.6], max_shift=0.3
+    )
+    assert len(result) == 2
+    assert result[0] == pytest.approx(0.8, abs=0.01)
+    assert result[1] == pytest.approx(0.2, abs=0.01)
+    assert result[0] != result[1]
