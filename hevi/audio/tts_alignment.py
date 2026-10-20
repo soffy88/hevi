@@ -7,15 +7,19 @@ HEVI_TTS_ALIGNMENT_PROVIDER=edge_tts can request Edge's native word boundaries.
 Setting HEVI_TTS_ALIGNMENT_PROVIDER=elevenlabs_forced synthesizes with LuxTTS
 first and then runs ElevenLabs forced alignment (via Monid, MONID_API_KEY) to
 replace the estimates with measured word boundaries.
+Setting HEVI_TTS_ALIGNMENT_PROVIDER=whisper_local synthesizes with LuxTTS
+first and then measures word boundaries locally with faster-whisper ASR
+(sequence-matched onto the known text; free, CPU-only, no API key).
 All measured durations and persisted timestamps use integer milliseconds.
 
-接线现状表（HEVI_TTS_ALIGNMENT_PROVIDER 三档，synthesize_with_alignment 的模式）:
+接线现状表（HEVI_TTS_ALIGNMENT_PROVIDER 四档，synthesize_with_alignment 的模式）:
 
 | 档位 | 音色 | 时间戳性质 | 成本 | 当前实际使用方 |
 |---|---|---|---|---|
 | lux_tts（默认） | LuxTTS 音色（soffy / en_male） | 估时：按时长加权切分，is_estimated=True | 本地服务，无按次费用 | synthesize_with_alignment 默认档（见下注） |
 | edge_tts | Edge TTS 音色（换后端，音色随之更换） | 原生词界（后端返回），实测 | 免费（Edge 在线服务） | 仅显式设置环境变量时 |
 | elevenlabs_forced | LuxTTS 音色不变（soffy / en_male） | 实测：ElevenLabs forced alignment（经 Monid）回填词级时间戳 | Monid 按次计费（约 $0.0012/次量级） | synthesize_with_alignment 显式档（见下注） |
+| whisper_local | LuxTTS 音色不变（soffy / en_male） | 实测：本地 faster-whisper ASR 转写后序列匹配回填（ASR 实测，非强制对齐；对 ElevenLabs 真值中位偏差 60ms、P90 ≤120ms） | 免费（本地 CPU，无 key） | synthesize_with_alignment 显式档 |
 
 注：synthesize_with_alignment 目前无生产调用方（仅测试在用）。生产链是直调
 hevi.audio.forced_alignment.forced_align_words：storyfilm 管线与能力
@@ -203,8 +207,10 @@ async def synthesize_with_alignment(
     Set HEVI_TTS_ALIGNMENT_PROVIDER=edge_tts only to opt into native Edge word
     boundaries. Set HEVI_TTS_ALIGNMENT_PROVIDER=elevenlabs_forced to keep the
     LuxTTS audio but replace the estimated word timings with measured ones from
-    ElevenLabs forced alignment (via Monid). Failure of synthesis or duration
-    probing remains fail-loud.
+    ElevenLabs forced alignment (via Monid). Set
+    HEVI_TTS_ALIGNMENT_PROVIDER=whisper_local to keep the LuxTTS audio and
+    measure word timings with local faster-whisper ASR instead (free, CPU).
+    Failure of synthesis or duration probing remains fail-loud.
     """
     if not text or not text.strip():
         raise AlignmentUnavailable("empty text")
@@ -292,10 +298,31 @@ async def synthesize_with_alignment(
             )
         except Exception as exc:
             raise AlignmentUnavailable(f"forced alignment failed: {exc}") from exc
+    elif provider_mode in {"whisper", "whisper_local", "whisper_asr"}:
+        try:
+            from hevi.audio.whisper_alignment import whisper_align_words
+
+            synthesis_path.parent.mkdir(parents=True, exist_ok=True)
+            actual_provider = await _synthesize_lux_audio(
+                text=text, voice=voice, output_path=synthesis_path
+            )
+            if not synthesis_path.is_file() or synthesis_path.stat().st_size <= 0:
+                raise RuntimeError("TTS router returned without a non-empty audio artifact")
+            audio_path = synthesis_path
+            words, _cost = await whisper_align_words(audio_path=audio_path, text=text)
+            alignment_source = "whisper_asr_local"
+            measured = True
+            logger.info(
+                "whisper ASR alignment measured %d words for audio_id=%s (local, free)",
+                len(words),
+                audio_id or audio_path.stem,
+            )
+        except Exception as exc:
+            raise AlignmentUnavailable(f"whisper local alignment failed: {exc}") from exc
     else:
         raise AlignmentUnavailable(
             f"unsupported HEVI_TTS_ALIGNMENT_PROVIDER={provider_mode!r}; "
-            "choose lux_tts, edge_tts, or elevenlabs_forced"
+            "choose lux_tts, edge_tts, elevenlabs_forced, or whisper_local"
         )
 
     duration_ms = probe_duration_ms(audio_path)

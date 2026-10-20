@@ -75,10 +75,16 @@ result = caps.get("audio.sfx_render").render_safe(
 
 ## 对齐选档指南
 
-配音词级时间戳（hevi/audio/tts_alignment.py，HEVI_TTS_ALIGNMENT_PROVIDER）三档怎么选：
+配音词级时间戳（hevi/audio/tts_alignment.py，HEVI_TTS_ALIGNMENT_PROVIDER）四档怎么选：
 
 - **默认 lux_tts 估时（零成本）**：LuxTTS 合成 + 按时长加权估算词界，
   时间戳是估算值（is_estimated=True）。不卡点、不做精细字幕时用这档。
+- **免费实测用 whisper_local**：音色仍是 LuxTTS（soffy），合成后用本地
+  faster-whisper ASR 转写并把时间戳序列匹配回原文（hevi.audio.
+  whisper_alignment.whisper_align_words）。是 ASR 实测而非强制对齐
+  （alignment_source=whisper_asr_local，is_estimated=False）；对
+  ElevenLabs 真值的实测偏差：词首中位 60ms、P90 ≤120ms（2026-10-20
+  pilot_cat_v2 旁白 44s 验证），逐镜排画面（秒级）完全够用，$0。
 - **字幕/卡点敏感用 elevenlabs_forced 实测**：音色仍是 LuxTTS（soffy），
   合成后用 ElevenLabs forced alignment（经 Monid，约 $0.0012/次量级）
   实测词级时间戳。storyfilm 与 audio.forced_align 能力即直调此路径
