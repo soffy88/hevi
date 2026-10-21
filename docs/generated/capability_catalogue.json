@@ -835,6 +835,18 @@
     "description": "BGM beat alignment (librosa, local/offline): detect beat times in an audio file and, given shot durations, return per-seam xfade durations snapped to the nearest beat (base +/- max_shift). No beats -> fallback=true with uniform base durations, never a fake snap. Writes beat_align_report.json; qa carries beats/snapped/fallback."
   },
   {
+    "name": "audio.music_analyze",
+    "kind": "audio",
+    "aspects": [
+      "16:9",
+      "9:16",
+      "1:1"
+    ],
+    "line": "audio",
+    "cpu_cost_hint": 0.5,
+    "description": "Music analysis pipeline (librosa, local/offline/CPU): duration, BPM with decimal precision (beat-track + least-squares interval refinement), beats, downbeats (bar-phase voted by onset strength), onsets, structural sections (chroma agglomerative) and a downsampled RMS/dB loudness envelope, written to music_analysis.json. Optional lyrics attach whisper_local per-word timings (single path only: no CTC cross-check exists in this CPU environment and none is claimed). Demucs stem separation is downgraded out: a 2026-10-21 CPU probe (demucs 4.1.0, own 5.3 GB torch stack) never produced stems — an 8 s clip attempt hit a 600 s timeout and a retry crashed in torch checkpoint loading — so include_stems=true raises instead of faking stems."
+  },
+  {
     "name": "video.pixstag_generate",
     "kind": "shot",
     "aspects": [
@@ -1201,6 +1213,29 @@
     ],
     "line": "audio",
     "cpu_cost_hint": 0.6,
-    "description": "Score-rendered accompaniment (ABC -> local render, offline, seed-deterministic): parse an ABC score, fit !mark:name! sync points to picture times from align (per-span tempo bending, <5 ms residual), and render piano/pluck/strings/bass/sine + GM-subset drums with dynamics, rit/fermata/breath tempo shaping and !hit! impacts. Timbre: numpy synth by default, or real-instrument VCSL samples (timbre='sampled' / per-voice timbre=/sampled_inst=/sampled inst=) pitch-shifted to the written notes through the same pipeline. Direction mode: product + scenes (+ optional style pulse/piano/cinematic/lofi) generates the ABC (generated_score.abc) and runs the same pipeline. Writes score.wav + score_sidecar.json (marks, stretches with bend % and measured RMS, warnings)."
+    "description": "Score-rendered accompaniment (ABC -> local render, offline, seed-deterministic): parse an ABC score, fit !mark:name! sync points to picture times from 'align' (per-span tempo bending, <5 ms residual), and render piano/pluck/strings/bass/sine + GM-subset drums with dynamics, rit/fermata/breath tempo shaping and !hit! impacts. Timbre: numpy synth by default, or real-instrument VCSL samples (timbre='sampled' / per-voice timbre=/sampled_inst=/sampled inst=) pitch-shifted to the written notes through the same pipeline. Direction mode: product + scenes (+ optional style pulse/piano/cinematic/lofi) generates the ABC (generated_score.abc) and runs the same pipeline. Writes score.wav + score_sidecar.json (marks, stretches with bend % and measured RMS, warnings)."
+  },
+  {
+    "name": "image.expression_rig",
+    "kind": "shot",
+    "aspects": [
+      "1:1",
+      "16:9",
+      "9:16"
+    ],
+    "line": "handdraw",
+    "cpu_cost_hint": 0.2,
+    "description": "Hand-drawn character expression rig: renders one expression of an original demo character by combining parts (view x emotion preset, with optional eyes/mouth/brows/extras overrides), procedurally with rough hand-drawn strokes. Deterministic from the render seed; writes a transparent PNG plus a JSON sidecar with the resolved parts and the character model sheet."
+  },
+  {
+    "name": "image.expression_contact_sheet",
+    "kind": "shot",
+    "aspects": [
+      "16:9",
+      "1:1"
+    ],
+    "line": "handdraw",
+    "cpu_cost_hint": 0.5,
+    "description": "Expression-rig proof sheet: a labelled grid (rows = views, columns = emotions) for checking that expressions are distinguishable and the character stays on-model."
   }
 ]
