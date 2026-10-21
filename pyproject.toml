@@ -73,6 +73,8 @@ extend-exclude = [
     # Bundled upstream model implementations; their upstream lint contract is external.
     "services/gen_engine/fish_vqgan/",
     "services/gen_engine/vibevoice_asr/",
+    # vendored 上游采样引擎原文(mg-styles-15 mgaudio/samples.py, MIT), 不做本地 lint
+    "hevi/audio/sampled_data/upstream/",
 ]
 
 [tool.ruff.lint]

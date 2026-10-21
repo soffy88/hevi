@@ -17,6 +17,11 @@ Pipeline (all local / offline / numpy, see ``hevi.audio.score_render``):
 * Render: numpy synth recipes (piano / pluck / strings / bass / sine /
   GM-subset drums, ``!hit!`` impacts), deterministic per seed, mastered
   to about -18 dBFS RMS with a -1.5 dBFS peak ceiling, 48 kHz stereo.
+  Optional sampled timbres (``timbre="sampled"`` param, or per-voice
+  ``timbre=`` / ``sampled_inst=`` / sampled ``inst=`` in the ABC):
+  real-instrument VCSL samples (CC0, via mg-styles-15) pitch-shifted to
+  the written notes through the same fit/mastering pipeline; unmapped
+  voices fall back to the synth recipes and say so in the sidecar.
 
 Exactly one input mode per call: ``abc`` XOR (``product`` + ``scenes``).
 Both or neither raises ``CapabilityError`` — never a fake success.
@@ -67,6 +72,11 @@ def _render_score_render(
 
     effective_seed = int(params.get("seed", seed))
     sample_rate = int(params.get("sample_rate", 48000))
+    timbre = params.get("timbre") or None
+    if timbre is not None and timbre not in ("synth", "sampled"):
+        raise CapabilityError(
+            f"audio.score_render: bad 'timbre': {timbre!r} (synth|sampled)"
+        )
     align_in = params.get("align") or None
     if align_in is not None:
         align_in = {str(k): float(v) for k, v in dict(align_in).items()}
@@ -98,7 +108,11 @@ def _render_score_render(
             generated_path.write_text(gen_abc, encoding="utf-8")
         score = parse_abc(str(abc_text))
         mix, sidecar = render_score(
-            score, align_in, seed=effective_seed, sample_rate=sample_rate
+            score,
+            align_in,
+            seed=effective_seed,
+            sample_rate=sample_rate,
+            timbre=timbre,
         )
     except CapabilityError:
         raise
@@ -127,6 +141,8 @@ def _render_score_render(
             "sidecar": str(sidecar_path),
             "title": sidecar.get("title"),
             "engine": sidecar.get("engine"),
+            "timbre": sidecar.get("timbre"),
+            "sampled": sidecar.get("sampled"),
             "note_count": sidecar.get("note_count"),
             "marks": sidecar.get("marks"),
             "stretches": sidecar.get("stretches"),
@@ -196,6 +212,16 @@ def register_score_render_capabilities_once() -> list[str]:
                         "in the finished film; times must increase with "
                         "the marks' score order.",
                     },
+                    "timbre": {
+                        "type": "string",
+                        "enum": ["synth", "sampled"],
+                        "description": "Timbre source for the whole "
+                        "render: 'synth' (numpy recipes, default unless a "
+                        "voice opts in) or 'sampled' (vendored VCSL real-"
+                        "instrument samples, pitch-shifted to the score; "
+                        "per-voice ABC attrs timbre=/sampled_inst= "
+                        "override, unmapped voices fall back to synth).",
+                    },
                     "seed": {
                         "type": "integer",
                         "description": "Render seed (timing jitter, drum "
@@ -213,13 +239,17 @@ def register_score_render_capabilities_once() -> list[str]:
             cpu_cost_hint=0.6,
             render=_render_score_render,
             description=(
-                "Score-rendered accompaniment (ABC -> local numpy synth, "
+                "Score-rendered accompaniment (ABC -> local render, "
                 "offline, seed-deterministic): parse an ABC score, fit "
                 "!mark:name! sync points to picture times from 'align' "
                 "(per-span tempo bending, <5 ms residual), and render "
                 "piano/pluck/strings/bass/sine + GM-subset drums with "
                 "dynamics, rit/fermata/breath tempo shaping and !hit! "
-                "impacts. Direction mode: product + scenes (+ optional "
+                "impacts. Timbre: numpy synth by default, or real-"
+                "instrument VCSL samples (timbre='sampled' / per-voice "
+                "timbre=/sampled_inst=/sampled inst=) pitch-shifted to "
+                "the written notes through the same pipeline. Direction "
+                "mode: product + scenes (+ optional "
                 "style pulse/piano/cinematic/lofi) generates the ABC "
                 "(generated_score.abc) and runs the same pipeline. "
                 "Writes score.wav + score_sidecar.json (marks, stretches "

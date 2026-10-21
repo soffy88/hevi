@@ -32,9 +32,11 @@ Supported ABC subset (ABC 2.1)
 Headers: ``X:`` ``T:`` ``M:`` (incl. ``C`` / ``C|``) ``L:`` ``Q:``
 (``1/4=120`` or ``120``) ``K:`` (major/minor key signatures) and ``V:``
 voice definitions.  Voice attributes after the voice id:
-``inst=`` (piano|pluck|strings|pad|bass|sine|drums), ``role=``
+``inst=`` (piano|pluck|strings|pad|bass|sine|drums, or a sampled
+instrument name — see "Sampled timbres" below), ``role=``
 (melody|harmony|bass|drums|...), ``gain=`` (float), ``transpose=``
-(semitones), and ``kit=`` (pop|808, drums only).
+(semitones), ``kit=`` (pop|808, drums only), ``timbre=``
+(synth|sampled) and ``sampled_inst=`` (sampled instrument override).
 
 Body: notes A-G/a-g with accidentals ``^`` ``_`` ``=`` (measure-local,
 key-signature aware), octave marks ``,`` / ``'``, durations (``2``,
@@ -76,6 +78,35 @@ parse -> fit -> render pipeline.
 
 Mastering constants: RMS target -18 dBFS, peak ceiling -1.5 dBFS,
 output 48 kHz 16-bit stereo WAV by default.
+
+Sampled timbres (real instruments)
+----------------------------------
+The synth recipes above are the default and the fallback.  A voice can
+instead be played from the vendored VCSL sample library (CC0 samples
+curated by mg-styles-15, MIT; see ``hevi/audio/sampled_data/`` and
+:mod:`hevi.audio.sampled`):
+
+* per-voice ABC attributes: ``timbre=sampled`` (or ``timbre=synth`` to
+  force the recipes) and ``sampled_inst=<name>`` to name the sampled
+  instrument directly (piano / marimba / vibraphone / harp / glock /
+  kalimba / wineglass; one-shots for drum voices).  Naming a sampled
+  instrument in ``inst=`` (e.g. ``inst=marimba``) also selects the
+  sampled path for that voice, since the synth has no such recipe.
+* per-render: ``render_score(..., timbre="sampled")`` switches every
+  voice; ``timbre="synth"`` forces recipes.  Default ``None`` keeps the
+  historical behaviour (synth, except ``inst=``-named sampled-only
+  instruments above).
+* without ``sampled_inst=``, a synth voice name is mapped to its
+  sampled counterpart (piano->piano, pluck->kalimba, strings->harp,
+  pad->vibraphone, bass->piano, sine->wineglass); unmapped voices and
+  any sample-library failure fall back to the synth recipe for that
+  note, with a sidecar ``warnings`` entry — rendering never fakes a
+  sampled note it did not play.  The fit/align pipeline, timing jitter
+  and mastering are shared unchanged, and picking is a pure function,
+  so same seed + same input renders byte-identical audio on both
+  paths.  The sidecar reports ``engine`` as ``numpy_synth`` /
+  ``sampled`` / ``sampled+synth`` plus a per-voice ``timbre`` and a
+  ``sampled`` summary (instruments used, note counts).
 """
 
 from __future__ import annotations
@@ -215,6 +246,8 @@ class VoiceDef:
     gain: float = 1.0
     transpose: int = 0
     kit: str = "pop"
+    timbre: str = ""  # "" = render default, else "synth" | "sampled"
+    sampled_inst: str = ""  # sampled instrument override (timbre=sampled)
 
 
 @dataclass
@@ -268,6 +301,11 @@ def _parse_voice_attrs(text: str, vd: VoiceDef) -> None:
             v = v.strip().strip('"')
             if k == "inst":
                 vd.inst = v.lower()
+            elif k == "timbre":
+                if v.lower() in ("synth", "sampled"):
+                    vd.timbre = v.lower()
+            elif k == "sampled_inst":
+                vd.sampled_inst = v.lower()
             elif k == "role":
                 vd.role = v.lower()
             elif k == "kit":
@@ -1066,14 +1104,53 @@ def _write_wav(path: Path, mix: np.ndarray, sr: int) -> None:
         wf.writeframes(frames)
 
 
+# --------------------------------------------------------------------------
+# Sampled timbres (real instruments; hevi.audio.sampled)
+# --------------------------------------------------------------------------
+
+
+def _resolve_sampled_inst(vd: VoiceDef, global_timbre: str | None) -> str | None:
+    """Decide whether a voice renders from the sample library, and with
+    which instrument.  Returns the sampled instrument name, or None for
+    the synth recipes.  Precedence: voice ``timbre=`` > render-level
+    ``timbre`` > ``inst=`` naming a sampled-only instrument."""
+    from hevi.audio.sampled import available_instruments, sampled_for_synth_inst
+
+    sampled_names = set(available_instruments())
+    mode = vd.timbre or global_timbre or ""
+    if mode == "synth":
+        return None
+    if mode == "sampled":
+        if vd.sampled_inst:
+            return vd.sampled_inst
+        if vd.inst in sampled_names:
+            return vd.inst
+        return sampled_for_synth_inst(vd.inst)
+    # no explicit mode: inst= naming an instrument the synth does not
+    # have a recipe for (marimba, vibraphone, ...) selects sampled.
+    synth_insts = {"piano", "pluck", "strings", "pad", "bass", "sine", "drums"}
+    if vd.inst in sampled_names and vd.inst not in synth_insts:
+        return vd.sampled_inst or vd.inst
+    if vd.sampled_inst:
+        return vd.sampled_inst
+    return None
+
+
 def render_score(
     score: ParsedScore,
     align: dict[str, float] | None = None,
     *,
     seed: int = 42,
     sample_rate: int = DEFAULT_SAMPLE_RATE,
+    timbre: str | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
-    """Render a parsed score. Returns (stereo float mix, sidecar dict)."""
+    """Render a parsed score. Returns (stereo float mix, sidecar dict).
+
+    ``timbre``: None (default; per-voice attributes decide, synth
+    otherwise), ``"synth"`` (force the numpy recipes) or ``"sampled"``
+    (force the vendored VCSL sample library wherever a voice maps to
+    an instrument; unmapped voices fall back to synth with a warning).
+    """
     sr = int(sample_rate)
     tmap = build_time_map(score, align)
     total_s = tmap.time(score.total_beats) + 1.0  # release tail
@@ -1082,8 +1159,40 @@ def render_score(
     n = int(total_s * sr) + 1
     mix = np.zeros((n, 2), dtype=np.float64)
 
+    if timbre is not None and timbre not in ("synth", "sampled"):
+        raise ScoreRenderError(f"bad timbre: {timbre!r} (synth|sampled)")
+
     rng_timing = np.random.default_rng(int(seed))
     rng_noise = np.random.default_rng(int(seed) + 12345)
+
+    # Sampled-timbre resolution per voice (None = synth recipes).
+    sampled_warnings: list[str] = []
+    sampled_by_voice: dict[str, str | None] = {}
+    sampled_notes = 0
+    synth_fallback_notes = 0
+    if timbre == "sampled" or any(
+        vd.timbre or vd.sampled_inst for vd in score.voices.values()
+    ) or any(vd.inst not in
+             {"piano", "pluck", "strings", "pad", "bass", "sine", "drums"}
+             for vd in score.voices.values()):
+        try:
+            for vid, vd in score.voices.items():
+                sampled_by_voice[vid] = _resolve_sampled_inst(vd, timbre)
+        except Exception as exc:  # library missing/broken: all synth
+            sampled_warnings.append(f"sampled timbre unavailable: {exc}")
+            sampled_by_voice = {}
+    elif timbre == "synth":
+        sampled_by_voice = dict.fromkeys(score.voices)
+    for vid, inst_name in sorted(sampled_by_voice.items()):
+        vd0 = score.voices[vid]
+        if vd0.inst == "drums":
+            continue  # drum voices map per-hit (DRUM_TO_SAMPLED), see loop
+        if (vd0.timbre == "sampled" or timbre == "sampled") and inst_name is None:
+            sampled_warnings.append(
+                f"voice {vid}: no sampled instrument for inst={vd0.inst!r}; "
+                "using synth"
+            )
+    sampled_used: set[str] = set()
 
     ordered = sorted(
         (e for e in score.events),
@@ -1115,7 +1224,31 @@ def render_score(
             name = _GM_DRUMS.get(ev.midi)
             if name is None:
                 name = "kick" if ev.midi < 38 else ("snare" if ev.midi < 42 else "hat")
-            mono = _synth_drum(name, vd.kit, sr, rng_noise, vel)
+            drum_sampled = sampled_by_voice.get(ev.voice)
+            if drum_sampled is None and (
+                vd.timbre == "sampled" or timbre == "sampled"
+            ):
+                from hevi.audio.sampled import DRUM_TO_SAMPLED
+
+                drum_sampled = DRUM_TO_SAMPLED.get(name)
+            mono = None
+            if drum_sampled:
+                try:
+                    from hevi.audio.sampled import render_sampled_oneshot
+
+                    mono = render_sampled_oneshot(drum_sampled, vel, sr)
+                    sampled_notes += 1
+                    sampled_used.add(drum_sampled)
+                except Exception as exc:
+                    sampled_warnings.append(
+                        f"voice {ev.voice}: sampled drum {name} failed "
+                        f"({exc}); using synth"
+                    )
+                    mono = None
+            if mono is None:
+                if drum_sampled:
+                    synth_fallback_notes += 1
+                mono = _synth_drum(name, vd.kit, sr, rng_noise, vel)
             _add_stereo(mix, mono, start, 0.0, gain * 0.9)
             continue
         if vd.role in ("melody", "bass") or vd.inst == "bass":
@@ -1126,7 +1259,27 @@ def render_score(
         eff_dur = dur_s
         if vd.inst == "piano":
             eff_dur = max(dur_s, min(dur_s + 0.45, score.meter_beats * (60.0 / score.bpm)))
-        mono = _synth_note(vd.inst, ev.midi, eff_dur, vel, sr)
+        sampled_inst = sampled_by_voice.get(ev.voice)
+        mono = None
+        if sampled_inst:
+            try:
+                from hevi.audio.sampled import render_sampled_note
+
+                mono = render_sampled_note(
+                    sampled_inst, ev.midi, eff_dur, vel, sr
+                )
+                sampled_notes += 1
+                sampled_used.add(sampled_inst)
+            except Exception as exc:
+                sampled_warnings.append(
+                    f"voice {ev.voice}: sampled note failed ({exc}); "
+                    "using synth"
+                )
+                mono = None
+        if mono is None:
+            if sampled_inst:
+                synth_fallback_notes += 1
+            mono = _synth_note(vd.inst, ev.midi, eff_dur, vel, sr)
         inst_gain = {"piano": 0.34, "pluck": 0.4, "strings": 0.3,
                      "pad": 0.3, "bass": 0.5, "sine": 0.42}.get(vd.inst, 0.36)
         _add_stereo(mix, mono, start, pan, gain * inst_gain)
@@ -1169,13 +1322,28 @@ def render_score(
             "role": vd.role,
             "gain": vd.gain,
             "note_count": score.note_count(vid),
+            "timbre": (
+                f"sampled:{sampled_by_voice[vid]}"
+                if sampled_by_voice.get(vid)
+                else "synth"
+            ),
         }
         for vid, vd in sorted(score.voices.items())
         if score.note_count(vid) > 0 or any(
             e.voice == vid for e in score.events
         )
     ]
-    warnings = list(score.warnings) + list(tmap.warnings)
+    warnings = (
+        list(score.warnings)
+        + list(tmap.warnings)
+        + list(dict.fromkeys(sampled_warnings))
+    )
+    if sampled_notes and synth_fallback_notes:
+        engine = "sampled+synth"
+    elif sampled_notes:
+        engine = "sampled"
+    else:
+        engine = "numpy_synth"
     sidecar: dict[str, Any] = {
         "title": score.title,
         "voices": voices_out,
@@ -1184,7 +1352,13 @@ def render_score(
         "stretches": stretches_out,
         "duration_s": round(total_s, 4),
         "seed": int(seed),
-        "engine": "numpy_synth",
+        "engine": engine,
+        "timbre": timbre,
+        "sampled": {
+            "instruments": sorted(sampled_used),
+            "notes": sampled_notes,
+            "synth_fallback_notes": synth_fallback_notes,
+        },
         "sample_rate": sr,
         "warnings": warnings,
     }
