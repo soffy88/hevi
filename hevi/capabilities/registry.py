@@ -130,6 +130,21 @@ class Capability:
             ) from exc
         return params
 
+
+    def render_safe(
+        self,
+        params: dict[str, Any],
+        out_dir: str | Path,
+        *,
+        duration: float = 5.0,
+        aspect: str = "16:9",
+        seed: int = 42,
+    ) -> "CapabilityResult":
+        """Contract-v1 entry point: validate params, then render."""
+        return render_safe(
+            self, params, out_dir, duration=duration, aspect=aspect, seed=seed
+        )
+
     def supports_aspect(self, aspect: str) -> bool:
         return aspect in self.aspects
 
@@ -177,6 +192,51 @@ def register(cap: Capability, overwrite: bool = False) -> Capability:
     """
     import logging
 
+#keep## grafted 2026-10-21: verbatim from main registry (Contract-v1
+# entry point used by the ported capability wrappers/tests).
+def render_safe(
+    cap: "Capability",
+    params: dict[str, Any],
+    out_dir: str | Path,
+    *,
+    duration: float = 5.0,
+    aspect: str = "16:9",
+    seed: int = 42,
+) -> "CapabilityResult":
+    """Validate ``params`` then render ``cap``; never returns a fake success.
+
+    Contract-v1 callers (the huobao preview endpoint) expect validation to run
+    before the renderer, and expect a non-``CapabilityResult`` return to be an
+    error rather than a silently-accepted value.
+    """
+    cap.validate_params(params)
+    result = cap.render(
+        params, Path(out_dir), duration=duration, aspect=aspect, seed=seed
+    )
+    if not isinstance(result, CapabilityResult):
+        raise CapabilityError(
+            f"capability {cap.name}: render must return CapabilityResult, "
+            f"got {type(result).__name__}"
+        )
+    return result
+
+
+# grafted 2026-10-21: verbatim from main registry (needed by the
+# ported score_render / music_analyze capability wrappers).
+def compute_sha256(path: Path | str) -> str:
+    """Compute sha256 checksum of a file."""
+    p = Path(path)
+    if not p.is_file():
+        raise CapabilityError(f"File not found for sha256 computation: {p}")
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        while chunk := f.read(65536):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def register(cap: Capability) -> Capability:
+    """Install ``cap`` into the global registry (last writer wins per name)."""
     if not cap.name:
         raise CapabilityError("capability name must be non-empty")
     if cap.name in _REGISTRY:

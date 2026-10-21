@@ -156,6 +156,26 @@ _register_huobao()
 # Kids / anime safety gates (``qa.kids_gate``, ``kids.story_gate``,
 # ``kids.consistency_manifest``) are registered by importing the registry.
 # ``registry.register`` is import-triggered for these three so every line can
+# --- grafted from main closure branch 2026-10-21 (score_render sampled /
+# music_analyze / expression_rig transplant; module files copied verbatim) ---
+
+# Score render (audio.score_render): ABC score -> wav, synth + sampled
+# real-instrument timbres (hevi.audio.sampled, vendored VCSL samples).
+from . import score_render as _score_render  # noqa: E402,F401
+_score_render.register_score_render_capabilities_once()
+
+# Music analysis pipeline (audio.music_analyze): librosa structured
+# report (duration/BPM/beats/downbeats/onsets/sections/loudness),
+# optional whisper_local lyrics timings; Demucs stems downgraded out.
+from . import music_analyze as _music_analyze  # noqa: E402,F401
+_music_analyze.register_music_analyze_capabilities_once()
+
+# Hand-drawn character expression rig (image.expression_rig /
+# image.expression_contact_sheet): views x emotions x combinable parts
+# over an original demo character; see docs/rules/expression_rig.md.
+from . import expression_rig as _expression_rig  # noqa: E402,F401
+_expression_rig.register_expression_rig_capabilities_once()
+
 # resolve them by name without extra wiring.
 
 __all__ = [

@@ -36,6 +36,7 @@ import os
 import re
 import subprocess
 import uuid
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -43,6 +44,11 @@ logger = logging.getLogger(__name__)
 
 _WORD_RE = re.compile(r"[\u3400-\u9fff]|[^\W_]+(?:['’][^\W_]+)*", re.UNICODE)
 
+
+
+# grafted 2026-10-21: verbatim from main tts_alignment (needed by
+# hevi.audio.whisper_alignment, ported with audio.music_analyze).
+_WORD_RE = re.compile(r"[\u3400-\u9fff]|[^\W_]+(?:['’][^\W_]+)*", re.UNICODE)
 
 @dataclass(frozen=True)
 class WordTiming:
