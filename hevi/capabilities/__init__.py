@@ -187,3 +187,10 @@ _rhythm_sheet.register_rhythm_sheet_capabilities()
 # plus a category/scene direction fallback that drafts the score.
 from . import score_render as _score_render  # noqa: E402,F401
 _score_render.register_score_render_capabilities_once()
+
+
+# Hand-drawn character expression rig (image.expression_rig /
+# image.expression_contact_sheet): views x emotions x combinable parts
+# over an original demo character; see docs/rules/expression_rig.md.
+from . import expression_rig as _expression_rig  # noqa: E402,F401
+_expression_rig.register_expression_rig_capabilities_once()
