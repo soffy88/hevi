@@ -38,6 +38,7 @@ dependencies = [
     "faster-whisper>=1.2.1",
     "edge-tts>=7.2.8",
     "av>=12",  # 3O §C4: PyAV 解码抽帧(自带 ffmpeg 库,不依赖系统 ffmpeg 二进制)
+    "librosa>=0.11",  # audio.music_analyze 音乐分析管线 + assembly.beat_align 节拍检测(此前仅经 vibevoice 传递引入,现声明为直接依赖)
     "sqlmodel>=0.0.39",  # v9.1: 任务大盘 SQLite ORM (TaskRun 状态机)
     "pillow>=10",  # v9.1: 素材质检(尺寸/像素总量/EXIF 方向)前端拦截的后端兜底
     "playwright>=1.49",  # v9.1 Lite 管道:无头浏览器录屏(hevi.pipeline_lite.oprim.oprim_playwright)

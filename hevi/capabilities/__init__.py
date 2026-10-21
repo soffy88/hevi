@@ -93,6 +93,12 @@ _export_qa.register_export_qa_capabilities_once()
 from . import beat_align as _beat_align  # noqa: E402,F401
 _beat_align.register_beat_align_capabilities_once()
 
+# Music analysis pipeline (audio.music_analyze): librosa structured
+# report (duration/BPM/beats/downbeats/onsets/sections/loudness),
+# optional whisper_local lyrics timings; Demucs stems downgraded out.
+from . import music_analyze as _music_analyze  # noqa: E402,F401
+_music_analyze.register_music_analyze_capabilities_once()
+
 # PixStag external render (live-action story films, 2026-10-20):
 # video.pixstag_generate - hevi ships shot packages, PixStag renders them
 from . import pixstag as _pixstag  # noqa: E402,F401
