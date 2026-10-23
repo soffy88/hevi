@@ -47,6 +47,12 @@ def _resolve_model_name(model: str | None) -> str:
     env_model = os.getenv("HEVI_WHISPER_ALIGN_MODEL", "").strip()
     if env_model:
         return env_model
+    # Deployment envs (e.g. the pubfix compose stack) set HEVI_WHISPER_MODEL
+    # for the same local model directory; honour it as an alias so
+    # containerised runs do not fall back to a Hub download.
+    deploy_model = os.getenv("HEVI_WHISPER_MODEL", "").strip()
+    if deploy_model:
+        return deploy_model
     if _LOCAL_TURBO_MODEL.is_dir():
         return str(_LOCAL_TURBO_MODEL)
     return "small"
