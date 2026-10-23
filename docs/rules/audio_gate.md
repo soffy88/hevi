@@ -36,6 +36,40 @@ assert result.qa["pass"], result.qa["failed_checks"]
 | `true_peak` | ≤ -1.0 dBTP | 4 倍过采样真峰值 |
 | `no_hard_clipping` | 满刻度采样数为 0 | `|x| ≥ 0.999` 的采样计数 |
 | `loudness` 测不出 | 直接失败 | 信号太短（<0.4 s）或数字静音 |
+| `infrasound` | 次声能量占比 ≤ 0.01 | 门禁层自算（见下节），`infrasound_max_ratio` 可调 |
+| `hf_narrowband_spike` | 15–17 kHz 突出度 ≤ 24 dB | 门禁层自算（见下节），`hf_spike_max_db` 可调 |
+
+## 频谱卫生检查（门禁层自算，2026-10-23 补）
+
+earshot 的分段谱从 20 Hz 起、没有次声独立指标，16 kHz 附近也只有整段
+占比，定位不了窄带尖峰——这两项由门禁层自己从解码后的 PCM 算
+（`hevi/audio/spectral_checks.py`：numpy/scipy STFT，窗口约 1 s、
+频率分辨率约 1 Hz，soundfile 解码、ffmpeg 管道兜底），不依赖 earshot
+的频谱字段。针对的是**生成音频的两个已知毛病**：次声轰鸣（人耳听
+不见，但让喇叭发嗡、吃动态余量）和固定在 16 kHz 附近的合成尖啸。
+
+- `infrasound`：<20 Hz 能量（不含 DC）占总能量之比。正常语音/音乐
+  几乎没有次声成分：本机实测干净产物为旁白 5e-6～1.1e-5、原声带
+  1.7e-5、BGM 0.0031（最低者）；人为注入 12 Hz/0.05 幅度即达 0.049，
+  强注入 0.45～0.61。默认上限 0.01（1%，-20 dB）取在干净上限 3 倍、
+  最弱故障 1/5 的位置。
+- `hf_narrowband_spike`：15–17 kHz 内最强频点高出其**局部中位谱**
+  （±300 Hz 邻域、±40 Hz 保护带外取中位）的 dB 数。纯音调会高出
+  几十 dB，宽带高频（镲片、气声）会同时抬高中位、不触发。本机实测
+  干净产物突出度 ≤ 16.2 dB；给真实旁白叠加 16 kHz/0.02 幅度的音调
+  即达 67 dB。默认上限 24 dB。附带**显著性条件**：峰值频点须至少
+  占总能量 1e-6（-60 dB），否则视为数值噪声不判（纯正弦夹具在该
+  频段只有算术噪声，其 max-bin 统计不稳定）。采样率 ≤34 kHz
+  （Nyquist 进不了 17 kHz）的文件物理上不可能有此毛病，该项直接
+  通过并在报告里注明。
+
+两项默认**开**（`spectral_checks: false` 可关），判定与既有三项并列
+写进 `earshot_gate_report.json` 的 `checks` 与 `spectral` 段，
+`qa` 里多出 `infrasound_ratio` / `hf_spike_prominence_db` 两个读数。
+频谱层解码失败时两项直接判失败并写明原因——测不了不等于放行。
+验真夹具（tests/test_spectral_checks.py）：干净正弦全过、注次声只
+挂 `infrasound`、叠 16 kHz 只挂 `hf_narrowband_spike`，互不误报；
+真实产物（口播验收 mp4、oneclick 旁白/原声带/BGM）两项全过。
 
 注意：**<0.4 s 的短音效单体（如 click/whoosh）不适合进门**，
 earshot 的集成响度在这类长度上返回空——它们走 `audio.sfx_render` 的
