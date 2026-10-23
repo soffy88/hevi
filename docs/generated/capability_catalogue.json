@@ -787,6 +787,18 @@
     "description": "One-sentence-to-film orchestration: premise → story draft (hook, character profiles, beats) → GPT-Image character + scene stills → LuxTTS narration → measured word alignment → timed shots (first_frame/motion_prompt/duration) → HyperFrames film with gates, or a PixStag shot package for the live-action line. Stage evidence + costs land in the job dir (delivery.json)."
   },
   {
+    "name": "story.oneclick_film",
+    "kind": "line",
+    "aspects": [
+      "9:16",
+      "16:9",
+      "1:1"
+    ],
+    "line": "storyfilm",
+    "cpu_cost_hint": 1.0,
+    "description": "One-click film: preset (storybook/tuantuan/cinema/watercolor) -> story.film pipeline with BGM and optional rig character -> film_gate red retry with boosted Ken Burns, earshot gain-fix retry, and a qa.review_sheet pass; evidence + retries land in oneclick_delivery.json."
+  },
+  {
     "name": "audio.earshot_gate",
     "kind": "audio",
     "aspects": [
