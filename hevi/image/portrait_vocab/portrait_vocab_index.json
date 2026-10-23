@@ -1,0 +1,545 @@
+{
+ "source": "Portrait prompt vocabulary transcribed verbatim from the image pages Soffy forwarded on 2026-10-23 (archive: ~/workspace/references/portrait-prompt-vocab/VOCAB.md). The expression category is absent in the source and is not invented here.",
+ "version": "1.0",
+ "counts": {
+  "video_micro": 6,
+  "posture": 8,
+  "hair_head": 8,
+  "hands": 9,
+  "motion": 8,
+  "sitting": 8,
+  "standing": 9,
+  "gaze": 10
+ },
+ "total": 66,
+ "entries": [
+  {
+   "id": "VM-01",
+   "category": "video_micro",
+   "zh": "自然眨眼",
+   "en": "blinking naturally",
+   "how": "双眼短暂闭合再睁开；慢慢闭眼是另一种有意动作",
+   "feeling": "自然生动"
+  },
+  {
+   "id": "VM-02",
+   "category": "video_micro",
+   "zh": "轻柔呼吸",
+   "en": "gentle breathing",
+   "how": "胸腹只有轻微起伏，肩膀不反复大幅抬落",
+   "feeling": "平稳放松"
+  },
+  {
+   "id": "VM-03",
+   "category": "video_micro",
+   "zh": "细微头部动作",
+   "en": "small head movement",
+   "how": "选择轻转或轻点一次，说明方向和停止位置",
+   "feeling": "轻声回应"
+  },
+  {
+   "id": "VM-04",
+   "category": "video_micro",
+   "zh": "镜头保持固定",
+   "en": "static camera",
+   "how": "固定机位、方向和焦段；人物可动，不等于整张画面冻结",
+   "feeling": "平稳观察"
+  },
+  {
+   "id": "VM-05",
+   "category": "video_micro",
+   "zh": "头发轻轻摆动",
+   "en": "hair gently swaying",
+   "how": "发梢随微风轻摆；bouncing 更像弹跳，不作同义词",
+   "feeling": "轻风流动"
+  },
+  {
+   "id": "VM-06",
+   "category": "video_micro",
+   "zh": "转头看镜头",
+   "en": "turning her head toward the camera",
+   "how": "从侧方看向镜头，慢慢转头后停住，不来回摇摆",
+   "feeling": "注意力转向观众"
+  },
+  {
+   "id": "PO-01",
+   "category": "posture",
+   "zh": "自然挺直",
+   "en": "upright posture",
+   "how": "背部舒展，肩放松，不用力后仰或挺胸",
+   "feeling": "稳当清爽"
+  },
+  {
+   "id": "PO-02",
+   "category": "posture",
+   "zh": "肩膀放松",
+   "en": "relaxed shoulders",
+   "how": "肩自然下沉，颈部不缩，手臂松下来",
+   "feeling": "松弛舒展"
+  },
+  {
+   "id": "PO-03",
+   "category": "posture",
+   "zh": "优雅姿态",
+   "en": "graceful pose",
+   "how": "支撑点明确，动作幅度适中，手指不僵直",
+   "feeling": "轻而稳"
+  },
+  {
+   "id": "PO-04",
+   "category": "posture",
+   "zh": "自然姿态",
+   "en": "natural pose",
+   "how": "写一个具体重心或支撑点，再安排手的动作",
+   "feeling": "日常可信"
+  },
+  {
+   "id": "PO-05",
+   "category": "posture",
+   "zh": "有动感的姿势",
+   "en": "dynamic pose",
+   "how": "选一步、一次转身或伸手的瞬间，并让支撑关系合理",
+   "feeling": "方向清楚"
+  },
+  {
+   "id": "PO-06",
+   "category": "posture",
+   "zh": "抓拍瞬间",
+   "en": "candid moment",
+   "how": "选动作进行中的一刻，如回头刚笑起来，不要全身同时端正",
+   "feeling": "鲜活随性"
+  },
+  {
+   "id": "PO-07",
+   "category": "posture",
+   "zh": "身体语言",
+   "en": "body language",
+   "how": "指姿态和手势传达的信息；仍需写出具体动作，不等同抓拍",
+   "feeling": "配合情绪表达"
+  },
+  {
+   "id": "PO-08",
+   "category": "posture",
+   "zh": "身体微前倾",
+   "en": "leaning slightly forward",
+   "how": "从髋部轻向前，背不塌，肩颈松；需要承重时给出肘支撑",
+   "feeling": "倾听或专注"
+  },
+  {
+   "id": "HH-01",
+   "category": "hair_head",
+   "zh": "手抚头发",
+   "en": "touching her hair",
+   "how": "一手轻触耳侧或发梢，手指放松，不遮主要五官",
+   "feeling": "随性轻柔"
+  },
+  {
+   "id": "HH-02",
+   "category": "hair_head",
+   "zh": "把头发别到耳后",
+   "en": "tucking hair behind her ear",
+   "how": "指尖靠近耳侧，把一缕碎发拨向耳后",
+   "feeling": "自然小动作"
+  },
+  {
+   "id": "HH-03",
+   "category": "hair_head",
+   "zh": "甩发",
+   "en": "flipping her hair",
+   "how": "选转头的一瞬，发尾因惯性展开；头颈转角自然",
+   "feeling": "爽快轻盈"
+  },
+  {
+   "id": "HH-04",
+   "category": "hair_head",
+   "zh": "脸侧留碎发",
+   "en": "loose strands framing her face",
+   "how": "少量发丝落在额角和脸颊边，保留眼睛清楚",
+   "feeling": "柔软自然"
+  },
+  {
+   "id": "HH-05",
+   "category": "hair_head",
+   "zh": "长发飘逸",
+   "en": "long flowing hair",
+   "how": "长发自然垂落、发尾展开；不必同时加猛烈吹风",
+   "feeling": "轻盈柔和"
+  },
+  {
+   "id": "HH-06",
+   "category": "hair_head",
+   "zh": "头发被风吹乱",
+   "en": "windswept hair",
+   "how": "几缕发丝离开原位，顺风散开，仍看得清表情",
+   "feeling": "受风痕迹"
+  },
+  {
+   "id": "HH-07",
+   "category": "hair_head",
+   "zh": "头微歪",
+   "en": "slight head tilt",
+   "how": "向一侧轻偏，肩不耸起；可选动作，不是默认姿态",
+   "feeling": "好奇或轻松"
+  },
+  {
+   "id": "HH-08",
+   "category": "hair_head",
+   "zh": "下巴微抬",
+   "en": "chin slightly raised",
+   "how": "只抬少量，颈部舒展，不强仰或绷紧下颌",
+   "feeling": "开阔或自信"
+  },
+  {
+   "id": "HA-01",
+   "category": "hands",
+   "zh": "手持物品",
+   "en": "holding an object",
+   "how": "写什么、哪只手、放哪里，检查手指与物体接触",
+   "feeling": "人物有事可做"
+  },
+  {
+   "id": "HA-02",
+   "category": "hands",
+   "zh": "撑伞",
+   "en": "holding an umbrella",
+   "how": "手握伞柄，伞面在头顶，伞杆不穿过脸或身体",
+   "feeling": "避雨或等待"
+  },
+  {
+   "id": "HA-03",
+   "category": "hands",
+   "zh": "手持扇子",
+   "en": "holding a fan",
+   "how": "先选团扇或折扇，再写放在身侧或胸口下方",
+   "feeling": "轻缓含蓄"
+  },
+  {
+   "id": "HA-04",
+   "category": "hands",
+   "zh": "手捧鲜花",
+   "en": "holding flowers",
+   "how": "说明单手或双手，花束放在腰前，不挡表情",
+   "feeling": "温柔或喜悦"
+  },
+  {
+   "id": "HA-05",
+   "category": "hands",
+   "zh": "托腮",
+   "en": "chin resting on a hand",
+   "how": "轻托下颌，明确肘部落在桌面或膝上，手腕自然",
+   "feeling": "思考或倾听"
+  },
+  {
+   "id": "HA-06",
+   "category": "hands",
+   "zh": "手贴脸",
+   "en": "hand on cheek",
+   "how": "轻触脸颊即可，不表示一定承重，避免挤压五官",
+   "feeling": "亲近或出神"
+  },
+  {
+   "id": "HA-07",
+   "category": "hands",
+   "zh": "双手交握",
+   "en": "hands loosely clasped",
+   "how": "两手在身前轻合，手指自然相扣，肩放松",
+   "feeling": "等待或端正"
+  },
+  {
+   "id": "HA-08",
+   "category": "hands",
+   "zh": "手捧杯子",
+   "en": "holding a cup",
+   "how": "交代握杯把或扶杯身，以及杯子高度；坐姿可让前臂有支撑",
+   "feeling": "日常温暖"
+  },
+  {
+   "id": "HA-09",
+   "category": "hands",
+   "zh": "伸手",
+   "en": "reaching for an object",
+   "how": "说明伸向什么，手指随抓取任务自然弯曲或展开",
+   "feeling": "接取或互动"
+  },
+  {
+   "id": "MO-01",
+   "category": "motion",
+   "zh": "行走",
+   "en": "walking",
+   "how": "选择迈步的一瞬，一腿承重，另一腿向前，手臂自然配合",
+   "feeling": "有去处的运动"
+  },
+  {
+   "id": "MO-02",
+   "category": "motion",
+   "zh": "发丝随风",
+   "en": "hair blowing in the wind",
+   "how": "写清风向和幅度，让发梢有一致的受风趋势",
+   "feeling": "轻盈清爽"
+  },
+  {
+   "id": "MO-03",
+   "category": "motion",
+   "zh": "衣摆或长发飘起",
+   "en": "flowing fabric / flowing hair",
+   "how": "选一个重点，写明风或转身等原因，保留柔软垂坠",
+   "feeling": "运动的延续"
+  },
+  {
+   "id": "MO-04",
+   "category": "motion",
+   "zh": "舞动",
+   "en": "dancing",
+   "how": "静帧选一个可读的动作瞬间，说明支撑脚和抬手方向",
+   "feeling": "活跃有节奏"
+  },
+  {
+   "id": "MO-05",
+   "category": "motion",
+   "zh": "转身或旋转",
+   "en": "turning / twirling",
+   "how": "身体转向明确，衣摆和头发可因惯性略滞后，不要全贴住身体",
+   "feeling": "轻快动感"
+  },
+  {
+   "id": "MO-06",
+   "category": "motion",
+   "zh": "运动模糊",
+   "en": "motion blur",
+   "how": "明确让快速移动的衣摆略模糊；若跟拍可让背景拖动，脸保持清楚",
+   "feeling": "速度线索"
+  },
+  {
+   "id": "MO-07",
+   "category": "motion",
+   "zh": "正在运动",
+   "en": "in motion",
+   "how": "只描述运动状态，不一定产生模糊，仍需写具体动作",
+   "feeling": "动作正在发生"
+  },
+  {
+   "id": "MO-08",
+   "category": "motion",
+   "zh": "奔跑",
+   "en": "running",
+   "how": "选支撑或腾空中的一个阶段，双臂自然配合；双脚完整入画",
+   "feeling": "急切或自由"
+  },
+  {
+   "id": "SI-01",
+   "category": "sitting",
+   "zh": "坐着",
+   "en": "seated",
+   "how": "骨盆落在座位上，再安排腿和手的位置",
+   "feeling": "安定停留"
+  },
+  {
+   "id": "SI-02",
+   "category": "sitting",
+   "zh": "坐在窗边",
+   "en": "sitting by the window",
+   "how": "先有椅子等座位，再选身体朝向窗边或室内",
+   "feeling": "安静通透"
+  },
+  {
+   "id": "SI-03",
+   "category": "sitting",
+   "zh": "坐在椅子上",
+   "en": "sitting on a chair",
+   "how": "双脚落地或交代其他支撑，双肩放松",
+   "feeling": "日常从容"
+  },
+  {
+   "id": "SI-04",
+   "category": "sitting",
+   "zh": "坐在桌边",
+   "en": "sitting at a table",
+   "how": "身体靠近桌面，前臂可放桌上，手做一个明确动作",
+   "feeling": "生活气息"
+  },
+  {
+   "id": "SI-05",
+   "category": "sitting",
+   "zh": "坐在台阶或长椅上",
+   "en": "sitting on steps / on a bench",
+   "how": "先选座位，再交代双脚落点，不把两种座位混在一起",
+   "feeling": "随意松快"
+  },
+  {
+   "id": "SI-06",
+   "category": "sitting",
+   "zh": "跪姿",
+   "en": "kneeling",
+   "how": "可单膝或双膝着地，必须写明；臀部是否坐在脚跟上另写",
+   "feeling": "具体依场景判断"
+  },
+  {
+   "id": "SI-07",
+   "category": "sitting",
+   "zh": "坐着跷腿",
+   "en": "seated with legs crossed",
+   "how": "先坐稳，一条腿自然搭在另一条腿上，手轻放",
+   "feeling": "从容停留"
+  },
+  {
+   "id": "SI-08",
+   "category": "sitting",
+   "zh": "斜倚",
+   "en": "reclining",
+   "how": "背部由椅背或沙发承托，身体略向一侧，肩颈放松",
+   "feeling": "舒适松弛"
+  },
+  {
+   "id": "ST-01",
+   "category": "standing",
+   "zh": "站立",
+   "en": "standing",
+   "how": "写清身体朝向，重心稳住，膝盖不僵直",
+   "feeling": "稳定自然"
+  },
+  {
+   "id": "ST-02",
+   "category": "standing",
+   "zh": "摆好姿势",
+   "en": "posing",
+   "how": "补身体转向和手放哪里，不能只留\"摆姿势\"",
+   "feeling": "从容停留"
+  },
+  {
+   "id": "ST-03",
+   "category": "standing",
+   "zh": "单手叉腰",
+   "en": "one hand on hip",
+   "how": "手落腰侧，肘自然向外，另一只手放松",
+   "feeling": "利落有主见"
+  },
+  {
+   "id": "ST-04",
+   "category": "standing",
+   "zh": "双臂交叉",
+   "en": "arms loosely crossed",
+   "how": "在身前松松交叠，肩下沉，手指不握紧",
+   "feeling": "克制或自在"
+  },
+  {
+   "id": "ST-05",
+   "category": "standing",
+   "zh": "倚靠墙面",
+   "en": "leaning against a wall",
+   "how": "说明一侧肩背接触墙面，双脚站稳",
+   "feeling": "随性松快"
+  },
+  {
+   "id": "ST-06",
+   "category": "standing",
+   "zh": "身体略侧",
+   "en": "body angled slightly",
+   "how": "身体向一侧转开，脸可回看，颈部不强扭",
+   "feeling": "形成前后层次"
+  },
+  {
+   "id": "ST-07",
+   "category": "standing",
+   "zh": "全身入画",
+   "en": "full-body shot",
+   "how": "从头到脚留在画面内；这是取景范围，还要另选动作",
+   "feeling": "便于检查脚步"
+  },
+  {
+   "id": "ST-08",
+   "category": "standing",
+   "zh": "正面面对镜头",
+   "en": "facing the camera",
+   "how": "明确脸或身体朝向镜头；两者不一定同时正面",
+   "feeling": "直接稳定"
+  },
+  {
+   "id": "ST-09",
+   "category": "standing",
+   "zh": "侧脸或侧身",
+   "en": "face in profile / body in profile",
+   "how": "分别写清脸与身体朝向，避免含糊的\"侧面\"",
+   "feeling": "轮廓清楚"
+  },
+  {
+   "id": "GA-01",
+   "category": "gaze",
+   "zh": "看向镜头",
+   "en": "looking at the camera",
+   "how": "目光落在镜头，脸可略侧；不要求头和身体全都正面",
+   "feeling": "建立交流"
+  },
+  {
+   "id": "GA-02",
+   "category": "gaze",
+   "zh": "直视镜头",
+   "en": "direct eye contact with the camera",
+   "how": "稳定看着镜头；眼睑和眉间仍可放松，不等于瞪眼",
+   "feeling": "专注直接"
+  },
+  {
+   "id": "GA-03",
+   "category": "gaze",
+   "zh": "看向别处",
+   "en": "looking off-camera",
+   "how": "给出画外目标，如\"看向左侧窗外\"；头是否转动另写",
+   "feeling": "注意力在画外"
+  },
+  {
+   "id": "GA-04",
+   "category": "gaze",
+   "zh": "低垂视线",
+   "en": "looking down",
+   "how": "眼睛看向杯子或手中物；可只动眼睛，不必低头",
+   "feeling": "内敛安静"
+  },
+  {
+   "id": "GA-05",
+   "category": "gaze",
+   "zh": "回眸",
+   "en": "looking back over her shoulder",
+   "how": "身体侧向或背向镜头，再从肩上方回望，颈部转角自然",
+   "feeling": "像被人叫住"
+  },
+  {
+   "id": "GA-06",
+   "category": "gaze",
+   "zh": "仰望",
+   "en": "looking up",
+   "how": "看向上方目标；需要头微抬时再补，不用强仰颈部",
+   "feeling": "期待或观察"
+  },
+  {
+   "id": "GA-07",
+   "category": "gaze",
+   "zh": "望向远方",
+   "en": "gazing into the distance",
+   "how": "指定远处目标，如海面；脸不必对准镜头",
+   "feeling": "开阔悠远"
+  },
+  {
+   "id": "GA-08",
+   "category": "gaze",
+   "zh": "闭眼",
+   "en": "eyes closed",
+   "how": "双眼轻合；释然时再加\"眉间舒展、下颌放松\"",
+   "feeling": "可安宁，也可疲惫"
+  },
+  {
+   "id": "GA-09",
+   "category": "gaze",
+   "zh": "锐利眼神",
+   "en": "intense gaze",
+   "how": "集中看向一个目标，适度收紧眼神，不必同时皱眉",
+   "feeling": "紧张或有力"
+  },
+  {
+   "id": "GA-10",
+   "category": "gaze",
+   "zh": "侧目一瞥",
+   "en": "sideways glance",
+   "how": "头基本不动，眼睛移向一侧；别转成完整侧脸",
+   "feeling": "俏皮或警觉"
+  }
+ ]
+}
