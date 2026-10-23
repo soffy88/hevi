@@ -1,0 +1,95 @@
+{
+  "name": "pond_night",
+  "seed": 7,
+  "step": 14,
+  "background": "#0d1730",
+  "layers": [
+    {
+      "type": "swirl_sky",
+      "palette": [
+        "#131f42",
+        "#1d3263",
+        "#2d4a7a",
+        "#3f6e8f"
+      ],
+      "horizon": 0.62,
+      "vortices": [
+        {
+          "x": 0.4,
+          "y": 0.27,
+          "r": 0.21,
+          "s": 1.7
+        },
+        {
+          "x": 0.78,
+          "y": 0.15,
+          "r": 0.09,
+          "s": 1.1
+        }
+      ],
+      "sway": 2.2
+    },
+    {
+      "type": "stars",
+      "count": 10,
+      "seed": 31,
+      "region": {
+        "x0": 0.05,
+        "x1": 0.95,
+        "y0": 0.04,
+        "y1": 0.4
+      }
+    },
+    {
+      "type": "moon",
+      "x": 0.78,
+      "y": 0.15,
+      "r": 0.06
+    },
+    {
+      "type": "hills",
+      "base": 0.6,
+      "amp": 0.03,
+      "freq": 1.4,
+      "palette": [
+        "#14294d",
+        "#1d3a63",
+        "#18304f"
+      ]
+    },
+    {
+      "type": "water",
+      "from": 0.68,
+      "palette": [
+        "#1d3d5c",
+        "#16264f",
+        "#101f38"
+      ],
+      "reflect_x": 0.78,
+      "reflect_width": 0.05
+    },
+    {
+      "type": "cypress",
+      "x": 0.15,
+      "base": 0.7,
+      "height": 0.52,
+      "width": 0.08,
+      "palette": [
+        "#16261a",
+        "#1f3b26",
+        "#2c4a2b",
+        "#3d5a2a"
+      ]
+    },
+    {
+      "type": "meadow",
+      "from": 0.93,
+      "palette": [
+        "#14231c",
+        "#1d3a26",
+        "#2c4a2b"
+      ],
+      "flower_density": 0.03
+    }
+  ]
+}

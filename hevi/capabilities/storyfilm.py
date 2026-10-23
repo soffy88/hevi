@@ -336,7 +336,7 @@ def register_storyfilm_capabilities_once() -> list[str]:
             render=_render_oneclick_film,
             description=(
                 "One-click film: preset (storybook/tuantuan/cinema/"
-                "watercolor) -> story.film pipeline with BGM and "
+                "watercolor/brush) -> story.film pipeline with BGM and "
                 "optional rig character -> film_gate red retry with "
                 "boosted Ken Burns, earshot gain-fix retry, and a "
                 "qa.review_sheet pass; evidence + retries land in "

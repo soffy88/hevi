@@ -1,0 +1,122 @@
+{
+  "name": "meadow_dawn",
+  "seed": 12,
+  "step": 14,
+  "background": "#f2e3c2",
+  "layers": [
+    {
+      "type": "swirl_sky",
+      "palette": [
+        "#f5c877",
+        "#f0bd72",
+        "#e8b06a",
+        "#dfe0c8"
+      ],
+      "horizon": 0.58,
+      "base_flow": 0.4,
+      "wave": 0.25,
+      "vortices": [
+        {
+          "x": 0.24,
+          "y": 0.2,
+          "r": 0.16,
+          "s": 1.0
+        }
+      ],
+      "sway": 1.4
+    },
+    {
+      "type": "moon",
+      "x": 0.24,
+      "y": 0.19,
+      "r": 0.052,
+      "palette": [
+        "#ffe066",
+        "#ffd43b",
+        "#ffc94d"
+      ],
+      "halo_palette": [
+        "#ffd9a0",
+        "#f5c877",
+        "#eeb96e"
+      ]
+    },
+    {
+      "type": "clouds",
+      "palette": [
+        "#fff6e0",
+        "#fbeed2",
+        "#f3ddba"
+      ],
+      "blobs": [
+        {
+          "x": 0.55,
+          "y": 0.13,
+          "rx": 0.17,
+          "ry": 0.032
+        },
+        {
+          "x": 0.82,
+          "y": 0.27,
+          "rx": 0.13,
+          "ry": 0.028
+        }
+      ]
+    },
+    {
+      "type": "hills",
+      "base": 0.56,
+      "amp": 0.025,
+      "freq": 1.2,
+      "palette": [
+        "#9cba6d",
+        "#84a356",
+        "#6d8c4e"
+      ]
+    },
+    {
+      "type": "tree",
+      "x": 0.16,
+      "base": 0.88,
+      "canopy_r": 0.08,
+      "canopy_h": 0.24,
+      "palette": [
+        "#5d8a4a",
+        "#6f9c52",
+        "#87b364",
+        "#4a743c"
+      ]
+    },
+    {
+      "type": "house",
+      "x": 0.68,
+      "base": 0.8,
+      "w": 0.19,
+      "h": 0.12,
+      "roof_h": 0.06,
+      "wall_palette": [
+        "#efd9ae",
+        "#e3c491"
+      ],
+      "roof_palette": [
+        "#c05a3a",
+        "#a84e33"
+      ],
+      "window_palette": [
+        "#8a6a4a",
+        "#77572f"
+      ]
+    },
+    {
+      "type": "meadow",
+      "from": 0.8,
+      "palette": [
+        "#87b364",
+        "#74915a",
+        "#5d8a4a",
+        "#9cc474"
+      ],
+      "flower_density": 0.09
+    }
+  ]
+}

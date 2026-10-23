@@ -87,6 +87,11 @@ PRESETS: dict[str, dict[str, Any]] = {
         "visual": "gpt",
         "music_product": "calm",
     },
+    "brush": {
+        "style": DEFAULT_STYLE,
+        "visual": "brush",
+        "music_product": "calm",
+    },
 }
 
 
@@ -280,6 +285,8 @@ def run_oneclick_film(
         kwargs["music_style"] = cfg["music_style"]
     if cfg.get("visual") == "rig":
         kwargs["rig_character"] = cfg.get("rig_character", "tuantuan")
+    if cfg.get("visual") == "brush":
+        kwargs["image_provider"] = "brush"
     delivery = _run_coro(run_story_film(**kwargs))
 
     retries: list[dict[str, Any]] = []

@@ -1151,6 +1151,7 @@ async def run_story_film(
     music_product: str = "cute",
     music_style: str | None = None,
     rig_character: str | None = None,
+    image_provider: str = "gpt",
 ) -> dict[str, Any]:
     """Run the full one-sentence-to-film chain. Returns the delivery ledger."""
     out_dir = Path(out_dir)
@@ -1221,6 +1222,42 @@ async def run_story_film(
         )
 
         size = _ASPECT_SIZE.get(aspect, "1024x1536")
+        if image_provider == "brush":
+            # Brush provider (zero-cost): paint each beat with the
+            # procedural brush engine (hevi.image.brushpaint) instead of
+            # a GPT image call.  Beat text is keyword-routed to a scene
+            # template; per-beat seeds derive from the premise, so a
+            # run is reproducible.  Takes precedence over rig mode.
+            import zlib
+
+            from hevi.image.brushpaint import (
+                get_template,
+                parse_scene,
+                pick_template_for_text,
+                render_still,
+            )
+
+            w_px, h_px = (int(v) for v in size.split("x"))
+            base_seed = zlib.crc32(premise.encode("utf-8"))
+            brush_paths = []
+            for i, beat in enumerate(draft["beats"]):
+                shot_path = out_dir / "images" / f"shot_{i + 1:02d}.png"
+                template = pick_template_for_text(
+                    f"{beat.get('visual_en', '')} {beat.get('narration', '')}"
+                )
+                spec = get_template(template)
+                spec["seed"] = base_seed + i
+                render_still(parse_scene(spec), w_px, h_px).save(shot_path)
+                brush_paths.append(shot_path)
+            ledger.mark(
+                "images", "ok", cost=0.0,
+                artifacts=[f"images/{p.name}" for p in brush_paths],
+            )
+            return brush_paths
+        if image_provider != "gpt":
+            raise StoryFilmError(
+                f"unknown image_provider {image_provider!r} (want gpt|brush)"
+            )
         if rig_character:
             # Rig mode (opt-in): skip the GPT character sheet entirely.
             # Each shot is a GPT background still (no characters in the
