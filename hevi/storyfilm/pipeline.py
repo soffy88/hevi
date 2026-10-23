@@ -70,6 +70,7 @@ __all__ = [
     "estimate_narration_seconds",
     "generate_continuation_beats",
     "generate_story",
+    "infer_beat_emotion",
     # motion (Ken Burns)
     "ken_burns_params",
     "map_beats_to_words",
@@ -909,6 +910,48 @@ _RESULT_WORDS = (
 )
 
 
+# Expression-rig emotion inference (oneclick rig mode).  Keywords are
+# checked in the order below over narration / visual_en / motion_prompt;
+# every target is a legal key of expression_rig.EMOTIONS (verified
+# 2026-10-23: neutral/happy/joy/playful/proud/shy/surprised/excited/
+# thinking/confused/sad/angry/scared/disgusted/sleepy/dizzy).
+_EMOTION_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("难过", "哭", "眼泪", "孤单", "伤心", "sad", "crying", "tear", "lonely"), "sad"),
+    (("害怕", "担心", "危险", "恐惧", "scared", "afraid", "danger", "worried"), "scared"),
+    (("惊讶", "惊奇", "忽然", "突然", "surprised", "surprise", "suddenly"), "surprised"),
+    (("开心", "快乐", "高兴", "笑", "happy", "smile", "laugh"), "happy"),
+    (("终于", "回家", "成功", "胜利", "团聚", "finally", "success", "victory", "reunited"), "joy"),
+    (("思考", "为什么", "想", "thinking", "wonder", "why"), "thinking"),
+)
+
+
+def infer_beat_emotion(beat: dict[str, Any]) -> str:
+    """Infer an expression-rig emotion name for a beat (pure).
+
+    Keyword inference over narration / visual_en / motion_prompt, in the
+    rule order of ``_EMOTION_RULES``; defaults to ``"neutral"``.  The
+    result is always a legal ``expression_rig.EMOTIONS`` key when that
+    module is importable; on any doubt it falls back to ``"neutral"``.
+    """
+    text = " ".join(
+        str(beat.get(k) or "")
+        for k in ("narration", "visual_en", "motion_prompt")
+    ).lower()
+    emotion = "neutral"
+    for words, name in _EMOTION_RULES:
+        if any(w in text for w in words):
+            emotion = name
+            break
+    try:
+        from hevi.layer4_legacy.handdraw.expression_rig import EMOTIONS
+
+        if emotion not in EMOTIONS:
+            return "neutral"
+    except Exception:
+        pass
+    return emotion
+
+
 def infer_beat_kind(beat: dict[str, Any]) -> str:
     """Infer the beat kind used for tail sizing (see table above)."""
     explicit = ""
@@ -1104,6 +1147,10 @@ async def run_story_film(
     aspect: str = "9:16",
     voice: str = "soffy",
     out_dir: Path,
+    music: bool = False,
+    music_product: str = "cute",
+    music_style: str | None = None,
+    rig_character: str | None = None,
 ) -> dict[str, Any]:
     """Run the full one-sentence-to-film chain. Returns the delivery ledger."""
     out_dir = Path(out_dir)
@@ -1131,6 +1178,7 @@ async def run_story_film(
 
     story_meta: dict[str, Any] = {}
     mastering_info: dict[str, Any] = {}
+    rig_emotions: dict[int, str] = {}
 
     # -- 1. story ------------------------------------------------------------
     async def _story():
@@ -1173,6 +1221,50 @@ async def run_story_film(
         )
 
         size = _ASPECT_SIZE.get(aspect, "1024x1536")
+        if rig_character:
+            # Rig mode (opt-in): skip the GPT character sheet entirely.
+            # Each shot is a GPT background still (no characters in the
+            # prompt) with the expression-rig face for the beat's
+            # inferred emotion alpha-composited on top, so the character
+            # is byte-identical across shots.
+            from PIL import Image
+
+            from hevi.layer4_legacy.handdraw.expression_rig import (
+                render_face,
+            )
+
+            rig_cost = 0.0
+            rig_paths = []
+            for i, beat in enumerate(draft["beats"]):
+                shot_path = out_dir / "images" / f"shot_{i + 1:02d}.png"
+                res = await gpt_image_generate(
+                    prompt=(
+                        f"{beat['visual_en']}, background environment only, "
+                        f"empty scene, no characters, no people, no animals. "
+                        f"{style}"
+                    ),
+                    output_path=shot_path,
+                    size=size,
+                )
+                if isinstance(res.get("cost"), (int, float)):
+                    rig_cost += float(res["cost"])
+                emotion = infer_beat_emotion(beat)
+                rig_emotions[i] = emotion
+                bg = Image.open(shot_path).convert("RGBA")
+                face_size = max(96, min(1024, int(bg.width * 0.62)))
+                face = render_face(
+                    character=rig_character, emotion=emotion, size=face_size
+                )
+                face_x = (bg.width - face.width) // 2
+                face_y = int(bg.height * 0.58 - face.height / 2)
+                bg.alpha_composite(face, (face_x, face_y))
+                bg.convert("RGB").save(shot_path)
+                rig_paths.append(shot_path)
+            ledger.mark(
+                "images", "ok", cost=round(rig_cost, 4),
+                artifacts=[f"images/{p.name}" for p in rig_paths],
+            )
+            return rig_paths
         hero = draft["characters"][0]
         total_cost = 0.0
         key_path = out_dir / "images" / "character.png"
@@ -1325,6 +1417,7 @@ async def run_story_film(
                 "start_ms": start_ms,
                 "end_ms": end_ms,
                 "duration_s": round((end_ms - start_ms) / 1000 + tail, 2),
+                **({"emotion": rig_emotions[i]} if i in rig_emotions else {}),
             }
         )
     (out_dir / "shots.json").write_text(
@@ -1341,6 +1434,96 @@ async def run_story_film(
         "duration_check": duration_check,
     }
 
+    # -- 5b. music (opt-in; any failure degrades to narration-only) --------
+    film_audio_path = narration_path
+    if music and render_route == "hyperframes":
+        try:
+            import numpy as np
+
+            from hevi.audio.score_render import (
+                generate_score,
+                parse_abc,
+                render_score,
+            )
+
+            scenes: list[dict[str, Any]] = []
+            cursor = 0.0
+            for s in shots:
+                dur = float(s["duration_s"])
+                scenes.append(
+                    {
+                        "id": s["shot_id"],
+                        "start_s": round(cursor, 3),
+                        "end_s": round(cursor + dur, 3),
+                    }
+                )
+                cursor += dur
+            abc_text, align = generate_score(
+                music_product, scenes, music_style, seed=0
+            )
+            score = parse_abc(abc_text)
+            mix, sidecar = render_score(score, align, seed=0, timbre="sampled")
+            bgm_path = out_dir / "bgm.wav"
+            sample_rate = int(sidecar.get("sample_rate") or 48000)
+            pcm16 = (np.clip(mix, -1.0, 1.0) * 32767.0).astype("<i2")
+            import wave as _wave
+
+            with _wave.open(str(bgm_path), "wb") as wf:
+                wf.setnchannels(2)
+                wf.setsampwidth(2)
+                wf.setframerate(sample_rate)
+                wf.writeframes(pcm16.tobytes())
+            (out_dir / "bgm.abc").write_text(abc_text, encoding="utf-8")
+            (out_dir / "bgm_sidecar.json").write_text(
+                json.dumps(sidecar, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            total_dur = float(scenes[-1]["end_s"]) if scenes else 0.0
+            soundtrack_path = out_dir / "soundtrack.wav"
+            fade_out_start = max(0.0, total_dur - 2.0)
+            af = (
+                "[1:a]volume=0.22,afade=t=in:st=0:d=1,"
+                f"afade=t=out:st={fade_out_start:.3f}:d=2[bgm];"
+                "[0:a][bgm]amix=inputs=2:duration=first:normalize=0[out]"
+            )
+            proc = subprocess.run(
+                [
+                    "ffmpeg", "-y", "-v", "error",
+                    "-i", str(narration_path), "-i", str(bgm_path),
+                    "-filter_complex", af, "-map", "[out]",
+                    str(soundtrack_path),
+                ],
+                capture_output=True, text=True, timeout=300,
+            )
+            if proc.returncode != 0 or not soundtrack_path.is_file():
+                raise StoryFilmError(
+                    f"music mix ffmpeg failed: {(proc.stderr or '')[-300:]}"
+                )
+            apply_gain_control(soundtrack_path)
+            film_audio_path = soundtrack_path
+            delivery_extra["music"] = {
+                "engine": sidecar.get("engine"),
+                "timbre": sidecar.get("timbre"),
+                "duration_s": sidecar.get("duration_s"),
+                "note_count": sidecar.get("note_count"),
+            }
+            ledger.mark(
+                "music", "ok", cost=0.0,
+                artifacts=["bgm.wav", "bgm_sidecar.json", "soundtrack.wav"],
+            )
+        except Exception as exc:  # degraded, never fatal to the film
+            ledger.mark(
+                "music", "degraded",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            delivery_extra["music"] = {
+                "degraded": f"{type(exc).__name__}: {exc}"
+            }
+            film_audio_path = narration_path
+    elif music:
+        ledger.mark("music", "skipped")
+    delivery_extra["film_audio"] = str(film_audio_path)
+
     # -- 6. render --------------------------------------------------------------
     if render_route == "hyperframes":
 
@@ -1354,7 +1537,7 @@ async def run_story_film(
             total = render_motion_film(
                 shots=shots,
                 title=draft["title"],
-                narration_path=narration_path,
+                narration_path=film_audio_path,
                 output_path=out_dir / "film.mp4",
                 width=width,
                 height=height,
