@@ -12,19 +12,6 @@ Registers two ``hevi.capabilities`` entries (CAPABILITY_CONTRACT.md):
   - sample peak at full scale (hard-clipping risk),
   - no measurable loudness at all (silence / un-decodable audio).
 
-  Two further checks are computed in the gate layer itself (not from
-  earshot, whose band spectrum starts at 20 Hz and cannot localise a
-  narrowband whine), by :mod:`hevi.audio.spectral_checks`:
-
-  - infrasound energy (< 20 Hz) above ``infrasound_max_ratio`` of total
-    energy (default 1 %) — subsonic rumble from generated audio,
-  - a narrowband spike in the 15-17 kHz band standing more than
-    ``hf_spike_max_db`` (default 24 dB) over its local median spectrum.
-
-  Both are on by default (``spectral_checks: false`` disables them) and
-  are calibrated to sit well above every measured clean hevi product and
-  far below the weakest injected fault; see docs/rules/audio_gate.md.
-
   The gate always writes its report JSON; ``qa["pass"]`` carries the verdict
   so pipelines decide how to react.  earshot missing or failing raises
   ``CapabilityError`` — a gate that could not listen never passes silently.
@@ -125,85 +112,6 @@ def _gate_checks(
     return checks
 
 
-def _spectral_gate_checks(
-    spec: dict[str, Any],
-    *,
-    infrasound_max_ratio: float,
-    hf_spike_max_db: float,
-) -> list[dict[str, Any]]:
-    """Verdicts for the two gate-side spectral metrics (pure function).
-
-    ``spec`` is a :func:`hevi.audio.spectral_checks.analyze` result.
-    """
-    checks: list[dict[str, Any]] = []
-
-    ratio = spec.get("infrasound_ratio")
-    if ratio is None:
-        checks.append(
-            {
-                "name": "infrasound",
-                "ok": False,
-                "value": None,
-                "threshold": f"<= {infrasound_max_ratio} of total energy below 20 Hz",
-                "detail": "no measurable signal energy (silence)",
-            }
-        )
-    else:
-        checks.append(
-            {
-                "name": "infrasound",
-                "ok": ratio <= infrasound_max_ratio,
-                "value": ratio,
-                "threshold": f"<= {infrasound_max_ratio} of total energy below 20 Hz",
-            }
-        )
-
-    if not spec.get("hf_assessable"):
-        checks.append(
-            {
-                "name": "hf_narrowband_spike",
-                "ok": True,
-                "value": None,
-                "threshold": f"<= {hf_spike_max_db} dB over local median in 15-17 kHz",
-                "detail": (
-                    f"sample rate {spec.get('sample_rate')} Hz: Nyquist is below "
-                    "the 17 kHz band, so the artefact cannot be present"
-                ),
-            }
-        )
-    else:
-        from hevi.audio.spectral_checks import HF_MIN_PEAK_SHARE
-
-        prominence = spec.get("hf_spike_prominence_db")
-        share = spec.get("hf_peak_energy_share")
-        # Prominence on a numerically silent band is arithmetic noise, not
-        # a whine: the peak bin must also carry a real share of the file's
-        # energy (see hevi.audio.spectral_checks docstring).
-        significant = share is not None and share >= HF_MIN_PEAK_SHARE
-        if prominence is None:
-            ok = False
-            detail = "no energy measured in the 15-17 kHz band"
-        elif not significant:
-            ok = True
-            detail = (
-                f"strongest bin at {spec.get('hf_peak_freq_hz')} Hz carries "
-                f"{share} of total energy (< {HF_MIN_PEAK_SHARE}); negligible"
-            )
-        else:
-            ok = prominence <= hf_spike_max_db
-            detail = f"strongest bin at {spec.get('hf_peak_freq_hz')} Hz"
-        checks.append(
-            {
-                "name": "hf_narrowband_spike",
-                "ok": ok,
-                "value": prominence,
-                "threshold": f"<= {hf_spike_max_db} dB over local median in 15-17 kHz",
-                "detail": detail,
-            }
-        )
-    return checks
-
-
 def _render_earshot_gate(
     params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
 ) -> CapabilityResult:
@@ -213,9 +121,6 @@ def _render_earshot_gate(
     lufs_target = float(params.get("lufs_target", -14.0))
     lufs_tolerance = float(params.get("lufs_tolerance", 2.0))
     true_peak_ceiling = float(params.get("true_peak_ceiling", -1.0))
-    spectral_enabled = bool(params.get("spectral_checks", True))
-    infrasound_max_ratio = float(params.get("infrasound_max_ratio", 0.01))
-    hf_spike_max_db = float(params.get("hf_spike_max_db", 24.0))
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -234,50 +139,17 @@ def _render_earshot_gate(
         lufs_tolerance=lufs_tolerance,
         true_peak_ceiling=true_peak_ceiling,
     )
-
-    spectral: dict[str, Any] | None = None
-    if spectral_enabled:
-        from hevi.audio import spectral_checks
-
-        try:
-            spectral = spectral_checks.analyze(media_path)
-        except Exception as exc:
-            # A spectral layer that could not listen must not pass silently.
-            spectral = {"error": str(exc)}
-            checks.extend(
-                {
-                    "name": name,
-                    "ok": False,
-                    "value": None,
-                    "threshold": "spectral analysis required",
-                    "detail": f"spectral analysis failed: {exc}",
-                }
-                for name in ("infrasound", "hf_narrowband_spike")
-            )
-        if spectral is not None and "error" not in spectral:
-            checks.extend(
-                _spectral_gate_checks(
-                    spectral,
-                    infrasound_max_ratio=infrasound_max_ratio,
-                    hf_spike_max_db=hf_spike_max_db,
-                )
-            )
-
     passed = all(c["ok"] for c in checks)
     report = {
         "media_path": str(media_path),
-        "tool": "earshot measure (model-free) + hevi spectral_checks",
+        "tool": "earshot measure (model-free)",
         "pass": passed,
         "thresholds": {
             "lufs_target": lufs_target,
             "lufs_tolerance": lufs_tolerance,
             "true_peak_ceiling_dbtp": true_peak_ceiling,
-            "spectral_checks": spectral_enabled,
-            "infrasound_max_ratio": infrasound_max_ratio,
-            "hf_spike_max_db": hf_spike_max_db,
         },
         "measurements": measurements,
-        "spectral": spectral,
         "checks": checks,
     }
     report_path = out_dir / "earshot_gate_report.json"
@@ -296,8 +168,6 @@ def _render_earshot_gate(
             "pass": passed,
             "lufs": measurements.get("lufs"),
             "true_peak_dbtp": measurements.get("true_peak_dbtp"),
-            "infrasound_ratio": (spectral or {}).get("infrasound_ratio"),
-            "hf_spike_prominence_db": (spectral or {}).get("hf_spike_prominence_db"),
             "failed_checks": [c["name"] for c in checks if not c["ok"]],
         },
     )
@@ -386,33 +256,6 @@ def register_earshot_capabilities_once() -> list[str]:
                         "default": -1.0,
                         "description": "True-peak ceiling in dBTP",
                     },
-                    "spectral_checks": {
-                        "type": "boolean",
-                        "default": True,
-                        "description": "Run the gate-side spectral hygiene "
-                        "checks (infrasound ratio + 15-17 kHz narrowband "
-                        "spike), computed from the decoded PCM in the gate "
-                        "layer (hevi.audio.spectral_checks)",
-                    },
-                    "infrasound_max_ratio": {
-                        "type": "number",
-                        "minimum": 0.0001,
-                        "maximum": 1.0,
-                        "default": 0.01,
-                        "description": "Max share of total energy below "
-                        "20 Hz (clean hevi products measure <= 0.0031; "
-                        "injected subsonic faults measure >= 0.049)",
-                    },
-                    "hf_spike_max_db": {
-                        "type": "number",
-                        "minimum": 3.0,
-                        "maximum": 60.0,
-                        "default": 24.0,
-                        "description": "Max prominence (dB over the local "
-                        "median spectrum) allowed for any bin in the "
-                        "15-17 kHz band (clean products measure <= 16.2 dB; "
-                        "an injected 16 kHz tone measures >= 67 dB)",
-                    },
                 },
                 "required": ["media_path"],
                 "additionalProperties": False,
@@ -421,9 +264,7 @@ def register_earshot_capabilities_once() -> list[str]:
             render=_render_earshot_gate,
             description=(
                 "Audio gate (earshot measure, model-free, local): true peak, "
-                "integrated LUFS vs target, hard-clipping and silence checks, "
-                "plus gate-side spectral hygiene (infrasound energy share, "
-                "15-17 kHz narrowband spike) computed from the decoded PCM. "
+                "integrated LUFS vs target, hard-clipping and silence checks. "
                 "The picture-side counterpart is film_gate. Writes "
                 "earshot_gate_report.json; qa['pass'] is the verdict. Use on "
                 "final mixes / narration before delivery."

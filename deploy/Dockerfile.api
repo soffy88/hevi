@@ -24,6 +24,11 @@ WORKDIR /app
 
 RUN groupadd --system hevi && useradd --system --gid hevi --home-dir /app hevi
 
+# apt mirror: deb.debian.org is unreachable from this host's egress
+# (curl returns 000, verified 2026-10-23) while the TUNA mirror works;
+# same pattern as the NPM_REGISTRY mirror used below.
+RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg curl git nodejs npm \
     && rm -rf /var/lib/apt/lists/* \
@@ -90,6 +95,15 @@ RUN --network=none cd hevi-remotion-talkcraft \
     && npx --no-install remotion browser ensure
 COPY --chown=hevi:hevi hevi-remotion/ ./hevi-remotion/
 COPY --chown=hevi:hevi hevi/ ./hevi/
+
+# earshot CLI (audio.earshot_gate / storyfilm narration mastering):
+# vendored model-free earshot package (MIT, Leonxlnx/earshot 0.3.0)
+# plus a shim at the exact path hevi.audio.earshot_client expects
+# ($HOME/.venvs/earshot/bin/earshot, HOME=/app).  Runtime deps already
+# live in the app venv (numpy/scipy/soundfile/librosa + pyloudnorm).
+COPY --chown=hevi:hevi third_party/earshot/earshot/ ./earshot_pkg/earshot/
+COPY third_party/earshot/earshot-shim.py ./.venvs/earshot/bin/earshot
+RUN chmod +x ./.venvs/earshot/bin/earshot
 COPY --chown=hevi:hevi hevi-remotion-talkcraft/ ./hevi-remotion-talkcraft/
 # 静态索引(gen-index.ts / tpl-index.ts / mediaManifest.ts / kbMeta.ts)在镜像内重新生成;
 # 渲染时 produce.py 写 public/runs/<job>,webpack 缓存写 node_modules/.cache —— 交给 hevi。

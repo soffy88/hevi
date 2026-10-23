@@ -176,6 +176,22 @@ _music_analyze.register_music_analyze_capabilities_once()
 from . import expression_rig as _expression_rig  # noqa: E402,F401
 _expression_rig.register_expression_rig_capabilities_once()
 
+# Story film lines (story.film_from_prompt / story.oneclick_film):
+# one-sentence premise -> story -> images -> LuxTTS narration ->
+# alignment -> sampled score -> motion render -> film_gate/earshot
+# gates; oneclick adds presets, rig faces and the gate-retry policy.
+from . import storyfilm as _storyfilm  # noqa: E402,F401
+_storyfilm.register_storyfilm_capabilities_once()
+
+# Earshot audio gate + SFX bank (audio.earshot_gate / audio.sfx_render):
+# model-free, local earshot CLI under ~/.venvs/earshot.
+from . import earshot_gate as _earshot_gate  # noqa: E402,F401
+_earshot_gate.register_earshot_capabilities_once()
+
+# Structured review sheet (qa.review_sheet): cross-line review comments.
+from . import review_sheet as _review_sheet  # noqa: E402,F401
+_review_sheet.register_review_sheet_capabilities_once()
+
 # resolve them by name without extra wiring.
 
 __all__ = [

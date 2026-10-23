@@ -12,28 +12,12 @@ into the job dir and keeps ``job.json`` / ``delivery.json`` current:
                             选档: 默认 whisper_local 本地 ASR 免费档;
                             elevenlabs_forced 为付费精度档)
   shots.json                分镜表 — 每镜同时带 first_frame / motion_prompt /
-                            duration, 即 PixStag 镜头包的交接字段; 另带结构化
-                            分镜字段 (景别/机位/运镜/场次/出场角色/时长估计)
-  storyboard.md             结构化分镜表 (人读版: 场次表 + 逐镜计划vs实测)
-  assets.json               series 模式下本集用到的资产注册表快照 (角色/场景)
-  film.mp4                  render_route="ken_burns" 的代码合成成片
-                            ("hyperframes" 是该路由的历史别名, 见下)
+                            duration, 即 PixStag 镜头包的交接字段
+  film.mp4                  render_route="hyperframes" 的代码合成成片
   pixstag_package.json      render_route="pixstag_package" 的镜头包,
                             交 video.pixstag_generate 逐镜生成后拼接
   gates.json                film_gate / audio.earshot_gate 结论 (可用时)
   delivery.json             阶段台账: 状态 / 花费 / 产物
-
-  Route semantics (explicit, locked by tests/test_storyfilm_routing.py):
-  the in-house film route renders with Ken Burns motion over the shot
-  stills (``render_motion_film`` in this module). It does NOT call the
-  creator-style-kit styled renderer (``video.hyperframes_styled_render``,
-  ``hevi/video/csk_styled_render.py``): that capability is a separate,
-  beats-driven 9:16 style render and is not on this pipeline's path.
-  The name "hyperframes" survives only as a legacy alias for
-  "ken_burns" (``resolve_render_route``); delivery.json records both the
-  requested and the resolved route plus the render entry, so the
-  routing is inspectable instead of an orphan capability "in the
-  catalogue but unused" left ambiguous.
 
 Story-planning note (known, deliberate tradeoff — audited 2026-10-20):
   * The story stage is this module's OWN LLM draft (_STORY_SYSTEM /
@@ -51,9 +35,8 @@ Story-planning note (known, deliberate tradeoff — audited 2026-10-20):
     (parse_story_draft) and for narration length, but they do not pass
     a story-quality or kids-content gate before images/TTS are spent.
 
-Final-render routes (Soffy 分工定调 2026-10-20; semantics locked
-2026-10-31, see RENDER_ROUTES / resolve_render_route below):
-  * 代码动画类 → Ken Burns 路由 (历史名 "hyperframes", 别名)
+Final-render routes (Soffy 分工定调 2026-10-20):
+  * 代码动画类 → HyperFrames 线 (本模块的 hyperframes 路线)
   * 真人故事片 → hevi 出整个流程, 最终成片交外接能力 PixStag; 本模块只产
     镜头包 (每镜 first_frame + motion_prompt + duration), 不等它落地。
 
@@ -68,14 +51,10 @@ import html
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
-
-from hevi.storyfilm import assets as _asset_registry
-from hevi.storyfilm import storyboard as _storyboard
 
 __all__ = [
     "DEFAULT_STYLE",
@@ -103,11 +82,6 @@ __all__ = [
     "render_motion_film",
     "run_story_film",
     "trim_draft_to_max_chars",
-    # explicit render routing (hyperframes alias -> ken_burns)
-    "RENDER_ROUTES",
-    "ROUTE_ALIASES",
-    "film_render_entry_for",
-    "resolve_render_route",
 ]
 
 DEFAULT_STYLE = (
@@ -127,46 +101,6 @@ _FILM_GATE = (
 
 _ASPECT_SIZE = {"9:16": "1024x1536", "16:9": "1536x1024", "1:1": "1024x1024"}
 _ASPECT_RES = {"9:16": (720, 1280), "16:9": (1280, 720), "1:1": (960, 960)}
-
-# Explicit render routing. "hyperframes" is a legacy alias for the
-# Ken Burns route only: this pipeline never called the CSK styled
-# renderer, and the alias must not be read as "the HyperFrames engine
-# renders this film". The CSK renderer stays a separate capability
-# (video.hyperframes_styled_render); it is not imported here.
-RENDER_ROUTES: dict[str, dict[str, str]] = {
-    "ken_burns": {
-        "entry": "hevi.storyfilm.pipeline.render_motion_film",
-        "produces": "film.mp4",
-        "description": "Ken Burns motion over shot stills + narration, in-house.",
-    },
-    "pixstag_package": {
-        "entry": "hevi.storyfilm.pipeline.build_pixstag_package",
-        "produces": "pixstag_package.json",
-        "description": "Shot package for video.pixstag_generate; no film here.",
-    },
-}
-ROUTE_ALIASES: dict[str, str] = {"hyperframes": "ken_burns"}
-
-
-def resolve_render_route(route: str) -> str:
-    """Resolve a requested route (alias allowed) to its canonical name."""
-    requested = str(route or "").strip()
-    resolved = ROUTE_ALIASES.get(requested, requested)
-    if resolved not in RENDER_ROUTES:
-        raise StoryFilmError(
-            f"unknown render_route: {route!r}; known: "
-            f"{sorted(set(RENDER_ROUTES) | set(ROUTE_ALIASES))}"
-        )
-    return resolved
-
-
-def film_render_entry_for(route: str) -> dict[str, str]:
-    """Render entry + product for a route (aliases resolved)."""
-    resolved = resolve_render_route(route)
-    entry = dict(RENDER_ROUTES[resolved])
-    entry["canonical_route"] = resolved
-    entry["requested_route"] = str(route or "").strip()
-    return entry
 
 _PUNCT = set(
     " \t\r\n，。、；：？！·…—–-「」『』（）【】《》〈〉“”‘’\"'.,;:!?()[]<>"
@@ -234,14 +168,10 @@ _STORY_USER = """前提：{premise}
   "beats": [
     {{"narration": "旁白（中文口语，40-65字，可含两句，以句号结尾）",
       "visual_en": "英文画面描述（这一镜的场景与构图）",
-      "motion_prompt": "英文运镜提示（如 slow push-in / gentle pan left / static close-up）",
-      "scene": "场景名（中文简短，如 池塘边；同一地点的连续拍必须用同一个名字）",
-      "shot_size": "景别：extreme_wide/wide/full/medium/medium_close_up/close_up/extreme_close_up 之一",
-      "camera_angle": "机位：eye_level/low_angle/high_angle/overhead 之一",
-      "characters": ["本拍出场角色名（须与 characters 中的名字字字一致；没有角色出场就给空数组）"]}}
+      "motion_prompt": "英文运镜提示（如 slow push-in / gentle pan left / static close-up）"}}
   ]
 }}
-约束：beats 恰好 {max_shots} 个；总旁白必须在 {min_chars}-{max_chars} 字之间（逐字数好再输出，太短就把每拍写长）；人物不超过 3 个，主角排第一；每拍都要给出 scene / shot_size / camera_angle / characters 四个分镜字段。"""
+约束：beats 恰好 {max_shots} 个；总旁白必须在 {min_chars}-{max_chars} 字之间（逐字数好再输出，太短就把每拍写长）；人物不超过 3 个，主角排第一。"""
 
 _CONTINUATION_USER = """前提：{premise}
 片名：{title}
@@ -250,34 +180,7 @@ _CONTINUATION_USER = """前提：{premise}
 现在全片旁白共 {total} 字，还差至少 {need} 字才能达到 {min_chars} 字的最低要求。
 请紧接着已有情节续写 {n_beats} 个新节拍：推进情节、不要重复已有内容、最后一个新节拍要能自然接向结局（若已有节拍已是结局，就续写结局之前的经过）。
 只输出 JSON，不要 markdown 包裹，字段：
-{{"beats": [{{"narration": "旁白（中文口语，40-65字，以句号结尾）", "visual_en": "英文画面描述", "motion_prompt": "英文运镜提示", "scene": "场景名（与已有节拍同一地点就用同一个名字）", "characters": ["本拍出场角色名"]}}]}}"""
-
-
-_SHOT_FIELD_KEYS = (
-    "scene",
-    "shot_size",
-    "camera_angle",
-    "camera_movement",
-    "narrative_function",
-    "transition",
-)
-
-
-def _passthrough_shot_fields(raw: dict[str, Any], beat: dict[str, Any]) -> None:
-    """Keep the optional storyboard fields the LLM provided on a beat.
-
-    Advisory only: storyboard.enrich_draft normalises/derives them
-    later, so an unrecognised value never fails the draft here.
-    """
-    for key in _SHOT_FIELD_KEYS:
-        value = raw.get(key)
-        if isinstance(value, str) and value.strip():
-            beat[key] = value.strip()
-    raw_names = raw.get("characters")
-    if isinstance(raw_names, list):
-        names = [n.strip() for n in raw_names if isinstance(n, str) and n.strip()]
-        if names:
-            beat["characters"] = names
+{{"beats": [{{"narration": "旁白（中文口语，40-65字，以句号结尾）", "visual_en": "英文画面描述", "motion_prompt": "英文运镜提示"}}]}}"""
 
 
 def parse_story_draft(text: str, *, max_shots: int) -> dict[str, Any]:
@@ -309,13 +212,6 @@ def parse_story_draft(text: str, *, max_shots: int) -> dict[str, Any]:
             raise StoryFilmError(
                 f"character {ch.get('name')!r} needs appearance_en for image gen"
             )
-        raw_aliases = ch.get("aliases")
-        if isinstance(raw_aliases, list):
-            aliases = [
-                a.strip() for a in raw_aliases if isinstance(a, str) and a.strip()
-            ]
-            if aliases:
-                ch["aliases"] = aliases
 
     beats = draft.get("beats")
     if not isinstance(beats, list) or not beats:
@@ -339,7 +235,6 @@ def parse_story_draft(text: str, *, max_shots: int) -> dict[str, Any]:
             raise StoryFilmError(f"beat {i + 1} missing visual_en")
         if not str(beat.get("motion_prompt") or "").strip():
             beat["motion_prompt"] = "slow push-in"
-        _passthrough_shot_fields(beat, beat)
     if total_chars < 60:
         raise StoryFilmError(
             f"narration too short for a film ({total_chars} chars < 60)"
@@ -376,7 +271,6 @@ def _validate_beat(beat: Any, index: int) -> dict[str, Any]:
         raise StoryFilmError(f"beat {index + 1} missing visual_en")
     if not str(beat.get("motion_prompt") or "").strip():
         beat["motion_prompt"] = "slow push-in"
-    _passthrough_shot_fields(beat, beat)
     return beat
 
 
@@ -1249,7 +1143,7 @@ async def run_story_film(
     premise: str,
     style: str = DEFAULT_STYLE,
     max_shots: int = 5,
-    render_route: str = "ken_burns",
+    render_route: str = "hyperframes",
     aspect: str = "9:16",
     voice: str = "soffy",
     out_dir: Path,
@@ -1257,37 +1151,18 @@ async def run_story_film(
     music_product: str = "cute",
     music_style: str | None = None,
     rig_character: str | None = None,
-    image_provider: str = "gpt",
-    series: str | None = None,
-    asset_library: str | None = None,
 ) -> dict[str, Any]:
-    """Run the full one-sentence-to-film chain. Returns the delivery ledger.
-
-    ``series`` opts the run into the cross-episode asset registry
-    (hevi.storyfilm.assets, AID-learned): the draft's characters and
-    scenes are upserted into the library at ``asset_library`` (default
-    ``$HEVI_ASSET_LIBRARY`` or ``~/.hevi/storyfilm_assets``), locked
-    appearance text is injected for every character a shot references,
-    and a registered hero key still is reused instead of re-bought.
-    Without ``series`` the run behaves exactly as before.
-    """
+    """Run the full one-sentence-to-film chain. Returns the delivery ledger."""
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "images").mkdir(exist_ok=True)
-    requested_route = str(render_route or "").strip()
-    render_route = resolve_render_route(requested_route)
-    render_entry = film_render_entry_for(requested_route)
     meta = {
         "premise": premise,
         "style": style,
         "max_shots": max_shots,
-        "render_route": requested_route,
-        "render_route_resolved": render_route,
-        "render_entry": render_entry["entry"],
+        "render_route": render_route,
         "aspect": aspect,
     }
-    if series:
-        meta["series"] = series
     ledger = _Ledger(out_dir, meta)
 
     async def stage(name, coro_factory):  # type: ignore[no-untyped-def]
@@ -1304,40 +1179,12 @@ async def run_story_film(
     story_meta: dict[str, Any] = {}
     mastering_info: dict[str, Any] = {}
     rig_emotions: dict[int, str] = {}
-    # Asset-registry context (filled by the story stage when a series
-    # is set) and per-shot media facts the images stage records for
-    # the shots table (reference images actually fed to the generator,
-    # brush templates actually used, the voice actually applied).
-    asset_ctx: dict[str, Any] = {}
-    media_ctx: dict[str, Any] = {}
 
     # -- 1. story ------------------------------------------------------------
     async def _story():
         draft, cost = await generate_story(
             premise, style=style, max_shots=max_shots
         )
-        # Structured storyboard layer (AID-learned): scenes, shot
-        # parameters, cast references and per-shot duration estimates.
-        # Pure enrichment — fields the LLM omitted are derived.
-        draft = _storyboard.enrich_draft(draft)
-        if series:
-            root = (
-                Path(asset_library).expanduser()
-                if asset_library
-                else _asset_registry.default_library_root()
-            )
-            library = _asset_registry.load_library(root)
-            registered = _asset_registry.register_draft_assets(
-                library,
-                draft,
-                series=series,
-                episode=str(draft.get("title") or premise),
-                voice=voice,
-            )
-            _asset_registry.save_library(root, library)
-            asset_ctx.update(
-                {"root": root, "library": library, "registered": registered}
-            )
         story_meta.update(
             {
                 "narration_chars": narration_char_count(draft),
@@ -1374,64 +1221,6 @@ async def run_story_film(
         )
 
         size = _ASPECT_SIZE.get(aspect, "1024x1536")
-        if image_provider == "brush":
-            # Brush provider (zero-cost): paint each beat with the
-            # procedural brush engine (hevi.image.brushpaint) instead of
-            # a GPT image call.  Beat text is keyword-routed to a scene
-            # template; per-beat seeds derive from the premise, so a
-            # run is reproducible.  Takes precedence over rig mode.
-            import zlib
-
-            from hevi.image.brushpaint import (
-                get_template,
-                parse_scene,
-                pick_template_for_text,
-                render_still,
-            )
-
-            w_px, h_px = (int(v) for v in size.split("x"))
-            base_seed = zlib.crc32(premise.encode("utf-8"))
-            brush_paths = []
-            brush_templates: dict[int, str] = {}
-            for i, beat in enumerate(draft["beats"]):
-                shot_path = out_dir / "images" / f"shot_{i + 1:02d}.png"
-                # A registered scene asset's bound template wins over
-                # keyword routing, so a place looks the same across
-                # episodes; the first routing decision is bound back
-                # into the registry.
-                scene_record = None
-                if asset_ctx:
-                    scene_record = asset_ctx["registered"]["scenes"].get(
-                        str(beat.get("scene_name") or "")
-                    )
-                if scene_record and scene_record.get("brush_template"):
-                    template = str(scene_record["brush_template"])
-                else:
-                    template = pick_template_for_text(
-                        f"{beat.get('visual_en', '')} {beat.get('narration', '')}"
-                    )
-                    if scene_record:
-                        _asset_registry.bind_scene_template(
-                            asset_ctx["library"],
-                            str(scene_record["id"]),
-                            template,
-                        )
-                brush_templates[i] = template
-                spec = get_template(template)
-                spec["seed"] = base_seed + i
-                render_still(parse_scene(spec), w_px, h_px).save(shot_path)
-                brush_paths.append(shot_path)
-            media_ctx["scene_templates"] = brush_templates
-            media_ctx["reference_images"] = [[] for _ in brush_paths]
-            ledger.mark(
-                "images", "ok", cost=0.0,
-                artifacts=[f"images/{p.name}" for p in brush_paths],
-            )
-            return brush_paths
-        if image_provider != "gpt":
-            raise StoryFilmError(
-                f"unknown image_provider {image_provider!r} (want gpt|brush)"
-            )
         if rig_character:
             # Rig mode (opt-in): skip the GPT character sheet entirely.
             # Each shot is a GPT background still (no characters in the
@@ -1471,7 +1260,6 @@ async def run_story_film(
                 bg.alpha_composite(face, (face_x, face_y))
                 bg.convert("RGB").save(shot_path)
                 rig_paths.append(shot_path)
-            media_ctx["reference_images"] = [[] for _ in rig_paths]
             ledger.mark(
                 "images", "ok", cost=round(rig_cost, 4),
                 artifacts=[f"images/{p.name}" for p in rig_paths],
@@ -1480,100 +1268,31 @@ async def run_story_film(
         hero = draft["characters"][0]
         total_cost = 0.0
         key_path = out_dir / "images" / "character.png"
-        registered_chars: dict[str, Any] = {}
-        hero_record: dict[str, Any] | None = None
-        if asset_ctx:
-            registered_chars = asset_ctx["registered"]["characters"]
-            hero_record = registered_chars.get(str(hero["name"]))
-        # Cross-episode reuse: a registered hero key still is copied in
-        # instead of re-bought; a fresh one is stored into the library
-        # so the next episode of the series can reuse it.
-        reused_key = False
-        if hero_record:
-            for ref in hero_record.get("reference_images") or []:
-                if Path(ref).is_file():
-                    shutil.copyfile(ref, key_path)
-                    reused_key = True
-                    break
-        media_ctx["reused_key_still"] = reused_key
-        if not reused_key:
-            res = await gpt_image_generate(
+        res = await gpt_image_generate(
+            prompt=(
+                f"{hero['appearance_en']}, full-body character sheet, front "
+                f"view, standing, {style}"
+            ),
+            output_path=key_path,
+            size=size,
+        )
+        if isinstance(res.get("cost"), (int, float)):
+            total_cost += float(res["cost"])
+        paths = []
+        for i, beat in enumerate(draft["beats"]):
+            shot_path = out_dir / "images" / f"shot_{i + 1:02d}.png"
+            res = await gpt_image_edit(
+                image_paths=[key_path],
                 prompt=(
-                    f"{hero['appearance_en']}, full-body character sheet, front "
-                    f"view, standing, {style}"
+                    f"{beat['visual_en']}. Same main character as the "
+                    f"reference: {hero['appearance_en']}. {style}"
                 ),
-                output_path=key_path,
+                output_path=shot_path,
                 size=size,
             )
             if isinstance(res.get("cost"), (int, float)):
                 total_cost += float(res["cost"])
-            if hero_record:
-                stored = _asset_registry.store_reference_image(
-                    asset_ctx["root"], hero_record, key_path, tag="key"
-                )
-                _asset_registry.add_reference_image(
-                    asset_ctx["library"], str(hero_record["id"]), stored
-                )
-        paths = []
-        shot_refs: list[list[str]] = []
-        for i, beat in enumerate(draft["beats"]):
-            shot_path = out_dir / "images" / f"shot_{i + 1:02d}.png"
-            cast_records: list[dict[str, Any]] = []
-            if asset_ctx:
-                for ref_name in beat.get("character_refs") or []:
-                    record = registered_chars.get(ref_name)
-                    if record is not None:
-                        cast_records.append(record)
-            if cast_records:
-                # AID-style cast injection: every character the shot
-                # references contributes its LOCKED appearance text,
-                # and each one's primary reference image (the hero's
-                # is this run's key still) feeds the edit.
-                cast_text = "; ".join(
-                    f"{rec['name']}: {rec.get('appearance_en') or ''}"
-                    for rec in cast_records
-                )
-                ref_paths: list[Path] = []
-                for rec in cast_records:
-                    if rec is hero_record:
-                        ref_paths.append(key_path)
-                    else:
-                        primary = _asset_registry.primary_reference(rec)
-                        if primary and Path(primary).is_file():
-                            ref_paths.append(Path(primary))
-                prompt = (
-                    f"{beat['visual_en']}. Characters in this shot — keep "
-                    f"their appearance exactly: {cast_text}. {style}"
-                )
-                if ref_paths:
-                    res = await gpt_image_edit(
-                        image_paths=ref_paths,
-                        prompt=prompt,
-                        output_path=shot_path,
-                        size=size,
-                    )
-                else:
-                    res = await gpt_image_generate(
-                        prompt=prompt,
-                        output_path=shot_path,
-                        size=size,
-                    )
-                shot_refs.append([str(p) for p in ref_paths])
-            else:
-                res = await gpt_image_edit(
-                    image_paths=[key_path],
-                    prompt=(
-                        f"{beat['visual_en']}. Same main character as the "
-                        f"reference: {hero['appearance_en']}. {style}"
-                    ),
-                    output_path=shot_path,
-                    size=size,
-                )
-                shot_refs.append([str(key_path)])
-            if isinstance(res.get("cost"), (int, float)):
-                total_cost += float(res["cost"])
             paths.append(shot_path)
-        media_ctx["reference_images"] = shot_refs
         ledger.mark(
             "images", "ok", cost=round(total_cost, 4),
             artifacts=[f"images/{p.name}" for p in [key_path, *paths]],
@@ -1581,28 +1300,6 @@ async def run_story_film(
         return paths
 
     image_paths = await stage("images", _images)
-
-    if asset_ctx:
-        # Persist what the images stage bound (scene brush templates,
-        # the hero's stored key still) and snapshot the assets this
-        # episode used into the job folder.
-        _asset_registry.save_library(asset_ctx["root"], asset_ctx["library"])
-        registered = asset_ctx["registered"]
-        snapshot = {
-            "series": series,
-            "library_root": str(asset_ctx["root"]),
-            "episode": draft["title"],
-            "characters": list(registered["characters"].values()),
-            "scenes": list(registered["scenes"].values()),
-            "created_ids": registered["created_ids"],
-            "updated_ids": registered["updated_ids"],
-            "reused_key_still": bool(media_ctx.get("reused_key_still")),
-        }
-        (out_dir / "assets.json").write_text(
-            json.dumps(snapshot, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        ledger.mark("assets", "ok", artifacts=["assets.json"])
 
     # -- 3. narration ---------------------------------------------------------
     full_text = "".join(b["narration"] for b in draft["beats"])
@@ -1615,20 +1312,8 @@ async def run_story_film(
             raise StoryFilmError(
                 "LuxTTS HTTP service is not reachable (HEVI_LUXTTS_URL)"
             )
-        # Series voice binding: the hero's registered voice (bound at
-        # first registration) wins over the run parameter, so a series
-        # keeps one narrator voice across episodes.
-        narration_voice = voice
-        if asset_ctx:
-            hero_rec = _asset_registry.get_asset(
-                asset_ctx["library"],
-                str(asset_ctx["registered"].get("hero_id") or ""),
-            )
-            if hero_rec and hero_rec.get("voice"):
-                narration_voice = str(hero_rec["voice"])
-        media_ctx["voice_applied"] = narration_voice
         await synth_with_luxtts(
-            text=full_text, output_path=narration_path, voice=narration_voice
+            text=full_text, output_path=narration_path, voice=voice
         )
         if not narration_path.is_file():
             raise StoryFilmError("LuxTTS returned no narration file")
@@ -1718,63 +1403,27 @@ async def run_story_film(
         # a beat less, default 0.35 s; last shot floor 1.2 s) -- the kind
         # is inferred by tail_for_beat/infer_beat_kind, see their comment.
         tail = tail_for_beat(beat, is_last=i == len(draft["beats"]) - 1)
-        shot: dict[str, Any] = {
-            "shot_id": f"S{i + 1:02d}",
-            "narration": beat["narration"],
-            "visual_prompt": beat["visual_en"],
-            "motion_prompt": beat["motion_prompt"],
-            "beat_kind": infer_beat_kind(beat),
-            "tail_s": tail,
-            "ken_burns": ken_burns_params(beat["motion_prompt"], i),
-            "image": str(img),
-            "first_frame": str(img),
-            "start_ms": start_ms,
-            "end_ms": end_ms,
-            "duration_s": round((end_ms - start_ms) / 1000 + tail, 2),
-            **({"emotion": rig_emotions[i]} if i in rig_emotions else {}),
-        }
-        # Structured storyboard fields (plan values from the enriched
-        # draft) + the reference images this shot actually consumed.
-        ref_images = media_ctx.get("reference_images") or []
-        shot.update(
+        shots.append(
             {
-                "shot_size": beat.get("shot_size"),
-                "camera_angle": beat.get("camera_angle"),
-                "camera_movement": beat.get("camera_movement"),
-                "scene_ref": beat.get("scene_ref"),
-                "scene_name": beat.get("scene_name"),
-                "character_refs": list(beat.get("character_refs") or []),
-                "narrative_function": beat.get("narrative_function"),
-                "transition": beat.get("transition"),
-                "est_duration_s": beat.get("est_duration_s"),
-                "reference_images": (
-                    list(ref_images[i]) if i < len(ref_images) else []
-                ),
+                "shot_id": f"S{i + 1:02d}",
+                "narration": beat["narration"],
+                "visual_prompt": beat["visual_en"],
+                "motion_prompt": beat["motion_prompt"],
+                "beat_kind": infer_beat_kind(beat),
+                "tail_s": tail,
+                "ken_burns": ken_burns_params(beat["motion_prompt"], i),
+                "image": str(img),
+                "first_frame": str(img),
+                "start_ms": start_ms,
+                "end_ms": end_ms,
+                "duration_s": round((end_ms - start_ms) / 1000 + tail, 2),
+                **({"emotion": rig_emotions[i]} if i in rig_emotions else {}),
             }
         )
-        templates = media_ctx.get("scene_templates") or {}
-        if i in templates:
-            shot["scene_template"] = templates[i]
-        if asset_ctx:
-            reg_chars = asset_ctx["registered"]["characters"]
-            shot["character_assets"] = [
-                str(reg_chars[name]["id"])
-                for name in shot["character_refs"]
-                if name in reg_chars
-            ]
-            scene_rec = asset_ctx["registered"]["scenes"].get(
-                str(beat.get("scene_name") or "")
-            )
-            if scene_rec:
-                shot["scene_asset"] = str(scene_rec["id"])
-        shots.append(shot)
     (out_dir / "shots.json").write_text(
         json.dumps(shots, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    (out_dir / "storyboard.md").write_text(
-        _storyboard.storyboard_markdown(draft, shots), encoding="utf-8"
-    )
-    ledger.mark("shots", "ok", artifacts=["shots.json", "storyboard.md"])
+    ledger.mark("shots", "ok", artifacts=["shots.json"])
 
     delivery_extra: dict[str, Any] = {
         "shots": len(shots),
@@ -1783,30 +1432,11 @@ async def run_story_film(
         "story_length": story_meta,
         "mastering": mastering_info,
         "duration_check": duration_check,
-        "render_route_requested": requested_route,
-        "render_route_resolved": render_route,
-        "render_entry": render_entry["entry"],
-        "storyboard": {
-            "scenes": len(draft.get("scenes") or []),
-            "table": "storyboard.md",
-        },
     }
-    if asset_ctx:
-        delivery_extra["assets"] = {
-            "series": series,
-            "library_root": str(asset_ctx["root"]),
-            "snapshot": "assets.json",
-            "characters": len(asset_ctx["registered"]["characters"]),
-            "scenes": len(asset_ctx["registered"]["scenes"]),
-            "created": len(asset_ctx["registered"]["created_ids"]),
-            "updated": len(asset_ctx["registered"]["updated_ids"]),
-            "reused_key_still": bool(media_ctx.get("reused_key_still")),
-            "voice_applied": media_ctx.get("voice_applied"),
-        }
 
     # -- 5b. music (opt-in; any failure degrades to narration-only) --------
     film_audio_path = narration_path
-    if music and render_route == "ken_burns":
+    if music and render_route == "hyperframes":
         try:
             import numpy as np
 
@@ -1895,16 +1525,14 @@ async def run_story_film(
     delivery_extra["film_audio"] = str(film_audio_path)
 
     # -- 6. render --------------------------------------------------------------
-    if render_route == "ken_burns":
+    if render_route == "hyperframes":
 
         async def _render():
             # Ken Burns motion render (see the motion section header):
             # the HTML storyboard renderer captures one frozen frame
-            # per shot, which film_gate rejects as a slideshow. This
-            # route animates every shot still per-frame instead.
-            # It is NOT the CSK styled renderer (video.hyperframes_
-            # styled_render); "hyperframes" only survives as the legacy
-            # alias resolved to this route above.
+            # per shot, which film_gate rejects as a slideshow.  This
+            # route animates every shot still per-frame instead; the
+            # route name stays "hyperframes" (code-composed film).
             width, height = _ASPECT_RES.get(aspect, (720, 1280))
             total = render_motion_film(
                 shots=shots,
@@ -1924,7 +1552,7 @@ async def run_story_film(
             "duration_s": round(total_s, 2),
         }
 
-        # -- 7. gates (ken_burns route only; a package has no film to gate) --
+        # -- 7. gates (hyperframes route only; a package has no film to gate) --
         gates = _run_gates(out_dir / "film.mp4", out_dir, aspect=aspect)
         (out_dir / "gates.json").write_text(
             json.dumps(gates, ensure_ascii=False, indent=2), encoding="utf-8"

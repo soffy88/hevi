@@ -63,38 +63,12 @@ def lux_tts_available() -> bool:
         return False
 
 
-_SPEAKABLE = re.compile(r"[0-9A-Za-z\u4e00-\u9fff]")
-
-
 def split_sentences(text: str) -> list[str]:
-    """Split Chinese and English narration on sentence punctuation, preserving it.
-
-    Punctuation-only fragments — a closing quote plus a period, a lone
-    ellipsis — arise when boundary punctuation stacks ("……" splits
-    after each "…", "！’。" leaves "’。").  They carry no speakable
-    content and the LuxTTS service rejects them (HTTP 500), so they are
-    merged back into the neighbouring real sentence.
-    """
+    """Split Chinese and English narration on sentence punctuation, preserving it."""
     source = text.strip()
     if not source:
         return []
-    parts = [part.strip() for part in _SENTENCE_BOUNDARY.split(source) if part.strip()]
-    merged: list[str] = []
-    pending = ""
-    for part in parts:
-        if _SPEAKABLE.search(part):
-            merged.append(pending + part)
-            pending = ""
-        elif merged:
-            merged[-1] += part
-        else:
-            pending += part
-    if pending:
-        if merged:
-            merged[-1] += pending
-        else:
-            merged.append(pending)
-    return merged
+    return [part.strip() for part in _SENTENCE_BOUNDARY.split(source) if part.strip()]
 
 
 async def _post_sentence(
