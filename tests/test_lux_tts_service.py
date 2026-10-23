@@ -47,6 +47,19 @@ def test_chinese_and_english_sentence_splitting() -> None:
     assert lux.split_sentences("  \n ") == []
 
 
+def test_split_sentences_merges_punctuation_only_fragments() -> None:
+    # Stacked ellipses and quote-closing punctuation must not become
+    # standalone "sentences" — the TTS service 500s on them.
+    assert lux.split_sentences("“一朵，两朵，三朵……”团团认真地数着。") == [
+        "“一朵，两朵，三朵……",
+        "”团团认真地数着。",
+    ]
+    assert lux.split_sentences("他喊道：‘这朵是特别的！’。大家都笑了。") == [
+        "他喊道：‘这朵是特别的！’。",
+        "大家都笑了。",
+    ]
+
+
 def test_http_payload_retry_and_wav_join(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(lux, "_get_health_payload", lambda: {"ok": True, "voices": ["soffy", "en_male"]})
     requests = []
