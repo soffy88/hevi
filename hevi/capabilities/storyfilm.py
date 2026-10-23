@@ -15,7 +15,9 @@ full chain by dotted name (CAPABILITY_CONTRACT.md; precedent:
 
 Also registers ``story.oneclick_film``: the preset-driven one-click
 entry (hevi/storyfilm/oneclick.py) with gate retries and an
-oneclick_delivery.json ledger.
+oneclick_delivery.json ledger; and ``story.asset_library``: the
+cross-episode character/scene asset registry (hevi/storyfilm/assets.py)
+that series runs upsert into and read locked descriptions from.
 
 Every stage writes evidence into the job dir (story.json, characters.json,
 images/, narration.wav, alignment.json, shots.json, film.mp4 or
@@ -85,6 +87,13 @@ def _render_story_film(
         )
     voice = str(params.get("voice") or "soffy")
     film_aspect = str(params.get("aspect") or aspect or "9:16")
+    image_provider = str(params.get("image_provider") or "gpt")
+    if image_provider not in ("gpt", "brush"):
+        raise CapabilityError(
+            "story.film_from_prompt: image_provider must be 'gpt' or 'brush'"
+        )
+    series = str(params.get("series") or "").strip() or None
+    asset_library = str(params.get("asset_library") or "").strip() or None
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -98,6 +107,9 @@ def _render_story_film(
                 aspect=film_aspect,
                 voice=voice,
                 out_dir=out_dir,
+                image_provider=image_provider,
+                series=series,
+                asset_library=asset_library,
             )
         )
     except (StoryFilmError, MonidError) as exc:
@@ -170,6 +182,8 @@ def _render_oneclick_film(
     voice = str(params.get("voice") or "soffy")
     music = bool(params.get("music", True))
     film_aspect = str(params.get("aspect") or aspect or "9:16")
+    series = str(params.get("series") or "").strip() or None
+    asset_library = str(params.get("asset_library") or "").strip() or None
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -182,6 +196,8 @@ def _render_oneclick_film(
             voice=voice,
             music=music,
             out_dir=out_dir,
+            series=series,
+            asset_library=asset_library,
         )
     except Exception as exc:  # noqa: BLE001 - contract wants CapabilityError
         raise CapabilityError(f"story.oneclick_film failed: {exc}") from exc
@@ -206,6 +222,88 @@ def _render_oneclick_film(
         mp4=film.get("path"),
         duration_s=float(film.get("duration_s") or 0.0),
         qa=qa,
+    )
+
+
+def _render_asset_library(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    import json
+
+    from hevi.capabilities.registry import compute_sha256
+    from hevi.storyfilm import assets as asset_registry
+
+    action = str(params.get("action") or "list")
+    if action not in ("list", "register_character", "register_scene"):
+        raise CapabilityError(
+            "story.asset_library: action must be list|register_character|register_scene"
+        )
+    library_param = str(params.get("library") or "").strip()
+    root = (
+        Path(library_param).expanduser()
+        if library_param
+        else asset_registry.default_library_root()
+    )
+    series = str(params.get("series") or "").strip()
+    try:
+        library = asset_registry.load_library(root)
+    except Exception as exc:  # noqa: BLE001 - contract wants CapabilityError
+        raise CapabilityError(f"story.asset_library: {exc}") from exc
+
+    changed: dict[str, Any] | None = None
+    if action in ("register_character", "register_scene"):
+        name = str(params.get("name") or "").strip()
+        if not series or not name:
+            raise CapabilityError(
+                f"story.asset_library: {action} needs 'series' and 'name'"
+            )
+        if action == "register_character":
+            record, created = asset_registry.upsert_character(
+                library,
+                series=series,
+                name=name,
+                appearance_en=str(params.get("description") or ""),
+                role=str(params.get("role") or ""),
+                voice=str(params.get("voice") or "") or None,
+            )
+        else:
+            record, created = asset_registry.upsert_scene(
+                library,
+                series=series,
+                name=name,
+                description_en=str(params.get("description") or ""),
+                brush_template=str(params.get("brush_template") or "") or None,
+            )
+        asset_registry.save_library(root, library)
+        changed = {"asset_id": record["id"], "created": created}
+
+    listing = asset_registry.library_listing(library, series=series or None)
+    payload = {
+        "library_root": str(root),
+        "action": action,
+        "changed": changed,
+        **listing,
+    }
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = out_dir / "asset_library.json"
+    snapshot_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return CapabilityResult(
+        sha256=compute_sha256(snapshot_path),
+        qa={
+            "asset_library_json": str(snapshot_path),
+            "library_root": str(root),
+            "counts": listing["counts"],
+            "changed": changed,
+            "note": (
+                "Cross-episode character/scene registry (AID-learned). "
+                "Appearance text locks at first registration; films run "
+                "with a series name upsert their cast/scenes and inject "
+                "the locked text per shot."
+            ),
+        },
     )
 
 
@@ -259,6 +357,30 @@ def register_storyfilm_capabilities_once() -> list[str]:
                         "type": "string",
                         "enum": ["9:16", "16:9", "1:1"],
                         "description": "Overrides the render aspect when set",
+                    },
+                    "image_provider": {
+                        "type": "string",
+                        "enum": ["gpt", "brush"],
+                        "default": "gpt",
+                        "description": (
+                            "gpt: GPT-Image stills (paid). brush: zero-cost "
+                            "procedural brush-painting stills (landscapes)"
+                        ),
+                    },
+                    "series": {
+                        "type": "string",
+                        "description": (
+                            "Series name: enables the cross-episode asset "
+                            "registry (locked character/scene assets, "
+                            "key-still reuse, per-shot cast injection)"
+                        ),
+                    },
+                    "asset_library": {
+                        "type": "string",
+                        "description": (
+                            "Asset library root (default: "
+                            "$HEVI_ASSET_LIBRARY or ~/.hevi/storyfilm_assets)"
+                        ),
                     },
                 },
                 "required": ["premise"],
@@ -328,6 +450,17 @@ def register_storyfilm_capabilities_once() -> list[str]:
                         "default": True,
                         "description": "Generate + mix a score_render BGM",
                     },
+                    "series": {
+                        "type": "string",
+                        "description": (
+                            "Series name: enables the cross-episode asset "
+                            "registry for this run"
+                        ),
+                    },
+                    "asset_library": {
+                        "type": "string",
+                        "description": "Asset library root (see story.asset_library)",
+                    },
                 },
                 "required": ["premise"],
                 "additionalProperties": False,
@@ -346,5 +479,72 @@ def register_storyfilm_capabilities_once() -> list[str]:
         )
     )
     registered.append("story.oneclick_film")
+
+    register(
+        Capability(
+            name="story.asset_library",
+            kind="data",
+            aspects=["9:16", "16:9", "1:1"],
+            params_schema={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "register_character", "register_scene"],
+                        "default": "list",
+                        "description": "list the registry, or upsert one asset",
+                    },
+                    "library": {
+                        "type": "string",
+                        "description": (
+                            "Library root (default: $HEVI_ASSET_LIBRARY "
+                            "or ~/.hevi/storyfilm_assets)"
+                        ),
+                    },
+                    "series": {
+                        "type": "string",
+                        "description": "Series scope (required for register actions)",
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Asset name (register actions)",
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": (
+                            "Locked appearance/scene description in English "
+                            "(register actions; first registration wins)"
+                        ),
+                    },
+                    "role": {
+                        "type": "string",
+                        "description": "Character role, e.g. 主角 (register_character)",
+                    },
+                    "voice": {
+                        "type": "string",
+                        "description": "Bound LuxTTS voice (register_character)",
+                    },
+                    "brush_template": {
+                        "type": "string",
+                        "description": "Bound brushpaint template (register_scene)",
+                    },
+                },
+                "additionalProperties": False,
+            },
+            cpu_cost_hint=0.0,
+            render=_render_asset_library,
+            description=(
+                "Cross-episode asset registry for the storyfilm line "
+                "(AID-learned): characters and scenes keyed by "
+                "(series, normalised name) with locked appearance text, "
+                "accumulating reference images, a hero voice binding and "
+                "scene→brush-template bindings. Films run with a series "
+                "name upsert their cast/scenes here and inject the locked "
+                "text into every shot that references the asset."
+            ),
+            line="storyfilm",
+        )
+    )
+    registered.append("story.asset_library")
 
     return registered

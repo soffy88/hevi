@@ -264,6 +264,8 @@ def run_oneclick_film(
     voice: str = "soffy",
     music: bool = True,
     out_dir: Path,
+    series: str | None = None,
+    asset_library: str | None = None,
 ) -> dict[str, Any]:
     """One-click film: preset run + gate retries + oneclick ledger."""
     cfg = resolve_preset(preset)
@@ -287,6 +289,10 @@ def run_oneclick_film(
         kwargs["rig_character"] = cfg.get("rig_character", "tuantuan")
     if cfg.get("visual") == "brush":
         kwargs["image_provider"] = "brush"
+    if series:
+        kwargs["series"] = series
+    if asset_library:
+        kwargs["asset_library"] = asset_library
     delivery = _run_coro(run_story_film(**kwargs))
 
     retries: list[dict[str, Any]] = []
@@ -391,6 +397,7 @@ def run_oneclick_film(
         "entry": "story.oneclick_film",
         "premise": premise,
         "preset": preset,
+        "series": series,
         "aspect": aspect,
         "film": {"path": str(film_path), "duration_s": duration_s},
         "cost_usd": delivery.get("total_cost_usd"),
@@ -439,6 +446,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-shots", type=int, default=5)
     parser.add_argument("--voice", default="soffy")
     parser.add_argument("--no-music", action="store_true")
+    parser.add_argument(
+        "--series", default=None,
+        help="series name: enables the cross-episode asset registry",
+    )
+    parser.add_argument(
+        "--library", default=None,
+        help="asset library root (default: $HEVI_ASSET_LIBRARY or ~/.hevi/storyfilm_assets)",
+    )
     parser.add_argument("--out", default=None, help="output dir")
     args = parser.parse_args(argv)
 
@@ -460,6 +475,8 @@ def main(argv: list[str] | None = None) -> int:
             voice=args.voice,
             music=not args.no_music,
             out_dir=out_dir,
+            series=args.series,
+            asset_library=args.library,
         )
     except Exception as exc:
         print(f"oneclick failed: {type(exc).__name__}: {exc}", file=sys.stderr)
