@@ -133,6 +133,5 @@ outputs/
 .veya-project/
 .tmp_merge_backup/
 output_e2e/
-
 # stickman persistence (G11): file-backed ledger + proposal store
 data/stickman/
