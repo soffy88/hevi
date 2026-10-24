@@ -195,6 +195,15 @@ services:
         required: false
     environment:
       REDIS_URL: redis://hevi-redis:6379/0
+      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
+      MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      MNEME_DATABASE_URL: ${MNEME_DATABASE_URL:-}
+      MPT_API_BASE: http://host.docker.internal:8080
+      MPT_WEBUI_BASE: http://host.docker.internal:8501
+      APP_ENV: production
       ADMISSION_TENANT_SCOPES: "wave2-test-ws|wan_local,ltx2_local,qwen_local,local|||render|1.0"
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: llama3.2:3b
@@ -244,6 +253,15 @@ services:
         required: false
     environment:
       REDIS_URL: redis://hevi-redis:6379/0
+      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
+      MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      MNEME_DATABASE_URL: ${MNEME_DATABASE_URL:-}
+      MPT_API_BASE: http://host.docker.internal:8080
+      MPT_WEBUI_BASE: http://host.docker.internal:8501
+      APP_ENV: production
       ADMISSION_TENANT_SCOPES: "wave2-test-ws|wan_local,ltx2_local,qwen_local,local|||render|1.0"
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: llama3.2:3b
