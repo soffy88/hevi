@@ -32,6 +32,14 @@ def test_modern_vocab_scoped_to_narrative_segments():
                    for f in audit_prompt(echo))
 
 
+def test_banned_latin_terms_match_word_boundary_only():
+    # 回测实抓：编译器 AUDIO 段的 "spoken" 不许触发黑名单 "OK"。
+    assert not any(f.code == "modern_vocab" for f in audit_prompt(
+        _beat(), "AUDIO SPOKEN DIALOGUE (Mandarin Chinese, clear steady pace)"))
+    # 独立出现的 OK 照旧拦。
+    assert any(f.code == "modern_vocab" for f in audit_prompt(_beat(text="这事 OK 了")))
+
+
 def test_no_text_clause_required_when_prompt_supplied():
     beat = _beat()
     assert any(f.code == "no_text_missing" for f in audit_prompt(beat, "a man speaks"))

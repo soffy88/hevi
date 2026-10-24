@@ -12,6 +12,7 @@ modern_echo 鉴今段豁免。导包失败时用同表本地副本兜底（表�
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from hevi.preflight.beats import Beat
@@ -50,7 +51,22 @@ _SCOPED_KINDS = ("narration", "dialogue", "commentary")
 
 
 def _find_banned(text: str) -> list[str]:
-    return [term for term in MODERN_BLACKLIST if term and term in text]
+    """黑名单命中规则（回测抓到的教训）：
+    - 中文词：子串匹配（中文无空格分词）。
+    - 拉丁词（如 OK、yyds）：只按词边界匹配，否则 "spoken" 里的 "OK"
+      也会误杀——2026-10-24 商鞅回测实抓的 false positive。
+    """
+    found = []
+    for term in MODERN_BLACKLIST:
+        if not term:
+            continue
+        if re.search(r"[\u4e00-\u9fff]", term):
+            if term in text:
+                found.append(term)
+        elif re.search(r"(?<![A-Za-z])" + re.escape(term) + r"(?![A-Za-z])",
+                       text, re.IGNORECASE):
+            found.append(term)
+    return found
 
 
 def audit_prompt(beat: Beat, prompt_text: str = "") -> list[Finding]:
