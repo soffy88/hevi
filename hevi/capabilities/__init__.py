@@ -200,3 +200,12 @@ _score_render.register_score_render_capabilities_once()
 # over an original demo character; see docs/rules/expression_rig.md.
 from . import expression_rig as _expression_rig  # noqa: E402,F401
 _expression_rig.register_expression_rig_capabilities_once()
+
+# Generic data-driven three.js scenes (scene3d.generic): JSON scene + CatmullRom camera path; presets are templates.
+from . import scene3d_generic as _scene3d_generic  # noqa: E402,F401
+
+
+# Pre-generation gate suite (preflight.*): prompt audit, first-frame check,
+# dialogue fit, budget gate, prompt compiler, pass-rate ledger.
+from hevi.preflight.capabilities import register_preflight_capabilities_once as _register_preflight  # noqa: E402,F401
+_register_preflight()
