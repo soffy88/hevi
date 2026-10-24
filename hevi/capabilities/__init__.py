@@ -225,3 +225,8 @@ from . import world_contract as _world_contract  # noqa: E402,F401
 _world_contract.register_world_contract_capabilities_once()
 from . import shotcraft as _shotcraft  # noqa: E402,F401
 _shotcraft.register_shotcraft_capabilities_once()
+
+# Talking-head presenter line (G14, 2026-10-24): portrait + script ->
+# lip-synced MP4, local zero-fee pipeline (LuxTTS / wav2lip / musetalk).
+from . import talking_head as _talking_head  # noqa: E402,F401
+_talking_head.register_talking_head_capabilities_once()
