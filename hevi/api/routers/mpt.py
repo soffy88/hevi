@@ -154,6 +154,8 @@ async def create_canonical_mpt_production(
 
 @router.post("/generate", response_model=GenerateVideoResponse)
 async def generate_video(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     request: GenerateVideoRequest,
     client: MPTClientDependency,
 ) -> GenerateVideoResponse:
@@ -178,6 +180,8 @@ async def generate_video(
 
 @router.get("/status/{task_id}", response_model=TaskStatusResponse)
 async def get_task_status(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     task_id: str,
     client: MPTClientDependency,
 ) -> TaskStatusResponse:
@@ -196,6 +200,8 @@ async def get_task_status(
 
 @router.post("/material/search", response_model=list[MaterialItem])
 async def search_materials(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     request: MaterialSearchRequest,
     client: MPTClientDependency,
 ) -> list[MaterialItem]:
@@ -213,6 +219,8 @@ async def search_materials(
 
 @router.post("/cross-post", response_model=dict[str, Any])
 async def cross_post(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     request: CrossPostRequest,
     client: MPTClientDependency,
 ) -> dict[str, Any]:
@@ -228,6 +236,8 @@ async def cross_post(
 
 @router.post("/reference/analyze", response_model=ReferenceVideoResponse)
 async def analyze_reference_video(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     request: ReferenceVideoRequest,
     client: MPTClientDependency,
 ) -> ReferenceVideoResponse:
@@ -240,6 +250,8 @@ async def analyze_reference_video(
 
 @router.post("/hevi/submit-job", response_model=GenerateVideoResponse)
 async def submit_job_from_hevi(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     production_id: str = Query(...),
     revision_id: str = Query(...),
     topic: str = Query(...),

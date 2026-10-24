@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from hevi.auth.dependencies import get_current_user
 from hevi.narrator.client import ALLOWED, NarratorUnavailable, narrator_status, run_narrator
 
 router = APIRouter(prefix="/narrator", tags=["narrator"])
@@ -23,7 +24,9 @@ def status() -> dict[str, Any]:
 
 
 @router.post("/run")
-def run(body: RunRequest) -> dict[str, Any]:
+def run(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+body: RunRequest) -> dict[str, Any]:
     if body.verb not in ALLOWED:
         raise HTTPException(status_code=400, detail=f"verb 不在白名单: {sorted(ALLOWED)}")
     try:

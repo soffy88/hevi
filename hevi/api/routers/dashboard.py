@@ -17,6 +17,7 @@ from obase.persistence import PgPool
 from sqlmodel import Session, select
 
 from hevi.artifact_store.http import materialize_artifact
+from hevi.auth.dependencies import get_current_user
 from hevi.core import workspace as workspace_module
 from hevi.core.config import settings
 from hevi.core.db import engine
@@ -111,6 +112,8 @@ def _all_rows() -> list[TaskRun]:
 
 @router.get("/tasks")
 async def list_tasks(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     status: str | None = None,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -143,6 +146,8 @@ async def list_tasks(
 
 @router.get("/tasks/{task_id}")
 async def get_task(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     task_id: str,
     pool: Annotated[PgPool | None, Depends(_dashboard_pool)] = None,
 ) -> dict[str, Any]:
@@ -165,6 +170,8 @@ async def get_task(
 
 @router.get("/tasks/{task_id}/output")
 async def serve_task_output(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     task_id: str,
     pool: Annotated[PgPool | None, Depends(_dashboard_pool)] = None,
 ) -> FileResponse:

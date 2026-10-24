@@ -253,6 +253,8 @@ async def _create_task(
 
 @router.post("/estimate")
 async def estimate_task_credits(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     body: EstimateRequest,
     svc: Annotated[BillingService, Depends(get_billing_service)],
 ) -> dict[str, Any]:

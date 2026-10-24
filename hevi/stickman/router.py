@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
-from fastapi import APIRouter, HTTPException
+from typing import Annotated, Any
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from hevi.auth.dependencies import get_current_user
 from hevi.stickman.topic_scout import scout_topics
 from hevi.stickman.structure_clone import clone_structure, CopyViolationError
 from hevi.stickman.proposal import (
@@ -141,13 +142,17 @@ def _reconstruct_proposal(data: dict[str, Any]) -> DirectorProposal:
 
 
 @router.post("/topic_scout")
-def api_topic_scout(req: TopicScoutRequest) -> dict[str, Any]:
+def api_topic_scout(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+req: TopicScoutRequest) -> dict[str, Any]:
     items = scout_topics(req.source, min_views=req.min_views, top_n=req.top_n)
     return {"status": "ok", "topics": items, "count": len(items)}
 
 
 @router.post("/structure_clone")
-def api_structure_clone(req: StructureCloneRequest) -> dict[str, Any]:
+def api_structure_clone(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+req: StructureCloneRequest) -> dict[str, Any]:
     try:
         res = clone_structure(
             reference_script=req.reference_script or {},
@@ -161,7 +166,9 @@ def api_structure_clone(req: StructureCloneRequest) -> dict[str, Any]:
 
 
 @router.post("/proposal/create")
-def api_create_proposal(req: ProposalCreateRequest) -> dict[str, Any]:
+def api_create_proposal(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+req: ProposalCreateRequest) -> dict[str, Any]:
     prop = create_proposal_from_script(
         req.script_data,
         aspect_ratio=req.aspect_ratio,
@@ -176,7 +183,9 @@ def api_create_proposal(req: ProposalCreateRequest) -> dict[str, Any]:
 
 
 @router.post("/proposal/approve")
-def api_approve_proposal(prop_data: dict[str, Any]) -> dict[str, Any]:
+def api_approve_proposal(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+prop_data: dict[str, Any]) -> dict[str, Any]:
     prop = _reconstruct_proposal(prop_data)
     prop.approve()
     prop_d = prop.to_dict()
@@ -185,7 +194,9 @@ def api_approve_proposal(prop_data: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.post("/render_local")
-def api_render_local(req: RenderLocalRequest) -> dict[str, Any]:
+def api_render_local(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+req: RenderLocalRequest) -> dict[str, Any]:
     prop = _reconstruct_proposal(req.proposal)
     try:
         res = render_local_video(prop, req.out_path)
@@ -197,7 +208,9 @@ def api_render_local(req: RenderLocalRequest) -> dict[str, Any]:
 
 
 @router.post("/flow_pack")
-def api_flow_pack(req: FlowPackRequest) -> dict[str, Any]:
+def api_flow_pack(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+req: FlowPackRequest) -> dict[str, Any]:
     prop = _reconstruct_proposal(req.proposal)
     try:
         res = export_flow_pack(prop, req.out_dir, ledger=_GLOBAL_LEDGER)
@@ -207,7 +220,9 @@ def api_flow_pack(req: FlowPackRequest) -> dict[str, Any]:
 
 
 @router.post("/flow_import")
-def api_flow_import(req: FlowImportRequest) -> dict[str, Any]:
+def api_flow_import(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+req: FlowImportRequest) -> dict[str, Any]:
     prop = _reconstruct_proposal(req.proposal)
     try:
         res = import_and_stitch_flow_clips(req.clip_paths, prop, req.out_path)

@@ -70,6 +70,8 @@ async def execute_animation_task(task: dict[str, Any], pool: PgPool) -> dict[str
 
 @router.get("/queue")
 async def get_queue(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     tb_id: str = TB_ID,
     pool: Annotated[PgPool | None, Depends(_history_pool)] = None,
 ) -> list[dict[str, Any]]:
@@ -78,6 +80,8 @@ async def get_queue(
 
 @router.get("/next")
 async def get_next(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     tb_id: str = TB_ID,
     pool: Annotated[PgPool | None, Depends(_history_pool)] = None,
 ) -> dict[str, Any]:
@@ -147,6 +151,8 @@ async def produce(
 
 @router.post("/produce-daily", status_code=202)
 async def produce_daily(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     background_tasks: BackgroundTasks,
     request: Request,
     tb_id: str = TB_ID,
