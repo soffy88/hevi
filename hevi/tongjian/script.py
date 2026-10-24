@@ -16,7 +16,8 @@ character_id/event_id 分配策略相同:LLM 引用它、不发明它。
 G2 是全管线最重要的门(史实门),四项检查:
 1. dialogue 语义一致性(LLM 比对台词与原引语)
 2. 全文情节/官职/称谓幻觉扫描(LLM 通读全篇 vs chapter_ir 事件列表)
-3. forbidden 违禁词扫描(确定性子串匹配 constitution.forbidden + 现代词汇黑名单)
+3. forbidden 违禁词扫描(确定性子串匹配 constitution.forbidden + 现代词汇黑名单;
+   modern_echo 鉴今行豁免——它是吕氏五段法第 5 段、全片唯一允许现代词汇的收尾段)
 4. 字数与 target_duration 偏差 ≤ 15%(确定性计算,中文口播 ≈4.5 字/秒,留 15% 给停顿/呼吸)
 
 降级:违规行定点重写(只喂该行上下文,不重跑整篇剧本),最多 3 次;仍不过 → 直接删除
@@ -47,8 +48,8 @@ _CHARS_PER_SEC = 4.5
 _PAUSE_FACTOR = 0.85
 _MAX_DURATION_DEVIATION = 0.15
 _MAX_REWRITE_ATTEMPTS = 3
-_TYPE_ZH_EN = {"对白": "dialogue", "旁白": "narration", "独白": "monologue"}
-_VALID_LINE_TYPES = {"narration", "dialogue", "commentary"}
+_TYPE_ZH_EN = {"对白": "dialogue", "旁白": "narration", "独白": "monologue", "鉴今": "modern_echo"}
+_VALID_LINE_TYPES = {"narration", "dialogue", "commentary", "modern_echo"}
 _LINE_ID_RE = re.compile(r"(LN\d+)")
 
 # 现代词汇黑名单(起始版,遇到新违规词直接往里加即可,不必等 RFC)。
@@ -98,13 +99,14 @@ _SCRIPT_PROMPT_TEMPLATE = """你是{screenwriter_persona}。基于下面的创�
 
 只输出一个 JSON 对象:
 {{"lines": [
-  {{"act": 1, "type": "narration|dialogue|commentary",
+  {{"act": 1, "type": "narration|dialogue|commentary|modern_echo",
     "speaker": "NARRATOR 或说话人物的 character_id(dialogue 用,如 C005;必须取自上面人物名册)",
     "text": "这一行的文本",
     "dramatized": true 或 false,
     "event_id": "锚定的 event_id",
     "quote_id": "仅引语改写对白填,必须是上面列出的 quote_id,一字不差;戏剧化对白留空",
-    "emotion": "情绪(如 倨傲/决绝/惊惧)", "visual_hint": "画面提示(景别/动作/场景)"}}
+    "emotion": "情绪(如 倨傲/决绝/惊惧)", "visual_hint": "画面提示(景别/动作/场景)",
+    "decision_point": true 或 false(仅讲解行:关键抉择点标 true,一集至多一处)}}
 ]}}
 
 硬性规则:
@@ -115,6 +117,11 @@ _SCRIPT_PROMPT_TEMPLATE = """你是{screenwriter_persona}。基于下面的创�
 6. **必须写足时长**:总字数要贴近目标字数({target_chars} 字)。在同一事件内展开多轮白话对白往复
    (要地可以有威逼、试探、回绝好几个来回)、给关键场面配充分的场景旁白与人物神态描写。只在既有
    事件内扩展戏剧密度,不得新增事件列表之外的情节。宁可多写几轮对白,也不要一两句就把高潮带过。
+7. **吕氏五段法(抉择点+鉴今收尾)**:全集至多一处讲解行标 decision_point=true——推进到关键
+   抉择时讲解在此停住,只摆当事人当时掌握的信息与约束,发问「如果是你,你会怎么做」,
+   **不许剧透古人实际怎么做**(揭晓留给随后的对白演绎)。全集最后可加且至多一段
+   type=modern_echo 的鉴今行:把本集大原则落回现代处境收尾,speaker=NARRATOR;该行是全片
+   唯一允许使用现代词汇的行(不受禁忌/现代词黑名单约束),其余行照旧。
 """
 
 # dramatize 关闭时(严格模式)用的旧规则:对白只能来自逐字引语,不得原创。
@@ -231,6 +238,8 @@ def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
         quote_id = ln.get("quote_id") or ln.get("引语id") or ln.get("引语")
         quote_id = str(quote_id) if quote_id else None
         dramatized = bool(ln.get("dramatized") or ln.get("戏剧化"))
+        # 抉择点只对讲解行有意义(演绎/史论行上标了也忽略,防 LLM 乱标污染时间轴)。
+        decision_point = bool(ln.get("decision_point") or ln.get("抉择点"))
         if line_type == "dialogue" and quote_id not in known_quote_ids:
             # 戏剧化对白允许无 quote_id(为无引语的真实事件创作台词);
             # 非戏剧化对白 quote_id 对不上真实引语 → 整行丢弃(逐字引语红线)。
@@ -256,6 +265,7 @@ def _coerce_script(draft: dict[str, Any], chapter_ir: ChapterIR) -> Script:
                 event_id=event_id,
                 quote_id=quote_id,
                 dramatized=dramatized and line_type == "dialogue",
+                decision_point=decision_point and line_type == "narration",
                 emotion=str(ln.get("emotion") or ""),
                 visual_hint=str(ln.get("visual_hint") or ""),
             )
@@ -334,6 +344,11 @@ def _check_forbidden_terms(script: Script, constitution: Constitution) -> list[s
     banned = [t for t in (*constitution.forbidden, *_MODERN_VOCAB_BLACKLIST) if t]
     errors: list[str] = []
     for ln in script.lines:
+        if ln.type == "modern_echo":
+            # 鉴今收尾段(吕氏五段法第 5 段):全片唯一允许现代词汇的段落。立意「现代梗」
+            # 禁令与现代词黑名单只约束历史叙事段(narration/dialogue/commentary),不约束
+            # 它——规范见 docs/rules/history_scene_narrative.md,立意层例外见 constitution.py。
+            continue
         errors.extend(
             f"剧本行 {ln.line_id} 命中违禁词 {term!r}: {ln.text!r}"
             for term in banned
@@ -420,6 +435,18 @@ async def _check_hallucinated_content(script: Script, chapter_ir: ChapterIR, llm
     ]
 
 
+def _check_modern_echo_placement(script: Script) -> list[str]:
+    """吕氏五段法结构门(确定性):modern_echo(鉴今)至多一段,且必须是全集最后一段——
+    它是把大原则落回现代的收尾动作,出现在中间既剧透又泄气(规范见
+    docs/rules/history_scene_narrative.md)。"""
+    idxs = [i for i, ln in enumerate(script.lines) if ln.type == "modern_echo"]
+    if len(idxs) > 1:
+        return [f"modern_echo(鉴今)段至多一段,实际 {len(idxs)} 段"]
+    if idxs and idxs[0] != len(script.lines) - 1:
+        return ["modern_echo(鉴今)段必须位于全集最后一段"]
+    return []
+
+
 async def gate_script(
     script: Script, chapter_ir: ChapterIR, constitution: Constitution, *, llm: Any = None
 ) -> GateResult:
@@ -431,6 +458,7 @@ async def gate_script(
 
     errors: list[str] = []
     errors.extend(_check_forbidden_terms(script, constitution))
+    errors.extend(_check_modern_echo_placement(script))
     errors.extend(_check_duration(script, constitution))
     errors.extend(_check_dialogue_coverage(script, chapter_ir))
     errors.extend(await _check_dialogue_consistency(script, chapter_ir, llm))
