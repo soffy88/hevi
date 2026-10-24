@@ -209,3 +209,19 @@ from . import scene3d_generic as _scene3d_generic  # noqa: E402,F401
 # dialogue fit, budget gate, prompt compiler, pass-rate ledger.
 from hevi.preflight.capabilities import register_preflight_capabilities_once as _register_preflight  # noqa: E402,F401
 _register_preflight()
+
+# Shadow capabilities wired into the unified entry (G13, 2026-10-24):
+# these six modules self-register on import but were never imported here,
+# so `import hevi.capabilities` missed them (audit universe 112 -> 118).
+from . import brushpaint as _brushpaint  # noqa: E402,F401
+_brushpaint.register_brushpaint_capabilities_once()
+from . import generative_art as _generative_art  # noqa: E402,F401
+_generative_art.register_generative_art_capabilities_once()
+from . import portrait_vocab as _portrait_vocab  # noqa: E402,F401
+_portrait_vocab.register_portrait_vocab_capabilities_once()
+from . import manim_render as _manim_render  # noqa: E402,F401
+_manim_render.register_manim_capabilities_once()
+from . import world_contract as _world_contract  # noqa: E402,F401
+_world_contract.register_world_contract_capabilities_once()
+from . import shotcraft as _shotcraft  # noqa: E402,F401
+_shotcraft.register_shotcraft_capabilities_once()
