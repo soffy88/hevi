@@ -282,3 +282,9 @@ _script_polish.register_script_polish_capabilities_once()
 # reach it through preview — only trusted direct render_safe callers.
 from . import blender_mcp as _blender_mcp  # noqa: E402,F401
 _blender_mcp.register_blender_mcp_capabilities_once()
+
+# Cinematic technique libraries (movie-atmosphere 10-site intake, 2026-10-25):
+# shot.camera_movements (40 movements) + shot.cinematic_techniques
+# (melies index, 30 vvsvs core techniques, index-only pointers).
+from . import cinematic_techniques as _cinematic_techniques  # noqa: E402,F401
+_cinematic_techniques.register_cinematic_techniques_capabilities_once()
