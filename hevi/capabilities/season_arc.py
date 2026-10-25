@@ -19,6 +19,10 @@ planned_reveal_ep（计划揭示集）＋ status（planted / paid / carried）�
 * paid 却无 prior plant（兑现集之前没有任何一集埋过该 fact）→ blocker；
 * planned_reveal_ep 超出季末且 status 不是 carried → blocker；
 * 相邻集 beats 文本 SequenceMatcher ≥ 0.6 且无 escalation 标记 → minor。
+* 集幅预算（长篇方法论补项，可选 word_budget={min_chars, max_chars}）：
+  提供了 script_text / word_count 的集，字数低于下限记欠幅 major、
+  高于上限记超幅 major（告警级，不阻塞 passed）；未给文本的集跳过，
+  beats 摘要字数不误当成集幅。
 
 任一 blocker 存在即 ``passed=false``。
 输出 ``arc_report.json``；报告 sha256 进 ``CapabilityResult.sha256``
@@ -30,6 +34,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -204,6 +209,60 @@ def _check_ledger(
     return findings
 
 
+def _episode_word_count(episode: dict[str, Any]) -> int | None:
+    """本集字数：显式 word_count 优先，否则计 script_text 去空白后字符数。
+
+    没有 script_text / word_count 的集不参与字数治理（只校验有文本的集），
+    避免把 beats 摘要字数误当成集幅。
+    """
+    count = episode.get("word_count")
+    if isinstance(count, int) and not isinstance(count, bool):
+        return count
+    text = episode.get("script_text")
+    if isinstance(text, str) and text.strip():
+        return len(re.sub(r"\s+", "", text))
+    return None
+
+
+def _check_word_budget(
+    episodes: list[dict[str, Any]], budget: dict[str, Any] | None
+) -> list[dict[str, Any]]:
+    """集幅预算治理：目标字数区间，超幅 / 欠幅记 major（告警，不阻塞 passed）。
+
+    预算由调用方以 word_budget={min_chars, max_chars} 给出；只对提供了
+    script_text 或 word_count 的集计字数，未给文本的集跳过不告警。
+    """
+    findings: list[dict[str, Any]] = []
+    if not budget:
+        return findings
+    min_chars = budget.get("min_chars")
+    max_chars = budget.get("max_chars")
+    for ep in episodes:
+        no = ep["episode_no"]
+        count = _episode_word_count(ep)
+        if count is None:
+            continue
+        if isinstance(min_chars, int) and count < min_chars:
+            findings.append(
+                _finding(
+                    "episode_word_budget",
+                    "major",
+                    f"第 {no} 集欠幅：{count} 字，低于集幅下限 {min_chars} 字。",
+                    "补写本集内容至目标区间，或下调该集的集幅下限并写明理由。",
+                )
+            )
+        if isinstance(max_chars, int) and count > max_chars:
+            findings.append(
+                _finding(
+                    "episode_word_budget",
+                    "major",
+                    f"第 {no} 集超幅：{count} 字，超出集幅上限 {max_chars} 字。",
+                    "删减本集内容至目标区间，或上调该集的集幅上限并写明理由。",
+                )
+            )
+    return findings
+
+
 def _check_routine(episodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     ordered = sorted(episodes, key=lambda ep: ep["episode_no"])
@@ -253,6 +312,8 @@ _EPISODE_SCHEMA: dict[str, Any] = {
         "foreshadows_planted": {"type": "array", "items": {"type": "string"}},
         "foreshadows_paid": {"type": "array", "items": {"type": "string"}},
         "escalation": {"type": "boolean"},
+        "script_text": {"type": "string"},
+        "word_count": {"type": "integer"},
     },
 }
 _LEDGER_SCHEMA: dict[str, Any] = {
@@ -272,6 +333,13 @@ _PARAMS_SCHEMA: dict[str, Any] = {
         "season_title": {"type": "string"},
         "episodes": {"type": "array", "items": _EPISODE_SCHEMA},
         "foreshadow_ledger": {"type": "array", "items": _LEDGER_SCHEMA},
+        "word_budget": {
+            "type": "object",
+            "properties": {
+                "min_chars": {"type": "integer"},
+                "max_chars": {"type": "integer"},
+            },
+        },
     },
     "additionalProperties": False,
 }
@@ -308,6 +376,24 @@ def _validate_params(params: Any) -> dict[str, Any]:
         for key in ("beats", "foreshadows_planted", "foreshadows_paid"):
             if key in ep and ep[key] is not None and not isinstance(ep[key], list):
                 raise CapabilityError(f"story.season_arc: {key!r} must be a list")
+    budget = params.get("word_budget")
+    if budget is not None:
+        if not isinstance(budget, dict):
+            raise CapabilityError("story.season_arc: 'word_budget' must be an object")
+        min_c = budget.get("min_chars")
+        max_c = budget.get("max_chars")
+        if min_c is not None and (not isinstance(min_c, int) or isinstance(min_c, bool)):
+            raise CapabilityError("story.season_arc: 'word_budget.min_chars' must be an integer")
+        if max_c is not None and (not isinstance(max_c, int) or isinstance(max_c, bool)):
+            raise CapabilityError("story.season_arc: 'word_budget.max_chars' must be an integer")
+        if (
+            isinstance(min_c, int)
+            and isinstance(max_c, int)
+            and min_c > max_c
+        ):
+            raise CapabilityError(
+                "story.season_arc: 'word_budget.min_chars' must not exceed 'max_chars'"
+            )
     for entry in params["foreshadow_ledger"]:
         if not isinstance(entry, dict):
             raise CapabilityError("story.season_arc: each ledger entry must be an object")
@@ -349,6 +435,7 @@ def _render(
     findings.extend(_check_episode_numbers(episodes))
     findings.extend(_check_episodes(episodes))
     findings.extend(_check_ledger(episodes, ledger))
+    findings.extend(_check_word_budget(episodes, params.get("word_budget")))
     findings.extend(_check_routine(episodes))
 
     counts = {"blocker": 0, "major": 0, "minor": 0}

@@ -268,6 +268,10 @@ from . import episode_prompts as _episode_prompts  # noqa: E402,F401
 _episode_prompts.register_episode_prompts_capabilities_once()
 from . import drama_gates as _drama_gates  # noqa: E402,F401
 _drama_gates.register_drama_gates_capabilities_once()
+# Long-form consistency (2026-10-25, clean-room method intake):
+# story.context_store / story.foreshadow_ledger / story.chapter_workspace.
+from . import longform_context as _longform_context  # noqa: E402,F401
+_longform_context.register_longform_context_capabilities_once()
 from . import reference_decompose as _reference_decompose  # noqa: E402,F401
 _reference_decompose.register_reference_decompose_capabilities_once()
 from . import edit_assemble as _edit_assemble  # noqa: E402,F401

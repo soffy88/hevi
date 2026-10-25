@@ -35,7 +35,7 @@ from hevi.capabilities.registry import (
 
 _Registered = False
 
-__all__ = ["build_chain", "validate_chain"]
+__all__ = ["build_chain", "validate_chain", "validate_shot_discipline"]
 
 
 def _lookup_first_frame_ref(first_frame_refs: Any, shot_id: Any) -> Any:
@@ -216,11 +216,157 @@ def validate_chain(chain: Any) -> list[dict[str, Any]]:
     return issues
 
 
+# ---------------------------------------------------------------------------
+# 分镜取舍门禁（长篇方法论补项，不改动上面纯链路的 build/validate 语义）
+#
+# 每镜除链路字段外另须三项，缺一判 error（门禁不过）：
+#   dramatic_purpose（戏剧目的：这镜为何存在）、spatial_relation
+#   （空间关系：人物/道具/机位相对位置）、continuity_note（连续性备注：
+#   与上一镜衔接处须交代什么）。
+# 机位与对白 / 音效 / 生产备注分离为独立字段：一镜不得以单个合并字段
+# （prompt / combined_prompt / merged_prompt）打包全部内容，camera 若为
+# dict 也不得内含 dialogue / sound_effects / production_notes 键。
+# 生成图提示词只取一镜内一刻：image_prompt 含两个以上时刻分隔词
+# （然后 / 接着 / 随后 / 之后 / 紧接着，或先...再...）或 moments 列表
+# 多于 1 项，判 error（一镜多时刻）。
+# 镜头取舍门禁：调用方给出 source_sentences（或 source_text）时，若镜数
+# 等于句数、且没有任何一镜合并多句（covers_sentences /
+# source_sentence_ids 长度 > 1）或给出取舍理由（selection_reason /
+# merge_reason），判 error mechanical_sentence_split——机械按句拆镜，
+# 须合并或注明取舍理由；门禁理由随 issue 一并给出，可解释。
+# ---------------------------------------------------------------------------
+
+_DISCIPLINE_REQUIRED = ["dramatic_purpose", "spatial_relation", "continuity_note"]
+_MOMENT_SEPARATORS = ["然后", "接着", "随后", "之后", "紧接着"]
+_MERGED_FIELD_NAMES = ["prompt", "combined_prompt", "merged_prompt"]
+
+
+def _discipline_issue(shot_id: Any, code: str, message: str) -> dict[str, Any]:
+    return {
+        "shot_id": shot_id,
+        "severity": "error",
+        "code": code,
+        "message": message,
+    }
+
+
+def _is_missing_discipline(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, dict)):
+        return len(value) == 0
+    return False
+
+
+def validate_shot_discipline(
+    shots: Any, source_sentences: Any = None
+) -> list[dict[str, Any]]:
+    """分镜取舍门禁：返回每镜的取舍/分离/单时刻问题（error 级）。
+
+    本函数不碰链路校验：build_chain / validate_chain 仍只管尾帧链路，
+    取舍门禁由能力 render 层合并进 passed 判定。
+    """
+    if not isinstance(shots, list):
+        raise CapabilityError("story.shot_chain: 'shots' must be a list")
+    issues: list[dict[str, Any]] = []
+    for shot in shots:
+        if not isinstance(shot, dict):
+            issues.append(
+                _discipline_issue(None, "non_dict_shot", "分镜必须为对象。")
+            )
+            continue
+        shot_id = shot.get("shot_id")
+        for field in _DISCIPLINE_REQUIRED:
+            if _is_missing_discipline(shot.get(field)):
+                issues.append(
+                    _discipline_issue(
+                        shot_id,
+                        f"missing_{field}",
+                        f"分镜 {shot_id} 缺 {field}：每镜必须有戏剧目的、"
+                        "空间关系、连续性备注三项，缺项不过。",
+                    )
+                )
+        for merged in _MERGED_FIELD_NAMES:
+            if merged in shot:
+                issues.append(
+                    _discipline_issue(
+                        shot_id,
+                        "merged_shot_fields",
+                        f"分镜 {shot_id} 用合并字段 {merged!r} 打包内容：机位、"
+                        "对白、音效、生产备注必须分离为独立字段。",
+                    )
+                )
+        camera = shot.get("camera")
+        if isinstance(camera, dict) and any(
+            k in camera for k in ("dialogue", "sound_effects", "production_notes")
+        ):
+            issues.append(
+                _discipline_issue(
+                    shot_id,
+                    "merged_camera_field",
+                    f"分镜 {shot_id} 的 camera 内含对白/音效/生产备注键："
+                    "机位字段不得兼装其它字段，须拆为独立字段。",
+                )
+            )
+        image_prompt = shot.get("image_prompt")
+        if isinstance(image_prompt, str) and image_prompt.strip():
+            separators = [s for s in _MOMENT_SEPARATORS if s in image_prompt]
+            if len(separators) >= 2 or ("先" in image_prompt and "再" in image_prompt):
+                issues.append(
+                    _discipline_issue(
+                        shot_id,
+                        "multi_moment_image_prompt",
+                        f"分镜 {shot_id} 的生成图提示词含多个时刻"
+                        f"（{separators or '先...再...'}）：一镜只取一刻，"
+                        "多时刻须拆镜或只留本镜的一刻。",
+                    )
+                )
+        moments = shot.get("moments")
+        if isinstance(moments, list) and len(moments) > 1:
+            issues.append(
+                _discipline_issue(
+                    shot_id,
+                    "multi_moment_image_prompt",
+                    f"分镜 {shot_id} 的 moments 有 {len(moments)} 项："
+                    "生成图提示词只取一镜内一刻，一镜多时刻判不过。",
+                )
+            )
+    if isinstance(source_sentences, list) and source_sentences:
+        has_merge_or_reason = False
+        for shot in shots:
+            if not isinstance(shot, dict):
+                continue
+            if not _is_missing_discipline(shot.get("selection_reason")):
+                has_merge_or_reason = True
+            if not _is_missing_discipline(shot.get("merge_reason")):
+                has_merge_or_reason = True
+            for key in ("covers_sentences", "source_sentence_ids"):
+                val = shot.get(key)
+                if isinstance(val, list) and len(val) > 1:
+                    has_merge_or_reason = True
+        if len(shots) == len(source_sentences) and not has_merge_or_reason:
+            issues.append(
+                _discipline_issue(
+                    None,
+                    "mechanical_sentence_split",
+                    f"机械按句拆镜：镜数（{len(shots)}）等于句数"
+                    f"（{len(source_sentences)}），且没有任何一镜合并多句"
+                    "或给出取舍理由。请合并镜头或在分镜上注明取舍理由"
+                    "（selection_reason / merge_reason）。",
+                )
+            )
+    return issues
+
+
 _PARAMS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "shots": {"type": "array"},
         "first_frame_refs": {"anyOf": [{"type": "object"}, {"type": "array"}]},
+        "source_sentences": {"type": "array", "items": {"type": "string"}},
+        "source_text": {"type": "string"},
     },
     "required": ["shots"],
     "additionalProperties": False,
@@ -241,10 +387,22 @@ def _render(
     # product is the chain JSON, not media.
     chain = build_chain(params["shots"], first_frame_refs=params.get("first_frame_refs"))
     issues = validate_chain(chain)
+    source_sentences = params.get("source_sentences")
+    if source_sentences is None and isinstance(params.get("source_text"), str):
+        import re as _re
+
+        source_sentences = [
+            s.strip()
+            for s in _re.split(r"[。！？\n]+", params["source_text"])
+            if s.strip()
+        ]
+    discipline_issues = validate_shot_discipline(params["shots"], source_sentences)
+    all_issues = list(issues) + list(discipline_issues)
     payload = {
         **chain,
-        "issues": issues,
-        "passed": not any(i.get("severity") == "error" for i in issues),
+        "issues": all_issues,
+        "discipline_issues": discipline_issues,
+        "passed": not any(i.get("severity") == "error" for i in all_issues),
     }
     report = _write_report(Path(out_dir), payload)
     return CapabilityResult(

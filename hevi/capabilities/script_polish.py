@@ -27,6 +27,9 @@
 * ``silent``（静音可懂，Soffy 永久标准在剧本层的对应门）：去掉对白后，动作
   描述过短（<12 字）或不含人物动作字 → minor。``full`` 模式追加 LLM 逐场
   静音复述：去掉对白就看不懂的场 → major。
+* ``ai_flavor``（去 AI 味，确定性启发式，长篇方法论补项）：程式化排比、
+  空洞升华句、无主语感慨句式、套话开场 → major（告警级，每条命中带
+  原文片段与规则名，误报可解释）。deterministic 模式即跑，零成本。
 
 ``mode="deterministic"``（默认，零成本）：只跑确定性部分，LLM 检查记入
 ``skipped``，verdict 只对确定性 blocker 负责——报告里明示覆盖范围，绝不
@@ -635,6 +638,115 @@ def _check_silent_llm(
 
 
 # ---------------------------------------------------------------------------
+# Check 5 — deterministic AI-flavor check (去 AI 味门禁化，长篇方法论补项)
+#
+# 纯启发式、离线可测，不靠 LLM。命中即一条 major（告警级，不单凭此项
+# 判 passed=false；但命中必带原文片段与规则名，误报可解释、可人工驳回）。
+# 词表按中文写作常识自定，只命中程式化痕迹明显的表达，日常对白与动作
+# 描述（短句、具体动作）不应命中：
+#   ai_parallel（程式化排比）：一句内 >= 3 个分句以同一字起头；
+#   ai_sublimation（空洞升华句）：真谛/意义所在/砥砺前行/谱写篇章/
+#     绽放光芒/照亮未来/让我们一起 等套话升华；
+#   ai_exclamation（无主语感慨句式）：多么/何等 起头，或以 啊!/呀! 收束
+#     的短感慨句；
+#   ai_stock_opening（套话开场）：众所周知/不得不说/值得一提的是/
+#     在这个...的时代/随着...的发展。
+# ---------------------------------------------------------------------------
+
+_AI_STOCK_OPENINGS = [
+    "众所周知",
+    "不得不说",
+    "值得一提的是",
+    "毋庸置疑",
+]
+_AI_STOCK_OPENING_RES = [
+    re.compile(r"在这个[^，。；！？]{0,20}的时代"),
+    re.compile(r"随着[^，。；！？]{0,20}的发展"),
+]
+_AI_SUBLIMATION_PHRASES = [
+    "的真谛",
+    "的意义所在",
+    "砥砺前行",
+    "谱写",
+    "新篇章",
+    "绽放出",
+    "的光芒",
+    "照亮未来",
+    "让我们一起",
+    "正是这种",
+]
+
+_AI_RULE_SUGGESTIONS = {
+    "ai_parallel": "把排比拆开：只留一句有具体信息的话，其余改成人物动作或事实。",
+    "ai_sublimation": "删掉升华套话，让意义由本场的具体事实自己成立，不要代人物总结。",
+    "ai_exclamation": "感慨句须有主语与事实：写清谁、因何事感慨，否则删掉这句。",
+    "ai_stock_opening": "删掉套话开场，直接从本场事实或人物动作起笔。",
+}
+
+
+def _ai_flavor_hits_for_sentence(sentence: str) -> list[tuple[str, str]]:
+    """返回一句命中 (rule_id, rule_name)；一句可命中多条规则。"""
+    hits: list[tuple[str, str]] = []
+    s = sentence.strip()
+    if not s:
+        return hits
+    if any(p in s for p in _AI_STOCK_OPENINGS) or any(
+        rx.search(s) for rx in _AI_STOCK_OPENING_RES
+    ):
+        hits.append(("ai_stock_opening", "套话开场"))
+    if any(p in s for p in _AI_SUBLIMATION_PHRASES):
+        hits.append(("ai_sublimation", "空洞升华句"))
+    if re.match(r"^(多么|何等)", s) or re.search(r"(啊|呀)[！!]$", s):
+        hits.append(("ai_exclamation", "无主语感慨句式"))
+    segments = [seg for seg in re.split(r"[，、；]", s) if seg.strip()]
+    if len(segments) >= 3:
+        first_chars = [seg.strip()[0] for seg in segments if seg.strip()]
+        for ch in set(first_chars):
+            if first_chars.count(ch) >= 3 and all(
+                len(seg.strip()) <= 12 for seg in segments
+            ):
+                hits.append(("ai_parallel", "程式化排比"))
+                break
+    return hits
+
+
+def check_ai_flavor_text(text: str) -> list[dict[str, Any]]:
+    """对一段文本做去 AI 味启发式检查，返回命中（每条带片段与规则名）。"""
+    hits: list[dict[str, Any]] = []
+    # findall 保留句末标点：无主语感慨句的“啊！”判定依赖句末标点，
+    # split 会把标点吃掉导致该规则永远命中不了。
+    for sentence in re.findall(r"[^。！？\n]+[。！？]?", text or ""):
+        s = sentence.strip()
+        if not s:
+            continue
+        for rule_id, rule_name in _ai_flavor_hits_for_sentence(s):
+            snippet = s if len(s) <= 30 else s[:30] + "…"
+            hits.append({"rule": rule_id, "rule_name": rule_name, "snippet": snippet})
+    return hits
+
+
+def _check_ai_flavor(scenes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    for sc in scenes:
+        sid = sc["scene_id"]
+        texts = [sc.get("action", "")]
+        texts.extend(line.get("text", "") for line in sc.get("dialogue", []))
+        for text in texts:
+            for hit in check_ai_flavor_text(text):
+                findings.append(
+                    _finding(
+                        "ai_flavor",
+                        "major",
+                        f"去AI味[{hit['rule_name']}]：命中片段“{hit['snippet']}”"
+                        f"（规则 {hit['rule']}）",
+                        _AI_RULE_SUGGESTIONS[hit["rule"]],
+                        sid,
+                    )
+                )
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # Render + registration
 # ---------------------------------------------------------------------------
 
@@ -745,6 +857,13 @@ def _render(
     checks["silent"] = {
         "passed": not any(f["severity"] == "blocker" for f in silent_findings),
         "skipped": ["silent_llm"] if llm_fn is None else [],
+    }
+
+    ai_findings = _check_ai_flavor(scenes)
+    findings.extend(ai_findings)
+    checks["ai_flavor"] = {
+        "passed": not any(f["severity"] == "blocker" for f in ai_findings),
+        "skipped": [],
     }
 
     counts = {"blocker": 0, "major": 0, "minor": 0}
