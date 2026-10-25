@@ -38,10 +38,20 @@ Any contract violation raises :class:`CapabilityError`.
 
 from __future__ import annotations
 
+import json
 import math
+from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
+from hevi.capabilities.registry import (
+    Capability,
+    CapabilityResult,
+    compute_sha256,
+    register,
+)
+
+_Registered = False
 
 __all__ = ["build_narration", "build_srt"]
 
@@ -225,3 +235,70 @@ def build_srt(
     if not blocks:
         return ""
     return "\n\n".join(blocks) + "\n"
+
+
+_PARAMS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "shots": {"type": "array"},
+        "include_dialogue": {"type": "boolean", "default": True},
+        "include_narration": {"type": "boolean", "default": True},
+    },
+    "required": ["shots"],
+    "additionalProperties": False,
+}
+
+
+def _render(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    # Report/file capability: aspect is declared but ignored (S-03).
+    # Products are the narration timeline JSON and the SRT text file.
+    shots = params["shots"]
+    narration = build_narration(shots)
+    srt = build_srt(
+        shots,
+        include_dialogue=params.get("include_dialogue", True),
+        include_narration=params.get("include_narration", True),
+    )
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    srt_path = out / "narration.srt"
+    srt_path.write_text(srt, encoding="utf-8")
+    payload = {**narration, "srt": srt, "srt_path": str(srt_path)}
+    report = out / "narration_srt.json"
+    report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return CapabilityResult(
+        duration_s=0.0,
+        sha256=compute_sha256(report),
+        qa={"report_json": str(report), **payload},
+    )
+
+
+def register_narration_srt_capabilities_once() -> list[str]:
+    global _Registered
+    if _Registered:
+        return []
+    _Registered = True
+    register(
+        Capability(
+            name="story.narration_srt",
+            kind="line",
+            aspects=["16:9", "9:16", "1:1"],
+            params_schema=_PARAMS_SCHEMA,
+            cpu_cost_hint=0.0,
+            render=_render,
+            description=(
+                "旁白时间线＋SRT 导出：按镜次 butt-join 排布对白与旁白，"
+                "无旁白的镜标 missing、绝不编造；双轨同镜时对白占前半、"
+                "旁白占后半。报告／文件类能力：产物为 narration 时间线"
+                " JSON 与 SRT 文本（aspects 仅声明，渲染忽略）。"
+            ),
+            line="narration_srt",
+            has_media_output=False,
+        )
+    )
+    return ["story.narration_srt"]
+
+
+register_narration_srt_capabilities_once()

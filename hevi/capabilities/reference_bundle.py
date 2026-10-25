@@ -41,9 +41,19 @@ Rules that matter:
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
+from hevi.capabilities.registry import (
+    Capability,
+    CapabilityResult,
+    compute_sha256,
+    register,
+)
+
+_Registered = False
 
 MISSING = "[缺失]"
 
@@ -410,3 +420,77 @@ def validate_bundle(
                 )
 
     return issues
+
+
+_PARAMS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "shot": {"type": "object"},
+        "asset_registry": {"type": "object"},
+    },
+    "required": ["shot", "asset_registry"],
+    "additionalProperties": False,
+}
+
+
+def _write_report(out_dir: Path, payload: dict[str, Any]) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report = out_dir / "reference_bundle.json"
+    report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
+def _render(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    # Report capability: aspect is declared but ignored (S-03).
+    bundle = build_bundle(params["shot"], asset_registry=params["asset_registry"])
+    issues = validate_bundle(bundle, asset_registry=params["asset_registry"])
+    # C-06: the bundle carries its own gate.  Any [缺失] block means the
+    # bundle is NOT generation-ready, even though validate_bundle only
+    # grades a missing block as a warning; likewise any error issue
+    # fails it.  Generation steps MUST check `passed` before citing a
+    # bundle (see CAPABILITY_CONTRACT.md); warnings alone do not gate.
+    has_missing = any(ref.get("block") == MISSING for ref in bundle["references"])
+    has_error = any(i.get("severity") == "error" for i in issues)
+    payload = {
+        **bundle,
+        "issues": issues,
+        "passed": not has_missing and not has_error,
+    }
+    report = _write_report(Path(out_dir), payload)
+    return CapabilityResult(
+        duration_s=0.0,
+        sha256=compute_sha256(report),
+        qa={"report_json": str(report), **payload},
+    )
+
+
+def register_reference_bundle_capabilities_once() -> list[str]:
+    global _Registered
+    if _Registered:
+        return []
+    _Registered = True
+    register(
+        Capability(
+            name="story.reference_bundle",
+            kind="line",
+            aspects=["16:9", "9:16", "1:1"],
+            params_schema=_PARAMS_SCHEMA,
+            cpu_cost_hint=0.0,
+            render=_render,
+            description=(
+                "单镜多图参照包：按角色→场景→道具→换装（身份＋造型）固定"
+                "顺序拼出生成可引用的锁定描述块；缺失块只标 [缺失] 并记"
+                "警告，绝不编造。报告自带 passed：含 [缺失] 或含 error"
+                " issue 即 passed=false，生成步骤引用前必须查 passed。"
+                "报告类能力：产物为 bundle JSON（aspects 仅声明，渲染忽略）。"
+            ),
+            line="reference_bundle",
+            has_media_output=False,
+        )
+    )
+    return ["story.reference_bundle"]
+
+
+register_reference_bundle_capabilities_once()

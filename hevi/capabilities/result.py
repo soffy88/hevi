@@ -16,8 +16,13 @@ class CapabilityResult:
     """Outcome of a capability render.
 
     ``mp4``/``png``/``wav`` are optional paths to the produced artefacts.  At
-    least one should be present for a successful render.  ``sha256`` fingerprints
-    the primary artefact; ``qa`` is a free-form quality/integrity report.
+    least one should be present for a successful render — except for
+    report/file capabilities (drama reports, novel books, workflow/bundle
+    JSON), whose product is the report JSON itself: for those, ``qa``
+    carries ``report_json`` (the written report path) and the full
+    payload, and ``sha256`` fingerprints that report file.  ``sha256``
+    fingerprints the primary artefact; ``qa`` is a free-form
+    quality/integrity report.
     """
 
     mp4: str | None = None

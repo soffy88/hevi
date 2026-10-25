@@ -21,9 +21,19 @@ how a frame is rendered, sampled, or scored lives in this module.
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
+from hevi.capabilities.registry import (
+    Capability,
+    CapabilityResult,
+    compute_sha256,
+    register,
+)
+
+_Registered = False
 
 __all__ = ["build_chain", "validate_chain"]
 
@@ -146,6 +156,19 @@ def validate_chain(chain: Any) -> list[dict[str, Any]]:
     prev_shot_id: Any = None
     for index, link in enumerate(links):
         if not isinstance(link, dict):
+            # C-07: a non-dict link is an error, never silently skipped
+            # (build_chain's "never silently skip" rule applies here too).
+            issues.append(
+                {
+                    "shot_id": None,
+                    "severity": "error",
+                    "code": "non_dict_link",
+                    "message": (
+                        "Chain link must be an object with 'shot_id'; "
+                        "a non-dict link cannot be validated as present."
+                    ),
+                }
+            )
             continue
         shot_id = link.get("shot_id")
         tail = link.get("tail_frame_ref")
@@ -191,3 +214,69 @@ def validate_chain(chain: Any) -> list[dict[str, Any]]:
                 )
         prev_shot_id = shot_id
     return issues
+
+
+_PARAMS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "shots": {"type": "array"},
+        "first_frame_refs": {"anyOf": [{"type": "object"}, {"type": "array"}]},
+    },
+    "required": ["shots"],
+    "additionalProperties": False,
+}
+
+
+def _write_report(out_dir: Path, payload: dict[str, Any]) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report = out_dir / "shot_chain.json"
+    report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
+def _render(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    # Report capability: aspect is declared but ignored (S-03); the
+    # product is the chain JSON, not media.
+    chain = build_chain(params["shots"], first_frame_refs=params.get("first_frame_refs"))
+    issues = validate_chain(chain)
+    payload = {
+        **chain,
+        "issues": issues,
+        "passed": not any(i.get("severity") == "error" for i in issues),
+    }
+    report = _write_report(Path(out_dir), payload)
+    return CapabilityResult(
+        duration_s=0.0,
+        sha256=compute_sha256(report),
+        qa={"report_json": str(report), **payload},
+    )
+
+
+def register_shot_chain_capabilities_once() -> list[str]:
+    global _Registered
+    if _Registered:
+        return []
+    _Registered = True
+    register(
+        Capability(
+            name="story.shot_chain",
+            kind="line",
+            aspects=["16:9", "9:16", "1:1"],
+            params_schema=_PARAMS_SCHEMA,
+            cpu_cost_hint=0.0,
+            render=_render,
+            description=(
+                "单集镜头链：按播出顺序给每镜挂上尾帧参照（下一镜从上一镜"
+                "尾帧起）与调用方给定的首帧参照，绝不重排、绝不编造参照。"
+                "报告类能力：产物为 chain JSON（aspects 仅声明，渲染忽略）。"
+            ),
+            line="shot_chain",
+            has_media_output=False,
+        )
+    )
+    return ["story.shot_chain"]
+
+
+register_shot_chain_capabilities_once()

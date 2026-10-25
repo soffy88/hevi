@@ -25,7 +25,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from hevi.capabilities.registry import Capability, CapabilityResult, register
+from hevi.capabilities.registry import Capability, CapabilityResult, contains, register
 
 RULES_VERSION = "launch-rhythm-r1"
 
@@ -125,7 +125,15 @@ def _render_rhythm_sheet(
 
 
 def register_rhythm_sheet_capabilities() -> list[str]:
-    """Register ``motion.rhythm_sheet``; safe to call repeatedly."""
+    """Register ``motion.rhythm_sheet``; safe to call repeatedly.
+
+    Idempotency is by pre-check, not by overwriting: with the
+    registry default ``overwrite=False`` (S-09), a second plain
+    ``register()`` would raise, so an already-registered name simply
+    returns its name without re-registering.
+    """
+    if contains("motion.rhythm_sheet"):
+        return ["motion.rhythm_sheet"]
     register(Capability(
         name="motion.rhythm_sheet",
         kind="line",

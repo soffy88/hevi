@@ -7,11 +7,21 @@
 
 from __future__ import annotations
 
+import json
 import re
 from fractions import Fraction
+from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
+from hevi.capabilities.registry import (
+    Capability,
+    CapabilityResult,
+    compute_sha256,
+    register,
+)
+
+_Registered = False
 
 __all__ = ["parse_chapters", "map_to_episodes"]
 
@@ -179,3 +189,71 @@ def map_to_episodes(
                 }
             )
     return episodes
+
+
+_PARAMS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "chapters": {"type": "array"},
+        "episodes_per_chapter": {"type": "integer", "minimum": 1, "default": 2},
+    },
+    "required": ["chapters"],
+    "additionalProperties": False,
+}
+
+
+def _write_report(out_dir: Path, payload: dict[str, Any]) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report = out_dir / "novel_import.json"
+    report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
+def _render(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    # Report capability: aspect is declared but ignored (S-03).
+    # Naming division (S-02): novel.* (novelpipeline) CREATES a book;
+    # story.novel_import only MAPS a finished book's chapters to
+    # episode inputs (split + synopsis-from-first-paragraph only).
+    episodes = map_to_episodes(
+        params["chapters"],
+        episodes_per_chapter=params.get("episodes_per_chapter", 2),
+    )
+    payload = {"episodes": episodes, "episode_count": len(episodes)}
+    report = _write_report(Path(out_dir), payload)
+    return CapabilityResult(
+        duration_s=0.0,
+        sha256=compute_sha256(report),
+        qa={"report_json": str(report), **payload},
+    )
+
+
+def register_novel_import_capabilities_once() -> list[str]:
+    global _Registered
+    if _Registered:
+        return []
+    _Registered = True
+    register(
+        Capability(
+            name="story.novel_import",
+            kind="line",
+            aspects=["16:9", "9:16", "1:1"],
+            params_schema=_PARAMS_SCHEMA,
+            cpu_cost_hint=0.0,
+            render=_render,
+            description=(
+                "成书→分集输入映射：把已成书的章节正文按段落边界切成"
+                "剧集（每集梗概只取首段、超长截断标记），不改写、不概括、"
+                "不创作。与 novel.* 家族分工：novel.* 负责成书创作，"
+                "本能力只负责成书到分集的确定性映射。报告类能力："
+                "产物为 episodes JSON（aspects 仅声明，渲染忽略）。"
+            ),
+            line="novel_import",
+            has_media_output=False,
+        )
+    )
+    return ["story.novel_import"]
+
+
+register_novel_import_capabilities_once()

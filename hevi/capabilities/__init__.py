@@ -230,3 +230,46 @@ _shotcraft.register_shotcraft_capabilities_once()
 # lip-synced MP4, local zero-fee pipeline (LuxTTS / wav2lip / musetalk).
 from . import talking_head as _talking_head  # noqa: E402,F401
 _talking_head.register_talking_head_capabilities_once()
+
+# Paradigm normalization (2026-10-25): the five grafted story helpers
+# (story.shot_chain / story.reference_bundle / story.canvas_workflow /
+# story.novel_import / story.narration_srt) plus the drama-50 report
+# family and video.blender_mcp.  All self-register on import; wiring
+# them here is what makes `import hevi.capabilities` the single source
+# the catalogue is generated from (the G13 leak pattern: self-register
+# without this import leaves a capability invisible to GET
+# /api/capabilities and to ShotSpec).  Naming: story.* throughout;
+# story.novel_import maps a finished book to episode inputs, while
+# novel.* (novelpipeline) creates the book itself.
+from . import shot_chain as _shot_chain  # noqa: E402,F401
+_shot_chain.register_shot_chain_capabilities_once()
+from . import reference_bundle as _reference_bundle  # noqa: E402,F401
+_reference_bundle.register_reference_bundle_capabilities_once()
+from . import canvas_workflow as _canvas_workflow  # noqa: E402,F401
+_canvas_workflow.register_canvas_workflow_capabilities_once()
+from . import novel_import as _novel_import  # noqa: E402,F401
+_novel_import.register_novel_import_capabilities_once()
+from . import narration_srt as _narration_srt  # noqa: E402,F401
+_narration_srt.register_narration_srt_capabilities_once()
+from . import season_bible as _season_bible  # noqa: E402,F401
+_season_bible.register_season_bible_capabilities_once()
+from . import season_arc as _season_arc  # noqa: E402,F401
+_season_arc.register_season_arc_capabilities_once()
+from . import episode_prompts as _episode_prompts  # noqa: E402,F401
+_episode_prompts.register_episode_prompts_capabilities_once()
+from . import drama_gates as _drama_gates  # noqa: E402,F401
+_drama_gates.register_drama_gates_capabilities_once()
+from . import reference_decompose as _reference_decompose  # noqa: E402,F401
+_reference_decompose.register_reference_decompose_capabilities_once()
+from . import edit_assemble as _edit_assemble  # noqa: E402,F401
+_edit_assemble.register_edit_assemble_capabilities_once()
+from . import model_test as _model_test  # noqa: E402,F401
+_model_test.register_model_test_capabilities_once()
+from . import script_polish as _script_polish  # noqa: E402,F401
+_script_polish.register_script_polish_capabilities_once()
+# video.blender_mcp is listed in the catalogue but its preview endpoint
+# is gated (preview_restricted): its `code` param executes arbitrary
+# bpy code in a live Blender session, so generic callers must never
+# reach it through preview — only trusted direct render_safe callers.
+from . import blender_mcp as _blender_mcp  # noqa: E402,F401
+_blender_mcp.register_blender_mcp_capabilities_once()

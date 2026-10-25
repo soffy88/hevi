@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from hevi.capabilities import CapabilityError, get, list_capabilities
@@ -55,6 +55,8 @@ def _summary(name: str) -> dict[str, Any]:
         "cpu_cost_hint": cap.cpu_cost_hint,
         "description": cap.description,
         "params_schema": cap.params_schema,
+        "has_media_output": cap.has_media_output,
+        "preview_restricted": cap.preview_restricted,
     }
 
 
@@ -98,24 +100,50 @@ def preview_capability_endpoint(
     params: dict[str, Any] | None = None,
     aspect: str = "16:9",
     seed: int = 1234,
-) -> FileResponse:
-    """Render a 3-second preview clip for ``name`` and return it as an MP4.
+) -> Response:
+    """Render a 3-second preview for ``name`` — or a report, by kind.
 
-    A missing/unknown capability returns 404.  An unsupported aspect or an
-    invalid param returns 422.  A genuine render failure (or a missing
-    artefact) returns 500 — never a fake success.
+    A missing/unknown capability returns 404.  An unsupported aspect
+    or an invalid param returns 422.  A genuine render failure
+    returns 500 — never a fake success.
+
+    Preview semantics by capability kind (M-15 / M-17 / S-03):
+
+    * Media capabilities (``has_media_output``): the aspect check
+      applies (unsupported aspect is 422) and the response is the
+      produced media file.
+    * Report/file capabilities (``has_media_output=False``): the
+      render ignores aspect, so the aspect check is skipped, and
+      the response is the report JSON (``qa`` payload + sha) — the
+      endpoint never fabricates an MP4 for a capability that has no
+      media, and never raises ``Path(None)`` on a missing artefact.
+    * Restricted capabilities (``preview_restricted``, currently
+      only ``video.blender_mcp``): always 422.  Arbitrary bpy code
+      execution is not exposed to generic callers; trusted direct
+      callers render in-process via ``render_safe`` instead.
     """
     try:
         cap = get(name)
     except CapabilityError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if cap.preview_restricted:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"capability {name} is restricted: it executes arbitrary "
+                "code (bpy) in a live session and is not available through "
+                "the generic preview endpoint; trusted direct callers only"
+            ),
+        )
     try:
         cap.validate_params(params or {})
     except CapabilityError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    # The capability declares the aspects it supports; an unsupported one is a
-    # caller error (422), not a render failure (500).
-    if not cap.supports_aspect(aspect):
+    # The capability declares the aspects it supports; an unsupported
+    # one is a caller error (422), not a render failure (500).  This
+    # check applies only to media capabilities: report/file renders
+    # ignore aspect entirely (S-03), so it cannot gate them.
+    if cap.has_media_output and not cap.supports_aspect(aspect):
         raise HTTPException(
             status_code=422,
             detail=f"capability {name} does not support aspect {aspect!r} "
@@ -123,13 +151,28 @@ def preview_capability_endpoint(
         )
     out = Path(tempfile.mkdtemp(prefix="scene3d_preview_"))
     try:
-        res = cap.render(params or {}, out, duration=3.0, aspect=aspect, seed=seed)
+        res = cap.render_safe(params or {}, out, duration=3.0, aspect=aspect, seed=seed)
     except CapabilityError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
-    video = Path(res.mp4)
-    if not video.exists():
-        raise HTTPException(status_code=500, detail="preview produced no artefact")
-    return FileResponse(str(video), media_type="video/mp4", filename=video.name)
+    for media_path, media_type in (
+        (res.mp4, "video/mp4"),
+        (res.png, "image/png"),
+        (res.wav, "audio/wav"),
+    ):
+        if media_path and Path(media_path).exists():
+            video = Path(media_path)
+            return FileResponse(str(video), media_type=media_type, filename=video.name)
+    if not cap.has_media_output:
+        return JSONResponse(
+            {
+                "name": name,
+                "kind": "report",
+                "sha256": res.sha256,
+                "duration_s": res.duration_s,
+                "qa": res.qa,
+            }
+        )
+    raise HTTPException(status_code=500, detail="preview produced no artefact")
 
 
 # ---------------------------------------------------------------------------

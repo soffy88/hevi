@@ -54,9 +54,18 @@ from __future__ import annotations
 
 import copy
 import json
+from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
+from hevi.capabilities.registry import (
+    Capability,
+    CapabilityResult,
+    compute_sha256,
+    register,
+)
+
+_Registered = False
 
 NODE_TYPES = frozenset(
     {
@@ -331,3 +340,77 @@ def from_json(text: Any) -> dict[str, Any]:
     ):
         _fail("workflow JSON must be an object with a nodes list")
     return create_workflow(parsed["nodes"])
+
+
+_PARAMS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "nodes": {"type": "array"},
+        "selected_ids": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["nodes"],
+    "additionalProperties": False,
+}
+
+
+def _write_report(out_dir: Path, payload: dict[str, Any]) -> Path:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report = out_dir / "canvas_workflow.json"
+    report.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return report
+
+
+def _render(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> CapabilityResult:
+    # Report capability: this registers the workflow MODEL only (S-02 /
+    # M-03).  It never executes anything: execution is a service-layer
+    # behaviour and goes through POST /canvas/workflow-execute, which
+    # delegates to ExecutorService (M-14).  Aspect is declared but
+    # ignored (S-03).
+    workflow = create_workflow(params["nodes"])
+    payload: dict[str, Any] = {
+        **workflow,
+        "node_count": len(workflow["nodes"]),
+    }
+    selected = params.get("selected_ids")
+    if selected is not None:
+        payload["rerun_order"] = rerun_selection(workflow, selected)
+        payload["rerun_plan"] = plan_rerun(workflow, selected)
+    report = _write_report(Path(out_dir), payload)
+    return CapabilityResult(
+        duration_s=0.0,
+        sha256=compute_sha256(report),
+        qa={"report_json": str(report), **payload},
+    )
+
+
+def register_canvas_workflow_capabilities_once() -> list[str]:
+    global _Registered
+    if _Registered:
+        return []
+    _Registered = True
+    register(
+        Capability(
+            name="story.canvas_workflow",
+            kind="line",
+            aspects=["16:9", "9:16", "1:1"],
+            params_schema=_PARAMS_SCHEMA,
+            cpu_cost_hint=0.0,
+            render=_render,
+            description=(
+                "画布工作流模型：校验并落盘一个可重跑的 DAG 工作流"
+                "（script/first_frame/tail_frame/video/audio/subtitle/"
+                "assemble 节点，拓扑重跑规划、3 次失败封顶）。本能力"
+                "只注册模型、不执行；执行走 POST /canvas/workflow-"
+                "execute（委托 ExecutorService）。报告类能力：产物为"
+                " workflow JSON（aspects 仅声明，渲染忽略）。"
+            ),
+            line="canvas_workflow",
+            has_media_output=False,
+        )
+    )
+    return ["story.canvas_workflow"]
+
+
+register_canvas_workflow_capabilities_once()
