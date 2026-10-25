@@ -78,6 +78,15 @@ register_riso_capabilities()
 # audio.forced_align / image.gpt_generate / image.gpt_edit
 from . import multimodel as _multimodel  # noqa: E402,F401
 _multimodel.register_multimodel_capabilities_once()
+
+# Nano Banana image generation via the official Gemini API (2026-10-25):
+# image.nano_banana_generate -- Interactions REST, GEMINI_API_KEY /
+# GOOGLE_API_KEY env only, paid-only cost gate (no API free tier).
+# Wiring it here (not just self-registering on import) is what makes
+# `import hevi.capabilities` the single source the catalogue is
+# generated from (G13 leak pattern).
+from . import nano_banana as _nano_banana  # noqa: E402,F401
+_nano_banana.register_nano_banana_capabilities_once()
 from . import storyfilm as _storyfilm  # noqa: E402,F401
 _storyfilm.register_storyfilm_capabilities_once()
 
