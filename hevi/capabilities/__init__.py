@@ -315,3 +315,19 @@ _edit_recipes.register_edit_recipe_capabilities_once()
 from . import edit_video_use as _edit_video_use  # noqa: E402,F401
 _edit_video_use.register_video_use_capabilities_once()
 from . import tool_contract as _tool_contract  # noqa: E402,F401
+
+# Pixelle-Video gap fill (2026-10-25, clean-room): supplier directory
+# (model.provider_catalog, layered on model_catalog prices), user-asset
+# script draft (story.asset_script, injected VLM only, no default VLM),
+# and named edit templates (edit.edit_template, orientation + shot-kind
+# validated, preview is a readable plan). Mounting follows the same
+# registry + __init__ import pattern as talking_head.render (which has
+# no plugin registry of its own); the G13 completeness guard fails if
+# this import is missing.
+from . import provider_catalog as _provider_catalog  # noqa: E402,F401
+_provider_catalog.register_provider_catalog_capabilities_once()
+from . import asset_script as _asset_script  # noqa: E402,F401
+_asset_script.register_asset_script_capabilities_once()
+from . import edit_templates as _edit_templates  # noqa: E402,F401
+_edit_templates.register_edit_template_capabilities_once()
+
