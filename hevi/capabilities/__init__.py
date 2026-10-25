@@ -291,6 +291,12 @@ _script_polish.register_script_polish_capabilities_once()
 # is gated (preview_restricted): its `code` param executes arbitrary
 # bpy code in a live Blender session, so generic callers must never
 # reach it through preview — only trusted direct render_safe callers.
+# Local FastH3 Reference-to-Video (2026-10-26): video.fasth3_local,
+# ComfyUI on localhost:8188, INT8, 8 steps. Same self-register +
+# __init__ import pattern as video.blender_mcp (G13 guard).
+from . import fasth3_local as _fasth3_local  # noqa: E402,F401
+_fasth3_local.register_fasth3_local_capabilities_once()
+
 from . import blender_mcp as _blender_mcp  # noqa: E402,F401
 _blender_mcp.register_blender_mcp_capabilities_once()
 
