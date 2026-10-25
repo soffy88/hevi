@@ -309,4 +309,9 @@ from . import timeline_register as _timeline_register  # noqa: E402,F401
 _timeline_register.register_timeline_capabilities_once()
 from . import edit_recipes as _edit_recipes  # noqa: E402,F401
 _edit_recipes.register_edit_recipe_capabilities_once()
+# video-use method (2026-10-25): transcript-first editing, cut-point
+# self-check and the 12 hard rules, folded into the edit_assemble line
+# (edit.video_use). Free routes only; Scribe is an interface, never run.
+from . import edit_video_use as _edit_video_use  # noqa: E402,F401
+_edit_video_use.register_video_use_capabilities_once()
 from . import tool_contract as _tool_contract  # noqa: E402,F401
