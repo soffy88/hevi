@@ -243,16 +243,26 @@ def test_cycle_graph_errors():
         graph_to_workflow(graph)
 
 
-def test_canvas_edge_warnings_flag_legacy_matrix_only():
-    # script -> image is legal in the legacy matrix; video -> text
-    # (video -> subtitle) is not, but the adapter keeps the edge
-    # and only warns: dropping it would corrupt the workflow DAG.
+def test_canvas_edge_warnings_cured_matrix_no_false_positives():
+    # 2026-10-25 cure: the canonical 7-type graph (including
+    # script -> audio and video -> subtitle) is legal in the hevi
+    # matrix, so it produces NO warnings -- and it now also passes
+    # validate_graph on the ExecutorService path (see
+    # tests/test_canvas_edge_matrix.py). The adapter still never
+    # drops an edge: a genuinely illegal edge (audio -> text,
+    # appended here only to probe the reporter) is warned, not dropped.
     graph = workflow_to_graph(_dag())
+    assert canvas_edge_warnings(graph) == []
+    assert graph_to_workflow(graph) == _dag()
+    graph["edges"].append(
+        {"edge_id": "probe__audio_text", "from_node_id": "w_audio",
+         "to_node_id": "w_sub", "from_type": "audio", "to_type": "text"}
+    )
     warnings = canvas_edge_warnings(graph)
     flagged = {(w["from_node_id"], w["to_node_id"]) for w in warnings}
-    assert ("w_video", "w_sub") in flagged
-    assert ("w_script", "w_frame") not in flagged
-    assert graph_to_workflow(graph) == _dag()
+    assert ("w_audio", "w_sub") in flagged
+    assert ("w_video", "w_sub") not in flagged
+    assert len(graph["edges"]) == 10  # probe edge kept, not dropped
 
 
 # ── rerun semantics ────────────────────────────────────────────────────────

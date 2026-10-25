@@ -1,19 +1,24 @@
 /**
- * 连线兼容矩阵(前端实时校验,后端 canvas_edge_validate 二次校验)
+ * 连线兼容矩阵(前端实时校验)
  *
- * 文档 1.2:5×5 兼容矩阵。前端实时提示非法连接(如 video→text 非法)。
- * 这里是前端的乐观规则,后端 validate_graph 为准。
+ * 唯一事实源是后端 hevi/canvas/validation.py 的 EDGE_MATRIX,本文件必须与它
+ * 逐条一致(后端 tests/test_canvas_edge_matrix.py 会解析本文件并逐条比对,
+ * 前后端分歧即测试失败)。不要只改一边:改边规则先改后端 validation.py,
+ * 再同步这里;oprim 的 canvas_edge_validate 仅作参考,不参与裁决。
+ *
+ * 2026-10-25 根治后 14 条合法边:script→audio(脚本驱动配音)、
+ * video→text(视频驱动字幕)已补齐,此前可画不可跑的 7 类型工作流链现可执行。
  */
 import type { NodeType, EdgeValidation } from '@/types/api';
 
-// from → 允许连到的 to 类型
+// from → 允许连到的 to 类型(与后端 EDGE_MATRIX 逐条一致)
 const EDGE_MATRIX: Record<NodeType, NodeType[]> = {
   // 文本 → 可驱动 图/视频/音频/脚本
   text:   ['image', 'video', 'audio', 'script'],
-  // 图片 → 可作为 视频首帧/参考
-  image:  ['video', 'image'],
-  // 视频 → 可串接 视频/音频(配音)
-  video:  ['video', 'audio'],
+  // 图片 → 可作为 视频首帧/参考,可串接图片,可启发脚本
+  image:  ['video', 'image', 'script'],
+  // 视频 → 可串接 视频/音频(配音),可驱动字幕(文本)
+  video:  ['video', 'audio', 'text'],
   // 音频 → 可并入 视频
   audio:  ['video'],
   // 脚本 → 驱动 图/视频/音频(分镜产出)

@@ -54,14 +54,16 @@ is rejected rather than silently collapsed.
 Edge legality: the adapter rejects edges the workflow model itself
 rejects (unknown endpoint, duplicate edge, self-edge, cycle) and
 rejects any node whose type cannot be mapped (no silent drops).
-It does NOT reject edges that the legacy canvas compatibility
-matrix would reject (e.g. script -> audio, video -> subtitle):
-a valid workflow chain may use them, and dropping them would
-corrupt the DAG. Those edges are reported by
-``canvas_edge_warnings`` instead, because the existing
-``ExecutorService``/``validate_graph`` path still enforces the old
-matrix and will refuse such a graph at execution time. That gap is
-a documented residual, not something the adapter papers over.
+It does NOT reject edges on compatibility grounds at all: a valid
+workflow chain may use script -> audio or video -> subtitle, and
+dropping such an edge would corrupt the DAG. Since 2026-10-25 those
+edges are legal in the hevi matrix itself
+(``hevi.canvas.validation.EDGE_COMPATIBLE``), so the
+``ExecutorService``/``validate_graph`` path accepts the same graphs
+the adapter produces -- the old front/back matrix gap is cured, not
+worked around. ``canvas_edge_warnings`` remains as a warnings-only
+reporter against that same hevi matrix, for edges genuinely outside
+it (e.g. audio -> text).
 
 Rerun semantics: topological order, idempotent skip and the
 3-failure blocked cap are delegated to
@@ -469,47 +471,27 @@ def graph_to_workflow(
         raise WorkflowAdapterError(str(exc)) from exc
 
 
-# ── legacy canvas edge compatibility (warnings only) ─────────────────────────
+# ── canvas edge compatibility (warnings only) ───────────────────────────────
 
-# Mirrors oprim.canvas_edge_validate COMPATIBLE (the matrix
-# hevi.canvas.validation.validate_graph enforces). The frontend
-# canvas-rules.ts matrix differs slightly (it also allows
-# script -> audio and video -> audio); this function reports
-# against the backend matrix because that is what blocks execution.
-_BACKEND_COMPATIBLE: frozenset[tuple[str, str]] = frozenset(
-    {
-        ("text", "image"),
-        ("text", "video"),
-        ("text", "audio"),
-        ("text", "script"),
-        ("image", "video"),
-        ("image", "image"),
-        ("image", "script"),
-        ("audio", "video"),
-        ("video", "video"),
-        ("script", "image"),
-        ("script", "video"),
-    }
-)
-
-
+# Single source of truth: hevi.canvas.validation.EDGE_COMPATIBLE. This
+# module keeps NO private copy of the matrix and never consults oprim:
+# a stale local mirror is exactly how the old front/back divergence
+# (script -> audio, video -> subtitle) survived undetected.
 def _edge_compatible(from_type: str, to_type: str) -> bool:
-    try:
-        from oprim.canvas_edge_validate import canvas_edge_validate
+    from hevi.canvas.validation import edge_compatible
 
-        return bool(canvas_edge_validate(from_type=from_type, to_type=to_type))
-    except Exception:
-        return (from_type, to_type) in _BACKEND_COMPATIBLE
+    return edge_compatible(from_type=from_type, to_type=to_type)
 
 
 def canvas_edge_warnings(graph: Any) -> list[dict[str, Any]]:
-    """Report graph edges the legacy canvas matrix would reject.
+    """Report graph edges the hevi canvas matrix would reject.
 
     Warnings only: the adapter never drops such an edge (see module
-    docstring). Each item names the edge and both endpoint types so
-    a caller can decide whether to run the graph through the
-    existing ``ExecutorService`` (which will reject it) or through
-    the adapter rerun path (which will not).
+    docstring). Each item names the edge and both endpoint types.
+    Since the 2026-10-25 cure, a canonical 7-type workflow graph
+    produces no warnings here AND passes ``validate_graph`` on the
+    ``ExecutorService`` path -- the two paths now agree by construction,
+    because both read the same hevi matrix.
     """
     raw_nodes, raw_edges = _graph_nodes_edges(graph)
     node_types: dict[str, str] = {}
@@ -533,7 +515,7 @@ def canvas_edge_warnings(graph: Any) -> list[dict[str, Any]]:
                     "from_type": from_type,
                     "to_type": to_type,
                     "message": (
-                        f"legacy canvas matrix rejects "
+                        f"hevi canvas matrix rejects "
                         f"{from_type!r} -> {to_type!r}"
                     ),
                 }
