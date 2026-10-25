@@ -79,6 +79,13 @@ register_riso_capabilities()
 from . import multimodel as _multimodel  # noqa: E402,F401
 _multimodel.register_multimodel_capabilities_once()
 
+# Model catalogue + cost gate (Palmier gap, 2026-10-25): model.model_catalog
+# reads model ids/prices from model_catalog_data/models.json. Imported
+# BEFORE nano_banana so nano_banana's PER_IMAGE_USD can be built from
+# this same catalogue instead of a private copy.
+from . import model_catalog as _model_catalog  # noqa: E402,F401
+_model_catalog.register_model_catalog_capabilities_once()
+
 # Nano Banana image generation via the official Gemini API (2026-10-25):
 # image.nano_banana_generate -- Interactions REST, GEMINI_API_KEY /
 # GOOGLE_API_KEY env only, paid-only cost gate (no API free tier).
@@ -292,3 +299,14 @@ _blender_mcp.register_blender_mcp_capabilities_once()
 # (melies index, 30 vvsvs core techniques, index-only pointers).
 from . import cinematic_techniques as _cinematic_techniques  # noqa: E402,F401
 _cinematic_techniques.register_cinematic_techniques_capabilities_once()
+
+# Palmier gaps (2026-10-25, clean-room): generate-into-timeline
+# (edit.timeline_register), reusable edit recipes (edit.edit_recipe),
+# and the tool-boundary readback layer (tool_contract: no Capability
+# of its own, imported here so the tool layer is reachable from the
+# package; its five tools are built by tool_contract.builtin_tools()).
+from . import timeline_register as _timeline_register  # noqa: E402,F401
+_timeline_register.register_timeline_capabilities_once()
+from . import edit_recipes as _edit_recipes  # noqa: E402,F401
+_edit_recipes.register_edit_recipe_capabilities_once()
+from . import tool_contract as _tool_contract  # noqa: E402,F401

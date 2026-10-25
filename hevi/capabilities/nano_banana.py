@@ -177,13 +177,22 @@ IMAGE_SIZES = ("1K", "2K", "4K")
 # Per-image USD estimates, Standard tier, official pricing page
 # (fetched 2026-10-25). None = not verified in this fetch, never guessed.
 # 2.1 4K uses the pricing-page figure; see the docstring discrepancy note.
-PER_IMAGE_USD: dict[str, dict[str, float | None]] = {
-    "gemini-nano-banana-2.1": {"1K": 0.0336, "2K": 0.0504, "4K": 0.113},
-    "gemini-3.1-flash-lite-image": {"1K": 0.0336, "2K": None, "4K": None},
-    "gemini-3.1-flash-image": {"1K": 0.067, "2K": 0.101, "4K": 0.151},
-    "gemini-3-pro-image": {"1K": None, "2K": None, "4K": None},
-    "gemini-2.5-flash-image": {"1K": None, "2K": None, "4K": None},
-}
+# SINGLE SOURCE: these prices are read from the configured catalogue
+# data file (hevi/capabilities/model_catalog_data/models.json) via
+# model_catalog.py. The literal below is only a fallback for the case
+# where that data file cannot be loaded; it must match the catalogue.
+try:
+    from hevi.capabilities.model_catalog import per_image_prices as _catalog_prices
+
+    PER_IMAGE_USD: dict[str, dict[str, float | None]] = _catalog_prices()
+except Exception:  # pragma: no cover - catalogue file is present in-tree
+    PER_IMAGE_USD = {
+        "gemini-nano-banana-2.1": {"1K": 0.0336, "2K": 0.0504, "4K": 0.113},
+        "gemini-3.1-flash-lite-image": {"1K": 0.0336, "2K": None, "4K": None},
+        "gemini-3.1-flash-image": {"1K": 0.067, "2K": 0.101, "4K": 0.151},
+        "gemini-3-pro-image": {"1K": None, "2K": None, "4K": None},
+        "gemini-2.5-flash-image": {"1K": None, "2K": None, "4K": None},
+    }
 
 _COST_NOTE = (
     "Gemini API image generation has NO free tier (official pricing page: "
