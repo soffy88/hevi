@@ -1,12 +1,16 @@
 """Tests for story.prompt_compiler (beat schema + five gates).
 
 Positive fixture: E1 script v2 encoded as the beat schema
-(tests/fixtures/e1_prompt_compiler_v2.json): 11 shots, 300s,
-28 moving lines, plus one shot-level voiceover line (S10, counted
-in de-duplication but not in the 28) and one shot-level subtitle
-(S11, not spoken, not de-duplicated). Every gate has its own
-negative case, built by mutating a copy of the positive fixture,
-and each failure message must name the offending item.
+(tests/fixtures/e1_prompt_compiler_v2.json) -- the E1 v2 production
+encoding (recut version): 11 shots, 300s, 92 beats, 19 explicit clips
+(8-12s each), 28 moving lines, plus one shot-level voiceover line
+(S10, counted in de-duplication but not in the 28) and one shot-level
+subtitle (S11, not spoken, not de-duplicated). Dialogue beats run
+4-6s, silent motion beats 2-3s, still beats <=4s; pure-still shots
+carry clips == [] (no generation call) and are not tier-checked.
+Every gate has its own negative case, built by mutating a copy of
+the positive fixture, and each failure message must name the
+offending item.
 """
 
 from __future__ import annotations
@@ -48,13 +52,38 @@ def shot_of(episode: dict, shot_no: str) -> dict:
 
 
 def test_e1_fixture_compiles_clean() -> None:
-    result = compile_episode(load_fixture())
+    episode = load_fixture()
+    result = compile_episode(episode)
     assert result["shot_count"] == 11
     assert result["total_duration_s"] == 300
     assert result["moving_line_count"] == 28
     assert result["spoken_line_count"] == 29  # 28 moving + 1 S10 voiceover
     assert result["tier"]["status"] == "unknown"
     assert len(result["prompts"]) == 11
+    # Recut production encoding: 92 beats, 19 explicit clips.
+    assert sum(len(s["beats"]) for s in episode["shots"]) == 92
+    assert sum(len(s["clips"]) for s in episode["shots"]) == 19
+    # Q5: S10 location is the inferred 塾内, annotated as inferred.
+    s10 = shot_of(episode, "S10")
+    assert s10["continuity"]["entry_state"]["空间锚点"] == "京师私塾塾内"
+    assert "推断" in s10["location_note"] and "编剧可改" in s10["location_note"]
+    # Q5: S10/S11 continuity entries carry no 人物 (VO bridge / subtitle
+    # card); S10's deletions of the S09 characters are declared nulls.
+    assert s10["continuity"]["entry_state"]["人物"] == {}
+    assert s10["continuity"]["new_changes"]["人物.青年"] is None
+    assert s10["continuity"]["new_changes"]["人物.问话者"] is None
+    assert shot_of(episode, "S11")["continuity"]["entry_state"]["人物"] == {}
+    # Q4 clears the old fixture's invented motion: S01/S11 are pure
+    # still shots with static shot-level movement.
+    assert shot_of(episode, "S01")["camera"]["movement"] == "static_shot"
+    assert shot_of(episode, "S11")["camera"]["movement"] == "static_shot"
+    assert shot_of(episode, "S01")["clips"] == []
+    assert shot_of(episode, "S11")["clips"] == []
+    # Q4 clears the old fixture's accumulated state: S06 entry carries
+    # only the hall's own characters, not the school's.
+    assert set(shot_of(episode, "S06")["continuity"]["entry_state"]["人物"]) == {
+        "王华", "守仁",
+    }
     subtitle = "下集《格竹之败》"
     prompts = {p["shot_no"]: p["prompt"] for p in result["prompts"]}
     # The subtitle is a post-production note only, never picture text.
@@ -174,10 +203,11 @@ def test_gate1_beat_sum_mismatch_fails() -> None:
 def test_gate2_line_too_long_for_beat_fails_naming_line() -> None:
     episode = load_fixture()
     beats = shot_of(episode, "S02")["beats"]
-    # Shrink beat 1 to 4s (line needs ~5.13s) while keeping the tiling
-    # intact, so gate 1 still passes and gate 2 is the one that fires.
-    beats[0]["t_end_s"] = 4
-    beats[1]["t_start_s"] = 4
+    # Shrink S02 beat 3 (dialogue, 4.5s) to 4s -- its line needs 4.30s --
+    # while keeping the tiling intact, so gate 1 still passes and
+    # gate 2 is the one that fires.
+    beats[2]["t_end_s"] = 10
+    beats[3]["t_start_s"] = 10
     with pytest.raises(PromptCompilerError) as excinfo:
         compile_episode(episode)
     message = str(excinfo.value)
@@ -194,9 +224,9 @@ def test_gate2_line_too_long_for_beat_fails_naming_line() -> None:
 def test_gate3_duplicate_line_fails_naming_both_places() -> None:
     episode = load_fixture()
     stolen = "都说说，读书是为了什么？"
-    # Reuse S03 beat 5 (7s span, fits the stolen line's ~5.13s) so
+    # Reuse S03 beat 3 (4.5s span, fits the stolen line's 4.30s) so
     # gate 2 still passes and gate 3 is the one that fires.
-    beat = shot_of(episode, "S03")["beats"][4]
+    beat = shot_of(episode, "S03")["beats"][2]
     beat["line"] = stolen
     beat["speaker"] = "塾师"
     beat["line_mode"] = "dialogue"
@@ -266,18 +296,24 @@ def test_gate5_total_mismatch_fails() -> None:
 
 
 def test_gate5_tier_cap_breach_fails_naming_shot_and_cap() -> None:
-    episode = load_fixture()
+    # Legacy unit: a shot without a "clips" key is one generation call,
+    # so a 35s clip-less shot still breaches a 30s cap.
+    episode = _mini_episode([_mini_beat(1, 0, 16, "")])
+    episode["target_duration_s"] = 35
+    episode["shots"][0]["duration_s"] = 35
+    episode["shots"][0]["beats"][0]["t_end_s"] = 35
     with pytest.raises(PromptCompilerError) as excinfo:
         compile_episode(episode, {"provider": "test", "max_shot_s": 30})
     message = str(excinfo.value)
     assert "gate 5" in message
-    assert "S04" in message  # 35s shot breaches a 30s cap
+    assert "T01" in message  # 35s shot breaches a 30s cap
     assert "30" in message
 
 
 def test_gate5_tier_cap_passes_when_shots_fit() -> None:
     result = compile_episode(load_fixture(), {"max_shot_s": 35})
     assert result["tier"]["status"] == "checked"
+    assert result["tier"]["tier_scope"] == "clip"
 
 
 # ---------------------------------------------------------------------------
@@ -389,14 +425,20 @@ def test_duration_tier_table_values_are_cited() -> None:
     assert resolve_provider_caps("no_such_provider") is None
 
 
-def test_gate5_table_cap_blocks_fasth3_local() -> None:
-    with pytest.raises(PromptCompilerError) as excinfo:
-        compile_episode(load_fixture(), provider="fasth3_local")
-    message = str(excinfo.value)
-    assert "gate 5" in message
-    # S01 (20s) is the first breach in shot order, not S04.
-    assert "S01" in message
-    assert "15" in message
+def test_gate5_table_cap_passes_fasth3_local_on_clip_level() -> None:
+    # Q3: the tier is checked per clip, not per shot. The recut
+    # fixture's clips are all 8-12s, inside fasth3_local 5.1667-15s,
+    # so it passes -- and pure-still shots (S01 20s, S07 25s, S11 25s)
+    # are not tier-checked at all, since they are no generation call.
+    episode = load_fixture()
+    assert shot_of(episode, "S01")["duration_s"] == 20
+    assert shot_of(episode, "S07")["duration_s"] == 25
+    assert shot_of(episode, "S11")["duration_s"] == 25
+    result = compile_episode(episode, provider="fasth3_local")
+    assert result["tier"]["status"] == "checked"
+    assert result["tier"]["tier_scope"] == "clip"
+    assert result["tier"]["max_shot_s"] == 15.0
+    assert result["tier"]["min_shot_s"] == 5.1667
 
 
 def test_gate5_table_cap_passes_when_shots_fit() -> None:
@@ -455,3 +497,212 @@ def test_gate3_subtitle_text_matching_dialogue_does_not_trip_dedup() -> None:
     result = compile_episode(episode)
     assert result["spoken_line_count"] == 29
     assert result["moving_line_count"] == 28
+
+
+# ---------------------------------------------------------------------------
+# Gate 4 null removal (Q2 fix) + S10 A/B probes (Q5) + clip grouping (Q3)
+# ---------------------------------------------------------------------------
+
+
+def _two_shot_null_episode(x2_entry: dict, x2_changes: dict) -> dict:
+    def _shot(no: str, entry: dict, exit_state: dict, changes: dict) -> dict:
+        return {
+            "shot_no": no,
+            "scene": "测试间",
+            "duration_s": 5,
+            "camera": {
+                "shot_size": "中景",
+                "angle": "平视",
+                "movement": "static_shot",
+                "start_frame": {
+                    "description": "起",
+                    "state_kind": "trigger_in_progress",
+                },
+                "end_frame": {"description": "收"},
+            },
+            "beats": [
+                {
+                    "beat_no": 1,
+                    "t_start_s": 0.0,
+                    "t_end_s": 5.0,
+                    "action": "静",
+                    "sound": "静",
+                }
+            ],
+            "continuity": {
+                "entry_state": entry,
+                "exit_state": exit_state,
+                "new_changes": changes,
+            },
+        }
+
+    x1_state = {"人物": {"A": "在场", "B": "在场"}}
+    return {
+        "episode_no": "T",
+        "title": "探针",
+        "target_duration_s": 10,
+        "aspect": "16:9",
+        "style": "测",
+        "shots": [
+            _shot("X1", x1_state, x1_state, {}),
+            _shot("X2", x2_entry, x2_entry, x2_changes),
+        ],
+    }
+
+
+def test_gate4_null_removal_passes() -> None:
+    # Audit minimal repro: X1 exit has 人物.A, X2 entry only 人物.B,
+    # new_changes declares 人物.A null. Pre-Q2 this failed (null was
+    # stringified to "None"); post-fix it passes.
+    episode = _two_shot_null_episode(
+        {"人物": {"B": "在场"}}, {"人物.A": None}
+    )
+    result = compile_episode(episode)
+    assert result["shot_count"] == 2
+
+
+def test_gate4_null_removal_but_carried_fails() -> None:
+    episode = _two_shot_null_episode(
+        {"人物": {"A": "在场", "B": "在场"}}, {"人物.A": None}
+    )
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode)
+    message = str(excinfo.value)
+    assert "gate 4" in message
+    assert "人物.A" in message
+
+
+def test_gate4_s10_strict_anchor_omitted_fails() -> None:
+    # Probe A (strict): S10 entry drops the anchor key and declares
+    # nothing about it -- gate 4 must now reach S10 and fail there.
+    episode = load_fixture()
+    s10 = shot_of(episode, "S10")
+    del s10["continuity"]["entry_state"]["空间锚点"]
+    s10["continuity"]["new_changes"].pop("空间锚点", None)
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode)
+    message = str(excinfo.value)
+    assert "gate 4" in message
+    assert "S10" in message
+    assert "空间锚点" in message
+
+
+def test_gate4_s10_undeclared_deletions_fail() -> None:
+    # S10 entry人物 is empty; strip its null declarations and gate 4
+    # must fail on the dropped S09 characters.
+    episode = load_fixture()
+    s10 = shot_of(episode, "S10")
+    s10["continuity"]["new_changes"] = {
+        k: v
+        for k, v in s10["continuity"]["new_changes"].items()
+        if v is not None
+    }
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode)
+    message = str(excinfo.value)
+    assert "gate 4" in message
+    assert "S10" in message
+    assert "人物.青年" in message
+
+
+def _clip_mini_episode() -> dict:
+    def _silent(no: int, t0: float, t1: float) -> dict:
+        return {
+            "beat_no": no,
+            "t_start_s": t0,
+            "t_end_s": t1,
+            "action": "静",
+            "speaker": "",
+            "line": "",
+            "sound": "静",
+        }
+
+    return {
+        "episode_no": "T",
+        "title": "探针",
+        "target_duration_s": 16,
+        "aspect": "16:9",
+        "style": "测",
+        "shots": [
+            {
+                "shot_no": "T01",
+                "scene": "测试间",
+                "duration_s": 16,
+                "camera": {
+                    "shot_size": "中景",
+                    "angle": "平视",
+                    "movement": "static_shot",
+                    "start_frame": {
+                        "description": "起",
+                        "state_kind": "trigger_in_progress",
+                    },
+                    "end_frame": {"description": "收"},
+                },
+                "beats": [_silent(1, 0, 8), _silent(2, 8, 16)],
+                "clips": [{"clip_id": "c1", "beats": [1, 2]}],
+                "continuity": {
+                    "entry_state": {"人物": {"甲": "室内"}},
+                    "exit_state": {"人物": {"甲": "室内"}},
+                    "new_changes": {},
+                },
+            }
+        ],
+    }
+
+
+def test_gate5_clip_breach_fails_naming_shot_and_clip() -> None:
+    # One 16s clip breaches fasth3_local's 15s cap, naming shot+clip.
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(_clip_mini_episode(), provider="fasth3_local")
+    message = str(excinfo.value)
+    assert "gate 5" in message
+    assert "T01" in message
+    assert "c1" in message
+    assert "16" in message and "15" in message
+
+
+def test_gate5_clip_min_breach_fails() -> None:
+    episode = _clip_mini_episode()
+    episode["shots"][0]["beats"] = [
+        {
+            "beat_no": 1,
+            "t_start_s": 0.0,
+            "t_end_s": 4.0,
+            "action": "静",
+            "speaker": "",
+            "line": "",
+            "sound": "静",
+        }
+    ]
+    episode["shots"][0]["duration_s"] = 4
+    episode["target_duration_s"] = 4
+    episode["shots"][0]["clips"] = [{"clip_id": "c1", "beats": [1]}]
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode, {"provider": "t", "min_shot_s": 5.1667})
+    message = str(excinfo.value)
+    assert "gate 5" in message
+    assert "c1" in message
+
+
+def test_clip_group_duplicate_beat_fails() -> None:
+    episode = load_fixture()
+    shot_of(episode, "S02")["clips"][0]["beats"] = [3, 3]
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode)
+    assert "repeats beat_no 3" in str(excinfo.value)
+
+
+def test_clip_group_non_consecutive_beats_fail() -> None:
+    episode = load_fixture()
+    shot_of(episode, "S02")["clips"][0]["beats"] = [3, 5]
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode)
+    assert "not consecutive" in str(excinfo.value)
+
+
+def test_clip_group_unknown_beat_fails() -> None:
+    episode = load_fixture()
+    shot_of(episode, "S02")["clips"][0]["beats"] = [3, 99]
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode)
+    assert "unknown beat_no 99" in str(excinfo.value)

@@ -63,7 +63,10 @@ after the first, the entry state must equal the previous shot's exit
 state plus exactly the declared ``new_changes``: every carried key
 must be unchanged, every changed or added key must be declared with
 its new value, and every declared change must appear in the entry.
-A dropped key with no removal declaration also fails.
+A dropped key with no removal declaration also fails. A null value
+in ``new_changes`` is the removal declaration itself: ``_flatten_state``
+preserves None (it used to stringify it to "None", which made every
+null removal fail gate 4 -- fixed, see gate 4).
 
 Start-frame rule (gate 4, second half)
 --------------------------------------
@@ -79,12 +82,21 @@ Duration tiers (gate 5, second half)
 -------------------------------------
 Tier values live in ``model_catalog_data/duration_tiers.json`` next
 to the provider/model catalogues, loaded by default at compile time.
-Each entry is a single-generation (per-shot) cap with a cited hevi
-source: ``hevi/providers/facts.py`` PROVIDER_CATALOGUE
+Each entry is a single-generation cap with a cited hevi source:
+``hevi/providers/facts.py`` PROVIDER_CATALOGUE
 ``max_duration_s`` rows, ``hevi/video/pixstag_client.py``
 DURATION_MIN/MAX, and ``hevi/capabilities/fasth3_local.py``
 MIN/MAX_FRAMES over FPS. No episode-total cap is verified anywhere,
 so ``max_total_s`` is null in every entry, never invented.
+The tier is checked per generation call, i.e. per clip: a shot may
+carry an explicit ``clips`` list (each clip names its beats by
+beat_no; a clip's duration is the sum of its beats' spans), and
+gate 5 checks every clip against [min_shot_s, max_shot_s]. A shot
+with ``clips == []`` is pure still -- no generation call -- and is
+not tier-checked at all. A shot without a ``clips`` key keeps the
+legacy unit: the whole shot duration, as one generation call.
+Beat-level segments (2-3s actions) are not clips and are never
+tier-checked; gates 1/2 already govern them.
 Resolution order: explicit ``provider_caps`` win; otherwise a
 ``provider`` name resolves through the tier table; otherwise the
 tier verdict is ``"unknown"``. A table entry with null caps, or a
@@ -325,16 +337,27 @@ def _req(container: dict[str, Any], key: str, where: str) -> Any:
     return container[key]
 
 
-def _flatten_state(state: Any, prefix: str = "") -> dict[str, str]:
-    """Flatten a nested continuity state to dotted-key -> value strings."""
-    flat: dict[str, str] = {}
+def _flatten_state(state: Any, prefix: str = "") -> dict[str, Any]:
+    """Flatten a nested continuity state to dotted-key -> value.
+
+    None values are preserved, not stringified: a null in
+    ``new_changes`` is the declared-removal marker gate 4 checks for
+    (``changes.get(key) is None and key in changes``), and turning it
+    into the string "None" made that branch dead code -- no null
+    removal could ever pass gate 4.
+    """
+    flat: dict[str, Any] = {}
     if isinstance(state, dict):
         for key, value in state.items():
             dotted = f"{prefix}.{key}" if prefix else str(key)
             if isinstance(value, dict):
                 flat.update(_flatten_state(value, dotted))
             elif isinstance(value, list):
-                flat[dotted] = "／".join(str(v) for v in value)
+                flat[dotted] = "／".join(
+                    "" if v is None else str(v) for v in value
+                )
+            elif value is None:
+                flat[dotted] = None
             else:
                 flat[dotted] = str(value)
     elif state is not None:
@@ -534,6 +557,92 @@ def check_beat_coverage(shots: list[dict[str, Any]]) -> None:
                 f"story.prompt_compiler gate 1: {label} beat spans sum "
                 f"to {total:g}s, not duration_s {duration:g}s"
             )
+
+
+# ---------------------------------------------------------------------------
+# Clip grouping (gate 5 input) -- one generation call = one clip
+# ---------------------------------------------------------------------------
+
+
+def check_clip_groups(shots: list[dict[str, Any]]) -> None:
+    """Validate explicit clip grouping on shots that carry it.
+
+    Each clip names its beats by beat_no. Beat numbers must exist in
+    the shot, must not repeat across clips, and must form one
+    consecutive run of the shot's beats (a generation call covers
+    consecutive beats). Shots without a ``clips`` key are untouched
+    here; their legacy tier unit is the whole shot (see
+    :func:`_clip_units`).
+    """
+    for shot in shots:
+        if "clips" not in shot or shot["clips"] is None:
+            continue
+        label = _shot_label(shot)
+        clips = shot["clips"]
+        if not isinstance(clips, list):
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} clips must be a list"
+            )
+        order = [beat.get("beat_no") for beat in shot["beats"]]
+        position = {number: index for index, number in enumerate(order)}
+        seen: set[Any] = set()
+        for index, clip in enumerate(clips):
+            clip_label = str(clip.get("clip_id", f"clip{index + 1}")) if isinstance(clip, dict) else f"clip{index + 1}"
+            if not isinstance(clip, dict):
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: {label} {clip_label} must be "
+                    f"an object naming its beats"
+                )
+            beat_nos = clip.get("beats")
+            if not isinstance(beat_nos, list) or not beat_nos:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: {label} {clip_label} must "
+                    f"carry a non-empty 'beats' list of beat_no values"
+                )
+            for number in beat_nos:
+                if number not in position:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler: {label} {clip_label} "
+                        f"names unknown beat_no {number!r}"
+                    )
+                if number in seen:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler: {label} {clip_label} "
+                        f"repeats beat_no {number!r}"
+                    )
+                seen.add(number)
+            indices = sorted(position[number] for number in beat_nos)
+            if indices != list(range(indices[0], indices[0] + len(indices))):
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: {label} {clip_label} beats "
+                    f"{beat_nos!r} are not consecutive beats of the shot; "
+                    f"a clip covers one consecutive run"
+                )
+
+
+def _clip_units(shots: list[dict[str, Any]]) -> list[tuple[dict[str, Any], str, float]]:
+    """Tier-checked units: (shot, unit label, duration seconds).
+
+    Clip-carrying shots contribute one unit per clip (duration = sum
+    of the clip's beats' spans); a ``clips == []`` shot contributes
+    none; a shot without a ``clips`` key contributes one unit equal
+    to its whole duration (legacy behaviour).
+    """
+    units: list[tuple[dict[str, Any], str, float]] = []
+    for shot in shots:
+        label = _shot_label(shot)
+        if "clips" not in shot or shot["clips"] is None:
+            units.append((shot, label, float(shot["duration_s"])))
+            continue
+        span_by_no = {
+            beat.get("beat_no"): float(beat["t_end_s"]) - float(beat["t_start_s"])
+            for beat in shot["beats"]
+        }
+        for index, clip in enumerate(shot["clips"]):
+            clip_id = str(clip.get("clip_id", f"clip{index + 1}"))
+            duration = sum(span_by_no[number] for number in clip["beats"])
+            units.append((shot, f"{label} {clip_id}", duration))
+    return units
 
 
 # ---------------------------------------------------------------------------
@@ -830,6 +939,11 @@ def check_total_and_tier(
 ) -> dict[str, Any]:
     """Gate 5: shot durations sum to the episode target; tier breaches raise.
 
+    The tier is checked per generation call (clip), not per shot:
+    see :func:`_clip_units`. Shot totals are still governed by the
+    episode-target check above; a clip that is too long or too short
+    for the supplier tier fails here, naming the shot and clip.
+
     Returns the tier verdict. Without enforceable caps the verdict
     is ``unknown`` -- recorded, never guessed, and never used to
     clamp, pad or truncate anything. ``tier_unknown_reason`` (set by
@@ -861,13 +975,22 @@ def check_total_and_tier(
     provider = str(provider_caps.get("provider", "") or "")
     where = f" for provider {provider}" if provider else ""
     max_shot = provider_caps.get("max_shot_s")
-    if max_shot is not None:
-        for shot in shots:
-            if float(shot["duration_s"]) > float(max_shot) + 1e-9:
+    min_shot = provider_caps.get("min_shot_s")
+    if max_shot is not None or min_shot is not None:
+        for _shot, unit_label, duration in _clip_units(shots):
+            if max_shot is not None and duration > float(max_shot) + 1e-9:
                 raise PromptCompilerError(
-                    f"story.prompt_compiler gate 5: {_shot_label(shot)} "
-                    f"duration {float(shot['duration_s']):g}s exceeds "
-                    f"the supplier single-shot cap {float(max_shot):g}s"
+                    f"story.prompt_compiler gate 5: {unit_label} "
+                    f"duration {duration:g}s exceeds "
+                    f"the supplier single-generation cap {float(max_shot):g}s"
+                    f"{where}; send this back to the script layer, "
+                    f"do not clamp or split silently"
+                )
+            if min_shot is not None and duration < float(min_shot) - 1e-9:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 5: {unit_label} "
+                    f"duration {duration:g}s is under "
+                    f"the supplier single-generation minimum {float(min_shot):g}s"
                     f"{where}; send this back to the script layer, "
                     f"do not clamp or split silently"
                 )
@@ -882,8 +1005,17 @@ def check_total_and_tier(
         "status": "checked",
         "provider": provider,
         "max_shot_s": max_shot,
+        "min_shot_s": min_shot,
         "max_total_s": max_total,
         "source": provider_caps.get("source"),
+        "tier_scope": (
+            "clip"
+            if any(
+                "clips" in shot and shot["clips"] is not None
+                for shot in shots
+            )
+            else "shot"
+        ),
     }
 
 
@@ -925,7 +1057,10 @@ def _render_state(state: Any) -> str:
     flat = _flatten_state(state)
     if not flat:
         return "（无）"
-    return "\n".join(f"{key}：{value}" for key, value in flat.items())
+    return "\n".join(
+        f"{key}：{value if value is not None else '（已删除）'}"
+        for key, value in flat.items()
+    )
 
 
 def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
@@ -1026,10 +1161,11 @@ def compile_episode(
 ) -> dict[str, Any]:
     """Validate an episode through all five gates, then render prompts.
 
-    Gate order: vocabulary/structure, gate 1 (beat coverage), split
-    rule, gate 2 (line durations), gate 3 (line uniqueness), gate 4
-    (continuity chain + start-frame trigger), gate 5 (episode total +
-    supplier tier). The first failure raises
+    Gate order: vocabulary/structure, gate 1 (beat coverage), clip
+    grouping, split rule, gate 2 (line durations), gate 3 (line
+    uniqueness), gate 4 (continuity chain + start-frame trigger
+    state), gate 5 (episode total + supplier tier per clip). The
+    first failure raises
     :class:`PromptCompilerError`; nothing is warned-and-passed.
 
     Tier resolution order: explicit ``provider_caps`` win; otherwise
@@ -1044,6 +1180,7 @@ def compile_episode(
     shots = check_structure(episode)
     check_vocabulary(episode)
     check_beat_coverage(shots)
+    check_clip_groups(shots)
     check_long_lines(shots)
     check_line_durations(shots)
     check_line_uniqueness(shots)
@@ -1060,6 +1197,7 @@ def compile_episode(
             )
         elif (
             resolved.get("max_shot_s") is None
+            and resolved.get("min_shot_s") is None
             and resolved.get("max_total_s") is None
         ):
             tier_unknown_reason = (
