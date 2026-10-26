@@ -77,18 +77,34 @@ also mark it honestly -- and then it fails, as intended.
 
 Duration tiers (gate 5, second half)
 -------------------------------------
-``hevi.capabilities.provider_catalog`` (``providers.json``) and
-``model_catalog`` (``models.json``) were checked on 2026-10-26 and
-contain no per-clip or per-episode duration tier table -- only
-image prices and route flags. The compiler therefore never invents
-a tier: when ``compile_episode`` is called without
-``provider_caps``, the tier verdict is recorded explicitly as
-``"unknown"`` with that reason, and compilation proceeds on the
-total-duration check alone. When the caller supplies caps
-(``{"max_shot_s": ..., "max_total_s": ...}``, optionally with a
-``provider`` name), any breach raises, naming the shot, its
-duration and the cap. Nothing is ever clamped, padded or truncated
-to fit a tier.
+Tier values live in ``model_catalog_data/duration_tiers.json`` next
+to the provider/model catalogues, loaded by default at compile time.
+Each entry is a single-generation (per-shot) cap with a cited hevi
+source: ``hevi/providers/facts.py`` PROVIDER_CATALOGUE
+``max_duration_s`` rows, ``hevi/video/pixstag_client.py``
+DURATION_MIN/MAX, and ``hevi/capabilities/fasth3_local.py``
+MIN/MAX_FRAMES over FPS. No episode-total cap is verified anywhere,
+so ``max_total_s`` is null in every entry, never invented.
+Resolution order: explicit ``provider_caps`` win; otherwise a
+``provider`` name resolves through the tier table; otherwise the
+tier verdict is ``"unknown"``. A table entry with null caps, or a
+provider with no table entry, also resolves to ``"unknown"`` with
+that reason -- recorded, never used to clamp, pad or truncate, and
+never blocking compilation. The total-duration check runs in all
+cases. Nothing is ever clamped, padded or truncated to fit a tier.
+
+Start-frame marker contract (by design, not a gap)
+--------------------------------------------------
+The ``state_kind`` marker is a script-layer honesty contract, not a
+compiler-detectable fact: the compiler checks marker presence and
+rejects result-state markers, but it does not guess the picture's
+semantic state from description text, and it must not pretend to.
+Semantic truth of a start frame belongs to two other layers: the
+image-level endpoint check (``frame_consistency.check_clip_endpoints``,
+which compares designed frames against generated clip pixels) and
+the script layer that writes the marker. Treating the marker as a
+gap to be "fixed" with text guessing would manufacture false
+confidence; the contract above is the correct division of labour.
 """
 
 from __future__ import annotations
@@ -755,6 +771,53 @@ def check_continuity_chain(shots: list[dict[str, Any]]) -> None:
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Duration tier table (gate 5, second half)
+# ---------------------------------------------------------------------------
+
+_DURATION_TIERS_FILE = (
+    Path(__file__).resolve().parent / "model_catalog_data" / "duration_tiers.json"
+)
+
+
+def load_duration_tiers() -> dict[str, Any]:
+    """Load the duration tier table (provider key -> caps + source).
+
+    Returns {} when the file is absent or unreadable: a missing table
+    resolves every provider to "unknown", never to an invented cap.
+    """
+    try:
+        doc = json.loads(_DURATION_TIERS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(doc, dict) or not isinstance(doc.get("tiers"), dict):
+        return {}
+    return doc["tiers"]
+
+
+def resolve_provider_caps(provider_key: str) -> dict[str, Any] | None:
+    """Resolve one provider's caps from the tier table.
+
+    Returns None when the key has no table entry. When the entry
+    exists but declares no verified cap (all caps null), returns the
+    entry with null caps so the caller can report "unknown" with the
+    precise reason instead of guessing.
+    """
+    wanted = str(provider_key or "").strip()
+    if not wanted:
+        return None
+    entry = load_duration_tiers().get(wanted)
+    if not isinstance(entry, dict):
+        return None
+    return {
+        "provider": wanted,
+        "max_shot_s": entry.get("max_shot_s"),
+        "max_total_s": entry.get("max_total_s"),
+        "min_shot_s": entry.get("min_shot_s"),
+        "source": entry.get("source"),
+    }
+
+
 # Gate 5 -- episode total + supplier tier (explicit, never invented)
 # ---------------------------------------------------------------------------
 
@@ -763,13 +826,15 @@ def check_total_and_tier(
     episode: dict[str, Any],
     shots: list[dict[str, Any]],
     provider_caps: dict[str, Any] | None = None,
+    tier_unknown_reason: str | None = None,
 ) -> dict[str, Any]:
     """Gate 5: shot durations sum to the episode target; tier breaches raise.
 
-    Returns the tier verdict. Without caller-supplied caps the verdict
-    is ``unknown`` (no tier table exists in provider_catalog /
-    model_catalog) -- recorded, never guessed, and never used to
-    clamp, pad or truncate anything.
+    Returns the tier verdict. Without enforceable caps the verdict
+    is ``unknown`` -- recorded, never guessed, and never used to
+    clamp, pad or truncate anything. ``tier_unknown_reason`` (set by
+    :func:`compile_episode` from the tier-table lookup outcome)
+    explains which case produced the unknown verdict.
     """
     target = float(episode["target_duration_s"])
     total = sum(float(shot["duration_s"]) for shot in shots)
@@ -784,10 +849,13 @@ def check_total_and_tier(
         return {
             "status": "unknown",
             "reason": (
-                "provider_catalog (providers.json) and model_catalog "
-                "(models.json) contain no duration tier table, so no "
-                "supplier cap can be checked from catalogue data; "
-                "pass provider_caps explicitly to enforce a tier"
+                tier_unknown_reason
+                or (
+                    "no provider selected and no tier entry resolved "
+                    "from duration_tiers.json; pass provider=... to "
+                    "resolve a tier, or provider_caps=... to enforce "
+                    "caps explicitly"
+                )
             ),
         }
     provider = str(provider_caps.get("provider", "") or "")
@@ -815,6 +883,7 @@ def check_total_and_tier(
         "provider": provider,
         "max_shot_s": max_shot,
         "max_total_s": max_total,
+        "source": provider_caps.get("source"),
     }
 
 
@@ -953,6 +1022,7 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
 def compile_episode(
     episode: dict[str, Any],
     provider_caps: dict[str, Any] | None = None,
+    provider: str | None = None,
 ) -> dict[str, Any]:
     """Validate an episode through all five gates, then render prompts.
 
@@ -961,6 +1031,11 @@ def compile_episode(
     (continuity chain + start-frame trigger), gate 5 (episode total +
     supplier tier). The first failure raises
     :class:`PromptCompilerError`; nothing is warned-and-passed.
+
+    Tier resolution order: explicit ``provider_caps`` win; otherwise
+    ``provider`` resolves through ``duration_tiers.json``; otherwise
+    the tier verdict is ``"unknown"`` (total-duration check still
+    enforced).
     """
     if not isinstance(episode, dict):
         raise PromptCompilerError(
@@ -973,7 +1048,36 @@ def compile_episode(
     check_line_durations(shots)
     check_line_uniqueness(shots)
     check_continuity_chain(shots)
-    tier = check_total_and_tier(episode, shots, provider_caps)
+    resolved_caps = provider_caps
+    tier_unknown_reason = None
+    if resolved_caps is None and provider:
+        resolved = resolve_provider_caps(provider)
+        if resolved is None:
+            tier_unknown_reason = (
+                f"no duration tier entry for provider {provider!r} in "
+                "duration_tiers.json; pass provider_caps explicitly to "
+                "enforce a tier"
+            )
+        elif (
+            resolved.get("max_shot_s") is None
+            and resolved.get("max_total_s") is None
+        ):
+            tier_unknown_reason = (
+                f"duration tier entry for provider {provider!r} "
+                "declares no verified cap; pass provider_caps "
+                "explicitly to enforce a tier"
+            )
+        else:
+            resolved_caps = resolved
+    elif resolved_caps is None:
+        tier_unknown_reason = (
+            "no provider selected; pass provider=... to resolve a tier "
+            "from duration_tiers.json, or provider_caps=... to enforce "
+            "caps explicitly"
+        )
+    tier = check_total_and_tier(
+        episode, shots, resolved_caps, tier_unknown_reason
+    )
     prompts = [
         {
             "shot_no": str(shot.get("shot_no", "?")),
@@ -1018,8 +1122,18 @@ _PARAMS_SCHEMA: dict[str, Any] = {
             "type": "object",
             "description": (
                 "Optional supplier tier caps, e.g. "
-                '{"provider": "x", "max_shot_s": 30}. Without caps the '
-                "tier verdict is recorded as unknown, never invented."
+                '{"provider": "x", "max_shot_s": 30}. Explicit caps win '
+                "over the tier table. Without caps or a provider key "
+                "the tier verdict is recorded as unknown, never invented."
+            ),
+        },
+        "provider": {
+            "type": "string",
+            "description": (
+                "Optional provider key resolved through "
+                "model_catalog_data/duration_tiers.json (e.g. "
+                '"fasth3_local", "pixstag", "veo3"). Explicit '
+                "provider_caps win over the table."
             ),
         },
     },
@@ -1036,7 +1150,8 @@ def _render(
 
     try:
         payload = compile_episode(
-            params["episode"], params.get("provider_caps")
+            params["episode"], params.get("provider_caps"),
+            params.get("provider"),
         )
     except PromptCompilerError as exc:
         raise CapabilityError(str(exc)) from exc

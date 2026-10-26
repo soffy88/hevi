@@ -22,6 +22,8 @@ from hevi.capabilities.prompt_compiler import (
     _load_movement_table,
     compile_episode,
     estimate_min_line_duration_s,
+    load_duration_tiers,
+    resolve_provider_caps,
 )
 
 FIXTURE = (
@@ -363,3 +365,93 @@ def test_long_line_split_across_grouped_beats_passes() -> None:
     )
     result = compile_episode(episode)
     assert result["moving_line_count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Duration tier table (residual 1) + S10/S11 coverage (residual 4)
+# ---------------------------------------------------------------------------
+
+
+def test_duration_tier_table_values_are_cited() -> None:
+    tiers = load_duration_tiers()
+    assert tiers["fasth3_local"]["max_shot_s"] == 15.0
+    assert tiers["fasth3_local"]["source"].startswith(
+        "hevi/capabilities/fasth3_local.py"
+    )
+    assert tiers["pixstag"]["max_shot_s"] == 30.0
+    assert tiers["pixstag"]["min_shot_s"] == 4
+    assert tiers["veo3"]["max_shot_s"] == 8.0
+    assert tiers["gemini_api"]["max_shot_s"] is None
+    assert tiers["gemini_api"]["max_total_s"] is None
+    # No episode-total cap is verified anywhere: null, never invented.
+    assert all(t.get("max_total_s") is None for t in tiers.values())
+    assert resolve_provider_caps("fasth3_local")["max_shot_s"] == 15.0
+    assert resolve_provider_caps("no_such_provider") is None
+
+
+def test_gate5_table_cap_blocks_fasth3_local() -> None:
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(load_fixture(), provider="fasth3_local")
+    message = str(excinfo.value)
+    assert "gate 5" in message
+    # S01 (20s) is the first breach in shot order, not S04.
+    assert "S01" in message
+    assert "15" in message
+
+
+def test_gate5_table_cap_passes_when_shots_fit() -> None:
+    episode = _mini_episode([_mini_beat(1, 0, 15, "短句。")])
+    episode["target_duration_s"] = 15
+    episode["shots"][0]["duration_s"] = 15
+    result = compile_episode(episode, provider="fasth3_local")
+    assert result["tier"]["status"] == "checked"
+    assert result["tier"]["max_shot_s"] == 15.0
+
+
+def test_gate5_unknown_provider_key_is_unknown_not_blocking() -> None:
+    result = compile_episode(load_fixture(), provider="no_such_provider")
+    assert result["tier"]["status"] == "unknown"
+    assert "no_such_provider" in result["tier"]["reason"]
+
+
+def test_gate5_null_cap_provider_is_unknown_not_blocking() -> None:
+    result = compile_episode(load_fixture(), provider="gemini_api")
+    assert result["tier"]["status"] == "unknown"
+    assert "no verified cap" in result["tier"]["reason"]
+
+
+def test_gate5_explicit_caps_win_over_table() -> None:
+    result = compile_episode(
+        load_fixture(), {"max_shot_s": 40}, provider="fasth3_local"
+    )
+    assert result["tier"]["status"] == "checked"
+    assert result["tier"]["max_shot_s"] == 40
+
+
+def test_gate5_total_mismatch_still_fails_when_tier_unknown() -> None:
+    episode = load_fixture()
+    episode["target_duration_s"] = 299
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode, provider="gemini_api")
+    message = str(excinfo.value)
+    assert "gate 5" in message
+    assert "300" in message and "299" in message
+
+
+def test_gate2_voiceover_too_long_for_shot_fails() -> None:
+    episode = load_fixture()
+    base = "这是一个故意写得很长的画外音句子用来验证时长门禁是否覆盖画外音"
+    shot_of(episode, "S10")["voiceover_line"] = base + base  # 62 chars > 15s shot
+    with pytest.raises(PromptCompilerError) as excinfo:
+        compile_episode(episode)
+    message = str(excinfo.value)
+    assert "gate 2" in message
+    assert "voiceover" in message
+
+
+def test_gate3_subtitle_text_matching_dialogue_does_not_trip_dedup() -> None:
+    episode = load_fixture()
+    shot_of(episode, "S11")["subtitle"] = "今天先生问什么了？"
+    result = compile_episode(episode)
+    assert result["spoken_line_count"] == 29
+    assert result["moving_line_count"] == 28
