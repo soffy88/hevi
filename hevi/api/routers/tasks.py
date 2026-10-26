@@ -44,10 +44,12 @@ class LongVideoRequest(BaseModel):
     preset: str | None = None
     # P0-4.1: the tenant this task executes under. The admission seam
     # (`provider_policy.permission`) reads it to resolve a declared TenantScope and
-    # denies when it is absent or undeclared. It is caller-declared rather than
+    # denies when it is undeclared. It is caller-declared rather than
     # derived from the authenticated user, because no workspace/membership model
     # exists yet — see docs/architecture/admission_seam_decision.md. Until one does,
-    # omitting this denies the task instead of silently inheriting a default tenant.
+    # omitting this falls back to the deployment's sole declared tenant when exactly
+    # one exists (recorded explicitly as tenant_defaulted on the admission decision);
+    # with zero or two-plus tenants, omitting still denies.
     workspace_id: str | None = None
     video_provider: str | None = None
     audio_provider: str | None = None
