@@ -337,3 +337,9 @@ _asset_script.register_asset_script_capabilities_once()
 from . import edit_templates as _edit_templates  # noqa: E402,F401
 _edit_templates.register_edit_template_capabilities_once()
 
+# Beat-schema prompt compiler (2026-10-26, clean-room): story.prompt_compiler
+# -- per-shot beat schema, five fatal compile gates, verbatim lines,
+# closed movement vocabulary from cinematic_techniques.
+from . import prompt_compiler as _prompt_compiler  # noqa: E402,F401
+_prompt_compiler.register_prompt_compiler_capabilities_once()
+

@@ -1,0 +1,1775 @@
+{
+  "episode_no": "E01",
+  "title": "少年立志",
+  "target_duration_s": 300,
+  "aspect": "16:9",
+  "style": "明代中国写实电影质感，暖烛光内景、暖晨光外景、暖暮光厅堂，自然肤质与真实织物",
+  "reference": "各镜以 camera.start_frame 描述为首帧参照",
+  "shots": [
+    {
+      "shot_no": "S01",
+      "scene": "京师私塾门外",
+      "time_of_day": "晨光",
+      "duration_s": 20,
+      "characters": [
+        "守仁"
+      ],
+      "props": [
+        "书卷"
+      ],
+      "camera": {
+        "shot_size": "全景",
+        "angle": "平视",
+        "movement": "drone_push_in",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "少年守仁抱着书卷正走向私塾大门，脚步未停，门楣刚入视线",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "守仁已入塾内门边，脚步不停，视线落回路面"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 8,
+          "action": "晨光中私塾门外传来书声，少年抱书卷走近",
+          "gaze_target": "门楣",
+          "camera_move": "drone_push_in",
+          "speaker": "",
+          "line": "",
+          "line_function": "",
+          "line_mode": "",
+          "sound": "书声＋脚步声",
+          "pace": "normal",
+          "landing": "守仁走近塾门"
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 8,
+          "t_end_s": 14,
+          "action": "少年脚步不停走入塾门，手指把书卷往怀里按了按",
+          "gaze_target": "路面",
+          "camera_move": "tracking_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "",
+          "line_mode": "",
+          "sound": "脚步声",
+          "pace": "normal",
+          "landing": "守仁入塾门边"
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 14,
+          "t_end_s": 20,
+          "action": "少年视线先看门楣再落回路面，继续前行",
+          "gaze_target": "门楣再落回路面",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "",
+          "line_mode": "",
+          "sound": "书声渐近",
+          "pace": "normal",
+          "landing": "守仁立于塾内门边"
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "私塾门外"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中"
+          },
+          "视线": {
+            "守仁": "门楣"
+          },
+          "空间锚点": "私塾门外晨光"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "塾内门边"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中"
+          },
+          "视线": {
+            "守仁": "路面"
+          },
+          "空间锚点": "私塾门内"
+        },
+        "new_changes": {}
+      }
+    },
+    {
+      "shot_no": "S02",
+      "scene": "京师私塾塾内",
+      "time_of_day": "晨光",
+      "duration_s": 25,
+      "characters": [
+        "塾师",
+        "同窗甲",
+        "众同窗",
+        "守仁"
+      ],
+      "props": [
+        "戒尺",
+        "书卷"
+      ],
+      "camera": {
+        "shot_size": "中景",
+        "angle": "平视",
+        "movement": "slow_zoom_in",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "塾师戒尺轻点案面、视线刚扫向全班，问题尚未出口",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "同窗甲仍站着指向门外，众同窗笑声中，塾师视线转向守仁座位"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 6,
+          "action": "塾师戒尺轻点案面，视线扫过全班",
+          "gaze_target": "全班",
+          "camera_move": "slow_zoom_in",
+          "speaker": "塾师",
+          "line": "都说说，读书是为了什么？",
+          "line_function": "提问",
+          "line_mode": "dialogue",
+          "sound": "戒尺轻点案面声",
+          "pace": "normal",
+          "landing": "塾师视线扫过全班",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 6,
+          "t_end_s": 13,
+          "action": "同窗甲抢先起身，起得太猛带倒了自己的书卷，胸膛挺起，手指向门外",
+          "gaze_target": "门外",
+          "camera_move": "slider_right",
+          "speaker": "同窗甲",
+          "line": "考状元！给我爹争口气！",
+          "line_function": "抢答",
+          "line_mode": "dialogue",
+          "sound": "书卷倒地轻响＋笑声起",
+          "pace": "normal",
+          "landing": "同窗甲站立指门外",
+          "voice_quality": [
+            "急切"
+          ]
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 13,
+          "t_end_s": 19,
+          "action": "众同窗附和笑，向站立的同窗甲靠拢",
+          "gaze_target": "同窗甲",
+          "camera_move": "static_shot",
+          "speaker": "众同窗",
+          "line": "就是！考状元！",
+          "line_function": "附和",
+          "line_mode": "dialogue",
+          "sound": "附和笑声",
+          "pace": "normal",
+          "landing": "众同窗笑声中",
+          "voice_quality": [
+            "齐声"
+          ]
+        },
+        {
+          "beat_no": 4,
+          "t_start_s": 19,
+          "t_end_s": 25,
+          "action": "笑声延续，塾师视线转向守仁座位",
+          "gaze_target": "守仁座位",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "笑声延续",
+          "line_mode": "",
+          "sound": "笑声渐收",
+          "pace": "normal",
+          "landing": "塾师视线落向守仁座位"
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "座位",
+            "塾师": "塾内案后",
+            "同窗甲": "座位",
+            "众同窗": "座位"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "塾师手中"
+          },
+          "视线": {
+            "守仁": "塾师",
+            "塾师": "全班"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "座位",
+            "塾师": "塾内案后",
+            "同窗甲": "站立指门外",
+            "众同窗": "座位"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "塾师手中",
+            "同窗甲书卷": "倒在案上"
+          },
+          "视线": {
+            "守仁": "塾师",
+            "塾师": "守仁座位"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "new_changes": {
+          "人物.守仁": "座位",
+          "人物.塾师": "塾内案后",
+          "人物.同窗甲": "座位",
+          "人物.众同窗": "座位",
+          "道具.戒尺": "塾师手中",
+          "视线.守仁": "塾师",
+          "视线.塾师": "全班",
+          "空间锚点": "塾内晨光"
+        }
+      }
+    },
+    {
+      "shot_no": "S03",
+      "scene": "京师私塾塾内",
+      "time_of_day": "晨光",
+      "duration_s": 30,
+      "characters": [
+        "塾师",
+        "守仁",
+        "同窗乙",
+        "众同窗"
+      ],
+      "props": [
+        "戒尺",
+        "书卷"
+      ],
+      "camera": {
+        "shot_size": "近景",
+        "angle": "平视",
+        "movement": "dolly_in",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "塾师点名话音将出，守仁仍坐着，手按书卷，未起身",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "守仁仍站着，满堂笑声中，塾师在案后注视"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 6,
+          "action": "塾师点名，视线落向守仁",
+          "gaze_target": "守仁",
+          "camera_move": "slow_zoom_in",
+          "speaker": "塾师",
+          "line": "守仁，你呢？想好了再说。",
+          "line_function": "点名追问",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师点名守仁",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 6,
+          "t_end_s": 11,
+          "action": "守仁起身，手按书卷，手指捏紧了书卷边缘",
+          "gaze_target": "塾师",
+          "camera_move": "dolly_in",
+          "speaker": "",
+          "line": "",
+          "line_function": "起身",
+          "line_mode": "",
+          "sound": "衣料轻响",
+          "pace": "normal",
+          "landing": "守仁起身手按书卷"
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 11,
+          "t_end_s": 17,
+          "action": "守仁视线直视塾师，停顿一拍才开口",
+          "gaze_target": "塾师",
+          "camera_move": "static_shot",
+          "speaker": "守仁",
+          "line": "我想……做圣贤。",
+          "line_function": "表明志向",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "守仁说出做圣贤",
+          "voice_quality": [
+            "平静"
+          ]
+        },
+        {
+          "beat_no": 4,
+          "t_start_s": 17,
+          "t_end_s": 23,
+          "action": "同窗前仰后合，有人捂嘴，有人低头不敢笑",
+          "gaze_target": "守仁",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "满堂笑",
+          "line_mode": "",
+          "sound": "满堂笑声",
+          "pace": "normal",
+          "landing": "满堂哄笑"
+        },
+        {
+          "beat_no": 5,
+          "t_start_s": 23,
+          "t_end_s": 30,
+          "action": "同窗乙笑声中指着守仁出声，守仁仍站着",
+          "gaze_target": "守仁",
+          "camera_move": "slow_zoom_in",
+          "speaker": "同窗乙",
+          "line": "圣贤？他以为他是谁啊！",
+          "line_function": "嘲笑",
+          "line_mode": "dialogue",
+          "sound": "笑声延续",
+          "pace": "normal",
+          "landing": "同窗乙笑指守仁",
+          "voice_quality": [
+            "嘲笑"
+          ]
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "座位",
+            "塾师": "塾内案后",
+            "同窗甲": "座位",
+            "众同窗": "座位",
+            "同窗乙": "座位"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "塾师手中",
+            "同窗甲书卷": "倒在案上"
+          },
+          "视线": {
+            "守仁": "塾师",
+            "塾师": "守仁"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "站立",
+            "塾师": "塾内案后",
+            "同窗甲": "座位",
+            "众同窗": "哄笑",
+            "同窗乙": "笑指守仁"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "塾师手中",
+            "同窗甲书卷": "倒在案上"
+          },
+          "视线": {
+            "守仁": "塾师",
+            "塾师": "守仁"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "new_changes": {
+          "人物.同窗甲": "座位",
+          "人物.同窗乙": "座位",
+          "视线.塾师": "守仁"
+        }
+      }
+    },
+    {
+      "shot_no": "S04",
+      "scene": "京师私塾塾内",
+      "time_of_day": "晨光",
+      "duration_s": 35,
+      "characters": [
+        "塾师",
+        "守仁",
+        "众同窗"
+      ],
+      "props": [
+        "戒尺",
+        "书卷"
+      ],
+      "camera": {
+        "shot_size": "中近景",
+        "angle": "平视",
+        "movement": "slow_zoom_in",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "塾师戒尺刚举起、身体将前倾，诘问尚未出口",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "塾师戒尺停在半空，无话，满堂屏息"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 6,
+          "action": "塾师戒尺顿桌，身体前倾",
+          "gaze_target": "守仁",
+          "camera_move": "slow_zoom_in",
+          "speaker": "塾师",
+          "line": "圣贤是你想当就能当的？",
+          "line_function": "诘问",
+          "line_mode": "dialogue",
+          "sound": "戒尺顿桌声",
+          "pace": "normal",
+          "landing": "塾师前倾诘问",
+          "voice_quality": [
+            "严厉"
+          ]
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 6,
+          "t_end_s": 12,
+          "action": "塾师视线紧盯守仁，戒尺压在案上",
+          "gaze_target": "守仁",
+          "camera_move": "static_shot",
+          "speaker": "塾师",
+          "line": "你爹的状元，是真本事挣来的。",
+          "line_function": "举证",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师压案举证",
+          "voice_quality": [
+            "严厉"
+          ]
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 12,
+          "t_end_s": 16,
+          "action": "塾师追问出口，守仁不退，视线不躲",
+          "gaze_target": "塾师",
+          "camera_move": "static_shot",
+          "speaker": "塾师",
+          "line": "你呢？你有什么？",
+          "line_function": "追问",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师追问守仁",
+          "voice_quality": [
+            "严厉"
+          ]
+        },
+        {
+          "beat_no": 4,
+          "t_start_s": 16,
+          "t_end_s": 20,
+          "action": "守仁平静作答，视线不离塾师",
+          "gaze_target": "塾师",
+          "camera_move": "static_shot",
+          "speaker": "守仁",
+          "line": "尧舜也是人。",
+          "line_function": "立论",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "守仁说出尧舜也是人",
+          "voice_quality": [
+            "平静"
+          ]
+        },
+        {
+          "beat_no": 5,
+          "t_start_s": 20,
+          "t_end_s": 24,
+          "action": "守仁短促换气，继续直视塾师",
+          "gaze_target": "塾师",
+          "camera_move": "static_shot",
+          "speaker": "守仁",
+          "line": "我也是人。",
+          "line_function": "承接",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "守仁说出我也是人",
+          "voice_quality": [
+            "平静"
+          ]
+        },
+        {
+          "beat_no": 6,
+          "t_start_s": 24,
+          "t_end_s": 30,
+          "action": "守仁说完收住，视线仍锁住塾师，塾师表情变化",
+          "gaze_target": "塾师",
+          "camera_move": "slow_zoom_in",
+          "speaker": "守仁",
+          "line": "凭什么他们行，我就不行？",
+          "line_function": "反问",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "守仁反问出口",
+          "voice_quality": [
+            "平静"
+          ]
+        },
+        {
+          "beat_no": 7,
+          "t_start_s": 30,
+          "t_end_s": 35,
+          "action": "塾师顿住，戒尺停在半空，无话",
+          "gaze_target": "守仁",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "顿住无话",
+          "line_mode": "",
+          "sound": "满堂屏息",
+          "pace": "normal",
+          "landing": "戒尺停在半空"
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "站立",
+            "塾师": "案后前倾",
+            "同窗甲": "座位",
+            "众同窗": "哄笑",
+            "同窗乙": "笑指守仁"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "塾师手中顿桌",
+            "同窗甲书卷": "倒在案上"
+          },
+          "视线": {
+            "守仁": "塾师",
+            "塾师": "守仁"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "站立",
+            "塾师": "案后前倾",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "停在半空",
+            "同窗甲书卷": "倒在案上"
+          },
+          "视线": {
+            "守仁": "塾师",
+            "塾师": "守仁"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "new_changes": {
+          "人物.塾师": "案后前倾",
+          "道具.戒尺": "塾师手中顿桌"
+        }
+      }
+    },
+    {
+      "shot_no": "S05",
+      "scene": "京师私塾塾内",
+      "time_of_day": "晨光",
+      "duration_s": 30,
+      "characters": [
+        "塾师",
+        "守仁",
+        "众同窗"
+      ],
+      "props": [
+        "戒尺"
+      ],
+      "camera": {
+        "shot_size": "中景",
+        "angle": "平视",
+        "movement": "static_shot",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "塾师收戒尺的动作刚起，留问的话尚未出口",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "守仁低头沉思，塾师在案后注视，全班无声"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 5,
+          "action": "塾师收戒尺，戒尺在案上轻磕一下",
+          "gaze_target": "守仁",
+          "camera_move": "static_shot",
+          "speaker": "塾师",
+          "line": "嘴上说得漂亮。",
+          "line_function": "收束",
+          "line_mode": "dialogue",
+          "sound": "戒尺轻磕声",
+          "pace": "normal",
+          "landing": "塾师收戒尺",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 5,
+          "t_end_s": 10,
+          "action": "塾师绕案踱一步，视线落回守仁",
+          "gaze_target": "守仁",
+          "camera_move": "follow_shot",
+          "speaker": "塾师",
+          "line": "明天我再问你一句。",
+          "line_function": "留问",
+          "line_mode": "dialogue",
+          "sound": "脚步声",
+          "pace": "normal",
+          "landing": "塾师踱步留问",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 10,
+          "t_end_s": 15,
+          "action": "塾师停步转身，面向守仁",
+          "gaze_target": "守仁",
+          "camera_move": "slow_zoom_in",
+          "speaker": "塾师",
+          "line": "圣贤，到底怎么学？",
+          "line_function": "追问方法",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师追问方法",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 4,
+          "t_start_s": 15,
+          "t_end_s": 21,
+          "action": "塾师注视守仁，语速放慢",
+          "gaze_target": "守仁",
+          "camera_move": "static_shot",
+          "speaker": "塾师",
+          "line": "今晚你自己先想想。",
+          "line_function": "嘱托",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师嘱托过夜",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 5,
+          "t_start_s": 21,
+          "t_end_s": 27,
+          "action": "守仁低下眼睛，沉思",
+          "gaze_target": "案面",
+          "camera_move": "dolly_in",
+          "speaker": "",
+          "line": "",
+          "line_function": "低头沉思",
+          "line_mode": "",
+          "sound": "无声",
+          "pace": "normal",
+          "landing": "守仁低头沉思"
+        },
+        {
+          "beat_no": 6,
+          "t_start_s": 27,
+          "t_end_s": 30,
+          "action": "全班等着，没人出声",
+          "gaze_target": "塾师",
+          "camera_move": "dolly_out",
+          "speaker": "",
+          "line": "",
+          "line_function": "全班等待",
+          "line_mode": "",
+          "sound": "无声",
+          "pace": "normal",
+          "landing": "全班无声等待"
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "站立",
+            "塾师": "案后",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "塾师手中",
+            "同窗甲书卷": "倒在案上"
+          },
+          "视线": {
+            "守仁": "塾师",
+            "塾师": "守仁"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "坐回低头沉思",
+            "塾师": "案后",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上"
+          },
+          "视线": {
+            "守仁": "案面",
+            "塾师": "守仁"
+          },
+          "空间锚点": "塾内晨光"
+        },
+        "new_changes": {
+          "人物.塾师": "案后",
+          "道具.戒尺": "塾师手中"
+        }
+      }
+    },
+    {
+      "shot_no": "S06",
+      "scene": "王家厅堂",
+      "time_of_day": "暮光",
+      "duration_s": 35,
+      "characters": [
+        "王华",
+        "守仁"
+      ],
+      "props": [
+        "状元匾"
+      ],
+      "camera": {
+        "shot_size": "中景",
+        "angle": "平视",
+        "movement": "static_shot",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "守仁刚入厅堂，先看匾的视线刚抬起，父亲尚未开口",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "父子并立匾下，父亲手搭儿子肩"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 6,
+          "action": "王华立于匾下，转向儿子，平静开口",
+          "gaze_target": "守仁",
+          "camera_move": "static_shot",
+          "speaker": "王华",
+          "line": "今天先生问什么了？",
+          "line_function": "问话",
+          "line_mode": "dialogue",
+          "sound": "厅堂安静",
+          "pace": "normal",
+          "landing": "王华问话",
+          "voice_quality": [
+            "温和"
+          ]
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 6,
+          "t_end_s": 12,
+          "action": "守仁平实回答，随后抬头看匾",
+          "gaze_target": "状元匾",
+          "camera_move": "slider_left",
+          "speaker": "守仁",
+          "line": "问我们为什么读书。",
+          "line_function": "回答",
+          "line_mode": "dialogue",
+          "sound": "厅堂安静",
+          "pace": "normal",
+          "landing": "守仁看向状元匾",
+          "voice_quality": [
+            "平静"
+          ]
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 12,
+          "t_end_s": 19,
+          "action": "守仁低下眼睛，迟疑半句后轻声说完",
+          "gaze_target": "父亲",
+          "camera_move": "slow_zoom_in",
+          "speaker": "守仁",
+          "line": "我说想做圣贤……全班都笑我。",
+          "line_function": "倾诉",
+          "line_mode": "dialogue",
+          "sound": "厅堂安静",
+          "pace": "normal",
+          "landing": "守仁说出被笑",
+          "voice_quality": [
+            "轻声"
+          ]
+        },
+        {
+          "beat_no": 4,
+          "t_start_s": 19,
+          "t_end_s": 24,
+          "action": "王华毫不迟疑，温和作答",
+          "gaze_target": "守仁",
+          "camera_move": "static_shot",
+          "speaker": "王华",
+          "line": "笑就笑吧。",
+          "line_function": "安抚",
+          "line_mode": "dialogue",
+          "sound": "厅堂安静",
+          "pace": "normal",
+          "landing": "王华安抚",
+          "voice_quality": [
+            "温和"
+          ]
+        },
+        {
+          "beat_no": 5,
+          "t_start_s": 24,
+          "t_end_s": 30,
+          "action": "王华的手先顿一下，再放上儿子肩膀",
+          "gaze_target": "守仁",
+          "camera_move": "slow_zoom_in",
+          "speaker": "王华",
+          "line": "别人笑，不代表你错了。",
+          "line_function": "肯定",
+          "line_mode": "dialogue",
+          "sound": "厅堂安静",
+          "pace": "normal",
+          "landing": "王华手搭儿子肩",
+          "voice_quality": [
+            "温和"
+          ]
+        },
+        {
+          "beat_no": 6,
+          "t_start_s": 30,
+          "t_end_s": 35,
+          "action": "父子并立匾下，暮光 hold",
+          "gaze_target": "守仁",
+          "camera_move": "dolly_out",
+          "speaker": "王华",
+          "line": "你的志气，自己拿稳了。",
+          "line_function": "嘱托",
+          "line_mode": "dialogue",
+          "sound": "厅堂安静",
+          "pace": "normal",
+          "landing": "父子并立匾下",
+          "voice_quality": [
+            "温和"
+          ]
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "厅堂门口",
+            "塾师": "案后",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬"
+          },
+          "视线": {
+            "守仁": "状元匾",
+            "塾师": "守仁"
+          },
+          "空间锚点": "王家厅堂状元匾下"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "匾下父亲身旁",
+            "塾师": "案后",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍"
+          },
+          "道具": {
+            "书卷": "守仁怀中",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬"
+          },
+          "视线": {
+            "守仁": "父亲",
+            "塾师": "守仁"
+          },
+          "空间锚点": "王家厅堂状元匾下"
+        },
+        "new_changes": {
+          "人物.守仁": "厅堂门口",
+          "人物.王华": "匾下",
+          "服装.王华": "深色家居长袍",
+          "道具.状元匾": "高悬",
+          "视线.守仁": "状元匾",
+          "空间锚点": "王家厅堂状元匾下"
+        }
+      }
+    },
+    {
+      "shot_no": "S07",
+      "scene": "少年书房夜",
+      "time_of_day": "夜",
+      "duration_s": 25,
+      "characters": [
+        "守仁"
+      ],
+      "props": [
+        "书卷",
+        "烛火"
+      ],
+      "camera": {
+        "shot_size": "近景",
+        "angle": "平视",
+        "movement": "static_shot",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "守仁展卷的动作刚起，手指尚未按实书页",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "书移近烛光，守仁视线望向窗外月"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 9,
+          "action": "烛光下，守仁展卷，手指按住书页",
+          "gaze_target": "书页",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "展卷",
+          "line_mode": "",
+          "sound": "烛火轻响",
+          "pace": "normal",
+          "landing": "守仁按住书页"
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 9,
+          "t_end_s": 17,
+          "action": "守仁视线在书与窗外月之间移动，久久不动",
+          "gaze_target": "书页与窗外月",
+          "camera_move": "slow_zoom_in",
+          "speaker": "",
+          "line": "",
+          "line_function": "久久不动",
+          "line_mode": "",
+          "sound": "烛火轻响",
+          "pace": "normal",
+          "landing": "守仁久久不动"
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 17,
+          "t_end_s": 25,
+          "action": "烛火晃一下，他把书往烛光那边挪了挪",
+          "gaze_target": "书页",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "挪书就光",
+          "line_mode": "",
+          "sound": "烛火轻响",
+          "pace": "normal",
+          "landing": "书移近烛光"
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "书房案前",
+            "塾师": "案后",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍"
+          },
+          "道具": {
+            "书卷": "案上展开",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳"
+          },
+          "视线": {
+            "守仁": "书页",
+            "塾师": "守仁"
+          },
+          "空间锚点": "少年书房夜"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "书房案前",
+            "塾师": "案后",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳"
+          },
+          "视线": {
+            "守仁": "窗外月",
+            "塾师": "守仁"
+          },
+          "空间锚点": "少年书房夜"
+        },
+        "new_changes": {
+          "人物.守仁": "书房案前",
+          "道具.书卷": "案上展开",
+          "道具.烛火": "摇曳",
+          "视线.守仁": "书页",
+          "空间锚点": "少年书房夜"
+        }
+      }
+    },
+    {
+      "shot_no": "S08",
+      "scene": "京师私塾塾内窗边",
+      "time_of_day": "日光",
+      "duration_s": 35,
+      "characters": [
+        "塾师",
+        "守仁"
+      ],
+      "props": [
+        "竹子"
+      ],
+      "camera": {
+        "shot_size": "中景",
+        "angle": "平视",
+        "movement": "static_shot",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "塾师视线刚投向窗外竹子，问题尚未出口",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "守仁望向竹子，竹叶微动"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 5,
+          "action": "塾师视线投向窗外竹子，再落回守仁",
+          "gaze_target": "窗外竹子",
+          "camera_move": "static_shot",
+          "speaker": "塾师",
+          "line": "昨天那个问题，",
+          "line_function": "提起旧问",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师提起旧问",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 5,
+          "t_end_s": 11,
+          "action": "塾师直接问守仁，等待回答",
+          "gaze_target": "守仁",
+          "camera_move": "slow_zoom_in",
+          "speaker": "塾师",
+          "line": "你想了一夜，有答案了吗？",
+          "line_function": "追问答案",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师追问答案",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 11,
+          "t_end_s": 16,
+          "action": "守仁沉默，顺着塾师视线看向竹子",
+          "gaze_target": "窗外竹子",
+          "camera_move": "static_shot",
+          "speaker": "守仁",
+          "line": "",
+          "line_function": "沉默",
+          "line_mode": "",
+          "sound": "无声",
+          "pace": "normal",
+          "landing": "守仁沉默看竹"
+        },
+        {
+          "beat_no": 4,
+          "t_start_s": 16,
+          "t_end_s": 21,
+          "action": "塾师向窗边走一步，平实开口",
+          "gaze_target": "守仁",
+          "camera_move": "slider_right",
+          "speaker": "塾师",
+          "line": "那就别空想了。",
+          "line_function": "转向行动",
+          "line_mode": "dialogue",
+          "sound": "脚步声",
+          "pace": "normal",
+          "landing": "塾师转向行动",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 5,
+          "t_start_s": 21,
+          "t_end_s": 27,
+          "action": "塾师指向窗外一根竹子",
+          "gaze_target": "竹子",
+          "camera_move": "static_shot",
+          "speaker": "塾师",
+          "line": "去，盯着那根竹子看。",
+          "line_function": "指派",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "塾师指向竹子",
+          "voice_quality": [
+            "沉稳"
+          ]
+        },
+        {
+          "beat_no": 6,
+          "t_start_s": 27,
+          "t_end_s": 35,
+          "action": "塾师说完等待，守仁继续看竹",
+          "gaze_target": "竹子",
+          "camera_move": "dolly_out",
+          "speaker": "塾师",
+          "line": "理在哪儿，你自己看出来。",
+          "line_function": "留问",
+          "line_mode": "dialogue",
+          "sound": "塾内安静",
+          "pace": "normal",
+          "landing": "守仁望向竹子",
+          "voice_quality": [
+            "沉稳"
+          ]
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "座位",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "窗外静止"
+          },
+          "视线": {
+            "守仁": "窗外月",
+            "塾师": "窗外竹子"
+          },
+          "空间锚点": "塾内窗边"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "望向竹子",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "竹叶微动"
+          },
+          "视线": {
+            "守仁": "窗外竹子",
+            "塾师": "窗外竹子"
+          },
+          "空间锚点": "塾内窗边"
+        },
+        "new_changes": {
+          "人物.守仁": "座位",
+          "人物.塾师": "窗边",
+          "道具.竹子": "窗外静止",
+          "视线.塾师": "窗外竹子",
+          "空间锚点": "塾内窗边"
+        }
+      }
+    },
+    {
+      "shot_no": "S09",
+      "scene": "现代考场外广场",
+      "time_of_day": "日光",
+      "duration_s": 25,
+      "characters": [
+        "现代青年",
+        "问话者"
+      ],
+      "props": [],
+      "camera": {
+        "shot_size": "中近景",
+        "angle": "平视",
+        "movement": "slow_zoom_in",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "问话者画外问话刚出口，青年刚愣住，尚未作答",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "青年独站广场，问题悬而未答"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 7,
+          "action": "画外问话者直问，青年愣住",
+          "gaze_target": "问话者方向",
+          "camera_move": "slow_zoom_in",
+          "speaker": "问话者",
+          "line": "别绕了，你到底要什么？",
+          "line_function": "直问",
+          "line_mode": "os",
+          "sound": "广场环境声",
+          "pace": "normal",
+          "landing": "青年愣住",
+          "voice_quality": [
+            "直率"
+          ],
+          "line_source": "画外问话者"
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 7,
+          "t_end_s": 13,
+          "action": "青年不答，嘴闭紧，手里的东西捏紧了",
+          "gaze_target": "问话者方向",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "不答",
+          "line_mode": "",
+          "sound": "广场环境声",
+          "pace": "normal",
+          "landing": "青年不答"
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 13,
+          "t_end_s": 19,
+          "action": "青年视线飘开又收回，仍不作声",
+          "gaze_target": "广场再收回",
+          "camera_move": "slow_zoom_in",
+          "speaker": "",
+          "line": "",
+          "line_function": "视线飘开收回",
+          "line_mode": "",
+          "sound": "广场环境声",
+          "pace": "normal",
+          "landing": "青年视线收回"
+        },
+        {
+          "beat_no": 4,
+          "t_start_s": 19,
+          "t_end_s": 25,
+          "action": "学生从身后走过，青年独站不动",
+          "gaze_target": "前方",
+          "camera_move": "dolly_out",
+          "speaker": "",
+          "line": "",
+          "line_function": "独站",
+          "line_mode": "",
+          "sound": "广场环境声",
+          "pace": "normal",
+          "landing": "青年独站广场"
+        }
+      ],
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "望向竹子",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩",
+            "现代青年": "广场站立",
+            "问话者": "画外"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍",
+            "现代青年": "灰色连帽衫"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "竹叶微动"
+          },
+          "视线": {
+            "守仁": "窗外竹子",
+            "塾师": "窗外竹子",
+            "现代青年": "问话者方向"
+          },
+          "空间锚点": "现代考场外广场"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "望向竹子",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩",
+            "现代青年": "广场独站",
+            "问话者": "画外"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍",
+            "现代青年": "灰色连帽衫"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "竹叶微动"
+          },
+          "视线": {
+            "守仁": "窗外竹子",
+            "塾师": "窗外竹子",
+            "现代青年": "飘开又收回"
+          },
+          "空间锚点": "现代考场外广场"
+        },
+        "new_changes": {
+          "人物.现代青年": "广场站立",
+          "人物.问话者": "画外",
+          "服装.现代青年": "灰色连帽衫",
+          "视线.现代青年": "问话者方向",
+          "空间锚点": "现代考场外广场"
+        }
+      }
+    },
+    {
+      "shot_no": "S10",
+      "scene": "京师私塾塾内",
+      "time_of_day": "晨光",
+      "duration_s": 15,
+      "characters": [
+        "守仁"
+      ],
+      "props": [],
+      "camera": {
+        "shot_size": "近景",
+        "angle": "平视",
+        "movement": "static_shot",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "少年刚抬头，视线将直视镜头方向，身体尚未站定",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "少年站定抬头，直视镜头方向"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 7,
+          "action": "少年抬头，视线直视镜头方向",
+          "gaze_target": "镜头方向",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "抬头",
+          "line_mode": "",
+          "sound": "无声",
+          "pace": "normal",
+          "landing": "少年抬头"
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 7,
+          "t_end_s": 15,
+          "action": "少年身体站定，直视镜头",
+          "gaze_target": "镜头方向",
+          "camera_move": "slow_zoom_in",
+          "speaker": "",
+          "line": "",
+          "line_function": "站定",
+          "line_mode": "",
+          "sound": "无声",
+          "pace": "normal",
+          "landing": "少年站定"
+        }
+      ],
+      "voiceover_line": "人人都可以成为尧舜。",
+      "voiceover_source": "画外旁白",
+      "voiceover_pace": "normal",
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "塾内站立",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩",
+            "现代青年": "广场独站",
+            "问话者": "画外"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍",
+            "现代青年": "灰色连帽衫"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "竹叶微动"
+          },
+          "视线": {
+            "守仁": "镜头方向",
+            "塾师": "窗外竹子",
+            "现代青年": "飘开又收回"
+          },
+          "空间锚点": "塾内"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "站定抬头",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩",
+            "现代青年": "广场独站",
+            "问话者": "画外"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍",
+            "现代青年": "灰色连帽衫"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "竹叶微动"
+          },
+          "视线": {
+            "守仁": "镜头方向",
+            "塾师": "窗外竹子",
+            "现代青年": "飘开又收回"
+          },
+          "空间锚点": "塾内"
+        },
+        "new_changes": {
+          "人物.守仁": "塾内站立",
+          "视线.守仁": "镜头方向",
+          "空间锚点": "塾内"
+        }
+      }
+    },
+    {
+      "shot_no": "S11",
+      "scene": "竹林",
+      "time_of_day": "日光",
+      "duration_s": 25,
+      "characters": [
+        "守仁"
+      ],
+      "props": [
+        "竹子"
+      ],
+      "camera": {
+        "shot_size": "全景",
+        "angle": "平视",
+        "movement": "tracking_shot",
+        "movement_speed": "慢",
+        "start_frame": {
+          "description": "少年刚走向竹子，手尚未触到竹竿",
+          "state_kind": "trigger_in_progress"
+        },
+        "end_frame": {
+          "description": "少年手触竹竿，竹叶微动"
+        }
+      },
+      "beats": [
+        {
+          "beat_no": 1,
+          "t_start_s": 0,
+          "t_end_s": 9,
+          "action": "少年走向竹子",
+          "gaze_target": "竹竿",
+          "camera_move": "tracking_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "走向竹子",
+          "line_mode": "",
+          "sound": "竹林风声",
+          "pace": "normal",
+          "landing": "少年走近竹子"
+        },
+        {
+          "beat_no": 2,
+          "t_start_s": 9,
+          "t_end_s": 17,
+          "action": "少年手触竹竿",
+          "gaze_target": "竹竿",
+          "camera_move": "slow_zoom_in",
+          "speaker": "",
+          "line": "",
+          "line_function": "手触竹竿",
+          "line_mode": "",
+          "sound": "竹叶轻响",
+          "pace": "normal",
+          "landing": "少年手触竹竿"
+        },
+        {
+          "beat_no": 3,
+          "t_start_s": 17,
+          "t_end_s": 25,
+          "action": "竹叶动，少年立于竹前",
+          "gaze_target": "竹竿",
+          "camera_move": "static_shot",
+          "speaker": "",
+          "line": "",
+          "line_function": "立于竹前",
+          "line_mode": "",
+          "sound": "竹林风声",
+          "pace": "normal",
+          "landing": "少年立于竹前"
+        }
+      ],
+      "subtitle": "下集《格竹之败》",
+      "continuity": {
+        "entry_state": {
+          "人物": {
+            "守仁": "竹林小径",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩",
+            "现代青年": "广场独站",
+            "问话者": "画外"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍",
+            "现代青年": "灰色连帽衫"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "林中竹竿"
+          },
+          "视线": {
+            "守仁": "竹竿",
+            "塾师": "窗外竹子",
+            "现代青年": "飘开又收回"
+          },
+          "空间锚点": "竹林"
+        },
+        "exit_state": {
+          "人物": {
+            "守仁": "手触竹竿",
+            "塾师": "窗边",
+            "同窗甲": "座位",
+            "众同窗": "屏息",
+            "同窗乙": "笑指守仁",
+            "王华": "匾下手搭儿子肩",
+            "现代青年": "广场独站",
+            "问话者": "画外"
+          },
+          "服装": {
+            "守仁": "灰青布袍蓝头巾",
+            "王华": "深色家居长袍",
+            "现代青年": "灰色连帽衫"
+          },
+          "道具": {
+            "书卷": "移近烛光",
+            "戒尺": "案上",
+            "同窗甲书卷": "倒在案上",
+            "状元匾": "高悬",
+            "烛火": "摇曳",
+            "竹子": "竹叶微动"
+          },
+          "视线": {
+            "守仁": "竹竿",
+            "塾师": "窗外竹子",
+            "现代青年": "飘开又收回"
+          },
+          "空间锚点": "竹林"
+        },
+        "new_changes": {
+          "人物.守仁": "竹林小径",
+          "道具.竹子": "林中竹竿",
+          "视线.守仁": "竹竿",
+          "空间锚点": "竹林"
+        }
+      }
+    }
+  ]
+}

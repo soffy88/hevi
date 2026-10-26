@@ -1,0 +1,1118 @@
+"""Beat-schema prompt compiler (``story.prompt_compiler``).
+
+Clean-room implementation, 2026-10-26. No prompt text or code is copied
+from any external repository: the schema, the five compile gates, the
+line-duration estimator and the prompt template wording below are all
+newly written for hevi.
+
+What this module does
+---------------------
+A dramatic episode is encoded once, as JSON-shaped dicts, in the
+beat schema (see :func:`compile_episode` docstring for the field
+list). The compiler then:
+
+* validates every value against closed vocabularies (shot size,
+  camera angle, camera movement, line mode, speech pace);
+* runs five gates, in order. Any gate failure raises
+  :class:`PromptCompilerError` naming the exact shot, beat, line or
+  state item -- never a warning that lets a bad script through to
+  generation;
+* renders one prompt text per shot, in a fixed section order, with
+  lines taken verbatim from the schema and nothing else spoken.
+
+Vocabulary provenance (stated here, not hidden)
+------------------------------------------------
+* Camera movements come from hevi's own
+  ``hevi.capabilities.cinematic_techniques`` data file
+  (``cinematic_data/camera_movements.json``: 40 movements, each with
+  an ``id``, a Chinese name and an English name). The compiler loads
+  that table at run time, so a movement id that does not exist there
+  cannot pass validation -- no movement id is invented here.
+* Shot sizes and camera angles are standard film grammar, defined
+  in this module (see ``SHOT_SIZES`` / ``ANGLES``); they are not
+  taken from any supplier catalogue.
+
+Line-duration estimator
+-----------------------
+``estimate_min_line_duration_s`` converts a line to a minimum
+planned duration: characters per second by pace tier, plus a fixed
+0.3-0.5s pause allowance per punctuation mark (fixed at 0.4s, the
+midpoint, so results are deterministic), plus a fixed 1.0s head/tail
+margin. Pace tiers: default 4 chars/s, fast (urgent) 4 chars/s,
+normal 3 chars/s, slow (tender / whisper) 2 chars/s. A beat that
+omits ``pace`` uses the default tier (4 chars/s); a beat may also
+spell the tier in Chinese (urgent/normal/tender/whisper aliases are
+accepted and normalised).
+
+Long lines
+----------
+A single beat line longer than 20 content characters must be split
+across consecutive beats of the same shot: the beats share a
+``line_group`` id, the same speaker and line mode, and the first beat
+may carry ``line_full``. An unsplit long line is a compile failure
+naming the line -- it is never silently truncated.
+
+Continuity rule (gate 4)
+------------------------
+``continuity`` carries ``entry_state``, ``exit_state`` and
+``new_changes``. States are nested dicts in five categories
+(people / costume / props / gaze / anchor, keyed in Chinese as
+``人物`` / ``服装`` / ``道具`` / ``视线`` / ``空间锚点``); the
+compiler flattens them to dotted keys for comparison. For every shot
+after the first, the entry state must equal the previous shot's exit
+state plus exactly the declared ``new_changes``: every carried key
+must be unchanged, every changed or added key must be declared with
+its new value, and every declared change must appear in the entry.
+A dropped key with no removal declaration also fails.
+
+Start-frame rule (gate 4, second half)
+--------------------------------------
+``camera.start_frame`` must be a dict with ``state_kind`` exactly
+``"trigger_in_progress"``: the frame shows the triggering moment
+still unfinished. Any other marker (``"completed"``,
+``"result"``, ``"landed"``, or a missing marker) fails, naming the
+shot. The check reads the marker only; it does not guess from the
+description text, so a script that describes a result state must
+also mark it honestly -- and then it fails, as intended.
+
+Duration tiers (gate 5, second half)
+-------------------------------------
+``hevi.capabilities.provider_catalog`` (``providers.json``) and
+``model_catalog`` (``models.json``) were checked on 2026-10-26 and
+contain no per-clip or per-episode duration tier table -- only
+image prices and route flags. The compiler therefore never invents
+a tier: when ``compile_episode`` is called without
+``provider_caps``, the tier verdict is recorded explicitly as
+``"unknown"`` with that reason, and compilation proceeds on the
+total-duration check alone. When the caller supplies caps
+(``{"max_shot_s": ..., "max_total_s": ...}``, optionally with a
+``provider`` name), any breach raises, naming the shot, its
+duration and the cap. Nothing is ever clamped, padded or truncated
+to fit a tier.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
+
+
+class PromptCompilerError(ValueError):
+    """Any schema, vocabulary or gate failure. Always fatal, never a warning."""
+
+
+# ---------------------------------------------------------------------------
+# Closed vocabularies
+# ---------------------------------------------------------------------------
+
+# Shot sizes: standard film grammar, defined here (see module docstring).
+SHOT_SIZES = (
+    "大特写",
+    "特写",
+    "近景",
+    "中近景",
+    "中景",
+    "中远景",
+    "全景",
+    "远景",
+    "大远景",
+)
+
+# Camera angles / positions: standard film grammar, defined here.
+ANGLES = (
+    "平视",
+    "低机位",
+    "高机位",
+    "俯视",
+    "仰视",
+    "荷兰角",
+    "过肩",
+    "主观视角",
+)
+
+# Line modes: dialogue (on-screen speech), os (off-screen voice from a
+# character who is not in frame), vo (narration voice-over). OS/VO
+# speakers never lip-sync; they must declare line_source.
+LINE_MODES = ("dialogue", "os", "vo")
+
+# Pace tiers: chars per second. Aliases map Chinese tier names to tiers.
+PACE_RATES = {
+    "default": 4.0,
+    "fast": 4.0,
+    "normal": 3.0,
+    "slow": 2.0,
+}
+PACE_ALIASES = {
+    "默认": "default",
+    "急促": "fast",
+    "正常": "normal",
+    "深情": "slow",
+    "低语": "slow",
+}
+
+MAX_LINE_CHARS = 20
+MIN_BEAT_S = 1.0
+PAUSE_PER_PUNCT_S = 0.4
+HEAD_TAIL_MARGIN_S = 1.0
+
+_PUNCT = set("，。！？；：、……·—-「」『』（）《》〈〉\"'“”‘’.…?!;:,")
+
+_MOVEMENT_TABLE: dict[str, dict[str, str]] | None = None
+_MOVEMENT_ZH_TO_ID: dict[str, str] = {}
+
+
+def _load_movement_table() -> dict[str, dict[str, str]]:
+    """Movement id -> {zh, en}, from hevi's own cinematic_techniques data.
+
+    Loaded from the same ``camera_movements.json`` that
+    ``cinematic_techniques.load_movements`` reads, so the table can
+    never drift from hevi's own 40-movement list.
+    """
+    global _MOVEMENT_TABLE, _MOVEMENT_ZH_TO_ID
+    if _MOVEMENT_TABLE is not None:
+        return _MOVEMENT_TABLE
+    movements: list[dict[str, Any]] = []
+    try:
+        from hevi.capabilities.cinematic_techniques import load_movements
+
+        movements = load_movements()
+    except Exception:
+        data_path = (
+            Path(__file__).resolve().parent
+            / "cinematic_data"
+            / "camera_movements.json"
+        )
+        try:
+            movements = json.loads(data_path.read_text(encoding="utf-8"))[
+                "movements"
+            ]
+        except Exception as exc:
+            raise PromptCompilerError(
+                "story.prompt_compiler: cannot load camera movement table "
+                f"from cinematic_techniques data: {exc}"
+            ) from exc
+    table: dict[str, dict[str, str]] = {}
+    zh_to_id: dict[str, str] = {}
+    for entry in movements:
+        movement_id = str(entry.get("id", "")).strip()
+        zh = str(entry.get("name_zh", "")).strip()
+        en = str(entry.get("name_en", "")).strip()
+        if not movement_id:
+            continue
+        table[movement_id] = {"zh": zh, "en": en}
+        if zh:
+            zh_to_id[zh] = movement_id
+    if not table:
+        raise PromptCompilerError(
+            "story.prompt_compiler: camera movement table is empty"
+        )
+    _MOVEMENT_TABLE = table
+    _MOVEMENT_ZH_TO_ID = zh_to_id
+    return table
+
+
+def resolve_movement(value: str) -> tuple[str, str, str]:
+    """Normalise a movement reference to (id, zh, en).
+
+    Accepts a movement id or its Chinese name; anything else raises,
+    naming the rejected value.
+    """
+    table = _load_movement_table()
+    wanted = str(value or "").strip()
+    if wanted in table:
+        entry = table[wanted]
+        return wanted, entry["zh"], entry["en"]
+    if wanted in _MOVEMENT_ZH_TO_ID:
+        movement_id = _MOVEMENT_ZH_TO_ID[wanted]
+        entry = table[movement_id]
+        return movement_id, entry["zh"], entry["en"]
+    known = ", ".join(sorted(table))
+    raise PromptCompilerError(
+        f"story.prompt_compiler: unknown camera movement {wanted!r}; "
+        f"must be one of the 40 cinematic_techniques movements: {known}"
+    )
+
+
+def normalise_pace(value: Any) -> str:
+    """Normalise a pace tier (English id or Chinese alias) to its id."""
+    if value is None or value == "":
+        return "default"
+    wanted = str(value).strip()
+    if wanted in PACE_RATES:
+        return wanted
+    if wanted in PACE_ALIASES:
+        return PACE_ALIASES[wanted]
+    raise PromptCompilerError(
+        f"story.prompt_compiler: unknown pace tier {wanted!r}; "
+        f"allowed: {', '.join(sorted(PACE_RATES))} "
+        f"or aliases {', '.join(sorted(PACE_ALIASES))}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Line-duration estimator
+# ---------------------------------------------------------------------------
+
+
+def _content_chars(line: str) -> int:
+    return sum(1 for ch in str(line) if not ch.isspace() and ch not in _PUNCT)
+
+
+def _punct_count(line: str) -> int:
+    return sum(1 for ch in str(line) if ch in _PUNCT)
+
+
+def estimate_min_line_duration_s(line: str, pace: Any = "default") -> float:
+    """Minimum planned duration (seconds) for one spoken line.
+
+    ``chars / rate + 0.4s per punctuation mark + 1.0s head/tail
+    margin``. An empty / silent line costs 0.0s.
+    """
+    text = str(line or "").strip()
+    if not text:
+        return 0.0
+    rate = PACE_RATES[normalise_pace(pace)]
+    return (
+        _content_chars(text) / rate
+        + PAUSE_PER_PUNCT_S * _punct_count(text)
+        + HEAD_TAIL_MARGIN_S
+    )
+
+
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
+
+
+def _fmt_num(value: float) -> str:
+    number = float(value)
+    if number == int(number):
+        return str(int(number))
+    return f"{number:g}"
+
+
+def _fmt_time(value: float) -> str:
+    return _fmt_num(value)
+
+
+def _req(container: dict[str, Any], key: str, where: str) -> Any:
+    if not isinstance(container, dict) or key not in container:
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {where} is missing required field {key!r}"
+        )
+    return container[key]
+
+
+def _flatten_state(state: Any, prefix: str = "") -> dict[str, str]:
+    """Flatten a nested continuity state to dotted-key -> value strings."""
+    flat: dict[str, str] = {}
+    if isinstance(state, dict):
+        for key, value in state.items():
+            dotted = f"{prefix}.{key}" if prefix else str(key)
+            if isinstance(value, dict):
+                flat.update(_flatten_state(value, dotted))
+            elif isinstance(value, list):
+                flat[dotted] = "／".join(str(v) for v in value)
+            else:
+                flat[dotted] = str(value)
+    elif state is not None:
+        flat[prefix or "state"] = str(state)
+    return flat
+
+
+def _shot_label(shot: dict[str, Any]) -> str:
+    return f"shot {shot.get('shot_no', '?')}"
+
+
+def _beat_label(shot: dict[str, Any], beat: dict[str, Any]) -> str:
+    return f"{_shot_label(shot)} beat {beat.get('beat_no', '?')}"
+
+
+# ---------------------------------------------------------------------------
+# Vocabulary + structure validation (runs before the five gates)
+# ---------------------------------------------------------------------------
+
+
+def check_vocabulary(episode: dict[str, Any]) -> None:
+    """Closed-vocabulary interception for every shot and beat."""
+    for shot in episode.get("shots", []):
+        label = _shot_label(shot)
+        camera = shot.get("camera", {})
+        if not isinstance(camera, dict):
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} camera must be an object"
+            )
+        shot_size = camera.get("shot_size", "")
+        if shot_size not in SHOT_SIZES:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} shot_size {shot_size!r} "
+                f"is outside the closed list: {', '.join(SHOT_SIZES)}"
+            )
+        angle = camera.get("angle", "")
+        if angle not in ANGLES:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} angle {angle!r} "
+                f"is outside the closed list: {', '.join(ANGLES)}"
+            )
+        try:
+            resolve_movement(camera.get("movement", ""))
+        except PromptCompilerError as exc:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} camera.movement: {exc}"
+            ) from exc
+        for beat in shot.get("beats", []):
+            beat_label = _beat_label(shot, beat)
+            if beat.get("camera_move"):
+                try:
+                    resolve_movement(beat["camera_move"])
+                except PromptCompilerError as exc:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler: {beat_label} "
+                        f"camera_move: {exc}"
+                    ) from exc
+            mode = beat.get("line_mode", "")
+            if mode and mode not in LINE_MODES:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: {beat_label} line_mode "
+                    f"{mode!r} is outside the closed list: "
+                    f"{', '.join(LINE_MODES)}"
+                )
+            if beat.get("line") and mode in ("os", "vo"):
+                if not str(beat.get("line_source", "")).strip():
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler: {beat_label} line_mode "
+                        f"{mode!r} requires line_source (OS/VO speakers "
+                        f"do not lip-sync, so the source must be named)"
+                    )
+            if beat.get("pace") is not None:
+                try:
+                    normalise_pace(beat["pace"])
+                except PromptCompilerError as exc:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler: {beat_label} pace: {exc}"
+                    ) from exc
+            quality = beat.get("voice_quality", [])
+            if quality is not None:
+                if not isinstance(quality, list) or len(quality) > 3:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler: {beat_label} "
+                        f"voice_quality must be a list of at most 3 "
+                        f"voice-quality words, got {quality!r}"
+                    )
+            if beat.get("line") and not str(beat.get("speaker", "")).strip():
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: {beat_label} has a line but "
+                    f"no speaker; every spoken line names its speaker"
+                )
+
+
+def check_structure(episode: dict[str, Any]) -> list[dict[str, Any]]:
+    """Required-field checks; returns the shot list for the gates."""
+    for key in ("episode_no", "title", "target_duration_s", "aspect", "style"):
+        _req(episode, key, "episode")
+    shots = episode.get("shots")
+    if not isinstance(shots, list) or not shots:
+        raise PromptCompilerError(
+            "story.prompt_compiler: episode must carry a non-empty "
+            "'shots' list"
+        )
+    seen: set[str] = set()
+    for shot in shots:
+        label = _shot_label(shot)
+        shot_no = str(_req(shot, "shot_no", label))
+        if shot_no in seen:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: duplicate shot_no {shot_no!r}"
+            )
+        seen.add(shot_no)
+        for key in ("scene", "duration_s", "camera", "beats", "continuity"):
+            _req(shot, key, label)
+        if float(shot["duration_s"]) <= 0:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} duration_s must be > 0, "
+                f"got {shot['duration_s']!r}"
+            )
+        if not isinstance(shot["beats"], list) or not shot["beats"]:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} must carry a non-empty "
+                f"'beats' list"
+            )
+        continuity = shot["continuity"]
+        if not isinstance(continuity, dict):
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} continuity must be an object"
+            )
+        for key in ("entry_state", "exit_state"):
+            _req(continuity, key, f"{label} continuity")
+        camera = shot["camera"]
+        if not isinstance(camera, dict):
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} camera must be an object"
+            )
+        for key in ("shot_size", "angle", "movement", "start_frame", "end_frame"):
+            _req(camera, key, f"{label} camera")
+        for beat in shot["beats"]:
+            beat_label = _beat_label(shot, beat)
+            for key in ("beat_no", "t_start_s", "t_end_s", "action", "sound"):
+                _req(beat, key, beat_label)
+    return shots
+
+
+# ---------------------------------------------------------------------------
+# Gate 1 -- beat times cover the shot exactly
+# ---------------------------------------------------------------------------
+
+
+def check_beat_coverage(shots: list[dict[str, Any]]) -> None:
+    """Gate 1: beats tile [0, duration_s] with no gap and no overlap."""
+    for shot in shots:
+        label = _shot_label(shot)
+        duration = float(shot["duration_s"])
+        beats = shot["beats"]
+        total = 0.0
+        previous_end: float | None = None
+        for beat in beats:
+            beat_label = _beat_label(shot, beat)
+            start = float(beat["t_start_s"])
+            end = float(beat["t_end_s"])
+            if end <= start:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 1: {beat_label} has "
+                    f"non-positive span {start:g}-{end:g}s"
+                )
+            if end - start < MIN_BEAT_S - 1e-9:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 1: {beat_label} span "
+                    f"{end - start:g}s is under the {MIN_BEAT_S:g}s "
+                    f"minimum segment length"
+                )
+            if previous_end is None:
+                if abs(start) > 1e-9:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler gate 1: {label} first "
+                        f"beat starts at {start:g}s, not 0s (gap at the "
+                        f"head of the shot)"
+                    )
+            elif abs(start - previous_end) > 1e-9:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 1: {label} beat "
+                    f"{beat.get('beat_no', '?')} starts at {start:g}s "
+                    f"but the previous beat ends at {previous_end:g}s "
+                    f"(gap or overlap)"
+                )
+            total += end - start
+            previous_end = end
+        if previous_end is None or abs(previous_end - duration) > 1e-9:
+            raise PromptCompilerError(
+                f"story.prompt_compiler gate 1: {label} beats end at "
+                f"{previous_end} s but duration_s is {duration:g}s"
+            )
+        if abs(total - duration) > 1e-9:
+            raise PromptCompilerError(
+                f"story.prompt_compiler gate 1: {label} beat spans sum "
+                f"to {total:g}s, not duration_s {duration:g}s"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Long-line split rule + gate 2 -- line duration fits its beat
+# ---------------------------------------------------------------------------
+
+
+def _line_groups(
+    shot: dict[str, Any],
+) -> dict[str, list[dict[str, Any]]]:
+    groups: dict[str, list[dict[str, Any]]] = {}
+    for beat in shot["beats"]:
+        group = beat.get("line_group")
+        if group:
+            groups.setdefault(str(group), []).append(beat)
+    return groups
+
+
+def check_long_lines(shots: list[dict[str, Any]]) -> None:
+    """Split rule: a >20-char line must be split across grouped beats."""
+    for shot in shots:
+        label = _shot_label(shot)
+        groups = _line_groups(shot)
+        grouped_ids = {id(b) for beats in groups.values() for b in beats}
+        for group_id, beats in groups.items():
+            if len(beats) < 2:
+                beat = beats[0]
+                raise PromptCompilerError(
+                    f"story.prompt_compiler split rule: {_beat_label(shot, beat)} "
+                    f"declares line_group {group_id!r} but the group has "
+                    f"only one beat; a split needs at least 2 beats"
+                )
+            speakers = {str(b.get("speaker", "")) for b in beats}
+            modes = {str(b.get("line_mode", "") or "dialogue") for b in beats}
+            if len(speakers) != 1 or len(modes) != 1:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler split rule: {label} line_group "
+                    f"{group_id!r} spans beats with different speakers "
+                    f"({sorted(speakers)}) or line modes ({sorted(modes)}); "
+                    f"a split line stays with its original speaker"
+                )
+            for beat in beats:
+                part = str(beat.get("line", ""))
+                if _content_chars(part) > MAX_LINE_CHARS:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler split rule: "
+                        f"{_beat_label(shot, beat)} split part "
+                        f"{part!r} is itself over {MAX_LINE_CHARS} "
+                        f"content characters; split it further"
+                    )
+            full = beats[0].get("line_full")
+            joined = "".join(str(b.get("line", "")) for b in beats)
+            if full is not None and "".join(str(full).split()) != "".join(
+                joined.split()
+            ):
+                raise PromptCompilerError(
+                    f"story.prompt_compiler split rule: {label} line_group "
+                    f"{group_id!r} parts join to {joined!r}, not to the "
+                    f"declared line_full {full!r}"
+                )
+        for beat in shot["beats"]:
+            if id(beat) in grouped_ids:
+                continue
+            line = str(beat.get("line", "") or "")
+            if _content_chars(line) > MAX_LINE_CHARS:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler split rule: "
+                    f"{_beat_label(shot, beat)} line {line!r} has "
+                    f"{_content_chars(line)} content characters, over "
+                    f"the {MAX_LINE_CHARS}-char limit, and carries no "
+                    f"line_group split; split it at a semantic pause "
+                    f"across consecutive beats (same speaker) or shorten it"
+                )
+
+
+def check_line_durations(shots: list[dict[str, Any]]) -> None:
+    """Gate 2: every spoken line's minimum planned duration fits its beat."""
+    for shot in shots:
+        for beat in shot["beats"]:
+            line = str(beat.get("line", "") or "")
+            if not line.strip():
+                continue
+            span = float(beat["t_end_s"]) - float(beat["t_start_s"])
+            needed = estimate_min_line_duration_s(line, beat.get("pace"))
+            if needed > span + 1e-9:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 2: "
+                    f"{_beat_label(shot, beat)} line {line!r} needs at "
+                    f"least {needed:.2f}s (pace "
+                    f"{normalise_pace(beat.get('pace'))}) but its beat "
+                    f"span is only {span:g}s; split the shot or shorten "
+                    f"the line, never squeeze it"
+                )
+        voiceover = str(shot.get("voiceover_line", "") or "")
+        if voiceover.strip():
+            needed = estimate_min_line_duration_s(
+                voiceover, shot.get("voiceover_pace")
+            )
+            if needed > float(shot["duration_s"]) + 1e-9:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 2: {_shot_label(shot)} "
+                    f"voiceover line {voiceover!r} needs at least "
+                    f"{needed:.2f}s but the shot is only "
+                    f"{float(shot['duration_s']):g}s"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Gate 3 -- one line in exactly one place
+# ---------------------------------------------------------------------------
+
+
+def collect_spoken_lines(
+    shots: list[dict[str, Any]],
+) -> list[tuple[str, str, str]]:
+    """All spoken texts in order: (text, shot_no, beat_no or 'voiceover').
+
+    Grouped split lines contribute their full line once, at the first
+    beat of the group. Blank / purely silent beats contribute nothing.
+    Shot-level voiceover lines count (OS/VO text equal to dialogue
+    text is a repeat); shot-level subtitles do not speak and are
+    excluded.
+    """
+    spoken: list[tuple[str, str, str]] = []
+    for shot in shots:
+        shot_no = str(shot.get("shot_no", "?"))
+        groups = _line_groups(shot)
+        group_first: dict[str, dict[str, Any]] = {
+            group_id: beats[0] for group_id, beats in groups.items()
+        }
+        for beat in shot["beats"]:
+            group = beat.get("line_group")
+            if group:
+                if group_first[str(group)] is not beat:
+                    continue
+                full = beat.get("line_full")
+                if full is not None:
+                    text = str(full)
+                else:
+                    text = "".join(
+                        str(b.get("line", "")) for b in groups[str(group)]
+                    )
+            else:
+                text = str(beat.get("line", "") or "")
+            if text.strip():
+                spoken.append((text.strip(), shot_no, str(beat.get("beat_no", "?"))))
+        voiceover = str(shot.get("voiceover_line", "") or "")
+        if voiceover.strip():
+            spoken.append((voiceover.strip(), shot_no, "voiceover"))
+    return spoken
+
+
+def check_line_uniqueness(shots: list[dict[str, Any]]) -> None:
+    """Gate 3: no spoken text repeats anywhere in the episode."""
+    seen: dict[str, tuple[str, str]] = {}
+    for text, shot_no, beat_no in collect_spoken_lines(shots):
+        if text in seen:
+            first_shot, first_beat = seen[text]
+            raise PromptCompilerError(
+                f"story.prompt_compiler gate 3: line {text!r} appears "
+                f"twice: first at shot {first_shot} beat {first_beat}, "
+                f"again at shot {shot_no} beat {beat_no}; reaction shots, "
+                f"echoes and repeated emphasis must not reuse line text"
+            )
+        seen[text] = (shot_no, beat_no)
+
+
+# ---------------------------------------------------------------------------
+# Gate 4 -- continuity chain + start-frame trigger state
+# ---------------------------------------------------------------------------
+
+
+def check_continuity_chain(shots: list[dict[str, Any]]) -> None:
+    """Gate 4: each entry = previous exit + this shot's new changes."""
+    for index, shot in enumerate(shots):
+        label = _shot_label(shot)
+        continuity = shot["continuity"]
+        entry = _flatten_state(continuity.get("entry_state", {}))
+        # Start-frame trigger rule, checked for every shot.
+        start_frame = shot["camera"].get("start_frame", {})
+        if not isinstance(start_frame, dict):
+            raise PromptCompilerError(
+                f"story.prompt_compiler gate 4: {label} start_frame "
+                f"must be an object with a state_kind marker"
+            )
+        marker = start_frame.get("state_kind")
+        if marker != "trigger_in_progress":
+            raise PromptCompilerError(
+                f"story.prompt_compiler gate 4: {label} start_frame "
+                f"state_kind is {marker!r}, not 'trigger_in_progress'; "
+                f"the first frame must show the triggering moment "
+                f"still unfinished, not its result"
+            )
+        if index == 0:
+            continue
+        previous_exit = _flatten_state(shots[index - 1]["continuity"].get("exit_state", {}))
+        changes = _flatten_state(continuity.get("new_changes", {}))
+        for key, old_value in previous_exit.items():
+            if key not in entry:
+                if changes.get(key) is None and key in changes:
+                    continue
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 4: {label} entry_state "
+                    f"dropped item {key!r} (previous exit value "
+                    f"{old_value!r}) without declaring its removal in "
+                    f"new_changes"
+                )
+            if entry[key] != old_value and changes.get(key) != entry[key]:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 4: {label} entry_state "
+                    f"item {key!r} changed from {old_value!r} to "
+                    f"{entry[key]!r} without declaring it in new_changes"
+                )
+        for key, new_value in entry.items():
+            if key not in previous_exit and changes.get(key) != new_value:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 4: {label} entry_state "
+                    f"adds new item {key!r}={new_value!r} without "
+                    f"declaring it in new_changes"
+                )
+        for key, declared in changes.items():
+            if declared is None:
+                if key in entry:
+                    raise PromptCompilerError(
+                        f"story.prompt_compiler gate 4: {label} "
+                        f"new_changes declares item {key!r} removed, "
+                        f"but entry_state still carries it"
+                    )
+            elif entry.get(key) != declared:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 4: {label} new_changes "
+                    f"declares item {key!r}={declared!r}, but entry_state "
+                    f"carries {entry.get(key)!r}"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Gate 5 -- episode total + supplier tier (explicit, never invented)
+# ---------------------------------------------------------------------------
+
+
+def check_total_and_tier(
+    episode: dict[str, Any],
+    shots: list[dict[str, Any]],
+    provider_caps: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Gate 5: shot durations sum to the episode target; tier breaches raise.
+
+    Returns the tier verdict. Without caller-supplied caps the verdict
+    is ``unknown`` (no tier table exists in provider_catalog /
+    model_catalog) -- recorded, never guessed, and never used to
+    clamp, pad or truncate anything.
+    """
+    target = float(episode["target_duration_s"])
+    total = sum(float(shot["duration_s"]) for shot in shots)
+    if abs(total - target) > 1e-9:
+        raise PromptCompilerError(
+            f"story.prompt_compiler gate 5: shot durations sum to "
+            f"{total:g}s, not the episode target_duration_s "
+            f"{target:g}s (episode {episode.get('episode_no', '?')}); "
+            f"fix the script, do not pad or cut silently"
+        )
+    if not provider_caps:
+        return {
+            "status": "unknown",
+            "reason": (
+                "provider_catalog (providers.json) and model_catalog "
+                "(models.json) contain no duration tier table, so no "
+                "supplier cap can be checked from catalogue data; "
+                "pass provider_caps explicitly to enforce a tier"
+            ),
+        }
+    provider = str(provider_caps.get("provider", "") or "")
+    where = f" for provider {provider}" if provider else ""
+    max_shot = provider_caps.get("max_shot_s")
+    if max_shot is not None:
+        for shot in shots:
+            if float(shot["duration_s"]) > float(max_shot) + 1e-9:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler gate 5: {_shot_label(shot)} "
+                    f"duration {float(shot['duration_s']):g}s exceeds "
+                    f"the supplier single-shot cap {float(max_shot):g}s"
+                    f"{where}; send this back to the script layer, "
+                    f"do not clamp or split silently"
+                )
+    max_total = provider_caps.get("max_total_s")
+    if max_total is not None and total > float(max_total) + 1e-9:
+        raise PromptCompilerError(
+            f"story.prompt_compiler gate 5: episode total {total:g}s "
+            f"exceeds the supplier total cap {float(max_total):g}s"
+            f"{where}; send this back to the script layer"
+        )
+    return {
+        "status": "checked",
+        "provider": provider,
+        "max_shot_s": max_shot,
+        "max_total_s": max_total,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Prompt rendering (fixed section order)
+# ---------------------------------------------------------------------------
+
+SPEECH_DISCIPLINE = (
+    "说话纪律：只说本提示词里逐字写出的台词，每句只说一遍；"
+    "全部对白使用现代简体普通话，自然语速；同一时刻只有一人说话；"
+    "在画内的说话人嘴部必须清晰可见，画外音／旁白不对口型；"
+    "静默段就是真静默，不出声、不哼唱、不加歌声。"
+)
+BANS = (
+    "禁令：画面里不许出现任何文字、字幕、水印、拼贴、分屏，"
+    "不许出现额外人物；人物视线必须落在场景内明确对象上；"
+    "镜头之间禁叠化、禁交叉溶解、禁淡入淡出。"
+)
+
+
+def _render_line(beat: dict[str, Any]) -> str:
+    """One beat's speech slot: verbatim line, or true silence."""
+    line = str(beat.get("line", "") or "")
+    if not line.strip():
+        return "静默：真静默"
+    speaker = str(beat.get("speaker", "")).strip()
+    quality = beat.get("voice_quality") or []
+    quality_text = "、".join(str(q) for q in quality)
+    voice = f"{speaker}（{quality_text}）" if quality_text else speaker
+    mode = beat.get("line_mode", "") or "dialogue"
+    if mode == "dialogue":
+        return f"台词 `{voice}：{line}`"
+    source = str(beat.get("line_source", "")).strip()
+    kind = "画外音" if mode == "os" else "旁白"
+    return f"台词（{kind}，不对口型，来源：{source}）`{voice}：{line}`"
+
+
+def _render_state(state: Any) -> str:
+    flat = _flatten_state(state)
+    if not flat:
+        return "（无）"
+    return "\n".join(f"{key}：{value}" for key, value in flat.items())
+
+
+def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
+    """One shot's prompt text, in the fixed section order.
+
+    [style] -> [duration] -> [reference] -> [entry state] -> [scene]
+    -> per-beat segments (shot size + angle + landing | one main
+    movement / entry -> beat action -> landing / speech / sound)
+    -> [exit state] -> [closing frame] -> [overall sound] ->
+    [constraints]. Beat segments follow the beats' own start/end
+    seconds; durations are never split evenly across segments.
+    """
+    camera = shot["camera"]
+    _, movement_zh, movement_en = resolve_movement(camera["movement"])
+    lines: list[str] = []
+    lines.append(f"[风格]{episode['style']}")
+    lines.append(
+        f"[时长]{_fmt_num(float(shot['duration_s']))}秒（{episode['aspect']}）"
+    )
+    reference = str(episode.get("reference", "") or "").strip()
+    lines.append(f"[参考]{reference if reference else '无指定参考'}")
+    lines.append("[入口状态]")
+    lines.append(_render_state(shot["continuity"]["entry_state"]))
+    scene = str(shot["scene"])
+    time_of_day = str(shot.get("time_of_day", "") or "").strip()
+    lines.append(f"[场景]{scene}" + (f"｜{time_of_day}" if time_of_day else ""))
+    characters = shot.get("characters") or []
+    if characters:
+        lines.append(f"[人物]{'、'.join(str(c) for c in characters)}")
+    props = shot.get("props") or []
+    if props:
+        lines.append(f"[道具]{'、'.join(str(p) for p in props)}")
+    lines.append("[镜头段]")
+    entry_text = str(camera["start_frame"].get("description", "")).strip()
+    for beat in shot["beats"]:
+        start = _fmt_time(float(beat["t_start_s"]))
+        end = _fmt_time(float(beat["t_end_s"]))
+        if beat.get("camera_move"):
+            _, beat_zh, beat_en = resolve_movement(beat["camera_move"])
+        else:
+            beat_zh, beat_en = movement_zh, movement_en
+        landing = str(beat.get("landing", "") or "").strip()
+        landing_text = f"落位：{landing}" if landing else "落位：保持本镜构图"
+        action = str(beat["action"])
+        gaze = str(beat.get("gaze_target", "") or "").strip()
+        gaze_text = f"视线：{gaze}" if gaze else ""
+        speech = _render_line(beat)
+        if beat.get("line_group"):
+            speech += f"（长句分段，组 {beat['line_group']}，与前后同组节拍同属一句，仍归原说话者）"
+        segment = (
+            f"[{start}–{end}秒]镜头（{camera['shot_size']}＋{camera['angle']}＋"
+            f"{landing_text}｜{beat_zh}（{beat_en}）／"
+            f"{entry_text}→{action}→{landing if landing else '保持本镜构图'}／"
+            f"{speech}"
+        )
+        if gaze_text:
+            segment += f"／{gaze_text}"
+        segment += f"／声音：{beat['sound']}）"
+        lines.append(segment)
+        if landing:
+            entry_text = landing
+    lines.append("[出口状态]")
+    lines.append(_render_state(shot["continuity"]["exit_state"]))
+    lines.append(
+        f"[收尾]{camera['end_frame'].get('description', '')}"
+    )
+    voiceover = str(shot.get("voiceover_line", "") or "")
+    if voiceover.strip():
+        source = str(shot.get("voiceover_source", "") or "").strip()
+        source_text = f"（来源：{source}）" if source else ""
+        lines.append(
+            f"[画外旁白·不对口型]{voiceover}{source_text}"
+            f"——本句为画外旁白，不计入动镜台词，不由画内人物对口型说出。"
+        )
+    subtitle = str(shot.get("subtitle", "") or "")
+    if subtitle.strip():
+        lines.append(
+            f"[字幕·后期叠加，不进画面生成]{subtitle}"
+            f"——本条只作后期叠加说明，生成画面本身仍不许出现任何文字。"
+        )
+    overall = str(shot.get("overall_sound", "") or "").strip()
+    if not overall:
+        seen_sounds: list[str] = []
+        for beat in shot["beats"]:
+            sound = str(beat["sound"])
+            if sound not in seen_sounds:
+                seen_sounds.append(sound)
+        overall = "；".join(seen_sounds)
+    lines.append(f"[整体声音]{overall}")
+    lines.append(f"[约束]{SPEECH_DISCIPLINE}{BANS}")
+    return "\n".join(lines)
+
+
+def compile_episode(
+    episode: dict[str, Any],
+    provider_caps: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Validate an episode through all five gates, then render prompts.
+
+    Gate order: vocabulary/structure, gate 1 (beat coverage), split
+    rule, gate 2 (line durations), gate 3 (line uniqueness), gate 4
+    (continuity chain + start-frame trigger), gate 5 (episode total +
+    supplier tier). The first failure raises
+    :class:`PromptCompilerError`; nothing is warned-and-passed.
+    """
+    if not isinstance(episode, dict):
+        raise PromptCompilerError(
+            "story.prompt_compiler: episode must be a JSON object"
+        )
+    shots = check_structure(episode)
+    check_vocabulary(episode)
+    check_beat_coverage(shots)
+    check_long_lines(shots)
+    check_line_durations(shots)
+    check_line_uniqueness(shots)
+    check_continuity_chain(shots)
+    tier = check_total_and_tier(episode, shots, provider_caps)
+    prompts = [
+        {
+            "shot_no": str(shot.get("shot_no", "?")),
+            "prompt": compile_shot_prompt(episode, shot),
+        }
+        for shot in shots
+    ]
+    spoken = collect_spoken_lines(shots)
+    return {
+        "episode_no": episode["episode_no"],
+        "title": episode["title"],
+        "target_duration_s": episode["target_duration_s"],
+        "total_duration_s": sum(float(s["duration_s"]) for s in shots),
+        "shot_count": len(shots),
+        "moving_line_count": len(
+            [
+                item
+                for item in spoken
+                if item[2] != "voiceover"
+            ]
+        ),
+        "spoken_line_count": len(spoken),
+        "tier": tier,
+        "prompts": prompts,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Capability registration (same pattern as beat_align / episode_prompts)
+# ---------------------------------------------------------------------------
+
+_Registered = False
+
+_PARAMS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "episode": {
+            "type": "object",
+            "description": "Episode in the beat schema (episode + shots + beats + continuity).",
+        },
+        "provider_caps": {
+            "type": "object",
+            "description": (
+                "Optional supplier tier caps, e.g. "
+                '{"provider": "x", "max_shot_s": 30}. Without caps the '
+                "tier verdict is recorded as unknown, never invented."
+            ),
+        },
+    },
+    "required": ["episode"],
+    "additionalProperties": False,
+}
+
+
+def _render(
+    params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
+) -> "CapabilityResult":
+    from hevi.capabilities.errors import CapabilityError
+    from hevi.capabilities.registry import CapabilityResult, compute_sha256
+
+    try:
+        payload = compile_episode(
+            params["episode"], params.get("provider_caps")
+        )
+    except PromptCompilerError as exc:
+        raise CapabilityError(str(exc)) from exc
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report = out_dir / "prompt_compiler_output.json"
+    report.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    prompts_dir = out_dir / "prompts"
+    prompts_dir.mkdir(parents=True, exist_ok=True)
+    for item in payload["prompts"]:
+        (prompts_dir / f"{item['shot_no']}.txt").write_text(
+            item["prompt"], encoding="utf-8"
+        )
+    return CapabilityResult(
+        duration_s=0.0,
+        sha256=compute_sha256(report),
+        qa={
+            "report_json": str(report),
+            "episode_no": payload["episode_no"],
+            "shot_count": payload["shot_count"],
+            "moving_line_count": payload["moving_line_count"],
+            "tier": payload["tier"],
+        },
+    )
+
+
+def register_prompt_compiler_capabilities_once() -> list[str]:
+    """Register ``story.prompt_compiler`` on the unified registry (once)."""
+    global _Registered
+    if _Registered:
+        return []
+    _Registered = True
+    from hevi.capabilities.registry import Capability, register
+
+    register(
+        Capability(
+            name="story.prompt_compiler",
+            kind="line",
+            aspects=["16:9", "9:16", "1:1"],
+            params_schema=_PARAMS_SCHEMA,
+            cpu_cost_hint=0.0,
+            render=_render,
+            has_media_output=False,
+            description=(
+                "Beat-schema prompt compiler: validates a per-shot "
+                "beat-schema episode through five fatal gates (beat "
+                "coverage, line durations, line uniqueness, continuity "
+                "chain + start-frame trigger state, episode total + "
+                "supplier tier) and renders one prompt per shot in a "
+                "fixed section order, with lines taken verbatim from "
+                "the schema. Closed vocabularies: shot sizes / angles "
+                "are standard film grammar, movements are hevi's own "
+                "40 cinematic_techniques movements. Long lines must be "
+                "split across grouped beats; nothing is truncated, "
+                "clamped or padded silently."
+            ),
+            line="prompt_compiler",
+        )
+    )
+    return ["story.prompt_compiler"]
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Run story.prompt_compiler on a params JSON file"
+    )
+    parser.add_argument("--input", required=True, help="params JSON file")
+    parser.add_argument("--out", required=True, help="output directory")
+    args = parser.parse_args(argv)
+    params = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    result = _render(params, Path(args.out), duration=0.0, aspect="16:9", seed=42)
+    print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
