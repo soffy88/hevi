@@ -353,3 +353,12 @@ _handpaint_anim.register_handpaint_anim_capabilities_once()
 # video.multishot_lock (self-registers on import as well).
 from . import multishot_lock as _multishot_lock  # noqa: E402,F401
 _multishot_lock.register_multishot_lock_capabilities_once()
+
+# Physics / vector gaps (2026-10-27, clean-room): animation.physics2d,
+# scene3d.collision_check, image.vector_path (self-register on import).
+from . import physics2d as _physics2d  # noqa: E402,F401
+_physics2d.register_physics2d_capabilities_once()
+from . import collision3d as _collision3d  # noqa: E402,F401
+_collision3d.register_collision3d_capabilities_once()
+from . import vector_path as _vector_path  # noqa: E402,F401
+_vector_path.register_vector_path_capabilities_once()
