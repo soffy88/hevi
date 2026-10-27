@@ -348,3 +348,8 @@ _prompt_compiler.register_prompt_compiler_capabilities_once()
 # render_check / tuantuan_demo (self-registers on import as well).
 from . import handpaint_anim as _handpaint_anim  # noqa: E402,F401
 _handpaint_anim.register_handpaint_anim_capabilities_once()
+
+# Multi-shot reference-lock planning (2026-10-27, clean-room):
+# video.multishot_lock (self-registers on import as well).
+from . import multishot_lock as _multishot_lock  # noqa: E402,F401
+_multishot_lock.register_multishot_lock_capabilities_once()
