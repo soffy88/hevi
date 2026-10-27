@@ -376,3 +376,24 @@ from . import publish_plan as _publish_plan  # noqa: E402,F401
 _publish_plan.register_publish_plan_capabilities_once()
 from . import webhook_final as _webhook_final  # noqa: E402,F401
 _webhook_final.register_webhook_final_capabilities_once()
+
+# 369-list method intake (2026-10-27, clean-room): handpaint narration
+# alignment, karaoke vertical, frame-return review, GSAP timeline
+# plan, portrait consent gate, shot continuity gate, editable
+# project, word appear plan (self-register on import as well).
+from . import handpaint_narration as _handpaint_narration  # noqa: E402,F401
+_handpaint_narration.register_handpaint_narration_capabilities_once()
+from . import karaoke_vertical as _karaoke_vertical  # noqa: E402,F401
+_karaoke_vertical.register_karaoke_vertical_capabilities_once()
+from . import frame_review as _frame_review  # noqa: E402,F401
+_frame_review.register_frame_review_capabilities_once()
+from . import gsap_timeline as _gsap_timeline  # noqa: E402,F401
+_gsap_timeline.register_gsap_timeline_capabilities_once()
+from . import portrait_consent as _portrait_consent  # noqa: E402,F401
+_portrait_consent.register_portrait_consent_capabilities_once()
+from . import shot_continuity as _shot_continuity  # noqa: E402,F401
+_shot_continuity.register_shot_continuity_capabilities_once()
+from . import editable_project as _editable_project  # noqa: E402,F401
+_editable_project.register_editable_project_capabilities_once()
+from . import word_appear as _word_appear  # noqa: E402,F401
+_word_appear.register_word_appear_capabilities_once()
