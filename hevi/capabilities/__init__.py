@@ -417,3 +417,15 @@ from . import audio_first_board as _audio_first_board  # noqa: E402,F401
 _audio_first_board.register_audio_first_board_capabilities_once()
 from . import jianying_draft_plan as _jianying_draft_plan  # noqa: E402,F401
 _jianying_draft_plan.register_jianying_draft_plan_capabilities_once()
+
+# Commentary-LONG line (2026-10-27, clean-room): story.five_segment_long
+# (Lu Shihao five-segment template for a YouTube long video, target
+# 1800s / 8500-9000 narration chars, segment 3 honestly labelled
+# commentary, not live-action performance), story.youtube_long_board
+# (16:9 board, about 8s per image, YouTube chapters, research pending
+# never invented), and edit.jianying_draft_long_plan (16:9 draft PLAN
+# only; no .draft file is written and nothing is installed).
+from . import five_segment_long as _five_segment_long  # noqa: E402,F401
+_five_segment_long.register_five_segment_long_capabilities_once()
+from . import youtube_long_board as _youtube_long_board  # noqa: E402,F401
+_youtube_long_board.register_youtube_long_capabilities_once()
