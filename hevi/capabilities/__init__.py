@@ -362,3 +362,17 @@ from . import collision3d as _collision3d  # noqa: E402,F401
 _collision3d.register_collision3d_capabilities_once()
 from . import vector_path as _vector_path  # noqa: E402,F401
 _vector_path.register_vector_path_capabilities_once()
+
+# Openshorts method intake (2026-10-27, clean-room): edit.clip_moments,
+# edit.vertical_reframe, edit.word_subtitle_contract, edit.publish_plan,
+# edit.webhook_final (self-register on import as well).
+from . import clip_moments as _clip_moments  # noqa: E402,F401
+_clip_moments.register_clip_moments_capabilities_once()
+from . import vertical_reframe as _vertical_reframe  # noqa: E402,F401
+_vertical_reframe.register_vertical_reframe_capabilities_once()
+from . import word_subtitle_contract as _word_subtitle_contract  # noqa: E402,F401
+_word_subtitle_contract.register_word_subtitle_contract_capabilities_once()
+from . import publish_plan as _publish_plan  # noqa: E402,F401
+_publish_plan.register_publish_plan_capabilities_once()
+from . import webhook_final as _webhook_final  # noqa: E402,F401
+_webhook_final.register_webhook_final_capabilities_once()
