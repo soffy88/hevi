@@ -429,3 +429,19 @@ from . import five_segment_long as _five_segment_long  # noqa: E402,F401
 _five_segment_long.register_five_segment_long_capabilities_once()
 from . import youtube_long_board as _youtube_long_board  # noqa: E402,F401
 _youtube_long_board.register_youtube_long_capabilities_once()
+
+# Shuohao-method intake (2026-10-28, clean-room): story.opening_blocking
+# (one fixed opening arrangement per scene, with the exact sentence the
+# storyboard must copy into each scene's first segment),
+# qa.storyboard_opening_gate (verbatim-copy check), qa.production_gates
+# (deterministic outline/art/script/storyboard gates covering only the
+# gaps hevi's other gates do not cover), and qa.character_anchor_gate
+# (one confirmed anchor root, views derive from it alone, anchor
+# changes mark views stale without deleting them; no image is
+# generated here). Method ideas only; no upstream code or text used.
+from . import stage_opening as _stage_opening  # noqa: E402,F401
+_stage_opening.register_stage_opening_capabilities_once()
+from . import production_gates as _production_gates  # noqa: E402,F401
+_production_gates.register_production_gates_capabilities_once()
+from . import character_anchor as _character_anchor  # noqa: E402,F401
+_character_anchor.register_character_anchor_capabilities_once()
