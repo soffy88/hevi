@@ -403,3 +403,17 @@ _word_appear.register_word_appear_capabilities_once()
 # edit.caption_plan_gate (self-registers on import as well).
 from . import motion_gates as _motion_gates  # noqa: E402,F401
 _motion_gates.register_motion_gates_capabilities_once()
+
+# Commentary-short line (2026-10-27, clean-room): story.five_segment_short
+# (Lu Shihao five-segment template compressed to 90-150s, segment 3
+# honestly labelled commentary, not live-action performance),
+# story.audio_first_board (SRT-timed storyboard, about 8s per shot,
+# first shot at 0, research pending never invented), and
+# edit.jianying_draft_plan (pyJianYingDraft-shaped draft PLAN only;
+# no .draft file is written and nothing is installed).
+from . import five_segment_short as _five_segment_short  # noqa: E402,F401
+_five_segment_short.register_five_segment_short_capabilities_once()
+from . import audio_first_board as _audio_first_board  # noqa: E402,F401
+_audio_first_board.register_audio_first_board_capabilities_once()
+from . import jianying_draft_plan as _jianying_draft_plan  # noqa: E402,F401
+_jianying_draft_plan.register_jianying_draft_plan_capabilities_once()
