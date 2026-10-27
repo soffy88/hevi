@@ -445,3 +445,20 @@ from . import production_gates as _production_gates  # noqa: E402,F401
 _production_gates.register_production_gates_capabilities_once()
 from . import character_anchor as _character_anchor  # noqa: E402,F401
 _character_anchor.register_character_anchor_capabilities_once()
+
+# Opus 5.5 collection intake (2026-10-28, clean-room): story.opus_prompt_library
+# (yihui 703 full prompts searchable by category/tech; zhuyansen 2220
+# metadata only, no prompt text bundled), image.lemo_styles (59 lemo
+# styles live-read from the checkout, 3 csk slugs flagged not duplicated),
+# video.code_render (deterministic frame(t) tiers up to 4K60, manifest,
+# retry, ffmpeg assembly) and edit.karaoke_render (executable karaoke
+# chain below the plan-only karaoke_vertical). No upstream code copied;
+# see OPUS5_COLLECTION_ATTRIBUTION.md.
+from . import opus_prompt_library as _opus_prompt_library  # noqa: E402,F401
+_opus_prompt_library.register_opus_prompt_library_capabilities_once()
+from . import lemo_styles as _lemo_styles  # noqa: E402,F401
+_lemo_styles.register_lemo_styles_capabilities_once()
+from . import code_render as _code_render  # noqa: E402,F401
+_code_render.register_code_render_capabilities_once()
+from . import karaoke_render as _karaoke_render  # noqa: E402,F401
+_karaoke_render.register_karaoke_render_capabilities_once()
