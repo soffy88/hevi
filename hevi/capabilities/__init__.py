@@ -397,3 +397,9 @@ from . import editable_project as _editable_project  # noqa: E402,F401
 _editable_project.register_editable_project_capabilities_once()
 from . import word_appear as _word_appear  # noqa: E402,F401
 _word_appear.register_word_appear_capabilities_once()
+
+# Motion-method gates (2026-10-27, clean-room): edit.semantic_shot_list,
+# edit.reuse_baseline_gate, audio.transcript_once, qa.sample_first_gate,
+# edit.caption_plan_gate (self-registers on import as well).
+from . import motion_gates as _motion_gates  # noqa: E402,F401
+_motion_gates.register_motion_gates_capabilities_once()
