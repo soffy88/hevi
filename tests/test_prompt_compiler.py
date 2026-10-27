@@ -706,3 +706,92 @@ def test_clip_group_unknown_beat_fails() -> None:
     with pytest.raises(PromptCompilerError) as excinfo:
         compile_episode(episode)
     assert "unknown beat_no 99" in str(excinfo.value)
+
+
+# ---------------------------------------------------------------------------
+# Clip-level rendering (production clip format)
+# ---------------------------------------------------------------------------
+
+RECUT_STYLE = (
+    "Ming dynasty Chinese realistic film texture, warm candlelight "
+    "interiors, warm morning light exteriors, warm evening light in "
+    "the family hall, natural skin and real fabrics. No on-screen "
+    "text, no subtitles, no watermark, no extra people. Speak only "
+    "the lines written below, each line exactly once, in modern "
+    "standard Mandarin at natural speed; only one person speaks at "
+    "a time; silent beats are truly silent, no humming, no singing."
+)
+
+
+def test_clip_prompts_render_19_clips_verbatim_lines() -> None:
+    from hevi.capabilities.prompt_compiler import compile_clip_prompts
+
+    episode = load_fixture()
+    prompts = compile_clip_prompts(episode, RECUT_STYLE)
+    assert len(prompts) == 19
+    for shot in episode["shots"]:
+        beats = {b["beat_no"]: b for b in shot["beats"]}
+        for clip in shot.get("clips", []):
+            text = prompts[clip["clip_id"]]
+            assert text.startswith(RECUT_STYLE + " Scene: ")
+            for beat_no in clip["beats"]:
+                beat = beats[beat_no]
+                assert f"Beat: {beat['action']}" in text
+                if beat.get("line"):
+                    assert f"Line ({beat['speaker']}): {beat['line']}" in text
+
+
+def test_clip_scene_first_clip_full_later_clips_first_sentence() -> None:
+    from hevi.capabilities.prompt_compiler import (
+        clip_scene_sentence,
+        compile_clip_prompts,
+    )
+
+    episode = load_fixture()
+    prompts = compile_clip_prompts(episode, RECUT_STYLE)
+    for shot in episode["shots"]:
+        full = str(shot["camera"]["start_frame"]["description"]).strip()
+        first_sentence = full.split(". ")[0].strip()
+        if not first_sentence.endswith("."):
+            first_sentence += "."
+        for index, clip in enumerate(shot.get("clips", [])):
+            scene = prompts[clip["clip_id"]].split("Scene: ", 1)[1].split(" Beat: ", 1)[0]
+            if index == 0:
+                assert scene == full
+            else:
+                assert scene == first_sentence
+            assert clip_scene_sentence(shot, index) == scene
+
+
+def test_s03c3_scene_no_longer_claims_boy_sits() -> None:
+    from hevi.capabilities.prompt_compiler import compile_clip_prompts
+
+    prompts = compile_clip_prompts(load_fixture(), RECUT_STYLE)
+    scene = prompts["S03c3"].split("Scene: ", 1)[1].split(" Beat: ", 1)[0]
+    assert scene == "Medium shot of the same classroom, warm candlelight."
+    assert "sits" not in scene
+    assert "standing" not in scene
+
+
+def test_s06c3_scene_no_longer_claims_son_enters() -> None:
+    from hevi.capabilities.prompt_compiler import compile_clip_prompts
+
+    prompts = compile_clip_prompts(load_fixture(), RECUT_STYLE)
+    scene = prompts["S06c3"].split("Scene: ", 1)[1].split(" Beat: ", 1)[0]
+    assert scene == (
+        "Medium shot of a Ming family hall in the evening, warm evening light, "
+        "a top-scholar plaque hanging high on the wall."
+    )
+    assert "enters" not in scene
+
+
+def test_s09c2_scene_no_longer_claims_students_pass() -> None:
+    from hevi.capabilities.prompt_compiler import compile_clip_prompts
+
+    prompts = compile_clip_prompts(load_fixture(), RECUT_STYLE)
+    scene = prompts["S09c2"].split("Scene: ", 1)[1].split(" Beat: ", 1)[0]
+    assert scene == (
+        "Medium shot of a modern Chinese city in daytime, "
+        "outside a modern exam hall."
+    )
+    assert "Students pass" not in scene

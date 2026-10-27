@@ -1154,6 +1154,64 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def clip_scene_sentence(shot: dict[str, Any], clip_index: int) -> str:
+    """One clip's Scene sentence in the production clip format.
+
+    The first clip of a shot keeps the shot's full start-frame
+    description: its first frame IS the shot entry still, so the entry
+    description is true for it. Later clips start from the previous
+    clip's generated last frame (CHAIN), not from the shot entry, so
+    repeating the entry description would assert postures the clip has
+    already left (e.g. S03c3: entry says the boy sits, but beats 9-11
+    play the boy standing in a laughing classroom). For those clips
+    only the first sentence of the start-frame description is kept:
+    framing + place + light, which stay true for the whole shot, while
+    all posture and motion claims live in the Beat lines that follow.
+    """
+    description = str(shot["camera"]["start_frame"].get("description", "")).strip()
+    if clip_index <= 0:
+        return description
+    first = description.split(". ")[0].strip()
+    if not first:
+        return description
+    return first if first.endswith(".") else first + "."
+
+
+def compile_clip_prompts(
+    episode: dict[str, Any], style: str | None = None
+) -> dict[str, str]:
+    """Clip-level prompts in the E1 recut production format.
+
+    This is the string shape actually sent to the fl2va generator:
+    STYLE header + ``Scene: ...`` + one ``Beat: ...`` per beat plus one
+    ``Line (speaker): ...`` per spoken beat, in beat order. Lines come
+    verbatim from the beat schema; nothing is paraphrased or added.
+
+    The episode gates (beat coverage, line durations, uniqueness,
+    continuity chain, total + tier) still apply at the episode level
+    via :func:`compile_episode`; this renderer only fixes the wording
+    of the strings the generator sees. Callers that need gated output
+    must run :func:`compile_episode` first and render from the same
+    episode object.
+    """
+    header = str(style if style is not None else episode.get("style", "")).strip()
+    prompts: dict[str, str] = {}
+    for shot in episode["shots"]:
+        beats = {b["beat_no"]: b for b in shot["beats"]}
+        for clip_index, clip in enumerate(shot.get("clips", [])):
+            parts = [header, "Scene: " + clip_scene_sentence(shot, clip_index)]
+            for beat_no in clip["beats"]:
+                beat = beats[beat_no]
+                parts.append("Beat: " + str(beat["action"]))
+                line = str(beat.get("line", "") or "")
+                if line.strip():
+                    parts.append(
+                        "Line (%s): %s" % (str(beat.get("speaker", "")), line)
+                    )
+            prompts[str(clip["clip_id"])] = " ".join(parts)
+    return prompts
+
+
 def compile_episode(
     episode: dict[str, Any],
     provider_caps: dict[str, Any] | None = None,
