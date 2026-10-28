@@ -564,3 +564,23 @@ _multimodal_review.register_multimodal_review_capabilities_once()
 # connection. See TALKING_HEAD_SKILLS_ATTRIBUTION.md (MIT).
 from . import gesture_risk_gate as _gesture_risk_gate  # noqa: E402,F401
 _gesture_risk_gate.register_gesture_risk_gate_capabilities_once()
+
+# Toonflow 3-5 minute stability intake (2026-10-29, clean-room,
+# method ideas only): video.segment_assembly_gate (scenes into
+# segments capped at the smaller of 15 seconds and the model
+# limit, long lines split at semantic pauses without deleting
+# words, one segment per generation node), story.asset_registry_v2
+# (script / master asset / episode-reference layers, character
+# four views, scene skeleton and light, derivatives with parent
+# and changed/unchanged aspects, default extraction boundary,
+# at most 5 variants per parent, pending material blocks
+# generation), and qa.reference_number_gate (numbered references
+# must resolve to the declared order, first-frame and
+# multi-parameter modes kept apart, script text is never a
+# connection). See TOONFLOW_ATTRIBUTION.md (MIT, repository only).
+from . import segment_assembly as _segment_assembly  # noqa: E402,F401
+_segment_assembly.register_segment_assembly_capabilities_once()
+from . import asset_registry as _asset_registry  # noqa: E402,F401
+_asset_registry.register_asset_registry_capabilities_once()
+from . import reference_number_gate as _reference_number_gate  # noqa: E402,F401
+_reference_number_gate.register_reference_number_gate_capabilities_once()
