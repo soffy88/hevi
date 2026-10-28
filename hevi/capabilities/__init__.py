@@ -462,3 +462,27 @@ from . import code_render as _code_render  # noqa: E402,F401
 _code_render.register_code_render_capabilities_once()
 from . import karaoke_render as _karaoke_render  # noqa: E402,F401
 _karaoke_render.register_karaoke_render_capabilities_once()
+
+# Creator-buddy intake (2026-10-28, clean-room): pipeline.project_handoff
+# (fixed project directories plus a per-step manifest with a gate
+# that names missing stages/files), qa.final_qc_gate (probed shape,
+# first/middle/last keyframes, picture-change rate, caption
+# pictograph ban, vertical safe zone), edit.subtitle_discipline
+# (breath breaks, glossary, post-edit retranscription freshness,
+# vertical safe zone), audio.mix_recipe (fixed mix numbers plus a
+# loudnorm gate; a missing meter reports unmeasured, never pass),
+# and video.motion_beat_chart (per-beat time/action/mover/change/
+# camera/text/asset plus a motion thesis, 80% real-change gate,
+# plain downstream plan for code_render/Manim/Blender; renders
+# nothing itself). Method ideas only; no upstream code or text
+# used. See CREATOR_BUDDY_ATTRIBUTION.md (license unverified).
+from . import project_handoff as _project_handoff  # noqa: E402,F401
+_project_handoff.register_project_handoff_capabilities_once()
+from . import final_qc as _final_qc  # noqa: E402,F401
+_final_qc.register_final_qc_capabilities_once()
+from . import subtitle_discipline as _subtitle_discipline  # noqa: E402,F401
+_subtitle_discipline.register_subtitle_discipline_capabilities_once()
+from . import mix_recipe as _mix_recipe  # noqa: E402,F401
+_mix_recipe.register_mix_recipe_capabilities_once()
+from . import motion_beat_chart as _motion_beat_chart  # noqa: E402,F401
+_motion_beat_chart.register_motion_beat_chart_capabilities_once()
