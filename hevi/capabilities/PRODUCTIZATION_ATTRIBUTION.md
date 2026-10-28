@@ -48,3 +48,29 @@ New capabilities in this intake:
 Explicitly NOT in this intake (residuals, see task): skill version
 management, preview and task-centre discipline, supplementary
 multimodal audio-video checks, and production deployment itself.
+
+## P1/P2 follow-up (2026-10-28, same clean-room terms)
+
+Method inspiration only; no upstream text was copied into hevi.
+Borrowed working methods, in own wording: fixed-version skill
+install with a rollback point to the previous version and
+private rewrites stored separately from the mainline; preview
+and task-centre discipline (originals stored verbatim, H.264
+previews generated on demand and single-threaded, async tasks
+with queued/running/completed/failed states and retry that
+keeps the input snapshot, failure reason and task record);
+and a supplementary multimodal audio-video check that only
+adds a labelled model reference opinion beside the
+deterministic qa.final_qc_gate result, never replaces it,
+with the model's known miss-cut-point and homophone failure
+modes labelled and a human check still required, and no
+opinion invented when the caller injects no model.
+
+New capabilities in this follow-up:
+
+- pipeline.skill_version (skill_version.py)
+- pipeline.preview_tasks (preview_tasks.py)
+- qa.multimodal_review (multimodal_review.py)
+
+Explicitly NOT in this follow-up: production deployment itself
+(unchanged; pubfix untouched), and no change to any P0 module.

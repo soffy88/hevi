@@ -536,3 +536,21 @@ from . import model_directory as _model_directory  # noqa: E402,F401
 _model_directory.register_model_directory_capabilities_once()
 from . import launch_gate as _launch_gate  # noqa: E402,F401
 _launch_gate.register_launch_gate_capabilities_once()
+
+# Productization P1/P2 follow-up (2026-10-28, clean-room, method ideas only):
+# pipeline.skill_version (fixed-version install, one-step rollback,
+# private rewrites kept separate from the mainline, full version
+# history), pipeline.preview_tasks (verbatim originals, on-demand
+# single-threaded H.264 previews, queued/running/completed/failed
+# tasks with retry keeping snapshot, reason and history), and
+# qa.multimodal_review (supplement to qa.final_qc_gate only: two
+# columns, deterministic gate verbatim plus a labelled model
+# reference opinion; no model built in, no opinion invented when
+# the caller injects none). See PRODUCTIZATION_ATTRIBUTION.md
+# (BeefTV method borrow, text self-written, not whole-repo MIT).
+from . import skill_version as _skill_version  # noqa: E402,F401
+_skill_version.register_skill_version_capabilities_once()
+from . import preview_tasks as _preview_tasks  # noqa: E402,F401
+_preview_tasks.register_preview_tasks_capabilities_once()
+from . import multimodal_review as _multimodal_review  # noqa: E402,F401
+_multimodal_review.register_multimodal_review_capabilities_once()
