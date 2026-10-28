@@ -554,3 +554,13 @@ from . import preview_tasks as _preview_tasks  # noqa: E402,F401
 _preview_tasks.register_preview_tasks_capabilities_once()
 from . import multimodal_review as _multimodal_review  # noqa: E402,F401
 _multimodal_review.register_multimodal_review_capabilities_once()
+
+# Talking-head gesture risk gate (2026-10-28, clean-room, method
+# ideas only): video.gesture_risk_gate (tiered gestures, max 7
+# distinct gestures, chest-to-cheek band, stressed-line anchors,
+# person_first/evidence_first opening; high tier warns with a
+# downgrade suggestion but does not fail). Written specs only:
+# no sample video, no creator likeness, no MuseTalk rig
+# connection. See TALKING_HEAD_SKILLS_ATTRIBUTION.md (MIT).
+from . import gesture_risk_gate as _gesture_risk_gate  # noqa: E402,F401
+_gesture_risk_gate.register_gesture_risk_gate_capabilities_once()
