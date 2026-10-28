@@ -508,3 +508,31 @@ from . import cover_family as _cover_family  # noqa: E402,F401
 _cover_family.register_cover_family_capabilities_once()
 from . import reference_teardown as _reference_teardown  # noqa: E402,F401
 _reference_teardown.register_reference_teardown_capabilities_once()
+
+# Productization P0 intake (2026-10-28, clean-room, method ideas only):
+# pipeline.project_graph (editable node+edge project graph with
+# success-recorded templates, on top of pipeline.project_handoff,
+# not a second canvas), pipeline.project_snapshot (manual snapshots,
+# default newest 20, restore backs up first, stale writes refused,
+# conflict drafts; periodic scheduling is an unconnected stub),
+# pipeline.spend_ledger (freeze + settle/refund + failed-item
+# originals, completing pipeline.spend_brake; prices only from the
+# caller), pipeline.smart_reference (prompt picture references
+# resolved only against connected assets, skipped when ambiguous or
+# unconnected), model.model_directory (listed is not verified;
+# config change forces retest; fee prompted from caller figure),
+# and pipeline.launch_gate (readiness report only, never a
+# deployment). See PRODUCTIZATION_ATTRIBUTION.md (BeefTV method
+# borrow, text self-written, not whole-repo MIT).
+from . import project_graph as _project_graph  # noqa: E402,F401
+_project_graph.register_project_graph_capabilities_once()
+from . import project_snapshot as _project_snapshot  # noqa: E402,F401
+_project_snapshot.register_project_snapshot_capabilities_once()
+from . import spend_ledger as _spend_ledger  # noqa: E402,F401
+_spend_ledger.register_spend_ledger_capabilities_once()
+from . import smart_reference as _smart_reference  # noqa: E402,F401
+_smart_reference.register_smart_reference_capabilities_once()
+from . import model_directory as _model_directory  # noqa: E402,F401
+_model_directory.register_model_directory_capabilities_once()
+from . import launch_gate as _launch_gate  # noqa: E402,F401
+_launch_gate.register_launch_gate_capabilities_once()
