@@ -486,3 +486,25 @@ from . import mix_recipe as _mix_recipe  # noqa: E402,F401
 _mix_recipe.register_mix_recipe_capabilities_once()
 from . import motion_beat_chart as _motion_beat_chart  # noqa: E402,F401
 _motion_beat_chart.register_motion_beat_chart_capabilities_once()
+
+# Creator-buddy P1/P2 intake (2026-10-28, clean-room): pipeline.spend_brake
+# (storyboard plus machine-readable confirmed=true plus a single
+# frame/segment smoke run before any paid batch), script.spoken_script_gate
+# (per-sentence speakability issues with rewrites, no score),
+# edit.speech_blemish_trim (live recordings only; TTS tracks are refused),
+# design.cover_family (pinned colours/font/zones plus a 200px readability
+# gate that is an arithmetic projection, never a viewed thumbnail), and
+# research.reference_teardown (four questions from quoted evidence only,
+# title risk reviews, structured transcripts; teardown only, no reuse).
+# Method ideas only; no upstream code or text used. See
+# CREATOR_BUDDY_ATTRIBUTION.md (license unverified).
+from . import spend_brake as _spend_brake  # noqa: E402,F401
+_spend_brake.register_spend_brake_capabilities_once()
+from . import spoken_script as _spoken_script  # noqa: E402,F401
+_spoken_script.register_spoken_script_capabilities_once()
+from . import speech_blemish_trim as _speech_blemish_trim  # noqa: E402,F401
+_speech_blemish_trim.register_speech_blemish_trim_capabilities_once()
+from . import cover_family as _cover_family  # noqa: E402,F401
+_cover_family.register_cover_family_capabilities_once()
+from . import reference_teardown as _reference_teardown  # noqa: E402,F401
+_reference_teardown.register_reference_teardown_capabilities_once()
