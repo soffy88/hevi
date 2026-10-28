@@ -584,3 +584,14 @@ from . import asset_registry as _asset_registry  # noqa: E402,F401
 _asset_registry.register_asset_registry_capabilities_once()
 from . import reference_number_gate as _reference_number_gate  # noqa: E402,F401
 _reference_number_gate.register_reference_number_gate_capabilities_once()
+
+# Stable-film baseline B1-B7 (2026-10-29, clean-room, method ideas
+# only): pipeline.stable_film_assembly (gated assembly: segment
+# gate, asset-registry pending check, subtitle re-break with
+# frame-measured safe zone, motion-beat gate over motion beats
+# only, mix-recipe loudness, final QC; two strict confirmation
+# points; finished / partial / review status, never a finished
+# name for a failed or pending film). See the deep-dive report
+# workspace/hevi-stable-film-deep-dive.md section 4.
+from . import stable_film_pipeline as _stable_film_pipeline  # noqa: E402,F401
+_stable_film_pipeline.register_stable_film_pipeline_capabilities_once()
