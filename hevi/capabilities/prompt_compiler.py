@@ -405,6 +405,9 @@ def check_vocabulary(episode: dict[str, Any]) -> None:
             raise PromptCompilerError(
                 f"story.prompt_compiler: {label} camera.movement: {exc}"
             ) from exc
+        _validate_camera_extras(camera, label)
+        _normalise_negative_prompts(shot)
+        _normalise_fallbacks(shot)
         for beat in shot.get("beats", []):
             beat_label = _beat_label(shot, beat)
             if beat.get("camera_move"):
@@ -1035,6 +1038,98 @@ BANS = (
     "镜头之间禁叠化、禁交叉溶解、禁淡入淡出。"
 )
 
+# Camera easing vocabulary (closed list). The value is a text instruction
+# for the generator: whether a model actually follows the curve must be
+# checked by frame review after generation; the compiler only guarantees
+# the instruction is present, unambiguous and closed-vocabulary.
+EASINGS = {
+    "ease_in_out": "起步慢、中段稍快、落定慢",
+    "ease_in": "起步慢、逐渐加快",
+    "ease_out": "起步快、落定慢",
+    "linear": "匀速",
+    "hold": "保持不动",
+}
+
+
+def _normalise_negative_prompts(shot: dict[str, Any]) -> list[str]:
+    """Validate shot-level ``negative_prompts``; dedupe, keep order."""
+    label = _shot_label(shot)
+    value = shot.get("negative_prompts")
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {label} negative_prompts must be "
+            f"a list of non-empty strings, got {value!r}"
+        )
+    seen: set[str] = set()
+    out: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} negative_prompts "
+                f"contains an empty or non-string entry {item!r}; "
+                "every negative item must be a non-empty string"
+            )
+        text = item.strip()
+        if text not in seen:
+            seen.add(text)
+            out.append(text)
+    return out
+
+
+def _normalise_fallbacks(shot: dict[str, Any]) -> list[dict[str, str]]:
+    """Validate shot-level ``fallbacks`` (trigger + replacement each)."""
+    label = _shot_label(shot)
+    value = shot.get("fallbacks")
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {label} fallbacks must be a list "
+            f"of objects with 'trigger' and 'replacement', got {value!r}"
+        )
+    out: list[dict[str, str]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} fallback {item!r} "
+                "must be an object with 'trigger' and 'replacement'"
+            )
+        trigger = item.get("trigger")
+        replacement = item.get("replacement")
+        if (
+            not isinstance(trigger, str)
+            or not trigger.strip()
+            or not isinstance(replacement, str)
+            or not replacement.strip()
+        ):
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} fallback {item!r} "
+                "is missing a non-empty 'trigger' or 'replacement'"
+            )
+        out.append(
+            {"trigger": trigger.strip(), "replacement": replacement.strip()}
+        )
+    return out
+
+
+def _validate_camera_extras(camera: dict[str, Any], label: str) -> None:
+    """Validate optional camera fields: easing + shot_size_end."""
+    easing = camera.get("easing")
+    if easing is not None and easing not in EASINGS:
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {label} camera.easing {easing!r} "
+            f"is outside the closed list: {', '.join(EASINGS)}"
+        )
+    end_size = camera.get("shot_size_end")
+    if end_size is not None and end_size not in SHOT_SIZES:
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {label} camera.shot_size_end "
+            f"{end_size!r} is outside the closed list: "
+            f"{', '.join(SHOT_SIZES)}"
+        )
+
 
 def _render_line(beat: dict[str, Any]) -> str:
     """One beat's speech slot: verbatim line, or true silence."""
@@ -1070,11 +1165,18 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
     -> per-beat segments (shot size + angle + landing | one main
     movement / entry -> beat action -> landing / speech / sound)
     -> [exit state] -> [closing frame] -> [overall sound] ->
+    [negative list, if filled] -> [fallbacks, if filled] ->
     [constraints]. Beat segments follow the beats' own start/end
     seconds; durations are never split evenly across segments.
+    When the shot fills no new optional field, the output is
+    byte-identical to the pre-change format: the [机位], [负面清单]
+    and [备选方案] lines are emitted only when their fields are set.
     """
     camera = shot["camera"]
     _, movement_zh, movement_en = resolve_movement(camera["movement"])
+    negatives = _normalise_negative_prompts(shot)
+    fallbacks = _normalise_fallbacks(shot)
+    _validate_camera_extras(camera, _shot_label(shot))
     lines: list[str] = []
     lines.append(f"[风格]{episode['style']}")
     lines.append(
@@ -1094,6 +1196,20 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
     if props:
         lines.append(f"[道具]{'、'.join(str(p) for p in props)}")
     lines.append("[镜头段]")
+    easing = camera.get("easing")
+    end_size = camera.get("shot_size_end")
+    if easing is not None or (
+        end_size is not None and end_size != camera["shot_size"]
+    ):
+        framing = camera["shot_size"]
+        if end_size is not None and end_size != camera["shot_size"]:
+            framing = f"{camera['shot_size']}→{end_size}"
+        easing_text = (
+            f"，缓动：{EASINGS[easing]}（{easing}）" if easing else ""
+        )
+        lines.append(
+            f"[机位]{framing}，{movement_zh}（{movement_en}）{easing_text}"
+        )
     entry_text = str(camera["start_frame"].get("description", "")).strip()
     for beat in shot["beats"]:
         start = _fmt_time(float(beat["t_start_s"]))
@@ -1150,6 +1266,16 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
                 seen_sounds.append(sound)
         overall = "；".join(seen_sounds)
     lines.append(f"[整体声音]{overall}")
+    if negatives:
+        lines.append("[负面清单]")
+        for item in negatives:
+            lines.append(f"• {item}")
+    if fallbacks:
+        lines.append("[备选方案]")
+        for item in fallbacks:
+            lines.append(
+                f"触发：{item['trigger']}／改成：{item['replacement']}"
+            )
     lines.append(f"[约束]{SPEECH_DISCIPLINE}{BANS}")
     return "\n".join(lines)
 
@@ -1198,6 +1324,12 @@ def compile_clip_prompts(
     prompts: dict[str, str] = {}
     for shot in episode["shots"]:
         beats = {b["beat_no"]: b for b in shot["beats"]}
+        negatives = _normalise_negative_prompts(shot)
+        fallbacks = _normalise_fallbacks(shot)
+        _validate_camera_extras(shot["camera"], _shot_label(shot))
+        camera = shot["camera"]
+        easing = camera.get("easing")
+        end_size = camera.get("shot_size_end")
         for clip_index, clip in enumerate(shot.get("clips", [])):
             parts = [header, "Scene: " + clip_scene_sentence(shot, clip_index)]
             for beat_no in clip["beats"]:
@@ -1208,6 +1340,24 @@ def compile_clip_prompts(
                     parts.append(
                         "Line (%s): %s" % (str(beat.get("speaker", "")), line)
                     )
+            if easing is not None:
+                parts.append(
+                    f"Easing: {easing}（{EASINGS[easing]}）"
+                )
+            if end_size is not None and end_size != camera["shot_size"]:
+                parts.append(
+                    f"Framing transition: {camera['shot_size']}→{end_size}"
+                )
+            if negatives:
+                parts.append("Negative list: " + "; ".join(negatives))
+            if fallbacks:
+                parts.append(
+                    "Fallbacks: "
+                    + "; ".join(
+                        f"{f['trigger']} => {f['replacement']}"
+                        for f in fallbacks
+                    )
+                )
             prompts[str(clip["clip_id"])] = " ".join(parts)
     return prompts
 
@@ -1278,6 +1428,10 @@ def compile_episode(
         {
             "shot_no": str(shot.get("shot_no", "?")),
             "prompt": compile_shot_prompt(episode, shot),
+            "negative_prompts": _normalise_negative_prompts(shot),
+            "fallbacks": _normalise_fallbacks(shot),
+            "easing": shot["camera"].get("easing"),
+            "shot_size_end": shot["camera"].get("shot_size_end"),
         }
         for shot in shots
     ]
@@ -1404,7 +1558,14 @@ def register_prompt_compiler_capabilities_once() -> list[str]:
                 "are standard film grammar, movements are hevi's own "
                 "40 cinematic_techniques movements. Long lines must be "
                 "split across grouped beats; nothing is truncated, "
-                "clamped or padded silently."
+                "clamped or padded silently. Optional per-shot fields: "
+                "negative_prompts (deduped list, rendered as "
+                "[负面清单]), camera.easing (closed list incl. "
+                "ease_in_out) and camera.shot_size_end (framing "
+                "transition), and fallbacks (trigger + replacement, "
+                "rendered as [备选方案] after the main prompt, never "
+                "mixed into it). When none are filled, output is "
+                "identical to the pre-change format."
             ),
             line="prompt_compiler",
         )
