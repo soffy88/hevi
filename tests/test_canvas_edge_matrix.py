@@ -97,13 +97,17 @@ def test_cured_edges_are_legal():
 
 
 def test_matrix_is_exactly_fourteen_edges():
-    assert len(EDGE_COMPATIBLE) == 14
+    # 14 cured-matrix edges + 2 material-pack edges (segment ->
+    # segment continuation, asset -> segment reference) = 16.
+    assert len(EDGE_COMPATIBLE) == 16
     assert EDGE_COMPATIBLE == {
         ("text", "image"), ("text", "video"), ("text", "audio"), ("text", "script"),
         ("image", "video"), ("image", "image"), ("image", "script"),
         ("video", "video"), ("video", "audio"), ("video", "text"),
         ("audio", "video"),
         ("script", "image"), ("script", "video"), ("script", "audio"),
+        ("segment", "segment"),
+        ("asset", "segment"),
     }
 
 
@@ -114,7 +118,10 @@ def test_previously_legal_edges_stay_legal_and_illegal_stay_illegal():
     assert edge_compatible(from_type="video", to_type="audio") is True
     # Still illegal: no silent legalisation beyond the cure.
     for pair in [("audio", "text"), ("text", "text"), ("audio", "audio"),
-                 ("script", "script"), ("image", "audio"), ("image", "text")]:
+                 ("script", "script"), ("image", "audio"), ("image", "text"),
+                 ("segment", "video"), ("segment", "text"), ("video", "segment"),
+                 ("asset", "asset"), ("asset", "text"), ("asset", "video"),
+                 ("segment", "asset")]:
         assert edge_compatible(from_type=pair[0], to_type=pair[1]) is False
 
 
@@ -123,7 +130,9 @@ def test_matrix_and_pair_set_agree():
         (src, dst) for src, targets in EDGE_MATRIX.items() for dst in targets
     }
     assert rebuilt == EDGE_COMPATIBLE
-    assert set(EDGE_MATRIX) == {"text", "image", "video", "audio", "script"}
+    assert set(EDGE_MATRIX) == {
+        "text", "image", "video", "audio", "script", "segment", "asset",
+    }
 
 
 # ── 2. Front/back consistency (parsed, not copied) ───────────────────────────

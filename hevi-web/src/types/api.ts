@@ -5,7 +5,7 @@
  */
 
 // ── 画布节点系统 ──────────────────────────────────
-export type NodeType = 'text' | 'image' | 'video' | 'audio' | 'script';
+export type NodeType = 'text' | 'image' | 'video' | 'audio' | 'script' | 'segment' | 'asset';
 
 export interface CanvasNode {
   node_id: string;

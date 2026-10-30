@@ -26,7 +26,8 @@ class GraphValidationError(Exception):
 # frontend matrix is mirrored from here (see tests/test_canvas_edge_matrix.py,
 # which fails loudly on any front/back divergence).
 #
-# The 14 edges, with the two cured additions marked:
+# The 16 edges (14 cured-matrix edges + 2 material-pack edges),
+# with the two cured additions marked:
 # - script -> audio: a script drives narration / TTS audio. The frontend
 #   already allowed this; the old oprim matrix did not, so a script ->
 #   audio workflow graph was drawable but unexecutable. Now legal.
@@ -51,6 +52,10 @@ EDGE_MATRIX: dict[str, frozenset[str]] = {
     "audio": frozenset({"video"}),
     # script drives image / video / audio
     "script": frozenset({"image", "video", "audio"}),
+    # segment chains only to the next segment (tail-frame continuation)
+    "segment": frozenset({"segment"}),
+    # asset is referenced only by a segment (reference edge)
+    "asset": frozenset({"segment"}),
 }
 
 EDGE_COMPATIBLE: frozenset[tuple[str, str]] = frozenset(

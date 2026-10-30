@@ -73,6 +73,38 @@ export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
         </div>
       )}
 
+      {/* 材料包片段:prompt 摘要 + 状态 + 门徽章;资产:主版信息 */}
+      {data.nodeType === 'segment' && (
+        <div className="hevi-node__result">
+          {typeof data.config?.prompt === 'string' && data.config.prompt && (
+            <p className="hevi-node__text-preview">{data.config.prompt.slice(0, 80)}</p>
+          )}
+          <div className="hevi-node__data-badge">
+            {typeof data.config?.duration_s === 'number' ? `${data.config.duration_s}秒` : ''}
+            {typeof data.config?.material_pack_status === 'string' ? ` · ${data.config.material_pack_status}` : ''}
+            {data.config?.material_pack_dirty === true ? ' · 已改动' : ''}
+            {data.config?.material_pack_review_pending === true ? ' · 待复核' : ''}
+          </div>
+          {Array.isArray(data.config?.material_pack_gate_badges) && (
+            <div className="hevi-node__data-badge">
+              {(data.config.material_pack_gate_badges as Array<Record<string, unknown>>)
+                .slice(0, 2)
+                .map((b) => `${String(b.gate ?? '')}:${String(b.verdict ?? '')}`)
+                .join(' / ')}
+            </div>
+          )}
+        </div>
+      )}
+      {data.nodeType === 'asset' && (
+        <div className="hevi-node__result">
+          <div className="hevi-node__data-badge">
+            {typeof data.config?.asset_kind === 'string' ? `${data.config.asset_kind}` : ''}
+            {data.config?.asset_version != null ? ` · v${String(data.config.asset_version)}` : ' · 版本缺失'}
+            {typeof data.config?.material_pack_status === 'string' ? ` · ${data.config.material_pack_status}` : ''}
+          </div>
+        </div>
+      )}
+
       {/* 输出连接点(下游) */}
       <Handle type="source" position={Position.Right} className="hevi-node__handle" />
     </div>

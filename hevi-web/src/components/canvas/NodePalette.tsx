@@ -8,7 +8,7 @@ import type { NodeType } from '@/types/api';
 import { NODE_META } from '@/lib/canvas-rules';
 import { studioApi, USE_MOCK } from '@/lib/api-client';
 
-const TYPES: NodeType[] = ['text', 'image', 'video', 'audio', 'script'];
+const TYPES: NodeType[] = ['text', 'image', 'video', 'audio', 'script', 'segment', 'asset'];
 
 export type StudioTool = { id: string; kind: string; summary: string };
 export type StudioLine = { id: string; product: string; summary: string; tools: string[] };

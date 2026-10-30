@@ -8,6 +8,8 @@
  *
  * 2026-10-25 根治后 14 条合法边:script→audio(脚本驱动配音)、
  * video→text(视频驱动字幕)已补齐,此前可画不可跑的 7 类型工作流链现可执行。
+ * 材料包映射新增 2 条:segment→segment(片段续接,尾帧续接)、asset→segment
+ * (资产引用片段),共 16 条。其它涉及 segment/asset 的边一律非法。
  */
 import type { NodeType, EdgeValidation } from '@/types/api';
 
@@ -23,10 +25,14 @@ const EDGE_MATRIX: Record<NodeType, NodeType[]> = {
   audio:  ['video'],
   // 脚本 → 驱动 图/视频/音频(分镜产出)
   script: ['image', 'video', 'audio'],
+  // 片段 → 只许续接下一片段(尾帧续接)
+  segment: ['segment'],
+  // 资产 → 只许引用片段
+  asset: ['segment'],
 };
 
 export function validateEdge(from: NodeType, to: NodeType): EdgeValidation {
-  if (from === to && from !== 'video' && from !== 'image') {
+  if (from === to && from !== 'video' && from !== 'image' && from !== 'segment') {
     return { valid: false, reason: `${from} 节点不能连到同类型节点` };
   }
   const allowed = EDGE_MATRIX[from] ?? [];
@@ -43,4 +49,6 @@ export const NODE_META: Record<NodeType, { label: string; icon: string; color: s
   video:  { label: '视频', icon: '▷', color: 'var(--node-video, oklch(0.60 0.18 290))' },
   audio:  { label: '音频', icon: '♫', color: 'var(--node-audio, oklch(0.65 0.16 145))' },
   script: { label: '脚本', icon: '☰', color: 'var(--node-script, oklch(0.68 0.14 60))' },
+  segment: { label: '片段', icon: '▣', color: 'var(--node-segment, oklch(0.60 0.16 320))' },
+  asset: { label: '资产', icon: '◆', color: 'var(--node-asset, oklch(0.62 0.14 40))' },
 };

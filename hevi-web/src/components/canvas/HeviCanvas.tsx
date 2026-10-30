@@ -5,7 +5,7 @@
  */
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import ReactFlow, {
   Background, Controls, MiniMap,
   addEdge, useNodesState, useEdgesState,
@@ -39,6 +39,7 @@ function CanvasInner() {
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
   const [executing, setExecuting] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const packFileRef = useRef<HTMLInputElement | null>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2400); };
 
@@ -55,6 +56,38 @@ function CanvasInner() {
   }, [setNodes]);
 
   const selectedNode = nodes.find(n => n.id === selectedNodeId) ?? null;
+
+  // 材料包映射:选一个材料包/ manifest JSON 文件,后端映射成画布图后打开。
+  // 节点带 prompt 摘要/状态/门徽章,Inspector 可改 prompt 字段。
+  const onLoadMaterialPackFile = useCallback(async (file: File) => {
+    try {
+      const pack = JSON.parse(await file.text()) as Record<string, unknown>;
+      const { graph } = await canvasApi.materialPackGraph(pack);
+      const flowNodes = graph.nodes.map((n) => ({
+        id: String(n.node_id),
+        type: 'hevi' as const,
+        position: (n.position as { x: number; y: number }) ?? { x: 0, y: 0 },
+        data: {
+          nodeType: String(n.node_type) as NodeType,
+          label: String(n.label ?? n.node_id),
+          config: (n.config as Record<string, unknown>) ?? {},
+          status: n.status as HeviNodeData['status'],
+        },
+      }));
+      const flowEdges = graph.edges.map((e) => ({
+        id: String(e.edge_id),
+        source: String(e.from_node_id),
+        target: String(e.to_node_id),
+        animated: true,
+        data: { kind: e.kind, status: e.status },
+      }));
+      setNodes(flowNodes);
+      setEdges(flowEdges);
+      flash('材料包图已打开');
+    } catch {
+      flash('材料包映射失败');
+    }
+  }, [setNodes, setEdges]);
 
   const onConnect = useCallback((conn: Connection) => {
     const f = nodes.find(n => n.id === conn.source);
@@ -216,6 +249,18 @@ function CanvasInner() {
           <a href="/" className="hevi-canvas__home-link">← 首页</a>
           <a href="/studio/timeline" className="hevi-canvas__home-link">时间线</a>
           <button type="button" className="hevi-topbar-btn" onClick={onSave}>保存</button>
+          <button type="button" className="hevi-topbar-btn" onClick={() => packFileRef.current?.click()}>导入材料包 JSON</button>
+          <input
+            ref={packFileRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) void onLoadMaterialPackFile(file);
+            }}
+          />
           <button type="button" className="hevi-topbar-btn hevi-topbar-btn--primary"
             onClick={onExecute} disabled={executing}>
             {executing ? '执行中…' : '▷ 执行画布'}

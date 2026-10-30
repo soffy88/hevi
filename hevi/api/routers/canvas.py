@@ -424,6 +424,138 @@ async def workflow_execute_endpoint(
     )
 
 
+# ── Material-pack routes (canvas.material_pack) ─────────────────────────
+# A stable-film material pack mapped onto the canvas: one segment
+# node per segment, asset nodes, continuation/reference edges, and
+# the human edit loop (edit -> dirty/downstream review -> gates ->
+# single-segment regeneration -> adopt as a new version). Placed
+# before the parameterised /{graph_id} routes so the fixed paths
+# cannot collide.
+
+
+class MaterialPackGraphRequest(BaseModel):
+    pack: dict[str, Any]
+    existing_graph: dict[str, Any] | None = None
+    pack_revision: int | None = None
+
+
+class MaterialPackEditRequest(BaseModel):
+    graph: dict[str, Any]
+    segment_id: str
+    patch: dict[str, Any]
+    base_revision: int
+
+
+class MaterialPackRegenerateRequest(BaseModel):
+    graph: dict[str, Any]
+    segment_id: str
+    confirmed: Any = None
+    smoke_passed: Any = False
+    budget_usd: float | None = None
+    estimated_unit_cost: Any = None
+    free_route: bool = False
+    execute: bool = False
+    on_error: str = "rollback"
+    target_duration_s: float | None = None
+
+
+@router.post("/material-pack/graph")
+async def material_pack_graph_endpoint(
+    body: MaterialPackGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Map a material pack (or stable-film manifest) to a canvas graph."""
+    from hevi.canvas.material_pack import MaterialPackError, map_to_graph
+
+    try:
+        return map_to_graph(
+            body.pack, body.existing_graph, pack_revision=body.pack_revision
+        )
+    except MaterialPackError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/material-pack/edit")
+async def material_pack_edit_endpoint(
+    body: MaterialPackEditRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Apply a human prompt edit to one segment node (dirty + downstream)."""
+    from hevi.canvas.material_pack import MaterialPackError, apply_segment_edit
+
+    try:
+        return apply_segment_edit(
+            body.graph, body.segment_id, body.patch, base_revision=body.base_revision
+        )
+    except MaterialPackError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/material-pack/regenerate")
+async def material_pack_regenerate_endpoint(
+    body: MaterialPackRegenerateRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+    exe: Annotated[ExecutorService, Depends(get_executor_service)],
+) -> dict[str, Any]:
+    """Gate one segment for regeneration; execute only if asked.
+
+    Without ``execute`` this returns the ready/refused plan and runs
+    nothing. With ``execute`` the single segment node (plan-only
+    segment executor) is run through ExecutorService like any other
+    graph -- the whole film is never re-run from here.
+    """
+    from hevi.canvas.material_pack import MaterialPackError, request_regeneration
+
+    try:
+        plan = await request_regeneration(
+            body.graph,
+            body.segment_id,
+            confirmed=body.confirmed,
+            smoke_passed=body.smoke_passed,
+            budget_usd=body.budget_usd,
+            estimated_unit_cost=body.estimated_unit_cost,
+            free_route=body.free_route,
+        )
+    except MaterialPackError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if plan.get("status") == "refused":
+        raise HTTPException(status_code=422, detail="; ".join(plan["blockers"]))
+    if not body.execute:
+        return plan
+    segment_nodes = [
+        n
+        for n in (body.graph.get("nodes") or [])
+        if isinstance(n, dict)
+        and n.get("node_id") == body.segment_id
+        and n.get("node_type") == "segment"
+    ]
+    if not segment_nodes:
+        raise HTTPException(status_code=422, detail="segment node not found in graph")
+    saved = await svc.save_graph(
+        name=f"material-pack segment {body.segment_id}",
+        description="single-segment regeneration (material pack)",
+        nodes=segment_nodes,
+        edges=[],
+        user_id=str(user["id"]),
+    )
+    graph_id = saved.get("graph_id") or saved.get("id")
+    if not graph_id:
+        raise HTTPException(status_code=500, detail="graph save returned no id")
+    execution = await _do_execute_graph(
+        str(graph_id),
+        ExecuteGraphRequest(
+            on_error=body.on_error,
+            budget_usd=body.budget_usd,
+            target_duration_s=body.target_duration_s,
+        ),
+        exe,
+        svc,
+        user,
+    )
+    return {**plan, "status": "executed", "graph_id": str(graph_id), "execution": execution}
+
+
 # ── Parameterised routes (after fixed-path aliases) ───────────────────────────
 
 

@@ -1,5 +1,14 @@
 from hevi.canvas.executor_service import ExecutorService
 from hevi.canvas.graph_service import GraphService
+from hevi.canvas.material_pack import (
+    MaterialPackError,
+    adopt_segment_edit,
+    apply_segment_edit,
+    check_regeneration_gates,
+    map_to_graph,
+    normalize_material_pack,
+    request_regeneration,
+)
 from hevi.canvas.node_mapper import NODE_EXECUTORS, VALID_NODE_TYPES, create_node_executor
 from hevi.canvas.validation import GraphValidationError
 
@@ -9,7 +18,14 @@ __all__ = [
     "ExecutorService",
     "GraphService",
     "GraphValidationError",
+    "MaterialPackError",
+    "adopt_segment_edit",
+    "apply_segment_edit",
+    "check_regeneration_gates",
     "create_node_executor",
+    "map_to_graph",
+    "normalize_material_pack",
+    "request_regeneration",
     "WorkflowAdapterError",
     "canvas_edge_warnings",
     "graph_to_workflow",

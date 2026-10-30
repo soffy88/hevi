@@ -35,11 +35,15 @@ class PreflightReport:
 
 
 def _video_nodes(nodes: list[CanvasNode]) -> list[CanvasNode]:
-    return [n for n in nodes if n.node_type == "video"]
+    # Generation nodes: video nodes plus material-pack segment nodes
+    # (a segment node carries the same provider / duration_s config
+    # a video node does; an asset/text/script node never generates).
+    # Kept under the old name so existing callers are unchanged.
+    return [n for n in nodes if n.node_type in ("video", "segment")]
 
 
 def estimate_graph_cost(nodes: list[CanvasNode]) -> float:
-    """按每个 video 节点的 provider + duration_s 估算全图总成本。
+    """按每个 video/segment 节点的 provider + duration_s 估算全图总成本。
 
     复用 pricing_table(不重新维护一份价格),只处理 per_second/per_minute 两种
     既有单位;未知 provider(拼错/尚未收录)按 0 算而不是报错——预算检查的目的是
