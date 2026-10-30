@@ -618,3 +618,14 @@ _code_studio_workflow.register_code_studio_workflow_capabilities_once()
 # HEVI_POSE_GALLERY_HOME; missing gallery/files fail by name.
 from . import pose_library as _pose_library  # noqa: E402,F401
 _pose_library.register_pose_library_capabilities_once()
+
+# Colab hardware advisor (2026-10-30, clean-room, method ideas
+# only): model.colab_hardware_advisor (classify a job, check it
+# against a caller-supplied runtime snapshot, block an expensive
+# first download unless explicitly forced, warn on an oversized
+# runtime for a small job, suggest resident-model tuning on a
+# large-memory runtime; no price table baked in, switches no
+# runtime, calls no Colab API). See
+# COLAB_HARDWARE_ADVISOR_ATTRIBUTION.md.
+from . import colab_hardware_advisor as _colab_hardware_advisor  # noqa: E402,F401
+_colab_hardware_advisor.register_colab_hardware_advisor_capabilities_once()
