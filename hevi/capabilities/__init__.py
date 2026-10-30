@@ -629,3 +629,12 @@ _pose_library.register_pose_library_capabilities_once()
 # COLAB_HARDWARE_ADVISOR_ATTRIBUTION.md.
 from . import colab_hardware_advisor as _colab_hardware_advisor  # noqa: E402,F401
 _colab_hardware_advisor.register_colab_hardware_advisor_capabilities_once()
+
+# Beginner science-film workflow (2026-10-31, clean-room, method
+# ideas only): pipeline.beginner_science_workflow (seven-column
+# script table, pause-marked narration segments, sample-first
+# gate, A/B roll discipline, template registry, music on section
+# changes; no TTS or video service called). See
+# BEGINNER_SCIENCE_SOP_ATTRIBUTION.md.
+from . import beginner_science_workflow as _beginner_science_workflow  # noqa: E402,F401
+_beginner_science_workflow.register_beginner_science_workflow_capabilities_once()
