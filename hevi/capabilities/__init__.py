@@ -608,3 +608,13 @@ _stable_film_pipeline.register_stable_film_pipeline_capabilities_once()
 # (contrast), and video.code_render (tier table, landscape only).
 from . import code_studio_workflow as _code_studio_workflow  # noqa: E402,F401
 _code_studio_workflow.register_code_studio_workflow_capabilities_once()
+
+# Pose reference library (2026-10-30, index only, no images bundled):
+# image.pose_library (288 pose groups / 1439 records, 4 systems,
+# 26 categories, 5 views, from anhao/ai-pose-gallery-zh; MIT covers
+# source code only, images/data belong to the original author,
+# non-commercial reference use only). See
+# POSE_GALLERY_ATTRIBUTION.md. Paths resolve under
+# HEVI_POSE_GALLERY_HOME; missing gallery/files fail by name.
+from . import pose_library as _pose_library  # noqa: E402,F401
+_pose_library.register_pose_library_capabilities_once()
