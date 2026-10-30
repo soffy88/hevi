@@ -638,3 +638,19 @@ _colab_hardware_advisor.register_colab_hardware_advisor_capabilities_once()
 # BEGINNER_SCIENCE_SOP_ATTRIBUTION.md.
 from . import beginner_science_workflow as _beginner_science_workflow  # noqa: E402,F401
 _beginner_science_workflow.register_beginner_science_workflow_capabilities_once()
+
+# video-director P0 grafts (2026-10-31, clean-room, method ideas
+# only): qa.timeline_gate (pre-render timeline check), qa.final_qc_gate
+# defect scan (extension of the existing gate, default off),
+# qa.rendered_text_measure (Otsu measurement), qa.critic_review
+# (nine-axis review discipline + revision pixel identity) and
+# qa.facts_discipline (three on-screen wording rules). See
+# VIDEO_DIRECTOR_ATTRIBUTION.md (MIT, win4r/video-director).
+from . import timeline_gate as _timeline_gate  # noqa: E402,F401
+_timeline_gate.register_timeline_gate_capabilities_once()
+from . import otsu_text as _otsu_text  # noqa: E402,F401
+_otsu_text.register_rendered_text_capabilities_once()
+from . import critic_review as _critic_review  # noqa: E402,F401
+_critic_review.register_critic_review_capabilities_once()
+from . import facts_discipline as _facts_discipline  # noqa: E402,F401
+_facts_discipline.register_facts_discipline_capabilities_once()
