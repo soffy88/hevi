@@ -595,3 +595,16 @@ _reference_number_gate.register_reference_number_gate_capabilities_once()
 # workspace/hevi-stable-film-deep-dive.md section 4.
 from . import stable_film_pipeline as _stable_film_pipeline  # noqa: E402,F401
 _stable_film_pipeline.register_stable_film_pipeline_capabilities_once()
+
+# Code-studio workflow (2026-10-30, clean-room, method ideas only):
+# pipeline.code_studio_workflow (six gated steps: brief, style note,
+# shot table, beat grid, code-rendering checks, contact-sheet review
+# and filing; strict confirmation between steps; no generation model
+# called, no whole film rendered). Method ideas from Eian's essay on
+# making video with code and the Lemo Opuscar skill; no wording or
+# prompt text copied, Lemo styles read live via image.lemo_styles.
+# Reuses pipeline.project_handoff (manifest), pipeline.spend_brake
+# (strict-True confirmation semantics), design.cover_family
+# (contrast), and video.code_render (tier table, landscape only).
+from . import code_studio_workflow as _code_studio_workflow  # noqa: E402,F401
+_code_studio_workflow.register_code_studio_workflow_capabilities_once()
