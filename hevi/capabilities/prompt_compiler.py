@@ -1131,6 +1131,176 @@ def _validate_camera_extras(camera: dict[str, Any], label: str) -> None:
         )
 
 
+# ------------------------------------------------------- readiness (strict)
+#
+# Generation-ready discipline (2026-10-31 prompt audit). The legacy
+# entry points keep their old behaviour (unknown tier recorded, bare
+# names, no file bindings) so existing fixtures keep compiling; the
+# strict entry points below are the production path and fail hard.
+# Binding/anchor validation lives in pipeline.scene_reference
+# (single implementation); this module imports it lazily so the two
+# modules never form an import cycle at load time.
+
+
+def _scene_reference_helpers() -> tuple[Any, Any, Any]:
+    from hevi.capabilities.scene_reference import (
+        canonical_frame_count,
+        resolve_character_anchor,
+        resolve_picture_bindings,
+    )
+
+    return canonical_frame_count, resolve_character_anchor, resolve_picture_bindings
+
+
+def frames_for_provider(seconds: float, provider: str, fps: float = 24.0) -> int:
+    """Frame count for ``seconds`` on ``provider``'s route.
+
+    Single truth lives in pipeline.scene_reference.canonical_frame_count:
+    10 s is 240 frames on fasth3_local and 243 on the H3 lattice.
+    The route name is carried into the prompt text so a reader can
+    tell which of the two numbers a prompt means.
+    """
+    canonical_frame_count, _, _ = _scene_reference_helpers()
+    return canonical_frame_count(float(seconds), float(fps), route=provider)
+
+
+def _anchor_picture_number(anchor: dict[str, Any], bindings: dict[int, dict[str, Any]]) -> int | None:
+    for number, binding in bindings.items():
+        if binding["file"] == anchor["file"] and binding["sha256"] == anchor["sha256"]:
+            return number
+    return None
+
+
+def resolve_shot_anchors(
+    shot: dict[str, Any],
+    anchors: dict[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    """Resolve confirmed anchors for every character/speaker of a shot.
+
+    ``anchors`` maps a character name to a character_anchor sheet or
+    a plain confirmed record (see scene_reference.resolve_character_anchor).
+    A shot whose characters have no confirmed anchor fails here: a
+    bare name is never prompt-ready. Speakers of dialogue beats are
+    checked too; voiceover/narration speakers are not characters
+    and are skipped.
+    """
+    _, resolve_character_anchor, _ = _scene_reference_helpers()
+    names: list[str] = []
+    for name in shot.get("characters") or []:
+        if str(name) not in names:
+            names.append(str(name))
+    for beat in shot.get("beats") or []:
+        if (beat.get("line_mode", "") or "dialogue") == "dialogue" and str(beat.get("line", "") or "").strip():
+            speaker = str(beat.get("speaker", "") or "").strip()
+            if speaker and speaker not in names:
+                names.append(speaker)
+    resolved: dict[str, dict[str, Any]] = {}
+    if anchors is None:
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {_shot_label(shot)} has no anchors supplied; "
+            "generation-ready prompts need a confirmed anchor per character"
+        )
+    for name in names:
+        resolved[name] = resolve_character_anchor(name, anchors)
+    return resolved
+
+
+def check_anchor_and_binding_coverage(
+    episode: dict[str, Any],
+    anchors: dict[str, Any] | None,
+    reference_bindings: dict[Any, Any] | None,
+) -> dict[str, Any]:
+    """Fail unless anchors and file bindings cover the whole episode.
+
+    Every shot character/speaker needs a confirmed anchor, every
+    anchor file must appear in the Picture bindings, and Picture 1
+    (the scene/first-frame reference) must be bound. Returns the
+    resolved anchors and bindings for the caller to render with.
+    """
+    _, _, resolve_picture_bindings = _scene_reference_helpers()
+    if reference_bindings is None:
+        raise PromptCompilerError(
+            "story.prompt_compiler: no reference_bindings supplied; "
+            "Picture numbers without file bindings never reach generation"
+        )
+    bindings = resolve_picture_bindings(reference_bindings)
+    if 1 not in bindings:
+        raise PromptCompilerError(
+            "story.prompt_compiler: reference_bindings has no Picture 1; "
+            "the scene/first-frame reference must be bound to a file"
+        )
+    all_anchors: dict[str, dict[str, Any]] = {}
+    for shot in episode.get("shots") or []:
+        resolved = resolve_shot_anchors(shot, anchors)
+        for name, anchor in resolved.items():
+            if _anchor_picture_number(anchor, bindings) is None:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: anchor file for {name!r} "
+                    "is not in reference_bindings; an anchor no Picture "
+                    "points at cannot be used by the executor"
+                )
+            all_anchors[name] = anchor
+    return {"anchors": all_anchors, "bindings": bindings}
+
+
+def check_beat_progression(shot: dict[str, Any]) -> None:
+    """Fail a generation shot whose beats do not progress.
+
+    A shot with clips (or with no ``clips`` key, i.e. one generation
+    call) and at least three beats whose normalised actions are all
+    identical is a still frame cut into beats, not a moving shot:
+    it fails naming the repeated action. Pure-still shots
+    (``clips == []``) are exempt -- they make no generation call.
+    """
+    clips = shot.get("clips")
+    if clips is not None and len(clips) == 0:
+        return
+    actions = [str(b.get("action", "")).strip() for b in shot.get("beats") or []]
+    actions = [a for a in actions if a]
+    if len(actions) < 3:
+        return
+    run = 1
+    longest = 1
+    for prev, cur in zip(actions, actions[1:]):
+        run = run + 1 if cur == prev else 1
+        longest = max(longest, run)
+    if longest >= 3 and len(set(actions)) == 1:
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {_shot_label(shot)} beats do not progress: "
+            f"the same action repeats {len(actions)} times "
+            f"({actions[0][:60]!r}); write distinct beats or mark the shot still"
+        )
+
+
+def check_rendered_shot_prompt(prompt: str, shot: dict[str, Any]) -> None:
+    """Fail a rendered prompt whose start-frame text repeats per beat.
+
+    The start-frame description belongs in the single ``[首帧]``
+    line. If it also appears inside the ``[镜头段]`` beat lines, the
+    renderer is repeating a static description once per beat and
+    drowning the beat actions. The ``[收尾]`` line may legitimately
+    repeat it when the end frame is the same picture.
+    """
+    entry = str((shot.get("camera") or {}).get("start_frame", {}).get("description", "") or "").strip()
+    if not entry:
+        return
+    # Beat segment lines start with "[<start>–<end>秒]镜头（..."; the
+    # section ends at [出口状态]. Any other "[...]" line (e.g. [机位])
+    # must not end the scan early.
+    in_segments = False
+    for line in prompt.splitlines():
+        if line.startswith("[镜头段]"):
+            in_segments = True
+            continue
+        if in_segments and line.startswith("[出口状态]"):
+            break
+        if in_segments and entry in line:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {_shot_label(shot)} start-frame description "
+                "repeats inside the beat segments; it belongs in the single [首帧] line only"
+            )
+
+
 def _render_line(beat: dict[str, Any]) -> str:
     """One beat's speech slot: verbatim line, or true silence."""
     line = str(beat.get("line", "") or "")
@@ -1158,32 +1328,88 @@ def _render_state(state: Any) -> str:
     )
 
 
-def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
+def compile_shot_prompt(
+    episode: dict[str, Any],
+    shot: dict[str, Any],
+    *,
+    anchors: dict[str, Any] | None = None,
+    reference_bindings: dict[Any, Any] | None = None,
+    provider: str | None = None,
+    fps: float = 24.0,
+) -> str:
     """One shot's prompt text, in the fixed section order.
 
     [style] -> [duration] -> [reference] -> [entry state] -> [scene]
-    -> per-beat segments (shot size + angle + landing | one main
-    movement / entry -> beat action -> landing / speech / sound)
+    -> [characters] -> [first frame, once] -> per-beat segments
+    (shot size + angle + landing | one main movement / previous
+    landing -> beat action -> landing / speech / sound)
     -> [exit state] -> [closing frame] -> [overall sound] ->
     [negative list, if filled] -> [fallbacks, if filled] ->
     [constraints]. Beat segments follow the beats' own start/end
     seconds; durations are never split evenly across segments.
-    When the shot fills no new optional field, the output is
-    byte-identical to the pre-change format: the [机位], [负面清单]
-    and [备选方案] lines are emitted only when their fields are set.
+    The start-frame description appears exactly once, in the
+    ``[首帧]`` line: repeating it in every beat segment drowned
+    the beat actions in static text (2026-10-31 prompt audit).
+    When the shot fills no new optional field, the [机位],
+    [负面清单] and [备选方案] lines are emitted only when their
+    fields are set.
+
+    With ``anchors`` supplied, every character/speaker must have
+    a confirmed anchor and the ``[人物]`` line carries the anchor
+    look plus its Picture number; with ``reference_bindings``
+    supplied, the ``[参考]`` line lists Picture -> file bindings
+    and Picture 1 must be bound. With ``provider`` supplied, the
+    ``[时长]`` line also states the frame count on that provider's
+    route (see :func:`frames_for_provider`). Supplying none of
+    them keeps the legacy output: bare names, free-text reference,
+    seconds only.
     """
     camera = shot["camera"]
     _, movement_zh, movement_en = resolve_movement(camera["movement"])
     negatives = _normalise_negative_prompts(shot)
     fallbacks = _normalise_fallbacks(shot)
     _validate_camera_extras(camera, _shot_label(shot))
+    resolved_anchors: dict[str, dict[str, Any]] = {}
+    bindings: dict[int, dict[str, Any]] = {}
+    if anchors is not None or reference_bindings is not None:
+        if anchors is None or reference_bindings is None:
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {_shot_label(shot)} anchors and "
+                "reference_bindings must be supplied together; a confirmed "
+                "anchor with no file binding (or the reverse) is not usable"
+            )
+        _, _, resolve_picture_bindings = _scene_reference_helpers()
+        bindings = resolve_picture_bindings(reference_bindings)
+        if 1 not in bindings:
+            raise PromptCompilerError(
+                "story.prompt_compiler: reference_bindings has no Picture 1; "
+                "the scene/first-frame reference must be bound to a file"
+            )
+        resolved_anchors = resolve_shot_anchors(shot, anchors)
+        for name, anchor in resolved_anchors.items():
+            if _anchor_picture_number(anchor, bindings) is None:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: anchor file for {name!r} "
+                    "is not in reference_bindings"
+                )
     lines: list[str] = []
     lines.append(f"[风格]{episode['style']}")
-    lines.append(
+    duration_line = (
         f"[时长]{_fmt_num(float(shot['duration_s']))}秒（{episode['aspect']}）"
     )
+    if provider is not None:
+        frames = frames_for_provider(float(shot["duration_s"]), provider, fps)
+        duration_line += f"·{frames}帧（{fps:g}fps，{provider}）"
+    lines.append(duration_line)
     reference = str(episode.get("reference", "") or "").strip()
-    lines.append(f"[参考]{reference if reference else '无指定参考'}")
+    if bindings:
+        mapping = "；".join(
+            f"Picture {n}：{b['file']}（sha256 {b['sha256'][:8]}）"
+            for n, b in sorted(bindings.items())
+        )
+        lines.append(f"[参考]{mapping}" + (f"｜{reference}" if reference else ""))
+    else:
+        lines.append(f"[参考]{reference if reference else '无指定参考'}")
     lines.append("[入口状态]")
     lines.append(_render_state(shot["continuity"]["entry_state"]))
     scene = str(shot["scene"])
@@ -1191,10 +1417,28 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
     lines.append(f"[场景]{scene}" + (f"｜{time_of_day}" if time_of_day else ""))
     characters = shot.get("characters") or []
     if characters:
-        lines.append(f"[人物]{'、'.join(str(c) for c in characters)}")
+        if resolved_anchors:
+            parts = []
+            for name in characters:
+                anchor = resolved_anchors.get(str(name))
+                if anchor is None:
+                    parts.append(str(name))
+                    continue
+                picture = _anchor_picture_number(anchor, bindings)
+                wardrobe = f"；服装：{anchor['wardrobe']}" if anchor["wardrobe"] else ""
+                parts.append(
+                    f"{name}（锚点已确认：{anchor['look']}{wardrobe}；"
+                    f"参考 Picture {picture}）"
+                )
+            lines.append(f"[人物]{'、'.join(parts)}")
+        else:
+            lines.append(f"[人物]{'、'.join(str(c) for c in characters)}")
     props = shot.get("props") or []
     if props:
         lines.append(f"[道具]{'、'.join(str(p) for p in props)}")
+    entry_text = str(camera["start_frame"].get("description", "")).strip()
+    if entry_text:
+        lines.append(f"[首帧]{entry_text}")
     lines.append("[镜头段]")
     easing = camera.get("easing")
     end_size = camera.get("shot_size_end")
@@ -1210,7 +1454,7 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
         lines.append(
             f"[机位]{framing}，{movement_zh}（{movement_en}）{easing_text}"
         )
-    entry_text = str(camera["start_frame"].get("description", "")).strip()
+    prev_landing: str | None = None
     for beat in shot["beats"]:
         start = _fmt_time(float(beat["t_start_s"]))
         end = _fmt_time(float(beat["t_end_s"]))
@@ -1221,6 +1465,7 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
         landing = str(beat.get("landing", "") or "").strip()
         landing_text = f"落位：{landing}" if landing else "落位：保持本镜构图"
         action = str(beat["action"])
+        chain = f"{prev_landing}→{action}" if prev_landing else action
         gaze = str(beat.get("gaze_target", "") or "").strip()
         gaze_text = f"视线：{gaze}" if gaze else ""
         speech = _render_line(beat)
@@ -1229,7 +1474,7 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
         segment = (
             f"[{start}–{end}秒]镜头（{camera['shot_size']}＋{camera['angle']}＋"
             f"{landing_text}｜{beat_zh}（{beat_en}）／"
-            f"{entry_text}→{action}→{landing if landing else '保持本镜构图'}／"
+            f"{chain}→{landing if landing else '保持本镜构图'}／"
             f"{speech}"
         )
         if gaze_text:
@@ -1237,7 +1482,7 @@ def compile_shot_prompt(episode: dict[str, Any], shot: dict[str, Any]) -> str:
         segment += f"／声音：{beat['sound']}）"
         lines.append(segment)
         if landing:
-            entry_text = landing
+            prev_landing = landing
     lines.append("[出口状态]")
     lines.append(_render_state(shot["continuity"]["exit_state"]))
     lines.append(
@@ -1304,21 +1549,36 @@ def clip_scene_sentence(shot: dict[str, Any], clip_index: int) -> str:
 
 
 def compile_clip_prompts(
-    episode: dict[str, Any], style: str | None = None
+    episode: dict[str, Any],
+    style: str | None = None,
+    *,
+    anchors: dict[str, Any] | None = None,
+    reference_bindings: dict[Any, Any] | None = None,
+    provider: str | None = None,
+    fps: float = 24.0,
 ) -> dict[str, str]:
     """Clip-level prompts in the E1 recut production format.
 
-    This is the string shape actually sent to the fl2va generator:
-    STYLE header + ``Scene: ...`` + one ``Beat: ...`` per beat plus one
-    ``Line (speaker): ...`` per spoken beat, in beat order. Lines come
-    verbatim from the beat schema; nothing is paraphrased or added.
+    This is the string shape actually sent to the generator: STYLE
+    header + ``Scene: ...`` + one ``Beat: ...`` per beat plus one
+    ``Line (speaker): ...`` per spoken beat, in beat order, then
+    ``Camera:``, ``State:``, ``Constraints:`` and (when supplied)
+    ``Anchors:``, ``Frames:``. Lines come verbatim from the beat
+    schema; nothing is paraphrased or added. The camera, state and
+    constraint lines are part of the same rendering -- a clip
+    prompt without them is a different, weaker prompt than the
+    shot prompt, which is what the 2026-10-31 audit found: clip
+    prompts dropped camera movement, shot size, state, bans and
+    constraints entirely.
 
     The episode gates (beat coverage, line durations, uniqueness,
     continuity chain, total + tier) still apply at the episode level
     via :func:`compile_episode`; this renderer only fixes the wording
     of the strings the generator sees. Callers that need gated output
     must run :func:`compile_episode` first and render from the same
-    episode object.
+    episode object. With ``anchors``/``reference_bindings`` supplied
+    (together, never one alone), anchors are resolved the same way
+    as in :func:`compile_shot_prompt` and unconfirmed anchors fail.
     """
     header = str(style if style is not None else episode.get("style", "")).strip()
     prompts: dict[str, str] = {}
@@ -1330,6 +1590,19 @@ def compile_clip_prompts(
         camera = shot["camera"]
         easing = camera.get("easing")
         end_size = camera.get("shot_size_end")
+        resolved_anchors: dict[str, dict[str, Any]] = {}
+        bindings: dict[int, dict[str, Any]] = {}
+        if anchors is not None or reference_bindings is not None:
+            if anchors is None or reference_bindings is None:
+                raise PromptCompilerError(
+                    f"story.prompt_compiler: {_shot_label(shot)} anchors and "
+                    "reference_bindings must be supplied together"
+                )
+            _, _, resolve_picture_bindings = _scene_reference_helpers()
+            bindings = resolve_picture_bindings(reference_bindings)
+            resolved_anchors = resolve_shot_anchors(shot, anchors)
+        _, movement_zh, movement_en = resolve_movement(camera["movement"])
+        entry_state = _render_state(shot["continuity"]["entry_state"]).replace("\n", "；")
         for clip_index, clip in enumerate(shot.get("clips", [])):
             parts = [header, "Scene: " + clip_scene_sentence(shot, clip_index)]
             for beat_no in clip["beats"]:
@@ -1340,6 +1613,29 @@ def compile_clip_prompts(
                     parts.append(
                         "Line (%s): %s" % (str(beat.get("speaker", "")), line)
                     )
+            parts.append(
+                f"Camera: {camera['shot_size']} {camera['angle']}, "
+                f"{movement_zh} ({movement_en})."
+            )
+            parts.append(f"State: {entry_state}.")
+            parts.append(f"Constraints: {SPEECH_DISCIPLINE}{BANS}")
+            if resolved_anchors:
+                anchor_parts = []
+                for name in shot.get("characters") or []:
+                    anchor = resolved_anchors.get(str(name))
+                    if anchor is None:
+                        continue
+                    picture = _anchor_picture_number(anchor, bindings)
+                    anchor_parts.append(
+                        f"{name} ({anchor['look']}; Picture {picture})")
+                if anchor_parts:
+                    parts.append("Anchors: " + "; ".join(anchor_parts) + ".")
+            if provider is not None:
+                clip_beats = [beats[n] for n in clip["beats"]]
+                clip_seconds = max(float(b["t_end_s"]) for b in clip_beats) - min(
+                    float(b["t_start_s"]) for b in clip_beats)
+                frames = frames_for_provider(clip_seconds, provider, fps)
+                parts.append(f"Frames: {frames} ({fps:g}fps, {provider}).")
             if easing is not None:
                 parts.append(
                     f"Easing: {easing}（{EASINGS[easing]}）"
@@ -1366,6 +1662,11 @@ def compile_episode(
     episode: dict[str, Any],
     provider_caps: dict[str, Any] | None = None,
     provider: str | None = None,
+    *,
+    anchors: dict[str, Any] | None = None,
+    reference_bindings: dict[Any, Any] | None = None,
+    strict: bool = False,
+    fps: float = 24.0,
 ) -> dict[str, Any]:
     """Validate an episode through all five gates, then render prompts.
 
@@ -1380,7 +1681,33 @@ def compile_episode(
     ``provider`` resolves through ``duration_tiers.json``; otherwise
     the tier verdict is ``"unknown"`` (total-duration check still
     enforced).
+
+    With ``strict=True`` this is the generation-ready path: a
+    provider with verified caps is required (``unknown`` fails),
+    ``anchors`` and ``reference_bindings`` are required and must
+    cover the episode, beat progression is checked, shot prompts
+    are re-rendered with anchors/bindings/frames, and clip
+    prompts are rendered by the same renderer and included under
+    ``clip_prompts``. The legacy path (``strict=False``) is
+    unchanged: it records ``unknown`` tiers and renders bare-name
+    prompts, and must not be sent to generation.
     """
+    if strict:
+        effective_provider = provider or (
+            provider_caps.get("provider") if isinstance(provider_caps, dict) else None
+        ) or episode.get("provider")
+        if not effective_provider:
+            raise PromptCompilerError(
+                "story.prompt_compiler: strict compile needs a provider; "
+                "an 'unknown' tier never reaches generation"
+            )
+        if anchors is None or reference_bindings is None:
+            raise PromptCompilerError(
+                "story.prompt_compiler: strict compile needs anchors and "
+                "reference_bindings; bare names and unbound Pictures "
+                "never reach generation"
+            )
+        provider = effective_provider
     if not isinstance(episode, dict):
         raise PromptCompilerError(
             "story.prompt_compiler: episode must be a JSON object"
@@ -1424,10 +1751,29 @@ def compile_episode(
     tier = check_total_and_tier(
         episode, shots, resolved_caps, tier_unknown_reason
     )
+    if strict:
+        if tier.get("status") != "checked":
+            raise PromptCompilerError(
+                "story.prompt_compiler: strict compile needs a provider "
+                f"with verified caps; tier verdict is {tier.get('status')!r} "
+                f"({tier.get('reason', '')})"
+            )
+        effective_provider = provider or episode.get("provider") or str(
+            (provider_caps or {}).get("provider") or "")
+        coverage = check_anchor_and_binding_coverage(episode, anchors, reference_bindings)
+        for shot in shots:
+            check_beat_progression(shot)
     prompts = [
         {
             "shot_no": str(shot.get("shot_no", "?")),
-            "prompt": compile_shot_prompt(episode, shot),
+            "prompt": compile_shot_prompt(
+                episode,
+                shot,
+                anchors=anchors if strict else None,
+                reference_bindings=reference_bindings if strict else None,
+                provider=effective_provider if strict else None,
+                fps=fps,
+            ),
             "negative_prompts": _normalise_negative_prompts(shot),
             "fallbacks": _normalise_fallbacks(shot),
             "easing": shot["camera"].get("easing"),
@@ -1435,8 +1781,11 @@ def compile_episode(
         }
         for shot in shots
     ]
+    if strict:
+        for entry, shot in zip(prompts, shots):
+            check_rendered_shot_prompt(entry["prompt"], shot)
     spoken = collect_spoken_lines(shots)
-    return {
+    result: dict[str, Any] = {
         "episode_no": episode["episode_no"],
         "title": episode["title"],
         "target_duration_s": episode["target_duration_s"],
@@ -1452,7 +1801,51 @@ def compile_episode(
         "spoken_line_count": len(spoken),
         "tier": tier,
         "prompts": prompts,
+        "strict": strict,
     }
+    if strict:
+        result["clip_prompts"] = compile_clip_prompts(
+            episode,
+            anchors=anchors,
+            reference_bindings=reference_bindings,
+            provider=effective_provider,
+            fps=fps,
+        )
+        result["readiness"] = {
+            "anchors": sorted(coverage["anchors"]),
+            "picture_bindings": sorted(coverage["bindings"]),
+            "provider": effective_provider,
+        }
+    return result
+
+
+def compile_generation_ready_episode(
+    episode: dict[str, Any],
+    *,
+    provider: str,
+    anchors: dict[str, Any],
+    reference_bindings: dict[Any, Any],
+    provider_caps: dict[str, Any] | None = None,
+    fps: float = 24.0,
+) -> dict[str, Any]:
+    """The single generation-ready entry point for beat-schema episodes.
+
+    Fails hard on: no provider / unverified caps, unconfirmed or
+    missing anchors, unbound Pictures, non-progressing beats, and
+    start-frame text repeated inside beat segments. The returned
+    prompts carry anchor looks, Picture -> file bindings and
+    provider-route frame counts; ``clip_prompts`` come from the
+    same renderer, so clip and shot prompts cannot drift apart.
+    """
+    return compile_episode(
+        episode,
+        provider_caps=provider_caps,
+        provider=provider,
+        anchors=anchors,
+        reference_bindings=reference_bindings,
+        strict=True,
+        fps=fps,
+    )
 
 
 # ---------------------------------------------------------------------------

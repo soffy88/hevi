@@ -151,15 +151,28 @@ def _req_list(value: Any, what: str) -> list[Any]:
 # ``Name says: "..."`` -- the speaker name is one word of letters.
 _DIALOGUE_RE = re.compile(r"([A-Za-z][A-Za-z\-']*)\s+says:\s*\"([^\"]*)\"")
 
+# Chinese dialogue: ``守仁说："..."`` / ``守仁道："..."`` / ``守仁：“...”``.
+# The name is 1-8 CJK characters (optionally with a middle dot), the verb is
+# one of the common speech verbs, and the line is quoted with straight or
+# curly quotes after a fullwidth/halfwidth colon. Text already rewritten
+# to ``守仁 (S1) 说，<d>...</d>`` does not match: the ``(S1)`` marker sits
+# between the name and the verb, so a second pass leaves it alone.
+_CN_SPEECH_VERBS = r"说|说道|道|问|答|喊|叫|笑道|叹道|应道|回道"
+_CN_DIALOGUE_RE = re.compile(
+    r"([\u4e00-\u9fff]{1,8}(?:·[\u4e00-\u9fff]{1,8})?)"
+    rf"\s*(?:{_CN_SPEECH_VERBS})\s*[：:]\s*[\"“]([^\"”]*)[\"”]"
+)
+
 
 def rewrite_dialogue(text: str, names: list[str] | None = None) -> tuple[str, list[str]]:
     """Rewrite spoken lines to speaker-numbered, tagged dialogue.
 
     Speakers are numbered by first appearance: ``Mei says: "..."``
-    becomes ``Mei (S1) says, <d>...</d>``. Text that already
-    carries a ``<d>`` tag is left alone. The tagged content is the
-    caller's wording verbatim: no translation is performed here.
-    Returns the rewritten text and the speaker list in order.
+    becomes ``Mei (S1) says, <d>...</d>``; ``守仁说："..."`` becomes
+    ``守仁 (S1) 说，<d>...</d>``. Text that already carries a ``<d>``
+    tag is left alone. The tagged content is the caller's wording
+    verbatim: no translation is performed here. Returns the rewritten
+    text and the speaker list in order.
     """
     if not isinstance(text, str):
         raise CapabilityError("pipeline.scene_reference: dialogue text must be a string")
@@ -172,7 +185,15 @@ def rewrite_dialogue(text: str, names: list[str] | None = None) -> tuple[str, li
         number = speakers.index(name) + 1
         return f"{name} (S{number}) says, <d>{spoken}</d>"
 
+    def _replace_cn(match: re.Match[str]) -> str:
+        name, spoken = match.group(1), match.group(2)
+        if name not in speakers:
+            speakers.append(name)
+        number = speakers.index(name) + 1
+        return f"{name} (S{number}) 说，<d>{spoken}</d>"
+
     rewritten = _DIALOGUE_RE.sub(_replace, text)
+    rewritten = _CN_DIALOGUE_RE.sub(_replace_cn, rewritten)
     if names is not None:
         for name in names:
             if name not in speakers:
@@ -180,9 +201,113 @@ def rewrite_dialogue(text: str, names: list[str] | None = None) -> tuple[str, li
     return rewritten, speakers
 
 
+# ------------------------------------------------------- reference bindings
+#
+# A Picture number is not a binding until it names a file that exists
+# (local path) or carries a verified hash. These validators are the
+# single implementation used by both this module and
+# story.prompt_compiler (which imports them lazily); do not copy them
+# into a second module.
+
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def resolve_picture_binding(binding: Any, what: str = "reference binding") -> dict[str, Any]:
+    """Validate one Picture -> file binding. Returns ``{file, sha256}``.
+
+    ``file`` must be a non-empty string and ``sha256`` a 64-hex digest
+    of the file's bytes. A local filesystem path (no URL scheme) must
+    exist on disk; a URL is accepted on its hash alone, because the
+    file lives elsewhere -- the hash is what the executor checks.
+    """
+    if not isinstance(binding, dict):
+        raise CapabilityError(
+            f"pipeline.scene_reference: {what} must be an object with 'file' and 'sha256'")
+    file = binding.get("file")
+    sha = binding.get("sha256")
+    if not isinstance(file, str) or not file.strip():
+        raise CapabilityError(f"pipeline.scene_reference: {what} needs a non-empty 'file'")
+    if not isinstance(sha, str) or not _SHA256_RE.match(sha.strip()):
+        raise CapabilityError(
+            f"pipeline.scene_reference: {what} needs a 64-hex 'sha256' for {file!r}")
+    file = file.strip()
+    if "://" not in file:
+        path = Path(file)
+        if not path.exists():
+            raise CapabilityError(
+                f"pipeline.scene_reference: {what} file does not exist: {file!r}")
+    return {"file": file, "sha256": sha.strip()}
+
+
+def resolve_picture_bindings(bindings: Any, *, what: str = "reference bindings") -> dict[int, dict[str, Any]]:
+    """Validate a Picture-number -> binding map. Keys are ints or digit strings."""
+    if not isinstance(bindings, dict):
+        raise CapabilityError(f"pipeline.scene_reference: {what} must be an object")
+    out: dict[int, dict[str, Any]] = {}
+    for key, value in bindings.items():
+        try:
+            number = int(key)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            raise CapabilityError(
+                f"pipeline.scene_reference: {what} key {key!r} is not a picture number") from None
+        if number < 1:
+            raise CapabilityError(
+                f"pipeline.scene_reference: {what} picture number must be >= 1, got {number}")
+        out[number] = resolve_picture_binding(value, f"{what} picture {number}")
+    return out
+
+
+def resolve_character_anchor(name: str, anchors: Any) -> dict[str, Any]:
+    """Resolve one character's confirmed anchor from an anchors map.
+
+    Accepted shapes (both must be confirmed by a human -- an
+    unconfirmed or missing anchor fails, it never falls back to a
+    bare name):
+    * a ``qa.character_anchor_gate`` sheet: ``{"anchor": {"file",
+      "sha256", "look_snapshot", "confirmed": true, ...}}``;
+    * a plain record: ``{"look_snapshot"|"look"|"description",
+      "file", "sha256", "confirmed": true}`` with optional
+      ``"wardrobe"``.
+    Returns ``{name, look, wardrobe, file, sha256}``.
+    """
+    if not isinstance(anchors, dict) or name not in anchors:
+        raise CapabilityError(
+            f"pipeline.scene_reference: character {name!r} has no confirmed anchor; "
+            "a bare name is not a prompt-ready character")
+    record = anchors[name]
+    if not isinstance(record, dict):
+        raise CapabilityError(
+            f"pipeline.scene_reference: anchor for {name!r} must be an object")
+    anchor = record.get("anchor") if isinstance(record.get("anchor"), dict) else record
+    if anchor.get("confirmed") is not True:
+        raise CapabilityError(
+            f"pipeline.scene_reference: anchor for {name!r} is not confirmed; "
+            "unconfirmed anchors never reach generation")
+    look = anchor.get("look_snapshot") or anchor.get("look") or anchor.get("description")
+    if not isinstance(look, str) or not look.strip():
+        raise CapabilityError(
+            f"pipeline.scene_reference: anchor for {name!r} carries no look description")
+    binding = resolve_picture_binding(
+        {"file": anchor.get("file"), "sha256": anchor.get("sha256")},
+        f"anchor for {name!r}")
+    wardrobe = anchor.get("wardrobe")
+    if wardrobe is not None and (not isinstance(wardrobe, str) or not wardrobe.strip()):
+        raise CapabilityError(
+            f"pipeline.scene_reference: anchor wardrobe for {name!r} must be a non-empty string")
+    return {"name": name, "look": look.strip(),
+            "wardrobe": wardrobe.strip() if isinstance(wardrobe, str) else None,
+            "file": binding["file"], "sha256": binding["sha256"]}
+
+
 # ---------------------------------------------------------------- builder
 
-def build_h3_prompt(plan: dict[str, Any]) -> dict[str, Any]:
+def build_h3_prompt(
+    plan: dict[str, Any],
+    *,
+    strict: bool = False,
+    reference_files: Any = None,
+    anchors: Any = None,
+) -> dict[str, Any]:
     """Assemble the six-section reference prompt from a plan.
 
     ``plan`` carries ``scene`` (description, optional framing),
@@ -193,6 +318,21 @@ def build_h3_prompt(plan: dict[str, Any]) -> dict[str, Any]:
     missing raise CapabilityError; nothing is invented to fill
     them. Picture references are numbered from 1: the scene is
     Picture 1, angles follow, cast follows.
+
+    ``angles`` entries may be bare strings (legacy) or objects
+    ``{"description": ..., "file": ..., "sha256": ...}``. Dialogue
+    in a shot's ``description`` is rewritten the same way as its
+    ``dialogue`` field, so Chinese speech written inline is
+    numbered and tagged instead of passing through unbound.
+
+    With ``strict=True`` the prompt must be generation-ready:
+    every Picture number needs a validated file binding
+    (``reference_files`` or the plan's own ``reference_files``),
+    every angle needs a description plus a file binding (a bare
+    string fails), and every character needs a confirmed anchor
+    (``anchors`` or the character's own ``anchor`` record). A
+    spoken line that carries no speaker number after rewriting
+    fails instead of passing through unbound.
     """
     if not isinstance(plan, dict):
         raise CapabilityError("pipeline.scene_reference: plan must be a JSON object")
@@ -212,10 +352,23 @@ def build_h3_prompt(plan: dict[str, Any]) -> dict[str, Any]:
         subjects.append({
             "name": _req_str(item.get("name"), "character.name"),
             "description": _req_str(item.get("description"), "character.description"),
+            "anchor_record": item.get("anchor"),
+            "reference_file": item.get("reference_file"),
         })
-    angles = _req_list(plan.get("angles", []), "angles")
-    for angle in angles:
-        _req_str(angle, "angle")
+    raw_angles = _req_list(plan.get("angles", []), "angles")
+    angles: list[dict[str, Any]] = []
+    for angle in raw_angles:
+        if isinstance(angle, str):
+            angles.append({"description": _req_str(angle, "angle"), "file": None, "sha256": None})
+        elif isinstance(angle, dict):
+            angles.append({
+                "description": _req_str(angle.get("description"), "angle.description"),
+                "file": angle.get("file"),
+                "sha256": angle.get("sha256"),
+            })
+        else:
+            raise CapabilityError(
+                "pipeline.scene_reference: every angle must be a string or an object")
 
     shots = plan.get("shots")
     detail = plan.get("detail")
@@ -253,6 +406,73 @@ def build_h3_prompt(plan: dict[str, Any]) -> dict[str, Any]:
             f"pipeline.scene_reference: at most {MAX_PICTURE_REFS} picture "
             f"references; got {picture_count}")
 
+    # --- strict bindings: every picture number names a real file.
+    supplied_files = reference_files if reference_files is not None else plan.get("reference_files")
+    bindings: dict[int, dict[str, Any]] = {}
+    if supplied_files is not None:
+        if isinstance(supplied_files, dict):
+            bindings = resolve_picture_bindings(supplied_files)
+        elif isinstance(supplied_files, list):
+            by_number: dict[Any, Any] = {}
+            for row in supplied_files:
+                if not isinstance(row, dict) or "picture" not in row:
+                    raise CapabilityError(
+                        "pipeline.scene_reference: every reference_files row needs 'picture'")
+                by_number[row["picture"]] = row
+            bindings = resolve_picture_bindings(by_number)
+        else:
+            raise CapabilityError(
+                "pipeline.scene_reference: reference_files must be an object or a list")
+    if strict:
+        if not bindings:
+            raise CapabilityError(
+                "pipeline.scene_reference: strict build needs reference_files; "
+                "a Picture number without a file binding never reaches generation")
+        for index, angle in enumerate(angles):
+            if not angle["file"]:
+                raise CapabilityError(
+                    f"pipeline.scene_reference: strict build: angle Picture {2 + index} "
+                    "is a bare string with no file binding")
+        missing = [n for n in range(1, picture_count + 1) if n not in bindings]
+        if missing:
+            raise CapabilityError(
+                f"pipeline.scene_reference: strict build: pictures without a file "
+                f"binding: {', '.join(str(n) for n in missing)}")
+        for index, angle in enumerate(angles):
+            resolve_picture_binding(
+                {"file": angle["file"], "sha256": angle["sha256"]},
+                f"angle Picture {2 + index}")
+            if bindings[2 + index]["file"] != str(angle["file"]).strip():
+                raise CapabilityError(
+                    f"pipeline.scene_reference: strict build: angle Picture {2 + index} "
+                    "binding does not match its reference_files entry")
+    # Resolved anchors (strict only; legacy builds keep bare names).
+    resolved_anchors: dict[str, dict[str, Any]] = {}
+    if strict:
+        for subject in subjects:
+            record = subject["anchor_record"]
+            if record is not None:
+                resolved = resolve_character_anchor(
+                    subject["name"], {subject["name"]: record})
+            elif anchors is not None:
+                resolved = resolve_character_anchor(subject["name"], anchors)
+            elif subject["reference_file"] is not None:
+                binding = resolve_picture_binding(
+                    subject["reference_file"], f"reference file for {subject['name']!r}")
+                resolved = {"name": subject["name"], "look": subject["description"],
+                            "wardrobe": None, "file": binding["file"],
+                            "sha256": binding["sha256"]}
+            else:
+                raise CapabilityError(
+                    f"pipeline.scene_reference: strict build: character "
+                    f"{subject['name']!r} has no confirmed anchor")
+            resolved_anchors[subject["name"]] = resolved
+            picture = 2 + len(angles) + [s["name"] for s in subjects].index(subject["name"])
+            if bindings and bindings[picture]["file"] != resolved["file"]:
+                raise CapabilityError(
+                    f"pipeline.scene_reference: strict build: anchor file for "
+                    f"{subject['name']!r} does not match its Picture {picture} binding")
+
     # --- section 1: subject definitions, scene first as Subject 1.
     subject_lines = [
         f"<Subject 1> = <Picture 1>: {scene_description}"
@@ -261,13 +481,23 @@ def build_h3_prompt(plan: dict[str, Any]) -> dict[str, Any]:
     ]
     for index, subject in enumerate(subjects):
         picture = 2 + len(angles) + index
-        subject_lines.append(
+        line = (
             f"<Subject {index + 2}> = <Picture {picture}>: "
             f"{subject['name']}, {subject['description']}")
+        if subject["name"] in resolved_anchors:
+            anchor = resolved_anchors[subject["name"]]
+            line += (f" Confirmed anchor: {anchor['look']}; "
+                     f"reference file {anchor['file']} (sha256 {anchor['sha256'][:8]}).")
+        subject_lines.append(line)
     if angles:
+        angle_parts = []
+        for i, angle in enumerate(angles):
+            part = f"<Picture {2 + i}>: {angle['description']}"
+            if angle["file"]:
+                part += f" (file {angle['file']})"
+            angle_parts.append(part)
         subject_lines.append(
-            "Further angles of the same place: "
-            + ", ".join(f"<Picture {2 + i}>" for i in range(len(angles))) + ".")
+            "Further angles of the same place: " + "; ".join(angle_parts) + ".")
 
     # --- section 2: summary.
     summary = f"A shot in the place of Picture 1"
@@ -281,27 +511,41 @@ def build_h3_prompt(plan: dict[str, Any]) -> dict[str, Any]:
         "furnishings follow Picture 1."
     ]
     for index, subject in enumerate(subjects):
-        retention_lines.append(
-            f"Subject {index + 2} ({subject['name']}): {_RETENTION_KEYWORD} "
-            "-- identity, face and build follow its reference picture.")
+        if subject["name"] in resolved_anchors:
+            anchor = resolved_anchors[subject["name"]]
+            retention_lines.append(
+                f"Subject {index + 2} ({subject['name']}): {_RETENTION_KEYWORD} "
+                f"-- {anchor['look']} follow its reference picture.")
+        else:
+            retention_lines.append(
+                f"Subject {index + 2} ({subject['name']}): {_RETENTION_KEYWORD} "
+                "-- identity, face and build follow its reference picture.")
 
     # --- section 4: detailed description, dialogue rewritten.
+    # Dialogue written inline in a shot description is rewritten
+    # too: otherwise Chinese speech in the description passes
+    # through with no speaker number and no voice binding.
     detail_lines: list[str] = []
     dialogue_speakers: list[str] = []
-    if shot_list:
-        for number, shot in enumerate(shot_list, start=1):
-            dialogue = shot.get("dialogue", "")
-            if not isinstance(dialogue, str):
-                raise CapabilityError("pipeline.scene_reference: shot.dialogue must be a string")
-            rewritten, speakers = rewrite_dialogue(dialogue)
-            for speaker in speakers:
-                if speaker not in dialogue_speakers:
-                    dialogue_speakers.append(speaker)
-            line = f"[Shot {number}] {shot['description'].strip()}"
-            if rewritten.strip():
-                line += f" {rewritten.strip()}"
-            detail_lines.append(line)
-    else:
+    for number, shot in enumerate(shot_list, start=1):
+        dialogue = shot.get("dialogue", "")
+        if not isinstance(dialogue, str):
+            raise CapabilityError("pipeline.scene_reference: shot.dialogue must be a string")
+        rewritten_desc, desc_speakers = rewrite_dialogue(shot["description"].strip())
+        rewritten, speakers = rewrite_dialogue(dialogue)
+        for speaker in (*desc_speakers, *speakers):
+            if speaker not in dialogue_speakers:
+                dialogue_speakers.append(speaker)
+        line = f"[Shot {number}] {rewritten_desc}"
+        if rewritten.strip():
+            line += f" {rewritten.strip()}"
+        if strict and re.search(r"[\"“]", line) and "(S" not in line:
+            raise CapabilityError(
+                f"pipeline.scene_reference: strict build: shot {number} carries "
+                "quoted speech with no numbered speaker; the dialogue was "
+                "not rewritten and no voice can be bound to it")
+        detail_lines.append(line)
+    if not shot_list:
         detail_lines.append(str(detail).strip())
     for speaker in dialogue_speakers:
         if speaker not in voice_names:
@@ -320,13 +564,29 @@ def build_h3_prompt(plan: dict[str, Any]) -> dict[str, Any]:
             else "No non-diegetic music requested."),
     }
     text = "\n\n".join(f"{name}:\n{sections[name]}" for name in H3_SECTIONS)
-    return {
+    result: dict[str, Any] = {
         "sections": sections,
         "text": text,
         "picture_refs": picture_count,
         "voices": voice_names,
         "dialogue_speakers": dialogue_speakers,
+        "strict": strict,
     }
+    if bindings:
+        result["picture_files"] = {
+            number: binding["file"] for number, binding in sorted(bindings.items())}
+    duration = plan.get("duration_s")
+    if duration is not None:
+        if isinstance(duration, bool) or not isinstance(duration, (int, float)) \
+                or not math.isfinite(duration) or duration <= 0:
+            raise CapabilityError("pipeline.scene_reference: duration_s must be a positive number")
+        fps = plan.get("fps", H3_FPS)
+        frames = canonical_frame_count(float(duration), float(fps), route="h3")
+        result["duration_s"] = float(duration)
+        result["frames"] = frames
+        result["frame_seconds"] = frames / float(fps)
+        result["frame_route"] = "h3"
+    return result
 
 
 def check_h3_prompt(prompt: Any) -> dict[str, Any]:
@@ -372,6 +632,17 @@ def check_h3_prompt(prompt: Any) -> dict[str, Any]:
     if _RETENTION_KEYWORD not in text:
         issues.append({"code": "MISSING_RETENTION", "severity": "fail",
                        "message": "retention analysis carries no fully_preserved line"})
+    if isinstance(prompt, dict) and isinstance(prompt.get("sections"), dict):
+        detail_text = str(prompt["sections"].get("detailed_description", ""))
+    else:
+        detail_match = re.search(
+            r"(?ms)^detailed_description:\n(.*?)(?:\n\noverall_soundscape:|\Z)", text)
+        detail_text = detail_match.group(1) if detail_match else ""
+    if re.search(r"[\"“]", detail_text) and not re.search(r"\(S\d+\)", detail_text):
+        issues.append({"code": "DIALOGUE_UNNUMBERED", "severity": "fail",
+                       "message": "detailed_description carries quoted speech with no "
+                                  "numbered (Sn) speaker; the dialogue was not rewritten "
+                                  "and no voice can be bound to it"})
     speaker_numbers = {int(n) for n in re.findall(r"\(S(\d+)\)", text)}
     if speaker_numbers and max(speaker_numbers) > MAX_VOICES:
         issues.append({"code": "VOICE_CAP", "severity": "fail",
@@ -884,21 +1155,63 @@ CROP_GRID = 16
 DEFAULT_TARGET_MEGAPIXELS = 0.4
 
 
-def h3_frame_count(seconds: float, fps: float = H3_FPS) -> int:
-    """Snap a duration to the H3 frame lattice: 17k + 5 frames.
+# ---------------------------------------------------------------- frame truth
+#
+# SINGLE SOURCE OF TRUTH for frame counts (2026-10-31). Two routes
+# disagree about "10 seconds" and both are right -- for their own
+# route, never interchangeably:
+# * H3 / SceneRef lattice (``route="h3"``): 17k + 5 frames, so 10 s
+#   at 24 fps is 243 frames (10.125 s of picture).
+# * FastH3 local execution (``route="fasth3_local"``): frames =
+#   round(seconds * 24), locked to [124, 360] in
+#   video.fasth3_local, so 10 s is 240 frames (10.0 s).
+# Every prompt that states a frame count must say which route it
+# used. Any other route (a provider key that is neither) counts
+# frames as round(seconds * fps) and names the provider. Never
+# silently mix the two: a prompt written for one route and rendered
+# on the other drifts by 3 frames per 10 seconds.
 
-    At 24 fps, 5 seconds snaps to 124 frames (5.167 seconds of
-    picture). Short requests floor at 5 frames. This is plan
-    arithmetic only; it does not change any other capability's
-    locked execution values.
+
+def canonical_frame_count(seconds: float, fps: float = H3_FPS, route: str = "h3") -> int:
+    """Frame count for ``seconds`` on one named execution route.
+
+    ``route="h3"`` snaps to the 17k+5 lattice; ``route="fasth3_local"``
+    rounds to the nearest frame; any other route name also rounds
+    and is recorded by the caller. Plan arithmetic only.
     """
     for value, what in ((seconds, "seconds"), (fps, "fps")):
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
             raise CapabilityError(f"pipeline.scene_reference: {what} must be a finite number")
     if seconds <= 0 or fps <= 0:
         raise CapabilityError("pipeline.scene_reference: seconds and fps must be positive")
-    frames = max(H3_FRAME_OFFSET, int(round(seconds * fps)))
-    return frames + (H3_FRAME_OFFSET - frames % H3_FRAME_STEP) % H3_FRAME_STEP
+    if route == "h3":
+        frames = max(H3_FRAME_OFFSET, int(round(seconds * fps)))
+        return frames + (H3_FRAME_OFFSET - frames % H3_FRAME_STEP) % H3_FRAME_STEP
+    if not isinstance(route, str) or not route.strip():
+        raise CapabilityError("pipeline.scene_reference: route must be a non-empty string")
+    return max(1, int(round(seconds * fps)))
+
+
+def h3_frame_count(seconds: float, fps: float = H3_FPS) -> int:
+    """Snap a duration to the H3 frame lattice: 17k + 5 frames.
+
+    At 24 fps, 5 seconds snaps to 124 frames (5.167 seconds of
+    picture). Short requests floor at 5 frames. This is plan
+    arithmetic only; it does not change any other capability's
+    locked execution values. Delegates to
+    :func:`canonical_frame_count` with ``route="h3"``.
+    """
+    return canonical_frame_count(seconds, fps, route="h3")
+
+
+def fasth3_frame_count(seconds: float, fps: float = H3_FPS) -> int:
+    """Frame count on the FastH3 local route: round(seconds * fps).
+
+    At 24 fps, 10 seconds is 240 frames -- not the 243 of the H3
+    lattice. The [124, 360] lock itself lives in
+    video.fasth3_local and is enforced there, not here.
+    """
+    return canonical_frame_count(seconds, fps, route="fasth3_local")
 
 
 def h3_output_size(width: int, height: int, megapixels: float = DEFAULT_TARGET_MEGAPIXELS,

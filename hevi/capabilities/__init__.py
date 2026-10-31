@@ -685,6 +685,12 @@ _character_sheet_contract.register_character_sheet_contract_capabilities_once()
 from . import scene_reference as _scene_reference  # noqa: E402,F401
 _scene_reference.register_scene_reference_capabilities_once()
 
+# Prompt-quality fix (2026-10-31): qa.prompt_eval_harness (frozen
+# prompt samples, offline measurements only; generation consistency
+# is declared planned_not_measured, never scored without artifacts).
+from . import prompt_eval_harness as _prompt_eval_harness  # noqa: E402,F401
+_prompt_eval_harness.register_prompt_eval_harness_capabilities_once()
+
 # 3D cartoon tutorial P0 grafts (2026-10-31, clean-room, method ideas
 # only): qa.feedback_discipline (timestamp + part + expected, at most
 # two changes per round, unmentioned parts frozen), pipeline.project_style_sheet
