@@ -684,3 +684,18 @@ _character_sheet_contract.register_character_sheet_contract_capabilities_once()
 # weights expressly outside that licence).
 from . import scene_reference as _scene_reference  # noqa: E402,F401
 _scene_reference.register_scene_reference_capabilities_once()
+
+# 3D cartoon tutorial P0 grafts (2026-10-31, clean-room, method ideas
+# only): qa.feedback_discipline (timestamp + part + expected, at most
+# two changes per round, unmentioned parts frozen), pipeline.project_style_sheet
+# (versioned project-local sheet with numeric fields, fresh sample
+# required), and qa.voice_first_gate (shots cut to timed voice
+# segments with word-level timing, planned_not_measured). See
+# CARTOON_TUTORIAL_ATTRIBUTION.md (method only; no tutorial text
+# or reference images copied).
+from . import feedback_discipline as _feedback_discipline  # noqa: E402,F401
+_feedback_discipline.register_feedback_discipline_capabilities_once()
+from . import project_style_sheet as _project_style_sheet  # noqa: E402,F401
+_project_style_sheet.register_project_style_sheet_capabilities_once()
+from . import voice_first_gate as _voice_first_gate  # noqa: E402,F401
+_voice_first_gate.register_voice_first_gate_capabilities_once()
