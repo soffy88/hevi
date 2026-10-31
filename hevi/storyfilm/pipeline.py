@@ -16,11 +16,24 @@ into the job dir and keeps ``job.json`` / ``delivery.json`` current:
                             分镜字段 (景别/机位/运镜/场次/出场角色/时长估计)
   storyboard.md             结构化分镜表 (人读版: 场次表 + 逐镜计划vs实测)
   assets.json               series 模式下本集用到的资产注册表快照 (角色/场景)
-  film.mp4                  render_route="hyperframes" 的代码合成成片
+  film.mp4                  render_route="ken_burns" 的代码合成成片
+                            ("hyperframes" 是该路由的历史别名, 见下)
   pixstag_package.json      render_route="pixstag_package" 的镜头包,
                             交 video.pixstag_generate 逐镜生成后拼接
   gates.json                film_gate / audio.earshot_gate 结论 (可用时)
   delivery.json             阶段台账: 状态 / 花费 / 产物
+
+  Route semantics (explicit, locked by tests/test_storyfilm_routing.py):
+  the in-house film route renders with Ken Burns motion over the shot
+  stills (``render_motion_film`` in this module). It does NOT call the
+  creator-style-kit styled renderer (``video.hyperframes_styled_render``,
+  ``hevi/video/csk_styled_render.py``): that capability is a separate,
+  beats-driven 9:16 style render and is not on this pipeline's path.
+  The name "hyperframes" survives only as a legacy alias for
+  "ken_burns" (``resolve_render_route``); delivery.json records both the
+  requested and the resolved route plus the render entry, so the
+  routing is inspectable instead of an orphan capability "in the
+  catalogue but unused" left ambiguous.
 
 Story-planning note (known, deliberate tradeoff — audited 2026-10-20):
   * The story stage is this module's OWN LLM draft (_STORY_SYSTEM /
@@ -38,8 +51,9 @@ Story-planning note (known, deliberate tradeoff — audited 2026-10-20):
     (parse_story_draft) and for narration length, but they do not pass
     a story-quality or kids-content gate before images/TTS are spent.
 
-Final-render routes (Soffy 分工定调 2026-10-20):
-  * 代码动画类 → HyperFrames 线 (本模块的 hyperframes 路线)
+Final-render routes (Soffy 分工定调 2026-10-20; semantics locked
+2026-10-31, see RENDER_ROUTES / resolve_render_route below):
+  * 代码动画类 → Ken Burns 路由 (历史名 "hyperframes", 别名)
   * 真人故事片 → hevi 出整个流程, 最终成片交外接能力 PixStag; 本模块只产
     镜头包 (每镜 first_frame + motion_prompt + duration), 不等它落地。
 
@@ -89,6 +103,11 @@ __all__ = [
     "render_motion_film",
     "run_story_film",
     "trim_draft_to_max_chars",
+    # explicit render routing (hyperframes alias -> ken_burns)
+    "RENDER_ROUTES",
+    "ROUTE_ALIASES",
+    "film_render_entry_for",
+    "resolve_render_route",
 ]
 
 DEFAULT_STYLE = (
@@ -108,6 +127,46 @@ _FILM_GATE = (
 
 _ASPECT_SIZE = {"9:16": "1024x1536", "16:9": "1536x1024", "1:1": "1024x1024"}
 _ASPECT_RES = {"9:16": (720, 1280), "16:9": (1280, 720), "1:1": (960, 960)}
+
+# Explicit render routing. "hyperframes" is a legacy alias for the
+# Ken Burns route only: this pipeline never called the CSK styled
+# renderer, and the alias must not be read as "the HyperFrames engine
+# renders this film". The CSK renderer stays a separate capability
+# (video.hyperframes_styled_render); it is not imported here.
+RENDER_ROUTES: dict[str, dict[str, str]] = {
+    "ken_burns": {
+        "entry": "hevi.storyfilm.pipeline.render_motion_film",
+        "produces": "film.mp4",
+        "description": "Ken Burns motion over shot stills + narration, in-house.",
+    },
+    "pixstag_package": {
+        "entry": "hevi.storyfilm.pipeline.build_pixstag_package",
+        "produces": "pixstag_package.json",
+        "description": "Shot package for video.pixstag_generate; no film here.",
+    },
+}
+ROUTE_ALIASES: dict[str, str] = {"hyperframes": "ken_burns"}
+
+
+def resolve_render_route(route: str) -> str:
+    """Resolve a requested route (alias allowed) to its canonical name."""
+    requested = str(route or "").strip()
+    resolved = ROUTE_ALIASES.get(requested, requested)
+    if resolved not in RENDER_ROUTES:
+        raise StoryFilmError(
+            f"unknown render_route: {route!r}; known: "
+            f"{sorted(set(RENDER_ROUTES) | set(ROUTE_ALIASES))}"
+        )
+    return resolved
+
+
+def film_render_entry_for(route: str) -> dict[str, str]:
+    """Render entry + product for a route (aliases resolved)."""
+    resolved = resolve_render_route(route)
+    entry = dict(RENDER_ROUTES[resolved])
+    entry["canonical_route"] = resolved
+    entry["requested_route"] = str(route or "").strip()
+    return entry
 
 _PUNCT = set(
     " \t\r\n，。、；：？！·…—–-「」『』（）【】《》〈〉“”‘’\"'.,;:!?()[]<>"
@@ -1190,7 +1249,7 @@ async def run_story_film(
     premise: str,
     style: str = DEFAULT_STYLE,
     max_shots: int = 5,
-    render_route: str = "hyperframes",
+    render_route: str = "ken_burns",
     aspect: str = "9:16",
     voice: str = "soffy",
     out_dir: Path,
@@ -1215,11 +1274,16 @@ async def run_story_film(
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "images").mkdir(exist_ok=True)
+    requested_route = str(render_route or "").strip()
+    render_route = resolve_render_route(requested_route)
+    render_entry = film_render_entry_for(requested_route)
     meta = {
         "premise": premise,
         "style": style,
         "max_shots": max_shots,
-        "render_route": render_route,
+        "render_route": requested_route,
+        "render_route_resolved": render_route,
+        "render_entry": render_entry["entry"],
         "aspect": aspect,
     }
     if series:
@@ -1719,6 +1783,9 @@ async def run_story_film(
         "story_length": story_meta,
         "mastering": mastering_info,
         "duration_check": duration_check,
+        "render_route_requested": requested_route,
+        "render_route_resolved": render_route,
+        "render_entry": render_entry["entry"],
         "storyboard": {
             "scenes": len(draft.get("scenes") or []),
             "table": "storyboard.md",
@@ -1739,7 +1806,7 @@ async def run_story_film(
 
     # -- 5b. music (opt-in; any failure degrades to narration-only) --------
     film_audio_path = narration_path
-    if music and render_route == "hyperframes":
+    if music and render_route == "ken_burns":
         try:
             import numpy as np
 
@@ -1828,14 +1895,16 @@ async def run_story_film(
     delivery_extra["film_audio"] = str(film_audio_path)
 
     # -- 6. render --------------------------------------------------------------
-    if render_route == "hyperframes":
+    if render_route == "ken_burns":
 
         async def _render():
             # Ken Burns motion render (see the motion section header):
             # the HTML storyboard renderer captures one frozen frame
-            # per shot, which film_gate rejects as a slideshow.  This
-            # route animates every shot still per-frame instead; the
-            # route name stays "hyperframes" (code-composed film).
+            # per shot, which film_gate rejects as a slideshow. This
+            # route animates every shot still per-frame instead.
+            # It is NOT the CSK styled renderer (video.hyperframes_
+            # styled_render); "hyperframes" only survives as the legacy
+            # alias resolved to this route above.
             width, height = _ASPECT_RES.get(aspect, (720, 1280))
             total = render_motion_film(
                 shots=shots,
@@ -1855,7 +1924,7 @@ async def run_story_film(
             "duration_s": round(total_s, 2),
         }
 
-        # -- 7. gates (hyperframes route only; a package has no film to gate) --
+        # -- 7. gates (ken_burns route only; a package has no film to gate) --
         gates = _run_gates(out_dir / "film.mp4", out_dir, aspect=aspect)
         (out_dir / "gates.json").write_text(
             json.dumps(gates, ensure_ascii=False, indent=2), encoding="utf-8"

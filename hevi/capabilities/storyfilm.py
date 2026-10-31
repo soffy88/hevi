@@ -8,9 +8,14 @@ full chain by dotted name (CAPABILITY_CONTRACT.md; precedent:
   → GPT-Image character key still + per-shot scene stills (character-consistent)
   → LuxTTS narration → measured word alignment (ElevenLabs forced alignment)
   → shots.json (each shot carries first_frame / motion_prompt / duration)
-  → final render route:
-      * ``hyperframes``     — 代码动画线: HyperFrames storyboard composition
-                              + film_gate / audio.earshot_gate checks
+  → final render route (explicit routing, see
+    ``hevi.storyfilm.pipeline.resolve_render_route``):
+      * ``ken_burns``        — in-house film: Ken Burns motion over the shot
+                              stills (``render_motion_film``). The legacy name
+                              ``hyperframes`` is an alias for this route only;
+                              it does NOT invoke the CSK styled renderer
+                              (``video.hyperframes_styled_render``), which is
+                              a separate beats-driven capability.
       * ``pixstag_package`` — 真人线: 只产镜头包, 交 video.pixstag_generate
 
 Also registers ``story.oneclick_film``: the preset-driven one-click
@@ -38,7 +43,7 @@ from hevi.capabilities.registry import Capability, CapabilityResult, register
 
 _Registered = False
 
-_ROUTES = ("hyperframes", "pixstag_package")
+_ROUTES = ("ken_burns", "hyperframes", "pixstag_package")
 
 
 def _run_coro(coro):  # type: ignore[no-untyped-def]
@@ -69,7 +74,7 @@ def _render_story_film(
     if not premise:
         raise CapabilityError("story.film_from_prompt: 'premise' is required")
     style = str(params.get("style") or DEFAULT_STYLE)
-    route = str(params.get("render_route") or "hyperframes")
+    route = str(params.get("render_route") or "ken_burns")
     if route not in _ROUTES:
         raise CapabilityError(
             f"story.film_from_prompt: render_route must be one of {_ROUTES}"
@@ -120,6 +125,8 @@ def _render_story_film(
     qa = {
         "title": delivery.get("title"),
         "render_route": route,
+        "render_route_resolved": delivery.get("render_route_resolved"),
+        "render_entry": delivery.get("render_entry"),
         "total_cost_usd": delivery.get("total_cost_usd"),
         "stages": {
             k: v.get("status") for k, v in delivery.get("stages", {}).items()
@@ -128,10 +135,12 @@ def _render_story_film(
         "delivery_json": str(out_dir / "delivery.json"),
         "note": (
             "Per-stage costs are billed per Monid endpoint rate; "
-            "see delivery.json in the job dir."
+            "see delivery.json in the job dir. 'hyperframes' is a legacy "
+            "alias for the ken_burns route (Ken Burns over shot stills); "
+            "the CSK styled renderer is not on this path."
         ),
     }
-    if route == "hyperframes":
+    if route in ("ken_burns", "hyperframes"):
         film = delivery.get("film") or {}
         return CapabilityResult(
             mp4=film.get("path"),
@@ -341,11 +350,14 @@ def register_storyfilm_capabilities_once() -> list[str]:
                     "render_route": {
                         "type": "string",
                         "enum": list(_ROUTES),
-                        "default": "hyperframes",
+                        "default": "ken_burns",
                         "description": (
-                            "hyperframes: code-animation line, composes the "
-                            "film in-house. pixstag_package: live-action line, "
-                            "emits a shot package for video.pixstag_generate."
+                            "ken_burns: in-house film, Ken Burns motion over "
+                            "shot stills (render_motion_film). hyperframes: "
+                            "legacy alias for ken_burns only; it does not "
+                            "invoke the CSK styled renderer. "
+                            "pixstag_package: live-action line, emits a shot "
+                            "package for video.pixstag_generate."
                         ),
                     },
                     "voice": {
@@ -393,7 +405,7 @@ def register_storyfilm_capabilities_once() -> list[str]:
                 "(hook, character profiles, beats) → GPT-Image character + "
                 "scene stills → LuxTTS narration → measured word alignment → "
                 "timed shots (first_frame/motion_prompt/duration) → "
-                "HyperFrames film with gates, or a PixStag shot package for "
+                "Ken Burns film with gates, or a PixStag shot package for "
                 "the live-action line. Stage evidence + costs land in the "
                 "job dir (delivery.json)."
             ),

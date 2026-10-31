@@ -25,7 +25,12 @@ Sound note: a style's cue kit (Kenney/uisfx, CC0) is baked into the project
 by the kit's build step; it is a different resource from
 ``audio.sfx_render`` (earshot's code-rendered bank) — use the earshot bank
 for one-off SFX, the kit cues when a style's whole sound grammar should come
-along.  Post-render mix/QA remains the kit's ``sound_pass.py``.
+along.  The sound pass is wired in hevi (``hevi/video/csk_styled_render.py``:
+collect scaffold cues, peak-align, mux, ffprobe-verify, measure alignment):
+the kit's own ``sound_pass.py`` / sound-layer loudness-QA is NOT run and is
+not claimed.  A render with ``sound`` enabled (default) that finds no cues
+or no cue audio fails instead of delivering a silent MP4; ``sound=false``
+delivers a silent draft explicitly labelled pending in ``qa["audio"]``.
 """
 
 from __future__ import annotations
@@ -122,6 +127,26 @@ def _render_styled_render(
     style_id = str(params["style_id"])
     content = params["content"]
     fps = int(params.get("fps", 24))
+    want_sound = bool(params.get("sound", True))
+    capture_mode = str(params.get("capture", "screenshot"))
+    if capture_mode not in ("screenshot", "beginframe"):
+        raise CapabilityError(
+            "video.hyperframes_styled_render: capture must be "
+            "screenshot|beginframe"
+        )
+
+    # Beats schema gate (qa.beats_schema_gate, landed in 185f90db): fail
+    # before scaffolding, naming beat index / type / field, instead of
+    # dying inside the kit planner with KeyError: 'head'.
+    from hevi.capabilities.beats_schema_gate import check_beats
+
+    gate = check_beats(content)
+    if gate["verdict"] == "fail":
+        detail = "; ".join(i["message"] for i in gate["issues"])
+        raise CapabilityError(
+            f"video.hyperframes_styled_render: beats schema fail: {detail}"
+        )
+    beats_warnings = [w["message"] for w in gate.get("warnings", [])]
 
     try:
         kit_home = csk.resolve_kit_home()
@@ -140,7 +165,8 @@ def _render_styled_render(
         total_s = csk.scaffold_project(kit_home, style_id, content, project_dir)
         csk.render_project_mp4(
             project_dir, mp4_path, fps=fps, duration_s=total_s,
-            width=1080, height=1920,
+            width=1080, height=1920, sound=want_sound,
+            capture_mode=capture_mode,
         )
     except Exception as exc:  # noqa: BLE001 - contract wants CapabilityError
         raise CapabilityError(
@@ -148,6 +174,37 @@ def _render_styled_render(
         ) from exc
     if not mp4_path.exists():
         raise CapabilityError("video.hyperframes_styled_render: render produced no mp4")
+
+    if want_sound:
+        report_path = project_dir / "audio" / "hevi_sound_pass.json"
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except Exception as exc:  # noqa: BLE001 - a sounded render must have its report
+            raise CapabilityError(
+                "video.hyperframes_styled_render: sound pass report missing "
+                f"at {report_path}: {exc}"
+            ) from exc
+        audio_qa: dict[str, Any] = {
+            "status": report.get("status"),
+            "cue_count": report.get("cue_count"),
+            "max_abs_alignment_error_s": report.get("max_abs_alignment_error_s"),
+            "max_abs_alignment_error_frames": report.get(
+                "max_abs_alignment_error_frames"
+            ),
+            "kit_sound_pass": report.get("kit_sound_pass"),
+            "report_json": str(report_path),
+            "mix_wav": report.get("mix_wav"),
+        }
+    else:
+        audio_qa = {
+            "status": "pending",
+            "reason": (
+                "sound pass explicitly disabled by the caller (sound=false); "
+                "this silent mp4 is a draft, not a completed sounded delivery"
+            ),
+            "cue_count": None,
+            "report_json": None,
+        }
 
     return CapabilityResult(
         mp4=str(mp4_path),
@@ -158,10 +215,15 @@ def _render_styled_render(
             "project_dir": str(project_dir),
             "fps": fps,
             "size": "1080x1920",
+            "capture": capture_mode,
             "source": csk.CSK_SOURCE_URL,
+            "audio": audio_qa,
+            "beats_warnings": beats_warnings,
             "note": (
                 "Style cue kit (CC0) baked into the project by the kit build; "
-                "post-render mix/QA is the kit's sound_pass.py, not audio.sfx_render."
+                "sound pass is hevi's ffmpeg cue mix (see hevi/video/"
+                "csk_styled_render.py), not the kit's sound_pass.py / "
+                "sound-layer QA; sound=false means a silent pending draft."
             ),
         },
     )
@@ -221,6 +283,26 @@ def register_csk_capabilities_once() -> None:
                         "default": 24,
                         "description": "Frame rate for the deterministic render",
                     },
+                    "sound": {
+                        "type": "boolean",
+                        "default": True,
+                        "description": (
+                            "Run the hevi sound pass (scaffold cues mixed onto "
+                            "the picture, audio stream verified). False "
+                            "delivers a silent draft labelled pending in qa."
+                        ),
+                    },
+                    "capture": {
+                        "type": "string",
+                        "enum": ["screenshot", "beginframe"],
+                        "default": "screenshot",
+                        "description": (
+                            "screenshot: poll page.screenshot() until settled. "
+                            "beginframe: atomic CDP HeadlessExperimental."
+                            "beginFrame capture (see hevi/video/"
+                            "beginframe_capture.py)."
+                        ),
+                    },
                 },
                 "required": ["style_id", "content"],
                 "additionalProperties": False,
@@ -230,8 +312,11 @@ def register_csk_capabilities_once() -> None:
             description=(
                 "Apply a creator-style-kit style to a beats list and render a "
                 "deterministic 1080x1920 HyperFrames video (fonts/palette/motion/"
-                "CC0 cue kit from the style; seek-based Chromium capture). Use "
-                "video.hyperframes_styles first when the style is undecided."
+                "CC0 cue kit from the style; seek-based Chromium capture; "
+                "sound pass mixed and verified by default, sound=false is a "
+                "silent pending draft). Beats are schema-checked before "
+                "scaffolding. Use video.hyperframes_styles first when the "
+                "style is undecided."
             ),
             line="hyperframes",
         )

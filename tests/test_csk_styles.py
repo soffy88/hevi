@@ -6,6 +6,7 @@ styled-render test is a real end-to-end render at low fps with bundled fonts.
 
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -128,10 +129,23 @@ def test_styled_render_end_to_end(tmp_path: Path) -> None:
     assert result.qa["style_id"] == "warm-notebook"
     assert (out_dir / "project" / "compositions" / "csk-contract-test.html").is_file()
 
+    # B2 sound pass: the delivered mp4 must carry an audio stream, and the
+    # capability must report the cue mix + alignment measurement (not a
+    # silent file presented as complete).
+    assert result.qa["audio"]["status"] == "mixed"
+    assert result.qa["audio"]["cue_count"] >= 1
+    assert result.qa["audio"]["kit_sound_pass"] == "not_run"
+    report_path = Path(result.qa["audio"]["report_json"])
+    assert report_path.is_file()
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type",
+         "-of", "csv=p=0", str(mp4)],
+        check=True, capture_output=True, text=True,
+    )
+    assert set(probe.stdout.split()) == {"video", "audio"}
+
     # The seek renderer must actually animate: an early frame (title entering)
     # and a late frame (stat locked) must differ visibly.
-    import subprocess
-
     ffmpeg = "ffmpeg"
     frames = []
     for label, at in (("early", 1.0), ("late", max(1.2, result.duration_s - 0.5))):
@@ -151,3 +165,31 @@ def test_styled_render_end_to_end(tmp_path: Path) -> None:
 
     mp4.unlink()
     assert not mp4.exists(), "contract: deleting the artifact must break verification"
+
+
+def test_styled_render_beats_schema_fail_names_field() -> None:
+    """A list beat written with 'title' instead of 'head' fails naming the field.
+
+    Runs before any kit/scaffold work, so it holds even when the kit is absent.
+    """
+    cap = caps.get("video.hyperframes_styled_render")
+    bad = {
+        "name": "bad-beats",
+        "beats": [{"type": "list", "title": "要点", "items": [["a", 1]]}],
+    }
+    with pytest.raises(CapabilityError, match="beats schema fail"):
+        cap.render_safe(
+            {"style_id": "warm-notebook", "content": bad},
+            Path("/tmp/csk-bad-beats"),
+            duration=1.0,
+            aspect="9:16",
+            seed=1,
+        )
+    with pytest.raises(CapabilityError, match="head"):
+        cap.render_safe(
+            {"style_id": "warm-notebook", "content": bad},
+            Path("/tmp/csk-bad-beats"),
+            duration=1.0,
+            aspect="9:16",
+            seed=1,
+        )
