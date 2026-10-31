@@ -716,3 +716,12 @@ from . import model_install_gate as _model_install_gate  # noqa: E402,F401
 _model_install_gate.register_model_install_capabilities_once()
 from . import canvas_execution_schedule as _canvas_execution_schedule  # noqa: E402,F401
 _canvas_execution_schedule.register_canvas_execution_capabilities_once()
+
+# Qwen Image 2.1 licence gate (2026-10-31, clean-room, plan/licence
+# only): model.qwen_image_license_gate (research/evaluation only
+# under the Qwen Research License; commercial use needs a separate
+# written licence; Turbo licence unverified; 24 GB int8 route only;
+# speed unmeasured). No weights bundled, no generation performed.
+# See QWEN_IMAGE_LICENSE_ATTRIBUTION.md.
+from . import qwen_image_license_gate as _qwen_image_license_gate  # noqa: E402,F401
+_qwen_image_license_gate.register_qwen_image_license_gate_capabilities_once()
