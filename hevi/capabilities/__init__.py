@@ -756,6 +756,16 @@ _beats_schema_gate.register_beats_schema_gate_capabilities_once()
 from . import floyo_h3_registration as _floyo_h3_registration  # noqa: E402,F401
 _floyo_h3_registration.register_floyo_h3_registration_capabilities_once()
 
+# Modal compute pricing (2026-11-01, registration only, no account /
+# payment / API key / network / generation): model.modal_pricing_registration
+# records the Starter / Team / Enterprise tiers from the modal.com/pricing
+# page text read 2026-11-01, with per-second billing, billed 60-second
+# keep-alive, 3x sandbox and non-preemptible multipliers and 1.15x-1.75x
+# region multipliers. Per-unit GPU/CPU prices stay 'unverified'.
+# See modal_pricing_registration.py.
+from . import modal_pricing_registration as _modal_pricing_registration  # noqa: E402,F401
+_modal_pricing_registration.register_modal_pricing_registration_capabilities_once()
+
 # video-director residuals (2026-10-31, clean-room, method ideas
 # only): qa.page_contract (DUR/FPS/seek/READY/TEXTS record judge;
 # reverse-render diff is planned_not_measured without a reverse
