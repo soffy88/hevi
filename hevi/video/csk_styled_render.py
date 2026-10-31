@@ -31,6 +31,7 @@ Integration design
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import functools
 import json
 import os
@@ -272,10 +273,25 @@ async def _render_project_frames(
                 for idx in range(total_frames):
                     t = idx / fps
                     await page.evaluate(seek_all.replace("T", f"{t:.4f}"))
-                    await page.wait_for_timeout(40)
-                    await page.screenshot(
-                        path=str(frames_dir / f"frame_{idx:04d}.png")
-                    )
+                    # Settle confirmation (converged __hf discipline,
+                    # hevi/video/hf_adapter.py): poll screenshots until
+                    # two consecutive captures hash identically, so a
+                    # blur-in transition that has not landed yet is
+                    # never captured as the delivered frame. A fixed
+                    # 40ms wait used to capture exactly that blur.
+                    # The window.__timelines shim itself is deprecated;
+                    # new renderers must speak window.__hf.
+                    previous_hash = None
+                    settled_png = None
+                    for _attempt in range(50):
+                        png = await page.screenshot()
+                        digest = hashlib.sha256(png).hexdigest()
+                        if previous_hash is not None and digest == previous_hash:
+                            settled_png = png
+                            break
+                        previous_hash, settled_png = digest, png
+                        await page.wait_for_timeout(20)
+                    (frames_dir / f"frame_{idx:04d}.png").write_bytes(settled_png)
             finally:
                 await browser.close()
     finally:

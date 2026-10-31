@@ -731,3 +731,19 @@ _canvas_execution_schedule.register_canvas_execution_capabilities_once()
 # See QWEN_IMAGE_LICENSE_ATTRIBUTION.md.
 from . import qwen_image_license_gate as _qwen_image_license_gate  # noqa: E402,F401
 _qwen_image_license_gate.register_qwen_image_license_gate_capabilities_once()
+
+# HyperFrames engine discipline (2026-10-31, clean-room; Apache-2.0
+# method discipline, see HYPERFRAMES_ATTRIBUTION.md): converged __hf
+# seek protocol + settle confirmation, deterministic render gate,
+# render lint, frozen-picture/blur-settle gate, beats schema gate.
+# CSK styles below are style templates, not the HeyGen engine.
+from . import frame_adapter_contract as _frame_adapter_contract  # noqa: E402,F401
+_frame_adapter_contract.register_frame_adapter_contract_capabilities_once()
+from . import deterministic_render_gate as _deterministic_render_gate  # noqa: E402,F401
+_deterministic_render_gate.register_deterministic_render_gate_capabilities_once()
+from . import render_lint as _render_lint  # noqa: E402,F401
+_render_lint.register_render_lint_capabilities_once()
+from . import frozen_picture_gate as _frozen_picture_gate  # noqa: E402,F401
+_frozen_picture_gate.register_frozen_picture_gate_capabilities_once()
+from . import beats_schema_gate as _beats_schema_gate  # noqa: E402,F401
+_beats_schema_gate.register_beats_schema_gate_capabilities_once()
