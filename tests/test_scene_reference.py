@@ -198,10 +198,30 @@ def test_final_changed_since_review_is_stale():
     assert result["verdict"] == "pass"
 
 
-def test_final_identical_to_intent_warns():
+def test_final_identical_to_intent_fails():
     result = sr.check_final_prompt({"intent": "same", "final_text": "same"})
-    assert result["verdict"] == "pass"
-    assert any(i["code"] == "FINAL_EQUALS_INTENT" for i in result["issues"])
+    assert result["verdict"] == "fail"
+    issue = next(i for i in result["issues"] if i["code"] == "FINAL_EQUALS_INTENT")
+    assert issue["severity"] == "fail"
+
+
+def test_final_source_whitelist():
+    good = sr.check_final_prompt(
+        {"intent": "make a video", "final_text": "A finished prompt.",
+         "final_source": "expanded"})
+    assert good["verdict"] == "pass"
+    for source in ("action", "intent"):
+        result = sr.check_final_prompt(
+            {"intent": "x", "final_text": "A finished prompt.", "final_source": source})
+        assert result["verdict"] == "fail"
+        assert any(i["code"] == "INTENT_USED_AS_FINAL" for i in result["issues"])
+    unknown = sr.check_final_prompt(
+        {"intent": "x", "final_text": "A finished prompt.", "final_source": "button_text"})
+    assert unknown["verdict"] == "fail"
+    assert any(i["code"] == "INVALID_FINAL_SOURCE" for i in unknown["issues"])
+    unspecified = sr.check_final_prompt(
+        {"intent": "x", "final_text": "A finished prompt."})
+    assert unspecified["verdict"] == "pass"
 
 
 # ---------------------------------------------------------------- combined
@@ -562,3 +582,99 @@ def test_combined_plan_fails_on_blocking_without_declaration():
             "final": {"intent": "tea room", "final_text": "A finished prompt."},
             "blocking": blocking}
     assert sr.check_scene_reference(plan)["verdict"] == "fail"
+
+# ---------------------------------------------------------------- execution fields (audit fix 6)
+
+def _strict_plan(tmp_path: Path, **overrides):
+    data = b"scene-reference execution fixture\n"
+    picture = tmp_path / "scene.png"
+    picture.write_bytes(data)
+    plan = {
+        "scene": {"description": "A quiet tea room."},
+        "characters": [],
+        "angles": [],
+        "shots": [{"description": "Rain runs down the window."}],
+        "soundscape": "Rain.",
+        "voices": [],
+        "duration_s": 10.0,
+        "camera_movement": "Fixed camera.",
+        "shot_size": "wide shot",
+        "lighting": "soft window light",
+        "style": "quiet tea room, natural light",
+        "negative_prompts": ["on-screen text"],
+        "aspect_ratio": "16:9",
+        "reference_files": {1: {"file": str(picture),
+                                "sha256": hashlib.sha256(data).hexdigest()}},
+    }
+    plan.update(overrides)
+    return plan
+
+
+def test_strict_build_writes_execution_fields_and_frames(tmp_path: Path):
+    built = sr.build_h3_prompt(_strict_plan(tmp_path), strict=True)
+    assert built["frames"] == sr.canonical_frame_count(10.0, 24.0, route="h3") == 243
+    assert built["duration_s"] == 10.0
+    assert built["frame_route"] == "h3"
+    assert built["execution"]["camera_movement"] == "Fixed camera."
+    assert built["execution"]["negative_prompts"] == ["on-screen text"]
+    for fragment in ("Duration: 10s (243 frames at 24 fps, route h3).",
+                     "Camera movement: Fixed camera.",
+                     "Shot size: wide shot.",
+                     "Lighting: soft window light.",
+                     "Style: quiet tea room, natural light.",
+                     "Aspect ratio: 16:9.",
+                     "Negative prompts: on-screen text."):
+        assert fragment in built["text"], fragment
+    assert sr.check_h3_prompt(built)["verdict"] == "pass"
+
+
+def test_strict_build_without_duration_fails(tmp_path: Path):
+    plan = _strict_plan(tmp_path)
+    plan.pop("duration_s")
+    with pytest.raises(CapabilityError):
+        sr.build_h3_prompt(plan, strict=True)
+
+
+def test_non_strict_build_without_duration_keeps_old_behaviour():
+    built = sr.build_h3_prompt(BASE_PLAN)
+    assert "frames" not in built
+    assert sr.check_h3_prompt(built)["verdict"] == "pass"
+
+
+def test_non_strict_build_with_duration_writes_frames(tmp_path: Path):
+    plan = dict(BASE_PLAN)
+    plan["duration_s"] = 5.0
+    built = sr.build_h3_prompt(plan)
+    assert built["frames"] == 124
+    assert "124 frames" in built["text"]
+    assert sr.check_h3_prompt(built)["verdict"] == "pass"
+
+
+def test_strict_build_fasth3_route_uses_single_frame_source(tmp_path: Path):
+    plan = _strict_plan(tmp_path, frame_route="fasth3_local")
+    built = sr.build_h3_prompt(plan, strict=True)
+    assert built["frames"] == sr.canonical_frame_count(10.0, 24.0, route="fasth3_local") == 240
+    assert "240 frames" in built["text"]
+    assert "route fasth3_local" in built["text"]
+
+
+def test_check_h3_prompt_execution_frames_missing_fails(tmp_path: Path):
+    import copy
+
+    built = sr.build_h3_prompt(_strict_plan(tmp_path), strict=True)
+    tampered = copy.deepcopy(built)
+    tampered["sections"]["summary"] = "A shot in the place of Picture 1."
+    result = sr.check_h3_prompt(tampered)
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "EXECUTION_FRAMES_MISSING" for i in result["issues"])
+
+
+def test_execution_field_validation_raises(tmp_path: Path):
+    with pytest.raises(CapabilityError):
+        sr.build_h3_prompt(_strict_plan(tmp_path, camera_movement="  "))
+    with pytest.raises(CapabilityError):
+        sr.build_h3_prompt(_strict_plan(tmp_path, aspect_ratio="banana"))
+    with pytest.raises(CapabilityError):
+        sr.build_h3_prompt(_strict_plan(tmp_path, negative_prompts=[42]))
+    with pytest.raises(CapabilityError):
+        sr.build_h3_prompt(_strict_plan(tmp_path, duration_s=0))

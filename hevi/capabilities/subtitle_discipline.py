@@ -14,7 +14,20 @@ code before a film ships:
 3. Cut first, transcribe second. Captions for an edited film must
    come from a fresh transcription of the edited audio. Reusing the
    pre-edit timeline after a cut is a stale-timeline failure, even
-   if the words look right, because the times are not.
+   if the words look right, because the times are not. When the
+   caller declares the film was edited (``edited=True``), a
+   missing transcript source is itself a stale-timeline failure:
+   no provenance, no pass. A supplied stale source fails whether
+   or not the edit is declared.
+
+4. Spoken words must match the film. When the caller supplies a
+   full-film ASR transcript and/or forced-alignment word timings
+   (the ``audio.forced_align`` output shape, measured by a real
+   alignment run -- this module never calls the service), the
+   caption texts must be covered by that evidence: uncovered
+   captions are a ``vo_asr_mismatch`` failure, and timings that
+   do not fall inside their caption event's window are a
+   ``vo_alignment_mismatch`` failure.
 
 The vertical safe zone belongs here too: on a vertical frame the
 caption block's bottom edge must stay at or above 80% of frame
@@ -186,6 +199,46 @@ def reflow_event_text(text: str, glossary: dict[str, list[str]] | None,
     }
 
 
+def _timing_start_sec(entry: dict[str, Any]) -> float | None:
+    """Start second of one forced-alignment timing entry, any shape."""
+    for key, scale in (("start_sec", 1.0), ("start", 1.0), ("start_ms", 0.001)):
+        value = entry.get(key)
+        if _is_num(value):
+            return float(value) * scale
+    return None
+
+
+def _timing_window_coverage(
+    events: list[dict[str, Any]],
+    word_timings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Per-event coverage of caption text by in-window word timings.
+
+    A timing counts for an event only when its start falls inside
+    the event's window (half a second of slack each side). The
+    coverage is character containment of the event's text by the
+    in-window timing texts, the same measure the harness uses
+    for ASR text. Timings whose text matches but whose times sit
+    outside every event window cover nothing.
+    """
+    from hevi.capabilities.prompt_eval_harness import _containment_coverage
+
+    per_event: list[dict[str, Any]] = []
+    for index, event in enumerate(events):
+        start = float(event["start_sec"])
+        end = float(event["end_sec"])
+        in_window = " ".join(
+            str(entry.get("text", ""))
+            for entry in word_timings
+            if isinstance(entry, dict)
+            and (timing_start := _timing_start_sec(entry)) is not None
+            and start - 0.5 <= timing_start <= end + 0.5)
+        coverage = _containment_coverage(str(event["text"]), in_window)
+        per_event.append({"event": index, "coverage": round(coverage, 4),
+                          "in_window_text": in_window})
+    return per_event
+
+
 def validate_events(
     events: list[dict[str, Any]],
     *,
@@ -195,8 +248,20 @@ def validate_events(
     glossary: dict[str, list[str]] | None = None,
     orientation: str = "vertical",
     subtitle_bottom_fraction: float | None = None,
+    edited: bool = False,
+    asr_text: str | None = None,
+    vo_word_timings: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Validate a caption event list and return the gate report."""
+    """Validate a caption event list and return the gate report.
+
+    ``edited=True`` declares the film was re-cut after its
+    transcript was made: then ``transcript_source`` must name a
+    post-edit retranscription, or the report carries a
+    ``stale_timeline`` failure even when no source was supplied
+    at all. ``asr_text`` / ``vo_word_timings`` are offline VO
+    evidence (see the module docstring); when supplied, caption
+    texts uncovered by that evidence fail the gate.
+    """
     if not isinstance(events, list) or not events:
         raise CapabilityError("edit.subtitle_discipline: events must be a non-empty list")
     glossary = glossary or {}
@@ -245,6 +310,41 @@ def validate_events(
                          "detail": f"transcript_source {transcript_source!r} is not a "
                          "post-edit retranscription; captions for an edited film "
                          "must be re-transcribed from the edited audio"})
+    elif edited and transcript_source not in _FRESH_SOURCES:
+        failures.append({"event": None, "kind": "stale_timeline",
+                         "detail": "the film was edited but no post-edit "
+                         "retranscription was supplied; a missing retranscription "
+                         "review is a stale timeline, not a pass"})
+    if asr_text is not None or vo_word_timings is not None:
+        from hevi.capabilities.prompt_eval_harness import (
+            measure_generation_consistency,
+        )
+
+        vo_result = measure_generation_consistency({
+            "prompt": {"expected_lines": [str(ev.get("text", "")) for ev in events]},
+            "asr_text": asr_text,
+            "word_timings": vo_word_timings,
+        })
+        dialogue = next(
+            m for m in vo_result["measurements"] if m["name"] == "dialogue_asr")
+        if dialogue["status"] == "measured" and dialogue["verdict"] == "fail":
+            failures.append({"event": None, "kind": "vo_asr_mismatch",
+                             "detail": dialogue["detail"]})
+        elif dialogue["status"] != "measured":
+            failures.append({"event": None, "kind": "vo_asr_unmeasured",
+                             "detail": "VO evidence was supplied but the dialogue "
+                             f"measurement is unmeasured: {dialogue['detail']}"})
+        if vo_word_timings is not None:
+            if not isinstance(vo_word_timings, list) or any(
+                    not isinstance(entry, dict) for entry in vo_word_timings):
+                raise CapabilityError(
+                    "edit.subtitle_discipline: vo_word_timings must be a list of objects")
+            windowed = _timing_window_coverage(events, vo_word_timings)
+            uncovered = [row for row in windowed if row["coverage"] < 0.8]
+            if uncovered:
+                failures.append({"event": None, "kind": "vo_alignment_mismatch",
+                                 "detail": "forced-alignment timings do not cover "
+                                 f"caption events in their windows: {uncovered}"})
     if orientation == "vertical":
         if subtitle_bottom_fraction is not None:
             if float(subtitle_bottom_fraction) > VERTICAL_SAFE_BOTTOM:
@@ -260,6 +360,7 @@ def validate_events(
         "max_chars_per_line": max_chars_per_line,
         "orientation": orientation,
         "transcript_source": transcript_source,
+        "edited": edited,
         "failures": failures,
         "verdict": "fail" if failures else "pass",
         "reflowed": reflowed,
@@ -285,6 +386,12 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
         kwargs["orientation"] = str(params["orientation"])
     if params.get("subtitle_bottom_fraction") is not None:
         kwargs["subtitle_bottom_fraction"] = float(params["subtitle_bottom_fraction"])
+    if params.get("edited") is not None:
+        kwargs["edited"] = bool(params["edited"])
+    if params.get("asr_text"):
+        kwargs["asr_text"] = str(params["asr_text"])
+    if params.get("vo_word_timings") is not None:
+        kwargs["vo_word_timings"] = list(params["vo_word_timings"])
     report = validate_events(events, **kwargs)
     report_path = out_dir / "subtitle_discipline_report.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -316,6 +423,9 @@ def register_subtitle_discipline_capabilities_once() -> list[str]:
                     "glossary": {"type": "object"},
                     "orientation": {"type": "string", "enum": ["vertical", "horizontal"]},
                     "subtitle_bottom_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+                    "edited": {"type": "boolean"},
+                    "asr_text": {"type": "string"},
+                    "vo_word_timings": {"type": "array", "items": {"type": "object"}},
                 },
                 "required": ["events"],
                 "additionalProperties": False,
@@ -328,8 +438,11 @@ def register_subtitle_discipline_capabilities_once() -> list[str]:
                 "(vertical at most 15 characters per line, phrases "
                 "never split except when a single phrase exceeds the "
                 "budget), per-project glossary unification, "
-                "post-edit retranscription freshness, pictograph ban, "
-                "and vertical caption safe zone."
+                "post-edit retranscription freshness (an edited film "
+                "with no fresh transcript fails), pictograph ban, "
+                "vertical caption safe zone, and optional VO/ASR "
+                "evidence checks over supplied transcripts and "
+                "forced-alignment timings."
             ),
             line="edit",
         )

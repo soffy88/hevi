@@ -41,11 +41,17 @@ not:
    must arrive in order -- the scene first (Picture 1), other
    angles next, cast last. Every picture must carry a stated role
    or purpose; one without is reported ``pending``, never assumed.
+   Generation-ready (``strict``) builds also carry the execution
+   fields (duration, camera movement, shot size, lighting, style,
+   negative prompts, aspect ratio); a strict build without
+   ``duration_s`` fails, and the frame count is written into the
+   prompt text from :func:`canonical_frame_count` only.
 3. An intent/final separation gate. A short intent (the text
    behind a "write the prompt" button) never becomes the running
    prompt. Only the finished text counts; an empty finished text
-   is refused, and a finished text that changed since it was last
-   reviewed is marked ``stale`` and must be reviewed again.
+   is refused, a finished text identical to the intent fails, and
+   a finished text that changed since it was last reviewed is
+   marked ``stale`` and must be reviewed again.
 
 Three further disciplines (P1), on the same plan-only terms:
 
@@ -132,6 +138,122 @@ PICTURE_1_NOTE = (
 )
 
 _RETENTION_KEYWORD = "fully_preserved"
+
+# Execution fields a generation-ready (strict) build must be able
+# to state (2026-10-31 prompt audit, fix 6). Only ``duration_s``
+# is required: a strict build without it fails. The other fields
+# are validated when present and written into the prompt text
+# when present; a missing one is recorded as absent, never
+# invented. ``frame_route`` names the route whose frame lattice
+# :func:`canonical_frame_count` used; it is not itself an
+# execution field, it only labels the frame count.
+EXECUTION_FIELDS = (
+    "duration_s",
+    "camera_movement",
+    "shot_size",
+    "lighting",
+    "style",
+    "negative_prompts",
+    "aspect_ratio",
+)
+
+
+def _opt_execution_str(plan: dict[str, Any], field: str) -> str | None:
+    value = plan.get(field)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise CapabilityError(
+            f"pipeline.scene_reference: {field} must be a non-empty string")
+    return value.strip()
+
+
+def _parse_execution_fields(plan: dict[str, Any], *, strict: bool) -> dict[str, Any]:
+    """Parse the plan's execution fields; strict builds need a duration.
+
+    Returns the execution record (empty when the plan states no
+    execution field at all). Frame counts come only from
+    :func:`canonical_frame_count`, on the plan's named
+    ``frame_route`` (default ``"h3"``). Angle and character
+    bindings are untouched by this parse: strict binding checks
+    in :func:`build_h3_prompt` run exactly as before.
+    """
+    execution: dict[str, Any] = {}
+    duration = plan.get("duration_s")
+    if duration is None:
+        if strict:
+            raise CapabilityError(
+                "pipeline.scene_reference: strict build: duration_s is "
+                "required; a prompt without a duration cannot be "
+                "executed and is never written in")
+    else:
+        if isinstance(duration, bool) or not isinstance(duration, (int, float)) \
+                or not math.isfinite(duration) or duration <= 0:
+            raise CapabilityError(
+                "pipeline.scene_reference: duration_s must be a positive number")
+        fps = plan.get("fps", H3_FPS)
+        if isinstance(fps, bool) or not isinstance(fps, (int, float)) \
+                or not math.isfinite(fps) or fps <= 0:
+            raise CapabilityError("pipeline.scene_reference: fps must be a positive number")
+        route = plan.get("frame_route", "h3")
+        if not isinstance(route, str) or not route.strip():
+            raise CapabilityError(
+                "pipeline.scene_reference: frame_route must be a non-empty string")
+        route = route.strip()
+        frames = canonical_frame_count(float(duration), float(fps), route=route)
+        execution["duration_s"] = float(duration)
+        execution["fps"] = float(fps)
+        execution["frame_route"] = route
+        execution["frames"] = frames
+        execution["frame_seconds"] = frames / float(fps)
+    for field in ("camera_movement", "shot_size", "lighting", "style"):
+        value = _opt_execution_str(plan, field)
+        if value is not None:
+            execution[field] = value
+    aspect = _opt_execution_str(plan, "aspect_ratio")
+    if aspect is not None:
+        _parse_ratio(aspect)  # rejects unparseable aspects; never invents one
+        execution["aspect_ratio"] = aspect
+    negatives = plan.get("negative_prompts")
+    if negatives is not None:
+        if isinstance(negatives, str):
+            negatives = [negatives]
+        if not isinstance(negatives, list) or any(
+                not isinstance(item, str) or not item.strip() for item in negatives):
+            raise CapabilityError(
+                "pipeline.scene_reference: negative_prompts must be a list "
+                "of non-empty strings")
+        execution["negative_prompts"] = [str(item).strip() for item in negatives]
+    return execution
+
+
+def _execution_sentence(execution: dict[str, Any]) -> str:
+    """One English execution sentence for the summary section.
+
+    Written exactly once, in the summary, so the frame count and
+    the execution parameters live in the prompt text itself and
+    cannot drift from the plan's numbers.
+    """
+    parts: list[str] = []
+    if "duration_s" in execution:
+        parts.append(
+            f"Duration: {execution['duration_s']:g}s "
+            f"({execution['frames']} frames at {execution['fps']:g} fps, "
+            f"route {execution['frame_route']}).")
+    if "camera_movement" in execution:
+        parts.append(f"Camera movement: {execution['camera_movement']}.")
+    if "shot_size" in execution:
+        parts.append(f"Shot size: {execution['shot_size']}.")
+    if "lighting" in execution:
+        parts.append(f"Lighting: {execution['lighting']}.")
+    if "style" in execution:
+        parts.append(f"Style: {execution['style']}.")
+    if "aspect_ratio" in execution:
+        parts.append(f"Aspect ratio: {execution['aspect_ratio']}.")
+    if "negative_prompts" in execution:
+        parts.append(
+            "Negative prompts: " + "; ".join(execution["negative_prompts"]) + ".")
+    return " ".join(parts)
 
 
 def _req_str(value: Any, what: str) -> str:
@@ -332,7 +454,14 @@ def build_h3_prompt(
     string fails), and every character needs a confirmed anchor
     (``anchors`` or the character's own ``anchor`` record). A
     spoken line that carries no speaker number after rewriting
-    fails instead of passing through unbound.
+    fails instead of passing through unbound. A strict build
+    also needs ``duration_s`` (see ``EXECUTION_FIELDS``): without
+    it the build fails, and with it the frame count from
+    :func:`canonical_frame_count` on the plan's ``frame_route``
+    is written into the summary section of the prompt text.
+    Execution fields stated in a non-strict build are validated
+    and written the same way; a non-strict build without a
+    duration keeps its old behaviour and reports no frames.
     """
     if not isinstance(plan, dict):
         raise CapabilityError("pipeline.scene_reference: plan must be a JSON object")
@@ -405,6 +534,11 @@ def build_h3_prompt(
         raise CapabilityError(
             f"pipeline.scene_reference: at most {MAX_PICTURE_REFS} picture "
             f"references; got {picture_count}")
+
+    # Execution fields: parsed before any binding check, and the
+    # binding checks below are unchanged -- execution fields never
+    # relax an angle or anchor requirement.
+    execution = _parse_execution_fields(plan, strict=strict)
 
     # --- strict bindings: every picture number names a real file.
     supplied_files = reference_files if reference_files is not None else plan.get("reference_files")
@@ -499,11 +633,14 @@ def build_h3_prompt(
         subject_lines.append(
             "Further angles of the same place: " + "; ".join(angle_parts) + ".")
 
-    # --- section 2: summary.
+    # --- section 2: summary, with the execution sentence when
+    # the plan states any execution field (exactly once).
     summary = f"A shot in the place of Picture 1"
     if subjects:
         summary += " with " + ", ".join(s["name"] for s in subjects)
     summary += "."
+    if execution:
+        summary += " " + _execution_sentence(execution)
 
     # --- section 3: retention analysis, one preserved line each.
     retention_lines = [
@@ -575,17 +712,16 @@ def build_h3_prompt(
     if bindings:
         result["picture_files"] = {
             number: binding["file"] for number, binding in sorted(bindings.items())}
-    duration = plan.get("duration_s")
-    if duration is not None:
-        if isinstance(duration, bool) or not isinstance(duration, (int, float)) \
-                or not math.isfinite(duration) or duration <= 0:
-            raise CapabilityError("pipeline.scene_reference: duration_s must be a positive number")
-        fps = plan.get("fps", H3_FPS)
-        frames = canonical_frame_count(float(duration), float(fps), route="h3")
-        result["duration_s"] = float(duration)
-        result["frames"] = frames
-        result["frame_seconds"] = frames / float(fps)
-        result["frame_route"] = "h3"
+    if execution:
+        result["execution"] = execution
+    if "duration_s" in execution:
+        # Single frame-count source: canonical_frame_count, named
+        # route only. The same numbers are already in the prompt
+        # text (summary), via _execution_sentence.
+        result["duration_s"] = execution["duration_s"]
+        result["frames"] = execution["frames"]
+        result["frame_seconds"] = execution["frame_seconds"]
+        result["frame_route"] = execution["frame_route"]
     return result
 
 
@@ -632,6 +768,15 @@ def check_h3_prompt(prompt: Any) -> dict[str, Any]:
     if _RETENTION_KEYWORD not in text:
         issues.append({"code": "MISSING_RETENTION", "severity": "fail",
                        "message": "retention analysis carries no fully_preserved line"})
+    if isinstance(prompt, dict):
+        execution_meta = prompt.get("execution")
+        if isinstance(execution_meta, dict) and execution_meta.get("frames") is not None:
+            frames = execution_meta["frames"]
+            if "Duration:" not in text or f"{frames} frames" not in text:
+                issues.append({"code": "EXECUTION_FRAMES_MISSING", "severity": "fail",
+                               "message": f"the prompt states {frames} frames in its "
+                                          "execution record but the frame count is not "
+                                          "written into the prompt text"})
     if isinstance(prompt, dict) and isinstance(prompt.get("sections"), dict):
         detail_text = str(prompt["sections"].get("detailed_description", ""))
     else:
@@ -730,6 +875,14 @@ def check_reference_assembly(assembly: Any) -> dict[str, Any]:
 
 # ---------------------------------------------------------------- intent/final
 
+# Whitelist for ``final_source`` (2026-10-31 prompt audit, fix 7):
+# only a finished-text origin counts. An absent source stays
+# allowed (unspecified, as before); any other stated source
+# fails. ``"action"`` and ``"intent"`` keep their own, older
+# failure below and are deliberately NOT on this list.
+FINAL_SOURCE_WHITELIST = ("expanded", "action_text", "expanded_text", "final")
+
+
 def resolve_final_prompt(intent: Any, expanded: Any, action_text: Any) -> str:
     """Resolve the running prompt from finished text only.
 
@@ -754,11 +907,13 @@ def check_final_prompt(record: Any) -> dict[str, Any]:
     """Judge an intent/final separation record.
 
     An empty finished text fails; a finished text recorded as
-    coming from the intent fails; a finished text that changed
-    since its last review is ``stale`` and must be reviewed again.
-    When intent and finished text disagree, the finished text
-    governs; a finished text identical to the intent is warned
-    about, since it usually means the prompt was never written.
+    coming from the intent fails; a ``final_source`` outside the
+    whitelist in :data:`FINAL_SOURCE_WHITELIST` fails; a finished
+    text that changed since its last review is ``stale`` and
+    must be reviewed again. When intent and finished text
+    disagree, the finished text governs; a finished text
+    identical to the intent fails, since it means the prompt
+    was never written.
     """
     if not isinstance(record, dict):
         raise CapabilityError("pipeline.scene_reference: final record must be a JSON object")
@@ -774,11 +929,17 @@ def check_final_prompt(record: Any) -> dict[str, Any]:
     if source in ("action", "intent"):
         issues.append({"code": "INTENT_USED_AS_FINAL", "severity": "fail",
                        "message": "the running prompt must come from the finished text, not the intent"})
+    elif source and source not in FINAL_SOURCE_WHITELIST:
+        issues.append({"code": "INVALID_FINAL_SOURCE", "severity": "fail",
+                       "message": f"final_source {source!r} is not in the whitelist "
+                                  f"{list(FINAL_SOURCE_WHITELIST)}; the finished text "
+                                  "must be recorded as coming from a finished-text origin"})
     intent = record.get("intent", "")
     if isinstance(intent, str) and intent.strip() and final_text == intent.strip():
-        issues.append({"code": "FINAL_EQUALS_INTENT", "severity": "warn",
+        issues.append({"code": "FINAL_EQUALS_INTENT", "severity": "fail",
                        "message": "the finished text is identical to the intent; "
-                                  "the prompt was probably never written"})
+                                  "the prompt was never written, so the finished "
+                                  "text is refused"})
     stale = False
     previous = record.get("previous_final_hash")
     if previous is not None:

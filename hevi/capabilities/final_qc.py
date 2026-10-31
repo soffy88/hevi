@@ -37,6 +37,22 @@ film on their own. When the scan cannot run (ffmpeg missing, too
 few frames), its checks are skipped, never counted as passes.
 Loudness is deliberately not re-checked here: ``mix_recipe``
 remains the loudness authority.
+
+Two further optional checks close the stale-timeline gap the
+same way ``edit.subtitle_discipline`` does, and wire the
+generation-consistency measurement in without ever calling a
+service. ``edited=True`` (or a supplied ``transcript_source``)
+requires a post-edit retranscription source, or the
+``stale_timeline`` check fails; with neither supplied the check
+is skipped, never passed. ``generation_artifacts`` (the offline
+contract in ``qa.prompt_eval_harness``) is measured by that
+harness; a partial or failed measurement fails the
+``generation_consistency`` check, and with no artifacts it is
+skipped. ``expected_vo_lines``/``asr_text``/``vo_word_timings``
+feed the same harness's dialogue measurement alone, as the
+``vo_asr`` check: the word timings are the
+``audio.forced_align`` output shape, supplied by the caller
+after a real alignment run -- this gate never calls Monid.
 """
 
 from __future__ import annotations
@@ -88,6 +104,14 @@ DEFAULT_DEFECT_FREEZE_SEC = 1.0
 DEFAULT_DEFECT_FLAT_STD = 6.0
 DEFAULT_DEFECT_LOOP_SEAM_RATIO = 2.0
 _DEFECT_SAMPLE_WIDTH = 192
+
+# Transcript sources that count as a post-edit retranscription
+# (same set as edit.subtitle_discipline; a re-edited film whose
+# captions/transcript were not re-made from the edited audio is
+# stale, however right the words look).
+_FRESH_TRANSCRIPT_SOURCES = frozenset({
+    "post_edit_retranscription", "post_edit_transcript", "fresh_transcription",
+})
 
 _EMOJI_RE = re.compile(
     "["
@@ -540,6 +564,12 @@ def run_final_qc(
     defect_freeze_sec: float = DEFAULT_DEFECT_FREEZE_SEC,
     defect_flat_std: float = DEFAULT_DEFECT_FLAT_STD,
     defect_loop_seam_ratio: float = DEFAULT_DEFECT_LOOP_SEAM_RATIO,
+    edited: bool = False,
+    transcript_source: str | None = None,
+    generation_artifacts: dict[str, Any] | None = None,
+    expected_vo_lines: list[str] | None = None,
+    asr_text: str | None = None,
+    vo_word_timings: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run every final check and return the full report.
 
@@ -554,6 +584,14 @@ def run_final_qc(
     is compared with detected cuts and ``is_loop`` enables the
     loop-seam check; the remaining ``defect_*`` arguments are the
     configurable scan thresholds.
+
+    ``edited`` declares the film was re-cut after its transcript
+    was made: then ``transcript_source`` must name a post-edit
+    retranscription, or the ``stale_timeline`` check fails. A
+    supplied non-fresh ``transcript_source`` fails the same check
+    even without ``edited``. ``generation_artifacts`` and the
+    VO arguments are offline evidence only (see the module
+    docstring); neither check runs when its evidence is absent.
     """
     media_path = Path(media_path)
     if not media_path.is_file():
@@ -706,6 +744,72 @@ def run_final_qc(
     else:
         _skip("vertical_caption_safe_zone", "not a vertical frame")
 
+    # Stale timeline: a re-edited film needs a post-edit
+    # retranscription. Missing provenance is skipped (the caller
+    # never declared an edit), never counted as a pass.
+    if edited or transcript_source is not None:
+        fresh = transcript_source in _FRESH_TRANSCRIPT_SOURCES
+        _set("stale_timeline", fresh,
+             f"transcript_source {transcript_source!r} "
+             f"{'is' if fresh else 'is not'} a post-edit retranscription"
+             + ("; the film was re-edited, so a fresh transcript is required"
+                if edited and not fresh else ""))
+    else:
+        _skip("stale_timeline", "no edit declared and no transcript_source supplied")
+
+    # VO / ASR: dialogue measurement over supplied evidence only.
+    consistency: dict[str, Any] | None = None
+    vo_supplied = (
+        expected_vo_lines is not None or asr_text is not None
+        or vo_word_timings is not None)
+    if vo_supplied:
+        from hevi.capabilities.prompt_eval_harness import (
+            measure_generation_consistency,
+        )
+
+        vo_result = measure_generation_consistency({
+            "prompt": {"expected_lines": list(expected_vo_lines or [])},
+            "asr_text": asr_text,
+            "word_timings": vo_word_timings,
+        })
+        dialogue = next(
+            m for m in vo_result["measurements"] if m["name"] == "dialogue_asr")
+        if dialogue["status"] == "measured":
+            _set("vo_asr", dialogue["verdict"] == "pass", dialogue["detail"])
+        else:
+            _set("vo_asr", False,
+                 "VO evidence supplied but the dialogue measurement is "
+                 f"unmeasured: {dialogue['detail']}")
+    else:
+        _skip("vo_asr", "no VO lines / ASR transcript / word timings supplied")
+
+    # Generation consistency: the full offline-artifact contract,
+    # measured by qa.prompt_eval_harness. Partial evidence fails:
+    # a half-measured film is not a measured film.
+    if generation_artifacts is not None:
+        from hevi.capabilities.prompt_eval_harness import (
+            measure_generation_consistency,
+        )
+
+        consistency = measure_generation_consistency(generation_artifacts)
+        if consistency["verdict"] == "pass":
+            _set("generation_consistency", True,
+                 f"all {consistency['measured_count']} consistency measurements "
+                 "pass on the supplied offline artifacts")
+        elif consistency["verdict"] == "fail":
+            failed_names = [m["name"] for m in consistency["measurements"]
+                            if m["verdict"] == "fail"]
+            _set("generation_consistency", False,
+                 f"consistency verdict fail ({consistency['status']}); "
+                 f"failed: {failed_names}")
+        else:
+            _set("generation_consistency", False,
+                 f"consistency {consistency['status']}: only "
+                 f"{consistency['measured_count']}/4 measurements have "
+                 "evidence; the rest stay planned_not_measured")
+    else:
+        _skip("generation_consistency", "no generation artifacts supplied")
+
     failed = [n for n, c in checks.items() if c["pass"] is False]
     verdict = "fail" if failed else "pass"
     return {
@@ -717,6 +821,9 @@ def run_final_qc(
         "failed_checks": failed,
         "skipped_checks": [n for n, c in checks.items() if c["pass"] is None],
         "defect_scan": defect_summary,
+        "generation_consistency": consistency,
+        "edited": edited,
+        "transcript_source": transcript_source,
         "visual_review_frames": [f["path"] for f in frames],
         "verdict": verdict,
         "verdict_note": (
@@ -769,6 +876,18 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
         kwargs["defect_scan"] = bool(params["defect_scan"])
     if params.get("is_loop") is not None:
         kwargs["is_loop"] = bool(params["is_loop"])
+    if params.get("edited") is not None:
+        kwargs["edited"] = bool(params["edited"])
+    if params.get("transcript_source"):
+        kwargs["transcript_source"] = str(params["transcript_source"])
+    if params.get("generation_artifacts") is not None:
+        kwargs["generation_artifacts"] = dict(params["generation_artifacts"])
+    if params.get("expected_vo_lines") is not None:
+        kwargs["expected_vo_lines"] = [str(line) for line in params["expected_vo_lines"]]
+    if params.get("asr_text"):
+        kwargs["asr_text"] = str(params["asr_text"])
+    if params.get("vo_word_timings") is not None:
+        kwargs["vo_word_timings"] = list(params["vo_word_timings"])
     if params.get("planned_cuts") is not None:
         kwargs["planned_cuts"] = [float(c) for c in params["planned_cuts"]]
     if params.get("expected_codec"):
@@ -826,6 +945,12 @@ def register_final_qc_capabilities_once() -> list[str]:
                     "defect_cut_tolerance_sec": {"type": "number", "minimum": 0},
                     "defect_freeze_sec": {"type": "number", "exclusiveMinimum": 0},
                     "defect_flat_std": {"type": "number", "minimum": 0},
+                    "edited": {"type": "boolean"},
+                    "transcript_source": {"type": "string"},
+                    "generation_artifacts": {"type": "object"},
+                    "expected_vo_lines": {"type": "array", "items": {"type": "string"}},
+                    "asr_text": {"type": "string"},
+                    "vo_word_timings": {"type": "array", "items": {"type": "object"}},
                 },
                 "required": ["media_path"],
                 "additionalProperties": False,
@@ -840,7 +965,11 @@ def register_final_qc_capabilities_once() -> list[str]:
                 "Any failed check fails the whole film; failures are "
                 "listed, skipped checks are never counted as passes. "
                 "Optional defect_scan adds flash/pop, cut-vs-plan, "
-                "frozen, flat and loop-seam checks on sampled frames."
+                "frozen, flat and loop-seam checks on sampled frames. "
+                "Optional edited/transcript_source adds the stale-"
+                "timeline check, and offline generation artifacts / "
+                "VO evidence add the generation-consistency and vo_asr "
+                "checks (no service is ever called)."
             ),
             line="qa",
         )

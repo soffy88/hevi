@@ -114,3 +114,89 @@ def test_registry_gate(tmp_path: Path) -> None:
     )
     assert result.qa["verdict"] == "pass"
     assert result.qa["failed_checks"] == []
+
+
+# ---------------------------------------------------------------- stale timeline + generation consistency (audit fix 8)
+
+def _consistency_artifacts() -> dict:
+    from hevi.capabilities.prompt_eval_harness import (
+        build_generation_consistency_fixture,
+    )
+
+    return build_generation_consistency_fixture()
+
+
+def test_stale_timeline_fails_when_edited_without_fresh_transcript(tmp_path: Path) -> None:
+    media = _moving(tmp_path / "moving.mp4")
+    stale = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w1",
+        edited=True, transcript_source="pre_edit_timeline",
+    )
+    assert stale["checks"]["stale_timeline"]["pass"] is False
+    assert stale["verdict"] == "fail"
+    assert "stale_timeline" in stale["failed_checks"]
+    missing = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w2", edited=True,
+    )
+    assert missing["checks"]["stale_timeline"]["pass"] is False
+    assert missing["verdict"] == "fail"
+    fresh = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w3",
+        edited=True, transcript_source="post_edit_retranscription",
+    )
+    assert fresh["checks"]["stale_timeline"]["pass"] is True
+    assert fresh["verdict"] == "pass"
+
+
+def test_stale_timeline_skipped_when_no_edit_declared(tmp_path: Path) -> None:
+    media = _moving(tmp_path / "moving.mp4")
+    report = run_final_qc(media, expected_duration_sec=4.0, work_dir=tmp_path / "w")
+    assert report["checks"]["stale_timeline"]["pass"] is None
+    assert "stale_timeline" in report["skipped_checks"]
+
+
+def test_generation_consistency_from_offline_artifacts(tmp_path: Path) -> None:
+    media = _moving(tmp_path / "moving.mp4")
+    good = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w1",
+        generation_artifacts=_consistency_artifacts(),
+    )
+    assert good["checks"]["generation_consistency"]["pass"] is True
+    assert good["generation_consistency"]["verdict"] == "pass"
+    assert good["verdict"] == "pass"
+    bad_artifacts = _consistency_artifacts()
+    bad_artifacts["asr_text"] = "完全不相干的旁白。"
+    bad = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w2",
+        generation_artifacts=bad_artifacts,
+    )
+    assert bad["checks"]["generation_consistency"]["pass"] is False
+    assert bad["verdict"] == "fail"
+    partial = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w3",
+        generation_artifacts={"prompt": {"expected_lines": ["玉兰开了"]}},
+    )
+    assert partial["checks"]["generation_consistency"]["pass"] is False
+    skipped = run_final_qc(media, expected_duration_sec=4.0, work_dir=tmp_path / "w4")
+    assert skipped["checks"]["generation_consistency"]["pass"] is None
+
+
+def test_vo_asr_from_transcript_and_timings(tmp_path: Path) -> None:
+    media = _moving(tmp_path / "moving.mp4")
+    good = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w1",
+        expected_vo_lines=["玉兰开了"], asr_text="玉兰开了，春天来了。",
+    )
+    assert good["checks"]["vo_asr"]["pass"] is True
+    bad = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w2",
+        expected_vo_lines=["玉兰开了"], asr_text="完全不相干的旁白。",
+    )
+    assert bad["checks"]["vo_asr"]["pass"] is False
+    assert bad["verdict"] == "fail"
+    timed = run_final_qc(
+        media, expected_duration_sec=4.0, work_dir=tmp_path / "w3",
+        expected_vo_lines=["玉兰开了"],
+        vo_word_timings=[{"text": "玉兰开了", "start_ms": 0, "end_ms": 900}],
+    )
+    assert timed["checks"]["vo_asr"]["pass"] is True

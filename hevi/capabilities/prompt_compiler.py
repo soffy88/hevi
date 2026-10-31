@@ -1363,6 +1363,16 @@ def compile_shot_prompt(
     route (see :func:`frames_for_provider`). Supplying none of
     them keeps the legacy output: bare names, free-text reference,
     seconds only.
+
+    This is the canonical generation-ready ``compile_shot_prompt``
+    (2026-10-31 prompt audit, fix 9). The storyboard-table
+    renderer of the same name in ``hevi/avcraft/oskill/shotprompt.py``
+    is LEGACY and untracked in HEAD, wired into
+    ``sequence_plan``/``storyboard_enrich``; it must not gain new
+    callers and its output is not generation-ready. The kids
+    Style-Bible renderer in ``hevi/kids/prompt_compile.py`` is a
+    separate preamble renderer, not a generation-ready compiler.
+    Do not add a fourth implementation of this name.
     """
     camera = shot["camera"]
     _, movement_zh, movement_en = resolve_movement(camera["movement"])

@@ -105,3 +105,54 @@ def test_registry_gate(tmp_path: Path) -> None:
         tmp_path / "out", duration=0.0, aspect="16:9", seed=1,
     )
     assert result.qa["verdict"] == "pass"
+
+
+def test_edited_without_fresh_transcript_is_stale_timeline(tmp_path: Path) -> None:
+    missing = validate_events(
+        [_ev("春天来了，花开了")], edited=True, orientation="horizontal",
+    )
+    assert any(f["kind"] == "stale_timeline" for f in missing["failures"])
+    assert missing["verdict"] == "fail"
+    stale = validate_events(
+        [_ev("春天来了，花开了")], edited=True,
+        transcript_source="pre_edit_timeline", orientation="horizontal",
+    )
+    assert any(f["kind"] == "stale_timeline" for f in stale["failures"])
+    fresh = validate_events(
+        [_ev("春天来了，花开了")], edited=True,
+        transcript_source="post_edit_retranscription", orientation="horizontal",
+    )
+    assert fresh["verdict"] == "pass"
+    undeclared = validate_events(
+        [_ev("春天来了，花开了")], orientation="horizontal",
+    )
+    assert not any(f["kind"] == "stale_timeline" for f in undeclared["failures"])
+
+
+def test_vo_asr_mismatch_fails_and_match_passes(tmp_path: Path) -> None:
+    bad = validate_events(
+        [_ev("玉兰开了")], transcript_source="post_edit_retranscription",
+        orientation="horizontal", asr_text="完全不相干的旁白。",
+    )
+    assert any(f["kind"] == "vo_asr_mismatch" for f in bad["failures"])
+    good = validate_events(
+        [_ev("玉兰开了")], transcript_source="post_edit_retranscription",
+        orientation="horizontal", asr_text="玉兰开了，春天来了。",
+    )
+    assert good["verdict"] == "pass"
+
+
+def test_vo_word_timings_outside_window_fail_alignment(tmp_path: Path) -> None:
+    in_window = validate_events(
+        [_ev("玉兰开了", 0.0, 2.0)],
+        transcript_source="post_edit_retranscription", orientation="horizontal",
+        vo_word_timings=[{"text": "玉兰开了", "start_ms": 100, "end_ms": 900}],
+    )
+    assert in_window["verdict"] == "pass"
+    out_of_window = validate_events(
+        [_ev("玉兰开了", 0.0, 2.0)],
+        transcript_source="post_edit_retranscription", orientation="horizontal",
+        vo_word_timings=[{"text": "玉兰开了", "start_ms": 99000, "end_ms": 99900}],
+    )
+    assert any(f["kind"] == "vo_alignment_mismatch"
+               for f in out_of_window["failures"])

@@ -337,6 +337,7 @@ def test_scene_strict_chinese_plan_passes(tmp_path: Path) -> None:
                    "dialogue": "守仁说：\"我想做圣贤。\""}],
         "soundscape": "Reading voices.",
         "voices": ["守仁"],
+        "duration_s": 10.0,
     }
     built = sr.build_h3_prompt(
         plan, strict=True,
@@ -345,6 +346,7 @@ def test_scene_strict_chinese_plan_passes(tmp_path: Path) -> None:
     assert "守仁 (S1) 说，<d>我想做圣贤。</d>" in built["text"]
     assert sr.check_h3_prompt(built)["verdict"] == "pass"
     assert built["picture_files"][3] == shouren_pic["file"]
+    assert built["frames"] == 243
 
 
 def test_scene_strict_bare_angle_string_fails(tmp_path: Path) -> None:
@@ -356,6 +358,7 @@ def test_scene_strict_bare_angle_string_fails(tmp_path: Path) -> None:
         "shots": [{"description": "Rain falls."}],
         "soundscape": "Rain.",
         "voices": [],
+        "duration_s": 10.0,
     }
     with pytest.raises(CapabilityError, match="bare string"):
         sr.build_h3_prompt(plan, strict=True, reference_files={1: scene_pic})
@@ -371,6 +374,7 @@ def test_scene_dialogue_without_voice_fails(tmp_path: Path) -> None:
                    "dialogue": "守仁说：\"我想做圣贤。\""}],
         "soundscape": "Reading voices.",
         "voices": [],
+        "duration_s": 10.0,
     }
     with pytest.raises(CapabilityError, match="no declared voice"):
         sr.build_h3_prompt(plan, strict=True, reference_files={1: scene_pic})
