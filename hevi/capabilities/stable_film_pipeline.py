@@ -1063,6 +1063,9 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
                   bgm_path: Path | None = None,
                   glossary: dict[str, list[str]] | None = None,
                   transcript_source: str = "script",
+                  edited: bool = False,
+                  asr_text: str | None = None,
+                  vo_word_timings: list[dict[str, Any]] | None = None,
                   missing_segments: list[str] | None = None,
                   fps: int = 10, width: int = 540, height: int = 960,
                   base_name: str = "film",
@@ -1072,6 +1075,19 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
                   rendered_text_boxes: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Assemble one film through every gate, in order (B1).
 
+    Post-edit retranscription evidence travels on ``edited`` /
+    ``transcript_source`` / ``asr_text`` / ``vo_word_timings``:
+    when the caller supplies a real post-edit transcript (source
+    ``post_edit_retranscription``) the subtitle gate and final QC
+    check freshness and VO coverage on the main path instead of
+    skipping them. ``vo_word_timings`` must be forced-alignment
+    word timings, not raw recogniser word tokens. Supplying no
+    evidence keeps the old behaviour: freshness is skipped in
+    final QC and a non-fresh source still fails the subtitle gate.
+    Absence is absence: an empty transcript source is passed
+    to final QC as no source (skip, not fail), and expected VO
+    lines are only supplied when ASR evidence is present, so a
+    film with no evidence never fails vo_asr for being unmeasured.
     ``segments`` carry ``segment_id``, ``text``, ``duration_sec``
     and optional ``title``, ``asset_id`` and ``start_sec`` (start
     times are computed in order when omitted). ``missing_segments``
@@ -1246,6 +1262,7 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
              for e in events],
             duration_sec=total_sec, transcript_source=transcript_source,
             glossary=glossary or {}, orientation="vertical" if height > width else "horizontal",
+            edited=edited, asr_text=asr_text, vo_word_timings=vo_word_timings,
             subtitle_bottom_fraction=(safe_zone.get("bottom_fraction")
                                       if safe_zone and safe_zone.get("measured") else None))
     except CapabilityError as exc:
@@ -1279,6 +1296,13 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
             subtitle_bottom_fraction=(safe_zone.get("bottom_fraction")
                                       if safe_zone and safe_zone.get("measured") else None),
             min_change_rate=PICTURE_MIN_CHANGE_RATE, work_dir=work / "qc",
+            edited=edited, transcript_source=transcript_source or None,
+            expected_vo_lines=(
+                [e["text"] for e in events]
+                if (asr_text or vo_word_timings)
+                else None
+            ),
+            asr_text=asr_text, vo_word_timings=vo_word_timings,
             # Defect scan is always on in the main path (explicit
             # fail-closed: gate_all fails the film when the scan
             # did not run). planned_cuts is deliberately NOT
@@ -1334,6 +1358,8 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
         "line_capacity": capacity, "subtitle_events": len(events),
         "subtitle_resplits": sub["resplits"],
         "transcript_source": transcript_source,
+        "edited": edited,
+        "asr_evidence_supplied": bool(asr_text or vo_word_timings),
         "motion_beat_ratio": motion_gate.get("real_change_ratio") if motion_gate else None,
         "motion_beat_count": motion_gate.get("beat_count") if motion_gate else None,
         "picture_change_rate": combined["picture_change_rate"],
@@ -1388,6 +1414,9 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float,
         bgm_path=Path(params["bgm_path"]) if params.get("bgm_path") else None,
         glossary=params.get("glossary"),
         transcript_source=str(params.get("transcript_source", "script")),
+        edited=bool(params.get("edited", False)),
+        asr_text=params.get("asr_text"),
+        vo_word_timings=params.get("vo_word_timings"),
         missing_segments=params.get("missing_segments"),
         fps=int(params.get("fps", 10)),
         width=int(params.get("width", 540)), height=int(params.get("height", 960)),
@@ -1428,6 +1457,9 @@ def register_stable_film_pipeline_capabilities_once() -> list[str]:
                     "episode_id": {"type": "string"},
                     "bgm_path": {"type": "string"},
                     "transcript_source": {"type": "string"},
+                    "edited": {"type": "boolean"},
+                    "asr_text": {"type": "string"},
+                    "vo_word_timings": {"type": "array", "items": {"type": "object"}},
                     "fps": {"type": "integer", "exclusiveMinimum": 0},
                     "width": {"type": "integer", "exclusiveMinimum": 0},
                     "height": {"type": "integer", "exclusiveMinimum": 0},

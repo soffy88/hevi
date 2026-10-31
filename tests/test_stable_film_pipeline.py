@@ -265,3 +265,53 @@ def test_assemble_missing_segment_is_partial_and_never_padded(tmp_path):
     assert out["status"] == "partial"
     assert out["missing_segments"] == ["s03"]
     assert "缺段" in out["delivery_note"]
+
+
+# ------------------------------------------------- post-edit ASR review path
+# Locks the D-group wiring: post-edit retranscription evidence flows
+# through assemble_film into the subtitle gate and final QC on the
+# main path. The ASR strings here are fixtures that name the wiring,
+# not a real transcription: the real full-film ASR review lives
+# outside the repo (see the D-group report).
+
+def test_assemble_with_post_edit_asr_evidence_clears_stale_timeline(tmp_path):
+    from hevi.capabilities import asset_registry as ar
+    voice = _sine_wav(tmp_path / "voice.wav", 4.0)
+    reg = ar.new_registry()
+    ar.register_asset(reg, "star", "prop", "星星")
+    ar.reference_asset(reg, "episode1", "star")
+    asr_text = "".join(s["text"] for s in _segments())
+    out = sfp.assemble_film(
+        title="t", segments=_segments(), voice_path=voice, out_dir=tmp_path / "out",
+        pre_confirmation=PRE, registry=reg, episode_id="episode1",
+        transcript_source="post_edit_retranscription", edited=True,
+        asr_text=asr_text,
+        fps=5, width=270, height=480, base_name="film",
+        critic_review=_ship_review())
+    assert out["status"] == "finished", out["failures"]
+    assert out["edited"] is True
+    assert out["asr_evidence_supplied"] is True
+    assert not any("stale_timeline" in f for f in out["failures"])
+    assert not any("vo_asr" in f for f in out["failures"])
+
+
+def test_assemble_mismatched_asr_fails_vo_asr_but_not_stale_timeline(tmp_path):
+    voice = _sine_wav(tmp_path / "voice.wav", 4.0)
+    out = sfp.assemble_film(
+        title="t", segments=_segments(), voice_path=voice, out_dir=tmp_path / "out",
+        pre_confirmation=PRE, transcript_source="post_edit_retranscription",
+        edited=True, asr_text="完全不相关的一段话，和剧本没有任何共同内容。",
+        fps=5, width=270, height=480, base_name="film")
+    assert out["status"] != "finished"
+    assert any("vo_asr" in f for f in out["failures"])
+    assert not any("stale_timeline" in f for f in out["failures"])
+
+
+def test_assemble_edited_without_fresh_source_still_fails_stale_timeline(tmp_path):
+    voice = _sine_wav(tmp_path / "voice.wav", 4.0)
+    out = sfp.assemble_film(
+        title="t", segments=_segments(), voice_path=voice, out_dir=tmp_path / "out",
+        pre_confirmation=PRE, transcript_source="script", edited=True,
+        fps=5, width=270, height=480, base_name="film")
+    assert out["status"] != "finished"
+    assert any("stale_timeline" in f for f in out["failures"])
