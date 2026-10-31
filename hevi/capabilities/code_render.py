@@ -188,6 +188,66 @@ def assemble_mp4(
             "bytes": out_path.stat().st_size, "frame_count": frame_count, "fps": fps}
 
 
+def build_page_contract_input(
+    manifest: dict[str, Any],
+    *,
+    texts: list[dict[str, Any]] | None = None,
+    page_errors: list[Any] | None = None,
+    fonts_ready: bool | None = None,
+    anchors: list[dict[str, Any]] | None = None,
+    seek: list[float] | None = None,
+    reverse_manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a ``qa.page_contract`` input from a render manifest.
+
+    This is the cooperation layer only: it assembles the
+    DUR/FPS/seek/READY/TEXTS contract fields from what
+    ``render_frames`` actually recorded (frame hashes, tier,
+    frame count), plus whatever the caller declares about
+    texts, page errors, font readiness and anchors. It does
+    NOT render anything, and it does not fake the one check
+    that needs a second render: with no ``reverse_manifest``
+    (the same frames rendered in reverse order, which this
+    module cannot produce -- it renders forward only), the
+    reverse diff is marked ``planned_not_measured`` in the
+    input itself, so ``qa.page_contract`` can never mistake
+    this record for a measured determinism check. With a
+    reverse manifest supplied, both hash lists travel in the
+    input for the contract to compare.
+    """
+    if not isinstance(manifest, dict):
+        raise CapabilityError("video.code_render: manifest must be an object (dict)")
+    frames = manifest.get("frames") or []
+    forward = [{"t": f.get("t_sec"), "sha256": f.get("sha256")} for f in frames
+               if isinstance(f, dict)]
+    contract: dict[str, Any] = {
+        "dur": manifest.get("duration_sec"),
+        "fps": manifest.get("fps"),
+        "w": manifest.get("width"),
+        "h": manifest.get("height"),
+        "seek": list(seek) if seek is not None else None,
+        "ready": {"fonts_ready": fonts_ready} if fonts_ready is not None else None,
+        "texts": list(texts) if texts is not None else None,
+        "page_errors": list(page_errors) if page_errors is not None else None,
+        "anchors": list(anchors) if anchors is not None else None,
+        "forward_frames": forward,
+        "frames": forward,
+    }
+    if reverse_manifest is None:
+        contract["reverse_render"] = {
+            "status": "planned_not_measured",
+            "detail": "code_render renders forward only; no reverse "
+                      "render exists, so determinism was not measured",
+        }
+    else:
+        reverse_frames = reverse_manifest.get("frames") or []
+        contract["reverse_render"] = {
+            "frames": [{"t": f.get("t_sec"), "sha256": f.get("sha256")}
+                       for f in reverse_frames if isinstance(f, dict)],
+        }
+    return contract
+
+
 def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
     # Report-only entry point: validates a tier and, when a frames dir
     # is supplied, assembles + verifies it. Frame generation itself is

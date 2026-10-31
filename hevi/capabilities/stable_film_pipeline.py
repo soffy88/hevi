@@ -29,7 +29,21 @@ when a gate fails or material is missing:
   wiring (voice-keyed sidechain compressor, fixed recipe values)
   is the recipe's, not a copy.
 * ``qa.final_qc_gate`` -- run on the assembled film, including its
-  whole-film picture-change rate (floor 0.30).
+  whole-film picture-change rate (floor 0.30), always with the
+  defect scan enabled (fail-closed: a scan that did not run is
+  a failed gate, see ``gate_all``), and with the Otsu
+  rendered-text measurement over the caption bar (CJK text is
+  reported undetermined -- its error is uncalibrated).
+* ``qa.timeline_gate`` -- run before rendering on a timeline
+  derived from the segments and subtitle events (or on a
+  caller-supplied timeline): scene gaps, hook legibility and
+  caption speed are caught while they are still cheap.
+* ``qa.critic_review`` -- a caller-supplied review record is
+  judged in the main path; only a ``ship`` verdict passes, and
+  no record at all is a missing gate, never a pass. The record
+  is supplied by the caller: this pipeline never invents a
+  reviewer, and the review discipline stays a record judgment,
+  not a fresh-subagent review.
 
 Two confirmation points (B6) are strict. A confirmation only counts
 when it is a dict with ``confirmed`` exactly ``True`` and the right
@@ -74,11 +88,13 @@ from typing import Any
 from PIL import Image, ImageDraw, ImageFont
 
 from hevi.capabilities import asset_registry as _asset_registry
+from hevi.capabilities import critic_review as _critic_review
 from hevi.capabilities import final_qc as _final_qc
 from hevi.capabilities import mix_recipe as _mix_recipe
 from hevi.capabilities import motion_beat_chart as _motion_beat
 from hevi.capabilities import segment_assembly as _segment_assembly
 from hevi.capabilities import subtitle_discipline as _subtitle
+from hevi.capabilities import timeline_gate as _timeline_gate
 from hevi.capabilities.errors import CapabilityError
 from hevi.capabilities.registry import (
     Capability,
@@ -735,6 +751,64 @@ def normalize_voice_audio(voice_path: Path, out_path: Path) -> dict[str, Any]:
             "target_lufs": TARGET_LUFS, "true_peak_ceiling_db": TRUE_PEAK_CEILING_DB}
 
 
+def build_timeline_for_film(
+    segments: list[dict[str, Any]],
+    *,
+    width: int,
+    height: int,
+    fps: int,
+    total_sec: float,
+    subtitle_events: list[dict[str, Any]] | None = None,
+    clock: str = "voice",
+    bpm: float | None = None,
+) -> dict[str, Any]:
+    """Derive a ``qa.timeline_gate`` timeline from the film plan.
+
+    Scenes are the segments (contiguous by construction; a
+    caller-supplied ``start_sec`` gap is exactly what the gate
+    is there to catch). The hook is the first segment's title
+    or first text, starting at 0. Beats and cuts are the
+    segment boundaries. Captions come from the subtitle events.
+    No px sizes are declared (the renderer's title size is not
+    a plan fact -- rendered size is the Otsu measurement's job),
+    no terms/VO/silence are claimed: the gate warns about those
+    instead of the plan inventing them. Clock defaults to
+    ``voice``; ``music`` is used only when a bpm is supplied,
+    because a music clock without a bpm is a gate error.
+    """
+    first = segments[0] if segments else {}
+    hook_text = str(first.get("title") or first.get("text") or "")
+    scenes = [{
+        "start": float(s.get("start_sec") or 0.0),
+        "end": float(s.get("start_sec") or 0.0) + float(s.get("duration_sec") or 0.0),
+    } for s in segments]
+    boundaries = [s["start"] for s in scenes[1:]]
+    captions = [{
+        "start": float(e["start_sec"]),
+        "end": float(e["end_sec"]),
+        "text": str(e.get("text", "")),
+    } for e in (subtitle_events or [])]
+    last_start = scenes[-1]["start"] if scenes else 0.0
+    return {
+        "meta": {
+            "w": width, "h": height, "fps": fps, "dur": total_sec,
+            "clock": "music" if bpm is not None else clock,
+            "bpm": bpm,
+        },
+        "scenes": scenes,
+        "beats": [s["start"] for s in scenes],
+        "cuts": boundaries,
+        "texts": [{
+            "role": "hook",
+            "text": hook_text,
+            "start": 0.0,
+            "end": min(3.0, max(total_sec, 0.1)),
+        }] if hook_text else [],
+        "captions": captions,
+        "hero": {"t": last_start},
+    }
+
+
 # ---------------------------------------------------------------- gate combination
 
 def delivery_filename(base: str, status: str) -> str:
@@ -780,7 +854,9 @@ def gate_all(*, segment_plan: dict[str, Any] | None,
              loudness: dict[str, Any] | None,
              final_qc_report: dict[str, Any] | None,
              asset_check: dict[str, Any] | None,
-             missing_segments: list[str]) -> dict[str, Any]:
+             missing_segments: list[str],
+             timeline_gate_report: dict[str, Any] | None = None,
+             critic_review_report: dict[str, Any] | None = None) -> dict[str, Any]:
     """Combine every gate into one verdict (B1).
 
     A gate that was not run, or whose result is missing, is listed
@@ -788,6 +864,14 @@ def gate_all(*, segment_plan: dict[str, Any] | None,
     status -- exactly like a failed gate, but named as missing so
     nobody mistakes it for a pass. An undetermined safe zone is
     listed separately and is likewise never a pass.
+
+    The defect scan is fail-closed here: when the final-QC
+    report carries no defect-scan summary, or a ``skipped``
+    summary, the defect-scan entry fails (or is missing) even
+    when every other final-QC check passed -- a film whose
+    defect scan never ran is not a finished film. The critic
+    entry works the same way: no review record supplied means
+    ``missing``, and only a ``ship`` verdict passes.
     """
     gates: list[dict[str, Any]] = []
 
@@ -867,6 +951,50 @@ def gate_all(*, segment_plan: dict[str, Any] | None,
              f"failed checks: {final_qc_report.get('failed_checks')}; "
              f"skipped: {final_qc_report.get('skipped_checks')}; "
              + "; ".join(failed_details))
+    # Defect scan, fail-closed: a missing or skipped scan is a
+    # gate failure, not a pass, even when final QC itself passed.
+    if final_qc_report is not None:
+        summary = final_qc_report.get("defect_scan")
+        if summary is None:
+            _add("qa.final_qc_gate.defect_scan", "missing",
+                 "final-QC ran without the defect scan (defect_scan was not enabled)")
+        elif summary.get("status") == "skipped":
+            _add("qa.final_qc_gate.defect_scan", "fail",
+                 f"defect scan was skipped: {summary.get('reason')}; "
+                 "a film whose defect scan did not run is not finished")
+        elif summary.get("status") == "fail":
+            _add("qa.final_qc_gate.defect_scan", "fail",
+                 f"defect scan failed: flash={summary.get('flash')}; "
+                 f"missing_cuts={summary.get('missing_cuts')}; "
+                 f"unplanned_cuts={summary.get('unplanned_cuts')}")
+        else:
+            _add("qa.final_qc_gate.defect_scan", "pass",
+                 f"defect scan ran with status {summary.get('status')!r} "
+                 f"({summary.get('sample_count')} samples)")
+    # Pre-render timeline gate: a failure is a gate failure; no
+    # report at all is missing.
+    if timeline_gate_report is None:
+        _add("qa.timeline_gate", "missing", "timeline gate result missing")
+    elif timeline_gate_report.get("verdict") == "fail":
+        _add("qa.timeline_gate", "fail",
+             "timeline errors: " + "; ".join(timeline_gate_report.get("errors") or []))
+    else:
+        _add("qa.timeline_gate", "pass",
+             f"timeline gate passed with "
+             f"{timeline_gate_report.get('warning_count', 0)} warning(s)")
+    # Critic review: only a ship verdict passes. No record means
+    # missing (the film was never independently reviewed); one
+    # more pass, or a broken fix-round limit, means fail.
+    if critic_review_report is None:
+        _add("qa.critic_review", "missing",
+             "no critic review record supplied: the film was never reviewed")
+    elif critic_review_report.get("verdict") == "ship":
+        _add("qa.critic_review", "pass",
+             f"critic review ships: {critic_review_report.get('reason', '')}")
+    else:
+        _add("qa.critic_review", "fail",
+             f"critic review verdict {critic_review_report.get('verdict')!r}: "
+             f"{critic_review_report.get('reason', '')}")
     if missing_segments:
         _add("delivery.missing_segments", "pending",
              f"missing segments: {', '.join(missing_segments)}")
@@ -937,7 +1065,11 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
                   transcript_source: str = "script",
                   missing_segments: list[str] | None = None,
                   fps: int = 10, width: int = 540, height: int = 960,
-                  base_name: str = "film") -> dict[str, Any]:
+                  base_name: str = "film",
+                  timeline: dict[str, Any] | None = None,
+                  critic_review: dict[str, Any] | None = None,
+                  bpm: float | None = None,
+                  rendered_text_boxes: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """Assemble one film through every gate, in order (B1).
 
     ``segments`` carry ``segment_id``, ``text``, ``duration_sec``
@@ -948,6 +1080,15 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
     is partial. Pending registry shots are rendered as labelled
     placeholder cards (they are the review stand-in for a scene
     that has not been generated, not a finished scene).
+
+    ``timeline`` (when supplied) replaces the timeline derived
+    from the segments for the pre-render timeline gate.
+    ``critic_review`` (when supplied) is the review record the
+    critic gate judges; with none supplied the critic gate is
+    missing and the film cannot finish. ``bpm`` selects the
+    music clock for the derived timeline. ``rendered_text_boxes``
+    (when supplied) replaces the default caption-bar Otsu
+    measurement in final QC.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1012,6 +1153,31 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
         motion_gate = {"capability": "video.motion_beat_chart", "verdict": "fail",
                        "problems": [{"kind": "gate_error", "detail": str(exc)}],
                        "real_change_ratio": 0.0, "beat_count": 0}
+
+    # 3b. Pre-render timeline gate + critic record judgment, both
+    #     in the main path. A failing timeline does not stop the
+    #     render (the review package still carries it), but it
+    #     blocks finished status in gate_all. The critic record
+    #     is judged as supplied: an invalid record is a failed
+    #     gate entry, never a crash, and no record at all stays
+    #     None (missing gate) -- the pipeline never invents one.
+    timeline_record = timeline or build_timeline_for_film(
+        segs, width=width, height=height, fps=fps, total_sec=total_sec,
+        subtitle_events=events, bpm=bpm)
+    try:
+        timeline_gate_report = _timeline_gate.check_timeline(timeline_record)
+    except CapabilityError as exc:
+        timeline_gate_report = {"capability": "qa.timeline_gate", "verdict": "fail",
+                                "errors": [str(exc)], "warnings": [],
+                                "error_count": 1, "warning_count": 0}
+    critic_review_report: dict[str, Any] | None = None
+    if critic_review is not None:
+        try:
+            critic_review_report = _critic_review.record_critic_review(critic_review)
+        except CapabilityError as exc:
+            critic_review_report = {"capability": "qa.critic_review",
+                                    "verdict": "fail",
+                                    "reason": f"invalid review record: {exc}"}
 
     # 4. Render (silent video, then audio) -- only possible when the
     #    tools exist; a missing tool is a failed assembly, not a film.
@@ -1087,12 +1253,43 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
                          "failures": [{"kind": "gate_error", "detail": str(exc)}],
                          "event_count": len(events)}
     try:
+        # Otsu rendered-text measurement over the caption bar
+        # (the black bar at 68-79% of frame height, where this
+        # renderer draws captions). Role "caption" has no size
+        # floor, so the measurement is informational; CJK text
+        # is reported undetermined by final QC (uncalibrated).
+        # Callers may replace the measurement with
+        # rendered_text_boxes (box/at_sec/role/text entries).
+        if rendered_text_boxes is not None:
+            rendered_texts = rendered_text_boxes
+        elif events:
+            first = events[0]
+            mid = first["start_sec"] + (first["end_sec"] - first["start_sec"]) / 2
+            rendered_texts = [{
+                "box": [0, int(height * 0.68), width, int(height * 0.79)],
+                "role": "caption",
+                "at_sec": mid,
+                "text": first.get("text", ""),
+            }]
+        else:
+            rendered_texts = None
         qc_report = _final_qc.run_final_qc(
             work_mp4, expected_duration_sec=total_sec, expected_codec="h264",
             subtitle_text=srt_text,
             subtitle_bottom_fraction=(safe_zone.get("bottom_fraction")
                                       if safe_zone and safe_zone.get("measured") else None),
-            min_change_rate=PICTURE_MIN_CHANGE_RATE, work_dir=work / "qc")
+            min_change_rate=PICTURE_MIN_CHANGE_RATE, work_dir=work / "qc",
+            # Defect scan is always on in the main path (explicit
+            # fail-closed: gate_all fails the film when the scan
+            # did not run). planned_cuts is deliberately NOT
+            # supplied: segment boundaries are motion-kind
+            # changes, not luminance cuts, and passing them as
+            # planned cuts makes the scan report a false
+            # "missing cut" (verified 2026-10-31 on this
+            # renderer). Cut-vs-plan comparison stays available
+            # to callers who supply real planned cuts.
+            defect_scan=True, planned_cuts=None,
+            rendered_texts=rendered_texts)
     except CapabilityError as exc:
         qc_report = None
         qc_error = str(exc)
@@ -1108,7 +1305,9 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
                         motion_gate=motion_gate, subtitle_gate=subtitle_gate,
                         safe_zone=safe_zone, loudness=loudness,
                         final_qc_report=qc_report, asset_check=asset_check,
-                        missing_segments=missing_segments)
+                        missing_segments=missing_segments,
+                        timeline_gate_report=timeline_gate_report,
+                        critic_review_report=critic_review_report)
     status = combined["status"]
     delivery = out_dir / delivery_filename(base_name, status)
     shutil.copyfile(work_mp4, delivery)
@@ -1140,6 +1339,18 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
         "picture_change_rate": combined["picture_change_rate"],
         "safe_zone": safe_zone, "loudness": loudness,
         "tail_pad": tail_pad,
+        "timeline_gate": timeline_gate_report,
+        "critic_review": critic_review_report,
+        "defect_scan": (qc_report or {}).get("defect_scan"),
+        "defect_scan_status": ((qc_report or {}).get("defect_scan") or {}).get("status"),
+        "cut_comparison": {
+            "status": "planned_not_measured",
+            "note": ("segment boundaries are not luminance cuts, so no "
+                     "planned_cuts were supplied to the defect scan; "
+                     "cut-vs-plan comparison needs real planned cuts "
+                     "from the caller"),
+        },
+        "rendered_text": (qc_report or {}).get("rendered_text"),
         "ducking": ducking, "bgm": bool(bgm_path is not None),
         "subtitle_srt": srt_text,
         "cost": {"route": "free", "amount": 0, "currency": "CNY",
@@ -1180,7 +1391,11 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float,
         missing_segments=params.get("missing_segments"),
         fps=int(params.get("fps", 10)),
         width=int(params.get("width", 540)), height=int(params.get("height", 960)),
-        base_name=str(params.get("base_name", "film")))
+        base_name=str(params.get("base_name", "film")),
+        timeline=params.get("timeline"),
+        critic_review=params.get("critic_review"),
+        bpm=float(params["bpm"]) if params.get("bpm") is not None else None,
+        rendered_text_boxes=params.get("rendered_text_boxes"))
     if result["status"] in ("refused", "failed"):
         raise CapabilityError(
             f"pipeline.stable_film_assembly: assembly {result['status']}: {result.get('reasons') or result.get('failures')}")
@@ -1217,6 +1432,10 @@ def register_stable_film_pipeline_capabilities_once() -> list[str]:
                     "width": {"type": "integer", "exclusiveMinimum": 0},
                     "height": {"type": "integer", "exclusiveMinimum": 0},
                     "base_name": {"type": "string"},
+                    "timeline": {"type": "object"},
+                    "critic_review": {"type": "object"},
+                    "bpm": {"type": "number", "exclusiveMinimum": 0},
+                    "rendered_text_boxes": {"type": "array", "items": {"type": "object"}},
                 },
                 "required": ["segments", "voice_path"],
                 "additionalProperties": True,
@@ -1229,10 +1448,15 @@ def register_stable_film_pipeline_capabilities_once() -> list[str]:
                 "subtitle re-break with frame-measured safe zone, "
                 "motion-beat gate over motion beats only, mix-recipe "
                 "loudness (voice-only normalisation or run_mix with "
-                "fixed ducking for BGM), and final QC, combined into "
-                "one finished / partial / review verdict. Two strict "
-                "confirmation points; missing segments and pending "
-                "material are listed, never padded or hidden."
+                "fixed ducking for BGM), pre-render timeline gate, "
+                "critic-review record judgment (only ship passes; "
+                "no record is a missing gate), and final QC always "
+                "with the defect scan enabled (fail-closed when the "
+                "scan did not run) plus the Otsu caption-bar text "
+                "measurement, combined into one finished / partial / "
+                "review verdict. Two strict confirmation points; "
+                "missing segments and pending material are listed, "
+                "never padded or hidden."
             ),
             line="pipeline",
         )

@@ -26,6 +26,26 @@ divided by 4 per second, plus 0.4 seconds per punctuation mark,
 plus 1.0 second of head/tail margin per shot. Content characters
 are characters that are not whitespace and not punctuation.
 
+Video-director residuals (2026-10-31 recheck items 1, 4, 9):
+this gate is also where the pre-render timeline gate, the
+critic review record and the per-shot reads list enter the main
+path. ``plan_segments`` accepts an optional ``timeline`` (judged
+by ``qa.timeline_gate``; a failing timeline fails the plan) and
+an optional ``review`` (judged by ``qa.critic_review``; a
+``fail`` verdict fails the plan, a ``one_more_pass`` verdict is
+recorded as ``critic_blocks_ship``). Every plan carries
+``render_qc_required``: the rendered film must run the final-QC
+defect scan, and ``require_render_qc`` fail-closes when the
+scan never ran or was skipped -- a plan has no media, so the
+scan itself can only be required here, never faked here.
+Shots may carry a ``reads`` list (one entry per thing a viewer
+must take in: ``found`` / ``understood`` / ``registered``); a
+read is checked once, against the shared timeline-gate hold
+formula, and a shot too short to read its own reads fails the
+plan. Whether the render actually showed each read at its time
+is ``verify_reads_against_samples``: with no TEXTS(t) samples
+it reports ``planned_not_measured``, never a pass.
+
 Method ideas borrowed, text self-written, from
 HBAI-Ltd/Toonflow-app (MIT, verified against the repository
 LICENSE file; the MIT licence covers that repository only, not
@@ -55,6 +75,7 @@ CHARS_PER_SEC = 4.0
 PAUSE_PER_PUNCT_S = 0.4
 HEAD_TAIL_MARGIN_S = 1.0
 MAX_LINE_CHARS = 20
+READ_KINDS = ("found", "understood", "registered")
 
 _PUNCT = set(
     "，。！？；：、……·—-「」『』（）《》〈〉\"'“”‘’.…?!;:,"
@@ -132,6 +153,68 @@ def split_long_line(text: str) -> list[str]:
     return shots
 
 
+def _validate_reads(shot_id: str, reads: Any, duration_sec: float) -> list[dict[str, Any]]:
+    """Validate one shot's reads list (fail-closed, plan time).
+
+    Each read is ``{"text": ..., "kind": found|understood|
+    registered, "at_sec": <seconds from shot start, optional>}``.
+    The same text twice in one shot fails (one read, once); a
+    read whose text needs more hold than the shot lasts fails,
+    judged by the shared timeline-gate hold formula
+    (``qa.timeline_gate.read_time_required_sec``); an ``at_sec``
+    outside the shot fails. A missing list is an empty list.
+    """
+    from hevi.capabilities.timeline_gate import read_time_required_sec
+
+    if reads is None:
+        return []
+    if not isinstance(reads, list):
+        raise CapabilityError(
+            f"video.segment_assembly_gate: shot {shot_id!r} reads must be a list")
+    seen: set[str] = set()
+    normalised: list[dict[str, Any]] = []
+    for idx, entry in enumerate(reads):
+        if not isinstance(entry, dict):
+            raise CapabilityError(
+                f"video.segment_assembly_gate: shot {shot_id!r} read {idx} "
+                "is not an object")
+        text = entry.get("text", entry.get("content", ""))
+        if not isinstance(text, str) or not text.strip():
+            raise CapabilityError(
+                f"video.segment_assembly_gate: shot {shot_id!r} read {idx} "
+                "needs non-empty text")
+        text = text.strip()
+        if text in seen:
+            raise CapabilityError(
+                f"video.segment_assembly_gate: shot {shot_id!r} read "
+                f"{text!r} appears twice; one read is read once")
+        seen.add(text)
+        kind = entry.get("kind", "found")
+        if kind not in READ_KINDS:
+            raise CapabilityError(
+                f"video.segment_assembly_gate: shot {shot_id!r} read {idx} "
+                f"kind must be one of {list(READ_KINDS)}, got {kind!r}")
+        at_sec = entry.get("at_sec")
+        if at_sec is not None:
+            if not _is_num(at_sec) or float(at_sec) < 0 or float(at_sec) > duration_sec:
+                raise CapabilityError(
+                    f"video.segment_assembly_gate: shot {shot_id!r} read {idx} "
+                    f"at_sec {at_sec!r} is outside the shot ({duration_sec}s)")
+        required = read_time_required_sec(text)
+        if duration_sec < required:
+            raise CapabilityError(
+                f"video.segment_assembly_gate: shot {shot_id!r} lasts "
+                f"{duration_sec}s, below the {required:.2f}s read-time for "
+                f"read {text!r}; lengthen the shot or shorten the read")
+        normalised.append({
+            "text": text,
+            "kind": kind,
+            "at_sec": float(at_sec) if at_sec is not None else None,
+            "required_sec": round(required, 2),
+        })
+    return normalised
+
+
 def _normalise_shot(raw: Any, scene_id: str, index: int) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise CapabilityError(
@@ -153,16 +236,20 @@ def _normalise_shot(raw: Any, scene_id: str, index: int) -> dict[str, Any]:
             f"video.segment_assembly_gate: shot {shot_id!r} duration "
             f"must be a non-negative number"
         )
+    reads = _validate_reads(shot_id, raw.get("reads"), float(duration))
     return {
         "shot_id": shot_id,
         "scene_id": scene_id,
         "text": text,
         "duration_sec": round(float(duration), 3),
+        "reads": reads,
     }
 
 
 def plan_segments(
-    scenes: Any, *, model_max_sec: Any = MAX_SEGMENT_SEC
+    scenes: Any, *, model_max_sec: Any = MAX_SEGMENT_SEC,
+    timeline: dict[str, Any] | None = None,
+    review: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Pack scenes' shots into capped segments, one node each.
 
@@ -172,6 +259,17 @@ def plan_segments(
     the shot. Shots are packed greedily in order; a segment never
     spans a gap in shot order, and segment durations are sums of
     shot durations, never rounded down to fit.
+
+    ``timeline`` (when supplied) is judged by
+    ``qa.timeline_gate`` before the plan is returned: a failing
+    timeline fails the plan, because a plan built on a broken
+    timeline is not a plan worth rendering. ``review`` (when
+    supplied) is judged by ``qa.critic_review``: a ``fail``
+    verdict (fix-round limit broken) fails the plan, and a
+    ``one_more_pass`` verdict is recorded as
+    ``critic_blocks_ship``. Neither gate is invented when its
+    input is absent: the plan then records the gate as not
+    supplied, and the rendered film still has to pass it later.
     """
     if not _is_num(model_max_sec) or float(model_max_sec) <= 0:
         raise CapabilityError(
@@ -226,6 +324,26 @@ def plan_segments(
     if current:
         segments.append(_finish_segment(segments, current, current_sec))
     total = round(sum(s["duration_sec"] for s in segments), 3)
+    timeline_gate_report: dict[str, Any] | None = None
+    if timeline is not None:
+        from hevi.capabilities.timeline_gate import check_timeline
+
+        timeline_gate_report = check_timeline(timeline)
+        if timeline_gate_report["verdict"] == "fail":
+            raise CapabilityError(
+                "video.segment_assembly_gate: timeline gate fails: "
+                + "; ".join(timeline_gate_report["errors"]))
+    critic_report: dict[str, Any] | None = None
+    critic_blocks_ship = False
+    if review is not None:
+        from hevi.capabilities.critic_review import record_critic_review
+
+        critic_report = record_critic_review(review)
+        if critic_report["verdict"] == "fail":
+            raise CapabilityError(
+                "video.segment_assembly_gate: critic review fails: "
+                + critic_report["reason"])
+        critic_blocks_ship = critic_report["verdict"] == "one_more_pass"
     return {
         "segments": segments,
         "segment_count": len(segments),
@@ -234,6 +352,118 @@ def plan_segments(
         "segment_count_minimum": math.ceil(total / cap) if total else 0,
         "generation_nodes": [s["generation_node"] for s in segments],
         "shots": shots,
+        "timeline_gate": timeline_gate_report,
+        "critic_review": critic_report,
+        "critic_blocks_ship": critic_blocks_ship,
+        "render_qc_required": {
+            "defect_scan": True,
+            "defect_scan_status": "planned_not_measured",
+            "note": (
+                "the rendered film must run qa.final_qc_gate with "
+                "defect_scan=True; this plan has no media, so the "
+                "scan is required here and measured at render time. "
+                "Use require_render_qc to fail-close on the report."),
+        },
+    }
+
+
+def require_render_qc(
+    plan: dict[str, Any], qc_report: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Fail-close check: did the rendered film actually run the scan?
+
+    ``plan`` is a ``plan_segments`` result, ``qc_report`` a
+    ``qa.final_qc_gate`` report (or None when no QC ran at all).
+    Verdict ``"pass"`` only when the defect scan ran; ``"fail"``
+    when it never ran, was skipped, or itself failed. A scan
+    that ran and found defects is a QC failure, reported as
+    such -- it still counts as "the scan ran", so the failure
+    names the defects, not the missing scan.
+    """
+    if not isinstance(plan, dict) or not plan.get("render_qc_required"):
+        raise CapabilityError(
+            "video.segment_assembly_gate: plan carries no render_qc_required")
+    if qc_report is None:
+        return {"verdict": "fail", "scan_ran": False,
+                "reason": "no final-QC report supplied: the defect scan never ran"}
+    summary = qc_report.get("defect_scan")
+    if summary is None:
+        return {"verdict": "fail", "scan_ran": False,
+                "reason": "final-QC report has no defect scan: defect_scan was not enabled"}
+    status = summary.get("status")
+    if status == "skipped":
+        return {"verdict": "fail", "scan_ran": False,
+                "reason": f"defect scan was skipped: {summary.get('reason')}"}
+    if status == "fail":
+        return {"verdict": "fail", "scan_ran": True, "scan_status": status,
+                "reason": f"defect scan ran and failed: flash={summary.get('flash')}; "
+                          f"missing_cuts={summary.get('missing_cuts')}; "
+                          f"unplanned_cuts={summary.get('unplanned_cuts')}"}
+    return {"verdict": "pass", "scan_ran": True, "scan_status": status,
+            "reason": f"defect scan ran with status {status!r}"}
+
+
+def verify_reads_against_samples(
+    plan: dict[str, Any], samples: list[dict[str, Any]] | None
+) -> dict[str, Any]:
+    """Check per-shot reads against TEXTS(t) render samples.
+
+    ``samples`` are render-side observations,
+    ``{"shot_id": ..., "text": ..., "t_sec": ...}`` -- what the
+    render actually showed, and when. With no samples the result
+    is ``planned_not_measured``: the reads were planned, whether
+    the render showed them was never sampled. With samples, a
+    read with no matching sample (same shot, same text, within
+    0.5 s of its ``at_sec`` when one is declared) is a failure
+    that names the read.
+    """
+    if not isinstance(plan, dict) or not isinstance(plan.get("shots"), list):
+        raise CapabilityError(
+            "video.segment_assembly_gate: plan has no shots list")
+    reads: list[dict[str, Any]] = []
+    for shot in plan["shots"]:
+        for read in shot.get("reads") or []:
+            reads.append({"shot_id": shot["shot_id"], **read})
+    if samples is None:
+        return {
+            "capability": "video.segment_assembly_gate",
+            "check": "reads_render_sampling",
+            "status": "planned_not_measured",
+            "reads_checked": len(reads),
+            "missing": [],
+            "reason": "no TEXTS(t) samples supplied: render-side read verification "
+                      "was not measured",
+        }
+    if not isinstance(samples, list):
+        raise CapabilityError(
+            "video.segment_assembly_gate: samples must be a list")
+    missing: list[dict[str, Any]] = []
+    for read in reads:
+        found = False
+        for sample in samples:
+            if not isinstance(sample, dict):
+                continue
+            if sample.get("shot_id") != read["shot_id"]:
+                continue
+            if str(sample.get("text", "")).strip() != read["text"]:
+                continue
+            if read.get("at_sec") is not None and _is_num(sample.get("t_sec")):
+                if abs(float(sample["t_sec"]) - float(read["at_sec"])) > 0.5:
+                    continue
+            found = True
+            break
+        if not found:
+            missing.append(read)
+    return {
+        "capability": "video.segment_assembly_gate",
+        "check": "reads_render_sampling",
+        "status": "fail" if missing else "pass",
+        "reads_checked": len(reads),
+        "missing": missing,
+        "reason": (
+            f"{len(missing)} read(s) never sampled in the render"
+            if missing else
+            f"all {len(reads)} read(s) sampled in the render"),
     }
 
 
@@ -270,6 +500,7 @@ def to_storyboard_rows(plan: dict[str, Any]) -> list[dict[str, Any]]:
             "visual": shot["text"],
             "duration_sec": shot["duration_sec"],
             "segment_id": segment_of.get(shot["shot_id"]),
+            "reads": list(shot.get("reads") or []),
         })
     return rows
 
@@ -306,6 +537,8 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float,
     plan = plan_segments(
         params.get("scenes"),
         model_max_sec=params.get("model_max_sec", MAX_SEGMENT_SEC),
+        timeline=params.get("timeline"),
+        review=params.get("review"),
     )
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -339,6 +572,8 @@ def register_segment_assembly_capabilities_once() -> list[str]:
                 "properties": {
                     "scenes": {"type": "array"},
                     "model_max_sec": {"type": "number"},
+                    "timeline": {"type": "object"},
+                    "review": {"type": "object"},
                 },
                 "required": ["scenes"],
                 "additionalProperties": False,

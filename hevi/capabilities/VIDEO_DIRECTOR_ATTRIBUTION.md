@@ -32,8 +32,18 @@ single-run results and were not reproduced here; they are not
 presented as hevi results. The hevi-side comparison harness in
 tests/test_video_director_eval.py reports only what it measured.
 
-Not implemented from the source method: page-level checks that
-need a page contract (deterministic two-way render diff, text
-boundary tracking, anchor stability), and ASR checking of voice
-over against the script. Those remain unimplemented and are not
-claimed anywhere in the gated code.
+Partly implemented from the source method, as record
+judges only: page-level checks now exist as qa.page_contract
+(DUR/FPS/seek/READY/TEXTS, page-error zero tolerance, font
+readiness, TEXTS(t) read-time and bounds, anchor stability),
+but a *measured* deterministic two-way render diff still needs
+a renderer that renders in reverse order, which hevi does not
+have -- without one the diff is planned_not_measured, never a
+pass, and no diff result is fabricated anywhere in the gated
+code. ASR checking of voice over against the script remains
+unimplemented (audio.forced_align exists but is not wired into
+final QC), as does the film-level eval harness at n>=3 (no
+execution channel exists to run it on). The full sound clock
+(SFX peak placement, sparse-mix rule, loudnorm/ebur128 note)
+is carried only as a declaration in qa.director_dials;
+loudness targets remain measured by audio.mix_recipe.

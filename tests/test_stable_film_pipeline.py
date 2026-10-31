@@ -41,6 +41,15 @@ def _segments():
     ]
 
 
+def _ship_review():
+    axes = ("Hook", "Clarity", "Readability", "Motion quality",
+            "Rhythm and variety", "Composition and look", "Continuity",
+            "Truth", "Sound sync")
+    return {"axes": {a: {"score": 9, "evidence": "at 0.5s frame #3: clear"}
+                     for a in axes},
+            "defects": [], "fix_round": 0}
+
+
 # ------------------------------------------------------------ B6 confirmations
 
 def test_pre_confirmation_requires_exact_true_and_stage():
@@ -208,7 +217,8 @@ def test_assemble_voice_only_finishes_when_all_gates_pass(tmp_path):
     out = sfp.assemble_film(
         title="t", segments=_segments(), voice_path=voice, out_dir=tmp_path / "out",
         pre_confirmation=PRE, registry=reg, episode_id="episode1", transcript_source="",
-        fps=5, width=270, height=480, base_name="film")
+        fps=5, width=270, height=480, base_name="film",
+        critic_review=_ship_review())
     assert out["status"] == "finished", out["failures"]
     assert out["mp4"].endswith("_成片.mp4")
     assert out["loudness"]["verdict"] == "pass"

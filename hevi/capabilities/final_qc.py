@@ -533,6 +533,14 @@ def _run_defect_scan(
     return checks, summary
 
 
+_CJK_RE = re.compile(r"[\u2e80-\u9fff\uf900-\ufaff]")
+
+
+def _is_num(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) \
+        and math.isfinite(float(value))
+
+
 def _find_emoji(text: str) -> list[str]:
     return sorted(set(_EMOJI_RE.findall(text)))
 
@@ -570,6 +578,7 @@ def run_final_qc(
     expected_vo_lines: list[str] | None = None,
     asr_text: str | None = None,
     vo_word_timings: list[dict[str, Any]] | None = None,
+    rendered_texts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run every final check and return the full report.
 
@@ -579,11 +588,31 @@ def run_final_qc(
     bottom fifth where platform controls sit. When it is not
     supplied, the safe-zone check is skipped, not passed.
 
-    ``defect_scan`` is off by default so existing callers keep
-    exactly the old behaviour. When on, ``planned_cuts`` (seconds)
-    is compared with detected cuts and ``is_loop`` enables the
-    loop-seam check; the remaining ``defect_*`` arguments are the
-    configurable scan thresholds.
+    ``defect_scan`` is off by default so existing library callers keep
+    exactly the old behaviour. That default is deliberate, and it is
+    *not* the main-path behaviour: the stable-film pipeline always
+    calls this gate with ``defect_scan=True`` and treats a scan that
+    did not run (no summary, or a ``skipped`` summary) as a failed
+    gate -- explicit fail-closed at the pipeline, where a film can
+    be called finished, rather than a silent default-on for every
+    ad-hoc caller. The choice is locked by tests on both sides:
+    the library default is pinned by the existing default-off test,
+    and the stable-pipeline tests pin the fail-closed main path.
+    When on, ``planned_cuts`` (seconds) is compared with detected
+    cuts and ``is_loop`` enables the loop-seam check; the remaining
+    ``defect_*`` arguments are the configurable scan thresholds.
+
+    ``rendered_texts`` wires in the Otsu rendered-text measurement
+    (``qa.rendered_text_measure``): each entry names a text box,
+    a role and a timestamp, and the gate extracts that frame and
+    measures what the render actually shows instead of trusting
+    the declared font size. A measurement on CJK text is always
+    reported ``undetermined`` -- the Otsu calibration (cap/0.72,
+    ~2px) was only ever measured on Inter / JetBrains Mono, and
+    Chinese/handwriting/perspective error is uncalibrated, so a
+    CJK number must never be presented as a calibrated pass.
+    With no ``rendered_texts`` the measurement is recorded as
+    not requested, never as passed.
 
     ``edited`` declares the film was re-cut after its transcript
     was made: then ``transcript_source`` must name a post-edit
@@ -650,6 +679,7 @@ def run_final_qc(
     tmp = Path(tempfile.mkdtemp(prefix="final_qc_")) if own_tmp else Path(work_dir)
     tmp.mkdir(parents=True, exist_ok=True)
     defect_summary: dict[str, Any] | None = None
+    rendered_measurements: list[dict[str, Any]] = []
     try:
         # Keyframes: first, middle, last -- at least three, always.
         # The last stamp is the start of the final frame, not the
@@ -710,6 +740,74 @@ def run_final_qc(
                 loop_seam_ratio=defect_loop_seam_ratio,
             )
             checks.update(defect_checks)
+        if rendered_texts is not None:
+            # Otsu rendered-text measurement on real extracted
+            # frames. CJK text is always undetermined: the cap
+            # factor and contrast calibration were never measured
+            # on CJK/handwriting/perspective text, so the numbers
+            # are reported as information, never as a calibrated
+            # pass or fail.
+            from hevi.capabilities.otsu_text import measure_rendered_text
+
+            for idx, entry in enumerate(rendered_texts):
+                name = f"rendered_text_{idx}_{entry.get('role', 'text')}" \
+                    if isinstance(entry, dict) else f"rendered_text_{idx}"
+                if not isinstance(entry, dict):
+                    checks[name] = {"pass": None,
+                                    "detail": f"skipped: rendered text {idx} is not an object"}
+                    rendered_measurements.append({"index": idx, "status": "undetermined",
+                                                  "reason": "entry is not an object"})
+                    continue
+                image_path = entry.get("image_path")
+                at_sec = entry.get("at_sec")
+                if image_path is None:
+                    if not _is_num(at_sec):
+                        checks[name] = {"pass": None,
+                                        "detail": "skipped: no image_path and no at_sec to extract a frame from"}
+                        rendered_measurements.append(
+                            {"index": idx, "role": entry.get("role"), "status": "undetermined",
+                             "reason": "no image_path and no at_sec"})
+                        continue
+                    frame_path = tmp / f"otsu_{idx}.png"
+                    try:
+                        _extract_frame(media_path, float(at_sec), frame_path)
+                    except CapabilityError as exc:
+                        checks[name] = {"pass": None,
+                                        "detail": f"skipped: frame extraction failed: {exc}"}
+                        rendered_measurements.append(
+                            {"index": idx, "role": entry.get("role"), "status": "undetermined",
+                             "reason": str(exc)})
+                        continue
+                    image_path = frame_path
+                text = str(entry.get("text", entry.get("content", "")) or "")
+                measurement = measure_rendered_text(
+                    Path(image_path), entry.get("box"), str(entry.get("role", "text")),
+                    at_sec=float(at_sec) if _is_num(at_sec) else None)
+                is_cjk = bool(_CJK_RE.search(text)) or entry.get("script") == "CJK"
+                measurement = {**measurement, "calibration": (
+                    "undetermined: CJK/handwriting/perspective text error is "
+                    "uncalibrated (upstream calibration only Inter/JetBrains Mono, ~2px)"
+                    if is_cjk else
+                    "uncalibrated beyond the upstream Inter/JetBrains Mono ~2px figure; "
+                    "treat as a measurement, not a calibrated guarantee")}
+                rendered_measurements.append(measurement)
+                if is_cjk:
+                    checks[name] = {
+                        "pass": None,
+                        "detail": (
+                            f"undetermined: CJK text measured font "
+                            f"{measurement.get('font_px')}px / contrast "
+                            f"{measurement.get('contrast_ratio')} (informational only; "
+                            "CJK error uncalibrated, see calibration)"),
+                    }
+                elif measurement["status"] == "undetermined":
+                    checks[name] = {"pass": None,
+                                    "detail": f"skipped: {measurement.get('reason')}"}
+                else:
+                    checks[name] = {
+                        "pass": bool(measurement["pass"]),
+                        "detail": measurement.get("reason", ""),
+                    }
     finally:
         if own_tmp:
             # Keyframes are part of the evidence: keep them only when
@@ -821,6 +919,17 @@ def run_final_qc(
         "failed_checks": failed,
         "skipped_checks": [n for n, c in checks.items() if c["pass"] is None],
         "defect_scan": defect_summary,
+        "rendered_text": {
+            "requested": rendered_texts is not None,
+            "status": (
+                "not_requested" if rendered_texts is None
+                else "measured" if rendered_measurements else "no_entries"),
+            "note": (
+                "Otsu rendered-text measurement was not requested; "
+                "it was not counted as passed"
+                if rendered_texts is None else ""),
+            "measurements": rendered_measurements,
+        },
         "generation_consistency": consistency,
         "edited": edited,
         "transcript_source": transcript_source,
@@ -866,12 +975,20 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
         ("subtitle_bottom_fraction", float),
         ("defect_max_sample_fps", float),
         ("defect_flash_factor", float),
+        ("defect_flash_min", float),
+        ("defect_flash_skip_factor", float),
+        ("defect_cut_factor", float),
+        ("defect_cut_min", float),
         ("defect_cut_tolerance_sec", float),
+        ("defect_freeze_eps", float),
         ("defect_freeze_sec", float),
         ("defect_flat_std", float),
+        ("defect_loop_seam_ratio", float),
     ):
         if params.get(key) is not None:
             kwargs[key] = conv(params[key])
+    if params.get("rendered_texts") is not None:
+        kwargs["rendered_texts"] = list(params["rendered_texts"])
     if params.get("defect_scan") is not None:
         kwargs["defect_scan"] = bool(params["defect_scan"])
     if params.get("is_loop") is not None:
@@ -910,6 +1027,7 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
             "failed_checks": report["failed_checks"],
             "skipped_checks": report["skipped_checks"],
             "defect_scan": report["defect_scan"],
+            "rendered_text": report["rendered_text"],
         },
     )
 
@@ -942,9 +1060,16 @@ def register_final_qc_capabilities_once() -> list[str]:
                     "is_loop": {"type": "boolean"},
                     "defect_max_sample_fps": {"type": "number", "exclusiveMinimum": 0},
                     "defect_flash_factor": {"type": "number", "exclusiveMinimum": 0},
+                    "defect_flash_min": {"type": "number", "minimum": 0},
+                    "defect_flash_skip_factor": {"type": "number", "minimum": 0},
+                    "defect_cut_factor": {"type": "number", "exclusiveMinimum": 0},
+                    "defect_cut_min": {"type": "number", "minimum": 0},
                     "defect_cut_tolerance_sec": {"type": "number", "minimum": 0},
+                    "defect_freeze_eps": {"type": "number", "minimum": 0},
                     "defect_freeze_sec": {"type": "number", "exclusiveMinimum": 0},
                     "defect_flat_std": {"type": "number", "minimum": 0},
+                    "defect_loop_seam_ratio": {"type": "number", "exclusiveMinimum": 0},
+                    "rendered_texts": {"type": "array", "items": {"type": "object"}},
                     "edited": {"type": "boolean"},
                     "transcript_source": {"type": "string"},
                     "generation_artifacts": {"type": "object"},

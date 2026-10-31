@@ -755,3 +755,25 @@ _beats_schema_gate.register_beats_schema_gate_capabilities_once()
 # unstated claims stay "unverified". See floyo_h3_registration.py.
 from . import floyo_h3_registration as _floyo_h3_registration  # noqa: E402,F401
 _floyo_h3_registration.register_floyo_h3_registration_capabilities_once()
+
+# video-director residuals (2026-10-31, clean-room, method ideas
+# only): qa.page_contract (DUR/FPS/seek/READY/TEXTS record judge;
+# reverse-render diff is planned_not_measured without a reverse
+# render), qa.director_dials (clock/continuity/register/
+# text-policy + coupling rules; sound-clock contract carried as
+# a declaration), qa.decision_log (append-only DECISION records
+# with overturn-by-annotation), qa.ai_tells_ban (ban list +
+# failure-to-repair table + plain-language symptom report).
+# Main-path wiring for the earlier grafts (timeline gate, critic
+# review, defect scan, Otsu measurement) lives in
+# pipeline.stable_film_assembly / video.segment_assembly_gate /
+# qa.final_qc_gate. See VIDEO_DIRECTOR_ATTRIBUTION.md (MIT,
+# win4r/video-director).
+from . import page_contract as _page_contract  # noqa: E402,F401
+_page_contract.register_page_contract_capabilities_once()
+from . import director_dials as _director_dials  # noqa: E402,F401
+_director_dials.register_director_dials_capabilities_once()
+from . import decision_log as _decision_log  # noqa: E402,F401
+_decision_log.register_decision_log_capabilities_once()
+from . import ai_tells_ban as _ai_tells_ban  # noqa: E402,F401
+_ai_tells_ban.register_ai_tells_ban_capabilities_once()

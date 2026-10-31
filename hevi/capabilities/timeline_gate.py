@@ -116,6 +116,20 @@ def _word_count(text: Any) -> int:
     return len(tokens)
 
 
+def read_time_required_sec(text: Any) -> float:
+    """Seconds a text must be held to be read (shared hold formula).
+
+    ``max(1.5, 1.0 + 0.3 * words)`` with CJK counted per
+    character by :func:`_word_count`. This is the one formula
+    every gate uses for a read hold -- the timeline gate's text
+    checks, the per-shot reads list in
+    ``video.segment_assembly_gate``, and the TEXTS(t) check in
+    ``qa.page_contract`` -- so the three can never disagree
+    about the same wording.
+    """
+    return max(1.5, 1.0 + 0.3 * _word_count(text))
+
+
 def _text_of(entry: dict[str, Any]) -> str:
     for key in ("text", "content", "wording"):
         value = entry.get(key)
@@ -375,7 +389,7 @@ def check_timeline(
                         f"TEXT_{idx}: text held {hold:.3f}s, below read floor {min_read_sec:.1f}s"
                     )
                 words = _word_count(_text_of(entry))
-                required = max(1.5, 1.0 + 0.3 * words)
+                required = read_time_required_sec(_text_of(entry))
                 if hold < required:
                     warnings.append(
                         f"TEXT_{idx}: text held {hold:.3f}s, below read-time "
