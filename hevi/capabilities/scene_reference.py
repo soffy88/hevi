@@ -47,6 +47,37 @@ not:
    is refused, and a finished text that changed since it was last
    reviewed is marked ``stale`` and must be reviewed again.
 
+Three further disciplines (P1), on the same plan-only terms:
+
+4. A photo-scene record. Exactly one main view sets the camera;
+   other angles of the same place are extra references. Angles
+   are for the movie branch by default: in the picture branch
+   they are not applied unless the record says so explicitly,
+   and asking for them there is warned about, because a picture
+   model has been seen to take an angle's camera instead of the
+   main view's. An angle with no description is ``pending``. The
+   place description is plain wording about the place only: it
+   must not describe people in the scene or comment on the
+   photographs or their quality.
+5. A blocking record. Each standing marker is bound to a cast
+   member or role and to a screen zone, a depth and a camera
+   relation, and carries an explicit declaration that the marker
+   itself does not appear in the finished film. A marker with no
+   binding is recorded as a person distinct from the cast. A
+   marker's view and visible parts are checked against the
+   character sheet gate's view catalogue and part-scope table,
+   reusing that gate's tables rather than restating them; a
+   conflict fails and names the marker, the person and the part
+   or view.
+6. An output precheck. Durations snap to the H3 frame lattice
+   (see ``h3_frame_count``), sizes snap to the patch grid (see
+   ``h3_output_size``), and any crop -- of the frame to a
+   different aspect, or of the delivered frames below the
+   snapped count -- must be declared in the plan; an undeclared
+   crop fails. This is arithmetic on a plan only: nothing is
+   generated, cropped or resized here, and no other capability's
+   locked execution values are changed by it.
+
 Failure contract: malformed plans (not a JSON object, missing ids,
 non-string fields) raise CapabilityError. Gate failures are
 reported in the result, not raised.
@@ -56,10 +87,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 from typing import Any
 
+from hevi.capabilities.character_sheet import (
+    DEFAULT_PART_TABLE,
+    PART_IDS,
+    REAR_VIEWS,
+    VIEW_IDS,
+)
 from hevi.capabilities.errors import CapabilityError
 from hevi.capabilities.registry import (
     Capability,
@@ -486,10 +524,531 @@ def check_final_prompt(record: Any) -> dict[str, Any]:
             "final_governs": True}
 
 
+# ---------------------------------------------------------------- photo scene
+
+MAX_ANGLES = 4
+MOVIE_ANGLE_LIMIT = 3
+
+# Narrow wording heuristic only: a place description must describe
+# the place, not people in it and not the photographs or their
+# quality. It judges the record's wording, never a picture.
+_PEOPLE_RE = re.compile(
+    r"\b(people|person|man|woman|men|women|boy|girl|child|children)\b",
+    re.IGNORECASE)
+_PEOPLE_WORDS = ("人物", "男人", "女人", "男孩", "女孩", "小孩", "男子", "女子")
+_QUALITY_RE = re.compile(
+    r"\b(blurry|blurriness|overexposed|underexposed|noisy|grainy|"
+    r"out of focus|photo quality|image quality)\b",
+    re.IGNORECASE)
+_QUALITY_WORDS = ("照片质量", "图片质量", "清晰度", "曝光过度", "噪点", "模糊")
+
+
+def _photo_pictures(record: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalise a photo-scene record to main-first picture rows.
+
+    Two shapes are accepted: a ``pictures`` list whose rows carry a
+    ``role`` of ``main`` or ``angle``, or a ``main_view`` plus an
+    ``angles`` list. A record with neither shape yields no rows;
+    the caller reports the missing main view as a gate failure.
+    """
+    pictures = record.get("pictures")
+    if pictures is not None:
+        rows = _req_list(pictures, "photo_scene.pictures")
+        normalised: list[dict[str, Any]] = []
+        for item in rows:
+            if not isinstance(item, dict):
+                raise CapabilityError(
+                    "pipeline.scene_reference: every picture must be an object")
+            role = _req_str(item.get("role"), "picture.role")
+            description = item.get("description", "")
+            if not isinstance(description, str):
+                raise CapabilityError(
+                    "pipeline.scene_reference: picture.description must be a string")
+            normalised.append({"ref_id": _req_str(item.get("ref_id"), "picture.ref_id"),
+                               "role": role, "description": description.strip()})
+        return normalised
+    main_view = record.get("main_view")
+    if main_view is None:
+        return []
+    if isinstance(main_view, str):
+        main_id = _req_str(main_view, "photo_scene.main_view")
+    elif isinstance(main_view, dict):
+        main_id = _req_str(main_view.get("ref_id"), "photo_scene.main_view.ref_id")
+    else:
+        raise CapabilityError(
+            "pipeline.scene_reference: main_view must be a string or object")
+    rows = [{"ref_id": main_id, "role": "main", "description": ""}]
+    for item in _req_list(record.get("angles", []), "photo_scene.angles"):
+        if isinstance(item, str):
+            rows.append({"ref_id": _req_str(item, "angle"),
+                         "role": "angle", "description": ""})
+        elif isinstance(item, dict):
+            description = item.get("description", "")
+            if not isinstance(description, str):
+                raise CapabilityError(
+                    "pipeline.scene_reference: angle.description must be a string")
+            rows.append({"ref_id": _req_str(item.get("ref_id"), "angle.ref_id"),
+                         "role": "angle", "description": description.strip()})
+        else:
+            raise CapabilityError(
+                "pipeline.scene_reference: every angle must be a string or object")
+    return rows
+
+
+def check_photo_scene(record: Any) -> dict[str, Any]:
+    """Judge a photo-scene record: one main view, angles, place text.
+
+    Exactly one main view is required and, in the ``pictures``
+    shape, it must come first. At most four angles are carried.
+    An angle with no description is ``pending``. Angles go to the
+    movie branch by default: in the picture branch they are not
+    applied unless ``angles_in_pictures`` is set, and either way
+    the record is warned about, since a picture model has been
+    seen to take an angle's camera instead of the main view's.
+    A missing place description is ``pending``; one that
+    describes people or comments on the photographs or their
+    quality fails.
+    """
+    if not isinstance(record, dict):
+        raise CapabilityError("pipeline.scene_reference: photo_scene must be a JSON object")
+    issues: list[dict[str, Any]] = []
+    rows = _photo_pictures(record)
+    mains = [row for row in rows if row["role"] == "main"]
+    angles = [row for row in rows if row["role"] == "angle"]
+    for row in rows:
+        if row["role"] not in ("main", "angle"):
+            issues.append({"code": "UNKNOWN_PICTURE_ROLE", "severity": "fail",
+                           "message": f"picture {row['ref_id']!r} has unknown role {row['role']!r}"})
+    if not mains:
+        issues.append({"code": "NO_MAIN_VIEW", "severity": "fail",
+                       "message": "a photo scene needs exactly one main view; none was given"})
+    elif len(mains) > 1:
+        issues.append({"code": "MULTIPLE_MAIN_VIEWS", "severity": "fail",
+                       "message": f"a photo scene needs exactly one main view; got {len(mains)}"})
+    elif "pictures" in record and rows and rows[0] is not mains[0]:
+        issues.append({"code": "MAIN_VIEW_NOT_FIRST", "severity": "fail",
+                       "message": "the main view must be the first picture"})
+    if len(angles) > MAX_ANGLES:
+        issues.append({"code": "ANGLE_CAP", "severity": "fail",
+                       "message": f"{len(angles)} angles exceed the cap of {MAX_ANGLES}"})
+    for angle in angles:
+        if not angle["description"]:
+            issues.append({"code": "ANGLE_WITHOUT_DESCRIPTION", "severity": "pending",
+                           "message": f"angle {angle['ref_id']!r} states no description of its viewpoint"})
+    place = record.get("place_description", record.get("description", ""))
+    if not isinstance(place, str):
+        raise CapabilityError("pipeline.scene_reference: place_description must be a string")
+    place = place.strip()
+    if not place:
+        issues.append({"code": "PLACE_DESCRIPTION_MISSING", "severity": "pending",
+                       "message": "the place description is missing; it is never written in"})
+    else:
+        if _PEOPLE_RE.search(place) or any(word in place for word in _PEOPLE_WORDS):
+            issues.append({"code": "PLACE_DESCRIPTION_CONTENT", "severity": "fail",
+                           "message": "the place description must not describe people in the scene"})
+        elif _QUALITY_RE.search(place) or any(word in place for word in _QUALITY_WORDS):
+            issues.append({"code": "PLACE_DESCRIPTION_CONTENT", "severity": "fail",
+                           "message": "the place description must not comment on the photographs or their quality"})
+    create = record.get("create", "image")
+    if not isinstance(create, str):
+        raise CapabilityError("pipeline.scene_reference: create must be a string")
+    create = create.strip()
+    angles_in_pictures = record.get("angles_in_pictures", False)
+    if not isinstance(angles_in_pictures, bool):
+        raise CapabilityError("pipeline.scene_reference: angles_in_pictures must be a boolean")
+    angles_applied = False
+    if create not in ("image", "movie"):
+        issues.append({"code": "UNKNOWN_CREATE_MODE", "severity": "fail",
+                       "message": f"unknown branch {create!r}; expected 'image' or 'movie'"})
+    elif angles:
+        if create == "movie":
+            angles_applied = True
+        elif angles_in_pictures:
+            angles_applied = True
+            issues.append({"code": "ANGLES_IN_PICTURES_RISK", "severity": "warn",
+                           "message": "angles are asked for in the picture branch; a picture model "
+                                      "has been seen to take an angle's camera instead of the main view's"})
+        else:
+            issues.append({"code": "ANGLES_NOT_APPLIED_TO_IMAGE", "severity": "warn",
+                           "message": "angles are recorded but not applied in the picture branch; "
+                                      "they go to the movie branch by default"})
+    fatal = any(i["severity"] == "fail" for i in issues)
+    pending = any(i["severity"] == "pending" for i in issues)
+    verdict = "fail" if fatal else ("pending" if pending else "pass")
+    return {"verdict": verdict, "issues": issues,
+            "main_view": mains[0]["ref_id"] if mains else None,
+            "angle_count": len(angles),
+            "angles_applied": angles_applied,
+            "angles_for_movie": min(MOVIE_ANGLE_LIMIT, len(angles)) if create == "movie" else 0,
+            "picture_count": len(rows),
+            "place_description": place}
+
+
+# ---------------------------------------------------------------- blocking
+
+SCREEN_ZONES = ("left", "center", "right")
+DEPTHS = ("foreground", "midground", "background")
+CAMERA_RELATIONS = (
+    "facing_camera",
+    "back_to_camera",
+    "left_profile",
+    "right_profile",
+    "three_quarter_left",
+    "three_quarter_right",
+)
+
+# Camera relation -> character-sheet views that show the person
+# that way. The catalogue has no right-profile full-body view, so
+# a right profile is a portrait view only. This is a method
+# default, not a measured property of any model.
+_RELATION_VIEWS: dict[str, tuple[str, ...]] = {
+    "facing_camera": ("face_front", "body_front"),
+    "back_to_camera": ("face_back", "body_back", "clothing_back"),
+    "left_profile": ("face_left", "face_3q_left", "body_left"),
+    "right_profile": ("face_right", "face_3q_right"),
+    "three_quarter_left": ("face_3q_left",),
+    "three_quarter_right": ("face_3q_right",),
+}
+
+
+def _cast_names(cast: Any) -> list[str]:
+    if cast is None:
+        return []
+    names: list[str] = []
+    for item in _req_list(cast, "blocking.cast"):
+        if isinstance(item, str):
+            names.append(_req_str(item, "cast member"))
+        elif isinstance(item, dict):
+            names.append(_req_str(item.get("name"), "cast member.name"))
+        else:
+            raise CapabilityError("pipeline.scene_reference: every cast member must be a string or object")
+    return names
+
+
+def _sheet_current_views(sheet: Any) -> list[str] | None:
+    if sheet is None:
+        return None
+    if not isinstance(sheet, dict):
+        raise CapabilityError("pipeline.scene_reference: character_sheet must be a JSON object")
+    views = sheet.get("views")
+    if views is None:
+        return None
+    current: list[str] = []
+    for item in _req_list(views, "character_sheet.views"):
+        if isinstance(item, str):
+            current.append(_req_str(item, "view"))
+        elif isinstance(item, dict):
+            status = item.get("status", "current")
+            if status == "current":
+                current.append(_req_str(item.get("view"), "view"))
+        else:
+            raise CapabilityError("pipeline.scene_reference: every sheet view must be a string or object")
+    return current
+
+
+def check_blocking(record: Any) -> dict[str, Any]:
+    """Judge a blocking record: markers bound to cast, zone, depth.
+
+    Every marker needs a screen zone, a depth and a camera
+    relation, and an explicit declaration that the marker does
+    not appear in the finished film -- a missing declaration
+    fails. A marker bound to nobody is recorded as a person
+    distinct from the cast; one bound to a name outside the cast
+    fails. A marker's view and visible parts are checked against
+    the character sheet gate's catalogue and part-scope table:
+    a face shown from behind, a part that is not visible from
+    the marker's view, a view that contradicts the camera
+    relation, or a view the sheet does not carry all fail and
+    name the marker, the person and the part or view.
+    """
+    if not isinstance(record, dict):
+        raise CapabilityError("pipeline.scene_reference: blocking must be a JSON object")
+    markers = _req_list(record.get("markers", []), "blocking.markers")
+    cast = _cast_names(record.get("cast"))
+    sheet_views = _sheet_current_views(record.get("character_sheet"))
+    issues: list[dict[str, Any]] = []
+    normalised: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for item in markers:
+        if not isinstance(item, dict):
+            raise CapabilityError("pipeline.scene_reference: every marker must be an object")
+        marker_id = _req_str(item.get("marker_id"), "marker.marker_id")
+        if marker_id in seen_ids:
+            issues.append({"code": "DUPLICATE_MARKER", "severity": "fail",
+                           "message": f"marker {marker_id!r} appears more than once"})
+        seen_ids.add(marker_id)
+        character = item.get("character", "")
+        role = item.get("role", "")
+        if not isinstance(character, str) or not isinstance(role, str):
+            raise CapabilityError("pipeline.scene_reference: marker character and role must be strings")
+        character = character.strip()
+        role = role.strip()
+        bound = character or role
+        if character and cast and character not in cast:
+            issues.append({"code": "UNKNOWN_BLOCKING_CHARACTER", "severity": "fail",
+                           "message": f"marker {marker_id!r} is bound to {character!r}, "
+                                      "who is not in the cast"})
+        if not bound:
+            issues.append({"code": "UNBOUND_MARKER", "severity": "warn",
+                           "message": f"marker {marker_id!r} is bound to nobody; "
+                                      "it is recorded as a person distinct from the cast"})
+        declared = item.get("placeholder_not_in_film") is True
+        declaration = item.get("placeholder_declaration", "")
+        if isinstance(declaration, str) and declaration.strip():
+            declared = True
+        if not declared:
+            issues.append({"code": "MISSING_PLACEHOLDER_DECLARATION", "severity": "fail",
+                           "message": f"marker {marker_id!r} carries no explicit declaration "
+                                      "that the marker does not appear in the finished film"})
+        zone = item.get("screen_zone", "")
+        depth = item.get("depth", "")
+        relation = item.get("camera_relation", "")
+        if not isinstance(zone, str) or not isinstance(depth, str) or not isinstance(relation, str):
+            raise CapabilityError("pipeline.scene_reference: marker zone, depth and relation must be strings")
+        zone, depth, relation = zone.strip(), depth.strip(), relation.strip()
+        if not zone:
+            issues.append({"code": "MISSING_SCREEN_ZONE", "severity": "fail",
+                           "message": f"marker {marker_id!r} states no screen zone"})
+        elif zone not in SCREEN_ZONES:
+            issues.append({"code": "UNKNOWN_SCREEN_ZONE", "severity": "fail",
+                           "message": f"marker {marker_id!r} has unknown screen zone {zone!r}"})
+        if not depth:
+            issues.append({"code": "MISSING_DEPTH", "severity": "fail",
+                           "message": f"marker {marker_id!r} states no depth"})
+        elif depth not in DEPTHS:
+            issues.append({"code": "UNKNOWN_DEPTH", "severity": "fail",
+                           "message": f"marker {marker_id!r} has unknown depth {depth!r}"})
+        if not relation:
+            issues.append({"code": "MISSING_CAMERA_RELATION", "severity": "fail",
+                           "message": f"marker {marker_id!r} states no camera relation"})
+        elif relation not in CAMERA_RELATIONS:
+            issues.append({"code": "UNKNOWN_CAMERA_RELATION", "severity": "fail",
+                           "message": f"marker {marker_id!r} has unknown camera relation {relation!r}"})
+        view = item.get("view", "")
+        if not isinstance(view, str):
+            raise CapabilityError("pipeline.scene_reference: marker view must be a string")
+        view = view.strip()
+        if view:
+            if view not in VIEW_IDS:
+                issues.append({"code": "UNKNOWN_VIEW", "severity": "fail",
+                               "message": f"marker {marker_id!r} has unknown view {view!r}"})
+            else:
+                if relation in _RELATION_VIEWS and view not in _RELATION_VIEWS[relation]:
+                    issues.append({"code": "BLOCKING_VIEW_RELATION_CONFLICT", "severity": "fail",
+                                   "message": f"marker {marker_id!r} ({bound or 'unbound'}) pairs view "
+                                              f"{view!r} with camera relation {relation!r}, which shows "
+                                              f"{', '.join(_RELATION_VIEWS[relation])}"})
+                if sheet_views is not None and view not in sheet_views:
+                    issues.append({"code": "BLOCKING_VIEW_NOT_IN_SHEET", "severity": "fail",
+                                   "message": f"marker {marker_id!r} ({bound or 'unbound'}) uses view "
+                                              f"{view!r}, which the character sheet does not carry"})
+        parts = item.get("visible_parts", [])
+        part_list = _req_list(parts, "marker.visible_parts")
+        for part in part_list:
+            if not isinstance(part, str):
+                raise CapabilityError("pipeline.scene_reference: every visible part must be a string")
+            part = part.strip()
+            if part not in PART_IDS:
+                issues.append({"code": "UNKNOWN_PART", "severity": "fail",
+                               "message": f"marker {marker_id!r} names unknown part {part!r}"})
+                continue
+            if not view or view not in VIEW_IDS:
+                continue
+            if part == "face" and view in REAR_VIEWS:
+                issues.append({"code": "BLOCKING_FACE_IN_REAR_VIEW", "severity": "fail",
+                               "message": f"marker {marker_id!r} ({bound or 'unbound'}) shows face "
+                                          f"from rear view {view!r}"})
+            elif view not in DEFAULT_PART_TABLE[part]["views"]:
+                issues.append({"code": "BLOCKING_PART_SCOPE", "severity": "fail",
+                               "message": f"marker {marker_id!r} ({bound or 'unbound'}) shows part "
+                                          f"{part!r}, which is not visible from view {view!r}"})
+        normalised.append({"marker_id": marker_id,
+                           "character": character or None, "role": role or None,
+                           "bound_to": bound or None,
+                           "distinct_from_cast": not bool(bound),
+                           "placeholder_declared": declared,
+                           "screen_zone": zone or None, "depth": depth or None,
+                           "camera_relation": relation or None, "view": view or None})
+    fatal = any(i["severity"] == "fail" for i in issues)
+    return {"verdict": "fail" if fatal else "pass", "issues": issues,
+            "markers": normalised, "marker_count": len(normalised)}
+
+
+# ---------------------------------------------------------------- output precheck
+
+H3_FPS = 24
+H3_FRAME_STEP = 17
+H3_FRAME_OFFSET = 5
+H3_GRID = 32
+CROP_GRID = 16
+DEFAULT_TARGET_MEGAPIXELS = 0.4
+
+
+def h3_frame_count(seconds: float, fps: float = H3_FPS) -> int:
+    """Snap a duration to the H3 frame lattice: 17k + 5 frames.
+
+    At 24 fps, 5 seconds snaps to 124 frames (5.167 seconds of
+    picture). Short requests floor at 5 frames. This is plan
+    arithmetic only; it does not change any other capability's
+    locked execution values.
+    """
+    for value, what in ((seconds, "seconds"), (fps, "fps")):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise CapabilityError(f"pipeline.scene_reference: {what} must be a finite number")
+    if seconds <= 0 or fps <= 0:
+        raise CapabilityError("pipeline.scene_reference: seconds and fps must be positive")
+    frames = max(H3_FRAME_OFFSET, int(round(seconds * fps)))
+    return frames + (H3_FRAME_OFFSET - frames % H3_FRAME_STEP) % H3_FRAME_STEP
+
+
+def h3_output_size(width: int, height: int, megapixels: float = DEFAULT_TARGET_MEGAPIXELS,
+                   grid: int = H3_GRID) -> tuple[int, int]:
+    """Snap a frame size to about ``megapixels``, both sides on ``grid``.
+
+    The aspect is kept: the frame is scaled to the target area
+    and each side is rounded to the nearest grid multiple. Plan
+    arithmetic only; no picture is resized here.
+    """
+    for value, what in ((width, "width"), (height, "height"), (grid, "grid")):
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise CapabilityError(f"pipeline.scene_reference: {what} must be a positive integer")
+    if isinstance(megapixels, bool) or not isinstance(megapixels, (int, float)) \
+            or not math.isfinite(megapixels) or megapixels <= 0:
+        raise CapabilityError("pipeline.scene_reference: megapixels must be a positive number")
+    scale = math.sqrt(megapixels * 1_000_000 / (width * height))
+    return (max(grid, round(width * scale / grid) * grid),
+            max(grid, round(height * scale / grid) * grid))
+
+
+def _parse_ratio(value: Any) -> float:
+    if isinstance(value, bool):
+        raise CapabilityError("pipeline.scene_reference: aspect must be a number or 'W:H' text")
+    if isinstance(value, (int, float)):
+        if not math.isfinite(value) or value <= 0:
+            raise CapabilityError("pipeline.scene_reference: aspect must be positive")
+        return float(value)
+    if isinstance(value, str):
+        parts = value.strip().split(":")
+        if len(parts) == 2:
+            try:
+                numerator, denominator = float(parts[0]), float(parts[1])
+            except ValueError:
+                raise CapabilityError(
+                    f"pipeline.scene_reference: unparseable aspect {value!r}") from None
+            if numerator > 0 and denominator > 0:
+                return numerator / denominator
+        raise CapabilityError(f"pipeline.scene_reference: unparseable aspect {value!r}")
+    raise CapabilityError("pipeline.scene_reference: aspect must be a number or 'W:H' text")
+
+
+def _centred_crop(width: int, height: int, ratio: float) -> tuple[int, int, int, int]:
+    """Centred crop of a frame to ``ratio``: (left, top, width, height)."""
+    if width / height > ratio:
+        cropped_width = int(height * ratio) // CROP_GRID * CROP_GRID
+        return (width - cropped_width) // 2, 0, cropped_width, height
+    cropped_height = int(width / ratio) // CROP_GRID * CROP_GRID
+    return 0, (height - cropped_height) // 2, width, cropped_height
+
+
+def _positive_int(value: Any, what: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise CapabilityError(f"pipeline.scene_reference: {what} must be a positive integer")
+    return value
+
+
+def check_output_plan(plan: Any) -> dict[str, Any]:
+    """Precheck a delivery plan: frame lattice, grid size, declared crops.
+
+    ``seconds`` (at ``fps``, default 24) snaps to the frame
+    lattice; a ``requested_frames`` value that disagrees with the
+    snap fails. The output size snaps to the grid at
+    ``target_megapixels`` (default 0.4). A ``target_aspect`` that
+    differs from the source aspect needs a crop, and a
+    ``delivery_frames`` value below the snapped count needs a
+    delivery crop: either crop without a declaration in the plan
+    fails and names the numbers. Nothing here generates, crops
+    or resizes a picture.
+    """
+    if not isinstance(plan, dict):
+        raise CapabilityError("pipeline.scene_reference: output plan must be a JSON object")
+    issues: list[dict[str, Any]] = []
+    seconds = plan.get("seconds")
+    fps = plan.get("fps", H3_FPS)
+    if isinstance(fps, bool) or not isinstance(fps, (int, float)) \
+            or not math.isfinite(fps) or fps <= 0:
+        raise CapabilityError("pipeline.scene_reference: fps must be a positive number")
+    frames: int | None = None
+    if seconds is not None:
+        if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) \
+                or not math.isfinite(seconds) or seconds <= 0:
+            raise CapabilityError("pipeline.scene_reference: seconds must be a positive number")
+        frames = h3_frame_count(seconds, fps)
+    requested = plan.get("requested_frames")
+    if requested is not None:
+        requested = _positive_int(requested, "requested_frames")
+        if frames is not None and requested != frames:
+            issues.append({"code": "REQUESTED_FRAMES_OFF_LATTICE", "severity": "fail",
+                           "message": f"requested {requested} frames, but {seconds} s at {fps} fps "
+                                      f"snaps to {frames} frames on the 17k+5 lattice"})
+        elif frames is None:
+            if requested < H3_FRAME_OFFSET or (requested - H3_FRAME_OFFSET) % H3_FRAME_STEP != 0:
+                issues.append({"code": "REQUESTED_FRAMES_OFF_LATTICE", "severity": "fail",
+                               "message": f"requested {requested} frames is not on the 17k+5 lattice"})
+            frames = requested
+    if frames is None:
+        raise CapabilityError(
+            "pipeline.scene_reference: an output plan needs seconds or requested_frames")
+    source_width = _positive_int(
+        plan.get("source_width", plan.get("width")), "source_width")
+    source_height = _positive_int(
+        plan.get("source_height", plan.get("height")), "source_height")
+    megapixels = plan.get("target_megapixels", DEFAULT_TARGET_MEGAPIXELS)
+    if isinstance(megapixels, bool) or not isinstance(megapixels, (int, float)) \
+            or not math.isfinite(megapixels) or megapixels <= 0:
+        raise CapabilityError("pipeline.scene_reference: target_megapixels must be a positive number")
+    crop: dict[str, Any] | None = None
+    base_width, base_height = source_width, source_height
+    cropped = False
+    target_aspect = plan.get("target_aspect")
+    if target_aspect is not None:
+        ratio = _parse_ratio(target_aspect)
+        left, top, cropped_width, cropped_height = _centred_crop(
+            source_width, source_height, ratio)
+        if (cropped_width, cropped_height) != (source_width, source_height):
+            cropped = True
+            crop = {"left": left, "top": top, "width": cropped_width, "height": cropped_height,
+                    "aspect": str(target_aspect)}
+            base_width, base_height = cropped_width, cropped_height
+            declared = plan.get("crop_declared") is True or isinstance(plan.get("crop"), dict)
+            if not declared:
+                issues.append({"code": "UNDECLARED_CROP", "severity": "fail",
+                               "message": f"framing {source_width}x{source_height} to aspect "
+                                          f"{target_aspect} crops to {cropped_width}x{cropped_height}; "
+                                          "the crop must be declared in the plan"})
+    output_width, output_height = h3_output_size(base_width, base_height, megapixels)
+    delivery_frames: int | None = None
+    delivery_declared = plan.get("delivery_crop_declared") is True \
+        or isinstance(plan.get("delivery_crop"), dict)
+    if plan.get("delivery_frames") is not None:
+        delivery_frames = _positive_int(plan.get("delivery_frames"), "delivery_frames")
+        if delivery_frames != frames and not delivery_declared:
+            issues.append({"code": "UNDECLARED_DELIVERY_CROP", "severity": "fail",
+                           "message": f"delivering {delivery_frames} frames from a {frames}-frame "
+                                      "clip is a crop; it must be declared in the plan"})
+    fatal = any(i["severity"] == "fail" for i in issues)
+    return {"verdict": "fail" if fatal else "pass", "issues": issues,
+            "frames": frames, "frame_seconds": frames / fps,
+            "source_width": source_width, "source_height": source_height,
+            "output_width": output_width, "output_height": output_height,
+            "cropped": cropped, "crop": crop,
+            "delivery_frames": delivery_frames}
+
+
 # ---------------------------------------------------------------- combined
 
 def check_scene_reference(plan: dict[str, Any]) -> dict[str, Any]:
-    """Judge one scene-reference plan: prompt, assembly, final text."""
+    """Judge one scene-reference plan: prompt, assembly, final text,
+    and any photo-scene, blocking or output sections it carries."""
     if not isinstance(plan, dict):
         raise CapabilityError("pipeline.scene_reference: plan must be a JSON object")
     issues: list[dict[str, Any]] = []
@@ -509,6 +1068,18 @@ def check_scene_reference(plan: dict[str, Any]) -> dict[str, Any]:
     issues += assembly_result["issues"]
     final_result = check_final_prompt(plan.get("final", {}))
     issues += final_result["issues"]
+    photo_result: dict[str, Any] | None = None
+    if "photo_scene" in plan:
+        photo_result = check_photo_scene(plan.get("photo_scene"))
+        issues += photo_result["issues"]
+    blocking_result: dict[str, Any] | None = None
+    if "blocking" in plan:
+        blocking_result = check_blocking(plan.get("blocking"))
+        issues += blocking_result["issues"]
+    output_result: dict[str, Any] | None = None
+    if "output" in plan:
+        output_result = check_output_plan(plan.get("output"))
+        issues += output_result["issues"]
     fatal = any(i["severity"] == "fail" for i in issues)
     stale = any(i["severity"] == "stale" for i in issues)
     pending = any(i["severity"] == "pending" for i in issues)
@@ -522,7 +1093,8 @@ def check_scene_reference(plan: dict[str, Any]) -> dict[str, Any]:
         verdict = "pass"
     return {"verdict": verdict, "issues": issues,
             "prompt": prompt_result, "assembly": assembly_result,
-            "final": final_result}
+            "final": final_result, "photo_scene": photo_result,
+            "blocking": blocking_result, "output": output_result}
 
 
 def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int) -> CapabilityResult:
@@ -560,9 +1132,11 @@ def register_scene_reference_capabilities_once() -> list[str]:
             "Scene-reference assembly discipline (clean-room): the "
             "single six-section reference-prompt format shared with "
             "the character sheet gate, a scene-first reference "
-            "assembly record with picture/voice slot budgets, and "
-            "an intent/final separation gate. Judges and assembles "
-            "JSON plans only; no image is generated here."
+            "assembly record with picture/voice slot budgets, an "
+            "intent/final separation gate, a photo-scene record, a "
+            "blocking record checked against the character sheet "
+            "gate, and a frame/size output precheck. Judges and "
+            "assembles JSON plans only; no image is generated here."
         ),
         line="pipeline",
     ))

@@ -237,3 +237,328 @@ def test_format_defined_in_exactly_one_capabilities_module():
 
 def test_capability_registered():
     assert get("pipeline.scene_reference") is not None
+
+
+# ---------------------------------------------------------------- P1: photo scene
+
+def _photo_record(**overrides):
+    record = {
+        "main_view": "main.jpg",
+        "angles": [
+            {"ref_id": "door.jpg", "description": "The same room from the doorway."},
+            {"ref_id": "window.jpg", "description": "The same room from the window."},
+        ],
+        "place_description": "A quiet tea room with a wooden floor and low light.",
+        "create": "movie",
+    }
+    record.update(overrides)
+    return record
+
+
+def test_photo_scene_movie_passes_and_applies_angles():
+    result = sr.check_photo_scene(_photo_record())
+    assert result["verdict"] == "pass"
+    assert result["main_view"] == "main.jpg"
+    assert result["angle_count"] == 2
+    assert result["angles_applied"] is True
+    assert result["angles_for_movie"] == 2
+
+
+def test_photo_scene_image_without_angles_passes():
+    result = sr.check_photo_scene(
+        _photo_record(angles=[], create="image"))
+    assert result["verdict"] == "pass"
+    assert result["angles_applied"] is False
+
+
+def test_photo_scene_no_main_view_fails():
+    result = sr.check_photo_scene(
+        {"angles": [{"ref_id": "a.jpg", "description": "From the door."}],
+         "place_description": "A tea room."})
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "NO_MAIN_VIEW" for i in result["issues"])
+
+
+def test_photo_scene_multiple_mains_fail():
+    result = sr.check_photo_scene({"pictures": [
+        {"ref_id": "a.jpg", "role": "main"},
+        {"ref_id": "b.jpg", "role": "main"},
+    ], "place_description": "A tea room."})
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "MULTIPLE_MAIN_VIEWS" for i in result["issues"])
+
+
+def test_photo_scene_main_not_first_fails():
+    result = sr.check_photo_scene({"pictures": [
+        {"ref_id": "a.jpg", "role": "angle", "description": "From the door."},
+        {"ref_id": "b.jpg", "role": "main"},
+    ], "place_description": "A tea room."})
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "MAIN_VIEW_NOT_FIRST" for i in result["issues"])
+
+
+def test_photo_scene_angle_without_description_is_pending():
+    record = _photo_record()
+    record["angles"] = [{"ref_id": "door.jpg", "description": ""}]
+    result = sr.check_photo_scene(record)
+    assert result["verdict"] == "pending"
+    assert any(i["code"] == "ANGLE_WITHOUT_DESCRIPTION" for i in result["issues"])
+
+
+def test_photo_scene_angle_cap_fails():
+    record = _photo_record()
+    record["angles"] = [
+        {"ref_id": f"a{i}.jpg", "description": "Another angle."} for i in range(5)]
+    result = sr.check_photo_scene(record)
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "ANGLE_CAP" for i in result["issues"])
+
+
+def test_photo_scene_image_with_angles_warns_and_does_not_apply():
+    result = sr.check_photo_scene(_photo_record(create="image"))
+    assert result["verdict"] == "pass"
+    assert result["angles_applied"] is False
+    assert any(i["code"] == "ANGLES_NOT_APPLIED_TO_IMAGE" for i in result["issues"])
+
+
+def test_photo_scene_angles_in_pictures_warns_about_camera_risk():
+    result = sr.check_photo_scene(
+        _photo_record(create="image", angles_in_pictures=True))
+    assert result["verdict"] == "pass"
+    assert result["angles_applied"] is True
+    assert any(i["code"] == "ANGLES_IN_PICTURES_RISK" for i in result["issues"])
+
+
+def test_photo_scene_missing_place_description_is_pending():
+    record = _photo_record()
+    record.pop("place_description")
+    result = sr.check_photo_scene(record)
+    assert result["verdict"] == "pending"
+    assert any(i["code"] == "PLACE_DESCRIPTION_MISSING" for i in result["issues"])
+
+
+def test_photo_scene_place_describing_people_fails():
+    result = sr.check_photo_scene(
+        _photo_record(place_description="A tea room where a man stands by the window."))
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "PLACE_DESCRIPTION_CONTENT" for i in result["issues"])
+
+
+def test_photo_scene_place_commenting_on_photo_quality_fails():
+    result = sr.check_photo_scene(
+        _photo_record(place_description="A blurry photo of a tea room, poor quality."))
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "PLACE_DESCRIPTION_CONTENT" for i in result["issues"])
+
+
+# ---------------------------------------------------------------- P1: blocking
+
+def _blocking_record(**overrides):
+    record = {
+        "cast": ["Mei"],
+        "markers": [{
+            "marker_id": "m1", "character": "Mei",
+            "screen_zone": "left", "depth": "foreground",
+            "camera_relation": "facing_camera",
+            "view": "body_front", "visible_parts": ["face", "upper_clothing"],
+            "placeholder_not_in_film": True,
+        }],
+    }
+    record.update(overrides)
+    return record
+
+
+def test_blocking_passes_and_reuses_character_sheet_tables():
+    from hevi.capabilities import character_sheet as cs
+
+    assert sr.DEFAULT_PART_TABLE is cs.DEFAULT_PART_TABLE
+    result = sr.check_blocking(_blocking_record())
+    assert result["verdict"] == "pass"
+    assert result["markers"][0]["bound_to"] == "Mei"
+    assert result["markers"][0]["distinct_from_cast"] is False
+
+
+def test_blocking_missing_placeholder_declaration_fails():
+    record = _blocking_record()
+    record["markers"][0].pop("placeholder_not_in_film")
+    result = sr.check_blocking(record)
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "MISSING_PLACEHOLDER_DECLARATION" for i in result["issues"])
+
+
+def test_blocking_unbound_marker_is_recorded_as_distinct_not_failed():
+    record = _blocking_record()
+    record["markers"][0].pop("character")
+    result = sr.check_blocking(record)
+    assert result["verdict"] == "pass"
+    assert result["markers"][0]["distinct_from_cast"] is True
+    assert any(i["code"] == "UNBOUND_MARKER" for i in result["issues"])
+
+
+def test_blocking_unknown_character_fails_and_names_marker():
+    record = _blocking_record()
+    record["markers"][0]["character"] = "NoSuchPerson"
+    result = sr.check_blocking(record)
+    assert result["verdict"] == "fail"
+    issue = next(i for i in result["issues"]
+                 if i["code"] == "UNKNOWN_BLOCKING_CHARACTER")
+    assert "m1" in issue["message"] and "NoSuchPerson" in issue["message"]
+
+
+def test_blocking_face_in_rear_view_fails():
+    record = _blocking_record()
+    marker = record["markers"][0]
+    marker.update({"camera_relation": "back_to_camera", "view": "body_back",
+                   "visible_parts": ["face"]})
+    result = sr.check_blocking(record)
+    assert result["verdict"] == "fail"
+    issue = next(i for i in result["issues"]
+                 if i["code"] == "BLOCKING_FACE_IN_REAR_VIEW")
+    assert "m1" in issue["message"] and "body_back" in issue["message"]
+
+
+def test_blocking_part_out_of_view_scope_fails():
+    record = _blocking_record()
+    marker = record["markers"][0]
+    marker.update({"view": "face_front", "visible_parts": ["footwear"]})
+    result = sr.check_blocking(record)
+    assert result["verdict"] == "fail"
+    issue = next(i for i in result["issues"]
+                 if i["code"] == "BLOCKING_PART_SCOPE")
+    assert "footwear" in issue["message"] and "face_front" in issue["message"]
+
+
+def test_blocking_view_relation_conflict_fails():
+    record = _blocking_record()
+    marker = record["markers"][0]
+    marker.update({"camera_relation": "back_to_camera", "view": "body_front",
+                   "visible_parts": ["upper_clothing"]})
+    result = sr.check_blocking(record)
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "BLOCKING_VIEW_RELATION_CONFLICT"
+               for i in result["issues"])
+
+
+def test_blocking_view_not_in_sheet_fails():
+    record = _blocking_record(character_sheet={"views": ["body_front"]})
+    marker = record["markers"][0]
+    marker.update({"camera_relation": "back_to_camera", "view": "body_back",
+                   "visible_parts": ["back_clothing"]})
+    result = sr.check_blocking(record)
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "BLOCKING_VIEW_NOT_IN_SHEET"
+               for i in result["issues"])
+
+
+def test_blocking_duplicate_marker_and_unknown_zone_fail():
+    record = _blocking_record()
+    record["markers"].append(dict(record["markers"][0]))
+    record["markers"][1]["screen_zone"] = "middle"
+    result = sr.check_blocking(record)
+    codes = {i["code"] for i in result["issues"]}
+    assert result["verdict"] == "fail"
+    assert "DUPLICATE_MARKER" in codes
+    assert "UNKNOWN_SCREEN_ZONE" in codes
+
+
+# ---------------------------------------------------------------- P1: output precheck
+
+def test_frame_count_lattice():
+    assert sr.h3_frame_count(5) == 124
+    assert sr.h3_frame_count(5.0, 24) == 124
+    assert sr.h3_frame_count(0.1) == 5
+    assert sr.h3_frame_count(2) == 56
+    assert sr.h3_frame_count(10) == 243
+    with pytest.raises(CapabilityError):
+        sr.h3_frame_count(0)
+    with pytest.raises(CapabilityError):
+        sr.h3_frame_count(-1)
+
+
+def test_output_size_snaps_to_grid_at_target_area():
+    width, height = sr.h3_output_size(1920, 1080)
+    assert (width, height) == (832, 480)
+    assert width % 32 == 0 and height % 32 == 0
+    with pytest.raises(CapabilityError):
+        sr.h3_output_size(0, 1080)
+
+
+def test_output_plan_passes_without_crop():
+    result = sr.check_output_plan(
+        {"seconds": 5, "source_width": 1920, "source_height": 1080})
+    assert result["verdict"] == "pass"
+    assert result["frames"] == 124
+    assert result["frame_seconds"] == pytest.approx(124 / 24)
+    assert (result["output_width"], result["output_height"]) == (832, 480)
+    assert result["cropped"] is False
+
+
+def test_output_plan_requested_frames_off_lattice_fails():
+    result = sr.check_output_plan(
+        {"seconds": 5, "requested_frames": 120,
+         "source_width": 1920, "source_height": 1080})
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "REQUESTED_FRAMES_OFF_LATTICE"
+               for i in result["issues"])
+    alone = sr.check_output_plan(
+        {"requested_frames": 124, "source_width": 1920, "source_height": 1080})
+    assert alone["verdict"] == "pass" and alone["frames"] == 124
+    off = sr.check_output_plan(
+        {"requested_frames": 120, "source_width": 1920, "source_height": 1080})
+    assert off["verdict"] == "fail"
+
+
+def test_output_plan_undeclared_aspect_crop_fails_and_declared_passes():
+    plan = {"seconds": 5, "source_width": 1920, "source_height": 1080,
+            "target_aspect": "9:16"}
+    result = sr.check_output_plan(plan)
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "UNDECLARED_CROP" for i in result["issues"])
+    declared = sr.check_output_plan({**plan, "crop_declared": True})
+    assert declared["verdict"] == "pass"
+    assert declared["cropped"] is True
+    assert (declared["crop"]["width"], declared["crop"]["height"]) == (592, 1080)
+    assert (declared["output_width"], declared["output_height"]) == (480, 864)
+
+
+def test_output_plan_undeclared_delivery_crop_fails_and_declared_passes():
+    plan = {"seconds": 5, "source_width": 1920, "source_height": 1080,
+            "delivery_frames": 120}
+    result = sr.check_output_plan(plan)
+    assert result["verdict"] == "fail"
+    assert any(i["code"] == "UNDECLARED_DELIVERY_CROP" for i in result["issues"])
+    declared = sr.check_output_plan({**plan, "delivery_crop_declared": True})
+    assert declared["verdict"] == "pass"
+    assert declared["delivery_frames"] == 120
+
+
+def test_output_plan_malformed_duration_raises():
+    with pytest.raises(CapabilityError):
+        sr.check_output_plan({"source_width": 1920, "source_height": 1080})
+    with pytest.raises(CapabilityError):
+        sr.check_output_plan({"seconds": 0, "source_width": 1920,
+                              "source_height": 1080})
+
+
+# ---------------------------------------------------------------- P1: combined
+
+def test_combined_plan_with_p1_sections_passes_and_reports_them():
+    plan = {"build": BASE_PLAN, "assembly": _assembly(),
+            "final": {"intent": "tea room", "final_text": "A finished prompt."},
+            "photo_scene": _photo_record(),
+            "blocking": _blocking_record(),
+            "output": {"seconds": 5, "source_width": 1920, "source_height": 1080}}
+    result = sr.check_scene_reference(plan)
+    assert result["verdict"] == "pass"
+    assert result["photo_scene"]["verdict"] == "pass"
+    assert result["blocking"]["verdict"] == "pass"
+    assert result["output"]["frames"] == 124
+
+
+def test_combined_plan_fails_on_blocking_without_declaration():
+    blocking = _blocking_record()
+    blocking["markers"][0].pop("placeholder_not_in_film")
+    plan = {"build": BASE_PLAN, "assembly": _assembly(),
+            "final": {"intent": "tea room", "final_text": "A finished prompt."},
+            "blocking": blocking}
+    assert sr.check_scene_reference(plan)["verdict"] == "fail"
