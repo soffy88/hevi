@@ -665,6 +665,15 @@ _facts_discipline.register_facts_discipline_capabilities_once()
 from . import character_sheet as _character_sheet  # noqa: E402,F401
 _character_sheet.register_character_sheet_capabilities_once()
 
+# H3 character-sheet P1 grafts (2026-10-31, clean-room, method ideas
+# only): qa.character_sheet_contract (versioned, strictly key-checked,
+# byte-deterministic state contract with explicit migration,
+# layout-guide ON/OFF discipline with self-drawn guides only, and a
+# style-only-painting rule; judges JSON plans only, no image
+# generated, no ComfyUI). See H3_CHARACTER_SHEET_ATTRIBUTION.md.
+from . import character_sheet_contract as _character_sheet_contract  # noqa: E402,F401
+_character_sheet_contract.register_character_sheet_contract_capabilities_once()
+
 # SceneRef P0 grafts (2026-10-31, clean-room, method ideas only):
 # pipeline.scene_reference (the single six-section reference-prompt
 # format shared with the character sheet gate, a scene-first
