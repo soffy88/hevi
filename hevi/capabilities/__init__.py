@@ -747,3 +747,11 @@ from . import frozen_picture_gate as _frozen_picture_gate  # noqa: E402,F401
 _frozen_picture_gate.register_frozen_picture_gate_capabilities_once()
 from . import beats_schema_gate as _beats_schema_gate  # noqa: E402,F401
 _beats_schema_gate.register_beats_schema_gate_capabilities_once()
+
+# Floyo H3 registration (2026-10-31, registration only, no account /
+# payment / promo code / network / generation): model.floyo_h3_registration
+# records the Floyo-hosted Minimax_H3_Image_to_Video_OpenWeight workflow
+# and the separate local H3 route in a model directory, both unverified;
+# unstated claims stay "unverified". See floyo_h3_registration.py.
+from . import floyo_h3_registration as _floyo_h3_registration  # noqa: E402,F401
+_floyo_h3_registration.register_floyo_h3_registration_capabilities_once()
