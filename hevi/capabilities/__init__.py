@@ -654,3 +654,13 @@ from . import critic_review as _critic_review  # noqa: E402,F401
 _critic_review.register_critic_review_capabilities_once()
 from . import facts_discipline as _facts_discipline  # noqa: E402,F401
 _facts_discipline.register_facts_discipline_capabilities_once()
+
+# H3 character-sheet P0 grafts (2026-10-31, clean-room, method ideas
+# only): qa.character_sheet_gate (fixed thirteen-view catalogue with
+# a pending-not-fabricated missing-view rule, body-part scope table,
+# reference-role policy; judges JSON plans only, no image generated,
+# no ComfyUI). See H3_CHARACTER_SHEET_ATTRIBUTION.md (MIT method
+# source, ukr8b3g-cmyk/H3-Character-Sheet-Designer; artwork, screenshots
+# and weights expressly outside that licence).
+from . import character_sheet as _character_sheet  # noqa: E402,F401
+_character_sheet.register_character_sheet_capabilities_once()
