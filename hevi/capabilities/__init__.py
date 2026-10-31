@@ -699,3 +699,20 @@ from . import project_style_sheet as _project_style_sheet  # noqa: E402,F401
 _project_style_sheet.register_project_style_sheet_capabilities_once()
 from . import voice_first_gate as _voice_first_gate  # noqa: E402,F401
 _voice_first_gate.register_voice_first_gate_capabilities_once()
+
+# open-source-canvas P0 grafts (2026-10-31, clean-room, method ideas
+# only): qa.comfy_gateway_contract (six-endpoint allowlist, body cap,
+# visitor isolation, redacted health checks), qa.model_install_gate
+# (pre-submit loader-visibility check against a caller-supplied
+# snapshot), and pipeline.canvas_execution_schedule (ready batches,
+# upstream-failure skip, interrupt cancel, one task per seed, single
+# retry ceiling from canvas_workflow). Contract/plan only: no ComfyUI
+# execution, no credentials, no collaboration room, no API wrappers.
+# See OPEN_SOURCE_CANVAS_ATTRIBUTION.md (MIT method source,
+# raph651/open-source-canvas).
+from . import comfy_gateway_contract as _comfy_gateway_contract  # noqa: E402,F401
+_comfy_gateway_contract.register_comfy_gateway_capabilities_once()
+from . import model_install_gate as _model_install_gate  # noqa: E402,F401
+_model_install_gate.register_model_install_capabilities_once()
+from . import canvas_execution_schedule as _canvas_execution_schedule  # noqa: E402,F401
+_canvas_execution_schedule.register_canvas_execution_capabilities_once()
