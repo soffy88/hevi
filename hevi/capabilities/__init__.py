@@ -664,3 +664,14 @@ _facts_discipline.register_facts_discipline_capabilities_once()
 # and weights expressly outside that licence).
 from . import character_sheet as _character_sheet  # noqa: E402,F401
 _character_sheet.register_character_sheet_capabilities_once()
+
+# SceneRef P0 grafts (2026-10-31, clean-room, method ideas only):
+# pipeline.scene_reference (the single six-section reference-prompt
+# format shared with the character sheet gate, a scene-first
+# reference assembly record with slot budgets, and an
+# intent/final separation gate; judges JSON plans only, no image
+# generated, no ComfyUI). See SCENEREF_ATTRIBUTION.md (Apache-2.0
+# method source, AliC-2001/ComfyUI-SceneRef-Nodes; artwork and
+# weights expressly outside that licence).
+from . import scene_reference as _scene_reference  # noqa: E402,F401
+_scene_reference.register_scene_reference_capabilities_once()
