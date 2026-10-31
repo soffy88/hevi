@@ -41,3 +41,19 @@ Upstream evidence limits (from the read-only review,
 100-star, single-maintainer 0.2.0 repository with no tests and
 demo-only online evidence. Nothing in this graft relies on the
 upstream demo, screenshots or self-reported local runs.
+
+## Addendum: canvas ComfyUI executor (2026-10-31, D group)
+
+The "no real ComfyUI executor" line above is now partly
+superseded: `pipeline.canvas_comfy_executor` exists and
+translates canvas_workflow video nodes into ComfyUI API graphs
+(template plus runtime injection, 32-grid snapping) and submits
+them after the gateway contract and model-install gate, with
+800 ms /history polling, a 10-minute timeout and /interrupt
+cancel. Evidence limit, unchanged in kind: it has ONLY been
+exercised against a local fake ComfyUI server
+(tests/test_canvas_comfy_executor.py); no real ComfyUI
+generation has been run through it, because the local GPU is
+stopped. The collaboration room, API-model wrappers, H3
+workflow and 3D viewer chain remain unimplemented, for the
+reasons listed above.

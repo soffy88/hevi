@@ -777,3 +777,16 @@ from . import decision_log as _decision_log  # noqa: E402,F401
 _decision_log.register_decision_log_capabilities_once()
 from . import ai_tells_ban as _ai_tells_ban  # noqa: E402,F401
 _ai_tells_ban.register_ai_tells_ban_capabilities_once()
+
+# open-source-canvas P1-4 graft (2026-10-31, clean-room, method ideas
+# only): pipeline.canvas_comfy_executor translates canvas_workflow
+# video nodes into ComfyUI API graphs (template plus runtime
+# injection, sizes snapped to the 32 grid) and submits them after
+# the gateway contract and model-install gate, polling /history
+# at 800 ms with a 10-minute timeout and cancelling via /interrupt.
+# Tested only against a local fake ComfyUI server; no real ComfyUI
+# generation has been run through it (GPU stopped). No
+# collaboration room, no API wrappers, no H3 workflow, no 3D chain.
+# See OPEN_SOURCE_CANVAS_ATTRIBUTION.md (MIT method source).
+from . import canvas_comfy_executor as _canvas_comfy_executor  # noqa: E402,F401
+_canvas_comfy_executor.register_canvas_comfy_executor_capabilities_once()
