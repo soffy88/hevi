@@ -790,3 +790,13 @@ _ai_tells_ban.register_ai_tells_ban_capabilities_once()
 # See OPEN_SOURCE_CANVAS_ATTRIBUTION.md (MIT method source).
 from . import canvas_comfy_executor as _canvas_comfy_executor  # noqa: E402,F401
 _canvas_comfy_executor.register_canvas_comfy_executor_capabilities_once()
+
+# Editorial project model (2026-10-31, clean-room, method ideas
+# only): edit.editorial_project -- Asset-first references, clips
+# pinned to concrete Assets, Takes with Original restore, lineage
+# stored separately from canvas edges, and a revision-checked,
+# idempotent incremental write path. Model only; no MCP layer,
+# no browser canvas/timeline UI, no export, no provider adapter.
+# See BEATDESIGN_ATTRIBUTION.md (Apache-2.0 method source).
+from . import editorial_project as _editorial_project  # noqa: E402,F401
+_editorial_project.register_editorial_project_capabilities_once()
