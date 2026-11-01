@@ -402,6 +402,16 @@ def main():
         scene.cycles.denoiser = "OPENIMAGEDENOISE"
     except Exception:
         pass
+    # Speed (2026-10-22): OIDN default prefilter/quality cost ~3s/frame on CPU;
+    # FAST + persistent data + adaptive sampling cut 480p to ~1s/frame.
+    for _attr, _val in (("denoising_prefilter", "FAST"), ("denoising_quality", "FAST")):
+        try:
+            setattr(scene.cycles, _attr, _val)
+        except Exception:
+            pass
+    scene.cycles.use_adaptive_sampling = True
+    scene.cycles.adaptive_threshold = 0.05
+    scene.render.use_persistent_data = True
     scene.cycles.seed = int(CFG["seed"])
     scene.render.resolution_x = int(CFG["width"])
     scene.render.resolution_y = int(CFG["height"])
