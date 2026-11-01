@@ -20,12 +20,14 @@ def test_frozen_samples_all_match_expectation(tmp_path: Path) -> None:
     report = run_frozen_samples(tmp_path)
     assert report["sample_version"] == SAMPLE_VERSION
     assert report["verdict"] == "pass", report["samples"]
-    assert report["matched"] == report["total"] == 10
+    assert report["matched"] == report["total"] == 12
     names = [s["name"] for s in report["samples"]]
     assert "good_beat_episode" in names
     assert "repeated_beats_fail" in names
     assert "chinese_dialogue_without_voice_fails" in names
     assert "scene_reference_without_duration_fails" in names
+    assert "good_three_layer_clip" in names
+    assert "two_actions_in_one_segment_fails" in names
 
 
 def test_good_sample_measurements_are_real_numbers(tmp_path: Path) -> None:

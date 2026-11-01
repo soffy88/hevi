@@ -44,7 +44,7 @@ from hevi.capabilities.registry import (
 
 _Registered = False
 
-SAMPLE_VERSION = "2"  # v2: scene samples carry execution fields (fix 6).
+SAMPLE_VERSION = "3"  # v3: three-layer clip samples added (7-step workflow graft); v2 samples untouched.
 
 # Generation-consistency measurements: interface only. Each entry
 # names the measurement, the offline artifact it needs, and the
@@ -622,6 +622,21 @@ def build_frozen_samples(work_dir: Path) -> list[dict[str, Any]]:
         "expect": "fail", "plan": no_duration,
         "reference_files": scene_bindings,
     })
+
+    # v3: three-layer clip samples (7-step workflow graft). The
+    # fixtures live in qa.three_layer_clip and are versioned there;
+    # the harness only pins two of them (one pass, one fail).
+    from hevi.capabilities.three_layer_clip import (
+        build_three_layer_fixtures,
+    )
+
+    for fixture in build_three_layer_fixtures():
+        if fixture["name"] in ("good_three_layer_clip",
+                               "two_actions_in_one_segment_fails"):
+            samples.append({
+                "name": fixture["name"], "kind": "three_layer_clip",
+                "expect": fixture["expect"], "clip": fixture["clip"],
+            })
     return samples
 
 
@@ -697,6 +712,24 @@ def evaluate_sample(sample: dict[str, Any]) -> dict[str, Any]:
                 "frames": built.get("frames"),
                 "execution_in_text": "243 frames" in built["text"],
                 "execution": built.get("execution", {}),
+            }
+            report["issues"] = []
+        elif kind == "three_layer_clip":
+            from hevi.capabilities.three_layer_clip import (
+                check_three_layer_clip,
+            )
+
+            check = check_three_layer_clip(sample["clip"])
+            if check["verdict"] != "pass":
+                raise CapabilityError(
+                    "qa.three_layer_clip: check verdict "
+                    f"{check['verdict']}: "
+                    f"{[i['code'] for i in check['issues']]}")
+            report["verdict"] = "pass"
+            report["measurements"] = {
+                "segments": len(check["segments"]),
+                "still_instant_once": check["rendered"].count("[静图瞬间]") == 1
+                if check["rendered"] else False,
             }
             report["issues"] = []
         else:

@@ -892,3 +892,38 @@ from . import athenaion_waterfall as _athenaion_waterfall  # noqa: E402,F401
 _athenaion_waterfall.register_athenaion_waterfall_capabilities_once()
 from . import athenaion_vegetation as _athenaion_vegetation  # noqa: E402,F401
 _athenaion_vegetation.register_athenaion_vegetation_capabilities_once()
+
+# Seven-step video workflow graft (2026-11-01, clean-room, method
+# only, reconstructed from an article description; see
+# VIDEO_WORKFLOW_7STEPS_ATTRIBUTION.md): A1 qa.generation_spec_gate
+# (four-item spec sheet, tier reuse, no invented numbers), A2
+# qa.ban_revision_log (rule_id + supersede chain, retired text
+# kept), A3 qa.verdict_vocabulary (single pass/fail/not_checked
+# vocabulary for final_qc skipped and harness
+# planned_not_measured), A4 qa.post_production_checklist (seven
+# post items, generation side refused post work), B1
+# qa.reference_role_gate (four roles, max four images, definition
+# review; H3 route left not_checked under its own budget), B2
+# qa.hardest_shot_pilot (hardest shot first + caller-supplied
+# reserve fraction), B3 qa.three_layer_clip (three layers, one
+# action + one camera move per segment; coexists with the
+# six-section H3 structure, never redefines it), B4 qa.fix_ticket
+# (timecode + segment + check item + verdict, evidence frame on
+# fail). Appended at the tail only; earlier registrations
+# (including native_subtitle_stitch) untouched.
+from . import generation_spec_gate as _generation_spec_gate  # noqa: E402,F401
+_generation_spec_gate.register_generation_spec_gate_capabilities_once()
+from . import ban_revision_log as _ban_revision_log  # noqa: E402,F401
+_ban_revision_log.register_ban_revision_log_capabilities_once()
+from . import verdict_vocabulary as _verdict_vocabulary  # noqa: E402,F401
+_verdict_vocabulary.register_verdict_vocabulary_capabilities_once()
+from . import post_production_checklist as _post_production_checklist  # noqa: E402,F401
+_post_production_checklist.register_post_production_checklist_capabilities_once()
+from . import reference_role_gate as _reference_role_gate  # noqa: E402,F401
+_reference_role_gate.register_reference_role_gate_capabilities_once()
+from . import hardest_shot_pilot as _hardest_shot_pilot  # noqa: E402,F401
+_hardest_shot_pilot.register_hardest_shot_pilot_capabilities_once()
+from . import three_layer_clip as _three_layer_clip  # noqa: E402,F401
+_three_layer_clip.register_three_layer_clip_capabilities_once()
+from . import fix_ticket as _fix_ticket  # noqa: E402,F401
+_fix_ticket.register_fix_ticket_capabilities_once()
