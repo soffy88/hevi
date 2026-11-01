@@ -977,3 +977,45 @@ _threejs_imaging_upgrade.register_threejs_imaging_upgrade_capabilities_once()
 # registrations untouched.
 from . import beat_floor_policy as _beat_floor_policy  # noqa: E402,F401
 _beat_floor_policy.register_beat_floor_policy_capabilities_once()
+
+# open-3d-skills B3/B4 (2026-11-02, clean-room, method only;
+# see OPEN_3D_SKILLS_ATTRIBUTION.md): video.scroll_film_engine
+# (keys-driven scroll film, 4-frame GOP, seam/loop judged by the
+# seam vocabulary gate) and video.alpha_cutout_keyer (per-frame
+# plate keying with edge despill; output must separately pass
+# qa.chroma_key_gate). Appended at the tail only; earlier
+# registrations untouched.
+from . import scroll_film_engine as _scroll_film_engine  # noqa: E402,F401
+_scroll_film_engine.register_scroll_film_engine_capabilities_once()
+from . import alpha_cutout_keyer as _alpha_cutout_keyer  # noqa: E402,F401
+_alpha_cutout_keyer.register_alpha_cutout_keyer_capabilities_once()
+
+# <雨停之前> graft (2026-11-02, clean-room, method only;
+# see RAIN_BEFORE_STOPS_ATTRIBUTION.md): A1 qa.story_intake_gate
+# (five-item story intake + adjective stripping), A2
+# qa.text_image_consistency_gate (written assertions vs picture
+# inventory, window case), A3 qa.review_signoff_gate (author
+# confirmation before the fix list, same-list recheck, old cut
+# kept), A4 qa.issue_kind_labels (continuity / aesthetic /
+# unconfirmed; unconfirmed never counts as pass), A5
+# qa.version_cost_view (read-only per-version cost view, methods
+# marked incomparable, no per-episode quote), B1
+# video.draft_task_ledger (fake backend: 7-day draft task ids,
+# 1080p-only conversion, local files never substitute for an id),
+# B2 model.seedance_pricing_registration (Ark list prices with
+# source and date, derived figures flagged unverified, no key).
+# Appended at the tail only; earlier registrations untouched.
+from . import story_intake_gate as _story_intake_gate  # noqa: E402,F401
+_story_intake_gate.register_story_intake_gate_capabilities_once()
+from . import text_image_consistency_gate as _text_image_consistency_gate  # noqa: E402,F401
+_text_image_consistency_gate.register_text_image_consistency_gate_capabilities_once()
+from . import review_signoff_gate as _review_signoff_gate  # noqa: E402,F401
+_review_signoff_gate.register_review_signoff_gate_capabilities_once()
+from . import issue_kind_labels as _issue_kind_labels  # noqa: E402,F401
+_issue_kind_labels.register_issue_kind_labels_capabilities_once()
+from . import version_cost_view as _version_cost_view  # noqa: E402,F401
+_version_cost_view.register_version_cost_view_capabilities_once()
+from . import draft_task_ledger as _draft_task_ledger  # noqa: E402,F401
+_draft_task_ledger.register_draft_task_ledger_capabilities_once()
+from . import seedance_pricing_registration as _seedance_pricing_registration  # noqa: E402,F401
+_seedance_pricing_registration.register_seedance_pricing_capabilities_once()
