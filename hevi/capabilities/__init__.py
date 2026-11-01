@@ -1019,3 +1019,31 @@ from . import draft_task_ledger as _draft_task_ledger  # noqa: E402,F401
 _draft_task_ledger.register_draft_task_ledger_capabilities_once()
 from . import seedance_pricing_registration as _seedance_pricing_registration  # noqa: E402,F401
 _seedance_pricing_registration.register_seedance_pricing_capabilities_once()
+
+# <oyasumi-gamedev> graft (2026-11-02, clean-room, method only;
+# see OYASUMI_GAMEDEV_ATTRIBUTION.md): A1 qa.panel_contrast_gate
+# (importance tiers, contrast basis, break cues, gutter pauses as
+# not_checked), A2 qa.camera_baseline_drop_gate (baseline, one-axis
+# drop, bridge), A3 qa.emotion_orientation_vocabulary (action
+# direction plus five-part orientations, declared compound intent),
+# A4 qa.effect_restraint_gate (one lead effect, layer-off check,
+# caller thresholds), A5 qa.stage_freeze_gate (stage order, frozen
+# inputs, declared re-review), B1 video.single_image_sway
+# (caller-zoned still-picture sway, deterministic), B2
+# qa.parametric_pose_template (caller ranges, counter-swing /
+# counter-twist, hevi pose JSON plus stick silhouette; no VRMA).
+# Appended at the tail only; earlier registrations untouched.
+from . import panel_contrast_gate as _panel_contrast_gate  # noqa: E402,F401
+_panel_contrast_gate.register_panel_contrast_gate_capabilities_once()
+from . import camera_baseline_drop_gate as _camera_baseline_drop_gate  # noqa: E402,F401
+_camera_baseline_drop_gate.register_camera_baseline_drop_gate_capabilities_once()
+from . import emotion_orientation_vocabulary as _emotion_orientation_vocabulary  # noqa: E402,F401
+_emotion_orientation_vocabulary.register_emotion_orientation_capabilities_once()
+from . import effect_restraint_gate as _effect_restraint_gate  # noqa: E402,F401
+_effect_restraint_gate.register_effect_restraint_gate_capabilities_once()
+from . import stage_freeze_gate as _stage_freeze_gate  # noqa: E402,F401
+_stage_freeze_gate.register_stage_freeze_gate_capabilities_once()
+from . import single_image_sway as _single_image_sway  # noqa: E402,F401
+_single_image_sway.register_single_image_sway_capabilities_once()
+from . import parametric_pose_template as _parametric_pose_template  # noqa: E402,F401
+_parametric_pose_template.register_parametric_pose_template_capabilities_once()
