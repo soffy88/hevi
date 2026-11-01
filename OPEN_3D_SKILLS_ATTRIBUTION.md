@@ -33,11 +33,33 @@ What was grafted (this commit):
   caller-supplied budget, three quality tiers that never
   downgrade while recording, vantages and arc flights).
 
+What was grafted later (2026-11-02, separate commit, same
+clean-room terms; no script text copied):
+
+- B3 `video.scroll_film_engine` — keys-driven scroll film
+  (linear key interpolation with holds, 4-frame GOP, zero
+  B-frames, Range-server requirement for scrub-video
+  delivery); seam and loop scores measured on output frames
+  and judged by `qa.seam_loop_vocabulary` with
+  caller-supplied thresholds; the loop jump is judged only
+  when the plan declares a loop. Synthetic fixtures only.
+- B4 `video.alpha_cutout_keyer` — per-frame border-ring plate
+  measurement, chroma-only keying distance, edge despill
+  `F = (C - (1-a)K) / a`, stacked-alpha / VP9 alpha / WebP
+  delivery; output separately passes `qa.chroma_key_gate`
+  (judge and maker separate). Keying defaults similarity
+  0.10 / blend 0.30 are hevi-chosen values calibrated on the
+  bundled synthetic fixture, not author numbers. VP9 alpha
+  availability is verified per run with ffprobe: this
+  environment's ffmpeg/libvpx drops the alpha plane, so the
+  VP9 delivery is recorded unavailable there and no file is
+  claimed. Shadow/lighting values for the synthetic fixture
+  are the fixture rig's declared values, flagged per frame.
+
 What was not done (residuals, stated plainly):
 
-- B2 browser-check executor, B3 scroll-film engine, B4
-  per-frame plate keying, B6 exploded view, B7 cursor rig:
-  not built in this commit.
+- B2 browser-check executor, B6 exploded view, B7 cursor
+  rig: not built in either commit.
 - GTAO is declared in the B5 plan vocabulary but not
   applied: no GTAO pass is vendored in this repository and
   nothing was downloaded. The applied post stack is
@@ -89,3 +111,11 @@ Evidence (outside this repository, not committed):
 run; B5 three-preset screenshots, measured draw calls /
 triangles, and two-run hash identity. See the evidence
 summary JSON in that directory for the measured values.
+B3/B4 evidence is in `b3/` and `b4/` under the same
+directory (each with its own `evidence.json`): B3 continuous
+film verdict pass with two-run frame-hash identity, cut
+variant fails the seam gate, loop variant pass; B4 24-frame
+drifting-plate keying verdict pass from `qa.chroma_key_gate`,
+worst edge transition 7.0px, stacked-alpha mp4 and WebP
+frames delivered, VP9 alpha recorded unavailable (see above),
+three-background check frames in place.
