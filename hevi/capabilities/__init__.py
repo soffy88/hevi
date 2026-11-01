@@ -29,6 +29,11 @@ from .result import CapabilityResult
 # ``hevi.capabilities.get("scene3d.planet_orbit")``.
 from . import scene3d as _scene3d  # noqa: E402,F401
 _scene3d.register_scene3d_capabilities_once()
+
+# Atlas-figure line (feat/atlas-figure-idiom): physics figure scene specs
+# (verify + invariant checks + deterministic Three.js scene JSON, no pixels).
+from . import atlas_figure as _atlas_figure  # noqa: E402,F401
+_atlas_figure.register_atlas_figure_capabilities_once()
 from . import svfactory as _svfactory  # noqa: E402,F401
 
 # Handdraw line (merged from feat/handdraw-line): importing registers the four
