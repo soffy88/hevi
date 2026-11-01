@@ -1070,3 +1070,37 @@ from . import disk_stream_gate as _disk_stream_gate  # noqa: E402,F401
 _disk_stream_gate.register_disk_stream_gate_capabilities_once()
 from . import degradation_ledger as _degradation_ledger  # noqa: E402,F401
 _degradation_ledger.register_degradation_ledger_capabilities_once()
+
+# <digital-human-koubo recheck> graft (2026-11-02, clean-room,
+# method only; see DIGITAL_HUMAN_KOUBO_ATTRIBUTION.md): A1
+# qa.first_segment_confirmation_gate (first segment confirmed,
+# dual sign-off reused, retake needs a fresh quote), A2
+# qa.segment_listenback_gate (per-segment ASR listen-back record
+# before assembly), A3 qa.misread_judgement_gate (word-by-word
+# comparison, prompted transcripts are not pronunciation
+# evidence, three judgement classes), A4
+# qa.av_duration_consistency_gate (caller tolerance, drift repair
+# chain, missing tolerance is not_checked), A5
+# qa.reference_account_binding_gate (account binding declared,
+# demo/author ids refused), B1 video.segment_cost_ledger (fake
+# local ledger, sourced prices only, over-budget blocked,
+# registered rates flagged unverified), B4
+# qa.packaging_component_vocabulary (method index in hevi's own
+# words, purpose + constraint per use, no template text).
+# B2/B3 blocked (need real audio evidence, a voice-clone key,
+# and the speaker's own recording). Appended at the tail only;
+# earlier registrations untouched.
+from . import first_segment_confirmation_gate as _first_segment_confirmation_gate  # noqa: E402,F401
+_first_segment_confirmation_gate.register_first_segment_confirmation_gate_capabilities_once()
+from . import segment_listenback_gate as _segment_listenback_gate  # noqa: E402,F401
+_segment_listenback_gate.register_segment_listenback_gate_capabilities_once()
+from . import misread_judgement_gate as _misread_judgement_gate  # noqa: E402,F401
+_misread_judgement_gate.register_misread_judgement_gate_capabilities_once()
+from . import av_duration_consistency_gate as _av_duration_consistency_gate  # noqa: E402,F401
+_av_duration_consistency_gate.register_av_duration_consistency_gate_capabilities_once()
+from . import reference_account_binding_gate as _reference_account_binding_gate  # noqa: E402,F401
+_reference_account_binding_gate.register_reference_account_binding_gate_capabilities_once()
+from . import segment_cost_ledger as _segment_cost_ledger  # noqa: E402,F401
+_segment_cost_ledger.register_segment_cost_ledger_capabilities_once()
+from . import packaging_component_vocabulary as _packaging_component_vocabulary  # noqa: E402,F401
+_packaging_component_vocabulary.register_packaging_component_vocabulary_capabilities_once()
