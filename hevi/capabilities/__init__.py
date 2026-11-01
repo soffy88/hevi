@@ -938,3 +938,33 @@ from . import reference_numbering_gate as _reference_numbering_gate  # noqa: E40
 _reference_numbering_gate.register_reference_numbering_gate_capabilities_once()
 from . import segment_match_gate as _segment_match_gate  # noqa: E402,F401
 _segment_match_gate.register_segment_match_gate_capabilities_once()
+
+# open-3d-skills graft (2026-11-01, clean-room, method only;
+# see OPEN_3D_SKILLS_ATTRIBUTION.md): A1 qa.virtual_clock_contract
+# (virtual-clock recording contract), A2 qa.browser_check_matrix
+# (Chromium + WebKit x 1440/768/390 matrix), A3
+# qa.seam_loop_vocabulary (seam/loop scoring vocabulary, thresholds
+# caller-supplied, no defaults), A4 qa.spend_preflight_checklist
+# (spend preflight; budget rule reused from pipeline.spend_brake),
+# A5 qa.transparent_delivery_contract (stacked-alpha / VP9 / WebP
+# delivery; asset must separately pass qa.chroma_key_gate), B1
+# video.virtual_clock_recorder (minimal virtual-clock recorder,
+# __hf settle, two-run hash identity, not BeginFrame), B5
+# world.threejs_imaging_upgrade (lighting presets, post stack,
+# caller-supplied budget, quality tiers, vantages/flights; GTAO
+# declared but not applied -- no vendored GTAO pass). Appended at
+# the tail only; earlier registrations untouched.
+from . import virtual_clock_contract as _virtual_clock_contract  # noqa: E402,F401
+_virtual_clock_contract.register_virtual_clock_contract_capabilities_once()
+from . import browser_check_matrix as _browser_check_matrix  # noqa: E402,F401
+_browser_check_matrix.register_browser_check_matrix_capabilities_once()
+from . import seam_loop_vocabulary as _seam_loop_vocabulary  # noqa: E402,F401
+_seam_loop_vocabulary.register_seam_loop_vocabulary_capabilities_once()
+from . import spend_preflight_checklist as _spend_preflight_checklist  # noqa: E402,F401
+_spend_preflight_checklist.register_spend_preflight_checklist_capabilities_once()
+from . import transparent_delivery_contract as _transparent_delivery_contract  # noqa: E402,F401
+_transparent_delivery_contract.register_transparent_delivery_contract_capabilities_once()
+from . import virtual_clock_recorder as _virtual_clock_recorder  # noqa: E402,F401
+_virtual_clock_recorder.register_virtual_clock_recorder_capabilities_once()
+from . import threejs_imaging_upgrade as _threejs_imaging_upgrade  # noqa: E402,F401
+_threejs_imaging_upgrade.register_threejs_imaging_upgrade_capabilities_once()
