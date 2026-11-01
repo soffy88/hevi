@@ -1047,3 +1047,26 @@ from . import single_image_sway as _single_image_sway  # noqa: E402,F401
 _single_image_sway.register_single_image_sway_capabilities_once()
 from . import parametric_pose_template as _parametric_pose_template  # noqa: E402,F401
 _parametric_pose_template.register_parametric_pose_template_capabilities_once()
+
+# <prefixstream> graft (clean-room, method only; see
+# PREFIXSTREAM_ATTRIBUTION.md): A1 qa.continuation_grid_gate (5+17k
+# grid, compile-time snap, fasth3/h3 calibres separate), A2
+# qa.continuation_source_gate (real product id + sha256, no tags
+# field, no auto-promoted references), A3 qa.clip_lineage_schema
+# (parent lineage, human-only rating, DAG selection branches), A4
+# qa.disk_stream_gate (segmented disk writes + manifest, geometry
+# rejection, seam handling declared separately), A5
+# qa.degradation_ledger (consecutive order, named sources, filled
+# observations; unfilled is not_checked, unverified remedies never
+# defaults). Appended at the tail only; earlier registrations
+# untouched.
+from . import continuation_grid_gate as _continuation_grid_gate  # noqa: E402,F401
+_continuation_grid_gate.register_continuation_grid_gate_capabilities_once()
+from . import continuation_source_gate as _continuation_source_gate  # noqa: E402,F401
+_continuation_source_gate.register_continuation_source_gate_capabilities_once()
+from . import clip_lineage_schema as _clip_lineage_schema  # noqa: E402,F401
+_clip_lineage_schema.register_clip_lineage_schema_capabilities_once()
+from . import disk_stream_gate as _disk_stream_gate  # noqa: E402,F401
+_disk_stream_gate.register_disk_stream_gate_capabilities_once()
+from . import degradation_ledger as _degradation_ledger  # noqa: E402,F401
+_degradation_ledger.register_degradation_ledger_capabilities_once()
