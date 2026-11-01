@@ -810,3 +810,11 @@ _canvas_comfy_executor.register_canvas_comfy_executor_capabilities_once()
 # See BEATDESIGN_ATTRIBUTION.md (Apache-2.0 method source).
 from . import editorial_project as _editorial_project  # noqa: E402,F401
 _editorial_project.register_editorial_project_capabilities_once()
+
+# ASR line fix P0-P3 (2026-11-01): audio.asr_transcribe -- local
+# faster-whisper transcription (default small, large-v3-turbo only as
+# the coverage-triggered fallback), observed-side t2s normalisation
+# plus the versioned audited glossary, all recorded in evidence.
+# final_qc vo_asr calls it via audio_path; see asr_transcribe.py.
+from . import asr_transcribe as _asr_transcribe  # noqa: E402,F401
+_asr_transcribe.register_asr_transcribe_capabilities_once()

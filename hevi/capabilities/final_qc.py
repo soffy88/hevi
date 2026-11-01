@@ -53,6 +53,17 @@ feed the same harness's dialogue measurement alone, as the
 ``vo_asr`` check: the word timings are the
 ``audio.forced_align`` output shape, supplied by the caller
 after a real alignment run -- this gate never calls Monid.
+
+ASR-fix P2/P3: ``audio_path`` makes the gate run ``audio.asr_transcribe``
+itself (default model small, large-v3-turbo only as the coverage-triggered
+fallback) and judge the normalised transcript; the raw transcript, the
+normalised text and the glossary hits stay in ``vo_asr_evidence``.
+``asr_proofreading`` re-reviews a failed ``vo_asr`` check from a human
+corrected transcript kept as independent evidence (corrected text +
+proofreader + timestamp + original transcript preserved + provenance);
+it never edits a verdict field and never overwrites original evidence,
+and it applies only to ASR misrecognition where the voice itself was
+correct (attested by the proofreader).
 """
 
 from __future__ import annotations
@@ -63,6 +74,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -545,6 +557,123 @@ def _find_emoji(text: str) -> list[str]:
     return sorted(set(_EMOJI_RE.findall(text)))
 
 
+def _validate_asr_proofreading(proofreading: Any) -> dict[str, Any]:
+    """Validate a manual ASR proofreading record (P3).
+
+    A proofreading record is independent evidence, not a verdict edit:
+    it must carry ``corrected_transcript``, ``proofreader`` and an
+    attestation that the voice itself was correct
+    (``voice_correct_attested`` must be ``True``). Any key that tries
+    to carry a verdict (``verdict``, ``pass``, ``coverage``,
+    ``checks``, ``failed_checks``) is rejected outright. ``timestamp``
+    defaults to now (UTC) when the caller does not supply one; the
+    recorded timestamp is the one in the evidence.
+    """
+    if not isinstance(proofreading, dict):
+        raise CapabilityError(
+            "qa.final_qc_gate: asr_proofreading must be an object with "
+            "corrected_transcript, proofreader and voice_correct_attested")
+    forbidden = {
+        "verdict", "pass", "coverage", "checks", "failed_checks", "detail",
+    } & set(proofreading)
+    if forbidden:
+        raise CapabilityError(
+            "qa.final_qc_gate: asr_proofreading must not carry verdict "
+            f"fields {sorted(forbidden)}; it is evidence, not a verdict edit")
+    corrected = proofreading.get("corrected_transcript")
+    if not isinstance(corrected, str) or not corrected.strip():
+        raise CapabilityError(
+            "qa.final_qc_gate: asr_proofreading needs a non-empty "
+            "corrected_transcript")
+    proofreader = proofreading.get("proofreader")
+    if not isinstance(proofreader, str) or not proofreader.strip():
+        raise CapabilityError(
+            "qa.final_qc_gate: asr_proofreading needs a non-empty proofreader")
+    if proofreading.get("voice_correct_attested") is not True:
+        raise CapabilityError(
+            "qa.final_qc_gate: asr_proofreading requires "
+            "voice_correct_attested=true: proofreading is only for "
+            "ASR misrecognition where the spoken voice was correct; "
+            "a wrong voice must be re-recorded/re-synthesised, not proofread")
+    timestamp = proofreading.get("timestamp")
+    if timestamp is None:
+        timestamp = datetime.now(UTC).isoformat()
+    elif not isinstance(timestamp, str) or not timestamp.strip():
+        raise CapabilityError(
+            "qa.final_qc_gate: asr_proofreading timestamp must be a non-empty string")
+    return {
+        "corrected_transcript": corrected,
+        "proofreader": proofreader,
+        "timestamp": timestamp,
+        "voice_correct_attested": True,
+        "provenance": "manual_proofreading",
+        "reason": (
+            proofreading.get("reason")
+            or "ASR misrecognition with correct voice, attested by proofreader"
+        ),
+    }
+
+
+def _apply_asr_proofreading(
+    *,
+    dialogue: dict[str, Any],
+    expected_lines: list[str],
+    original_observed_text: str | None,
+    proofreading: Any,
+) -> dict[str, Any]:
+    """Re-review ``vo_asr`` from a corrected transcript (P3).
+
+    The original dialogue measurement and original observed text are
+    preserved in the returned record. Recomputation happens only when
+    the original measurement was measured and failed; a passing or
+    unmeasured original is left alone and the record says so. The
+    recomputed measurement uses the same harness and the same 0.80
+    floor as the original -- the only difference is the evidence text.
+    """
+    validated = _validate_asr_proofreading(proofreading)
+    record: dict[str, Any] = {
+        **validated,
+        "original_observed_text": original_observed_text,
+        "original_dialogue": dict(dialogue),
+        "expected_lines": list(expected_lines),
+    }
+    if dialogue.get("status") != "measured":
+        record.update({
+            "status": "not_applied",
+            "reason_not_applied": (
+                "original vo_asr measurement is unmeasured; proofreading "
+                "cannot recompute coverage without a measured original"),
+            "recomputed_dialogue": None,
+        })
+        return record
+    if dialogue.get("verdict") == "pass":
+        record.update({
+            "status": "not_applied",
+            "reason_not_applied": (
+                "original vo_asr already passed; proofreading does not "
+                "alter a passing check"),
+            "recomputed_dialogue": None,
+        })
+        return record
+    from hevi.capabilities.prompt_eval_harness import (
+        measure_generation_consistency,
+    )
+
+    recomputed_result = measure_generation_consistency({
+        "prompt": {"expected_lines": list(expected_lines)},
+        "asr_text": validated["corrected_transcript"],
+    })
+    recomputed = next(
+        m for m in recomputed_result["measurements"] if m["name"] == "dialogue_asr")
+    record.update({
+        "status": "applied",
+        "recomputed_dialogue": recomputed,
+        "recomputed_coverage": recomputed.get("value"),
+        "recomputed_verdict": recomputed.get("verdict"),
+    })
+    return record
+
+
 def run_final_qc(
     media_path: Path,
     *,
@@ -578,6 +707,13 @@ def run_final_qc(
     expected_vo_lines: list[str] | None = None,
     asr_text: str | None = None,
     vo_word_timings: list[dict[str, Any]] | None = None,
+    audio_path: Path | None = None,
+    asr_model: str | None = None,
+    asr_model_path: str | None = None,
+    asr_normalization: str | None = None,
+    asr_apply_glossary: bool | None = None,
+    asr_enable_fallback: bool | None = None,
+    asr_proofreading: dict[str, Any] | None = None,
     rendered_texts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Run every final check and return the full report.
@@ -621,6 +757,12 @@ def run_final_qc(
     even without ``edited``. ``generation_artifacts`` and the
     VO arguments are offline evidence only (see the module
     docstring); neither check runs when its evidence is absent.
+
+    ``audio_path`` runs ``audio.asr_transcribe`` on the film's audio and judges the
+    normalised transcript (raw transcript preserved in ``vo_asr_evidence``). ``asr_proofreading``
+    (corrected_transcript + proofreader + timestamp + voice_correct_attested) re-reviews a
+    failed ``vo_asr`` check from the corrected text as independent evidence; the original
+    transcript and measurement are preserved in the report and no verdict field is edited.
     """
     media_path = Path(media_path)
     if not media_path.is_file():
@@ -855,29 +997,87 @@ def run_final_qc(
     else:
         _skip("stale_timeline", "no edit declared and no transcript_source supplied")
 
-    # VO / ASR: dialogue measurement over supplied evidence only.
+    # VO / ASR: dialogue measurement over supplied evidence, or over a
+    # fresh ASR transcription when audio_path is supplied (P2: the gate
+    # calls audio.asr_transcribe instead of only judging passed-in
+    # evidence). P3 proofreading, when supplied, recomputes the check
+    # from the corrected transcript as separate evidence; the original
+    # transcript and original measurement are preserved in
+    # vo_asr_evidence / asr_proofreading and no verdict field is ever
+    # edited directly.
     consistency: dict[str, Any] | None = None
+    vo_asr_evidence: dict[str, Any] | None = None
+    asr_proofreading_result: dict[str, Any] | None = None
     vo_supplied = (
-        expected_vo_lines is not None or asr_text is not None
-        or vo_word_timings is not None)
+        audio_path is not None or expected_vo_lines is not None
+        or asr_text is not None or vo_word_timings is not None)
     if vo_supplied:
         from hevi.capabilities.prompt_eval_harness import (
             measure_generation_consistency,
         )
 
+        asr_evidence: dict[str, Any] | None = None
+        observed_text = asr_text
+        if audio_path is not None:
+            from hevi.capabilities.asr_transcribe import transcribe_audio
+
+            asr_kwargs: dict[str, Any] = {}
+            if asr_model is not None:
+                asr_kwargs["model"] = asr_model
+            if asr_model_path is not None:
+                asr_kwargs["model_path"] = asr_model_path
+            if asr_normalization is not None:
+                asr_kwargs["normalization"] = asr_normalization
+            if asr_apply_glossary is not None:
+                asr_kwargs["apply_glossary"] = asr_apply_glossary
+            if asr_enable_fallback is not None:
+                asr_kwargs["enable_fallback"] = asr_enable_fallback
+            asr_evidence = transcribe_audio(
+                audio_path,
+                expected_lines=list(expected_vo_lines)
+                if expected_vo_lines is not None else None,
+                **asr_kwargs,
+            )
+            observed_text = asr_evidence["transcript_normalized"]
         vo_result = measure_generation_consistency({
             "prompt": {"expected_lines": list(expected_vo_lines or [])},
-            "asr_text": asr_text,
+            "asr_text": observed_text,
             "word_timings": vo_word_timings,
         })
         dialogue = next(
             m for m in vo_result["measurements"] if m["name"] == "dialogue_asr")
+        vo_asr_evidence = {
+            "source": "audio.asr_transcribe" if asr_evidence is not None else "supplied_evidence",
+            "asr_evidence": asr_evidence,
+            "supplied_asr_text": asr_text,
+            "observed_text": observed_text,
+            "dialogue": dialogue,
+        }
         if dialogue["status"] == "measured":
             _set("vo_asr", dialogue["verdict"] == "pass", dialogue["detail"])
         else:
             _set("vo_asr", False,
                  "VO evidence supplied but the dialogue measurement is "
                  f"unmeasured: {dialogue['detail']}")
+        if asr_proofreading is not None:
+            asr_proofreading_result = _apply_asr_proofreading(
+                dialogue=dialogue,
+                expected_lines=list(expected_vo_lines or []),
+                original_observed_text=observed_text,
+                proofreading=asr_proofreading,
+            )
+            if asr_proofreading_result["status"] == "applied":
+                recomputed = asr_proofreading_result["recomputed_dialogue"]
+                _set("vo_asr", recomputed["verdict"] == "pass",
+                     f"{recomputed['detail']} (recomputed from manual "
+                     "proofreading; original transcript and measurement "
+                     "preserved in asr_proofreading)")
+    elif asr_proofreading is not None:
+        raise CapabilityError(
+            "qa.final_qc_gate: asr_proofreading requires original VO "
+            "evidence (audio_path, asr_text, expected_vo_lines or "
+            "vo_word_timings); there is no original transcript to "
+            "preserve or re-review")
     else:
         _skip("vo_asr", "no VO lines / ASR transcript / word timings supplied")
 
@@ -931,6 +1131,8 @@ def run_final_qc(
             "measurements": rendered_measurements,
         },
         "generation_consistency": consistency,
+        "vo_asr_evidence": vo_asr_evidence,
+        "asr_proofreading": asr_proofreading_result,
         "edited": edited,
         "transcript_source": transcript_source,
         "visual_review_frames": [f["path"] for f in frames],
@@ -1005,6 +1207,20 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
         kwargs["asr_text"] = str(params["asr_text"])
     if params.get("vo_word_timings") is not None:
         kwargs["vo_word_timings"] = list(params["vo_word_timings"])
+    if params.get("audio_path"):
+        kwargs["audio_path"] = Path(params["audio_path"])
+    if params.get("asr_model"):
+        kwargs["asr_model"] = str(params["asr_model"])
+    if params.get("asr_model_path"):
+        kwargs["asr_model_path"] = str(params["asr_model_path"])
+    if params.get("asr_normalization"):
+        kwargs["asr_normalization"] = str(params["asr_normalization"])
+    if params.get("asr_apply_glossary") is not None:
+        kwargs["asr_apply_glossary"] = bool(params["asr_apply_glossary"])
+    if params.get("asr_enable_fallback") is not None:
+        kwargs["asr_enable_fallback"] = bool(params["asr_enable_fallback"])
+    if params.get("asr_proofreading") is not None:
+        kwargs["asr_proofreading"] = dict(params["asr_proofreading"])
     if params.get("planned_cuts") is not None:
         kwargs["planned_cuts"] = [float(c) for c in params["planned_cuts"]]
     if params.get("expected_codec"):
@@ -1076,6 +1292,13 @@ def register_final_qc_capabilities_once() -> list[str]:
                     "expected_vo_lines": {"type": "array", "items": {"type": "string"}},
                     "asr_text": {"type": "string"},
                     "vo_word_timings": {"type": "array", "items": {"type": "object"}},
+                    "audio_path": {"type": "string"},
+                    "asr_model": {"type": "string"},
+                    "asr_model_path": {"type": "string"},
+                    "asr_normalization": {"type": "string", "enum": ["builtin", "opencc", "none"]},
+                    "asr_apply_glossary": {"type": "boolean"},
+                    "asr_enable_fallback": {"type": "boolean"},
+                    "asr_proofreading": {"type": "object"},
                 },
                 "required": ["media_path"],
                 "additionalProperties": False,
@@ -1094,7 +1317,10 @@ def register_final_qc_capabilities_once() -> list[str]:
                 "Optional edited/transcript_source adds the stale-"
                 "timeline check, and offline generation artifacts / "
                 "VO evidence add the generation-consistency and vo_asr "
-                "checks (no service is ever called)."
+                "checks (no service is ever called). audio_path runs "
+                "audio.asr_transcribe for the vo_asr check, and "
+                "asr_proofreading re-reviews a failed vo_asr check from "
+                "a corrected transcript kept as separate evidence."
             ),
             line="qa",
         )

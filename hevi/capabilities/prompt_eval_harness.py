@@ -33,6 +33,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from hevi.capabilities.asr_normalization import normalized_text_only
 from hevi.capabilities.errors import CapabilityError
 from hevi.capabilities.registry import (
     Capability,
@@ -116,11 +117,19 @@ def _containment_coverage(expected: str, observed: str) -> float:
     Longest-common-block coverage (``difflib``), so a line spoken
     inside a longer transcript scores ~1.0 while an unrelated
     transcript scores near 0. Deterministic, offline, text-only.
+
+    ASR-fix P0: the OBSERVED side is normalised before scoring
+    (traditional -> simplified plus the audited ASR glossary, via the
+    built-in table so the score is reproducible on any machine); the
+    EXPECTED script text is used exactly as supplied and is never
+    normalised. The 0.80 floor in ``DIALOGUE_COVERAGE_FLOOR`` is
+    unchanged. Expected text must therefore be in simplified form,
+    as scripts are.
     """
     import difflib
 
     want = _normalise_text(expected)
-    got = _normalise_text(observed)
+    got = _normalise_text(normalized_text_only(observed))
     if not want:
         return 1.0
     if not got:
