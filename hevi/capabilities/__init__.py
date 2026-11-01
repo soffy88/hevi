@@ -845,3 +845,25 @@ from . import greenscreen_generation_gate as _greenscreen_generation_gate  # noq
 _greenscreen_generation_gate.register_greenscreen_generation_gate_capabilities_once()
 from . import chroma_key_gate as _chroma_key_gate  # noqa: E402,F401
 _chroma_key_gate.register_chroma_key_gate_capabilities_once()
+
+# Code-stage MV graft B2 + B3 + B4 (2026-11-01, clean-room, method
+# ideas only, reconstructed from an article description): B2
+# qa.dance_action_events -- footstep / turn / raise_arm / hold
+# events from an offline keypoint contract only (no pose
+# estimator installed; synthetic-video runs are labelled
+# synthetic_video, never human measurements); B3
+# qa.event_trigger_wiring -- versioned event-to-music/stage
+# mapping table, plan only, no music generated, tolerance
+# calibrated from measured dual-template runs; B4
+# video.minimal_stage_render -- minimal code-built Three.js
+# stage, zero external assets, __hf + settle + atomic capture
+# under the determinism gates, rendered twice with identical
+# per-frame hashes. No external account, no external video or
+# article material, no SVG skeleton dance. See
+# CODE_STAGE_MV_ATTRIBUTION.md.
+from . import dance_action_events as _dance_action_events  # noqa: E402,F401
+_dance_action_events.register_dance_action_events_capabilities_once()
+from . import event_trigger_wiring as _event_trigger_wiring  # noqa: E402,F401
+_event_trigger_wiring.register_event_trigger_wiring_capabilities_once()
+from . import minimal_stage_render as _minimal_stage_render  # noqa: E402,F401
+_minimal_stage_render.register_minimal_stage_render_capabilities_once()

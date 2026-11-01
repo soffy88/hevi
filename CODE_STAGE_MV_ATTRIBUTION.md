@@ -58,3 +58,48 @@ be re-calibrated on real measurements before production use.
   measurements, plus the FFmpeg chromakey contract (key
   parameters + command builder, no keying run inside the
   capability).
+
+## B2 + B3 + B4 (2026-11-01 graft, same clean-room basis)
+
+B2, B3 and B4 were built in a second graft on top of
+`126b7fef`. The residual line above ("not built in this
+graft") refers to the first graft only and is superseded by
+this section.
+
+- `qa.dance_action_events` (B2): footstep / turn / raise_arm
+  / hold events from an offline keypoint contract only. No
+  pose estimator is installed (no mediapipe dependency), no
+  video is read for keypoints, and a bare video path fails.
+  The only measured run uses code-generated synthetic video
+  (a stick figure drawn from a fixed script, 320x240, 10fps,
+  4.0s); its keypoints are the generator's own positions and
+  the error table / F1 are scored against the script truth.
+  Every report carries `human_measured: false` and the basis
+  `synthetic_video`. Real-human measurement remains a
+  residual: it needs a CPU pose estimator and a labelled
+  human dance clip, neither of which exists here.
+- `qa.event_trigger_wiring` (B3): versioned mapping table
+  (footstep -> kick + ground light, turn -> transition +
+  camera move, raise_arm -> accent + light pulse, hold ->
+  pause + light hold), plan and offline artefacts only, no
+  music generated. The tolerance is calibrated from measured
+  dual-template runs (same events through two stage
+  templates: identical trigger times, measured errors 0ms,
+  calibrated tolerance 50ms, the hevi-chosen floor).
+- `video.minimal_stage_render` (B4): minimal Three.js scene
+  built from code with zero external assets, reusing the
+  vendored Three.js build already in this repository (no
+  download). Driven by `window.__hf` with settle
+  confirmation and atomic capture under the determinism
+  gates. Rendered twice per template with identical
+  per-frame hashes (20 frames, 320x180, 10fps, 2.0s, two
+  templates). Minimal version only: no Studio, no keyed
+  video figure, no full stage system.
+- Evidence for all three runs is recorded outside this repo
+  in `/data/soffy/code-stage-sample-b2b3b4/` (synthetic
+  video + error table, dual-template wiring evidence,
+  double-render frame hashes), not in this repo.
+- Boundaries kept in this graft too: no third-party video /
+  music / chat account, key or call chain; no article
+  material; no SVG skeleton dance; no self-reported article
+  number used as a threshold or default.
