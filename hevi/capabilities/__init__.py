@@ -482,6 +482,14 @@ from . import final_qc as _final_qc  # noqa: E402,F401
 _final_qc.register_final_qc_capabilities_once()
 from . import subtitle_discipline as _subtitle_discipline  # noqa: E402,F401
 _subtitle_discipline.register_subtitle_discipline_capabilities_once()
+
+# Native subtitle stitch (2026-11-01, clean-room, method ideas
+# only): image.native_subtitle_stitch -- exact-frame subtitle
+# stitching from local video files, native/script modes kept
+# apart, rights declaration required. See
+# NATIVE_SUBTITLE_STITCH_ATTRIBUTION.md (MIT method source).
+from . import native_subtitle_stitch as _native_subtitle_stitch  # noqa: E402,F401
+_native_subtitle_stitch.register_native_subtitle_stitch_capabilities_once()
 from . import mix_recipe as _mix_recipe  # noqa: E402,F401
 _mix_recipe.register_mix_recipe_capabilities_once()
 from . import motion_beat_chart as _motion_beat_chart  # noqa: E402,F401
@@ -818,3 +826,22 @@ _editorial_project.register_editorial_project_capabilities_once()
 # final_qc vo_asr calls it via audio_path; see asr_transcribe.py.
 from . import asr_transcribe as _asr_transcribe  # noqa: E402,F401
 _asr_transcribe.register_asr_transcribe_capabilities_once()
+
+# Code-stage MV graft A1 + A2 + B1 (2026-11-01, clean-room, method
+# ideas only, reconstructed from an article description): A1
+# qa.greenscreen_generation_gate -- five greenscreen generation
+# constraints judged on plan text only, reusing the strict
+# prompt-compiler anchor / tier discipline; A2 extends
+# pipeline.project_style_sheet with a stage block (lighting rig /
+# camera path / particles / materials) under the existing
+# version + stale discipline, stage plans missing lighting or
+# camera fields stay pending; B1 qa.chroma_key_gate -- six
+# chroma-key gates over offline frame measurements, FFmpeg
+# chromakey route as contract only (see the sample recorded in
+# /data/soffy/code-stage-sample/, not in this repo). No external
+# account, no external video or article material, no SVG skeleton dance.
+# See CODE_STAGE_MV_ATTRIBUTION.md.
+from . import greenscreen_generation_gate as _greenscreen_generation_gate  # noqa: E402,F401
+_greenscreen_generation_gate.register_greenscreen_generation_gate_capabilities_once()
+from . import chroma_key_gate as _chroma_key_gate  # noqa: E402,F401
+_chroma_key_gate.register_chroma_key_gate_capabilities_once()
