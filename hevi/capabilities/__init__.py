@@ -867,3 +867,28 @@ from . import event_trigger_wiring as _event_trigger_wiring  # noqa: E402,F401
 _event_trigger_wiring.register_event_trigger_wiring_capabilities_once()
 from . import minimal_stage_render as _minimal_stage_render  # noqa: E402,F401
 _minimal_stage_render.register_minimal_stage_render_capabilities_once()
+
+# Athenaion graft (2026-11-01, clean-room, method only; see
+# ATHENAION_ATTRIBUTION.md): A1 world.athenaion_discipline +
+# A2 qa.look_shot_separation, A3 qa.reference_restoration_gate,
+# A4 pipeline.athenaion_session, B1 video.athenaion_world_engine,
+# B2 world.athenaion_sdf_statue, B3
+# world.athenaion_classical_orders, B4 video.athenaion_waterfall,
+# B5 world.athenaion_vegetation_scatter. Appended at the tail only;
+# earlier registrations (including native_subtitle_stitch) untouched.
+from . import athenaion_contract as _athenaion_contract  # noqa: E402,F401
+_athenaion_contract.register_athenaion_contract_capabilities_once()
+from . import athenaion_restoration as _athenaion_restoration  # noqa: E402,F401
+_athenaion_restoration.register_athenaion_restoration_capabilities_once()
+from . import athenaion_session as _athenaion_session  # noqa: E402,F401
+_athenaion_session.register_athenaion_session_capabilities_once()
+from . import athenaion_world as _athenaion_world  # noqa: E402,F401
+_athenaion_world.register_athenaion_world_capabilities_once()
+from . import athenaion_statue as _athenaion_statue  # noqa: E402,F401
+_athenaion_statue.register_athenaion_statue_capabilities_once()
+from . import athenaion_orders as _athenaion_orders  # noqa: E402,F401
+_athenaion_orders.register_athenaion_orders_capabilities_once()
+from . import athenaion_waterfall as _athenaion_waterfall  # noqa: E402,F401
+_athenaion_waterfall.register_athenaion_waterfall_capabilities_once()
+from . import athenaion_vegetation as _athenaion_vegetation  # noqa: E402,F401
+_athenaion_vegetation.register_athenaion_vegetation_capabilities_once()
