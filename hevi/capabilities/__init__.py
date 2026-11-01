@@ -1104,3 +1104,19 @@ from . import segment_cost_ledger as _segment_cost_ledger  # noqa: E402,F401
 _segment_cost_ledger.register_segment_cost_ledger_capabilities_once()
 from . import packaging_component_vocabulary as _packaging_component_vocabulary  # noqa: E402,F401
 _packaging_component_vocabulary.register_packaging_component_vocabulary_capabilities_once()
+
+# Toonflow recheck graft (see TOONFLOW_RECHECK_ATTRIBUTION.md):
+# A1 qa.reference_map_contract, A2 qa.sandbox_material_reference_gate,
+# A3 qa.task_recovery_gate, B1 video.reference_map_adapter,
+# B2 qa.task_recovery_contract (fake execution adapters; no provider
+# calls, no keys, no sponsor pricing as thresholds).
+from . import reference_map_contract as _reference_map_contract  # noqa: E402,F401
+_reference_map_contract.register_reference_map_contract_capabilities_once()
+from . import sandbox_material_reference_gate as _sandbox_material_reference_gate  # noqa: E402,F401
+_sandbox_material_reference_gate.register_sandbox_material_reference_gate_capabilities_once()
+from . import task_recovery_gate as _task_recovery_gate  # noqa: E402,F401
+_task_recovery_gate.register_task_recovery_gate_capabilities_once()
+from . import reference_map_adapter as _reference_map_adapter  # noqa: E402,F401
+_reference_map_adapter.register_reference_map_adapter_capabilities_once()
+from . import task_recovery_contract as _task_recovery_contract  # noqa: E402,F401
+_task_recovery_contract.register_task_recovery_contract_capabilities_once()
