@@ -410,6 +410,7 @@ def check_vocabulary(episode: dict[str, Any]) -> None:
         _normalise_fallbacks(shot)
         for beat in shot.get("beats", []):
             beat_label = _beat_label(shot, beat)
+            _validate_beat_camera(beat, beat_label)
             if beat.get("camera_move"):
                 try:
                     resolve_movement(beat["camera_move"])
@@ -1131,6 +1132,36 @@ def _validate_camera_extras(camera: dict[str, Any], label: str) -> None:
         )
 
 
+# Per-beat physical camera fields (H3 exemplar gapfill, shared field
+# names with qa.three_layer_clip.BEAT_CAMERA_FIELDS): a beat may
+# carry its own camera position. The compiler only carries and
+# renders it; the repetition discipline (same camera on every beat
+# fails unless a static camera is declared) lives in
+# qa.three_layer_clip, which owns the gate.
+BEAT_CAMERA_FIELDS = ("height", "distance", "optical_axis", "path")
+
+
+def _validate_beat_camera(beat: dict[str, Any], label: str) -> None:
+    """Validate an optional per-beat physical camera, when present."""
+    camera = beat.get("camera")
+    if camera is None:
+        return
+    if not isinstance(camera, dict):
+        raise PromptCompilerError(
+            f"story.prompt_compiler: {label} camera must be an object "
+            "with height / distance / optical_axis / path"
+        )
+    for field in BEAT_CAMERA_FIELDS:
+        value = camera.get(field)
+        if isinstance(value, bool) or not isinstance(value, (str, int, float)) \
+                or not str(value).strip():
+            raise PromptCompilerError(
+                f"story.prompt_compiler: {label} camera needs a "
+                f"non-empty {field!r} (height / distance / "
+                "optical_axis / path)"
+            )
+
+
 # ------------------------------------------------------- readiness (strict)
 #
 # Generation-ready discipline (2026-10-31 prompt audit). The legacy
@@ -1347,6 +1378,11 @@ def compile_shot_prompt(
     [negative list, if filled] -> [fallbacks, if filled] ->
     [constraints]. Beat segments follow the beats' own start/end
     seconds; durations are never split evenly across segments.
+    A beat may carry its own physical ``camera`` (height /
+    distance / optical_axis / path); when present it is rendered
+    into that beat's segment line. The compiler only carries and
+    renders per-beat cameras -- the repetition discipline lives in
+    qa.three_layer_clip.
     The start-frame description appears exactly once, in the
     ``[首帧]`` line: repeating it in every beat segment drowned
     the beat actions in static text (2026-10-31 prompt audit).
@@ -1478,6 +1514,15 @@ def compile_shot_prompt(
         chain = f"{prev_landing}→{action}" if prev_landing else action
         gaze = str(beat.get("gaze_target", "") or "").strip()
         gaze_text = f"视线：{gaze}" if gaze else ""
+        beat_camera = beat.get("camera")
+        camera_text = ""
+        if isinstance(beat_camera, dict):
+            _validate_beat_camera(beat, _beat_label(shot, beat))
+            labels = {"height": "高度", "distance": "距离",
+                      "optical_axis": "光轴", "path": "路径"}
+            camera_text = "／机位：" + "；".join(
+                f"{labels[field]}{beat_camera[field]}"
+                for field in BEAT_CAMERA_FIELDS)
         speech = _render_line(beat)
         if beat.get("line_group"):
             speech += f"（长句分段，组 {beat['line_group']}，与前后同组节拍同属一句，仍归原说话者）"
@@ -1489,6 +1534,8 @@ def compile_shot_prompt(
         )
         if gaze_text:
             segment += f"／{gaze_text}"
+        if camera_text:
+            segment += camera_text
         segment += f"／声音：{beat['sound']}）"
         lines.append(segment)
         if landing:

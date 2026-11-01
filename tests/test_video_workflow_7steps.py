@@ -399,7 +399,7 @@ def test_pilot_reserve_fraction_required():
 # --- B3: three-layer clip ---
 
 def test_three_layer_fixtures_versioned_and_passing():
-    assert THREE_LAYER_FIXTURE_VERSION == "1"
+    assert THREE_LAYER_FIXTURE_VERSION == "2"
     for fixture in build_three_layer_fixtures():
         report = check_three_layer_clip(fixture["clip"])
         assert report["verdict"] == fixture["expect"], fixture["name"]

@@ -911,6 +911,13 @@ _athenaion_vegetation.register_athenaion_vegetation_capabilities_once()
 # (timecode + segment + check item + verdict, evidence frame on
 # fail). Appended at the tail only; earlier registrations
 # (including native_subtitle_stitch) untouched.
+#
+# H3 exemplar gapfill (hevi-vs-h3-exemplar-prompts.md section 4,
+# gaps 1/2/4): qa.reference_numbering_gate (declared numbering
+# convention + camera_composition role + registered audio; the H3
+# assembly route is judged here, never not_checked) and
+# qa.segment_match_gate (cross-segment outgoing/incoming match).
+# Appended at the tail only; earlier registrations untouched.
 from . import generation_spec_gate as _generation_spec_gate  # noqa: E402,F401
 _generation_spec_gate.register_generation_spec_gate_capabilities_once()
 from . import ban_revision_log as _ban_revision_log  # noqa: E402,F401
@@ -927,3 +934,7 @@ from . import three_layer_clip as _three_layer_clip  # noqa: E402,F401
 _three_layer_clip.register_three_layer_clip_capabilities_once()
 from . import fix_ticket as _fix_ticket  # noqa: E402,F401
 _fix_ticket.register_fix_ticket_capabilities_once()
+from . import reference_numbering_gate as _reference_numbering_gate  # noqa: E402,F401
+_reference_numbering_gate.register_reference_numbering_gate_capabilities_once()
+from . import segment_match_gate as _segment_match_gate  # noqa: E402,F401
+_segment_match_gate.register_segment_match_gate_capabilities_once()

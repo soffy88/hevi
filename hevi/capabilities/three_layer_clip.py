@@ -41,6 +41,16 @@ module's own fixture set (used by its tests and by the
 ``three_layer_clip`` samples in ``qa.prompt_eval_harness``, whose
 ``SAMPLE_VERSION`` was bumped alongside). Fixtures are never edited
 in place; a changed expectation bumps the version.
+
+Time precision: every rendered timecode carries milliseconds
+(``_fmt_time`` formats to three decimals), so an exemplar value
+such as 13.268s or 1.083s survives rendering verbatim. Per-beat
+physical cameras: a beat may carry a ``camera`` dict (``height`` /
+``distance`` / ``optical_axis`` / ``path``). When any beat carries
+one, every beat must, each must be complete, and the same
+physical camera on every beat fails unless the clip declares
+``static_camera`` exactly true -- a repeated single-shot camera
+flattened across beats is the failure this rule exists to catch.
 """
 
 from __future__ import annotations
@@ -60,7 +70,11 @@ from hevi.capabilities.registry import (
 
 _Registered = False
 
-THREE_LAYER_FIXTURE_VERSION = "1"
+THREE_LAYER_FIXTURE_VERSION = "2"
+
+# Per-beat physical camera fields (H3 exemplar gapfill): a beat's
+# own camera position -- height, distance, optical axis, path.
+BEAT_CAMERA_FIELDS = ("height", "distance", "optical_axis", "path")
 
 _EPS = 1e-9
 
@@ -78,8 +92,9 @@ def _is_number(value: Any) -> bool:
 
 
 def _fmt_time(seconds: float) -> str:
-    text = f"{seconds:.1f}"
-    return text[:-2] if text.endswith(".0") else text
+    # Millisecond precision, always three decimals: 13.268 and 1.083
+    # must survive rendering verbatim, never round to 13.3 / 1.1.
+    return f"{float(seconds):.3f}"
 
 
 def count_action_clauses(beat: dict[str, Any]) -> dict[str, Any]:
@@ -127,6 +142,92 @@ def count_camera_moves(beat: dict[str, Any]) -> dict[str, Any]:
             if verb in action:
                 assertions.append(f"action_text:{verb}")
     return {"count": len(assertions), "assertions": assertions}
+
+
+def _camera_key(camera: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(str(camera.get(field, "")).strip() for field in BEAT_CAMERA_FIELDS)
+
+
+def _format_beat_camera(camera: dict[str, Any]) -> str:
+    labels = {"height": "高度", "distance": "距离",
+              "optical_axis": "光轴", "path": "路径"}
+    return "；".join(f"{labels[field]}{camera[field]}" for field in BEAT_CAMERA_FIELDS)
+
+
+def check_beat_cameras(beats: Any, static_camera: Any) -> dict[str, Any]:
+    """Per-beat physical cameras: complete, covering every beat, not silently repeated.
+
+    Clips that carry no per-beat ``camera`` at all are untouched
+    (the legacy shot-level camera still governs them). Once any
+    beat declares its own physical camera, every beat must declare
+    one, each complete, and an identical camera on every beat
+    fails unless the clip declares ``static_camera`` exactly true.
+    """
+    issues: list[dict[str, Any]] = []
+    cameras: list[dict[str, Any] | None] = []
+    if not isinstance(beats, list):
+        return {"ok": True, "issues": issues, "cameras": cameras}
+    for beat in beats:
+        if isinstance(beat, dict) and beat.get("camera") is not None:
+            cameras.append(beat.get("camera"))
+        else:
+            cameras.append(None)
+    if all(camera is None for camera in cameras):
+        return {"ok": True, "issues": issues, "cameras": cameras}
+    declared_static = static_camera is True
+    if static_camera is not None and not declared_static:
+        issues.append({
+            "code": "bad_static_camera_declaration",
+            "detail": "qa.three_layer_clip: 'static_camera' must be "
+                     "exactly true to declare a static camera; any "
+                     "other value is not a declaration",
+        })
+    keys: list[tuple[str, ...]] = []
+    for index, camera in enumerate(cameras):
+        if camera is None:
+            issues.append({
+                "code": "missing_beat_camera",
+                "detail": f"qa.three_layer_clip: beat {index} carries no "
+                         "per-beat camera while other beats do; a beat "
+                         "without its own physical camera silently "
+                         "inherits one it never declared",
+            })
+            continue
+        if not isinstance(camera, dict):
+            issues.append({
+                "code": "incomplete_beat_camera",
+                "detail": f"qa.three_layer_clip: beat {index} camera must "
+                         "be an object with height / distance / "
+                         "optical_axis / path",
+            })
+            continue
+        missing = [field for field in BEAT_CAMERA_FIELDS
+                   if not isinstance(camera.get(field), (str, int, float))
+                   or isinstance(camera.get(field), bool)
+                   or not str(camera.get(field)).strip()]
+        if missing:
+            issues.append({
+                "code": "incomplete_beat_camera",
+                "detail": f"qa.three_layer_clip: beat {index} camera is "
+                         f"missing or empty: {', '.join(missing)}; a "
+                         "physical camera needs height, distance, "
+                         "optical axis and path",
+            })
+            continue
+        keys.append(_camera_key(camera))
+    valid_cameras = [c for c in cameras if isinstance(c, dict)
+                     and all(str(c.get(f, "")).strip() for f in BEAT_CAMERA_FIELDS)]
+    if keys and len(keys) == len(valid_cameras) \
+            and len(set(keys)) == 1 and not declared_static:
+        issues.append({
+            "code": "repeated_beat_camera",
+            "detail": "qa.three_layer_clip: the same physical camera "
+                     f"({_format_beat_camera(valid_cameras[0])}) repeats on "
+                     "every beat; give each beat its own camera "
+                     "position, or declare static_camera exactly true "
+                     "when the camera genuinely does not move",
+        })
+    return {"ok": not issues, "issues": issues, "cameras": cameras}
 
 
 def check_beat_tiling(beats: Any, duration_s: Any) -> dict[str, Any]:
@@ -213,6 +314,8 @@ def render_three_layer_clip(
         lines.append(f"[禁令]{bans}")
     still = str(clip.get("still_instant", "") or "").strip()
     lines.append(f"[静图瞬间]{still}")
+    if clip.get("static_camera") is True:
+        lines.append("[机位声明]静态机位：全段同一物理机位（已显式声明）")
     lines.append("[分阶段动作]")
     for beat in clip.get("beats") or []:
         start = _fmt_time(float(beat["t_start_s"]))
@@ -220,6 +323,9 @@ def render_three_layer_clip(
         move = beat.get("camera_move") or "保持机位"
         landing = str(beat.get("landing", "") or "").strip()
         segment = (f"[{start}–{end}秒]{move}／{beat['action']}")
+        camera = beat.get("camera")
+        if isinstance(camera, dict):
+            segment += f"／机位：{_format_beat_camera(camera)}"
         if landing:
             segment += f"／落位：{landing}"
         sound = str(beat.get("sound", "") or "").strip()
@@ -261,6 +367,8 @@ def check_three_layer_clip(clip: Any, *, bans: str = "") -> dict[str, Any]:
     beats = clip.get("beats")
     tiling = check_beat_tiling(beats, clip.get("duration_s"))
     issues.extend(tiling["issues"])
+    camera_check = check_beat_cameras(beats, clip.get("static_camera"))
+    issues.extend(camera_check["issues"])
     segment_reports: list[dict[str, Any]] = []
     if isinstance(beats, list):
         for index, beat in enumerate(beats):
@@ -272,6 +380,8 @@ def check_three_layer_clip(clip: Any, *, bans: str = "") -> dict[str, Any]:
                 "beat_index": index,
                 "action_clauses": actions,
                 "camera_moves": cameras,
+                "camera": camera_check["cameras"][index]
+                if index < len(camera_check["cameras"]) else None,
             })
             if actions["issue"]:
                 issues.append({
@@ -345,6 +455,27 @@ def build_three_layer_fixtures() -> list[dict[str, Any]]:
     two_cameras["beats"][0]["action"] = "阿兰抬起手，推镜头跟随"
     no_still = json.loads(json.dumps(base, ensure_ascii=False))
     no_still["still_instant"] = ""
+    beat_cameras = json.loads(json.dumps(base, ensure_ascii=False))
+    for position, beat in enumerate(beat_cameras["beats"]):
+        beat["camera"] = {
+            "height": f"眼高+{position}档",
+            "distance": f"{2 + position}米",
+            "optical_axis": "水平" if position != 1 else "俯视15度",
+            "path": f"弧线{position + 1}",
+        }
+    repeated_cameras = json.loads(json.dumps(base, ensure_ascii=False))
+    for beat in repeated_cameras["beats"]:
+        beat["camera"] = {
+            "height": "眼高", "distance": "2米",
+            "optical_axis": "水平", "path": "固定",
+        }
+    static_cameras = json.loads(json.dumps(repeated_cameras, ensure_ascii=False))
+    static_cameras["static_camera"] = True
+    incomplete_camera = json.loads(json.dumps(base, ensure_ascii=False))
+    incomplete_camera["beats"][0]["camera"] = {
+        "height": "眼高", "distance": "2米",
+        "optical_axis": "水平",
+    }
     return [
         {"name": "good_three_layer_clip", "expect": "pass", "clip": good},
         {"name": "two_actions_in_one_segment_fails", "expect": "fail",
@@ -353,6 +484,14 @@ def build_three_layer_fixtures() -> list[dict[str, Any]]:
          "clip": two_cameras},
         {"name": "missing_still_instant_fails", "expect": "fail",
          "clip": no_still},
+        {"name": "distinct_beat_cameras_pass", "expect": "pass",
+         "clip": beat_cameras},
+        {"name": "repeated_beat_camera_fails", "expect": "fail",
+         "clip": repeated_cameras},
+        {"name": "static_beat_camera_declared_passes", "expect": "pass",
+         "clip": static_cameras},
+        {"name": "incomplete_beat_camera_fails", "expect": "fail",
+         "clip": incomplete_camera},
     ]
 
 
@@ -398,10 +537,14 @@ def register_three_layer_clip_capabilities_once() -> list[str]:
             description=(
                 "Three-layer clip gate: clip text in three layers "
                 "(common constraints / still instant / staged "
-                "action), beats tiling the shot without gaps, and at "
+                "action), beats tiling the shot without gaps, at "
                 "most one main action plus one camera move per "
-                "segment. Coexists with the six-section H3 prompt "
-                "structure; neither redefines the other."
+                "segment, millisecond timecodes, and per-beat "
+                "physical cameras (height / distance / optical "
+                "axis / path) that must differ across beats unless "
+                "a static camera is explicitly declared. Coexists "
+                "with the six-section H3 prompt structure; neither "
+                "redefines the other."
             ),
             line="qa",
         )
