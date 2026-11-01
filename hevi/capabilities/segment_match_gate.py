@@ -36,6 +36,20 @@ missing, or whose values disagree, fails. The first segment's
 boundaries outside this plan and are shape-checked when present
 but not cross-checked.
 
+Hand-off kind (gap 7). Each side may declare ``handoff_kind`` from
+a closed vocabulary -- ``gesture`` / ``wipe`` / ``element`` /
+``rotation`` / ``fabric`` / ``gaze`` -- naming what carries the
+match across the cut. When either side declares a kind, the other
+must declare the same one. An element/fabric hand-off (gauze,
+floor reflection, a hanging veil) must name the element in
+``element_name`` on both sides, and the element names must agree.
+``direction`` holds direction values only: stuffing an element
+name into ``direction`` (``"gauze texture"``, ``"floor
+reflection"``, ``"into sleeve"``) fails -- the element belongs in
+``element_name`` and the travel belongs in ``direction``. The
+``gesture`` field stays free descriptive text; element names are
+welcome there.
+
 Single-segment plans cannot prove a match: a lone segment with
 no ``outgoing`` / ``incoming`` record is reported ``not_checked``
 -- never passed -- and a lone segment that does carry both sides
@@ -66,6 +80,28 @@ from hevi.capabilities.registry import (
 _Registered = False
 
 _WS_RE = re.compile(r"\s+")
+
+# Closed hand-off vocabulary (gap 7). ``element`` / ``fabric`` name
+# the thing that carries the match (gauze, a reflection); ``gesture``
+# / ``wipe`` / ``rotation`` / ``gaze`` name the motion that does.
+HANDOFF_KINDS = ("gesture", "wipe", "element", "rotation", "fabric", "gaze")
+_ELEMENT_HANDOFF_KINDS = ("element", "fabric")
+
+# Words that name a hand-off element, never a direction. A direction
+# value containing one of these fails (gap 7): the element belongs
+# in ``element_name``, the travel in ``direction``.
+_ELEMENT_TOKENS = (
+    "gauze", "fabric", "sleeve", "reflection", "veil", "curtain",
+    "texture", "gossamer",
+    "纱", "反光", "袖", "帘", "纹理", "织物", "面纱",
+)
+
+
+def _direction_contains_element_name(direction: str | None) -> bool:
+    """True when a normalised direction value names an element."""
+    if not direction:
+        return False
+    return any(token in direction for token in _ELEMENT_TOKENS)
 
 
 def _norm_text(value: Any) -> str | None:
@@ -125,6 +161,43 @@ def _side_shape(side: Any, kind: str, label: str) -> tuple[dict[str, Any], list[
     gesture = side.get("gesture")
     if _is_nonempty(gesture):
         normalised["gesture"] = _norm_text(gesture)
+    kind_value = side.get("handoff_kind")
+    if kind_value is not None:
+        if not isinstance(kind_value, str) or not kind_value.strip():
+            issues.append({
+                "code": "unknown_handoff_kind",
+                "detail": f"qa.segment_match_gate: {label} {kind} declares "
+                          "an empty 'handoff_kind'",
+            })
+        else:
+            norm_kind = _WS_RE.sub(" ", kind_value.strip()).lower()
+            if norm_kind not in HANDOFF_KINDS:
+                issues.append({
+                    "code": "unknown_handoff_kind",
+                    "detail": f"qa.segment_match_gate: {label} {kind} "
+                             f"handoff_kind {kind_value!r} is not in the "
+                             f"closed vocabulary {list(HANDOFF_KINDS)}",
+                })
+            else:
+                normalised["handoff_kind"] = norm_kind
+    element = side.get("element_name")
+    if _is_nonempty(element):
+        normalised["element_name"] = _norm_text(element)
+    if normalised.get("handoff_kind") in _ELEMENT_HANDOFF_KINDS:
+        if "element_name" not in normalised:
+            issues.append({
+                "code": "element_name_missing",
+                "detail": f"qa.segment_match_gate: {label} {kind} declares "
+                         f"handoff_kind {normalised['handoff_kind']!r} "
+                         "but names no 'element_name'",
+            })
+    elif "element_name" in normalised:
+        issues.append({
+            "code": "handoff_kind_missing_for_element",
+            "detail": f"qa.segment_match_gate: {label} {kind} names "
+                     f"element_name {normalised['element_name']!r} but "
+                     "declares no element/fabric 'handoff_kind'",
+        })
     for key in ("occlusion_direction", "rotation_phase"):
         if side.get(key) is not None:
             if key == "occlusion_direction":
@@ -140,6 +213,19 @@ def _side_shape(side: Any, kind: str, label: str) -> tuple[dict[str, Any], list[
                 })
             else:
                 normalised[key] = norm
+    # Direction fields hold direction values only, checked after
+    # every direction field has been normalised (occlusion_direction
+    # is normalised in the loop above, not before it).
+    for key in ("direction", "occlusion_direction"):
+        if key in normalised and _direction_contains_element_name(normalised[key]):
+            issues.append({
+                "code": "direction_contains_element_name",
+                "detail": f"qa.segment_match_gate: {label} {kind} {key} "
+                         f"{normalised[key]!r} names a hand-off element; "
+                         "the element belongs in 'element_name' with "
+                         "handoff_kind 'element'/'fabric', and the "
+                         "travel belongs in 'direction'",
+            })
     return normalised, issues
 
 
@@ -315,6 +401,41 @@ def check_segment_match(plan: Any) -> dict[str, Any]:
                     })
             else:
                 checks["gesture"] = None
+            if "handoff_kind" in out or "handoff_kind" in inc:
+                kind_ok = "handoff_kind" in out and "handoff_kind" in inc \
+                    and out["handoff_kind"] == inc["handoff_kind"]
+                checks["handoff_kind"] = kind_ok
+                if not kind_ok:
+                    issues.append({
+                        "code": "handoff_kind_mismatch",
+                        "detail": f"qa.segment_match_gate: {left_label} "
+                                 f"and {right_label} disagree on "
+                                 f"handoff_kind: outgoing "
+                                 f"{out.get('handoff_kind')!r} vs incoming "
+                                 f"{inc.get('handoff_kind')!r}; a kind "
+                                 "declared on one side must be declared "
+                                 "and equal on the other",
+                    })
+            else:
+                checks["handoff_kind"] = None
+            if out.get("handoff_kind") in _ELEMENT_HANDOFF_KINDS \
+                    or inc.get("handoff_kind") in _ELEMENT_HANDOFF_KINDS:
+                element_ok = "element_name" in out and "element_name" in inc \
+                    and out["element_name"] == inc["element_name"]
+                checks["element_name"] = element_ok
+                if not element_ok:
+                    issues.append({
+                        "code": "element_name_mismatch",
+                        "detail": f"qa.segment_match_gate: {left_label} "
+                                 f"and {right_label} disagree on "
+                                 f"element_name: outgoing "
+                                 f"{out.get('element_name')!r} vs incoming "
+                                 f"{inc.get('element_name')!r}; an "
+                                 "element/fabric hand-off must name the "
+                                 "same element on both sides",
+                    })
+            else:
+                checks["element_name"] = None
         boundaries.append({
             "from": left_label,
             "to": right_label,
@@ -384,7 +505,11 @@ def register_segment_match_gate_capabilities_once() -> list[str]:
                 "on the hand-off -- outgoing direction, speed and end "
                 "state against incoming direction, speed and start "
                 "state, plus rotation phase and occlusion direction "
-                "when either side declares them. A missing match in a "
+                "when either side declares them, plus handoff_kind "
+                "from a closed vocabulary (element/fabric hand-offs "
+                "must name the same element_name on both sides, and "
+                "direction holds direction values only -- element "
+                "names in direction fail). A missing match in a "
                 "multi-segment plan fails; a single segment without a "
                 "boundary is not_checked, never passed. Judges plans "
                 "only; the prompt_compiler entry/exit state "

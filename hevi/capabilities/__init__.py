@@ -968,3 +968,12 @@ from . import virtual_clock_recorder as _virtual_clock_recorder  # noqa: E402,F4
 _virtual_clock_recorder.register_virtual_clock_recorder_capabilities_once()
 from . import threejs_imaging_upgrade as _threejs_imaging_upgrade  # noqa: E402,F401
 _threejs_imaging_upgrade.register_threejs_imaging_upgrade_capabilities_once()
+
+# H3 exemplar gapfill 6+7 (2026-11-02, clean-room, method only;
+# see H3_GAPFILL_6_7_ATTRIBUTION.md): qa.beat_floor_policy (default
+# 1.0s floor identical to prompt_compiler gate 1, reviewed lower
+# floors need a recorded reason, short-beat merging with an audit
+# trail; no C-chain invented). Appended at the tail only; earlier
+# registrations untouched.
+from . import beat_floor_policy as _beat_floor_policy  # noqa: E402,F401
+_beat_floor_policy.register_beat_floor_policy_capabilities_once()
