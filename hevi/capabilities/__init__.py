@@ -1120,3 +1120,24 @@ from . import reference_map_adapter as _reference_map_adapter  # noqa: E402,F401
 _reference_map_adapter.register_reference_map_adapter_capabilities_once()
 from . import task_recovery_contract as _task_recovery_contract  # noqa: E402,F401
 _task_recovery_contract.register_task_recovery_contract_capabilities_once()
+
+# ai-manju graft (see AI_MANJU_ATTRIBUTION.md):
+# A1 qa.season_pack_gate, A2 qa.reference_use_gate,
+# A3 qa.status_card_monotonic_gate, A4 qa.dialogue_timeline_gate,
+# A5 qa.genre_scale_table_gate, B1 story.genre_rhythm_pack,
+# B2 story.director_handbook_compiler (clean-room, method only;
+# no template text, no Mixed N, no model routing or pricing).
+from . import season_pack_gate as _season_pack_gate  # noqa: E402,F401
+_season_pack_gate.register_season_pack_gate_capabilities_once()
+from . import reference_use_gate as _reference_use_gate  # noqa: E402,F401
+_reference_use_gate.register_reference_use_gate_capabilities_once()
+from . import status_card_monotonic_gate as _status_card_monotonic_gate  # noqa: E402,F401
+_status_card_monotonic_gate.register_status_card_monotonic_gate_capabilities_once()
+from . import dialogue_timeline_gate as _dialogue_timeline_gate  # noqa: E402,F401
+_dialogue_timeline_gate.register_dialogue_timeline_gate_capabilities_once()
+from . import genre_scale_table_gate as _genre_scale_table_gate  # noqa: E402,F401
+_genre_scale_table_gate.register_genre_scale_table_gate_capabilities_once()
+from . import genre_rhythm_pack as _genre_rhythm_pack  # noqa: E402,F401
+_genre_rhythm_pack.register_genre_rhythm_pack_capabilities_once()
+from . import director_handbook_compiler as _director_handbook_compiler  # noqa: E402,F401
+_director_handbook_compiler.register_director_handbook_compiler_capabilities_once()
