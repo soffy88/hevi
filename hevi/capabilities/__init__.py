@@ -1141,3 +1141,10 @@ from . import genre_rhythm_pack as _genre_rhythm_pack  # noqa: E402,F401
 _genre_rhythm_pack.register_genre_rhythm_pack_capabilities_once()
 from . import director_handbook_compiler as _director_handbook_compiler  # noqa: E402,F401
 _director_handbook_compiler.register_director_handbook_compiler_capabilities_once()
+
+# VidoGrid pricing registration (see VIDOGRID_ATTRIBUTION.md):
+# model.vidogrid_pricing_registration (free plan + free/paid model
+# tables + credit rate from the public pages read 2026-11-02;
+# registration only, no key, no API, no generation).
+from . import vidogrid_pricing_registration as _vidogrid_pricing_registration  # noqa: E402,F401
+_vidogrid_pricing_registration.register_vidogrid_pricing_capabilities_once()
