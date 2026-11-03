@@ -827,6 +827,15 @@ _editorial_project.register_editorial_project_capabilities_once()
 from . import asr_transcribe as _asr_transcribe  # noqa: E402,F401
 _asr_transcribe.register_asr_transcribe_capabilities_once()
 
+# Video step segmentation (2026-11-03, clean-room, method ideas
+# only): video.step_segmentation -- subtitle-driven step grouping
+# with per-step confidence and a capped lowest-first visual-check
+# budget; frames are human verification requests, no model calls,
+# no downloads, no transcription. See VID2GUIDE_ATTRIBUTION.md
+# (MIT method source).
+from . import video_step_segmentation as _video_step_segmentation  # noqa: E402,F401
+_video_step_segmentation.register_video_step_segmentation_capabilities_once()
+
 # Code-stage MV graft A1 + A2 + B1 (2026-11-01, clean-room, method
 # ideas only, reconstructed from an article description): A1
 # qa.greenscreen_generation_gate -- five greenscreen generation
@@ -1163,3 +1172,30 @@ from . import h3_single_segment_adapter as _h3_single_segment_adapter  # noqa: E
 _h3_single_segment_adapter.register_h3_single_segment_adapter_capabilities_once()
 from . import h3_config_equivalence_protocol as _h3_config_equivalence_protocol  # noqa: E402,F401
 _h3_config_equivalence_protocol.register_h3_config_equivalence_protocol_capabilities_once()
+
+# Explainer animation skills, 9 repositories (see
+# EXPLAINER_SKILLS_9_ATTRIBUTION.md): A1-A6 discipline gates + B1-B5
+# clean-room compilers/contracts. No template text, no kit code, no
+# CDN fetch, no key, no paid API; the reveal engine is not connected.
+from . import anatomy_audit_vocabulary as _anatomy_audit_vocabulary  # noqa: E402,F401
+_anatomy_audit_vocabulary.register_anatomy_audit_vocabulary_capabilities_once()
+from . import vo_first_timing_gate as _vo_first_timing_gate  # noqa: E402,F401
+_vo_first_timing_gate.register_vo_first_timing_gate_capabilities_once()
+from . import whiteboard_element_isolation_gate as _whiteboard_element_isolation_gate  # noqa: E402,F401
+_whiteboard_element_isolation_gate.register_whiteboard_element_isolation_gate_capabilities_once()
+from . import script_first_pacing_gate as _script_first_pacing_gate  # noqa: E402,F401
+_script_first_pacing_gate.register_script_first_pacing_gate_capabilities_once()
+from . import deterministic_reset_gate as _deterministic_reset_gate  # noqa: E402,F401
+_deterministic_reset_gate.register_deterministic_reset_gate_capabilities_once()
+from . import markdown_pagination_gate as _markdown_pagination_gate  # noqa: E402,F401
+_markdown_pagination_gate.register_markdown_pagination_gate_capabilities_once()
+from . import gsap_choreography_vocabulary as _gsap_choreography_vocabulary  # noqa: E402,F401
+_gsap_choreography_vocabulary.register_gsap_choreography_vocabulary_capabilities_once()
+from . import whiteboard_mask_contract as _whiteboard_mask_contract  # noqa: E402,F401
+_whiteboard_mask_contract.register_whiteboard_mask_contract_capabilities_once()
+from . import knowledge_layout_pack as _knowledge_layout_pack  # noqa: E402,F401
+_knowledge_layout_pack.register_knowledge_layout_pack_capabilities_once()
+from . import manim_scene_plan_gate as _manim_scene_plan_gate  # noqa: E402,F401
+_manim_scene_plan_gate.register_manim_scene_plan_gate_capabilities_once()
+from . import structured_prompt_compiler as _structured_prompt_compiler  # noqa: E402,F401
+_structured_prompt_compiler.register_structured_prompt_compiler_capabilities_once()
