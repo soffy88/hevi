@@ -1371,3 +1371,32 @@ from . import round_engine_contract as _round_engine_contract  # noqa: E402,F401
 _round_engine_contract.register_round_engine_contract_capabilities_once()
 from . import template_plan_substitution as _template_plan_substitution  # noqa: E402,F401
 _template_plan_substitution.register_template_plan_substitution_capabilities_once()
+# vibe-knowledge graft (see VIBE_KNOWLEDGE_ATTRIBUTION.md):
+# qa.source_sentence_ledger, qa.premium_composition_gate,
+# qa.duration_complexity_advisor, qa.quote_confirmation_gate,
+# qa.narration_alignment_gate, qa.ai_disclosure_gate,
+# story.knowledge_film_templates, video.style_catalog_schema,
+# qa.knowledge_qc_contract, video.two_tier_synthesis_contract
+# (clean-room method only; no SKILL/STYLE text, no stills/BGM/voice
+# assets, no Renoise/MiMo chains, no cloning execution; effects unverified).
+# Appended at the tail only; earlier registrations untouched.
+from . import source_sentence_ledger as _source_sentence_ledger  # noqa: E402,F401
+_source_sentence_ledger.register_source_sentence_ledger_capabilities_once()
+from . import premium_composition_gate as _premium_composition_gate  # noqa: E402,F401
+_premium_composition_gate.register_premium_composition_gate_capabilities_once()
+from . import duration_complexity_advisor as _duration_complexity_advisor  # noqa: E402,F401
+_duration_complexity_advisor.register_duration_complexity_advisor_capabilities_once()
+from . import quote_confirmation_gate as _quote_confirmation_gate  # noqa: E402,F401
+_quote_confirmation_gate.register_quote_confirmation_gate_capabilities_once()
+from . import narration_alignment_gate as _narration_alignment_gate  # noqa: E402,F401
+_narration_alignment_gate.register_narration_alignment_gate_capabilities_once()
+from . import ai_disclosure_gate as _ai_disclosure_gate  # noqa: E402,F401
+_ai_disclosure_gate.register_ai_disclosure_gate_capabilities_once()
+from . import knowledge_film_templates as _knowledge_film_templates  # noqa: E402,F401
+_knowledge_film_templates.register_knowledge_film_templates_capabilities_once()
+from . import style_catalog_schema as _style_catalog_schema  # noqa: E402,F401
+_style_catalog_schema.register_style_catalog_schema_capabilities_once()
+from . import knowledge_qc_contract as _knowledge_qc_contract  # noqa: E402,F401
+_knowledge_qc_contract.register_knowledge_qc_contract_capabilities_once()
+from . import two_tier_synthesis_contract as _two_tier_synthesis_contract  # noqa: E402,F401
+_two_tier_synthesis_contract.register_two_tier_synthesis_contract_capabilities_once()
