@@ -1148,3 +1148,18 @@ _director_handbook_compiler.register_director_handbook_compiler_capabilities_onc
 # registration only, no key, no API, no generation).
 from . import vidogrid_pricing_registration as _vidogrid_pricing_registration  # noqa: E402,F401
 _vidogrid_pricing_registration.register_vidogrid_pricing_capabilities_once()
+
+# pixelaigc single-segment H3 workflow (see PIXELAIGC_H3_WORKFLOW_ATTRIBUTION.md):
+# qa.h3_config_registration + qa.h3_frame_align_gate + qa.h3_stale_defaults_gate
+# + video.h3_single_segment_adapter (fake) + qa.h3_config_equivalence_protocol.
+# Clean-room restatement only; no workflow JSON, no weights, no licence asserted.
+from . import h3_config_registration as _h3_config_registration  # noqa: E402,F401
+_h3_config_registration.register_h3_config_registration_capabilities_once()
+from . import h3_frame_align_gate as _h3_frame_align_gate  # noqa: E402,F401
+_h3_frame_align_gate.register_h3_frame_align_gate_capabilities_once()
+from . import h3_stale_defaults_gate as _h3_stale_defaults_gate  # noqa: E402,F401
+_h3_stale_defaults_gate.register_h3_stale_defaults_gate_capabilities_once()
+from . import h3_single_segment_adapter as _h3_single_segment_adapter  # noqa: E402,F401
+_h3_single_segment_adapter.register_h3_single_segment_adapter_capabilities_once()
+from . import h3_config_equivalence_protocol as _h3_config_equivalence_protocol  # noqa: E402,F401
+_h3_config_equivalence_protocol.register_h3_config_equivalence_protocol_capabilities_once()
