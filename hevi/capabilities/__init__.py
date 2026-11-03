@@ -1227,3 +1227,33 @@ _confirmed_text_overlay.register_confirmed_text_overlay_capabilities_once()
 # tail only; earlier registrations untouched.
 from . import publish_pack_generator as _publish_pack_generator  # noqa: E402,F401
 _publish_pack_generator.register_publish_pack_generator_capabilities_once()
+
+# rea-video graft A1-A6 + B1-B4 (see REA_VIDEO_ATTRIBUTION.md):
+# qa.production_method_vocabulary, qa.evidence_priority_gate,
+# qa.real_material_isolation_gate, qa.sound_source_labels_gate,
+# qa.review_fusion_gate, qa.cost_tier_confirmation_gate,
+# qa.forensic_evidence_executor, model.capability_map_schema,
+# story.generation_unit_splitter, audio.three_track_contract
+# (clean-room method only; no upstream code/YAML/video, no VLM,
+# no capsule-cinema, no separation weights). Appended at the
+# tail only; earlier registrations untouched.
+from . import production_method_vocabulary as _production_method_vocabulary  # noqa: E402,F401
+_production_method_vocabulary.register_production_method_vocabulary_capabilities_once()
+from . import evidence_priority_gate as _evidence_priority_gate  # noqa: E402,F401
+_evidence_priority_gate.register_evidence_priority_gate_capabilities_once()
+from . import real_material_isolation_gate as _real_material_isolation_gate  # noqa: E402,F401
+_real_material_isolation_gate.register_real_material_isolation_gate_capabilities_once()
+from . import sound_source_labels_gate as _sound_source_labels_gate  # noqa: E402,F401
+_sound_source_labels_gate.register_sound_source_labels_gate_capabilities_once()
+from . import review_fusion_gate as _review_fusion_gate  # noqa: E402,F401
+_review_fusion_gate.register_review_fusion_gate_capabilities_once()
+from . import cost_tier_confirmation_gate as _cost_tier_confirmation_gate  # noqa: E402,F401
+_cost_tier_confirmation_gate.register_cost_tier_confirmation_gate_capabilities_once()
+from . import forensic_evidence_executor as _forensic_evidence_executor  # noqa: E402,F401
+_forensic_evidence_executor.register_forensic_evidence_executor_capabilities_once()
+from . import capability_map_schema as _capability_map_schema  # noqa: E402,F401
+_capability_map_schema.register_capability_map_schema_capabilities_once()
+from . import generation_unit_splitter as _generation_unit_splitter  # noqa: E402,F401
+_generation_unit_splitter.register_generation_unit_splitter_capabilities_once()
+from . import three_track_contract as _three_track_contract  # noqa: E402,F401
+_three_track_contract.register_three_track_contract_capabilities_once()
