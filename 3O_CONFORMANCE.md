@@ -39,11 +39,35 @@ of raising (async cancellation is re-raised per SPEC §5.6 C4).
 Adapters are thin delegating wrappers over the existing entry points;
 no business logic was moved or rewritten.
 
-## 4. Single-source convergence and sibling adjudication
+## 4. Layer attribution and single-source convergence
 
-(Filled from the analysis deliverables: price index, cluster
-decisions, sibling-import list. Counts and guard-test names are
-recorded here once landed.)
+### 4.1 Layer attribution (397 names, zero remainder)
+
+Source of truth: ~/workspace/3o-conformance/layer_attribution.json
+(397 entries, one per registered name; each entry carries layer +
+one-line reason + defining file). A copy is kept on ubuntu26 at
+/data/soffy/3o-conformance/layer_attribution.json. The table module
+hevi/capabilities/layer_attribution.py is generated from it by
+scripts/ci/gen_layer_attribution.py -- never hand-edit entries.
+
+Counts (live import, clean checkout): oprim 63, oskill 224, omodul
+51, obase 59, oservi 0. oservi = 0 is a finding, not a gap: no
+registry capability passes all five SPEC 7.2 red lines; the only
+oservi engine reference in-tree sits outside the registry
+(hevi/pipeline/longvideo_manifest.py importing the canonical
+oservi package). Attribution rules: atomic single-call execution
+-> oprim; multi-rule composition / stateless algorithm -> oskill;
+end-to-end business transaction -> omodul; adapter / cross-cutting
+-> obase; registry-shell wrappers take the layer of their delegate
+module (named in the JSON evidence). The 65 batch/dynamic
+registrations were individually decomposed in the JSON -- no
+"unclassified" remainder. Coverage is machine-checked by
+tests/test_3o_conformance.py (full-coverage + manifest + validity).
+
+### 4.2 Single-source convergence and sibling adjudication
+
+(Price index, cluster decisions, and the sibling-import list land in
+Batch 3; counts and guard-test names are recorded here once landed.)
 
 ## 5. Flat-namespace rename plan — PENDING PARENT CONFIRMATION
 
