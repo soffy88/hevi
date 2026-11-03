@@ -1199,3 +1199,31 @@ from . import manim_scene_plan_gate as _manim_scene_plan_gate  # noqa: E402,F401
 _manim_scene_plan_gate.register_manim_scene_plan_gate_capabilities_once()
 from . import structured_prompt_compiler as _structured_prompt_compiler  # noqa: E402,F401
 _structured_prompt_compiler.register_structured_prompt_compiler_capabilities_once()
+# - B2 qa.browser_check_executor (local Playwright runs of the
+# matrix plan against caller-supplied local fixture pages only;
+# loopback server, no network; exit 1 on any failing shot, with
+# screenshots and a contact sheet; a browser that cannot launch
+# fails closed and is never silently subsetted), and
+# <雨停之前> B3 qa.two_image_alignment_gate (annotated two-picture
+# structure alignment within a caller-supplied tolerance, plus a
+# repeated-structure count; pixel difference is evidence only)
+# and B4 video.confirmed_text_overlay (author-confirmed wording
+# matching the script verbatim, overlaid locally with ffmpeg /
+# Pillow onto fake-source frames and verified by pixel change;
+# video-only, audio not preserved). Appended at the tail only;
+# earlier registrations untouched.
+from . import browser_check_executor as _browser_check_executor  # noqa: E402,F401
+_browser_check_executor.register_browser_check_executor_capabilities_once()
+from . import two_image_alignment_gate as _two_image_alignment_gate  # noqa: E402,F401
+_two_image_alignment_gate.register_two_image_alignment_gate_capabilities_once()
+from . import confirmed_text_overlay as _confirmed_text_overlay  # noqa: E402,F401
+_confirmed_text_overlay.register_confirmed_text_overlay_capabilities_once()
+
+# ai-manju B3 (see AI_MANJU_ATTRIBUTION.md):
+# story.publish_pack_generator (cover descriptions, end-card
+# teasers quoting only the next episode's pack hook, release copy
+# assembled verbatim from caller-supplied material, and an
+# AI-generation label; text only, never posts). Appended at the
+# tail only; earlier registrations untouched.
+from . import publish_pack_generator as _publish_pack_generator  # noqa: E402,F401
+_publish_pack_generator.register_publish_pack_generator_capabilities_once()

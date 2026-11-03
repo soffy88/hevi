@@ -119,3 +119,22 @@ drifting-plate keying verdict pass from `qa.chroma_key_gate`,
 worst edge transition 7.0px, stacked-alpha mp4 and WebP
 frames delivered, VP9 alpha recorded unavailable (see above),
 three-background check frames in place.
+
+What was grafted later (2026-11-03, same clean-room terms; no
+script text copied):
+
+- B2 `qa.browser_check_executor` — local Playwright execution
+  of the A2 matrix plan against caller-supplied local fixture
+  pages only (loopback server, no network fetch): page errors,
+  4xx/5xx, blank canvases, and horizontal overflow per shot,
+  screenshots plus a contact sheet, exit code 1 on any failing
+  shot, report re-judged by `qa.browser_check_matrix`. A
+  browser that cannot launch fails closed; on this host the
+  cached WebKit 2370 build is launched via its own launcher
+  because the installed driver expects an older build, and the
+  executable actually used is recorded per browser in every
+  report. Reduced-motion and other human-eye items stay in the
+  plan's `unexamined` list and are not claimed. No browser was
+  downloaded.
+
+What remains not done: B6 exploded view, B7 cursor rig.

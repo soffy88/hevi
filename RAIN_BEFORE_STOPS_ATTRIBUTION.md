@@ -34,3 +34,25 @@ Residuals (not done): B3 two-picture structural alignment check,
 B4 confirmed-text overlay pipeline, B5 scene-block generation
 arrangement (execution left as a stub pending a separately
 approved Seedance route, key and budget).
+
+What was grafted later (2026-11-03, same clean-room terms;
+no template text copied, no price used, no Seedance route):
+
+- B3 `qa.two_image_alignment_gate` — before/after picture
+  structure alignment: named structure points supplied by the
+  caller, judged within a caller-supplied pixel tolerance, plus
+  a repeated-structure count that must agree (the field case is
+  a window-pane count). Pixel difference over the declared
+  frame region is recorded as evidence only and never passes
+  or fails the gate. Synthetic fixture pictures only.
+- B4 `video.confirmed_text_overlay` — confirmed-text version
+  control plus local overlay: only author-confirmed wording
+  that appears verbatim in the supplied script text is
+  overlaid, in a caller-supplied placement window, with local
+  ffmpeg frame work and a pixel-change verification; video
+  only, audio is not preserved. Synthetic solid-colour source
+  clip only; no real footage, no model call.
+
+Residuals (still not done): B5 scene-block generation
+arrangement (execution left as a stub pending a separately
+approved Seedance route, key and budget).
