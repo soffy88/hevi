@@ -234,6 +234,7 @@ class TaskService:
             PermissionRequest,
             ProviderPolicy,
             ProviderStateRepository,
+            default_tenant_for,
             evaluate_permission,
             evaluate_provider_policy,
             require_permission,
@@ -256,13 +257,34 @@ class TaskService:
             provider=str(task.get("video_provider") or "") or "auto",
             operation=OperationKind.RENDER,
         )
+        # Single-tenant launch fallback: a task row with no workspace_id is
+        # evaluated against the deployment's sole declared tenant when exactly
+        # one exists (see default_tenant_for). The fallback is recorded on the
+        # decision (tenant_defaulted check) and logged below — never silent.
+        # Present-but-undeclared tenants, missing principals, and all provider /
+        # operation / ceiling gates are unaffected.
+        default_tenant = default_tenant_for(self.scope_resolver)
         permission_decision = evaluate_permission(
-            permission_request, self.scope_resolver
+            permission_request, self.scope_resolver,
+            default_tenant_id=default_tenant,
         )
         await self._persist_permission_decision(task, permission_decision)
+        if any(
+            c.get("check") == "tenant_defaulted" and c.get("ok")
+            for c in permission_decision.checks
+        ):
+            log_event(
+                stage="task_service",
+                event="admission_tenant_defaulted",
+                task_id=str(task["id"]),
+                tenant_id=default_tenant,
+            )
         if not permission_decision.allowed:
             raise PermissionError(permission_decision)
-        require_permission(permission_request, self.scope_resolver)
+        require_permission(
+            permission_request, self.scope_resolver,
+            default_tenant_id=default_tenant,
+        )
 
         if not isinstance(self.repository.pool, PgPool):
             return

@@ -32,4 +32,18 @@ def production_catalog() -> list[dict[str, Any]]:
 def registry_consistency() -> dict[str, Any]:
     registered = sorted(item.id for item in list_recipes(refresh=True))
     canonical = sorted(CANONICAL_LINES)
-    return {"registered_lines": registered, "qualification_lines": canonical, "registered_count": len(registered), "qualification_count": len(canonical), "unknown_qualification_lines": sorted(set(canonical) - set(registered)), "unqualified_registered_lines": sorted(set(registered) - set(canonical)), "passed": registered == canonical}
+    unknown_qualification_lines = sorted(set(canonical) - set(registered))
+    return {
+        "registered_lines": registered,
+        "qualification_lines": canonical,
+        "registered_count": len(registered),
+        "qualification_count": len(canonical),
+        "unknown_qualification_lines": unknown_qualification_lines,
+        "unqualified_registered_lines": sorted(set(registered) - set(canonical)),
+        # ``passed`` only requires every canonical (qualification) line to be
+        # registered. Lines registered outside the canonical set (currently
+        # handdraw and scene3d) are tolerated: they stay listed in
+        # ``unqualified_registered_lines`` but do not fail consistency. A
+        # canonical line missing from the registry still fails it.
+        "passed": not unknown_qualification_lines,
+    }

@@ -41,3 +41,35 @@ def classify_seam_cut_style(
     if a_speaker and b_speaker and a_speaker == b_speaker:
         return CutStyleDecision(style="J", offset_s=offset_s)
     return CutStyleDecision(style=None, offset_s=0.0)
+
+
+def seam_offset_ms(seg_a: SceneScriptSegment | None, seg_b: SceneScriptSegment | None) -> int:
+    """Signed J/L-cut offset (ms) for the seam seg_a -> seg_b.
+
+    Single source for both dialogue branches in ``produce_v2``:
+    J-cut (next line starts early, audio before picture) -> negative;
+    L-cut (prior line lingers over the reaction shot) -> positive;
+    no style or either segment missing -> 0.
+    """
+    if seg_a is None or seg_b is None:
+        return 0
+    seam = classify_seam_cut_style(seg_a, seg_b)
+    if seam.style == "J":
+        return -int(seam.offset_s * 1000)
+    if seam.style == "L":
+        return int(seam.offset_s * 1000)
+    return 0
+
+
+def native_start_ms(*, shot_start_s: float, window_start_s: float, seam_offset_ms: int = 0) -> int:
+    """Start (ms) for a native-dialogue cue on the assembled timeline.
+
+    ``window_start_s`` is the ASR window start inside the source clip
+    (already clamped by the caller as ``max(0, min(window)-0.15)``); it is
+    preserved verbatim -- the J/L offset is applied *after* it, on the
+    timeline position only, never by shifting the ASR window itself
+    (that would misalign the extracted audio with what ASR heard).
+    Result is clamped to >= 0, matching the fallback-TTS branch.
+    """
+    base_ms = int((shot_start_s + window_start_s) * 1000)
+    return max(0, base_ms + int(seam_offset_ms))

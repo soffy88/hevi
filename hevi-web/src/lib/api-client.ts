@@ -135,6 +135,13 @@ export const canvasApi = {
   execute:(id: string) => authedReq<{ task_id: string }>(`/api/canvas/${id}/execute`, { method: 'POST' }),
   // SSE 进度 URL(配合 useSSEProgress)
   progressUrl: (id: string) => `${API_BASE}/api/canvas/${id}/execute/progress`,
+  // 材料包 → 画布映射(后端 hevi.canvas.material_pack):输入材料包或
+  // stable-film manifest,返回画布图 + 映射报告(段数/缺失字段/门结果)。
+  materialPackGraph: (pack: Record<string, unknown>, existingGraph?: Record<string, unknown>) =>
+    authedReq<{ graph: { nodes: Array<Record<string, unknown>>; edges: Array<Record<string, unknown>>; name?: string }; report: Record<string, unknown> }>(
+      '/api/canvas/material-pack/graph',
+      { method: 'POST', body: JSON.stringify({ pack, existing_graph: existingGraph ?? null }) },
+    ),
   // 通用 i2v 参考图上传(不经过角色库,直接给某个视频节点做参考图)
   uploadReferenceImage: (file: File) => {
     const form = new FormData();

@@ -27,6 +27,10 @@ SKILL_DIRS = (
     "hevi-studio",
     "hevi-hyperframes",
     "hevi-daily",
+    "lanshu-explainer",
+    "story-to-film",
+    "writing-market-research",
+    "motion-canvas",
 )
 
 _HOST_DIRS = {

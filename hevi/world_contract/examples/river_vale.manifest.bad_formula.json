@@ -1,0 +1,116 @@
+{
+  "interface_samples": [
+    {
+      "at": 2.0,
+      "formula": "trunk_radius_m",
+      "side_a_value": 0.62,
+      "side_b_value": 0.95
+    },
+    {
+      "at": 9.0,
+      "formula": "trunk_radius_m",
+      "side_a_value": 0.5,
+      "side_b_value": 0.24
+    }
+  ],
+  "objects": [
+    {
+      "category": "tree",
+      "height": 14,
+      "name": "great_tree",
+      "position": [
+        -18,
+        0,
+        12
+      ],
+      "source": {
+        "ref": "great_tree",
+        "type": "landmark"
+      },
+      "zone": "grove"
+    },
+    {
+      "category": "building",
+      "height": 4.5,
+      "name": "cottage",
+      "position": [
+        24,
+        0,
+        16
+      ],
+      "source": {
+        "ref": "cottage",
+        "type": "landmark"
+      },
+      "zone": "south_meadow"
+    },
+    {
+      "category": "structure",
+      "height": 1.2,
+      "name": "bridge_deck",
+      "position": [
+        6,
+        3.4,
+        0
+      ],
+      "source": {
+        "ref": "bridge_mid_deck",
+        "type": "anchor"
+      },
+      "zone": "river"
+    },
+    {
+      "category": "prop",
+      "height": 1.0,
+      "name": "rowboat",
+      "position": [
+        -8,
+        0.2,
+        1
+      ],
+      "source": {
+        "offset": [
+          52,
+          5
+        ],
+        "ref": "river",
+        "type": "zone_offset"
+      },
+      "zone": "river"
+    },
+    {
+      "category": "prop",
+      "height": 2.6,
+      "name": "lantern_by_bridge",
+      "position": [
+        8,
+        0,
+        6
+      ],
+      "source": {
+        "offset": [
+          68,
+          2
+        ],
+        "ref": "south_meadow",
+        "type": "zone_offset"
+      },
+      "zone": "south_meadow"
+    },
+    {
+      "category": "prop",
+      "height": 1.8,
+      "name": "east_fence",
+      "position": [
+        40,
+        0,
+        20
+      ],
+      "source": {
+        "type": "contract_range"
+      },
+      "zone": "south_meadow"
+    }
+  ],
+  "world": "river_vale"
+}

@@ -24,10 +24,100 @@ export function NodeInspector({ node, onChange, onError }: NodeInspectorProps) {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState('');
   const toolId = typeof node.data.config?.tool_id === 'string' ? node.data.config.tool_id : '';
-  if (node.data.nodeType !== 'video' && !toolId) return null;
+  if (node.data.nodeType !== 'video' && node.data.nodeType !== 'segment' && !toolId) return null;
 
   const config = node.data.config ?? {};
   const referenceImage = typeof config.reference_image === 'string' ? config.reference_image : '';
+
+  // 材料包片段节点:可改 prompt / 负面清单 / 时长 / 参考图编号 / 缓动。
+  // 改动即标 dirty + 待复核(与后端 apply_segment_edit 同语义);参考图编号
+  // 按材料包顺序稳定显示,不重排;真正写回事实源须走"采用"(后端)。
+  if (node.data.nodeType === 'segment') {
+    const seg = config;
+    const prompt = typeof seg.prompt === 'string' ? seg.prompt : '';
+    const negatives = Array.isArray(seg.negative_prompts)
+      ? (seg.negative_prompts as unknown[]).join('\n') : '';
+    const duration = typeof seg.duration_s === 'number' ? seg.duration_s
+      : typeof seg.duration_sec === 'number' ? seg.duration_sec : 0;
+    const refNumbers = Array.isArray(seg.reference_numbers)
+      ? (seg.reference_numbers as unknown[]).join(', ') : '';
+    const easing = typeof seg.easing === 'string' ? seg.easing : '';
+    const firstFrame = typeof seg.first_frame_ref === 'string' ? seg.first_frame_ref : '';
+    const badges = Array.isArray(seg.material_pack_gate_badges)
+      ? (seg.material_pack_gate_badges as Array<Record<string, unknown>>) : [];
+    const markDirty = (patch: Record<string, unknown>) =>
+      onChange({ ...patch, material_pack_dirty: true, material_pack_review_pending: true });
+    return (
+      <div className="hevi-inspector" role="region" aria-label="片段属性">
+        <div className="hevi-inspector__title">片段节点 {String(seg.material_pack_segment_id ?? '')}</div>
+        {(seg.material_pack_dirty === true || seg.material_pack_review_pending === true) && (
+          <p className="hevi-inspector__ref-path">已改动（dirty），待复核；下游段已标待复核</p>
+        )}
+        {badges.length > 0 && (
+          <p className="hevi-inspector__ref-path">
+            {badges.map((b) => `${String(b.gate ?? '')}:${String(b.verdict ?? '')}`).join(' / ')}
+          </p>
+        )}
+        <label className="hevi-inspector__label" htmlFor="hevi-inspector-seg-prompt">Prompt</label>
+        <textarea
+          id="hevi-inspector-seg-prompt"
+          className="hevi-inspector__textarea"
+          rows={4}
+          value={prompt}
+          onChange={(e) => markDirty({ prompt: e.target.value })}
+        />
+        <label className="hevi-inspector__label" htmlFor="hevi-inspector-seg-neg">负面清单（每行一条）</label>
+        <textarea
+          id="hevi-inspector-seg-neg"
+          className="hevi-inspector__textarea"
+          rows={2}
+          value={negatives}
+          onChange={(e) => markDirty({ negative_prompts: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })}
+        />
+        <label className="hevi-inspector__label" htmlFor="hevi-inspector-seg-dur">时长（秒）</label>
+        <input
+          id="hevi-inspector-seg-dur"
+          className="hevi-inspector__textarea"
+          type="number"
+          min={0}
+          step={0.1}
+          value={duration}
+          onChange={(e) => { const v = Number(e.target.value); if (Number.isFinite(v) && v > 0) markDirty({ duration_sec: v, duration_s: v }); }}
+        />
+        <label className="hevi-inspector__label" htmlFor="hevi-inspector-seg-refs">参考图编号（逗号分隔，顺序稳定不重排）</label>
+        <input
+          id="hevi-inspector-seg-refs"
+          className="hevi-inspector__textarea"
+          value={refNumbers}
+          onChange={(e) => {
+            const nums = e.target.value.split(',').map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n >= 1);
+            markDirty({ reference_numbers: nums });
+          }}
+        />
+        <label className="hevi-inspector__label" htmlFor="hevi-inspector-seg-easing">缓动</label>
+        <select
+          id="hevi-inspector-seg-easing"
+          className="hevi-inspector__textarea"
+          value={easing}
+          onChange={(e) => markDirty({ easing: e.target.value || null })}
+        >
+          <option value="">（未指定）</option>
+          <option value="linear">linear 匀速</option>
+          <option value="ease_in">ease_in 起步慢</option>
+          <option value="ease_out">ease_out 落定慢</option>
+          <option value="ease_in_out">ease_in_out 起慢落慢</option>
+          <option value="hold">hold 保持不动</option>
+        </select>
+        <label className="hevi-inspector__label" htmlFor="hevi-inspector-seg-ff">首帧引用</label>
+        <input
+          id="hevi-inspector-seg-ff"
+          className="hevi-inspector__textarea"
+          value={firstFrame}
+          onChange={(e) => markDirty({ first_frame_ref: e.target.value })}
+        />
+      </div>
+    );
+  }
 
   const onUploadReference = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

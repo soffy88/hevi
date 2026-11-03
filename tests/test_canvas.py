@@ -275,15 +275,19 @@ def test_validate_graph_invalid_edge_raises() -> None:
         validate_graph(nodes, edges)
 
 
-# ── 6. node_mapper — 5 types + registry ──────────────────────────────────────
+# ── 6. node_mapper — 7 types + registry ──────────────────────────────────────
 
 
 def test_node_executors_registry_has_5_types() -> None:
-    assert set(NODE_EXECUTORS.keys()) == {"text", "image", "video", "audio", "script"}
+    assert set(NODE_EXECUTORS.keys()) == {
+        "text", "image", "video", "audio", "script", "segment", "asset",
+    }
 
 
 def test_valid_node_types_has_5() -> None:
-    assert frozenset({"text", "image", "video", "audio", "script"}) == VALID_NODE_TYPES
+    assert frozenset(
+        {"text", "image", "video", "audio", "script", "segment", "asset"}
+    ) == VALID_NODE_TYPES
 
 
 @pytest.mark.asyncio

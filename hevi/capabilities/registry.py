@@ -55,10 +55,17 @@ __all__ = [
     "list_caps",
     "describe",
     "compute_sha256",
+    "overwrite_history",
 ]
 
 # Canonical registry: a process-global, ordered dict keyed by capability name.
 _REGISTRY: dict[str, "Capability"] = {}
+
+# Names that were explicitly overwritten via ``register(..., overwrite=True)``.
+# Populated only on the explicit-overwrite path; the default (overwrite=False)
+# raises instead of silently replacing, so this list is the audit trail for
+# the intentional exceptions (see S-09).
+_OVERWRITE_HISTORY: list[dict[str, Any]] = []
 
 
 @dataclass
@@ -77,6 +84,20 @@ class Capability:
     render: Any  # callable(params, out_dir, *, duration, aspect, seed) -> CapabilityResult
     description: str = ""
     line: str = ""  # owning product line (e.g. "scene3d")
+    # Report/file capabilities (drama reports, novel books, workflow/bundle
+    # JSON) produce no media artefact: their render ignores ``aspect`` and
+    # their product is the report JSON (plus any files it names).  The
+    # preview endpoint skips the aspect check for them and returns the
+    # report JSON instead of an MP4 (see S-03 / M-15).  Media capabilities
+    # keep the default True.
+    has_media_output: bool = True
+    # When True the generic preview endpoint refuses the capability with
+    # 422 (restricted), even though it stays listed in the catalogue.
+    # Used for video.blender_mcp: its ``code`` param is arbitrary bpy
+    # code executed in a live Blender session, so it must never be
+    # reachable from a generic caller — only trusted direct callers
+    # (render_safe in-process) may run it (see M-17).
+    preview_restricted: bool = False
 
     def validate_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """Validate ``params`` against ``params_schema``; return the params.
@@ -139,14 +160,49 @@ def compute_sha256(path: Path | str) -> str:
     return h.hexdigest()
 
 
-def register(cap: Capability, overwrite: bool = True) -> Capability:
-    """Install ``cap`` into the global registry (last writer wins per name)."""
+def register(cap: Capability, overwrite: bool = False) -> Capability:
+    """Install ``cap`` into the global registry.
+
+    Default ``overwrite=False`` (S-09): registering a name that already
+    exists raises :class:`CapabilityError` instead of silently replacing
+    it — a mistyped duplicate name used to topple the real capability
+    with no trace.  The ``register_*_capabilities_once`` guards do NOT
+    depend on overwrite semantics (they keep their own ``_Registered``
+    flag, and huobao-style registrars pre-check ``_REGISTRY``), so the
+    default change breaks no existing registration path; the one
+    in-tree explicit ``overwrite=True`` caller (riso) keeps working.
+    Pass ``overwrite=True`` only when replacement is intentional; that
+    path logs a warning and records the name in
+    :func:`overwrite_history`, which :func:`describe` surfaces.
+    """
+    import logging
+
     if not cap.name:
         raise CapabilityError("capability name must be non-empty")
-    if not overwrite and cap.name in _REGISTRY:
-        return _REGISTRY[cap.name]
+    if cap.name in _REGISTRY:
+        if not overwrite:
+            raise CapabilityError(
+                f"capability {cap.name!r} is already registered; "
+                "refusing to overwrite (pass overwrite=True only for an "
+                "intentional replacement)"
+            )
+        logging.getLogger(__name__).warning(
+            "capability %r overwritten by explicit overwrite=True", cap.name
+        )
+        _OVERWRITE_HISTORY.append({"name": cap.name})
     _REGISTRY[cap.name] = cap
     return cap
+
+
+def overwrite_history() -> list[dict[str, Any]]:
+    """Names replaced via explicit ``overwrite=True`` (audit trail, S-09).
+
+    NOTE: this module intentionally shadows the ``list`` builtin with
+    ``list = list_capabilities`` (contract API), so the copy must be
+    made with ``.copy()`` — a bare ``list(...)`` call here would
+    silently run the capability filter instead.
+    """
+    return _OVERWRITE_HISTORY.copy()
 
 
 def contains(name: str) -> bool:
@@ -200,6 +256,7 @@ def Registry() -> dict[str, Capability]:  # noqa: N802 - DDD-style factory per c
 
 def describe() -> list[dict[str, Any]]:
     """Contract-v1 description of every registered capability (JSON-ready)."""
+    overwritten = {entry["name"] for entry in _OVERWRITE_HISTORY}
     return [
         {
             "name": c.name,
@@ -208,6 +265,9 @@ def describe() -> list[dict[str, Any]]:
             "cpu_cost_hint": c.cpu_cost_hint,
             "params_schema": c.params_schema,
             "description": c.description,
+            "has_media_output": c.has_media_output,
+            "preview_restricted": c.preview_restricted,
+            "overwritten": c.name in overwritten,
         }
         for c in _REGISTRY.values()
     ]
@@ -541,7 +601,7 @@ register(
         params_schema={"type": "object", "required": ["manifest_path"]},
         cpu_cost_hint=2.0,
         render=_render_local_episode,
-        description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）",
+        description="本地 CPU 渲染试点片（真实 ffmpeg，无付费 API，确定性可复现）。验收专用合成片（纯色底+镜号台词叠加），非生产渲染；生产混剪走 svfactory.render",
         line="anime",
     )
 )
@@ -727,7 +787,7 @@ register(Capability(
     params_schema={"type": "object"},
     cpu_cost_hint=0.05,
     render=_render_director_brief,
-    description="线路无关的 DirectorBrief 生成与自动补全",
+    description="线路无关的 DirectorBrief 生成与自动补全。此 DirectorBrief 指 hevi.director_lens.brief.DirectorBrief（运动轨迹/物理/主光/BPM 拍点/禁止项等导演决策），不是 hevi.creative.director_brief 的 S1 哈希契约 DirectorBrief，也不是 hevi.season_planner.schemas.DirectorBrief（短剧导演阐述）",
     line="director"
 ))
 
@@ -792,7 +852,9 @@ register(Capability(
 # registry and were therefore invisible to GET /api/capabilities and to
 # ShotSpec.  Re-declare them here against the canonical Capability type so all
 # lines resolve them through get()/resolve() like every other capability.
-# The private module registry is left untouched (its own tests still pass).
+# The private module registry has since been removed: hevi/storyplan/
+# capabilities.py is now only a forwarding shim onto this unified registry,
+# which is the single source of truth for these registrations.
 def _render_story_plan(
     params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
 ) -> CapabilityResult:

@@ -87,7 +87,7 @@ register(
         params_schema={"type": "object", "required": ["script_text"]},
         cpu_cost_hint=2.0,
         render=_render_svfactory_episode_cap,
-        description="本地 CPU 串行短片渲染（Piper TTS + 混剪 + libass 幼儿大字描边字幕 + kids_gate）",
+        description="本地 CPU 串行短片渲染（Piper TTS + 混剪 + libass 幼儿大字描边字幕 + kids_gate）。输入为脚本文本+素材目录的真实素材混剪，与 kids.render_local（manifest 驱动验收片）无关",
         line="svfactory",
     )
 )

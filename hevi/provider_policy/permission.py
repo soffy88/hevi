@@ -45,6 +45,15 @@ exists. What it does instead is the part that is both real and useful:
 * an **undeclared** scope is refused. Not defaulted to allow. A deployment with no
   tenant policy denies every execution rather than admitting every execution, which
   is the only safe reading when the principal cannot be attributed.
+* a **missing** tenant is the one exception, and only in the single-tenant case:
+  when the deployment declares exactly one tenant scope, a task row with no
+  ``workspace_id`` is evaluated against that sole scope instead of being refused.
+  The fallback is recorded explicitly (a ``tenant_defaulted`` check on the decision)
+  and never silent, and it changes nothing else: provider, capability, operation,
+  and ceiling gates still apply in full. A present-but-undeclared tenant is still
+  refused, and a deployment with zero or two-plus tenants still refuses a missing
+  tenant — the fallback is unambiguous only when exactly one tenant exists, so
+  adding a second tenant disables it and forces callers to declare one.
 
 That is a narrower guarantee than "tenancy is enforced", and the docstring of
 :func:`evaluate_permission` says so. Making it a real tenancy check requires a
@@ -305,12 +314,41 @@ class StaticScopeResolver(ScopeResolver):
             return None
         return self._scopes.get(tenant_id)
 
+    @property
+    def configured_tenants(self) -> tuple[str, ...]:
+        return tuple(sorted(self._scopes))
+
+
+def default_tenant_for(resolver: ScopeResolver) -> str | None:
+    """The single-tenant fallback id, or None when fallback must not apply.
+
+    Returns the sole configured tenant id when the resolver exposes exactly one
+    configured tenant, else None. Zero tenants means fail-closed (nothing to fall
+    back to); two-plus means ambiguous (falling back would silently pick a tenant
+    the caller did not name), so the fallback disables itself the moment a
+    deployment stops being single-tenant.
+    """
+    configured = tuple(getattr(resolver, "configured_tenants", ()) or ())
+    if len(configured) == 1:
+        return configured[0]
+    return None
+
 
 def evaluate_permission(
     request: PermissionRequest,
     resolver: ScopeResolver,
+    *,
+    default_tenant_id: str | None = None,
 ) -> PermissionDecision:
     """Answer the admission question. Denies by default; never by accident.
+
+    ``default_tenant_id`` is the single-tenant fallback: when the task row names
+    no tenant and a default is supplied, the row is evaluated against that
+    tenant's scope and the fallback is recorded as a ``tenant_defaulted`` check.
+    It never rescues a present-but-undeclared tenant, and it never relaxes the
+    provider, capability, operation, or ceiling gates. Callers pass it from
+    :func:`default_tenant_for`, which yields a value only for a resolver with
+    exactly one configured tenant.
 
     Order matters and is deliberate. Principal and tenant are checked first because
     a question with no principal cannot be answered against any scope, and evaluating
@@ -339,11 +377,21 @@ def evaluate_permission(
         denials.append(PermissionDenial.NO_PRINCIPAL)
     record("principal_present", bool(request.principal), request.principal)
 
-    # 2. Tenant. Absent or unknown is a denial, never an implicit default scope.
+    # 2. Tenant. Absent or unknown is a denial, never an implicit default scope —
+    #    except the single-tenant fallback: a missing tenant is evaluated against
+    #    the supplied default tenant's scope, and the fallback is recorded
+    #    explicitly. A present-but-undeclared tenant is still refused.
     scope: TenantScope | None = None
     if not request.tenant_id:
-        denials.append(PermissionDenial.UNKNOWN_TENANT)
-        record("tenant_present", False, None)
+        if default_tenant_id:
+            scope = resolver.scope_for(default_tenant_id)
+        if scope is not None:
+            record("tenant_defaulted", True, default_tenant_id)
+            record("tenant_present", False, None)
+            record("tenant_resolved", True, default_tenant_id)
+        else:
+            denials.append(PermissionDenial.UNKNOWN_TENANT)
+            record("tenant_present", False, None)
     else:
         scope = resolver.scope_for(request.tenant_id)
         if scope is None:
@@ -440,6 +488,8 @@ def evaluate_permission(
 def require_permission(
     request: PermissionRequest,
     resolver: ScopeResolver,
+    *,
+    default_tenant_id: str | None = None,
 ) -> PermissionDecision:
     """Evaluate and raise on denial. Returns the decision on allow.
 
@@ -447,7 +497,9 @@ def require_permission(
     it, and raises so a caller that forgets to check cannot proceed: the denial path
     terminates before any dispatch.
     """
-    decision = evaluate_permission(request, resolver)
+    decision = evaluate_permission(
+        request, resolver, default_tenant_id=default_tenant_id
+    )
     if not decision.allowed:
         raise PermissionError(decision)
     return decision
@@ -552,6 +604,7 @@ __all__ = [
     "ScopeResolver",
     "StaticScopeResolver",
     "TenantScope",
+    "default_tenant_for",
     "evaluate_permission",
     "require_permission",
     "resolver_from_settings",

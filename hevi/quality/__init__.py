@@ -2,6 +2,7 @@
 
 from .evaluation import QualityEvaluation, QualityEvidence, evaluation_from_shot_verdicts
 from .evidence import ConstraintEvaluation, EvaluationEvidence
+from .export_qa import run_export_qa
 from .gate_policy import GatePolicy
 from .repair_controller import (
     RepairAction,
@@ -28,6 +29,7 @@ __all__ = [
     "RepairRepository",
     "apply_repair_decision",
     "evaluation_from_shot_verdicts",
+    "run_export_qa",
     "scopes_to_shot_indexes",
     "severity_for",
 ]

@@ -27,8 +27,8 @@ from hevi.kids.fonts import cjk_font
 from hevi.stickman.proposal import DirectorProposal, StoryboardScene
 
 
-FFMPEG = "/home/soffy/.local/bin/ffmpeg"
-FFPROBE = "/home/soffy/.local/bin/ffprobe"
+FFMPEG = shutil.which("ffmpeg") or "/home/soffy/.local/bin/ffmpeg"
+FFPROBE = shutil.which("ffprobe") or "/home/soffy/.local/bin/ffprobe"
 PIPER_BIN = "/data/soffy/projects/hevi-zero/.venv/bin/piper"
 PIPER_VOICE = "/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx"
 

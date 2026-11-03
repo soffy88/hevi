@@ -15,6 +15,18 @@ target 自动触发廷辩反打),作者只管内容。
 ★ narration/commentary 镜的 `visual_prompt` 直接驱动讲解静帧配图(经 v2_jiangjie 加写实取景框 +
 world_bible 画风锚),手写它就能治"南门木杆→枯树小院"这类配图错配。演绎段与讲解段共用同一份
 world_bible(back-half 从 raw_text 现生成考据 gold)——跨栈接缝能接上的根本。
+
+★ 撰稿骨架:吕氏五段法(2026-10-24 定,规范全文 docs/rules/history_scene_narrative.md)。
+每一集围绕**一个关键抉择**写五段,用 AuthoredBeat.section 标注、审核时按段核对:
+  ①现场(讲解):时地人+利害格局,大脉络大关键,不堆细节;
+  ②代入(讲解,全集至多一拍):推进到抉择点停住,只给当事人当时的信息与约束(禁后见之明),
+    发问「如果是你,你会怎么做」,该拍标 decision_point=True;
+  ③演绎(dialogue,点睛):只演关键抉择场面——古人到底怎么做,不铺全程;
+  ④抽理(讲解+commentary):古人的选择与观众的答案对照、后果与成败,抽古今共通大原则;
+  ⑤鉴今(modern_echo,全集至多一段且必须最后一拍):把大原则落回现代处境收尾;这一拍是
+    全片唯一允许现代词汇的段(现代词黑名单/立意现代梗禁令不约束它,见 script.py)。
+编译器结构硬校验:modern_echo 至多一段且在最后、decision_point 至多一处且只许标在
+narration 拍上——违反直接 ValueError,撰稿期就爆,不留到出片才发现。
 """
 
 from __future__ import annotations
@@ -49,9 +61,9 @@ class AuthoredCharacter(BaseModel):
 
 
 class AuthoredBeat(BaseModel):
-    """一个叙事拍:讲解镜(narration/commentary+visual_prompt)或演绎镜(dialogue+speaker/target)。"""
+    """一个叙事拍:讲解镜(narration/commentary/modern_echo+visual_prompt)或演绎镜(dialogue+speaker/target)。"""
 
-    kind: Literal["narration", "dialogue", "commentary"]
+    kind: Literal["narration", "dialogue", "commentary", "modern_echo"]
     scene: str  # 对应 locations 的 key;dialogue 同 scene 连续 → 合并成一场(自动反打)
     text: str
     # ── dialogue 用 ──
@@ -60,6 +72,9 @@ class AuthoredBeat(BaseModel):
     characters: list[str] = Field(default_factory=list)  # 在场角色 id;空则默认 [speaker]
     # ── narration/commentary 用 ──
     visual_prompt: str = ""  # ★ 手写配图(讲解静帧的视觉描述)
+    # ── 吕氏五段法(规范见 docs/rules/history_scene_narrative.md)──
+    section: str = ""  # 五段标注:现场/代入/演绎/抽理/鉴今(仅供审核与结构核对,不进片)
+    decision_point: bool = False  # 抉择点(仅 narration 拍):讲解在此停顿留白+问题上屏
     # ── 三档置信标注(空=走 _clip_tier 默认:讲解→推演,演绎→演绎)──
     tier: str = ""  # 实录/推演/演绎
     cite: str = ""  # 出处(实录必填,如 资治通鉴·周纪二)
@@ -93,6 +108,19 @@ class CompiledEpisode(BaseModel):
 def compile_authored_episode(ep: AuthoredEpisode) -> CompiledEpisode:
     """声明式撰稿 → 管线 schema。机械活集中在此:分配 id/时序、narration 镜清空 characters(路由讲解),
     dialogue 镜落 speaker/target/在场角色(路由演绎+反打)、tier/cite 落到 Shot。会校验引用完整性。"""
+    # 吕氏五段法结构硬校验(规范见 docs/rules/history_scene_narrative.md)
+    echo_idx = [i for i, b in enumerate(ep.beats) if b.kind == "modern_echo"]
+    if len(echo_idx) > 1:
+        raise ValueError("modern_echo(鉴今)拍至多一段")
+    if echo_idx and echo_idx[0] != len(ep.beats) - 1:
+        raise ValueError("modern_echo(鉴今)拍必须是全集最后一个 beat")
+    dp_idx = [i for i, b in enumerate(ep.beats) if b.decision_point]
+    if len(dp_idx) > 1:
+        raise ValueError("decision_point(抉择点)一集至多一处")
+    for i in dp_idx:
+        if ep.beats[i].kind != "narration":
+            raise ValueError(f"beat[{i}] decision_point 只能标在 narration(讲解)拍上")
+
     char_ids = {c.id for c in ep.characters}
     bible = CharacterBible(
         characters=[
@@ -122,11 +150,17 @@ def compile_authored_episode(ep: AuthoredEpisode) -> CompiledEpisode:
             line = ScriptLine(
                 line_id=lid, type="dialogue", speaker=b.speaker, text=b.text, target=b.target
             )
-        else:  # narration / commentary → 讲解段(characters 必须空,否则被判成 drama)
+        else:  # narration / commentary / modern_echo → 讲解段(characters 必须空,否则被判成 drama)
             if not b.visual_prompt.strip():
                 raise ValueError(f"beat[{i}] {b.kind} 缺 visual_prompt(讲解镜配图会退回泛化空景)")
             chars = []
-            line = ScriptLine(line_id=lid, type=b.kind, speaker="NARRATOR", text=b.text)
+            line = ScriptLine(
+                line_id=lid,
+                type=b.kind,
+                speaker="NARRATOR",
+                text=b.text,
+                decision_point=b.decision_point,
+            )
         if b.tier == "实录" and not b.cite.strip():
             raise ValueError(f"beat[{i}] tier=实录 必须带 cite(出处)")
         lines.append(line)
@@ -166,6 +200,13 @@ def summarize_episode_structure(ep: AuthoredEpisode) -> str:
 
     c = compile_authored_episode(ep)
     out = [f"《{ep.title}》  立意:{ep.thesis}", "== 叙事分组(讲解主干 + 演绎插段)=="]
+    if any(b.section for b in ep.beats):
+        out.append("== 五段标注(吕氏骨架)==")
+        out.extend(
+            f"  beat{i:02d} [{b.section or '—'}] {b.kind}"
+            f"{' ★抉择点' if b.decision_point else ''}"
+            for i, b in enumerate(ep.beats)
+        )
     for k, ss in group_shots_by_kind(c.shotlist, c.script):
         out.append(f"  {k:<9} {[s.shot_id for s in ss]}")
     sss = build_v2_scene_script_set(

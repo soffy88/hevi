@@ -101,6 +101,9 @@ def render_handdraw_pipeline(
     prefer_cosy: bool = True,
     seed: int = 0,
     preview_duration: float | None = None,
+    stroke_style: str = "legacy",
+    rough_roughness: float = 2.0,
+    rough_bowing: float = 2.0,
 ) -> dict[str, Any]:
     """Complete end-to-end handdraw production pipeline.
 
@@ -153,6 +156,9 @@ def render_handdraw_pipeline(
             style_id=style_id,
             size=(CANON, CANON),
             seed=seed,
+            stroke_style=stroke_style,
+            rough_roughness=rough_roughness,
+            rough_bowing=rough_bowing,
         )
         illustration_meta_map[scene_key] = {
             **meta,

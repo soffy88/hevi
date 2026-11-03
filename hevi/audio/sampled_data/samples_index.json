@@ -1,0 +1,811 @@
+{
+ "source": "mg-styles-15 lib/audio/samples (VCSL subset, CC0)",
+ "upstream_repo": "https://github.com/Vincentwei1021/mg-styles-15",
+ "sample_count": 102,
+ "instruments": {
+  "cabasa": {
+   "pitched": false,
+   "gain": 4.7241,
+   "items": [
+    {
+     "file": "cabasa/Cabasa1_Hit_rr1_Mid.flac",
+     "name": "Cabasa1_Hit_rr1_Mid",
+     "midi": null,
+     "peak": 0.10584,
+     "dur": 0.467
+    }
+   ]
+  },
+  "crash": {
+   "pitched": false,
+   "gain": 0.7411,
+   "items": [
+    {
+     "file": "crash/cymbal_crash1_ff2.flac",
+     "name": "cymbal_crash1_ff2",
+     "midi": null,
+     "peak": 0.67466,
+     "dur": 7.0
+    },
+    {
+     "file": "crash/cymbal_crash1_ff3.flac",
+     "name": "cymbal_crash1_ff3",
+     "midi": null,
+     "peak": 0.88357,
+     "dur": 7.0
+    },
+    {
+     "file": "crash/cymbal_crash1_mf1.flac",
+     "name": "cymbal_crash1_mf1",
+     "midi": null,
+     "peak": 0.43591,
+     "dur": 7.0
+    }
+   ]
+  },
+  "glock": {
+   "pitched": true,
+   "gain": 7.5769,
+   "items": [
+    {
+     "file": "glock/glock_loud_C5_01.flac",
+     "name": "glock_loud_C5_01",
+     "midi": 84.04,
+     "peak": 0.06599,
+     "dur": 5.0
+    },
+    {
+     "file": "glock/glock_loud_G#6_01.flac",
+     "name": "glock_loud_G#6_01",
+     "midi": 104.157,
+     "peak": 0.06234,
+     "dur": 2.913
+    },
+    {
+     "file": "glock/glock_loud_G5_01.flac",
+     "name": "glock_loud_G5_01",
+     "midi": 91.117,
+     "peak": 0.06694,
+     "dur": 4.539
+    },
+    {
+     "file": "glock/glock_medium_C5_01.flac",
+     "name": "glock_medium_C5_01",
+     "midi": 84.054,
+     "peak": 0.04759,
+     "dur": 5.0
+    },
+    {
+     "file": "glock/glock_medium_C6_01.flac",
+     "name": "glock_medium_C6_01",
+     "midi": 96.154,
+     "peak": 0.04731,
+     "dur": 3.931
+    },
+    {
+     "file": "glock/glock_medium_C7_01.flac",
+     "name": "glock_medium_C7_01",
+     "midi": 108.241,
+     "peak": 0.04742,
+     "dur": 1.393
+    },
+    {
+     "file": "glock/glock_medium_G4_01.flac",
+     "name": "glock_medium_G4_01",
+     "midi": 79.12,
+     "peak": 0.04881,
+     "dur": 5.0
+    },
+    {
+     "file": "glock/glock_medium_G5_01.flac",
+     "name": "glock_medium_G5_01",
+     "midi": 91.118,
+     "peak": 0.04434,
+     "dur": 4.247
+    },
+    {
+     "file": "glock/glock_medium_G6_01.flac",
+     "name": "glock_medium_G6_01",
+     "midi": 103.157,
+     "peak": 0.04932,
+     "dur": 3.405
+    }
+   ]
+  },
+  "guiro": {
+   "pitched": false,
+   "gain": 38.2263,
+   "items": [
+    {
+     "file": "guiro/Guiro_Med_rr1_Mid.flac",
+     "name": "Guiro_Med_rr1_Mid",
+     "midi": null,
+     "peak": 0.01308,
+     "dur": 1.397
+    }
+   ]
+  },
+  "harp": {
+   "pitched": true,
+   "gain": 5.6606,
+   "items": [
+    {
+     "file": "harp/KSHarp_B5_mf1.flac",
+     "name": "KSHarp_B5_mf1",
+     "midi": 82.913,
+     "peak": 0.05452,
+     "dur": 3.654
+    },
+    {
+     "file": "harp/KSHarp_C5_mf1.flac",
+     "name": "KSHarp_C5_mf1",
+     "midi": 71.887,
+     "peak": 0.13875,
+     "dur": 6.941
+    },
+    {
+     "file": "harp/KSHarp_D6_mf1.flac",
+     "name": "KSHarp_D6_mf1",
+     "midi": 85.925,
+     "peak": 0.08199,
+     "dur": 2.391
+    },
+    {
+     "file": "harp/KSHarp_E5_mf1.flac",
+     "name": "KSHarp_E5_mf1",
+     "midi": 75.887,
+     "peak": 0.10224,
+     "dur": 6.592
+    },
+    {
+     "file": "harp/KSHarp_F6_mf1.flac",
+     "name": "KSHarp_F6_mf1",
+     "midi": 88.938,
+     "peak": 0.05138,
+     "dur": 2.186
+    },
+    {
+     "file": "harp/KSHarp_G5_mf1.flac",
+     "name": "KSHarp_G5_mf1",
+     "midi": 78.964,
+     "peak": 0.08833,
+     "dur": 3.981
+    }
+   ]
+  },
+  "kalimba": {
+   "pitched": true,
+   "gain": 0.6308,
+   "items": [
+    {
+     "file": "kalimba/MBira3_pluck_Main_A#3_k18_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_A#3_k18_50_100_rr2",
+     "midi": 70.49,
+     "peak": 0.79433,
+     "dur": 1.388
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_A#4_k2_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_A#4_k2_50_100_rr2",
+     "midi": 82.359,
+     "peak": 0.78298,
+     "dur": 0.907
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_B4_k23_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_B4_k23_50_100_rr2",
+     "midi": 82.577,
+     "peak": 0.78886,
+     "dur": 0.791
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_C#4_k5_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_C#4_k5_50_100_rr2",
+     "midi": 73.094,
+     "peak": 0.79433,
+     "dur": 1.704
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_C#5_k24_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_C#5_k24_50_100_rr2",
+     "midi": 85.361,
+     "peak": 0.77622,
+     "dur": 1.145
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_D#4_k20_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_D#4_k20_50_100_rr2",
+     "midi": 75.139,
+     "peak": 0.79432,
+     "dur": 1.099
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_D#4_k4_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_D#4_k4_50_100_rr2",
+     "midi": 75.327,
+     "peak": 0.7941,
+     "dur": 1.532
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_E5_k25_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_E5_k25_50_100_rr2",
+     "midi": 87.79,
+     "peak": 0.74731,
+     "dur": 1.283
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_F3_k17_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_F3_k17_50_100_rr2",
+     "midi": 65.387,
+     "peak": 0.79334,
+     "dur": 2.43
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_F4_k3_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_F4_k3_50_100_rr2",
+     "midi": 77.26,
+     "peak": 0.7926,
+     "dur": 1.287
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_G#5_k26_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_G#5_k26_50_100_rr2",
+     "midi": 92.131,
+     "peak": 0.78898,
+     "dur": 1.003
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_G3_k6_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_G3_k6_50_100_rr2",
+     "midi": 67.163,
+     "peak": 0.79416,
+     "dur": 2.41
+    },
+    {
+     "file": "kalimba/MBira3_pluck_Main_G4_k22_50_100_rr2.flac",
+     "name": "MBira3_pluck_Main_G4_k22_50_100_rr2",
+     "midi": 79.328,
+     "peak": 0.74097,
+     "dur": 1.188
+    }
+   ]
+  },
+  "marimba": {
+   "pitched": true,
+   "gain": 31.5457,
+   "items": [
+    {
+     "file": "marimba/Marimba_hit_Outrigger_B2_med_01.flac",
+     "name": "Marimba_hit_Outrigger_B2_med_01",
+     "midi": 59.026,
+     "peak": 0.01567,
+     "dur": 4.251
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_B4_med_01.flac",
+     "name": "Marimba_hit_Outrigger_B4_med_01",
+     "midi": 83.001,
+     "peak": 0.02754,
+     "dur": 1.167
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_C2_med_01.flac",
+     "name": "Marimba_hit_Outrigger_C2_med_01",
+     "midi": 48.012,
+     "peak": 0.01585,
+     "dur": 5.0
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_C4_med_01.flac",
+     "name": "Marimba_hit_Outrigger_C4_med_01",
+     "midi": 72.045,
+     "peak": 0.03328,
+     "dur": 2.289
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_C6_med_01.flac",
+     "name": "Marimba_hit_Outrigger_C6_med_01",
+     "midi": 96.0,
+     "peak": 0.01582,
+     "dur": 1.367
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_F3_med_01.flac",
+     "name": "Marimba_hit_Outrigger_F3_med_01",
+     "midi": 64.987,
+     "peak": 0.01826,
+     "dur": 3.561
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_F5_med_01.flac",
+     "name": "Marimba_hit_Outrigger_F5_med_01",
+     "midi": 88.987,
+     "peak": 0.01088,
+     "dur": 1.367
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_G2_med_01.flac",
+     "name": "Marimba_hit_Outrigger_G2_med_01",
+     "midi": 54.987,
+     "peak": 0.01195,
+     "dur": 5.0
+    },
+    {
+     "file": "marimba/Marimba_hit_Outrigger_G4_med_01.flac",
+     "name": "Marimba_hit_Outrigger_G4_med_01",
+     "midi": 78.987,
+     "peak": 0.02663,
+     "dur": 1.31
+    }
+   ]
+  },
+  "piano": {
+   "pitched": true,
+   "gain": 2.7525,
+   "items": [
+    {
+     "file": "piano/GPiano_sus_A#2_v2_rr1_Player.flac",
+     "name": "GPiano_sus_A#2_v2_rr1_Player",
+     "midi": 57.935,
+     "peak": 0.02468,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_A#2_v3_rr1_Player.flac",
+     "name": "GPiano_sus_A#2_v3_rr1_Player",
+     "midi": 57.95,
+     "peak": 0.15042,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_A#3_v2_rr1_Player.flac",
+     "name": "GPiano_sus_A#3_v2_rr1_Player",
+     "midi": 69.929,
+     "peak": 0.01896,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_A#3_v3_rr1_Player.flac",
+     "name": "GPiano_sus_A#3_v3_rr1_Player",
+     "midi": 69.957,
+     "peak": 0.17784,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_A#4_v3_rr1_Player.flac",
+     "name": "GPiano_sus_A#4_v3_rr1_Player",
+     "midi": 82.04,
+     "peak": 0.15296,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_A0_v2_rr1_Player.flac",
+     "name": "GPiano_sus_A0_v2_rr1_Player",
+     "midi": 32.934,
+     "peak": 0.03545,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_A1_v3_rr1_Player.flac",
+     "name": "GPiano_sus_A1_v3_rr1_Player",
+     "midi": 44.923,
+     "peak": 0.24496,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_B4_v3_rr1_Player.flac",
+     "name": "GPiano_sus_B4_v3_rr1_Player",
+     "midi": 82.987,
+     "peak": 0.18515,
+     "dur": 6.06
+    },
+    {
+     "file": "piano/GPiano_sus_C1_v2_rr1_Player.flac",
+     "name": "GPiano_sus_C1_v2_rr1_Player",
+     "midi": 35.834,
+     "peak": 0.02039,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_C1_v3_rr1_Player.flac",
+     "name": "GPiano_sus_C1_v3_rr1_Player",
+     "midi": 35.84,
+     "peak": 0.17331,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_C2_v2_rr1_Player.flac",
+     "name": "GPiano_sus_C2_v2_rr1_Player",
+     "midi": 47.927,
+     "peak": 0.03916,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_C2_v3_rr1_Player.flac",
+     "name": "GPiano_sus_C2_v3_rr1_Player",
+     "midi": 47.931,
+     "peak": 0.18165,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_C3_v2_rr1_Player.flac",
+     "name": "GPiano_sus_C3_v2_rr1_Player",
+     "midi": 59.987,
+     "peak": 0.03772,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_C4_v2_rr1_Player.flac",
+     "name": "GPiano_sus_C4_v2_rr1_Player",
+     "midi": 71.951,
+     "peak": 0.04872,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_C4_v3_rr1_Player.flac",
+     "name": "GPiano_sus_C4_v3_rr1_Player",
+     "midi": 71.966,
+     "peak": 0.20521,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_C5_v3_rr1_Player.flac",
+     "name": "GPiano_sus_C5_v3_rr1_Player",
+     "midi": 83.987,
+     "peak": 0.23891,
+     "dur": 8.066
+    },
+    {
+     "file": "piano/GPiano_sus_D#0_v2_rr1_Player.flac",
+     "name": "GPiano_sus_D#0_v2_rr1_Player",
+     "midi": 26.782,
+     "peak": 0.02189,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_D#1_v2_rr1_Player.flac",
+     "name": "GPiano_sus_D#1_v2_rr1_Player",
+     "midi": 38.887,
+     "peak": 0.02337,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_D#5_v2_rr1_Player.flac",
+     "name": "GPiano_sus_D#5_v2_rr1_Player",
+     "midi": 87.041,
+     "peak": 0.03006,
+     "dur": 3.401
+    },
+    {
+     "file": "piano/GPiano_sus_D3_v2_rr1_Player.flac",
+     "name": "GPiano_sus_D3_v2_rr1_Player",
+     "midi": 61.918,
+     "peak": 0.0186,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_D3_v3_rr1_Player.flac",
+     "name": "GPiano_sus_D3_v3_rr1_Player",
+     "midi": 61.931,
+     "peak": 0.14143,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_D4_v2_rr1_Player.flac",
+     "name": "GPiano_sus_D4_v2_rr1_Player",
+     "midi": 74.019,
+     "peak": 0.05178,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_D4_v3_rr1_Player.flac",
+     "name": "GPiano_sus_D4_v3_rr1_Player",
+     "midi": 74.033,
+     "peak": 0.18279,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_E2_v3_rr1_Player.flac",
+     "name": "GPiano_sus_E2_v3_rr1_Player",
+     "midi": 51.951,
+     "peak": 0.22885,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_E3_v2_rr1_Player.flac",
+     "name": "GPiano_sus_E3_v2_rr1_Player",
+     "midi": 63.932,
+     "peak": 0.02798,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_E3_v3_rr1_Player.flac",
+     "name": "GPiano_sus_E3_v3_rr1_Player",
+     "midi": 63.954,
+     "peak": 0.26053,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_E4_v2_rr1_Player.flac",
+     "name": "GPiano_sus_E4_v2_rr1_Player",
+     "midi": 75.987,
+     "peak": 0.03016,
+     "dur": 5.102
+    },
+    {
+     "file": "piano/GPiano_sus_F#0_v3_rr1_Player.flac",
+     "name": "GPiano_sus_F#0_v3_rr1_Player",
+     "midi": 29.895,
+     "peak": 0.09154,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_F#1_v3_rr1_Player.flac",
+     "name": "GPiano_sus_F#1_v3_rr1_Player",
+     "midi": 41.964,
+     "peak": 0.11835,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_F#2_v2_rr1_Player.flac",
+     "name": "GPiano_sus_F#2_v2_rr1_Player",
+     "midi": 53.958,
+     "peak": 0.01294,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_F#2_v3_rr1_Player.flac",
+     "name": "GPiano_sus_F#2_v3_rr1_Player",
+     "midi": 53.972,
+     "peak": 0.19627,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_F#3_v2_rr1_Player.flac",
+     "name": "GPiano_sus_F#3_v2_rr1_Player",
+     "midi": 65.917,
+     "peak": 0.02977,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_F#4_v2_rr1_Player.flac",
+     "name": "GPiano_sus_F#4_v2_rr1_Player",
+     "midi": 78.01,
+     "peak": 0.01321,
+     "dur": 7.202
+    },
+    {
+     "file": "piano/GPiano_sus_F#4_v3_rr1_Player.flac",
+     "name": "GPiano_sus_F#4_v3_rr1_Player",
+     "midi": 78.028,
+     "peak": 0.17863,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_G#2_v2_rr1_Player.flac",
+     "name": "GPiano_sus_G#2_v2_rr1_Player",
+     "midi": 55.937,
+     "peak": 0.01008,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_G#2_v3_rr1_Player.flac",
+     "name": "GPiano_sus_G#2_v3_rr1_Player",
+     "midi": 55.946,
+     "peak": 0.16231,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_G#3_v2_rr1_Player.flac",
+     "name": "GPiano_sus_G#3_v2_rr1_Player",
+     "midi": 67.987,
+     "peak": 0.02709,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_G#3_v3_rr1_Player.flac",
+     "name": "GPiano_sus_G#3_v3_rr1_Player",
+     "midi": 67.987,
+     "peak": 0.22865,
+     "dur": 9.0
+    },
+    {
+     "file": "piano/GPiano_sus_G#4_v2_rr1_Player.flac",
+     "name": "GPiano_sus_G#4_v2_rr1_Player",
+     "midi": 79.987,
+     "peak": 0.00929,
+     "dur": 4.102
+    }
+   ]
+  },
+  "slapstick": {
+   "pitched": false,
+   "gain": 0.5269,
+   "items": [
+    {
+     "file": "slapstick/slapstick_rr1.flac",
+     "name": "slapstick_rr1",
+     "midi": null,
+     "peak": 0.94895,
+     "dur": 0.39
+    },
+    {
+     "file": "slapstick/slapstick_rr2.flac",
+     "name": "slapstick_rr2",
+     "midi": null,
+     "peak": 0.97245,
+     "dur": 0.358
+    },
+    {
+     "file": "slapstick/slapstick_rr3.flac",
+     "name": "slapstick_rr3",
+     "midi": null,
+     "peak": 0.90988,
+     "dur": 0.398
+    }
+   ]
+  },
+  "suscymbal": {
+   "pitched": false,
+   "gain": 2.9819,
+   "items": [
+    {
+     "file": "suscymbal/susCymb1_hit_f1.flac",
+     "name": "susCymb1_hit_f1",
+     "midi": null,
+     "peak": 0.16768,
+     "dur": 9.0
+    }
+   ]
+  },
+  "timpani": {
+   "pitched": false,
+   "gain": 1.4677,
+   "items": [
+    {
+     "file": "timpani/Timpani1_Hit_v4_rr1_Sum.flac",
+     "name": "Timpani1_Hit_v4_rr1_Sum",
+     "midi": null,
+     "peak": 0.22209,
+     "dur": 5.034
+    },
+    {
+     "file": "timpani/Timpani2_Hit_v4_rr1_Sum.flac",
+     "name": "Timpani2_Hit_v4_rr1_Sum",
+     "midi": null,
+     "peak": 0.34066,
+     "dur": 3.255
+    },
+    {
+     "file": "timpani/Timpani3_Hit_v4_rr1_Sum.flac",
+     "name": "Timpani3_Hit_v4_rr1_Sum",
+     "midi": null,
+     "peak": 0.31536,
+     "dur": 4.609
+    },
+    {
+     "file": "timpani/Timpani4_Hit_v4_rr1_Sum.flac",
+     "name": "Timpani4_Hit_v4_rr1_Sum",
+     "midi": null,
+     "peak": 0.38236,
+     "dur": 2.759
+    }
+   ]
+  },
+  "vibraphone": {
+   "pitched": true,
+   "gain": 3.2945,
+   "items": [
+    {
+     "file": "vibraphone/Vibes_hard_A2_v2_rr1_Main.flac",
+     "name": "Vibes_hard_A2_v2_rr1_Main",
+     "midi": 56.987,
+     "peak": 0.27628,
+     "dur": 6.888
+    },
+    {
+     "file": "vibraphone/Vibes_hard_B3_v2_rr1_Main.flac",
+     "name": "Vibes_hard_B3_v2_rr1_Main",
+     "midi": 70.987,
+     "peak": 0.06756,
+     "dur": 7.0
+    },
+    {
+     "file": "vibraphone/Vibes_hard_C3_v2_rr1_Main.flac",
+     "name": "Vibes_hard_C3_v2_rr1_Main",
+     "midi": 59.987,
+     "peak": 0.16808,
+     "dur": 7.0
+    },
+    {
+     "file": "vibraphone/Vibes_hard_E3_v2_rr1_Main.flac",
+     "name": "Vibes_hard_E3_v2_rr1_Main",
+     "midi": 63.987,
+     "peak": 0.12431,
+     "dur": 7.0
+    },
+    {
+     "file": "vibraphone/Vibes_hard_F2_v2_rr1_Main.flac",
+     "name": "Vibes_hard_F2_v2_rr1_Main",
+     "midi": 53.026,
+     "peak": 0.15177,
+     "dur": 2.333
+    },
+    {
+     "file": "vibraphone/Vibes_hard_G3_v2_rr1_Main.flac",
+     "name": "Vibes_hard_G3_v2_rr1_Main",
+     "midi": 66.987,
+     "peak": 0.06267,
+     "dur": 7.0
+    }
+   ]
+  },
+  "vibraslap": {
+   "pitched": false,
+   "gain": 6.4834,
+   "items": [
+    {
+     "file": "vibraslap/vibraslap_rr1.flac",
+     "name": "vibraslap_rr1",
+     "midi": null,
+     "peak": 0.07712,
+     "dur": 2.859
+    }
+   ]
+  },
+  "wineglass": {
+   "pitched": true,
+   "gain": 5.0875,
+   "items": [
+    {
+     "file": "wineglass/glass1_D#4_Fast_1_main.flac",
+     "name": "glass1_D#4_Fast_1_main",
+     "midi": 75.287,
+     "peak": 0.09828,
+     "dur": 7.0
+    }
+   ]
+  },
+  "woodblock": {
+   "pitched": false,
+   "gain": 0.8411,
+   "items": [
+    {
+     "file": "woodblock/wood_click2_mp.flac",
+     "name": "wood_click2_mp",
+     "midi": null,
+     "peak": 0.11637,
+     "dur": 0.441
+    },
+    {
+     "file": "woodblock/wood_click3_vl2.flac",
+     "name": "wood_click3_vl2",
+     "midi": null,
+     "peak": 0.25342,
+     "dur": 0.468
+    },
+    {
+     "file": "woodblock/wood_click_f_rr1.flac",
+     "name": "wood_click_f_rr1",
+     "midi": null,
+     "peak": 0.39328,
+     "dur": 0.463
+    },
+    {
+     "file": "woodblock/wood_click_ff.flac",
+     "name": "wood_click_ff",
+     "midi": null,
+     "peak": 0.59447,
+     "dur": 0.44
+    },
+    {
+     "file": "woodblock/wood_click_mp.flac",
+     "name": "wood_click_mp",
+     "midi": null,
+     "peak": 0.07031,
+     "dur": 0.486
+    }
+   ]
+  }
+ }
+}

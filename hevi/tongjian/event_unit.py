@@ -23,7 +23,11 @@ from hevi.tongjian.schemas import EventUnit, Segment
 
 logger = logging.getLogger(__name__)
 
-_VALID_SEGMENT_TYPES = {"narration", "drama"}
+# modern_echo(鉴今)是与 ScriptLine.type 对齐的保留段型:只供撰稿层在 EventUnit/Script
+# 末尾追加(把原则落回现代的收尾段)。选段抽取**不产出**它——原文是古代文本、segment
+# 又必须逐字定位原文,原文里没有现代回响段;_coerce_segments 收到 LLM 误标的 modern_echo
+# 一律降级 narration(见该函数内注释)。对应关系全文见 schemas.Segment 的 docstring。
+_VALID_SEGMENT_TYPES = {"narration", "drama", "modern_echo"}
 _CHARS_PER_SEC_CLASSICAL = 3.0  # 粗略估算(文言字密度高于白话),仅供选段阶段排期参考;
 # 真实时长以 narration_script.py 生成的白话讲解稿字数为准。
 
@@ -65,6 +69,9 @@ def _coerce_segments(raw_segments: list[dict[str, Any]], raw_text: str) -> list[
             logger.warning("segment 在原文中定位不到,丢弃(疑似幻觉/改写): %r", text[:30])
             continue
         seg_type = str(seg.get("type") or "narration")
+        if seg_type == "modern_echo":
+            # 原文段落不可能是鉴今段(见 _VALID_SEGMENT_TYPES 注释):LLM 误标 → 降级讲解段。
+            seg_type = "narration"
         if seg_type not in _VALID_SEGMENT_TYPES:
             seg_type = "narration"
         segments.append(

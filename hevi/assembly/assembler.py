@@ -620,7 +620,7 @@ async def assemble_longvideo(
 
         # ② 视频拼接
         silent = tmp_dir / "video_silent.mp4"
-        xfade_d: float = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
+        xfade_d: float | list[float] = min(transition_duration, min(durations) / 2) if len(durations) > 1 else 0.0
         # 逐接缝转场列表里可能混有 "cut";只要有任一接缝不是 cut 就必须走 xfade 链
         # (cut 接缝由 build_xfade_chain 用 concat 直拼)。空列表是非法输入,直接报错,
         # 不要让它走到 transition[0] 触发 IndexError。
@@ -636,8 +636,20 @@ async def assemble_longvideo(
 
             beats = await asyncio.to_thread(detect_beat_times, bgm_path)
             if beats:
-                snapped = beat_snapped_xfade_durations(durations, base_xfade_d=xfade_d, beats=beats)
-                xfade_d = snapped[0] if isinstance(snapped, list) else snapped
+                # beat_snapped_xfade_durations returns one duration per seam
+                # (len == len(durations)-1); pass the whole list through so
+                # every seam snaps to its own nearest beat. Taking only
+                # snapped[0] (the old bug) left seams 2..N on the first
+                # seam's value. build_xfade_chain / shot_start_times both
+                # already accept a per-seam list. Defensive: only adopt the
+                # list when its length matches the seam count; a scalar is
+                # adopted as-is; anything else keeps the uniform fallback.
+                base_xfade = float(xfade_d)  # scalar here; list is only assigned below
+                snapped = beat_snapped_xfade_durations(durations, base_xfade_d=base_xfade, beats=beats)
+                if isinstance(snapped, list) and len(snapped) == len(durations) - 1:
+                    xfade_d = list(snapped)
+                elif isinstance(snapped, (int, float)):
+                    xfade_d = float(snapped)
 
         if use_xfade:
             fc, vlabel, _ = build_xfade_chain(durations, transition, xfade_d)

@@ -429,7 +429,7 @@ def register_explainer_script_capability() -> Capability:
         aspects=["16:9", "9:16"],
         cpu_cost_hint=0.05,
         render=_render_explainer_script,
-        description="文章/资料转化为口播稿，支持自动分段、口语化重构、时长估算与版本增量编辑",
+        description="文章/资料转化为口播稿，支持自动分段、口语化重构、时长估算与版本增量编辑。能力线：纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion 依赖），与 Studio explainer 线（assembly+Remotion 生产核，供 6 条 Studio 线与 API）是两条独立链；本线供能力目录按名调用与 lanshu styled explainer。",
         line="explainer",
         params_schema={
             "type": "object",

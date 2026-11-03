@@ -91,9 +91,11 @@ services:
         NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
     restart: unless-stopped
     # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 全部分配给 hevi-gen-engine。
-    # 用户覆盖:镜像默认 hevi(999),但持久化卷(output/data/assets)宿主持有为
-    # 1000:1000,不加此行则 slate/timeline/memory 全部落盘 Permission denied。
-    user: "1000:1000"
+    # 运行用户:方案 A 部署实测——主仓原有 user: "1000:1000" 覆盖在本机使容器
+    # 起不来(UID 1000 无 passwd 条目,torch 导入时 getpass.getuser() 抛
+    # OSError: No username set in the environment,应用启动失败)。按部署口径
+    # 改回 pubfix 行为:不覆盖,使用镜像默认用户 hevi(999);数据目录在镜像
+    # 构建时已 chown 1000:1000 + o+w,落盘权限由该机制保障(pubfix 已实证)。
     deploy:
       resources:
         limits:
@@ -135,7 +137,7 @@ services:
       # 面部生理+运镜曲线。每镜一次 LLM 调用(并发,后台路径),分镜生成会明显变慢+花钱。见
       # config.performance_track_tier。不想填时删掉这行或设 L0。
       PERFORMANCE_TRACK_TIER: "L2"
-      HEVI_EXPLAINER_TTS_PROVIDER: edge_tts
+      HEVI_EXPLAINER_TTS_PROVIDER: voicebox
       HEVI_AUDIO_PROVIDER: voicebox
       # 数字人:EchoMimicV2(宿主机 Comfy 8188)。容器走 host.docker.internal,
       # 宿主脚本仍用 127.0.0.1。失败不要静默占位圈。
@@ -188,9 +190,6 @@ services:
       - /home/soffy/projects/hevi/hevi/digital_human/line_tts.py:/app/hevi/digital_human/line_tts.py:ro
       - /home/soffy/projects/hevi/hevi/providers/echo_mimic:/app/hevi/providers/echo_mimic:ro
       - /home/soffy/projects/hevi/hevi/providers/h3_local/comfy_client.py:/app/hevi/providers/h3_local/comfy_client.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/assembly.py:/app/hevi/explainer/assembly.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/render.py:/app/hevi/explainer/render.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/echo_avatar.py:/app/hevi/explainer/echo_avatar.py:ro
       - /home/soffy/projects/hevi/hevi/tongjian/scene_render_avatar.py:/app/hevi/tongjian/scene_render_avatar.py:ro
       # 主机已有的 HF 缓存(含 openai/clip-vit-base-patch32)只读挂进来,让
       # subjects/subject_embed.py 能算角色身份向量(local_files_only=True)——
@@ -211,7 +210,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     command: >
-      sh -c "alembic upgrade head &&
+      sh -c "alembic upgrade heads &&
              uvicorn hevi.api.main:app --host 0.0.0.0 --port 8000 --workers 1"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]

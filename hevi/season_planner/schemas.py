@@ -10,6 +10,7 @@ continuity_constraints 阶段 1 只记角色逐集在场(轻量版),关系状态
 
 生产形态(ProductionForm):决定资产锚点通道、提示词词汇和渲染管线选择。
 对标 drama-skills 的 production_profile 概念。
+同名 disambiguation：本模块的 DirectorBrief 是短剧导演阐述（视觉方向/生产形态/基调）；hevi.director_lens.brief.DirectorBrief 是导演决策 brief（运动轨迹/物理/主光/BPM/禁止项），hevi.creative.director_brief.DirectorBrief 是 S1 哈希契约，三者互不通用。
 """
 
 from __future__ import annotations

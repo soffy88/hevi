@@ -37,6 +37,7 @@ from hevi.tongjian.schemas import (
 logger = logging.getLogger(__name__)
 
 _ACT_GAP_MS = 1500  # spec §4.3:幕间自动插入 1.5s 空隙
+_DECISION_HOLD_MS = 3000  # 吕氏五段法抉择点停顿:讲解在抉择点留白 3s,让观众先代入作答
 _TARGET_LUFS = -16.0
 _LUFS_TOLERANCE = 3.0  # ±3 dB
 _CER_THRESHOLD = 0.05
@@ -301,6 +302,19 @@ async def synthesize_voiceover(
         segments.append(seg)
         cursor_ms += duration_ms
         prev_act = line.act
+
+        # 吕氏五段法抉择点(decision_point):讲解在此停顿留白——落成 TimelineGap,L8
+        # 装配(assemble.py 按 gaps 处理)会把它渲成旁白轨里的真实静音停顿;问题行文本
+        # 本身即屏幕上的发问。studio cue 层的对应标记见 studio/mix.py 的 decision_hold。
+        if line.decision_point:
+            gaps.append(
+                TimelineGap(
+                    after_line=line.line_id,
+                    duration_ms=_DECISION_HOLD_MS,
+                    purpose="decision_point_hold",
+                )
+            )
+            cursor_ms += _DECISION_HOLD_MS
 
     return Timeline(
         audio_segments=segments,

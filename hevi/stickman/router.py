@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
 from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -23,7 +26,57 @@ from hevi.stickman.credits_ledger import CreditsLedger
 
 
 router = APIRouter(prefix="/stickman", tags=["stickman"])
-_GLOBAL_LEDGER = CreditsLedger()
+
+
+def _stickman_data_dir() -> Path:
+    """Persistent dir for the ledger + proposal store (G11).
+
+    ``$STICKMAN_DATA_DIR`` wins; otherwise ``<repo-root>/data/stickman``.
+    In the production container that resolves to ``/app/data/stickman``,
+    bind-mounted to a host directory, so both files survive container
+    recreate. JSON (not PG) by design: single uvicorn worker, the
+    CreditsLedger class already implements JSON save/load, and no
+    migration is needed. Multi-instance deployments would need a shared
+    store + file locking; production runs ``--workers 1`` (see G11 note
+    in the launch report), so this is deliberately not built here.
+    """
+    env = os.environ.get("STICKMAN_DATA_DIR", "").strip()
+    if env:
+        return Path(env).expanduser()
+    return Path(__file__).resolve().parents[2] / "data" / "stickman"
+
+
+def _proposal_store_path() -> Path:
+    return _stickman_data_dir() / "proposals.json"
+
+
+def _save_proposal(prop: dict[str, Any]) -> None:
+    """Upsert one proposal dict into proposals.json (atomic replace)."""
+    store = _proposal_store_path()
+    store.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        data = json.loads(store.read_text(encoding="utf-8")) if store.exists() else {}
+    except Exception:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    data[str(prop.get("proposal_id", "prop_api"))] = prop
+    tmp = store.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(store)
+
+
+def _load_proposals() -> dict[str, Any]:
+    store = _proposal_store_path()
+    try:
+        data = json.loads(store.read_text(encoding="utf-8")) if store.exists() else {}
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+_STICKMAN_DATA_DIR = _stickman_data_dir()
+_GLOBAL_LEDGER = CreditsLedger(ledger_file=_STICKMAN_DATA_DIR / "credits_ledger.json")
 
 
 class TopicScoutRequest(BaseModel):
@@ -117,14 +170,18 @@ def api_create_proposal(req: ProposalCreateRequest) -> dict[str, Any]:
     )
     if req.auto_approve:
         prop.approve()
-    return {"status": "ok", "proposal": prop.to_dict()}
+    prop_d = prop.to_dict()
+    _save_proposal(prop_d)
+    return {"status": "ok", "proposal": prop_d}
 
 
 @router.post("/proposal/approve")
 def api_approve_proposal(prop_data: dict[str, Any]) -> dict[str, Any]:
     prop = _reconstruct_proposal(prop_data)
     prop.approve()
-    return {"status": "ok", "proposal": prop.to_dict()}
+    prop_d = prop.to_dict()
+    _save_proposal(prop_d)
+    return {"status": "ok", "proposal": prop_d}
 
 
 @router.post("/render_local")
@@ -162,3 +219,18 @@ def api_flow_import(req: FlowImportRequest) -> dict[str, Any]:
 @router.get("/credits")
 def api_get_credits() -> dict[str, Any]:
     return {"status": "ok", "ledger": _GLOBAL_LEDGER.get_summary()}
+
+
+@router.get("/proposals")
+def api_list_proposals() -> dict[str, Any]:
+    """List persisted proposals (G11: survives API restart)."""
+    proposals = _load_proposals()
+    return {"status": "ok", "proposals": list(proposals.values()), "count": len(proposals)}
+
+
+@router.get("/proposals/{proposal_id}")
+def api_get_proposal(proposal_id: str) -> dict[str, Any]:
+    proposals = _load_proposals()
+    if proposal_id not in proposals:
+        raise HTTPException(status_code=404, detail=f"proposal not found: {proposal_id}")
+    return {"status": "ok", "proposal": proposals[proposal_id]}
