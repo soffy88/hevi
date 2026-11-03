@@ -1267,3 +1267,22 @@ from . import generation_unit_splitter as _generation_unit_splitter  # noqa: E40
 _generation_unit_splitter.register_generation_unit_splitter_capabilities_once()
 from . import three_track_contract as _three_track_contract  # noqa: E402,F401
 _three_track_contract.register_three_track_contract_capabilities_once()
+# Portrait 8-dimension graft (see PORTRAIT_8DIM_ATTRIBUTION.md):
+# qa.negative_prompt_firewall, qa.physical_language_gate,
+# qa.adult_portrait_gate, qa.restraint_ceiling_gate,
+# image.portrait_eight_dim_vocab, image.portrait_eight_dim_assembler
+# (clean-room, generic photographic language restated; adult only;
+# no article text copied, no model defaulted). Appended at the
+# tail only; earlier registrations untouched.
+from . import negative_prompt_firewall_gate as _negative_prompt_firewall_gate  # noqa: E402,F401
+_negative_prompt_firewall_gate.register_negative_prompt_firewall_capabilities_once()
+from . import physical_language_gate as _physical_language_gate  # noqa: E402,F401
+_physical_language_gate.register_physical_language_gate_capabilities_once()
+from . import adult_portrait_gate as _adult_portrait_gate  # noqa: E402,F401
+_adult_portrait_gate.register_adult_portrait_gate_capabilities_once()
+from . import restraint_ceiling_gate as _restraint_ceiling_gate  # noqa: E402,F401
+_restraint_ceiling_gate.register_restraint_ceiling_gate_capabilities_once()
+from . import portrait_eight_dim_vocab as _portrait_eight_dim_vocab  # noqa: E402,F401
+_portrait_eight_dim_vocab.register_portrait_eight_dim_vocab_capabilities_once()
+from . import portrait_eight_dim_assembler as _portrait_eight_dim_assembler  # noqa: E402,F401
+_portrait_eight_dim_assembler.register_portrait_eight_dim_assembler_capabilities_once()
