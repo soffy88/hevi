@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,23 @@ HEVI = ROOT / "hevi"
 CANONICAL = ("obase", "oprim", "oskill", "omodul", "oservi")
 PILLARS = {"fingerprint", "decision_trail", "report", "cost"}
 PROJECT_PREFIXES = ("hevi_", "inkos_", "digital_human_", "pipeline_lite_", "voicepro_")
+
+# Scope switch (3O conformance, 2026-11-04): when HEVI_3O_LINT_SCOPE is
+# "hevi-only", canonical_sources() skips package roots that resolve
+# outside the repo (e.g. .venv site-packages installs of the canonical
+# libraries). Those installs are separate repos with their own CI;
+# scanning them here produced 1578 spurious violation lines and a
+# permanently-false FAIL verdict. Default (unset) keeps the old
+# behaviour so standalone check scripts are unaffected.
+HEVI_ONLY_SCOPE = os.environ.get("HEVI_3O_LINT_SCOPE") == "hevi-only"
+
+
+def _in_repo(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(ROOT.resolve())
+    except ValueError:
+        return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -69,6 +87,11 @@ def canonical_sources(layer: str | None = None) -> list[Source]:
     for name in names:
         root = package_root(name)
         if root is None or not root.exists():
+            continue
+        if HEVI_ONLY_SCOPE and not _in_repo(root):
+            # Installed canonical package (site-packages): separate repo,
+            # separate CI. Skipped under hevi-only scope; the runner
+            # prints the scope so a PASS is never misread as covering it.
             continue
         out.extend(
             Source(p, name, False) for p in root.rglob("*.py") if "__pycache__" not in p.parts

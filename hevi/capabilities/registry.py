@@ -54,6 +54,7 @@ __all__ = [
     "Registry",
     "list_caps",
     "describe",
+    "layer_of",
     "compute_sha256",
     "overwrite_history",
 ]
@@ -98,6 +99,13 @@ class Capability:
     # reachable from a generic caller — only trusted direct callers
     # (render_safe in-process) may run it (see M-17).
     preview_restricted: bool = False
+    # 3O layer attribution (HELIOS_3O_SPEC_v3_0 §1): one of
+    # "oprim" | "oskill" | "omodul" | "obase" | "oservi". Empty means
+    # "not yet attributed"; register() fills it from the central
+    # attribution table (layer_attribution.py) when the caller did not
+    # declare one. The conformance test asserts every registered name
+    # resolves to a layer; "" must never survive into a release.
+    layer: str = ""
 
     def validate_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """Validate ``params`` against ``params_schema``; return the params.
@@ -160,6 +168,19 @@ def compute_sha256(path: Path | str) -> str:
     return h.hexdigest()
 
 
+# 3O layer names (HELIOS_3O_SPEC_v3_0 §1.1). Attribution lives in
+# layer_attribution.py; this set is the only validity check.
+LAYERS: frozenset[str] = frozenset({"oprim", "oskill", "omodul", "obase", "oservi"})
+
+
+def layer_of(name: str) -> str:
+    """Return the attributed 3O layer for ``name`` ("" when unattributed)."""
+    from .layer_attribution import LAYER_ATTRIBUTION
+
+    entry = LAYER_ATTRIBUTION.get(name)
+    return entry["layer"] if entry else ""
+
+
 def register(cap: Capability, overwrite: bool = False) -> Capability:
     """Install ``cap`` into the global registry.
 
@@ -179,6 +200,15 @@ def register(cap: Capability, overwrite: bool = False) -> Capability:
 
     if not cap.name:
         raise CapabilityError("capability name must be non-empty")
+    if cap.layer and cap.layer not in LAYERS:
+        raise CapabilityError(
+            f"capability {cap.name!r}: unknown 3O layer {cap.layer!r}; "
+            f"expected one of {sorted(LAYERS)}"
+        )
+    if not cap.layer:
+        # Fill from the central attribution table; an explicit layer on
+        # the Capability wins over the table.
+        cap.layer = layer_of(cap.name)
     if cap.name in _REGISTRY:
         if not overwrite:
             raise CapabilityError(

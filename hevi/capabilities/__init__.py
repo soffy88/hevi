@@ -1400,3 +1400,9 @@ from . import knowledge_qc_contract as _knowledge_qc_contract  # noqa: E402,F401
 _knowledge_qc_contract.register_knowledge_qc_contract_capabilities_once()
 from . import two_tier_synthesis_contract as _two_tier_synthesis_contract  # noqa: E402,F401
 _two_tier_synthesis_contract.register_two_tier_synthesis_contract_capabilities_once()
+
+# 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
+# + version, built after every registration above so it reflects the live
+# registry. Appended at the tail only; earlier registrations untouched.
+from .manifest import build_manifest as _build_3o_manifest  # noqa: E402
+__manifest__ = _build_3o_manifest(list_capabilities())
