@@ -295,6 +295,29 @@ def test_assemble_with_post_edit_asr_evidence_clears_stale_timeline(tmp_path):
     assert not any("vo_asr" in f for f in out["failures"])
 
 
+def test_assemble_default_transcript_source_clears_stale_timeline(tmp_path):
+    # Default path: no transcript_source supplied, no edit declared.
+    # Captions are built in-run from the segments, so the assembly
+    # must not claim a transcript provenance the subtitle gate
+    # reads as a stale timeline. The gate itself is unchanged: an
+    # explicitly supplied non-fresh source still fails (see the
+    # edited-without-fresh-source test below).
+    from hevi.capabilities import asset_registry as ar
+    voice = _sine_wav(tmp_path / "voice.wav", 4.0)
+    reg = ar.new_registry()
+    ar.register_asset(reg, "star", "prop", "星星")
+    ar.reference_asset(reg, "episode1", "star")
+    out = sfp.assemble_film(
+        title="t", segments=_segments(), voice_path=voice, out_dir=tmp_path / "out",
+        pre_confirmation=PRE, registry=reg, episode_id="episode1",
+        fps=5, width=270, height=480, base_name="film",
+        critic_review=_ship_review())
+    assert out["status"] == "finished", out["failures"]
+    assert out["transcript_source"] == ""
+    assert out["edited"] is False
+    assert not any("stale_timeline" in f for f in out["failures"])
+
+
 def test_assemble_mismatched_asr_fails_vo_asr_but_not_stale_timeline(tmp_path):
     voice = _sine_wav(tmp_path / "voice.wav", 4.0)
     out = sfp.assemble_film(

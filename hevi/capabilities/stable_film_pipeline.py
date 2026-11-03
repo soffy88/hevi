@@ -1062,7 +1062,7 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
                   registry: Any = None, episode_id: str = "episode1",
                   bgm_path: Path | None = None,
                   glossary: dict[str, list[str]] | None = None,
-                  transcript_source: str = "script",
+                  transcript_source: str = "",
                   edited: bool = False,
                   asr_text: str | None = None,
                   vo_word_timings: list[dict[str, Any]] | None = None,
@@ -1088,6 +1088,13 @@ def assemble_film(*, title: str, segments: list[dict[str, Any]],
     to final QC as no source (skip, not fail), and expected VO
     lines are only supplied when ASR evidence is present, so a
     film with no evidence never fails vo_asr for being unmeasured.
+    The default transcript source is empty: captions are built
+    in-run from the segments, so no transcript provenance is
+    claimed. ``"script"`` is not a valid default here -- the
+    subtitle gate treats any supplied non-fresh source as a
+    stale timeline even when no edit was declared, so a caller
+    that supplies a non-fresh source (including ``"script"``)
+    still fails that gate, edited or not.
     ``segments`` carry ``segment_id``, ``text``, ``duration_sec``
     and optional ``title``, ``asset_id`` and ``start_sec`` (start
     times are computed in order when omitted). ``missing_segments``
@@ -1413,7 +1420,7 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float,
         registry=params.get("registry"), episode_id=str(params.get("episode_id", "episode1")),
         bgm_path=Path(params["bgm_path"]) if params.get("bgm_path") else None,
         glossary=params.get("glossary"),
-        transcript_source=str(params.get("transcript_source", "script")),
+        transcript_source=str(params.get("transcript_source", "")),
         edited=bool(params.get("edited", False)),
         asr_text=params.get("asr_text"),
         vo_word_timings=params.get("vo_word_timings"),
