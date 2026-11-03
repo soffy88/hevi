@@ -1286,3 +1286,34 @@ from . import portrait_eight_dim_vocab as _portrait_eight_dim_vocab  # noqa: E40
 _portrait_eight_dim_vocab.register_portrait_eight_dim_vocab_capabilities_once()
 from . import portrait_eight_dim_assembler as _portrait_eight_dim_assembler  # noqa: E402,F401
 _portrait_eight_dim_assembler.register_portrait_eight_dim_assembler_capabilities_once()
+
+# Infinite Creation graft (see INFINITE_CREATION_ATTRIBUTION.md):
+# qa.storyboard_fidelity_gate, qa.shot_hard_constraints_gate,
+# qa.scene_blocking_schema, qa.wardrobe_age_variant_gate,
+# qa.resume_ledger_gate, qa.workflow_spec_self_check,
+# video.h3_storyboard_adapter, qa.mcp_bridge_contract,
+# video.code_film_style_contract, qa.candidate_selection_ledger
+# (clean-room method only; clone_voice never connected; no SKILL
+# text, workflow JSON, weights, or referral material; H3 frame
+# counts follow hevi 5+17k grid). Appended at the tail only;
+# earlier registrations untouched.
+from . import storyboard_fidelity_gate as _storyboard_fidelity_gate  # noqa: E402,F401
+_storyboard_fidelity_gate.register_storyboard_fidelity_gate_capabilities_once()
+from . import shot_hard_constraints_gate as _shot_hard_constraints_gate  # noqa: E402,F401
+_shot_hard_constraints_gate.register_shot_hard_constraints_gate_capabilities_once()
+from . import scene_blocking_schema as _scene_blocking_schema  # noqa: E402,F401
+_scene_blocking_schema.register_scene_blocking_schema_capabilities_once()
+from . import wardrobe_age_variant_gate as _wardrobe_age_variant_gate  # noqa: E402,F401
+_wardrobe_age_variant_gate.register_wardrobe_age_variant_gate_capabilities_once()
+from . import resume_ledger_gate as _resume_ledger_gate  # noqa: E402,F401
+_resume_ledger_gate.register_resume_ledger_gate_capabilities_once()
+from . import workflow_spec_self_check as _workflow_spec_self_check  # noqa: E402,F401
+_workflow_spec_self_check.register_workflow_spec_self_check_capabilities_once()
+from . import h3_storyboard_adapter as _h3_storyboard_adapter  # noqa: E402,F401
+_h3_storyboard_adapter.register_h3_storyboard_adapter_capabilities_once()
+from . import mcp_bridge_contract as _mcp_bridge_contract  # noqa: E402,F401
+_mcp_bridge_contract.register_mcp_bridge_contract_capabilities_once()
+from . import code_film_style_contract as _code_film_style_contract  # noqa: E402,F401
+_code_film_style_contract.register_code_film_style_contract_capabilities_once()
+from . import candidate_selection_ledger as _candidate_selection_ledger  # noqa: E402,F401
+_candidate_selection_ledger.register_candidate_selection_ledger_capabilities_once()
