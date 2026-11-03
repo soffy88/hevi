@@ -1341,3 +1341,33 @@ from . import remotion_bridge_smoke as _remotion_bridge_smoke  # noqa: E402,F401
 _remotion_bridge_smoke.register_remotion_bridge_smoke_capabilities_once()
 from . import word_pop_renderer as _word_pop_renderer  # noqa: E402,F401
 _word_pop_renderer.register_word_pop_renderer_capabilities_once()
+
+# batch-video-plugin graft (see BATCH_VIDEO_PLUGIN_ATTRIBUTION.md):
+# qa.round_cap_gate, qa.stale_round_watchdog_gate,
+# qa.spec_authenticity_dual_track_gate, qa.dialogue_unverified_gate,
+# qa.ai_disclosure_dual_track_gate, qa.failed_shot_no_hard_cut_gate,
+# qa.review_signal_vocabulary, video.edit_plan_compiler,
+# qa.round_engine_contract, qa.template_plan_substitution
+# (clean-room method restatement; no upstream text, no fixed
+# 10s/24fps default, no supplier/publishing wiring; execution deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import round_cap_gate as _round_cap_gate  # noqa: E402,F401
+_round_cap_gate.register_round_cap_gate_capabilities_once()
+from . import stale_round_watchdog_gate as _stale_round_watchdog_gate  # noqa: E402,F401
+_stale_round_watchdog_gate.register_stale_round_watchdog_gate_capabilities_once()
+from . import spec_authenticity_dual_track_gate as _spec_authenticity_dual_track_gate  # noqa: E402,F401
+_spec_authenticity_dual_track_gate.register_spec_authenticity_dual_track_gate_capabilities_once()
+from . import dialogue_unverified_gate as _dialogue_unverified_gate  # noqa: E402,F401
+_dialogue_unverified_gate.register_dialogue_unverified_gate_capabilities_once()
+from . import ai_disclosure_dual_track_gate as _ai_disclosure_dual_track_gate  # noqa: E402,F401
+_ai_disclosure_dual_track_gate.register_ai_disclosure_dual_track_gate_capabilities_once()
+from . import failed_shot_no_hard_cut_gate as _failed_shot_no_hard_cut_gate  # noqa: E402,F401
+_failed_shot_no_hard_cut_gate.register_failed_shot_no_hard_cut_gate_capabilities_once()
+from . import review_signal_vocabulary as _review_signal_vocabulary  # noqa: E402,F401
+_review_signal_vocabulary.register_review_signal_vocabulary_capabilities_once()
+from . import edit_plan_compiler as _edit_plan_compiler  # noqa: E402,F401
+_edit_plan_compiler.register_edit_plan_compiler_capabilities_once()
+from . import round_engine_contract as _round_engine_contract  # noqa: E402,F401
+_round_engine_contract.register_round_engine_contract_capabilities_once()
+from . import template_plan_substitution as _template_plan_substitution  # noqa: E402,F401
+_template_plan_substitution.register_template_plan_substitution_capabilities_once()
