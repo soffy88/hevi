@@ -1506,6 +1506,34 @@ from . import krita_asset_index as _krita_asset_index  # noqa: E402,F401
 _krita_asset_index.register_krita_asset_index_capabilities_once()
 from . import r3f_scene_contract as _r3f_scene_contract  # noqa: E402,F401
 _r3f_scene_contract.register_r3f_scene_contract_capabilities_once()
+# claude-animation-skills graft (see ANIMATION_SKILLS_ATTRIBUTION.md):
+# qa.ig_safe_area_profile, qa.graph_honesty_gate, qa.map_honesty_gate,
+# qa.whatif_script_format_gate, qa.exploded_view_label_gate,
+# qa.code_animation_caption_band_gate, video.exploded_view_schema,
+# video.cartoon_rig_schema
+# (clean-room method only; no SKILL/template/engine text copied, no
+# install script run, no model/browser downloads, no voice-service
+# key handled, no creator affiliation claimed, no view-count claim,
+# no schematic map presented as real, English-only voice/timing
+# models never presented as Chinese support; B1/B2 are fake
+# contracts, executed_here is false; B3/B4 deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import ig_safe_area_profile as _ig_safe_area_profile  # noqa: E402,F401
+_ig_safe_area_profile.register_ig_safe_area_profile_capabilities_once()
+from . import graph_honesty_gate as _graph_honesty_gate  # noqa: E402,F401
+_graph_honesty_gate.register_graph_honesty_gate_capabilities_once()
+from . import map_honesty_gate as _map_honesty_gate  # noqa: E402,F401
+_map_honesty_gate.register_map_honesty_gate_capabilities_once()
+from . import whatif_script_format_gate as _whatif_script_format_gate  # noqa: E402,F401
+_whatif_script_format_gate.register_whatif_script_format_gate_capabilities_once()
+from . import exploded_view_label_gate as _exploded_view_label_gate  # noqa: E402,F401
+_exploded_view_label_gate.register_exploded_view_label_gate_capabilities_once()
+from . import code_animation_caption_band_gate as _code_animation_caption_band_gate  # noqa: E402,F401
+_code_animation_caption_band_gate.register_code_animation_caption_band_gate_capabilities_once()
+from . import exploded_view_schema as _exploded_view_schema  # noqa: E402,F401
+_exploded_view_schema.register_exploded_view_schema_capabilities_once()
+from . import cartoon_rig_schema as _cartoon_rig_schema  # noqa: E402,F401
+_cartoon_rig_schema.register_cartoon_rig_schema_capabilities_once()
 
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live

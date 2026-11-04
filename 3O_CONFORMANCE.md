@@ -318,3 +318,12 @@ stay canonical, `layer` is the only new axis.
   conformance scope count in `tests/test_3o_conformance.py`
   was updated to 428. No renames; the rename/alias migration
   plan is unchanged.
+- Registry growth (claude-animation-skills graft, 2026-11-04): 428 -> 436
+  registered names (6 oskill gates + 2 obase fake contracts),
+  landing on top of the 20 open skills graft. Layer attribution
+  JSON and the generated table were extended through
+  `scripts/ci/gen_layer_attribution.py` from the shared JSON,
+  which now converges both grafts (436 entries); the
+  conformance scope count in `tests/test_3o_conformance.py`
+  was updated to 436. No renames; the rename/alias migration
+  plan is unchanged.
