@@ -364,6 +364,11 @@ def _render_nano_banana_generate(
             "Pass allow_paid=true to explicitly accept paid billing, or "
             "use the Flow manual route for hand work."
         )
+    from hevi.capabilities.spend_brake import check_spend_approval
+
+    spend_gate = check_spend_approval(
+        params, capability="image.nano_banana_generate"
+    )
     model = resolve_model(params.get("model"))
     api_key = resolve_api_key()
     aspect_ratio = str(params.get("aspect_ratio") or (aspect if aspect in ASPECT_RATIOS else "16:9"))
@@ -466,6 +471,7 @@ def _render_nano_banana_generate(
             "image_count": n,
             "images": [entry["path"] for entry in images],
             "estimated_cost_usd": estimated,
+            "spend_gate": spend_gate,
             "sidecar_json": str(sidecar),
             "note": _COST_NOTE,
         },
@@ -556,6 +562,19 @@ def register_nano_banana_capabilities_once() -> list[str]:
                             "tier, so every call bills the key's "
                             "project. False (default) refuses before "
                             "any network call."
+                        ),
+                    },
+                    "spend_approval": {
+                        "type": "object",
+                        "description": (
+                            "Optional spend-gate block: {storyboard, "
+                            "confirmed, smoke_passed, batch_size, "
+                            "estimated_unit_cost}. When supplied, the "
+                            "spend gate must approve before any key read, "
+                            "network call, or GPU work; when absent, "
+                            "spending responsibility stays caller-side and "
+                            "the result qa carries "
+                            "spend_gate_not_consulted=true."
                         ),
                     },
                 },

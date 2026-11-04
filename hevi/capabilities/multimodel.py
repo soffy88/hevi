@@ -121,6 +121,10 @@ def _render_image(
     aspect: str,
     seed: int,
 ) -> CapabilityResult:
+    from hevi.capabilities.spend_brake import check_spend_approval
+
+    name = "image.gpt_generate" if generate else "image.gpt_edit"
+    spend_gate = check_spend_approval(params, capability=name)
     from hevi.audio.monid_client import MonidError
     from hevi.image import gpt_image_service
 
@@ -133,7 +137,6 @@ def _render_image(
         "size": str(params.get("size", "1024x1536")),
         "quality": str(params.get("quality", "medium")),
     }
-    name = "image.gpt_generate" if generate else "image.gpt_edit"
     try:
         if generate:
             result = _run_coro(gpt_image_service.gpt_image_generate(**call_kwargs))
@@ -155,6 +158,7 @@ def _render_image(
         sha256=compute_sha256(png_path),
         qa={
             "cost": result.get("cost"),
+            "spend_gate": spend_gate,
             "size": call_kwargs["size"],
             "quality": call_kwargs["quality"],
             "note": _MULTIMODEL_COST_NOTE,
@@ -226,6 +230,17 @@ def register_multimodel_capabilities_once() -> list[str]:
             "type": "string",
             "enum": ["low", "medium", "high", "max"],
             "default": "medium",
+        },
+        "spend_approval": {
+            "type": "object",
+            "description": (
+                "Optional spend-gate block: {storyboard, confirmed, "
+                "smoke_passed, batch_size, estimated_unit_cost}. When "
+                "supplied, the spend gate must approve before any key "
+                "read or network call; when absent, spending "
+                "responsibility stays caller-side and the result qa "
+                "carries spend_gate_not_consulted=true."
+            ),
         },
     }
     register(

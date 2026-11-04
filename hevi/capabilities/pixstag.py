@@ -50,6 +50,9 @@ _PIXSTAG_COST_NOTE = (
 def _render_pixstag_generate(
     params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
 ) -> CapabilityResult:
+    from hevi.capabilities.spend_brake import check_spend_approval
+
+    spend_gate = check_spend_approval(params, capability="video.pixstag_generate")
     from hevi.video import pixstag_client
 
     out_dir = Path(out_dir)
@@ -118,6 +121,7 @@ def _render_pixstag_generate(
             "usd_estimate": result["usd_estimate"],
             "balance": balance,
             "sidecar_json": str(sidecar),
+            "spend_gate": spend_gate,
             "note": _PIXSTAG_COST_NOTE,
         },
     )
@@ -185,6 +189,19 @@ def register_pixstag_capabilities_once() -> list[str]:
                     },
                     "aigc_watermark": {"type": "boolean", "default": False},
                     "return_last_frame": {"type": "boolean", "default": False},
+                    "spend_approval": {
+                        "type": "object",
+                        "description": (
+                            "Optional spend-gate block: {storyboard, "
+                            "confirmed, smoke_passed, batch_size, "
+                            "estimated_unit_cost}. When supplied, the "
+                            "spend gate must approve before any key read, "
+                            "network call, or GPU work; when absent, "
+                            "spending responsibility stays caller-side and "
+                            "the result qa carries "
+                            "spend_gate_not_consulted=true."
+                        ),
+                    },
                 },
                 "required": ["prompt"],
                 "additionalProperties": False,
