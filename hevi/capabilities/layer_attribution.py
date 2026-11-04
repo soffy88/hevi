@@ -1,8 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(436 capabilities, one entry each, no "unclassified" remainder).
-(436 capabilities, one entry each, no "unclassified" remainder).
+(438 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -441,11 +440,13 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.quarks_particle_contract': {"layer": 'obase', "reason": '导出适配契约：粒子导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/quarks_particle_contract.py'},
     'video.r3f_scene_contract': {"layer": 'obase', "reason": '导出适配契约：场景导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/r3f_scene_contract.py'},
     'video.reference_map_adapter': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/reference_map_adapter.py'},
+    'video.remotion_bridge_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake bridge contract, executed_here false, render blocked by measured container EACCES', "file": 'hevi/capabilities/remotion_bridge_contract.py'},
     'video.remotion_bridge_smoke': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/remotion_bridge_smoke.py'},
     'video.scroll_film_engine': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/scroll_film_engine.py'},
     'video.segment_assembly_gate': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/segment_assembly.py'},
     'video.segment_cost_ledger': {"layer": 'obase', "reason": '持久化存储/作业基础设施：跨调用状态与存取，横切（SPEC §3 obase.persistence 族）', "file": 'hevi/capabilities/segment_cost_ledger.py'},
     'video.shotcraft_card_index': {"layer": 'obase', "reason": '词表/风格库数据资产：静态条目+检索，无业务算法（SPEC §7.3）', "file": 'hevi/capabilities/shotcraft_card_index.py'},
+    'video.shotcraft_theme_catalog': {"layer": 'obase', "reason": 'contract-only adapter: fake catalog schema, executed_here false, palette values never asserted', "file": 'hevi/capabilities/shotcraft_theme_catalog.py'},
     'video.single_image_sway': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/single_image_sway.py'},
     'video.step_segmentation': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/video_step_segmentation.py'},
     'video.style_catalog_schema': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/style_catalog_schema.py'},

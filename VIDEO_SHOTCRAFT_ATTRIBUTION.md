@@ -70,3 +70,28 @@ demo implementations were intentionally not copied.
   graft; those are separate cases (B3/B4 deferred).
 - Upstream self-reports (Mac editor verification, frame-identical
   previews) are recorded as self-reported, never as hevi-verified.
+
+## Deferred batch B (2026-11-04)
+
+- B3 `video.remotion_bridge_contract` (contract only,
+  `executed_here: false`): a tuned card, theme, composition, and
+  grid compiled into a render request. No render happened here.
+  A real render was attempted inside the production container
+  on 2026-11-04 (MotionGraphics smoke manifest, 540x960 @ 30fps,
+  90 frames, output to an ephemeral /tmp probe directory,
+  removed afterwards) and failed before any frame with
+  `EACCES: permission denied, mkdir
+  '/app/hevi-remotion/node_modules/.remotion'` while Remotion
+  tried to download Chrome Headless Shell into the root-owned
+  project tree as user `hevi`. No MP4 was produced. The block
+  is recorded in the contract itself; fixing it needs an
+  image/build change (writable browser directory or a
+  pre-bundled browser), which is a separate case and was not
+  done here. The production container was not modified.
+- B4 `video.shotcraft_theme_catalog` (contract only,
+  `executed_here: false`): the nine presets as schema plus
+  name-derived glosses, recolour locks, and palette field
+  names. No palette value table was copied: every entry
+  carries `palette_values: null`. Ink Press remains
+  non-recolourable; the other presets follow the recorded
+  palette precedence order.

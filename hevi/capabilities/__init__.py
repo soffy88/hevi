@@ -1535,6 +1535,18 @@ _exploded_view_schema.register_exploded_view_schema_capabilities_once()
 from . import cartoon_rig_schema as _cartoon_rig_schema  # noqa: E402,F401
 _cartoon_rig_schema.register_cartoon_rig_schema_capabilities_once()
 
+# Deferred shotcraft batch B (see VIDEO_SHOTCRAFT_ATTRIBUTION.md):
+# video.remotion_bridge_contract, video.shotcraft_theme_catalog
+# (clean-room method only; no card/demo/template text or palette
+# values copied; Remotion rendering measured blocked by container
+# EACCES on 2026-11-04, no MP4 produced; both are fake contracts,
+# executed_here is false; B3 render remains a separate case).
+# Appended at the tail only; earlier registrations untouched.
+from . import remotion_bridge_contract as _remotion_bridge_contract  # noqa: E402,F401
+_remotion_bridge_contract.register_remotion_bridge_contract_capabilities_once()
+from . import shotcraft_theme_catalog as _shotcraft_theme_catalog  # noqa: E402,F401
+_shotcraft_theme_catalog.register_shotcraft_theme_catalog_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

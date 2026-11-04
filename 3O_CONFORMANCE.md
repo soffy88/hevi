@@ -327,3 +327,12 @@ stay canonical, `layer` is the only new axis.
   conformance scope count in `tests/test_3o_conformance.py`
   was updated to 436. No renames; the rename/alias migration
   plan is unchanged.
+- Registry growth (deferred shotcraft batch B, 2026-11-04): 436 -> 438
+  registered names (2 obase fake contracts: Remotion bridge
+  contract, theme catalog schema), landing on top of the
+  claude-animation-skills graft. Layer attribution JSON and the
+  generated table were extended through
+  `scripts/ci/gen_layer_attribution.py` from the shared JSON
+  (438 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 438. No renames;
+  the rename/alias migration plan is unchanged.
