@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(413 capabilities, one entry each, no "unclassified" remainder).
+(421 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -160,6 +160,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.ai_disclosure_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/ai_disclosure_gate.py'},
     'qa.ai_tells_ban': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/ai_tells_ban.py'},
     'qa.anatomy_audit_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/anatomy_audit_vocabulary.py'},
+    'qa.animejs_v4_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/animejs_v4_vocabulary.py'},
     'qa.av_duration_consistency_gate': {"layer": 'oprim', "reason": '单判定规则门禁：单个 check_、单谓词族、无子规则组合（门禁规则）', "file": 'hevi/capabilities/av_duration_consistency_gate.py'},
     'qa.ban_revision_log': {"layer": 'obase', "reason": '外部适配/横切或数据资产/持久化存储（SPEC §3/§7）', "file": 'hevi/capabilities/ban_revision_log.py'},
     'qa.beat_floor_policy': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/beat_floor_policy.py'},
@@ -227,9 +228,11 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.mcp_bridge_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/mcp_bridge_contract.py'},
     'qa.misread_judgement_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/misread_judgement_gate.py'},
     'qa.model_install_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/model_install_gate.py'},
+    'qa.motion_variant_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/motion_variant_gate.py'},
     'qa.multimodal_review': {"layer": 'oprim', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/multimodal_review.py'},
     'qa.narration_alignment_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/narration_alignment_gate.py'},
     'qa.negative_prompt_firewall': {"layer": 'oprim', "reason": '单判定规则门禁：单个 check_、单谓词族、无子规则组合（门禁规则）', "file": 'hevi/capabilities/negative_prompt_firewall_gate.py'},
+    'qa.open_skills_method_notes': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/open_skills_method_notes.py'},
     'qa.packaging_component_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/packaging_component_vocabulary.py'},
     'qa.page_contract': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/page_contract.py'},
     'qa.panel_contrast_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/panel_contrast_gate.py'},
@@ -237,6 +240,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.physical_language_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/physical_language_gate.py'},
     'qa.portrait_consent_gate': {"layer": 'oskill', "reason": '多规则授权门禁：consent 登记 + scope/expires/未知肖像 fail-closed（门禁规则）', "file": 'hevi/capabilities/portrait_consent.py'},
     'qa.post_production_checklist': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/post_production_checklist.py'},
+    'qa.postprocessing_variant_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/postprocessing_variant_gate.py'},
     'qa.premium_composition_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/premium_composition_gate.py'},
     'qa.prerelease_self_check_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/prerelease_self_check_gate.py'},
     'qa.preview_provenance_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/preview_provenance_gate.py'},
@@ -253,6 +257,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.reference_restoration_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/athenaion_restoration.py'},
     'qa.reference_role_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/reference_role_gate.py'},
     'qa.reference_use_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/reference_use_gate.py'},
+    'qa.remotion_skills_method_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/remotion_skills_method_gate.py'},
     'qa.render_lint': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/render_lint.py'},
     'qa.rendered_text_measure': {"layer": 'oprim', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/otsu_text.py'},
     'qa.restraint_ceiling_gate': {"layer": 'oprim', "reason": '单判定规则门禁：单个 check_、单谓词族、无子规则组合（门禁规则）', "file": 'hevi/capabilities/restraint_ceiling_gate.py'},
@@ -302,6 +307,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.vo_first_timing_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/vo_first_timing_gate.py'},
     'qa.voice_first_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/voice_first_gate.py'},
     'qa.wardrobe_age_variant_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/wardrobe_age_variant_gate.py'},
+    'qa.whisperx_subtitle_contract': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/whisperx_subtitle_contract.py'},
     'qa.whiteboard_element_isolation_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/whiteboard_element_isolation_gate.py'},
     'qa.word_pop_subtitle_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/word_pop_subtitle_contract.py'},
     'qa.workflow_spec_self_check': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/workflow_spec_self_check.py'},
@@ -410,12 +416,14 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.hyperframes_styles': {"layer": 'obase', "reason": '词表/风格库数据资产：静态条目+检索，无业务算法（SPEC §7.3）', "file": 'hevi/capabilities/csk_styles.py'},
     'video.jianying_draft_adapter': {"layer": 'obase', "reason": '导出适配契约：草稿导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/jianying_draft_adapter.py'},
     'video.knowledge_layout_pack': {"layer": 'obase', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/knowledge_layout_pack.py'},
+    'video.lottie_overlay_adapter': {"layer": 'obase', "reason": '导出适配契约：叠加导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/lottie_overlay_adapter.py'},
     'video.manim_render': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/manim_render.py'},
     'video.map_route': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/maproute.py'},
     'video.minimal_stage_render': {"layer": 'oskill', "reason": '多步组合：build_stage_plan + validate_stage_plan + 渲染分支，计划与校验组合（SPEC §5）', "file": 'hevi/capabilities/minimal_stage_render.py'},
     'video.motion_beat_chart': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/motion_beat_chart.py'},
     'video.multishot_lock': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/multishot_lock.py'},
     'video.pixstag_generate': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/pixstag.py'},
+    'video.quarks_particle_contract': {"layer": 'obase', "reason": '导出适配契约：粒子导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/quarks_particle_contract.py'},
     'video.reference_map_adapter': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/reference_map_adapter.py'},
     'video.remotion_bridge_smoke': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/remotion_bridge_smoke.py'},
     'video.scroll_film_engine': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/scroll_film_engine.py'},

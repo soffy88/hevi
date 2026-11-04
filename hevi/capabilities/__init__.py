@@ -1452,6 +1452,35 @@ _camera_movement_index.register_camera_movement_index_capabilities_once()
 from . import camera_movement_clause_assembler as _camera_movement_clause_assembler  # noqa: E402,F401
 _camera_movement_clause_assembler.register_camera_movement_clause_assembler_capabilities_once()
 
+# 20 open skills graft (see OPEN_SKILLS_ATTRIBUTION.md):
+# qa.remotion_skills_method_gate, qa.animejs_v4_vocabulary,
+# qa.motion_variant_gate, qa.postprocessing_variant_gate,
+# qa.whisperx_subtitle_contract, qa.open_skills_method_notes,
+# video.lottie_overlay_adapter, video.quarks_particle_contract
+# (clean-room method only; no source/SKILL text copied, no package
+# installs, no ComfyUI upgrade, no clone/training/livestream routes;
+# GPL items are local-backend/method reference only; Remotion Skills
+# pinned to commit c7cb2fdcacd134fb2ccb9b7a44f9ffa44e467271; Anime.js
+# v4 only; B1/B2 are fake contracts, executed_here is false;
+# B3/B4/B5 deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import remotion_skills_method_gate as _remotion_skills_method_gate  # noqa: E402,F401
+_remotion_skills_method_gate.register_remotion_skills_method_gate_capabilities_once()
+from . import animejs_v4_vocabulary as _animejs_v4_vocabulary  # noqa: E402,F401
+_animejs_v4_vocabulary.register_animejs_v4_vocabulary_capabilities_once()
+from . import motion_variant_gate as _motion_variant_gate  # noqa: E402,F401
+_motion_variant_gate.register_motion_variant_gate_capabilities_once()
+from . import postprocessing_variant_gate as _postprocessing_variant_gate  # noqa: E402,F401
+_postprocessing_variant_gate.register_postprocessing_variant_gate_capabilities_once()
+from . import whisperx_subtitle_contract as _whisperx_subtitle_contract  # noqa: E402,F401
+_whisperx_subtitle_contract.register_whisperx_subtitle_contract_capabilities_once()
+from . import open_skills_method_notes as _open_skills_method_notes  # noqa: E402,F401
+_open_skills_method_notes.register_open_skills_method_notes_capabilities_once()
+from . import lottie_overlay_adapter as _lottie_overlay_adapter  # noqa: E402,F401
+_lottie_overlay_adapter.register_lottie_overlay_adapter_capabilities_once()
+from . import quarks_particle_contract as _quarks_particle_contract  # noqa: E402,F401
+_quarks_particle_contract.register_quarks_particle_contract_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
