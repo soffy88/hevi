@@ -95,3 +95,46 @@ demo implementations were intentionally not copied.
   carries `palette_values: null`. Ink Press remains
   non-recolourable; the other presets follow the recorded
   palette precedence order.
+
+## Workbench and capture delta (2026-11-05)
+
+- Motion Workbench and page capture are method restatements
+  only, in hevi's own words. No workbench source, capture
+  script, demonstration component, card text, music, or sound
+  material was copied into hevi, and no referral link or
+  publishing key chain was touched.
+- Workbench method, as recorded: a finished-film project opens
+  in the browser editor only through a single manifest whose
+  timeline shares its source with the main composition; three
+  editability tiers (time/layer, content/style through
+  schema-backed parameters, decomposed imports); rhythm
+  constants stay unexposed; edits live in browser local
+  storage and are never written back into the film's source
+  files; parity comparison of imported and original frames is
+  the only frame-identity evidence, and it was not run here,
+  so frame-identity stays unverified.
+- Capture method, as recorded: screenshots are automatic, but
+  the words are not extracted from any page. Copy is written
+  from the project brief and from words the user supplies.
+  Capture runs locally with invented demonstration data seeded
+  first; real customer data never appears in a finished film;
+  pages behind a login or a paywall have no capture mechanism
+  and fail closed.
+- Brand list: the acknowledgements name twelve makers, in the
+  order recorded by the gate, and state that the methods were
+  restated with no original material, no brand assets, and no
+  affiliation or endorsement. One name that appears in
+  promotional copy is absent from that list and must not be
+  claimed as acknowledged; no per-card provenance to a single
+  source film is recorded anywhere.
+- Beat sync method, as recorded: beat positions from a beat
+  tracker, an equidistant grid fitted by least squares, fit
+  residual within fifteen milliseconds, times kept as
+  floating-point seconds until the final frame conversion.
+  A cut-point error figure from a single finished film is a
+  project self-report until re-measured.
+- The seven new capabilities are discipline gates and fake
+  contracts only (`executed_here: false`). No editor was
+  built, no page was captured, no parity run happened, and no
+  real-machine browser run happened; those remain separate
+  cases.

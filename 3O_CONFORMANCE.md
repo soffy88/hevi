@@ -383,3 +383,15 @@ stay canonical, `layer` is the only new axis.
   shared JSON (454 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 454. No
   renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (shotcraft workbench/capture delta, 2026-11-05):
+  454 -> 461 registered names (5 oskill discipline gates:
+  workbench manifest, workbench edit boundary, capture
+  discipline, brand attribution, beat sync honesty; 2 obase
+  fake contracts: workbench manifest schema, capture kit
+  schema), landing on top of the Hypit graft. Layer attribution
+  JSON and the generated table were extended through
+  `scripts/ci/gen_layer_attribution.py` from the shared JSON
+  (461 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 461. No
+  renames; the rename/alias migration plan is unchanged.

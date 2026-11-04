@@ -1622,6 +1622,32 @@ _word_anchor_timeline_schema.register_word_anchor_timeline_schema_capabilities_o
 from . import three_layer_project_schema as _three_layer_project_schema  # noqa: E402,F401
 _three_layer_project_schema.register_three_layer_project_schema_capabilities_once()
 
+# Shotcraft workbench/capture delta (see VIDEO_SHOTCRAFT_ATTRIBUTION.md):
+# qa.workbench_manifest_gate, qa.workbench_edit_boundary_gate,
+# qa.capture_discipline_gate, qa.brand_attribution_gate,
+# qa.beat_sync_honesty_gate, video.workbench_manifest_schema,
+# video.capture_kit_schema
+# (clean-room method only; no workbench/capture/demo/card text or
+# assets copied; no write-back, no copy extraction, no login or
+# paywall capture; brand list closed, parity unverified; A gates
+# are discipline only, B schemas are fake contracts,
+# executed_here is false; real-machine runs remain a separate case).
+# Appended at the tail only; earlier registrations untouched.
+from . import workbench_manifest_gate as _workbench_manifest_gate  # noqa: E402,F401
+_workbench_manifest_gate.register_workbench_manifest_gate_capabilities_once()
+from . import workbench_edit_boundary as _workbench_edit_boundary  # noqa: E402,F401
+_workbench_edit_boundary.register_workbench_edit_boundary_gate_capabilities_once()
+from . import capture_discipline_gate as _capture_discipline_gate  # noqa: E402,F401
+_capture_discipline_gate.register_capture_discipline_gate_capabilities_once()
+from . import brand_attribution_gate as _brand_attribution_gate  # noqa: E402,F401
+_brand_attribution_gate.register_brand_attribution_gate_capabilities_once()
+from . import beat_sync_honesty_gate as _beat_sync_honesty_gate  # noqa: E402,F401
+_beat_sync_honesty_gate.register_beat_sync_honesty_gate_capabilities_once()
+from . import workbench_manifest_schema as _workbench_manifest_schema  # noqa: E402,F401
+_workbench_manifest_schema.register_workbench_manifest_schema_capabilities_once()
+from . import capture_kit_schema as _capture_kit_schema  # noqa: E402,F401
+_capture_kit_schema.register_capture_kit_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
