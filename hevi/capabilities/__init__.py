@@ -1559,6 +1559,21 @@ _camera_render_mapping.register_camera_render_mapping_capabilities_once()
 from . import camera_duration_advisory as _camera_duration_advisory  # noqa: E402,F401
 _camera_duration_advisory.register_camera_duration_advisory_capabilities_once()
 
+# Deferred 20-skills batch B (see OPEN_SKILLS_ATTRIBUTION.md):
+# video.jolt_rigid_body_contract, qa.cosyvoice_authorization_gate,
+# video.tweakpane_panel_contract
+# (clean-room method only; no source/SKILL text copied; Jolt
+# soft-body scope narrowed out; clone route never connected;
+# CosyVoice code QwenAudio / models FunAudioLLM; all fake
+# contracts/gates, executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import jolt_rigid_body_contract as _jolt_rigid_body_contract  # noqa: E402,F401
+_jolt_rigid_body_contract.register_jolt_rigid_body_contract_capabilities_once()
+from . import cosyvoice_authorization_gate as _cosyvoice_authorization_gate  # noqa: E402,F401
+_cosyvoice_authorization_gate.register_cosyvoice_authorization_gate_capabilities_once()
+from . import tweakpane_panel_contract as _tweakpane_panel_contract  # noqa: E402,F401
+_tweakpane_panel_contract.register_tweakpane_panel_contract_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

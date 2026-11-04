@@ -34,9 +34,10 @@ B1–B2 (contract fakes, `obase`, `executed_here: false`):
   pinned library version and a GPU acknowledgement; nothing
   simulated or rendered.
 
-Deferred (not built here): B3 Jolt rigid-body contract, B4
-CosyVoice narration contract with a voice-authorization gate,
-B5 Tweakpane panel contract. Production sync is a separate
+Built in deferred batch B (2026-11-04): B3 Jolt rigid-body
+contract, B4 CosyVoice narration gate with a voice-authorization
+hard intercept, B5 Tweakpane panel contract (see 'Deferred batch
+B' below). Production sync is a separate
 decision; this graft only lands on main.
 
 ## Pins and corrections recorded
@@ -132,3 +133,30 @@ in `FIFTEEN_TOOLS_ATTRIBUTION.md`:
 - Audacity license: GPLv3 (some files GPLv2), per the
   repository's own LICENSE.txt; the earlier GPL-2.0 record
   was wrong.
+
+## Deferred batch B (2026-11-04)
+
+- B3 `video.jolt_rigid_body_contract` (contract only,
+  `executed_here: false`, `simulated_here: false`): rigid
+  bodies (box/sphere) with gravity, mass, restitution, and
+  friction. The "soft body" wording in the comparison report
+  is narrowed out: any soft-body, cloth, or deformable
+  declaration fails the contract. Division of labour with
+  `scene3d.collision_check` (overlap reporting only, no
+  dynamics) is recorded in the contract. The library was not
+  installed, probed, or invoked; a native build/binding is a
+  separate real-machine case.
+- B4 `qa.cosyvoice_authorization_gate` (gate, hard
+  intercept): no voice-authorization claim (voice id, own or
+  licensed kind, evidence reference) means fail; any clone
+  request fails outright, and the clone route is never
+  connected. Code/model attribution follows the recorded
+  split (code `QwenAudio/CosyVoice`, models `FunAudioLLM`
+  namespace); installed and actively-maintained claims
+  fail. Real inference is a separate GPU/real-machine case.
+- B5 `video.tweakpane_panel_contract` (contract only,
+  `executed_here: false`): a debugging-only parameter panel
+  schema (number/boolean/string/choice, ranges and option
+  sets checked, bindings to caller-declared targets). No
+  DOM is created. The version is pinned by caller
+  declaration only; maintenance is recorded as slowed.

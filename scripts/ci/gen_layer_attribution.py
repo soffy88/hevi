@@ -26,7 +26,7 @@ LAYERS = ("oprim", "oskill", "omodul", "obase", "oservi")
 HEADER = '''"""Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(440 capabilities, one entry each, no "unclassified" remainder).
+(443 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 

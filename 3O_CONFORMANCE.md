@@ -345,3 +345,13 @@ stay canonical, `layer` is the only new axis.
   (440 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 440. No renames;
   the rename/alias migration plan is unchanged.
+- Registry growth (deferred 20-skills batch B, 2026-11-04):
+  440 -> 443 registered names (2 obase fake contracts: Jolt
+  rigid-body, Tweakpane panel; 1 oskill gate: CosyVoice
+  voice-authorization hard intercept), landing on top of the
+  camera-movement batch B. Layer attribution JSON and the
+  generated table were extended through
+  `scripts/ci/gen_layer_attribution.py` from the shared JSON
+  (443 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 443. No renames;
+  the rename/alias migration plan is unchanged.
