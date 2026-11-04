@@ -1481,6 +1481,32 @@ _lottie_overlay_adapter.register_lottie_overlay_adapter_capabilities_once()
 from . import quarks_particle_contract as _quarks_particle_contract  # noqa: E402,F401
 _quarks_particle_contract.register_quarks_particle_contract_capabilities_once()
 
+# qa.krita_file_contract_gate, qa.r3f_variant_gate,
+# qa.audacity_version_gate, qa.cosyvoice_attribution_note,
+# qa.one_shot_film_honesty_gate, video.krita_asset_index,
+# video.r3f_scene_contract
+# (clean-room method only; no source/brush bundle/plugin copied,
+# no desktop app installed, no companion fork compiled, no
+# clone/training routes; GPL items are file-contract/method
+# reference only; CosyVoice code QwenAudio / models FunAudioLLM;
+# one-shot shape recorded as not connected; B1/B2 are fake
+# contracts, executed_here is false; B3 deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import krita_file_contract_gate as _krita_file_contract_gate  # noqa: E402,F401
+_krita_file_contract_gate.register_krita_file_contract_gate_capabilities_once()
+from . import r3f_variant_gate as _r3f_variant_gate  # noqa: E402,F401
+_r3f_variant_gate.register_r3f_variant_gate_capabilities_once()
+from . import audacity_version_gate as _audacity_version_gate  # noqa: E402,F401
+_audacity_version_gate.register_audacity_version_gate_capabilities_once()
+from . import cosyvoice_attribution_note as _cosyvoice_attribution_note  # noqa: E402,F401
+_cosyvoice_attribution_note.register_cosyvoice_attribution_note_capabilities_once()
+from . import one_shot_film_honesty_gate as _one_shot_film_honesty_gate  # noqa: E402,F401
+_one_shot_film_honesty_gate.register_one_shot_film_honesty_gate_capabilities_once()
+from . import krita_asset_index as _krita_asset_index  # noqa: E402,F401
+_krita_asset_index.register_krita_asset_index_capabilities_once()
+from . import r3f_scene_contract as _r3f_scene_contract  # noqa: E402,F401
+_r3f_scene_contract.register_r3f_scene_contract_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

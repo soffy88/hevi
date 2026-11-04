@@ -119,3 +119,16 @@ Manim, MCP for Blender, Three.js, ComfyUI, librosa, the
 LosslessCut cutting method, and FFmpeg were already in hevi and
 were not rebuilt. OBS recording is not a finished-film pipeline
 step and was not built.
+
+## Addendum (15 open tools graft, 2026-11-04)
+
+Two corrections recorded by the follow-up graft; full record
+in `FIFTEEN_TOOLS_ATTRIBUTION.md`:
+
+- CosyVoice: the canonical code repository is
+  `QwenAudio/CosyVoice` (`FunAudioLLM/CosyVoice` is the old
+  address); model releases still publish under the
+  `FunAudioLLM` namespace. Never mix the two names.
+- Audacity license: GPLv3 (some files GPLv2), per the
+  repository's own LICENSE.txt; the earlier GPL-2.0 record
+  was wrong.
