@@ -68,6 +68,28 @@ only; none is bundled, installed, or invoked by this graft:
 - B1 exploded-view schema (contract only).
 - B2 procedural cartoon-person rig schema (contract only).
 
-Deferred to a separate case: B3 word-timing warp contract
-and B4 minimal line-motif schema. Real rendering and GPU
+Built in deferred batch B (2026-11-04): B3 word-timing
+warp contract and B4 minimal line-motif schema (see
+'Deferred batch B' below). Real rendering and GPU
 execution were not verified here.
+
+## Deferred batch B (2026-11-04)
+
+- B3 `video.word_timing_warp_contract` (contract only,
+  `executed_here: false`): shot timing warped onto a
+  replacement narration take with identical words, mapped
+  word by word. A changed script, an off-boundary shot, or
+  an English-only timing model paired with another
+  language all fail closed. No timing model is bundled or
+  invoked (the Parakeet model named in the reviewed kit is
+  English-only and is refused for non-English languages);
+  Chinese word timing belongs to hevi's separate Chinese
+  alignment stack and is not claimed here. No audio is
+  aligned and no take is rendered.
+- B4 `video.minimal_line_motif_schema` (contract only,
+  `executed_here: false`): the steps-plus-white-dot-plus-
+  track-ring motif with one or two lowercase,
+  period-terminated lines, 3-7 steps, and the second line
+  swapping in at the top step. The motif expresses steady
+  accumulation only. Nothing is drawn; real rendering is
+  a separate case.

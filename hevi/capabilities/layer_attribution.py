@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(444 capabilities, one entry each, no "unclassified" remainder).
+(446 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -438,6 +438,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.lottie_overlay_adapter': {"layer": 'obase', "reason": '导出适配契约：叠加导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/lottie_overlay_adapter.py'},
     'video.manim_render': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/manim_render.py'},
     'video.map_route': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/maproute.py'},
+    'video.minimal_line_motif_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake line-motif schema, executed_here false, steady-accumulation meaning only', "file": 'hevi/capabilities/minimal_line_motif_schema.py'},
     'video.minimal_stage_render': {"layer": 'oskill', "reason": '多步组合：build_stage_plan + validate_stage_plan + 渲染分支，计划与校验组合（SPEC §5）', "file": 'hevi/capabilities/minimal_stage_render.py'},
     'video.motion_beat_chart': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/motion_beat_chart.py'},
     'video.multishot_lock': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/multishot_lock.py'},
@@ -460,6 +461,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.virtual_clock_recorder': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/virtual_clock_recorder.py'},
     'video.whiteboard_mask_contract': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/whiteboard_mask_contract.py'},
     'video.word_pop_renderer': {"layer": 'oskill', "reason": '多步组合：字幕契约校验＋字体解析＋ffmpeg 渲染（SPEC §5）；非单原子执行，故由 oprim 更正为 oskill（2026-11-04 收敛复核）', "file": 'hevi/capabilities/word_pop_renderer.py'},
+    'video.word_timing_warp_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake word-timing warp, executed_here false, English-only models refused for other languages', "file": 'hevi/capabilities/word_timing_warp_contract.py'},
     'world.athenaion_classical_orders': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/athenaion_orders.py'},
     'world.athenaion_discipline': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/athenaion_contract.py'},
     'world.athenaion_sdf_statue': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/athenaion_statue.py'},

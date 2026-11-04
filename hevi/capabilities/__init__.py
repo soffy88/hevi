@@ -1583,6 +1583,17 @@ _tweakpane_panel_contract.register_tweakpane_panel_contract_capabilities_once()
 from . import audacity_effect_chain_contract as _audacity_effect_chain_contract  # noqa: E402,F401
 _audacity_effect_chain_contract.register_audacity_effect_chain_contract_capabilities_once()
 
+# Deferred animation-skills batch B (see ANIMATION_SKILLS_ATTRIBUTION.md):
+# video.word_timing_warp_contract, video.minimal_line_motif_schema
+# (clean-room method only; no SKILL/template/engine text copied;
+# English-only timing models never presented as Chinese
+# support; both fake contracts, executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import word_timing_warp_contract as _word_timing_warp_contract  # noqa: E402,F401
+_word_timing_warp_contract.register_word_timing_warp_contract_capabilities_once()
+from . import minimal_line_motif_schema as _minimal_line_motif_schema  # noqa: E402,F401
+_minimal_line_motif_schema.register_minimal_line_motif_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
