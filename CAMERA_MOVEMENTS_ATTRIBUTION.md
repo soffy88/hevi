@@ -35,3 +35,27 @@ only. Whether a movement renders well on any given video model,
 and how movements map to H3 frame grids and duration tiers, was
 not established by this review and needs separate GPU verification
 (B3/B4, deferred). Site media was not verified shot by shot.
+
+## Deferred batch B (2026-11-04)
+
+- B3 `video.camera_render_mapping` (contract only,
+  `executed_here: false`): all 46 movements mapped against
+  the minimal code renderer's four fixed tokens. Exactly
+  four ids route to a token; the other 42 are explicitly
+  `not_supported` with a reason, and compiling one fails
+  closed with no silent fallback or direction mirroring.
+  The four supported entries record `direction_verified:
+  false`: whether the renderer's fixed sweep matches the
+  physical direction was not verified. `slow_zoom_in` and
+  `slow_zoom_out` remain legal vocabulary ids; they are
+  only unrenderable here (zoom family, no focal-length
+  control), never banned.
+- B4 `qa.camera_duration_advisory` (advisory only): duration
+  suggestions drawn solely from hevi's own
+  `duration_tiers.json` and frame counts snapped to the H3
+  lattice (17k + 5 at 24fps) only where a frame basis is
+  verified (`fasth3_local`). Providers without a verified
+  tier get no numeric suggestion. The site catalogue
+  carries no duration field, so no duration here comes
+  from the site. Real rendering effect on any model is
+  unverified and needs GPU verification in a separate case.

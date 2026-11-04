@@ -1547,6 +1547,18 @@ _remotion_bridge_contract.register_remotion_bridge_contract_capabilities_once()
 from . import shotcraft_theme_catalog as _shotcraft_theme_catalog  # noqa: E402,F401
 _shotcraft_theme_catalog.register_shotcraft_theme_catalog_capabilities_once()
 
+# Deferred camera-movement batch B (see CAMERA_MOVEMENTS_ATTRIBUTION.md):
+# video.camera_render_mapping, qa.camera_duration_advisory
+# (clean-room method only; no site prompt text copied; mapping
+# marks 42 movements not_supported with no silent fallback;
+# advisory uses only hevi's own duration tiers and H3 lattice,
+# no invented durations; both unverified on real renders).
+# Appended at the tail only; earlier registrations untouched.
+from . import camera_render_mapping as _camera_render_mapping  # noqa: E402,F401
+_camera_render_mapping.register_camera_render_mapping_capabilities_once()
+from . import camera_duration_advisory as _camera_duration_advisory  # noqa: E402,F401
+_camera_duration_advisory.register_camera_duration_advisory_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

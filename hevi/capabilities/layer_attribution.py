@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(438 capabilities, one entry each, no "unclassified" remainder).
+(440 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -169,6 +169,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.browser_check_executor': {"layer": 'oskill', "reason": '多步组合：计划校验门＋多浏览器 Playwright 执行＋报告校验门＋contact sheet，跨子系统编排（SPEC §5）；非同后端单作业，故由 oprim 更正为 oskill（2026-11-04 收敛复核）', "file": 'hevi/capabilities/browser_check_executor.py'},
     'qa.browser_check_matrix': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/browser_check_matrix.py'},
     'qa.camera_baseline_drop_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/camera_baseline_drop_gate.py'},
+    'qa.camera_duration_advisory': {"layer": 'oskill', "reason": 'multi-rule advisory algorithm: tier-bound duration + H3 lattice frames, advisory only, no render promise', "file": 'hevi/capabilities/camera_duration_advisory.py'},
     'qa.camera_movement_end_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/camera_movement_end_gate.py'},
     'qa.camera_movement_four_field_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/camera_movement_four_field_gate.py'},
     'qa.camera_movement_vocabulary_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/camera_movement_vocabulary_gate.py'},
@@ -413,6 +414,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.blender_mcp': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/blender_mcp.py'},
     'video.camera_movement_clause_assembler': {"layer": 'obase', "reason": '组装契约：提示词子句组装规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/camera_movement_clause_assembler.py'},
     'video.camera_movement_index': {"layer": 'obase', "reason": '词表/风格库数据资产：静态条目+检索，无业务算法（SPEC §7.3）', "file": 'hevi/capabilities/camera_movement_index.py'},
+    'video.camera_render_mapping': {"layer": 'obase', "reason": 'contract-only adapter: fake render mapping, executed_here false, 42 movements not_supported with no fallback', "file": 'hevi/capabilities/camera_render_mapping.py'},
     'video.cartoon_rig_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake schema, executed_here false, no rendering', "file": 'hevi/capabilities/cartoon_rig_schema.py'},
     'video.code_film_style_contract': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/code_film_style_contract.py'},
     'video.code_render': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/code_render.py'},
