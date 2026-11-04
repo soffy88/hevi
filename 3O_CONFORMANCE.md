@@ -296,3 +296,5 @@ stay canonical, `layer` is the only new axis.
   through `scripts/ci/gen_layer_attribution.py`; the conformance
   scope count in `tests/test_3o_conformance.py` was updated to 405.
   No renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (aicameramovements completion graft, 2026-11-04): 405 -> 413 registered names (6 oskill gates + 2 obase index/assembler). The camera movement catalogue itself grew 40 -> 46 in the same single source. Layer attribution JSON and the generated table were extended through `scripts/ci/gen_layer_attribution.py`; the conformance scope count in `tests/test_3o_conformance.py` was updated to 413.

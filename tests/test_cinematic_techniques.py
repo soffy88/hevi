@@ -12,12 +12,15 @@ from hevi.capabilities.errors import CapabilityError
 
 def test_movement_catalogue_counts_and_fields() -> None:
     rows = ct.list_movements()
-    assert len(rows) == 40
-    assert len({r["id"] for r in rows}) == 40
+    assert len(rows) == 46
+    assert len({r["id"] for r in rows}) == 46
     for row in rows:
         assert row["movement"] and row["speed"] and row["framing"] and row["end"]
         assert row["category"] and row["name_en"] and row["name_zh"]
     assert len(ct.list_movements("Pan/Tilt")) == 7
+    assert len(ct.list_movements("Drone/Crane")) == 5
+    assert len(ct.list_movements("Specials")) == 6
+    assert ct.get_movement("helicopter_shot")["name_zh"] == "直升机航拍"
     assert ct.get_movement("dolly_in")["name_en"] == "Dolly in"
     with pytest.raises(CapabilityError):
         ct.get_movement("no-such-move")

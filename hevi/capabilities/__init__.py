@@ -316,7 +316,7 @@ from . import blender_mcp as _blender_mcp  # noqa: E402,F401
 _blender_mcp.register_blender_mcp_capabilities_once()
 
 # Cinematic technique libraries (movie-atmosphere 10-site intake, 2026-10-25):
-# shot.camera_movements (40 movements) + shot.cinematic_techniques
+# shot.camera_movements (46 movements) + shot.cinematic_techniques
 # (melies index, 30 vvsvs core techniques, index-only pointers).
 from . import cinematic_techniques as _cinematic_techniques  # noqa: E402,F401
 _cinematic_techniques.register_cinematic_techniques_capabilities_once()
@@ -1426,6 +1426,31 @@ from . import shotcraft_card_index as _shotcraft_card_index  # noqa: E402,F401
 _shotcraft_card_index.register_shotcraft_card_index_capabilities_once()
 from . import jianying_draft_adapter as _jianying_draft_adapter  # noqa: E402,F401
 _jianying_draft_adapter.register_jianying_draft_adapter_capabilities_once()
+
+# aicameramovements completion graft (see CAMERA_MOVEMENTS_ATTRIBUTION.md):
+# qa.camera_movement_vocabulary_gate, qa.camera_movement_four_field_gate,
+# qa.camera_movement_end_gate, qa.zoom_track_distinction_gate,
+# qa.special_movement_flag_gate, qa.slow_zoom_clarification,
+# video.camera_movement_index, video.camera_movement_clause_assembler
+# (clean-room method only; no site prompt text, no preview media;
+# slow_zoom_in/out are legal hevi ids, the ban wording is H3's).
+# Appended at the tail only; earlier registrations untouched.
+from . import camera_movement_vocabulary_gate as _camera_movement_vocabulary_gate  # noqa: E402,F401
+_camera_movement_vocabulary_gate.register_camera_movement_vocabulary_gate_capabilities_once()
+from . import camera_movement_four_field_gate as _camera_movement_four_field_gate  # noqa: E402,F401
+_camera_movement_four_field_gate.register_camera_movement_four_field_gate_capabilities_once()
+from . import camera_movement_end_gate as _camera_movement_end_gate  # noqa: E402,F401
+_camera_movement_end_gate.register_camera_movement_end_gate_capabilities_once()
+from . import zoom_track_distinction_gate as _zoom_track_distinction_gate  # noqa: E402,F401
+_zoom_track_distinction_gate.register_zoom_track_distinction_gate_capabilities_once()
+from . import special_movement_flag_gate as _special_movement_flag_gate  # noqa: E402,F401
+_special_movement_flag_gate.register_special_movement_flag_gate_capabilities_once()
+from . import slow_zoom_clarification as _slow_zoom_clarification  # noqa: E402,F401
+_slow_zoom_clarification.register_slow_zoom_clarification_capabilities_once()
+from . import camera_movement_index as _camera_movement_index  # noqa: E402,F401
+_camera_movement_index.register_camera_movement_index_capabilities_once()
+from . import camera_movement_clause_assembler as _camera_movement_clause_assembler  # noqa: E402,F401
+_camera_movement_clause_assembler.register_camera_movement_clause_assembler_capabilities_once()
 
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live

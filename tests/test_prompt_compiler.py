@@ -119,9 +119,9 @@ def test_s06_prompt_carries_verbatim_lines_and_bans() -> None:
     assert "禁叠化" in prompt
 
 
-def test_movement_table_is_hevis_own_40() -> None:
+def test_movement_table_is_hevis_own_46() -> None:
     table = _load_movement_table()
-    assert len(table) == 40
+    assert len(table) == 46
     assert table["dolly_in"]["zh"] == "前推轨道"
     assert table["slow_zoom_in"]["en"] == "Slow zoom in"
 

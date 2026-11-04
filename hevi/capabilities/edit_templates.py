@@ -10,7 +10,7 @@ must make that a recipe does not:
   the template's declared orientation equals that aspect -- a vertical
   template is never silently applied to a horizontal render.
 * shot kind: ``moving`` (a motion shot: exactly one registered camera
-  movement, from the same 40-movement catalogue as
+  movement, from the same 46-movement catalogue as
   ``edit.edit_recipe``) or ``static`` (a locked-off shot: no
   ``movement_id`` at all, and no movement layer either -- a static
   template that smuggles in a movement layer is rejected, same as a

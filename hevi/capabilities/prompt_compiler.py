@@ -24,7 +24,7 @@ Vocabulary provenance (stated here, not hidden)
 ------------------------------------------------
 * Camera movements come from hevi's own
   ``hevi.capabilities.cinematic_techniques`` data file
-  (``cinematic_data/camera_movements.json``: 40 movements, each with
+  (``cinematic_data/camera_movements.json``: 46 movements, each with
   an ``id``, a Chinese name and an English name). The compiler loads
   that table at run time, so a movement id that does not exist there
   cannot pass validation -- no movement id is invented here.
@@ -200,7 +200,7 @@ def _load_movement_table() -> dict[str, dict[str, str]]:
 
     Loaded from the same ``camera_movements.json`` that
     ``cinematic_techniques.load_movements`` reads, so the table can
-    never drift from hevi's own 40-movement list.
+    never drift from hevi's own 46-movement list.
     """
     global _MOVEMENT_TABLE, _MOVEMENT_ZH_TO_ID
     if _MOVEMENT_TABLE is not None:
