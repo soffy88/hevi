@@ -1,6 +1,6 @@
 """RISO B-roll unit:孔版双色印刷风口播信息动画."""
 
-from hevi.riso.capabilities import register_riso_capabilities
+from hevi.riso.capabilities import register_riso_capabilities_once
 from hevi.riso.constants import PALETTES, TEMPLATE_NAMES
 from hevi.riso.gatekeeper import (
     check_numbers_preserved,
@@ -27,7 +27,7 @@ from hevi.riso.render import (
 from hevi.riso.storyboard import StoryboardPlan, StoryboardShot, generate_storyboard
 
 # Automatically register capabilities on package import
-register_riso_capabilities()
+register_riso_capabilities_once()
 
 __all__ = [
     "FontLoadError",
@@ -47,6 +47,7 @@ __all__ = [
     "generate_storyboard",
     "is_subsequence",
     "register_riso_capabilities",
+    "register_riso_capabilities_once",
     "render_clip",
     "run_gate1_storyboard",
     "run_gate2_keyframes_and_qa",

@@ -137,6 +137,24 @@ def register_model(
     return dict(record)
 
 
+def record_in_directory(
+    directory_path: Path, records: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    """Write several (model_id -> config) records via ``register_model``.
+
+    Single write path for all model/pricing registrations (SPEC 1.4
+    single source): Floyo, Modal, Seedance and VidoGrid registrations
+    only supply record constructors; the directory write and the
+    ``status: unverified`` discipline live here and in
+    ``register_model`` alone. Every record lands unverified.
+    """
+    path = Path(directory_path)
+    return {
+        model_id: register_model(path, model_id=model_id, config=config)
+        for model_id, config in records.items()
+    }
+
+
 def get_record(directory_path: Path, model_id: str) -> dict[str, Any]:
     data = _load(Path(directory_path))
     record = data["models"].get(model_id)

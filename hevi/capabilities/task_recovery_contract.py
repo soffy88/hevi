@@ -38,7 +38,9 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
-from hevi.capabilities.task_recovery_gate import check_task_recovery
+from hevi.capabilities.pure_helpers import (
+    check_task_recovery,
+)
 
 _Registered = False
 

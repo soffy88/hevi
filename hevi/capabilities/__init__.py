@@ -75,8 +75,8 @@ from hevi.stickman.capabilities import register_stickman_capabilities_once
 register_stickman_capabilities_once()
 
 # Riso B-roll capabilities (feat/riso-broll)
-from hevi.riso.capabilities import register_riso_capabilities
-register_riso_capabilities()
+from hevi.riso.capabilities import register_riso_capabilities_once
+register_riso_capabilities_once()
 
 
 # Multi-model pipeline (cloud providers via Monid, 2026-10-20):

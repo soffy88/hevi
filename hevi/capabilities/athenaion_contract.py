@@ -394,6 +394,21 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
     )
 
 
+def _render_look_shot(params: dict[str, Any], out_dir: Path, *, duration: float,
+                      aspect: str, seed: int) -> CapabilityResult:
+    """Delegating alias for ``qa.look_shot_separation`` (SPEC 1.4).
+
+    The canonical implementation is ``_render``
+    (``world.athenaion_discipline``); this alias fixes
+    ``mode="look_shot"`` and delegates, so the look/shot check has
+    exactly one implementation. Callers may still pass ``mode``;
+    it is ignored here by design.
+    """
+    merged = dict(params)
+    merged["mode"] = "look_shot"
+    return _render(merged, out_dir, duration=duration, aspect=aspect, seed=seed)
+
+
 def register_athenaion_contract_capabilities_once() -> list[str]:
     global _Registered
     if _Registered:
@@ -439,7 +454,7 @@ def register_athenaion_contract_capabilities_once() -> list[str]:
             "additionalProperties": False,
         },
         cpu_cost_hint=0.01,
-        render=_render,
+        render=_render_look_shot,
         has_media_output=False,
         description=(
             "A2 look/shots separation gate: look fixes light/material/"

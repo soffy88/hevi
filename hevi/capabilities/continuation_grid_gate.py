@@ -40,11 +40,16 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    GRID_BASE,
+    GRID_STEP,
+    is_on_grid,
+    snap_down,
+    snap_up,
+)
 
 _Registered = False
 
-GRID_BASE = 5
-GRID_STEP = 17
 
 
 def _issue(code: str, detail: str, **extra: Any) -> dict[str, Any]:
@@ -53,31 +58,10 @@ def _issue(code: str, detail: str, **extra: Any) -> dict[str, Any]:
     return issue
 
 
-def is_on_grid(frames: int) -> bool:
-    """True when ``frames`` falls on the 5 + 17k grid."""
-    return (
-        isinstance(frames, int)
-        and not isinstance(frames, bool)
-        and frames >= GRID_BASE
-        and (frames - GRID_BASE) % GRID_STEP == 0
-    )
 
 
-def snap_down(frames: int) -> int:
-    """Largest grid value at or below ``frames`` (``GRID_BASE`` floor)."""
-    if frames <= GRID_BASE:
-        return GRID_BASE
-    return GRID_BASE + ((frames - GRID_BASE) // GRID_STEP) * GRID_STEP
 
 
-def snap_up(frames: int) -> int:
-    """Smallest grid value at or above ``frames``."""
-    if frames <= GRID_BASE:
-        return GRID_BASE
-    remainder = (frames - GRID_BASE) % GRID_STEP
-    if remainder == 0:
-        return frames
-    return frames + (GRID_STEP - remainder)
 
 
 def check_continuation_grid(plan: Any) -> dict[str, Any]:

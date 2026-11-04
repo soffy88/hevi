@@ -51,10 +51,13 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    DEFAULT_MANIM_PYTHON,
+    manim_python,
+)
 
 _Registered = False
 
-DEFAULT_MANIM_PYTHON = "/data/soffy/venvs/manim/bin/python"
 
 _QUALITY_FLAGS = {
     "low": "l",        # 480p15
@@ -64,9 +67,6 @@ _QUALITY_FLAGS = {
 }
 
 
-def manim_python() -> Path:
-    """Resolve the Manim venv interpreter (env override wins)."""
-    return Path(os.environ.get("HEVI_MANIM_PYTHON", DEFAULT_MANIM_PYTHON))
 
 
 def _probe_mp4(path: Path) -> dict[str, Any]:

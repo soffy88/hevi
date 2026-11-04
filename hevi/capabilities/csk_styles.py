@@ -121,6 +121,7 @@ def _render_styles_catalogue(
 def _render_styled_render(
     params: dict[str, Any], out_dir: Path, *, duration: float, aspect: str, seed: int
 ) -> CapabilityResult:
+    """Composes (3O SPEC 1.2): check_beats."""
     csk = _csk()
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

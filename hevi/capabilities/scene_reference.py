@@ -111,6 +111,18 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    resolve_picture_binding,
+    resolve_character_anchor,
+    resolve_picture_bindings,
+    canonical_frame_count,
+    H3_FPS,
+    H3_FRAME_OFFSET,
+    H3_FRAME_STEP,
+)
+from hevi.capabilities.pure_helpers import (
+    _SHA256_RE,
+)
 
 _Registered = False
 
@@ -331,94 +343,12 @@ def rewrite_dialogue(text: str, names: list[str] | None = None) -> tuple[str, li
 # story.prompt_compiler (which imports them lazily); do not copy them
 # into a second module.
 
-_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
-def resolve_picture_binding(binding: Any, what: str = "reference binding") -> dict[str, Any]:
-    """Validate one Picture -> file binding. Returns ``{file, sha256}``.
-
-    ``file`` must be a non-empty string and ``sha256`` a 64-hex digest
-    of the file's bytes. A local filesystem path (no URL scheme) must
-    exist on disk; a URL is accepted on its hash alone, because the
-    file lives elsewhere -- the hash is what the executor checks.
-    """
-    if not isinstance(binding, dict):
-        raise CapabilityError(
-            f"pipeline.scene_reference: {what} must be an object with 'file' and 'sha256'")
-    file = binding.get("file")
-    sha = binding.get("sha256")
-    if not isinstance(file, str) or not file.strip():
-        raise CapabilityError(f"pipeline.scene_reference: {what} needs a non-empty 'file'")
-    if not isinstance(sha, str) or not _SHA256_RE.match(sha.strip()):
-        raise CapabilityError(
-            f"pipeline.scene_reference: {what} needs a 64-hex 'sha256' for {file!r}")
-    file = file.strip()
-    if "://" not in file:
-        path = Path(file)
-        if not path.exists():
-            raise CapabilityError(
-                f"pipeline.scene_reference: {what} file does not exist: {file!r}")
-    return {"file": file, "sha256": sha.strip()}
 
 
-def resolve_picture_bindings(bindings: Any, *, what: str = "reference bindings") -> dict[int, dict[str, Any]]:
-    """Validate a Picture-number -> binding map. Keys are ints or digit strings."""
-    if not isinstance(bindings, dict):
-        raise CapabilityError(f"pipeline.scene_reference: {what} must be an object")
-    out: dict[int, dict[str, Any]] = {}
-    for key, value in bindings.items():
-        try:
-            number = int(key)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
-            raise CapabilityError(
-                f"pipeline.scene_reference: {what} key {key!r} is not a picture number") from None
-        if number < 1:
-            raise CapabilityError(
-                f"pipeline.scene_reference: {what} picture number must be >= 1, got {number}")
-        out[number] = resolve_picture_binding(value, f"{what} picture {number}")
-    return out
 
 
-def resolve_character_anchor(name: str, anchors: Any) -> dict[str, Any]:
-    """Resolve one character's confirmed anchor from an anchors map.
-
-    Accepted shapes (both must be confirmed by a human -- an
-    unconfirmed or missing anchor fails, it never falls back to a
-    bare name):
-    * a ``qa.character_anchor_gate`` sheet: ``{"anchor": {"file",
-      "sha256", "look_snapshot", "confirmed": true, ...}}``;
-    * a plain record: ``{"look_snapshot"|"look"|"description",
-      "file", "sha256", "confirmed": true}`` with optional
-      ``"wardrobe"``.
-    Returns ``{name, look, wardrobe, file, sha256}``.
-    """
-    if not isinstance(anchors, dict) or name not in anchors:
-        raise CapabilityError(
-            f"pipeline.scene_reference: character {name!r} has no confirmed anchor; "
-            "a bare name is not a prompt-ready character")
-    record = anchors[name]
-    if not isinstance(record, dict):
-        raise CapabilityError(
-            f"pipeline.scene_reference: anchor for {name!r} must be an object")
-    anchor = record.get("anchor") if isinstance(record.get("anchor"), dict) else record
-    if anchor.get("confirmed") is not True:
-        raise CapabilityError(
-            f"pipeline.scene_reference: anchor for {name!r} is not confirmed; "
-            "unconfirmed anchors never reach generation")
-    look = anchor.get("look_snapshot") or anchor.get("look") or anchor.get("description")
-    if not isinstance(look, str) or not look.strip():
-        raise CapabilityError(
-            f"pipeline.scene_reference: anchor for {name!r} carries no look description")
-    binding = resolve_picture_binding(
-        {"file": anchor.get("file"), "sha256": anchor.get("sha256")},
-        f"anchor for {name!r}")
-    wardrobe = anchor.get("wardrobe")
-    if wardrobe is not None and (not isinstance(wardrobe, str) or not wardrobe.strip()):
-        raise CapabilityError(
-            f"pipeline.scene_reference: anchor wardrobe for {name!r} must be a non-empty string")
-    return {"name": name, "look": look.strip(),
-            "wardrobe": wardrobe.strip() if isinstance(wardrobe, str) else None,
-            "file": binding["file"], "sha256": binding["sha256"]}
 
 
 # ---------------------------------------------------------------- builder
@@ -1308,9 +1238,6 @@ def check_blocking(record: Any) -> dict[str, Any]:
 
 # ---------------------------------------------------------------- output precheck
 
-H3_FPS = 24
-H3_FRAME_STEP = 17
-H3_FRAME_OFFSET = 5
 H3_GRID = 32
 CROP_GRID = 16
 DEFAULT_TARGET_MEGAPIXELS = 0.4
@@ -1333,24 +1260,6 @@ DEFAULT_TARGET_MEGAPIXELS = 0.4
 # on the other drifts by 3 frames per 10 seconds.
 
 
-def canonical_frame_count(seconds: float, fps: float = H3_FPS, route: str = "h3") -> int:
-    """Frame count for ``seconds`` on one named execution route.
-
-    ``route="h3"`` snaps to the 17k+5 lattice; ``route="fasth3_local"``
-    rounds to the nearest frame; any other route name also rounds
-    and is recorded by the caller. Plan arithmetic only.
-    """
-    for value, what in ((seconds, "seconds"), (fps, "fps")):
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
-            raise CapabilityError(f"pipeline.scene_reference: {what} must be a finite number")
-    if seconds <= 0 or fps <= 0:
-        raise CapabilityError("pipeline.scene_reference: seconds and fps must be positive")
-    if route == "h3":
-        frames = max(H3_FRAME_OFFSET, int(round(seconds * fps)))
-        return frames + (H3_FRAME_OFFSET - frames % H3_FRAME_STEP) % H3_FRAME_STEP
-    if not isinstance(route, str) or not route.strip():
-        raise CapabilityError("pipeline.scene_reference: route must be a non-empty string")
-    return max(1, int(round(seconds * fps)))
 
 
 def h3_frame_count(seconds: float, fps: float = H3_FPS) -> int:

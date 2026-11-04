@@ -1168,13 +1168,14 @@ def _validate_beat_camera(beat: dict[str, Any], label: str) -> None:
 # entry points keep their old behaviour (unknown tier recorded, bare
 # names, no file bindings) so existing fixtures keep compiling; the
 # strict entry points below are the production path and fail hard.
-# Binding/anchor validation lives in pipeline.scene_reference
-# (single implementation); this module imports it lazily so the two
-# modules never form an import cycle at load time.
+# Binding/anchor validation lives in pure_helpers (single
+# implementation, re-exported by pipeline.scene_reference); this
+# module imports it lazily so the two modules never form an import
+# cycle at load time.
 
 
 def _scene_reference_helpers() -> tuple[Any, Any, Any]:
-    from hevi.capabilities.scene_reference import (
+    from hevi.capabilities.pure_helpers import (
         canonical_frame_count,
         resolve_character_anchor,
         resolve_picture_bindings,

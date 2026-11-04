@@ -107,7 +107,7 @@ def resolve_three_module() -> Path:
 
 
 def normalise_stage_block(template: Any) -> dict[str, Any]:
-    """Return the stage block from a bare block or a sheet wrapper."""
+    """Return the stage block from a bare block or a sheet wrapper. Composes (3O SPEC 1.2): validate_stage_block."""
     if not isinstance(template, dict):
         raise CapabilityError("video.minimal_stage_render: stage template must be a JSON object")
     block = template.get("stage") if isinstance(template.get("stage"), dict) else None
@@ -158,7 +158,7 @@ def build_stage_plan(
 
 
 def validate_stage_plan(plan: Any) -> dict[str, Any]:
-    """Judge a stage plan with the __hf + determinism gates."""
+    """Judge a stage plan with the __hf + determinism gates. Composes (3O SPEC 1.2): check_render_plan."""
     if not isinstance(plan, dict):
         raise CapabilityError("video.minimal_stage_render: stage plan must be a JSON object")
     adapter = check_adapter_plan({"adapter": plan.get("adapter")})

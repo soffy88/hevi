@@ -71,7 +71,7 @@ def _resolve_dimension_picks(plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def assemble_eight_dim_plan(plan: dict[str, Any]) -> dict[str, Any]:
-    """Validate a plan through all four gates, then assemble it."""
+    """Validate a plan through all four gates, then assemble it. Composes (3O SPEC 1.2): check_physical_language."""
     from hevi.image.portrait_vocab import eight_dim as ed
 
     if not isinstance(plan, dict):

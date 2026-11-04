@@ -102,6 +102,9 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    check_confirmation,
+)
 
 _Registered = False
 
@@ -128,28 +131,6 @@ _REAL_KINDS = [
 
 # ---------------------------------------------------------------- confirmations
 
-def check_confirmation(confirmation: Any, stage: str) -> dict[str, Any]:
-    """Strict confirmation check: ``confirmed`` must be exactly True.
-
-    Anything else -- False, "yes", 1, a missing stage, a missing
-    dict -- is a refusal that names the reason. Silence, skipping
-    and timeout are not confirmations because they never arrive
-    here as ``confirmed is True``.
-    """
-    if not isinstance(confirmation, dict):
-        return {"allowed": False, "stage": stage,
-                "reason": "no confirmation supplied (expected a dict)"}
-    if confirmation.get("stage") != stage:
-        return {"allowed": False, "stage": stage,
-                "reason": (
-                    f"confirmation stage is {confirmation.get('stage')!r}, "
-                    f"not {stage!r}; a confirmation for one stage never "
-                    "unlocks another stage"
-                )}
-    if confirmation.get("confirmed") is not True:
-        return {"allowed": False, "stage": stage,
-                "reason": "confirmed is not exactly True; synthesis/release is refused"}
-    return {"allowed": True, "stage": stage, "reason": ""}
 
 
 def build_line_capacity(segments: list[dict[str, Any]]) -> dict[str, Any]:

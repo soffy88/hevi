@@ -89,6 +89,7 @@ def compile_handbook_block(block: Any) -> dict[str, Any]:
 
     Verdicts are ``pass`` / ``fail`` only. ``compiled_text`` is
     present per shot only when that shot passed every check.
+    Composes (3O SPEC 1.2): check_reference_numbering, check_segment_match, check_three_layer_clip, render_three_layer_clip.
     """
     issues: list[dict[str, Any]] = []
     shots_out: list[dict[str, Any]] = []

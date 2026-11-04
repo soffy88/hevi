@@ -22,7 +22,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from hevi.capabilities.continuation_grid_gate import is_on_grid
+from hevi.capabilities.pure_helpers import (
+    is_on_grid,
+)
 from hevi.capabilities.errors import CapabilityError
 from hevi.capabilities.registry import (
     Capability,

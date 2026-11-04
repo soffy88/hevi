@@ -221,7 +221,7 @@ def _timing_window_coverage(
     for ASR text. Timings whose text matches but whose times sit
     outside every event window cover nothing.
     """
-    from hevi.capabilities.prompt_eval_harness import _containment_coverage
+    from hevi.capabilities.pure_helpers import _containment_coverage
 
     per_event: list[dict[str, Any]] = []
     for index, event in enumerate(events):
@@ -261,6 +261,7 @@ def validate_events(
     at all. ``asr_text`` / ``vo_word_timings`` are offline VO
     evidence (see the module docstring); when supplied, caption
     texts uncovered by that evidence fail the gate.
+    Composes (3O SPEC 1.2): measure_generation_consistency.
     """
     if not isinstance(events, list) or not events:
         raise CapabilityError("edit.subtitle_discipline: events must be a non-empty list")

@@ -33,7 +33,10 @@ from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
-from hevi.capabilities.model_directory import register_model
+from hevi.capabilities.h3_config_registration import config_record
+from hevi.capabilities.model_directory import (
+    record_in_directory as record_models_in_directory,
+)
 from hevi.capabilities.registry import (
     Capability,
     CapabilityResult,
@@ -84,7 +87,13 @@ def floyo_h3_config() -> dict[str, Any]:
 
 
 def local_h3_config() -> dict[str, Any]:
-    """The local H3 route record, kept separate from the Floyo record."""
+    """The local H3 route record, kept separate from the Floyo record.
+
+    The H3 configuration values are delegated to the single source
+    ``qa.h3_config_registration.config_record`` (SPEC 1.4); only the
+    Floyo-route fields below are local to this module.
+    """
+    canonical = config_record()
     return {
         "provider": "local",
         "route": "local",
@@ -92,6 +101,16 @@ def local_h3_config() -> dict[str, Any]:
         "backend": "ComfyUI on ubuntu26 with local FastH3 weights",
         "kind": "reference_to_video",
         "workflow": None,
+        "h3_config": {
+            "config_id": canonical["config_id"],
+            "components": canonical["components"],
+            "source": canonical["source"],
+            "source_date": canonical["source_date"],
+            "verification": canonical["verification"],
+            "not_equivalent_to": canonical["not_equivalent_to"],
+            "incompatible_lora_families": canonical["incompatible_lora_families"],
+            "weight_license": canonical["weight_license"],
+        },
         "billing": {
             "unit": "local GPU time (no Floyo billing)",
             "api_wallet_consumed": False,
@@ -102,7 +121,7 @@ def local_h3_config() -> dict[str, Any]:
         "payment_method_on_file": False,
         "promo_code_used": False,
         "status": "unverified",
-        "verified": False,
+        "verified": canonical["verified"],
     }
 
 
@@ -159,16 +178,17 @@ def validate_floyo_config(config: Any) -> dict[str, Any]:
 def record_in_directory(directory_path: Path) -> dict[str, dict[str, Any]]:
     """Record both H3 routes (unverified) in a model-directory JSON file.
 
-    Delegates to ``model.model_directory.register_model``: both records
-    land with ``status: unverified`` and ``verified_at: null``. No
-    account is created, no money moves, no network call is made.
+    Delegates to the single write path
+    ``model.model_directory.record_in_directory``: both records land
+    with ``status: unverified`` and ``verified_at: null``. No account
+    is created, no money moves, no network call is made.
     """
-    path = Path(directory_path)
     floyo = validate_floyo_config(floyo_h3_config())
     local = dict(local_h3_config())
-    floyo_record = register_model(path, model_id=FLOYO_MODEL_ID, config=floyo)
-    local_record = register_model(path, model_id=LOCAL_H3_MODEL_ID, config=local)
-    return {FLOYO_MODEL_ID: floyo_record, LOCAL_H3_MODEL_ID: local_record}
+    return record_models_in_directory(
+        Path(directory_path),
+        {FLOYO_MODEL_ID: floyo, LOCAL_H3_MODEL_ID: local},
+    )
 
 
 def _render(params: dict[str, Any], out_dir: Path, *, duration: float,

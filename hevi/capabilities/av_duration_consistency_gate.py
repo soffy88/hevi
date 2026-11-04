@@ -36,7 +36,9 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
-from hevi.capabilities.verdict_vocabulary import summarise_verdicts
+from hevi.capabilities.pure_helpers import (
+    summarise_verdicts,
+)
 
 _Registered = False
 

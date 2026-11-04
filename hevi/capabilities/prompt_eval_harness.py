@@ -41,6 +41,13 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    _containment_coverage,
+)
+from hevi.capabilities.pure_helpers import (
+    _PUNCT,
+    _normalise_text,
+)
 
 _Registered = False
 
@@ -104,39 +111,10 @@ _MOVEMENT_DIRECTIONS: dict[str, str] = {
     "static": "static", "fixed": "static",
 }
 
-_PUNCT = " \t\n\r，。、；：！？,.!?;:\"'“”‘’()（）[]【】"
 
 
-def _normalise_text(text: str) -> str:
-    return "".join(ch for ch in str(text) if ch not in _PUNCT).lower()
 
 
-def _containment_coverage(expected: str, observed: str) -> float:
-    """Share of ``expected`` characters covered by ``observed`` text.
-
-    Longest-common-block coverage (``difflib``), so a line spoken
-    inside a longer transcript scores ~1.0 while an unrelated
-    transcript scores near 0. Deterministic, offline, text-only.
-
-    ASR-fix P0: the OBSERVED side is normalised before scoring
-    (traditional -> simplified plus the audited ASR glossary, via the
-    built-in table so the score is reproducible on any machine); the
-    EXPECTED script text is used exactly as supplied and is never
-    normalised. The 0.80 floor in ``DIALOGUE_COVERAGE_FLOOR`` is
-    unchanged. Expected text must therefore be in simplified form,
-    as scripts are.
-    """
-    import difflib
-
-    want = _normalise_text(expected)
-    got = _normalise_text(normalized_text_only(observed))
-    if not want:
-        return 1.0
-    if not got:
-        return 0.0
-    matcher = difflib.SequenceMatcher(None, want, got, autojunk=False)
-    covered = sum(block.size for block in matcher.get_matching_blocks())
-    return min(1.0, covered / len(want))
 
 
 def _prompt_section(artifacts: dict[str, Any]) -> dict[str, Any]:
@@ -530,6 +508,7 @@ def build_frozen_samples(work_dir: Path) -> list[dict[str, Any]]:
     Picture files are deterministic harness-owned bytes whose hashes
     are recorded in the bindings: the files exist, the hashes match,
     and nothing is downloaded or generated.
+    Composes (3O SPEC 1.2): build_three_layer_fixtures.
     """
     import copy
 
@@ -668,7 +647,7 @@ def _measure_beat_prompts(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def evaluate_sample(sample: dict[str, Any]) -> dict[str, Any]:
-    """Run one frozen sample. Returns a report with verdict + measurements."""
+    """Run one frozen sample. Returns a report with verdict + measurements. Composes (3O SPEC 1.2): check_three_layer_clip, compile_generation_ready_episode."""
     kind = sample.get("kind")
     expect = sample.get("expect")
     report: dict[str, Any] = {

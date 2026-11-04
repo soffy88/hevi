@@ -15,6 +15,8 @@ from hevi.capabilities.registry import (
     CapabilityError,
     CapabilityResult,
     compute_sha256,
+    contains,
+    get,
     register,
 )
 from hevi.riso.constants import TEMPLATE_NAMES
@@ -210,3 +212,21 @@ def register_riso_capabilities() -> None:
             render=_make_renderer(tmpl),
         )
         register(cap, overwrite=True)
+
+
+def register_riso_capabilities_once() -> list[Capability]:
+    """Register only if not already present (keeps import-time idempotent).
+
+    The riso package auto-registers on import (hevi/riso/__init__.py) and
+    the capabilities package registers explicitly as well; without this
+    guard the second call re-registered all 10 names via overwrite=True
+    and filled overwrite_history with bootstrap noise (3O single-source
+    convergence, SPEC section 1.4). The underlying
+    register_riso_capabilities() keeps overwrite=True for intentional
+    re-registration.
+    """
+    names = [f"riso.{tmpl}" for tmpl in TEMPLATE_NAMES]
+    if all(contains(n) for n in names):
+        return [get(n) for n in names]
+    register_riso_capabilities()
+    return [get(n) for n in names]

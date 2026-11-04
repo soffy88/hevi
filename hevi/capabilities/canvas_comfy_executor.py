@@ -553,6 +553,7 @@ def execute_canvas_workflow(
     with run results applied. Per-node dispositions are reported
     under ``nodes``; ``submitted`` lists every prompt id accepted
     by the server.
+    Composes (3O SPEC 1.2): check_model_install.
     """
     if not isinstance(base_url, str) or not base_url.strip():
         _fail("canvas_comfy_executor needs a non-empty base_url")

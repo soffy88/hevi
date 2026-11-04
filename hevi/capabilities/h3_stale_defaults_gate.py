@@ -27,75 +27,16 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    _stale_defaults_issue as _issue,
+    check_stale_defaults,
+)
 
 _Registered = False
 
 
-def _issue(code: str, detail: str, **extra: Any) -> dict[str, Any]:
-    issue = {"code": code, "detail": f"qa.h3_stale_defaults_gate: {detail}"}
-    issue.update(extra)
-    return issue
 
 
-def check_stale_defaults(plan: Any) -> dict[str, Any]:
-    """Judge one plan's effective configuration for stale values.
-
-    ``plan`` is an object with ``outer_panel`` (the current
-    caller-set values), ``inner_defaults`` (values left inside a
-    nested sub-process), and ``effective`` (the configuration
-    that would actually run). Every effective field that equals
-    an inner default while differing from the outer panel fails
-    as ``stale_inner_defaults`` and names the field. A plan
-    without an outer panel, or without declared inner defaults,
-    cannot be judged and fails. Returns ``ok`` / ``issues`` /
-    ``stale_fields``.
-    """
-    issues: list[dict[str, Any]] = []
-    stale_fields: list[str] = []
-    if not isinstance(plan, dict):
-        return {
-            "ok": False,
-            "issues": [_issue("plan_not_object", "plan must be an object")],
-            "stale_fields": stale_fields,
-        }
-    outer = plan.get("outer_panel")
-    inner = plan.get("inner_defaults")
-    effective = plan.get("effective")
-    if not isinstance(outer, dict) or not outer:
-        issues.append(
-            _issue(
-                "outer_panel_undeclared",
-                "outer_panel (current caller-set values) is required",
-            )
-        )
-    if not isinstance(inner, dict) or not inner:
-        issues.append(
-            _issue(
-                "inner_defaults_undeclared",
-                "inner_defaults (nested sub-process leftovers) must "
-                "be declared so staleness can be checked",
-            )
-        )
-    if not isinstance(effective, dict) or not effective:
-        issues.append(
-            _issue("effective_undeclared", "effective configuration is required")
-        )
-    if issues:
-        return {"ok": False, "issues": issues, "stale_fields": stale_fields}
-    for field, value in effective.items():
-        if field in inner and value == inner[field] and outer.get(field) != value:
-            stale_fields.append(field)
-            issues.append(
-                _issue(
-                    "stale_inner_defaults",
-                    f"effective field {field!r} equals a stale nested "
-                    "default and differs from the outer panel; clean "
-                    "the plan so the outer panel governs",
-                    field=field,
-                    value=value,
-                )
-            )
-    return {"ok": not issues, "issues": issues, "stale_fields": stale_fields}
 
 
 def _render(params: dict[str, Any], out_dir: Path, *, duration: float,

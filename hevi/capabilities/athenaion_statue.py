@@ -366,6 +366,7 @@ def render_statue(
     resolution: tuple[int, int, int] = (40, 52, 40),
     with_column: bool = True,
 ) -> dict[str, Any]:
+    """Composes (3O SPEC 1.2): build_column."""
     statue = build_statue(height_scale=height_scale, resolution=resolution)
     column = build_column("doric", diameter=1.0) if with_column else None
     html = build_statue_html(

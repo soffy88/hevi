@@ -87,6 +87,10 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    _is_num,
+    check_beat_alignment,
+)
 
 _Registered = False
 
@@ -178,8 +182,6 @@ _LAYOUT_SIZES = {
 # ---------------------------------------------------------------- helpers
 
 
-def _is_num(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
 def _nonempty_str(value: Any) -> bool:
@@ -823,87 +825,6 @@ def build_beat_grid(
     }
 
 
-def check_beat_alignment(
-    events: Any,
-    grid: Any,
-    tolerance: float = 0.05,
-    mode: str | None = None,
-) -> dict[str, Any]:
-    """Check that cut / sound / picture-change events land on beats.
-
-    Music-first and music-last pass through this same function:
-    ``mode`` only records which order the music was fixed in, it
-    never changes the tolerance or the check.
-    """
-    problems: list[str] = []
-    if isinstance(grid, dict):
-        beats = grid.get("beats") or []
-        beat_basis = grid.get("beat_basis", "planned_not_measured")
-        measured = bool(grid.get("measured_from_audio", False))
-        grid_mode = grid.get("mode")
-    elif isinstance(grid, list):
-        beats = grid
-        beat_basis = "planned_not_measured"
-        measured = False
-        grid_mode = None
-    else:
-        beats, beat_basis, measured, grid_mode = [], "planned_not_measured", False, None
-    effective_mode = mode or grid_mode
-    if effective_mode is not None and effective_mode not in ("music_first", "music_last"):
-        problems.append(
-            f"mode: must be music_first or music_last, got {effective_mode!r}"
-        )
-    if not beats:
-        problems.append("grid: no beat points in the grid")
-    if not _is_num(tolerance) or float(tolerance) < 0:
-        problems.append("tolerance: must be a non-negative number")
-        tolerance = 0.05
-    if not isinstance(events, list) or not events:
-        problems.append("events: a non-empty events list is required")
-        events = []
-    misaligned: list[dict[str, Any]] = []
-    checked = 0
-    for index, event in enumerate(events):
-        if not isinstance(event, dict):
-            problems.append(f"events[{index}]: event must be an object")
-            continue
-        checked += 1
-        event_id = event.get("id") or event.get("event_id") or f"event_{index}"
-        when = event.get("time_sec", event.get("t_sec", event.get("t")))
-        if not _is_num(when):
-            problems.append(f"events[{index}] ({event_id}): time_sec is required")
-            continue
-        if not beats:
-            continue
-        nearest = min(beats, key=lambda b: abs(float(b) - float(when)))
-        deviation = abs(float(when) - float(nearest))
-        if deviation > float(tolerance) + 1e-9:
-            misaligned.append({
-                "event_id": event_id,
-                "kind": event.get("kind") or event.get("type"),
-                "time_sec": float(when),
-                "nearest_beat_sec": float(nearest),
-                "deviation_sec": round(deviation, 4),
-            })
-            problems.append(
-                f"events[{index}] ({event_id}): at {when}s, "
-                f"{deviation:.3f}s from the nearest beat {nearest}s "
-                f"(tolerance {tolerance}s)"
-            )
-    return {
-        "ok": not problems,
-        "problems": problems,
-        "checked": checked,
-        "misaligned": misaligned,
-        "tolerance_sec": float(tolerance),
-        "mode": effective_mode,
-        "beat_basis": beat_basis,
-        "measured_from_audio": measured,
-        "note": (
-            "Beat basis is planned_not_measured unless the grid was "
-            "measured from an audio file by a separate step."
-        ),
-    }
 
 
 # ---------------------------------------------------------------- step 5: code rendering
@@ -1421,7 +1342,7 @@ def manim_status() -> dict[str, Any]:
     Manim is not connected here.
     """
     try:
-        from hevi.capabilities.manim_render import manim_python
+        from hevi.capabilities.pure_helpers import manim_python
 
         interpreter = manim_python()
         exists = Path(interpreter).is_file()
@@ -1974,7 +1895,7 @@ def _record_workflow_step(
 def _step_confirmation(confirmation: Any, step: int) -> tuple[bool, str]:
     if isinstance(confirmation, dict) and "stage" in confirmation:
         try:
-            from hevi.capabilities.stable_film_pipeline import check_confirmation
+            from hevi.capabilities.pure_helpers import check_confirmation
 
             result = check_confirmation(confirmation, f"step{step}")
             return bool(result["allowed"]), str(result["reason"])

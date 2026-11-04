@@ -62,6 +62,7 @@ from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
+from hevi.capabilities.model_directory import record_in_directory
 from hevi.capabilities.registry import (
     Capability,
     CapabilityResult,
@@ -140,6 +141,8 @@ def _issue(code: str, detail: str, **extra: Any) -> dict[str, Any]:
     issue.update(extra)
     return issue
 
+
+VIDOGRID_MODEL_ID = 'vidogrid'
 
 def vidogrid_pricing_record() -> dict[str, Any]:
     """The registered record: free tier, prices, API, account and terms facts."""
@@ -355,15 +358,38 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float,
     record = params.get("record") or vidogrid_pricing_record()
     report = check_vidogrid_pricing_registration(record, today=params.get("today"))
     report_path = Path(out_dir) / "vidogrid_pricing_report.json"
+    action = str(params.get("action") or "describe")
+    if action not in ("describe", "record"):
+        raise CapabilityError(
+            "hevi/capabilities/vidogrid_pricing_registration.py: unknown action " + repr(action)
+            + " (expected 'describe' or 'record')"
+        )
+    if action == "record" and not report["ok"]:
+        raise CapabilityError(
+            "hevi/capabilities/vidogrid_pricing_registration.py: refusing to record a failing pricing record"
+        )
+    directory_path = params.get("directory_path")
+    if action == "record" and not directory_path:
+        raise CapabilityError(
+            "hevi/capabilities/vidogrid_pricing_registration.py: action='record' needs directory_path"
+        )
     report_path.write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    return CapabilityResult(
+    result = CapabilityResult(
         duration_s=0.0,
         sha256=compute_sha256(report_path),
         qa={"report_json": str(report_path),
             "verdict": "pass" if report["ok"] else "fail"},
     )
+    if action == "record":
+        recorded = record_in_directory(
+            Path(str(directory_path)),
+            {VIDOGRID_MODEL_ID: record},
+        )
+        result.qa["directory"] = str(directory_path)
+        result.qa["recorded"] = sorted(recorded)
+    return result
 
 
 def register_vidogrid_pricing_capabilities_once() -> list[str]:
@@ -382,6 +408,9 @@ def register_vidogrid_pricing_capabilities_once() -> list[str]:
                 "properties": {
                     "record": {"type": "object"},
                     "today": {"type": "string"},
+                    "action": {"type": "string",
+                               "enum": ["describe", "record"]},
+                    "directory_path": {"type": "string"},
                 },
                 "additionalProperties": False,
             },

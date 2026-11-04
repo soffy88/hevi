@@ -61,7 +61,9 @@ from hevi.capabilities.athenaion_browser import (
     resolve_three_module,
     three_revision,
 )
-from hevi.capabilities.athenaion_world import HEIGHT_CONSTANTS
+from hevi.capabilities.pure_helpers import (
+    HEIGHT_CONSTANTS,
+)
 from hevi.capabilities.deterministic_render_gate import check_render_plan
 from hevi.capabilities.errors import CapabilityError
 from hevi.capabilities.frame_adapter_contract import check_adapter_plan

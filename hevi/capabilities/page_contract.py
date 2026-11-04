@@ -72,6 +72,7 @@ def _read_time_required_sec(text: str) -> float:
     Delegates to ``qa.timeline_gate`` so the two gates can never
     disagree about the same wording; falls back to the same
     formula locally only if that import fails.
+    Composes (3O SPEC 1.2): read_time_required_sec.
     """
     try:
         from hevi.capabilities.timeline_gate import read_time_required_sec
