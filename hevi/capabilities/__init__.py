@@ -1594,6 +1594,34 @@ _word_timing_warp_contract.register_word_timing_warp_contract_capabilities_once(
 from . import minimal_line_motif_schema as _minimal_line_motif_schema  # noqa: E402,F401
 _minimal_line_motif_schema.register_minimal_line_motif_schema_capabilities_once()
 
+# Hypit graft (see HYPIT_ATTRIBUTION.md):
+# qa.word_anchor_gate, qa.three_layer_project_gate,
+# qa.variant_reuse_gate, qa.code_rendered_text_gate,
+# qa.cost_honesty_gate, qa.hypit_license_note,
+# video.word_anchor_timeline_schema,
+# video.three_layer_project_schema
+# (clean-room method only; no DSL/example/Skill text copied;
+# modified Apache 2.0, no multi-tenant/SaaS use; A gates are
+# discipline only, B schemas are fake contracts,
+# executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import word_anchor_gate as _word_anchor_gate  # noqa: E402,F401
+_word_anchor_gate.register_word_anchor_gate_capabilities_once()
+from . import three_layer_project_gate as _three_layer_project_gate  # noqa: E402,F401
+_three_layer_project_gate.register_three_layer_project_gate_capabilities_once()
+from . import variant_reuse_gate as _variant_reuse_gate  # noqa: E402,F401
+_variant_reuse_gate.register_variant_reuse_gate_capabilities_once()
+from . import code_rendered_text_gate as _code_rendered_text_gate  # noqa: E402,F401
+_code_rendered_text_gate.register_code_rendered_text_gate_capabilities_once()
+from . import cost_honesty_gate as _cost_honesty_gate  # noqa: E402,F401
+_cost_honesty_gate.register_cost_honesty_gate_capabilities_once()
+from . import hypit_license_note as _hypit_license_note  # noqa: E402,F401
+_hypit_license_note.register_hypit_license_note_capabilities_once()
+from . import word_anchor_timeline_schema as _word_anchor_timeline_schema  # noqa: E402,F401
+_word_anchor_timeline_schema.register_word_anchor_timeline_schema_capabilities_once()
+from . import three_layer_project_schema as _three_layer_project_schema  # noqa: E402,F401
+_three_layer_project_schema.register_three_layer_project_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

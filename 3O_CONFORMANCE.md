@@ -372,3 +372,14 @@ stay canonical, `layer` is the only new axis.
   (446 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 446. No renames;
   the rename/alias migration plan is unchanged.
+- Registry growth (Hypit graft, 2026-11-05):
+  446 -> 454 registered names (6 oskill discipline gates:
+  word-anchor, three-layer project, variant reuse,
+  code-rendered text, cost honesty, licence note; 2 obase
+  fake contracts: word-anchor timeline schema, three-layer
+  project schema), landing on top of the Alembic merge head.
+  Layer attribution JSON and the generated table were extended
+  through `scripts/ci/gen_layer_attribution.py` from the
+  shared JSON (454 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 454. No
+  renames; the rename/alias migration plan is unchanged.
