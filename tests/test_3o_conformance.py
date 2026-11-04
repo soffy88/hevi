@@ -2,7 +2,15 @@
 
 Layer attribution, ``__manifest__`` coverage, and layer validity.
 Guard tests for single-source convergence and the spend gate live in
-``test_3o_single_source.py`` and ``test_3o_spend_gate.py``.
+``test_3o_single_source.py`` and ``test_3o_omodul_spend.py``.
+
+Scope rule: the production registry is the 397 attributed names.
+Other test modules may register ``test.*`` fake capabilities at
+import time (``tests/test_jobguard.py`` registers
+``test.jobguard_echo`` / ``test.jobguard_fail``); those fakes are
+outside this scope. Every name outside the scope MUST carry the
+``test.`` prefix, so a future non-test fake fails loudly instead of
+silently widening the registry.
 """
 
 from __future__ import annotations
@@ -35,8 +43,22 @@ def _dummy_capability(name: str, layer: str) -> Capability:
     )
 
 
-def test_layer_attribution_full_coverage() -> None:
+def _production_capabilities() -> list[Capability]:
+    """Registry entries in scope, excluding ``test.*`` fakes.
+
+    Anything excluded must carry the ``test.`` prefix; anything else
+    unattributed is a real gap and fails the caller.
+    """
     caps = list_capabilities()
+    assert all(
+        c.name.startswith("test.") for c in caps
+        if c.name not in LAYER_ATTRIBUTION
+    ), [c.name for c in caps if c.name not in LAYER_ATTRIBUTION]
+    return [c for c in caps if not c.name.startswith("test.")]
+
+
+def test_layer_attribution_full_coverage() -> None:
+    caps = _production_capabilities()
     assert len(caps) == EXPECTED_COUNT
     assert len({c.name for c in caps}) == EXPECTED_COUNT
     assert set(LAYER_ATTRIBUTION) == {c.name for c in caps}
@@ -50,7 +72,7 @@ def test_layer_attribution_full_coverage() -> None:
 def test_layer_counts_match_attribution() -> None:
     from collections import Counter
 
-    counted = Counter(c.layer for c in list_capabilities())
+    counted = Counter(c.layer for c in _production_capabilities())
     tabled = Counter(e["layer"] for e in LAYER_ATTRIBUTION.values())
     assert counted == tabled
     assert counted["oservi"] == 0  # no registry capability passes SPEC §7 red lines
@@ -59,9 +81,12 @@ def test_layer_counts_match_attribution() -> None:
 
 def test_manifest_full_coverage() -> None:
     assert MANIFEST["spec"] == "HELIOS_3O_SPEC_v3_0"
-    elements = MANIFEST["elements"]
+    elements = [e for e in MANIFEST["elements"]
+                if not e["name"].startswith("test.")]
     assert len(elements) == EXPECTED_COUNT
-    assert {e["name"] for e in elements} == {c.name for c in list_capabilities()}
+    assert {e["name"] for e in elements} == {
+        c.name for c in _production_capabilities()
+    }
     for element in elements:
         assert element["layer"] in LAYERS
         assert element["kind"]

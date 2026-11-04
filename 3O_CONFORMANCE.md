@@ -253,3 +253,39 @@ stay canonical, `layer` is the only new axis.
   or per-item exceptions listed in §6.
 - `stale_timeline` gate and existing gates unweakened (regression
   suite green on the touched files).
+
+## 8. Verification record (2026-11-04, Batch 4b)
+
+- Clean-checkout verification (detached worktree at the Batch 4
+  commit): import passes, 397 registered / 397 unique, layers
+  oprim 59 / oskill 228 / omodul 51 / obase 59 / oservi 0,
+  manifest 397, zero unattributed; avcraft manifest obase 8 /
+  oskill 6 / omodul 8, deferred `oskill.shotprompt`; timeline
+  re-export identical to the obase implementation.
+- Guard suites green standalone and under full-collection import:
+  `test_3o_conformance` (6) + `test_3o_single_source` (11) +
+  `test_3o_omodul_spend` (9) + `test_3o_avcraft_admission` (6) =
+  32 passed. Targeted regression on touched areas: 345 + 159 + 114
+  (sink/convergence/docstring sets) + 51 (executor/spend) + 83
+  (canvas/asr/beginner/canvas-matrix spot set), all green.
+- Scope rule (Batch 4b): the conformance tests scope the registry to
+  production names. `tests/test_jobguard.py` registers two
+  `test.*` fake capabilities at import time
+  (`test.jobguard_echo`, `test.jobguard_fail`); the tests exclude
+  the `test.` prefix and fail loudly on any other unattributed
+  name, so the fakes cannot silently widen the registry.
+- Full suite (13,333 items collected, 8 pre-existing collection
+  errors excluded, baseline-confirmed at `7df618cb`): 502 failed /
+  11,418 passed / 92 skipped / 45 xfailed / 1,276 errors in 35:11.
+  The failures concentrate in areas untouched by this round
+  (vimax, dirstyle, creative_runtime, freezone, gold, and 4
+  architecture history-shape tests). Spot re-runs of touched files
+  that failed in the full run pass standalone (83 passed), and the
+  environment hits `Errno 24 Too many open files` (per-process
+  `ulimit -n` is 1024) during a run of this size -- the full-suite
+  tally is therefore NOT a green/red verdict on this round; the
+  scoped evidence above is. Re-running the whole suite to green
+  needs an FD-limit raise and a separate pre-existing-failure
+  triage, both out of this round's scope.
+- `stale_timeline`: untouched by this round; its gate tests pass in
+  the targeted sets above (no weakening).
