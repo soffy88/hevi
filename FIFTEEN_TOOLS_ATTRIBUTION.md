@@ -17,7 +17,7 @@ standing of the "one prompt, one finished film" shape.
 |---|---|---|---|---|
 | 02 | Krita | KDE/krita (GitHub mirror; true home invent.kde.org) | GPL-3.0 | Desktop application (Qt/KDE), no SDK. File-contract gate and read-only asset index only; painting and export are a real-machine case. |
 | 08 | React Three Fiber | pmndrs/react-three-fiber | MIT | v9 line: React >= 19 below 19.4, Three.js >= 0.156. Variant gate and scene contract only; no React build chain here, rendering is a real-machine case. |
-| 13 | Audacity | audacity/audacity | GPLv3 (some files GPLv2), per in-repo LICENSE.txt | 4.x has no official scripting entry point; 3.x keeps macro/script-pipe automation. Version/interface gate only; effect-chain contract deferred. |
+| 13 | Audacity | audacity/audacity | GPLv3 (some files GPLv2), per in-repo LICENSE.txt | 4.x has no official scripting entry point; 3.x keeps macro/script-pipe automation. Version/interface gate only; effect-chain contract built in deferred batch B. |
 
 ## Corrections recorded by this graft
 
@@ -81,8 +81,23 @@ end-to-end-verified claim fails the gate.
   camera / primitives contract under a gate-passing renderer
   declaration; nothing built or rendered.
 
-B3 (Audacity effect-chain contract, 3.x-only) was deferred
-to a separate case. Production was not touched; effects
+B3 (Audacity effect-chain contract, 3.x-only) was built
+in deferred batch B (2026-11-04, see 'Deferred batch B'
+below). Production was not touched; effects
 were not verified on real machines. Third-party bridges
 (Krita 6 MCP bridge, Audacity4-MCP companion fork) are
 unproven, are not official, and were not built or compiled.
+
+## Deferred batch B (2026-11-04)
+
+- B3 `audio.audacity_effect_chain_contract` (contract only,
+  `executed_here: false`, `audio_rendered: false`): an
+  ordered effect chain against the 3.x macro/script-pipe
+  interface with the `aup3` project format. Any 4.x
+  scripting claim fails closed, because the 4.x line
+  currently offers no official scripting entry point.
+  Effect names are hevi's contract vocabulary; exact 3.x
+  effect names and parameter ranges are a real-machine
+  case. No desktop application was installed and no audio
+  was processed; real execution needs a 3.x Audacity
+  session on a real machine.

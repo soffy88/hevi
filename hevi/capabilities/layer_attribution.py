@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(443 capabilities, one entry each, no "unclassified" remainder).
+(444 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -37,6 +37,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'assets.extract': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/golive3.py'},
     'assets.library': {"layer": 'obase', "reason": '持久化存储/作业基础设施：跨调用状态与存取，横切（SPEC §3 obase.persistence 族）', "file": 'hevi/capabilities/golive3.py'},
     'audio.asr_transcribe': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/asr_transcribe.py'},
+    'audio.audacity_effect_chain_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake 3.x-only effect-chain schema, executed_here false, 4.x claims fail closed', "file": 'hevi/capabilities/audacity_effect_chain_contract.py'},
     'audio.earshot_gate': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/earshot_gate.py'},
     'audio.forced_align': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/multimodel.py'},
     'audio.mix_recipe': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/mix_recipe.py'},

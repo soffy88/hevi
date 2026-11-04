@@ -1574,6 +1574,15 @@ _cosyvoice_authorization_gate.register_cosyvoice_authorization_gate_capabilities
 from . import tweakpane_panel_contract as _tweakpane_panel_contract  # noqa: E402,F401
 _tweakpane_panel_contract.register_tweakpane_panel_contract_capabilities_once()
 
+# Deferred 15-tools batch B (see FIFTEEN_TOOLS_ATTRIBUTION.md):
+# audio.audacity_effect_chain_contract
+# (clean-room method only; no Audacity code copied; 3.x-only,
+# 4.x scripting claims fail closed; fake contract,
+# executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import audacity_effect_chain_contract as _audacity_effect_chain_contract  # noqa: E402,F401
+_audacity_effect_chain_contract.register_audacity_effect_chain_contract_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
