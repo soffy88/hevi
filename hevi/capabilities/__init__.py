@@ -1401,6 +1401,32 @@ _knowledge_qc_contract.register_knowledge_qc_contract_capabilities_once()
 from . import two_tier_synthesis_contract as _two_tier_synthesis_contract  # noqa: E402,F401
 _two_tier_synthesis_contract.register_two_tier_synthesis_contract_capabilities_once()
 
+# video-shotcraft graft (see VIDEO_SHOTCRAFT_ATTRIBUTION.md):
+# qa.shotcraft_card_fidelity_gate, qa.jianying_export_contract_gate,
+# qa.shotcraft_theme_vocabulary, qa.preview_provenance_gate,
+# qa.sfx_sourcing_gate, qa.ink_press_structure_gate,
+# video.shotcraft_card_index, video.jianying_draft_adapter
+# (clean-room method only; no card text, demo/template code, BGM/SFX
+# assets, referral links, or publishing chains; 124-card index is
+# identity/provenance only, nothing recorded as rendered).
+# Appended at the tail only; earlier registrations untouched.
+from . import shotcraft_card_fidelity_gate as _shotcraft_card_fidelity_gate  # noqa: E402,F401
+_shotcraft_card_fidelity_gate.register_shotcraft_card_fidelity_gate_capabilities_once()
+from . import jianying_export_contract_gate as _jianying_export_contract_gate  # noqa: E402,F401
+_jianying_export_contract_gate.register_jianying_export_contract_gate_capabilities_once()
+from . import shotcraft_theme_vocabulary as _shotcraft_theme_vocabulary  # noqa: E402,F401
+_shotcraft_theme_vocabulary.register_shotcraft_theme_vocabulary_capabilities_once()
+from . import preview_provenance_gate as _preview_provenance_gate  # noqa: E402,F401
+_preview_provenance_gate.register_preview_provenance_gate_capabilities_once()
+from . import sfx_sourcing_gate as _sfx_sourcing_gate  # noqa: E402,F401
+_sfx_sourcing_gate.register_sfx_sourcing_gate_capabilities_once()
+from . import ink_press_structure_gate as _ink_press_structure_gate  # noqa: E402,F401
+_ink_press_structure_gate.register_ink_press_structure_gate_capabilities_once()
+from . import shotcraft_card_index as _shotcraft_card_index  # noqa: E402,F401
+_shotcraft_card_index.register_shotcraft_card_index_capabilities_once()
+from . import jianying_draft_adapter as _jianying_draft_adapter  # noqa: E402,F401
+_jianying_draft_adapter.register_jianying_draft_adapter_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

@@ -289,3 +289,10 @@ stay canonical, `layer` is the only new axis.
   triage, both out of this round's scope.
 - `stale_timeline`: untouched by this round; its gate tests pass in
   the targeted sets above (no weakening).
+
+- Registry growth (video-shotcraft graft, 2026-11-04): 397 -> 405
+  registered names (6 oskill gates + 2 obase contracts/indexes).
+  Layer attribution JSON and the generated table were extended
+  through `scripts/ci/gen_layer_attribution.py`; the conformance
+  scope count in `tests/test_3o_conformance.py` was updated to 405.
+  No renames; the rename/alias migration plan is unchanged.

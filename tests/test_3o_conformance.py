@@ -4,7 +4,7 @@ Layer attribution, ``__manifest__`` coverage, and layer validity.
 Guard tests for single-source convergence and the spend gate live in
 ``test_3o_single_source.py`` and ``test_3o_omodul_spend.py``.
 
-Scope rule: the production registry is the 397 attributed names.
+Scope rule: the production registry is the 405 attributed names.
 Other test modules may register ``test.*`` fake capabilities at
 import time (``tests/test_jobguard.py`` registers
 ``test.jobguard_echo`` / ``test.jobguard_fail``); those fakes are
@@ -28,7 +28,7 @@ from hevi.capabilities.registry import (
     register,
 )
 
-EXPECTED_COUNT = 397
+EXPECTED_COUNT = 405
 
 
 def _dummy_capability(name: str, layer: str) -> Capability:

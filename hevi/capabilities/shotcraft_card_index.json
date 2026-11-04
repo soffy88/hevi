@@ -1,0 +1,1893 @@
+{
+ "provenance": "Card identity index only: names, categories and style keys counted from upstream gallery/api/library.json at HEAD 1266a3ec (2026-11-04 re-verification). Purpose glosses are derived mechanically from card names only; upstream purpose/summary/intention prose, tuned parameter values, pitfall text and demo code were intentionally not copied. Render verification: none (verified_by_hevi_render is false on every entry).",
+ "card_count": 124,
+ "upstream_head": "1266a3ec",
+ "cards": [
+  {
+   "name": "assemble-then-type-flyin",
+   "category": "effects",
+   "style_keys": [
+    "assemble-then-type-flyin"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/assemble-then-type-flyin.md",
+   "demo_ref": "demos/effects/assemble-then-type-flyin",
+   "purpose_gloss": "assemble then type flyin",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "aurora-bloom-bg-flip",
+   "category": "effects",
+   "style_keys": [
+    "aurora-bloom-bg-flip"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/aurora-bloom-bg-flip.md",
+   "demo_ref": "demos/effects/aurora-bloom-bg-flip",
+   "purpose_gloss": "aurora bloom bg flip",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "autolayout-gap-dial",
+   "category": "interaction",
+   "style_keys": [
+    "autolayout-gap-dial"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/autolayout-gap-dial.md",
+   "demo_ref": "demos/interaction/autolayout-gap-dial",
+   "purpose_gloss": "autolayout gap dial",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "avatar-bracket-carousel",
+   "category": "ui-entrance",
+   "style_keys": [
+    "avatar-bracket-carousel"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/avatar-bracket-carousel.md",
+   "demo_ref": "demos/ui-entrance/avatar-bracket-carousel",
+   "purpose_gloss": "avatar bracket carousel",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "basic-3d-scene",
+   "category": "camera",
+   "style_keys": [
+    "basic-3d-scene"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/camera/basic-3d-scene.md",
+   "demo_ref": "demos/camera/basic-3d-scene",
+   "purpose_gloss": "basic 3d scene",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "beat-cut-moves",
+   "category": "rhythm",
+   "style_keys": [
+    "paparazzi-flash"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/beat-cut-moves.md",
+   "demo_ref": "demos/rhythm/beat-cut-moves",
+   "purpose_gloss": "beat cut moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "beat-step-list-theme-cycle",
+   "category": "rhythm",
+   "style_keys": [
+    "beat-step-list-theme-cycle"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/beat-step-list-theme-cycle.md",
+   "demo_ref": "demos/rhythm/beat-step-list-theme-cycle",
+   "purpose_gloss": "beat step list theme cycle",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "before-after-slider-scrub",
+   "category": "data",
+   "style_keys": [
+    "before-after-slider-scrub"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/data/before-after-slider-scrub.md",
+   "demo_ref": "demos/data/before-after-slider-scrub",
+   "purpose_gloss": "before after slider scrub",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "bezier-source-converge-merge",
+   "category": "ui-entrance",
+   "style_keys": [
+    "bezier-source-converge-merge"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/bezier-source-converge-merge.md",
+   "demo_ref": "demos/ui-entrance/bezier-source-converge-merge",
+   "purpose_gloss": "bezier source converge merge",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "blur-slide",
+   "category": "typography",
+   "style_keys": [
+    "blur-slide"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/blur-slide.md",
+   "demo_ref": "demos/typography/blur-slide",
+   "purpose_gloss": "blur slide",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "bottom-push-stack-wipe",
+   "category": "transition",
+   "style_keys": [
+    "bottom-push-stack-wipe"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/bottom-push-stack-wipe.md",
+   "demo_ref": "demos/transition/bottom-push-stack-wipe",
+   "purpose_gloss": "bottom push stack wipe",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "brace-expand",
+   "category": "typography",
+   "style_keys": [
+    "brace-expand"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/brace-expand.md",
+   "demo_ref": "demos/typography/brace-expand",
+   "purpose_gloss": "brace expand",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "brand-frame-snap",
+   "category": "effects",
+   "style_keys": [
+    "brand-frame-snap"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/brand-frame-snap.md",
+   "demo_ref": "demos/effects/brand-frame-snap",
+   "purpose_gloss": "brand frame snap",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "brand-ink-open",
+   "category": "opening",
+   "style_keys": [
+    "brand-ink-open"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/brand-ink-open.md",
+   "demo_ref": "demos/opening/brand-ink-open",
+   "purpose_gloss": "brand ink open",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "canvas-materialize-moves",
+   "category": "interaction",
+   "style_keys": [
+    "panel-to-canvas",
+    "diagram-cascade"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/interaction/canvas-materialize-moves.md",
+   "demo_ref": "demos/interaction/canvas-materialize-moves",
+   "purpose_gloss": "canvas materialize moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "card-flip-reveal",
+   "category": "transition",
+   "style_keys": [
+    "card-flip-reveal"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/card-flip-reveal.md",
+   "demo_ref": "demos/transition/card-flip-reveal",
+   "purpose_gloss": "card flip reveal",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "card-flock-tumble",
+   "category": "transition",
+   "style_keys": [
+    "card-flock-tumble"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/card-flock-tumble.md",
+   "demo_ref": "demos/transition/card-flock-tumble",
+   "purpose_gloss": "card flock tumble",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "card-stack",
+   "category": "ui-entrance",
+   "style_keys": [
+    "card-stack"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/card-stack.md",
+   "demo_ref": "demos/ui-entrance/card-stack",
+   "purpose_gloss": "card stack",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "carousel-3d",
+   "category": "ui-entrance",
+   "style_keys": [
+    "carousel-3d"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/carousel-3d.md",
+   "demo_ref": "demos/ui-entrance/carousel-3d",
+   "purpose_gloss": "carousel 3d",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "chart-live-moves",
+   "category": "data",
+   "style_keys": [
+    "oscilloscope-stream",
+    "unit-dot-swarm-regroup",
+    "axis-rescale-shock"
+   ],
+   "style_count": 3,
+   "source_ref": "references/shots/data/chart-live-moves.md",
+   "demo_ref": "demos/data/chart-live-moves",
+   "purpose_gloss": "chart live moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "chip-grid-single-select-blackout",
+   "category": "interaction",
+   "style_keys": [
+    "chip-grid-single-select-blackout"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/chip-grid-single-select-blackout.md",
+   "demo_ref": "demos/interaction/chip-grid-single-select-blackout",
+   "purpose_gloss": "chip grid single select blackout",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "circle-match-iris",
+   "category": "transition",
+   "style_keys": [
+    "circle-match-iris"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/circle-match-iris.md",
+   "demo_ref": "demos/transition/circle-match-iris",
+   "purpose_gloss": "circle match iris",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "cloner-depth-echo",
+   "category": "ui-entrance",
+   "style_keys": [
+    "cloner-depth-echo"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/cloner-depth-echo.md",
+   "demo_ref": "demos/ui-entrance/cloner-depth-echo",
+   "purpose_gloss": "cloner depth echo",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "collab-cursor-moves",
+   "category": "interaction",
+   "style_keys": [
+    "cast-ensemble"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/collab-cursor-moves.md",
+   "demo_ref": "demos/interaction/collab-cursor-moves",
+   "purpose_gloss": "collab cursor moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "countdown-arc-scatter",
+   "category": "typography",
+   "style_keys": [
+    "countdown-arc-scatter"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/countdown-arc-scatter.md",
+   "demo_ref": "demos/typography/countdown-arc-scatter",
+   "purpose_gloss": "countdown arc scatter",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "crane-rise-reveal",
+   "category": "opening",
+   "style_keys": [
+    "crane-rise-reveal"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/crane-rise-reveal.md",
+   "demo_ref": "demos/opening/crane-rise-reveal",
+   "purpose_gloss": "crane rise reveal",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "crash-zoom-punch",
+   "category": "camera",
+   "style_keys": [
+    "crash-zoom-punch"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/camera/crash-zoom-punch.md",
+   "demo_ref": "demos/camera/crash-zoom-punch",
+   "purpose_gloss": "crash zoom punch",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "cursor-flyover",
+   "category": "camera",
+   "style_keys": [
+    "cursor-flyover"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/camera/cursor-flyover.md",
+   "demo_ref": "demos/camera/cursor-flyover",
+   "purpose_gloss": "cursor flyover",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "dataviz-landscape-open",
+   "category": "opening",
+   "style_keys": [
+    "dataviz-landscape-open"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/dataviz-landscape-open.md",
+   "demo_ref": "demos/opening/dataviz-landscape-open",
+   "purpose_gloss": "dataviz landscape open",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "deck-deal-flyin",
+   "category": "ui-entrance",
+   "style_keys": [
+    "deck-deal-flyin"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/deck-deal-flyin.md",
+   "demo_ref": "demos/ui-entrance/deck-deal-flyin",
+   "purpose_gloss": "deck deal flyin",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "depth-layer-moves",
+   "category": "camera",
+   "style_keys": [
+    "multiplane"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/camera/depth-layer-moves.md",
+   "demo_ref": "demos/camera/depth-layer-moves",
+   "purpose_gloss": "depth layer moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "doc-park-left-pill-deal",
+   "category": "ui-entrance",
+   "style_keys": [
+    "doc-park-left-pill-deal"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/doc-park-left-pill-deal.md",
+   "demo_ref": "demos/ui-entrance/doc-park-left-pill-deal",
+   "purpose_gloss": "doc park left pill deal",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "document-typewriter-reveal",
+   "category": "typography",
+   "style_keys": [
+    "document-typewriter-reveal"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/document-typewriter-reveal.md",
+   "demo_ref": "demos/typography/document-typewriter-reveal",
+   "purpose_gloss": "document typewriter reveal",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "draw-svg-trace",
+   "category": "ui-entrance",
+   "style_keys": [
+    "draw-svg-trace"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/draw-svg-trace.md",
+   "demo_ref": "demos/ui-entrance/draw-svg-trace",
+   "purpose_gloss": "draw svg trace",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "element-body-moves",
+   "category": "ui-entrance",
+   "style_keys": [
+    "contact-shadow-lift"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/element-body-moves.md",
+   "demo_ref": "demos/ui-entrance/element-body-moves",
+   "purpose_gloss": "element body moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "flying-words",
+   "category": "typography",
+   "style_keys": [
+    "flying-words"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/flying-words.md",
+   "demo_ref": "demos/typography/flying-words",
+   "purpose_gloss": "flying words",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "fracture",
+   "category": "opening",
+   "style_keys": [
+    "fracture"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/fracture.md",
+   "demo_ref": "demos/opening/fracture",
+   "purpose_gloss": "fracture",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "fui-hud-moves",
+   "category": "effects",
+   "style_keys": [
+    "reticle-lock-on"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/fui-hud-moves.md",
+   "demo_ref": "demos/effects/fui-hud-moves",
+   "purpose_gloss": "fui hud moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "gauge-readout-moves",
+   "category": "data",
+   "style_keys": [
+    "needle-sweep-selftest",
+    "tape-scroll-fixed-pointer"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/data/gauge-readout-moves.md",
+   "demo_ref": "demos/data/gauge-readout-moves",
+   "purpose_gloss": "gauge readout moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "glass-pill-dictation-typing",
+   "category": "interaction",
+   "style_keys": [
+    "glass-pill-dictation-typing"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/glass-pill-dictation-typing.md",
+   "demo_ref": "demos/interaction/glass-pill-dictation-typing",
+   "purpose_gloss": "glass pill dictation typing",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "glitch-cycle",
+   "category": "typography",
+   "style_keys": [
+    "glitch-cycle"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/glitch-cycle.md",
+   "demo_ref": "demos/typography/glitch-cycle",
+   "purpose_gloss": "glitch cycle",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "glow-flyline-moves",
+   "category": "effects",
+   "style_keys": [
+    "glow-orb-ambient",
+    "flyline-arc",
+    "orb-flyline-relay"
+   ],
+   "style_count": 3,
+   "source_ref": "references/shots/effects/glow-flyline-moves.md",
+   "demo_ref": "demos/effects/glow-flyline-moves",
+   "purpose_gloss": "glow flyline moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "gradient-transition",
+   "category": "transition",
+   "style_keys": [
+    "gradient-transition"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/gradient-transition.md",
+   "demo_ref": "demos/transition/gradient-transition",
+   "purpose_gloss": "gradient transition",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "gradient-word-sweep",
+   "category": "typography",
+   "style_keys": [
+    "gradient-word-sweep"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/gradient-word-sweep.md",
+   "demo_ref": "demos/typography/gradient-word-sweep",
+   "purpose_gloss": "gradient word sweep",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "grain-dissolve",
+   "category": "outro",
+   "style_keys": [
+    "grain-dissolve"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/outro/grain-dissolve.md",
+   "demo_ref": "demos/outro/grain-dissolve",
+   "purpose_gloss": "grain dissolve",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "graze-face-tour",
+   "category": "camera",
+   "style_keys": [
+    "graze-face-tour"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/camera/graze-face-tour.md",
+   "demo_ref": "demos/camera/graze-face-tour",
+   "purpose_gloss": "graze face tour",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "hashtag-to-pill-materialize",
+   "category": "interaction",
+   "style_keys": [
+    "hashtag-to-pill-materialize"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/hashtag-to-pill-materialize.md",
+   "demo_ref": "demos/interaction/hashtag-to-pill-materialize",
+   "purpose_gloss": "hashtag to pill materialize",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "icon-field-colorize",
+   "category": "opening",
+   "style_keys": [
+    "icon-field-colorize"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/icon-field-colorize.md",
+   "demo_ref": "demos/opening/icon-field-colorize",
+   "purpose_gloss": "icon field colorize",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "icon-performance-moves",
+   "category": "effects",
+   "style_keys": [
+    "attention-bounce"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/icon-performance-moves.md",
+   "demo_ref": "demos/effects/icon-performance-moves",
+   "purpose_gloss": "icon performance moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "impact-feedback",
+   "category": "effects",
+   "style_keys": [
+    "hit-counter",
+    "anime-impact"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/effects/impact-feedback.md",
+   "demo_ref": "demos/effects/impact-feedback",
+   "purpose_gloss": "impact feedback",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "integration-hub-map",
+   "category": "ui-entrance",
+   "style_keys": [
+    "integration-hub-map"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/integration-hub-map.md",
+   "demo_ref": "demos/ui-entrance/integration-hub-map",
+   "purpose_gloss": "integration hub map",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "lead-word-zoom-assemble",
+   "category": "typography",
+   "style_keys": [
+    "lead-word-zoom-assemble"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/lead-word-zoom-assemble.md",
+   "demo_ref": "demos/typography/lead-word-zoom-assemble",
+   "purpose_gloss": "lead word zoom assemble",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "letterspace-materialize",
+   "category": "opening",
+   "style_keys": [
+    "letterspace-materialize"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/letterspace-materialize.md",
+   "demo_ref": "demos/opening/letterspace-materialize",
+   "purpose_gloss": "letterspace materialize",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "light-play-moves",
+   "category": "effects",
+   "style_keys": [
+    "spotlight-sweep",
+    "sheen-sweep"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/effects/light-play-moves.md",
+   "demo_ref": "demos/effects/light-play-moves",
+   "purpose_gloss": "light play moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "line-carry-transition",
+   "category": "transition",
+   "style_keys": [
+    "line-carry-transition"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/line-carry-transition.md",
+   "demo_ref": "demos/transition/line-carry-transition",
+   "purpose_gloss": "line carry transition",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "list-reveal",
+   "category": "ui-entrance",
+   "style_keys": [
+    "list-reveal"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/list-reveal.md",
+   "demo_ref": "demos/ui-entrance/list-reveal",
+   "purpose_gloss": "list reveal",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "list-stack-press",
+   "category": "ui-entrance",
+   "style_keys": [
+    "list-stack-press"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/list-stack-press.md",
+   "demo_ref": "demos/ui-entrance/list-stack-press",
+   "purpose_gloss": "list stack press",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "logo-shrink-wordmark-lockup",
+   "category": "outro",
+   "style_keys": [
+    "logo-shrink-wordmark-lockup"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/outro/logo-shrink-wordmark-lockup.md",
+   "demo_ref": "demos/outro/logo-shrink-wordmark-lockup",
+   "purpose_gloss": "logo shrink wordmark lockup",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "magician-card-flourish",
+   "category": "opening",
+   "style_keys": [
+    "magician-card-flourish"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/magician-card-flourish.md",
+   "demo_ref": "demos/opening/magician-card-flourish",
+   "purpose_gloss": "magician card flourish",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "marker-underline-title",
+   "category": "typography",
+   "style_keys": [
+    "marker-underline-title"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/marker-underline-title.md",
+   "demo_ref": "demos/typography/marker-underline-title",
+   "purpose_gloss": "marker underline title",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "mosaic-reframe",
+   "category": "transition",
+   "style_keys": [
+    "mosaic-reframe"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/mosaic-reframe.md",
+   "demo_ref": "demos/transition/mosaic-reframe",
+   "purpose_gloss": "mosaic reframe",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "neon-frame-forerun",
+   "category": "ui-entrance",
+   "style_keys": [
+    "neon-frame-forerun"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/neon-frame-forerun.md",
+   "demo_ref": "demos/ui-entrance/neon-frame-forerun",
+   "purpose_gloss": "neon frame forerun",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "neon-frame-orbit-drop",
+   "category": "ui-entrance",
+   "style_keys": [
+    "neon-frame-orbit-drop"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/neon-frame-orbit-drop.md",
+   "demo_ref": "demos/ui-entrance/neon-frame-orbit-drop",
+   "purpose_gloss": "neon frame orbit drop",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "neon-triple-marquee",
+   "category": "outro",
+   "style_keys": [
+    "neon-triple-marquee"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/outro/neon-triple-marquee.md",
+   "demo_ref": "demos/outro/neon-triple-marquee",
+   "purpose_gloss": "neon triple marquee",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "orbit-ring-title-open",
+   "category": "opening",
+   "style_keys": [
+    "orbit-ring-title-open"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/orbit-ring-title-open.md",
+   "demo_ref": "demos/opening/orbit-ring-title-open",
+   "purpose_gloss": "orbit ring title open",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "outline-word-fill",
+   "category": "typography",
+   "style_keys": [
+    "outline-word-fill"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/outline-word-fill.md",
+   "demo_ref": "demos/typography/outline-word-fill",
+   "purpose_gloss": "outline word fill",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "outro-group-photo-launch",
+   "category": "outro",
+   "style_keys": [
+    "outro-group-photo-launch"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/outro/outro-group-photo-launch.md",
+   "demo_ref": "demos/outro/outro-group-photo-launch",
+   "purpose_gloss": "outro group photo launch",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "overhead-camera-moves",
+   "category": "camera",
+   "style_keys": [
+    "tilt-reveal",
+    "overhead-tabletop-drop"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/camera/overhead-camera-moves.md",
+   "demo_ref": "demos/camera/overhead-camera-moves",
+   "purpose_gloss": "overhead camera moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "page-turn-transitions",
+   "category": "transition",
+   "style_keys": [
+    "barn-door-split"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/page-turn-transitions.md",
+   "demo_ref": "demos/transition/page-turn-transitions",
+   "purpose_gloss": "page turn transitions",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "page-waterfall-wall",
+   "category": "ui-entrance",
+   "style_keys": [
+    "page-waterfall-wall"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/page-waterfall-wall.md",
+   "demo_ref": "demos/ui-entrance/page-waterfall-wall",
+   "purpose_gloss": "page waterfall wall",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "panel-grid-moves",
+   "category": "rhythm",
+   "style_keys": [
+    "comic-panel-split"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/panel-grid-moves.md",
+   "demo_ref": "demos/rhythm/panel-grid-moves",
+   "purpose_gloss": "panel grid moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "paper-title-card",
+   "category": "typography",
+   "style_keys": [
+    "paper-title-card"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/paper-title-card.md",
+   "demo_ref": "demos/typography/paper-title-card",
+   "purpose_gloss": "paper title card",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "picker-carousel-feature-cycle",
+   "category": "interaction",
+   "style_keys": [
+    "picker-carousel-feature-cycle"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/picker-carousel-feature-cycle.md",
+   "demo_ref": "demos/interaction/picker-carousel-feature-cycle",
+   "purpose_gloss": "picker carousel feature cycle",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "pill-chip-slot-cycle-handled",
+   "category": "typography",
+   "style_keys": [
+    "pill-chip-slot-cycle-handled"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/pill-chip-slot-cycle-handled.md",
+   "demo_ref": "demos/typography/pill-chip-slot-cycle-handled",
+   "purpose_gloss": "pill chip slot cycle handled",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "pill-slot-cycle",
+   "category": "typography",
+   "style_keys": [
+    "pill-slot-cycle"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/pill-slot-cycle.md",
+   "demo_ref": "demos/typography/pill-slot-cycle",
+   "purpose_gloss": "pill slot cycle",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "print-texture-transitions",
+   "category": "transition",
+   "style_keys": [
+    "ink-bleed-reveal"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/print-texture-transitions.md",
+   "demo_ref": "demos/transition/print-texture-transitions",
+   "purpose_gloss": "print texture transitions",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "product-card-progressive-assemble",
+   "category": "ui-entrance",
+   "style_keys": [
+    "product-card-progressive-assemble"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/product-card-progressive-assemble.md",
+   "demo_ref": "demos/ui-entrance/product-card-progressive-assemble",
+   "purpose_gloss": "product card progressive assemble",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "quad-split-parallel-scenes",
+   "category": "rhythm",
+   "style_keys": [
+    "quad-split-parallel-scenes"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/quad-split-parallel-scenes.md",
+   "demo_ref": "demos/rhythm/quad-split-parallel-scenes",
+   "purpose_gloss": "quad split parallel scenes",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "radial-ripple-phone-chips",
+   "category": "effects",
+   "style_keys": [
+    "radial-ripple-phone-chips"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/radial-ripple-phone-chips.md",
+   "demo_ref": "demos/effects/radial-ripple-phone-chips",
+   "purpose_gloss": "radial ripple phone chips",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "radial-wave",
+   "category": "ui-entrance",
+   "style_keys": [
+    "radial-wave"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/radial-wave.md",
+   "demo_ref": "demos/ui-entrance/radial-wave",
+   "purpose_gloss": "radial wave",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "research-card-stack-scroll",
+   "category": "ui-entrance",
+   "style_keys": [
+    "research-card-stack-scroll"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/research-card-stack-scroll.md",
+   "demo_ref": "demos/ui-entrance/research-card-stack-scroll",
+   "purpose_gloss": "research card stack scroll",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "rhythm-interrupt-moves",
+   "category": "rhythm",
+   "style_keys": [
+    "jump-cut-punch-in"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/rhythm-interrupt-moves.md",
+   "demo_ref": "demos/rhythm/rhythm-interrupt-moves",
+   "purpose_gloss": "rhythm interrupt moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "riso-print-hits",
+   "category": "effects",
+   "style_keys": [
+    "misregistration-hit"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/riso-print-hits.md",
+   "demo_ref": "demos/effects/riso-print-hits",
+   "purpose_gloss": "riso print hits",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "row-embed",
+   "category": "ui-entrance",
+   "style_keys": [
+    "row-embed"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/row-embed.md",
+   "demo_ref": "demos/ui-entrance/row-embed",
+   "purpose_gloss": "row embed",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "sakuga-timing-shift",
+   "category": "rhythm",
+   "style_keys": [
+    "sakuga-timing-shift"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/sakuga-timing-shift.md",
+   "demo_ref": "demos/rhythm/sakuga-timing-shift",
+   "purpose_gloss": "sakuga timing shift",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "scan-bracket-sweep",
+   "category": "effects",
+   "style_keys": [
+    "scan-bracket-sweep"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/scan-bracket-sweep.md",
+   "demo_ref": "demos/effects/scan-bracket-sweep",
+   "purpose_gloss": "scan bracket sweep",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "scanline-annotate-focus",
+   "category": "effects",
+   "style_keys": [
+    "scanline-annotate-focus"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/scanline-annotate-focus.md",
+   "demo_ref": "demos/effects/scanline-annotate-focus",
+   "purpose_gloss": "scanline annotate focus",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "scanline-assemble-flyin",
+   "category": "effects",
+   "style_keys": [
+    "scanline-assemble-flyin"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/effects/scanline-assemble-flyin.md",
+   "demo_ref": "demos/effects/scanline-assemble-flyin",
+   "purpose_gloss": "scanline assemble flyin",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "scroll-brake-moves",
+   "category": "data",
+   "style_keys": [
+    "changelog-scroll-brake",
+    "brake-reticle-lock"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/data/scroll-brake-moves.md",
+   "demo_ref": "demos/data/scroll-brake-moves",
+   "purpose_gloss": "scroll brake moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "segmented-thumb-hero",
+   "category": "interaction",
+   "style_keys": [
+    "segmented-thumb-hero"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/segmented-thumb-hero.md",
+   "demo_ref": "demos/interaction/segmented-thumb-hero",
+   "purpose_gloss": "segmented thumb hero",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "shot-transitions",
+   "category": "transition",
+   "style_keys": [
+    "flash-cut",
+    "whip-pan",
+    "mask-wipe"
+   ],
+   "style_count": 3,
+   "source_ref": "references/shots/transition/shot-transitions.md",
+   "demo_ref": "demos/transition/shot-transitions",
+   "purpose_gloss": "shot transitions",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "slam-entrance-moves",
+   "category": "effects",
+   "style_keys": [
+    "kanada-perspective-snap",
+    "score-slam",
+    "impact-burst-kit"
+   ],
+   "style_count": 3,
+   "source_ref": "references/shots/effects/slam-entrance-moves.md",
+   "demo_ref": "demos/effects/slam-entrance-moves",
+   "purpose_gloss": "slam entrance moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "space-camera-moves",
+   "category": "camera",
+   "style_keys": [
+    "exploded-view",
+    "drone-dive-landing"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/camera/space-camera-moves.md",
+   "demo_ref": "demos/camera/space-camera-moves",
+   "purpose_gloss": "space camera moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "speed-ramp-freeze",
+   "category": "rhythm",
+   "style_keys": [
+    "freeze-annotate"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/speed-ramp-freeze.md",
+   "demo_ref": "demos/rhythm/speed-ramp-freeze",
+   "purpose_gloss": "speed ramp freeze",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "spotlight-hero-card",
+   "category": "opening",
+   "style_keys": [
+    "spotlight-hero-card"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/spotlight-hero-card.md",
+   "demo_ref": "demos/opening/spotlight-hero-card",
+   "purpose_gloss": "spotlight hero card",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "spotlight-sweep-moves",
+   "category": "effects",
+   "style_keys": [
+    "glow-wake-sleep-panel",
+    "slide-spotlight-pan",
+    "corner-spotlight-reveal"
+   ],
+   "style_count": 3,
+   "source_ref": "references/shots/effects/spotlight-sweep-moves.md",
+   "demo_ref": "demos/effects/spotlight-sweep-moves",
+   "purpose_gloss": "spotlight sweep moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "steep-tilt-glide",
+   "category": "camera",
+   "style_keys": [
+    "steep-tilt-glide"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/camera/steep-tilt-glide.md",
+   "demo_ref": "demos/camera/steep-tilt-glide",
+   "purpose_gloss": "steep tilt glide",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "stroke-segment-build",
+   "category": "opening",
+   "style_keys": [
+    "stroke-segment-build"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/stroke-segment-build.md",
+   "demo_ref": "demos/opening/stroke-segment-build",
+   "purpose_gloss": "stroke segment build",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "tear-streak-transitions",
+   "category": "transition",
+   "style_keys": [
+    "glitch-displace"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/tear-streak-transitions.md",
+   "demo_ref": "demos/transition/tear-streak-transitions",
+   "purpose_gloss": "tear streak transitions",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "tension-camera-moves",
+   "category": "camera",
+   "style_keys": [
+    "bullet-time-freeze-orbit",
+    "pull-back-isolation"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/camera/tension-camera-moves.md",
+   "demo_ref": "demos/camera/tension-camera-moves",
+   "purpose_gloss": "tension camera moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "terminal-3d",
+   "category": "camera",
+   "style_keys": [
+    "terminal-3d"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/camera/terminal-3d.md",
+   "demo_ref": "demos/camera/terminal-3d",
+   "purpose_gloss": "terminal 3d",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "text-as-mask",
+   "category": "opening",
+   "style_keys": [
+    "text-as-mask"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/opening/text-as-mask.md",
+   "demo_ref": "demos/opening/text-as-mask",
+   "purpose_gloss": "text as mask",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "text-column-converge",
+   "category": "typography",
+   "style_keys": [
+    "text-column-converge"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/text-column-converge.md",
+   "demo_ref": "demos/typography/text-column-converge",
+   "purpose_gloss": "text column converge",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "theme-switch-moves",
+   "category": "interaction",
+   "style_keys": [
+    "theme-sweep-toggle",
+    "palette-theme-ripple"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/interaction/theme-switch-moves.md",
+   "demo_ref": "demos/interaction/theme-switch-moves",
+   "purpose_gloss": "theme switch moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "timeline-travel",
+   "category": "data",
+   "style_keys": [
+    "timeline-travel"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/data/timeline-travel.md",
+   "demo_ref": "demos/data/timeline-travel",
+   "purpose_gloss": "timeline travel",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "title-demote-to-label",
+   "category": "typography",
+   "style_keys": [
+    "title-demote-to-label"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/title-demote-to-label.md",
+   "demo_ref": "demos/typography/title-demote-to-label",
+   "purpose_gloss": "title demote to label",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "trailer-grammar-moves",
+   "category": "rhythm",
+   "style_keys": [
+    "trailer-bumper"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/rhythm/trailer-grammar-moves.md",
+   "demo_ref": "demos/rhythm/trailer-grammar-moves",
+   "purpose_gloss": "trailer grammar moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "transition-hidden-cut",
+   "category": "transition",
+   "style_keys": [
+    "invisible-cut",
+    "versus-slam",
+    "light-leak-burn"
+   ],
+   "style_count": 3,
+   "source_ref": "references/shots/transition/transition-hidden-cut.md",
+   "demo_ref": "demos/transition/transition-hidden-cut",
+   "purpose_gloss": "transition hidden cut",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "transition-travel",
+   "category": "transition",
+   "style_keys": [
+    "letterform-zoom"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/transition-travel.md",
+   "demo_ref": "demos/transition/transition-travel",
+   "purpose_gloss": "transition travel",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "type-and-filter",
+   "category": "interaction",
+   "style_keys": [
+    "type-and-filter"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/type-and-filter.md",
+   "demo_ref": "demos/interaction/type-and-filter",
+   "purpose_gloss": "type and filter",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "type-assembly-moves",
+   "category": "typography",
+   "style_keys": [
+    "split-text-stagger",
+    "drift-assembly",
+    "text-on-path"
+   ],
+   "style_count": 3,
+   "source_ref": "references/shots/typography/type-assembly-moves.md",
+   "demo_ref": "demos/typography/type-assembly-moves",
+   "purpose_gloss": "type assembly moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "type-entrance-moves",
+   "category": "typography",
+   "style_keys": [
+    "letter-drop-physics"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/type-entrance-moves.md",
+   "demo_ref": "demos/typography/type-entrance-moves",
+   "purpose_gloss": "type entrance moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "type-rhythm-sync",
+   "category": "typography",
+   "style_keys": [
+    "font-weight-pump",
+    "karaoke-fill-sync"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/typography/type-rhythm-sync.md",
+   "demo_ref": "demos/typography/type-rhythm-sync",
+   "purpose_gloss": "type rhythm sync",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "typewriter-moves",
+   "category": "typography",
+   "style_keys": [
+    "error-retype"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/typewriter-moves.md",
+   "demo_ref": "demos/typography/typewriter-moves",
+   "purpose_gloss": "typewriter moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "ui-strip-away-outro",
+   "category": "outro",
+   "style_keys": [
+    "ui-strip-away-outro"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/outro/ui-strip-away-outro.md",
+   "demo_ref": "demos/outro/ui-strip-away-outro",
+   "purpose_gloss": "ui strip away outro",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "ui-to-brand-morph",
+   "category": "outro",
+   "style_keys": [
+    "icon-flip-bloom",
+    "input-morph-assemble"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/outro/ui-to-brand-morph.md",
+   "demo_ref": "demos/outro/ui-to-brand-morph",
+   "purpose_gloss": "ui to brand morph",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "value-stagger-gradient",
+   "category": "ui-entrance",
+   "style_keys": [
+    "value-stagger-gradient"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/ui-entrance/value-stagger-gradient.md",
+   "demo_ref": "demos/ui-entrance/value-stagger-gradient",
+   "purpose_gloss": "value stagger gradient",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "vertical-word-roll-blur-cycle",
+   "category": "typography",
+   "style_keys": [
+    "vertical-word-roll-blur-cycle"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/vertical-word-roll-blur-cycle.md",
+   "demo_ref": "demos/typography/vertical-word-roll-blur-cycle",
+   "purpose_gloss": "vertical word roll blur cycle",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "voice-waveform-live",
+   "category": "interaction",
+   "style_keys": [
+    "voice-waveform-live"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/interaction/voice-waveform-live.md",
+   "demo_ref": "demos/interaction/voice-waveform-live",
+   "purpose_gloss": "voice waveform live",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "wall-reveal-moves",
+   "category": "ui-entrance",
+   "style_keys": [
+    "bento-light-up",
+    "wireframe-draw-on"
+   ],
+   "style_count": 2,
+   "source_ref": "references/shots/ui-entrance/wall-reveal-moves.md",
+   "demo_ref": "demos/ui-entrance/wall-reveal-moves",
+   "purpose_gloss": "wall reveal moves",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "white-flash-logo-simplify-cut",
+   "category": "transition",
+   "style_keys": [
+    "white-flash-logo-simplify-cut"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/white-flash-logo-simplify-cut.md",
+   "demo_ref": "demos/transition/white-flash-logo-simplify-cut",
+   "purpose_gloss": "white flash logo simplify cut",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "wipe-transitions",
+   "category": "transition",
+   "style_keys": [
+    "blinds-slice"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/transition/wipe-transitions.md",
+   "demo_ref": "demos/transition/wipe-transitions",
+   "purpose_gloss": "wipe transitions",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "word-relay-filmstrip",
+   "category": "typography",
+   "style_keys": [
+    "word-relay-filmstrip"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/word-relay-filmstrip.md",
+   "demo_ref": "demos/typography/word-relay-filmstrip",
+   "purpose_gloss": "word relay filmstrip",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  },
+  {
+   "name": "word-relay-geometry",
+   "category": "typography",
+   "style_keys": [
+    "word-relay-geometry"
+   ],
+   "style_count": 1,
+   "source_ref": "references/shots/typography/word-relay-geometry.md",
+   "demo_ref": "demos/typography/word-relay-geometry",
+   "purpose_gloss": "word relay geometry",
+   "tuned": true,
+   "tuned_params_recorded_upstream": true,
+   "pitfalls_recorded_upstream": true,
+   "verified_by_hevi_render": false
+  }
+ ]
+}
