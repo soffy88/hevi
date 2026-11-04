@@ -1,0 +1,590 @@
+{
+"pop-in": [
+"弹出",
+"弹入",
+"弹跳出现",
+"蹦出"
+],
+"stagger": [
+"依次出现",
+"错开入场",
+"逐个出现",
+"阶梯入场"
+],
+"burst": [
+"爆发",
+"迸射",
+"炸开"
+],
+"line-draw": [
+"描线",
+"画线",
+"线条生长"
+],
+"mask-reveal": [
+"遮罩揭示",
+"遮罩出字",
+"上浮出字",
+"文字上滑出现"
+],
+"typewriter": [
+"打字机",
+"逐字出现",
+"打字效果"
+],
+"count-up": [
+"数字滚动",
+"计数增长",
+"数字跳动"
+],
+"kinetic-typography": [
+"动态排版",
+"文字动画",
+"动感文字"
+],
+"easing": [
+"缓动",
+"缓入缓出"
+],
+"overshoot": [
+"过冲",
+"回弹"
+],
+"squash-and-stretch": [
+"挤压拉伸",
+"弹性形变"
+],
+"shape-morph": [
+"形变",
+"变形过渡",
+"图形变形"
+],
+"liquid-motion": [
+"液态",
+"流体运动"
+],
+"motion-trail": [
+"运动拖尾",
+"拖影"
+],
+"particles": [
+"粒子",
+"粒子特效"
+],
+"parallax": [
+"视差",
+"分层视差"
+],
+"mask-transition": [
+"遮罩转场",
+"形状扩展转场",
+"圆形展开"
+],
+"shape-transition": [
+"图形转场",
+"形状覆盖转场"
+],
+"liquid-transition": [
+"液体转场",
+"流体转场"
+],
+"zoom-through": [
+"穿越转场",
+"推进穿越",
+"放大穿越"
+],
+"flip": [
+"翻转",
+"翻牌"
+],
+"light-sweep": [
+"扫光",
+"光带扫过",
+"流光"
+],
+"glitch": [
+"故障风",
+"故障效果",
+"信号干扰"
+],
+"impact-shake": [
+"冲击震动",
+"震屏",
+"画面震动"
+],
+"pan": [
+"摇镜",
+"横摇",
+"左右摇",
+"水平摇"
+],
+"tilt": [
+"俯仰",
+"上下摇",
+"竖摇"
+],
+"dolly-in": [
+"推镜",
+"推近",
+"推镜头",
+"慢推",
+"前推",
+"移近"
+],
+"zoom-in": [
+"变焦推近",
+"镜头放大",
+"拉近变焦"
+],
+"tracking-shot": [
+"跟拍",
+"跟镜",
+"跟随拍摄",
+"移动跟拍"
+],
+"orbit-arc-shot": [
+"环绕",
+"环拍",
+"绕拍",
+"弧形运镜"
+],
+"crane-up": [
+"升镜",
+"摇臂上升",
+"升降镜头",
+"上升镜头"
+],
+"dolly-zoom-vertigo": [
+"希区柯克变焦",
+"滑动变焦",
+"眩晕镜头"
+],
+"rack-focus": [
+"移焦",
+"焦点转移",
+"变焦点"
+],
+"handheld": [
+"手持",
+"手持晃动",
+"手持摄影"
+],
+"fpv-drone-shot": [
+"穿越机",
+"无人机穿越",
+"FPV"
+],
+"dutch-angle": [
+"荷兰角",
+"倾斜构图",
+"斜角镜头"
+],
+"slow-motion": [
+"慢动作",
+"升格",
+"慢放"
+],
+"speed-ramp": [
+"变速",
+"速度坡度",
+"快慢变速"
+],
+"time-lapse": [
+"延时摄影",
+"延时",
+"缩时"
+],
+"freeze-frame": [
+"定格",
+"冻结画面"
+],
+"jump-cut": [
+"跳剪",
+"跳切"
+],
+"match-cut": [
+"匹配剪辑",
+"动作匹配剪",
+"形状匹配转场"
+],
+"whip-pan": [
+"甩镜",
+"快速甩镜",
+"甩镜转场"
+],
+"cross-dissolve": [
+"叠化",
+"溶解",
+"交叉溶解",
+"淡入淡出转场"
+],
+"wipe": [
+"划像",
+"擦除转场",
+"划变"
+],
+"smash-cut": [
+"硬切",
+"对比剪辑",
+"猛切"
+],
+"j-cut": [
+"J剪",
+"声音先入"
+],
+"l-cut": [
+"L剪",
+"声音延续"
+],
+"modal-dialog": [
+"弹窗",
+"模态框"
+],
+"drawer": [
+"抽屉菜单",
+"侧滑菜单"
+],
+"bottom-sheet": [
+"底部面板",
+"底部弹出"
+],
+"accordion": [
+"折叠面板",
+"手风琴"
+],
+"dropdown-menu": [
+"下拉菜单"
+],
+"tooltip": [
+"提示框",
+"悬浮提示"
+],
+"popover": [
+"气泡卡片",
+"弹出层"
+],
+"toast": [
+"轻提示",
+"吐司提示"
+],
+"tabs": [
+"标签页",
+"选项卡"
+],
+"carousel": [
+"轮播"
+],
+"toggle-switch": [
+"开关"
+],
+"segmented-control": [
+"分段控件"
+],
+"filter-chips": [
+"筛选标签",
+"标签筛选"
+],
+"range-slider": [
+"范围滑块"
+],
+"stepper": [
+"步进器"
+],
+"pagination": [
+"分页"
+],
+"hamburger-menu": [
+"汉堡菜单"
+],
+"breadcrumbs": [
+"面包屑"
+],
+"mega-menu": [
+"大菜单"
+],
+"step-indicator": [
+"步骤条"
+],
+"skeleton-screen": [
+"骨架屏"
+],
+"spinner": [
+"加载圈",
+"转圈"
+],
+"badge": [
+"徽标",
+"角标"
+],
+"empty-state": [
+"空状态"
+],
+"parallax-scrolling": [
+"视差滚动"
+],
+"fade-in-on-scroll": [
+"淡入",
+"渐显",
+"滚动淡入"
+],
+"sticky-header": [
+"吸顶",
+"固定头部"
+],
+"pinning": [
+"钉住",
+"固定区块"
+],
+"horizontal-scroll": [
+"横向滚动"
+],
+"scroll-snap": [
+"滚动吸附"
+],
+"scroll-progress-bar": [
+"阅读进度条"
+],
+"highlighter-animation": [
+"荧光笔",
+"划重点"
+],
+"hover-lift": [
+"悬停上浮"
+],
+"image-zoom-on-hover": [
+"悬停放大"
+],
+"cursor-follower": [
+"鼠标跟随"
+],
+"magnetic-button": [
+"磁吸按钮"
+],
+"ripple-effect": [
+"水波纹"
+],
+"underline-animation": [
+"下划线动画"
+],
+"before-after-slider": [
+"前后对比"
+],
+"exit-intent-popup": [
+"挽留弹窗"
+],
+"preloader": [
+"加载页"
+],
+"lazy-loading": [
+"懒加载"
+],
+"infinite-scroll": [
+"无限滚动"
+],
+"page-transition": [
+"页面转场"
+],
+"smooth-scroll": [
+"平滑滚动"
+],
+"marquee": [
+"跑马灯",
+"滚动字幕条"
+],
+"animated-gradient": [
+"渐变动画",
+"流动渐变"
+],
+"floating-animation": [
+"漂浮",
+"上下浮动"
+],
+"backlighting": [
+"逆光",
+"背光"
+],
+"rim-light": [
+"轮廓光",
+"边缘光"
+],
+"silhouette": [
+"剪影"
+],
+"split-lighting": [
+"侧光",
+"分割光",
+"阴阳脸"
+],
+"rembrandt-lighting": [
+"伦勃朗光"
+],
+"butterfly-lighting": [
+"蝴蝶光",
+"美人光"
+],
+"golden-hour": [
+"黄金时刻",
+"夕阳暖光",
+"日落光",
+"暖光"
+],
+"blue-hour": [
+"蓝调时刻",
+"黄昏",
+"傍晚",
+"暮色"
+],
+"bokeh": [
+"焦外光斑",
+"散景",
+"虚化光斑"
+],
+"tilt-shift": [
+"移轴",
+"微缩景观"
+],
+"long-exposure": [
+"长曝光",
+"慢门",
+"光轨"
+],
+"panning-shot": [
+"追随拍摄",
+"摇拍",
+"背景拖影"
+],
+"lens-flare": [
+"镜头光晕",
+"炫光"
+],
+"fisheye-lens": [
+"鱼眼"
+],
+"chromatic-aberration": [
+"色差",
+"色散"
+],
+"vignette": [
+"暗角",
+"晕影"
+],
+"high-key": [
+"高调",
+"明亮高调"
+],
+"low-key": [
+"低调",
+"暗调"
+],
+"black-and-white": [
+"黑白",
+"单色"
+],
+"duotone": [
+"双色调"
+],
+"teal-and-orange": [
+"青橙色调",
+"电影色调"
+],
+"film-grain": [
+"胶片颗粒",
+"颗粒感",
+"胶片质感",
+"35mm胶片"
+],
+"light-leak": [
+"漏光"
+],
+"double-exposure": [
+"双重曝光",
+"多重曝光"
+],
+"anticipation": [
+"预备动作",
+"蓄力"
+],
+"follow-through": [
+"跟随动作",
+"惯性摆动"
+],
+"bounce": [
+"弹跳",
+"回弹落地"
+],
+"wiggle": [
+"抖动",
+"随机抖动"
+],
+"pulse": [
+"脉冲",
+"心跳缩放"
+],
+"motion-path": [
+"运动路径"
+],
+"ping-pong-loop": [
+"往返循环",
+"乒乓循环"
+],
+"stop-motion-style": [
+"定格动画风",
+"逐帧风"
+],
+"text-scramble": [
+"乱码文字",
+"文字乱序"
+],
+"wave-text": [
+"波浪文字"
+],
+"text-on-a-path": [
+"路径文字"
+],
+"variable-font-animation": [
+"可变字重"
+],
+"text-mask": [
+"文字遮罩",
+"镂空字"
+],
+"repeater": [
+"重复器",
+"复制阵列"
+],
+"kaleidoscope": [
+"万花筒"
+],
+"line-boil": [
+"手绘抖线"
+],
+"push-transition": [
+"推移转场",
+"推入转场",
+"推走"
+],
+"blinds-transition": [
+"百叶窗"
+],
+"cube-transition": [
+"立方体转场"
+],
+"page-curl": [
+"翻页"
+],
+"pixelate": [
+"像素化",
+"马赛克转场"
+],
+"shatter": [
+"碎裂",
+"玻璃碎"
+],
+"exploded-view": [
+"爆炸图",
+"分解图"
+],
+"split-screen": [
+"分屏"
+]
+}

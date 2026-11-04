@@ -37,7 +37,16 @@ cost), calls the underlying implementation, and normalises the result
 to `{status, error, ...}` — failures return `status="failed"` instead
 of raising (async cancellation is re-raised per SPEC §5.6 C4).
 Adapters are thin delegating wrappers over the existing entry points;
-no business logic was moved or rewritten.
+no business logic was moved or rewritten. Pillar assignment rule
+(auditable): `fingerprint` + `report` for every omodul, guaranteed by
+the adapter by construction (artefact sha256 + status/error
+envelope); `cost` additionally for the 3 workflows whose modules
+name paid generation executors directly (`storyfilm.py`,
+`shortstory.py`); `decision_trail` additionally for the 2 workflows
+whose product is a persisted decision sequence
+(`project_handoff` step records, `stable_film_assembly` manifest).
+The table is built from the attribution table, so a new omodul
+cannot slip in undeclared (guard test locks the 51 names).
 
 ## 4. Layer attribution and single-source convergence
 
@@ -50,8 +59,15 @@ one-line reason + defining file). A copy is kept on ubuntu26 at
 hevi/capabilities/layer_attribution.py is generated from it by
 scripts/ci/gen_layer_attribution.py -- never hand-edit entries.
 
-Counts (live import, clean checkout): oprim 63, oskill 224, omodul
-51, obase 59, oservi 0. oservi = 0 is a finding, not a gap: no
+Counts (live import, clean checkout, Batch 3a re-attribution):
+oprim 59, oskill 228, omodul 51, obase 59, oservi 0. Four
+capabilities were corrected oprim -> oskill in Batch 3a with
+evidence-based reasons (multi-step validate+execute+validate across
+subsystems, not single-backend round-trips; the sibling audit had
+flagged the same four as atomicity violations and upgrading the
+caller was its prescribed convergence): qa.browser_check_executor,
+edit.karaoke_render, world.threejs_imaging_upgrade,
+video.word_pop_renderer. oservi = 0 is a finding, not a gap: no
 registry capability passes all five SPEC 7.2 red lines; the only
 oservi engine reference in-tree sits outside the registry
 (hevi/pipeline/longvideo_manifest.py importing the canonical
@@ -66,8 +82,107 @@ tests/test_3o_conformance.py (full-coverage + manifest + validity).
 
 ### 4.2 Single-source convergence and sibling adjudication
 
-(Price index, cluster decisions, and the sibling-import list land in
-Batch 3; counts and guard-test names are recorded here once landed.)
+Convergence (Batch 3a, guard tests `tests/test_3o_single_source.py`,
+11 passed):
+
+- Price index: 5 price tables converge on one write path --
+  `model_directory.record_in_directory()` (single writer via
+  `register_model`; all records unverified). Floyo and Modal
+  `record_in_directory` delegate to it (thin wrappers kept for
+  existing callers/tests). Floyo `local_h3_config()` delegates H3
+  config values to `config_record()` under an `h3_config` sub-record.
+  Seedance and VidoGrid `_render` gained a `describe` (default,
+  validate-only, current behaviour) / `record` action (refuses
+  failing records, writes via the shared writer). Current price
+  overlap between the sources is empty; the guard test locks that
+  fact. Canonical execution pricing remains
+  `hevi/cost/pricing_table.get_pricing_table()`.
+- Compilers (5): written divisions kept; shared implementation is
+  forbidden by the guard test (no shared impl across the 5 compiler
+  modules). `build_three_layer_fixtures` was reclassified pure
+  in-memory construction (no file IO) after inspection -- the sibling
+  audit's constraint-2 failure verdict for it was a file-level-grep
+  heuristic error; it is restricted-allowed pending its docstring
+  composition list (landed).
+- Consistency gates (5), disclosure gates (4), subtitle/ASR gates
+  (6): written divisions; each cluster's independence/order is
+  locked by a guard test (disclosure tracks independent; subtitle
+  pipeline order enforced).
+- Athenaion: `qa.look_shot_separation` is an explicit delegating
+  alias of the canonical `world.athenaion_discipline` render (fixes
+  `mode`, delegates the rest); single-source guard test locks it.
+- Riso: single implementation registered twice (package import +
+  registry import, with the tree's only `overwrite=True` call) is
+  converged by a `_once` guard at both call sites; explicit
+  re-registration still records overwrite history (10 entries,
+  verified). Guard test locks single registration under the real
+  entry order (`hevi.capabilities` imported first; importing
+  `hevi.riso` first fails identically on main HEAD -- pre-existing
+  circular-import entry-order limitation, not introduced here).
+- Helper sink: 33 shared pure definitions moved to the unregistered
+  module `hevi/capabilities/pure_helpers.py` (SPEC 1.2 sink);
+  origin modules re-export every moved name (verified identical
+  objects live); a static undefined-name check over the touched
+  files reports clean.
+
+Sibling imports (103 edges / 65 files adjudicated in the audit):
+37 combination-allowed, 12 data/type sharing, 5 infrastructure-
+internal, 24 restricted-allowed (3 pass all 4 SPEC 1.2 constraints;
+the rest are covered by docstring composition lists, machine-checked
+in 16 caller files / 22 edges by
+`tests/test_3o_single_source.py::test_sibling_composition_lists_present`;
+3 further candidate edges dissolved by the helper sink --
+`edit_plan_compiler`/`is_on_grid`,
+`subtitle_discipline`/`_containment_coverage`,
+`issue_kind_labels`/`normalise_verdict` -- and are excluded from the
+list set),
+1 restricted-failed reclassified pure (see above), 1 helper-to-sink
+dissolved, 10 banned (7 atomicity -- 4 fixed by re-attribution, 3
+remaining recorded in section 6; 3 reverse dependency -- recorded in
+section 6), 6 bare omodul->omodul calls and 7 upward oskill->omodul
+calls recorded in section 6 with reasons. Docstring composition
+lists follow the form `Composes (3O SPEC 1.2): <callee>, ...` on the
+caller function's docstring.
+
+### 4.3 Spend-gate wiring (Batch 3b)
+
+The 4 generation executors consult `spend_brake.check_spend_approval`
+first -- before any key read, network call, or GPU work -- when the
+caller supplies a `spend_approval` block
+`{storyboard, confirmed, smoke_passed, batch_size,
+estimated_unit_cost}`; a refused block raises before any spend.
+When no block is supplied, spending responsibility stays
+caller-side and the result `qa` carries
+`spend_gate_not_consulted: true`. `image.nano_banana_generate` keeps
+its pre-existing `allow_paid` gate first (order preserved); the
+spend consultation runs after it, before key resolution. Each
+executor's schema gained the `spend_approval` property
+(`additionalProperties` is False). Coverage, same grep method
+(real `gate_spend(`/`authorize_spend(`/`check_spend_approval(` call
+sites, baseline `7df618cb`): 5 files -> 9 files; executors 0/4 ->
+4/4. Guard tests `tests/test_3o_omodul_spend.py` (9 passed) prove
+refusal precedes key/network access and that an approved block
+passes through to the key/service stage.
+
+### 4.4 avcraft admission (Batch 4)
+
+`hevi/avcraft/{obase,oskill,omodul}` (31 files) was admitted from
+the previously untracked worktree directory, per the reviewed
+partial-admission decision: `__pycache__` excluded,
+`oskill/shotprompt.py` DEFERRED (separate owner decision; LEGACY
+status preserved in the source worktree copy; callers lazy-import
+it and raise `ModuleNotFoundError` until decided),
+`save/load_timeline` implementation moved to `obase/timeline_io.py`
+(re-exported from `oskill/timeline.py`), omodul envelope gap
+disclosed in `UPSTREAM-3O.md` (ValueError raises, no status/error
+envelope, no `_enabled_pillars` -- pre-envelope, adapter pending
+registration; do not cite as SPEC section-6-conformant), package
+`__manifest__` added with the deferred module listed explicitly.
+The `tests/test_avcraft_3o.py` referenced in the P0 notes did not
+exist at admission; no test files were admitted. Guard tests
+`tests/test_3o_avcraft_admission.py` (6 passed). The lint check
+`check_no_sibling_call` flags 8 items in the admitted tree; see
+section 6.
 
 ## 5. Flat-namespace rename plan — PENDING PARENT CONFIRMATION
 
@@ -87,6 +202,43 @@ stay canonical, `layer` is the only new axis.
   keep their provider wiring; injection is required for new ones.
 - Flat namespace (§2.2): pending §5 confirmation; recorded here, not
   silently waived.
+- Sibling exceptions (SPEC 1.2 / section 6), each with reason and
+  recheck condition (recheck when an oservi `sequential_composer`
+  orchestration engine lands in-tree; oservi count is 0 today):
+  - `project_handoff` state functions (`create_project` /
+    `record_step`): genuine IO transaction composition, not a
+    reusable algorithm; moving them would split a transaction.
+  - `drama_gates` registry-mediated `story.script_polish` call via
+    `_registry_get().render_safe()` + registration side-effect
+    import: mediated by the registry, not a bare sibling call.
+  - Canvas orchestration kernel (`plan_canvas_execution` /
+    `create_workflow` / `rerun_selection` / `expand_seed_batch`):
+    moving it wholesale was judged too risky; orchestration via
+    oservi deferred.
+  - `build_h3_prompt` (300 lines + 7 private helpers) +
+    `check_h3_prompt` hosted in omodul `scene_reference.py`: move
+    deferred; the host module is the H3 prompt authority.
+  - 12 data/type-sharing constant edges: deferred to a
+    constants-consolidation follow-up; sharing names, not behaviour.
+  - 3 reverse-dependency edges and 3 remaining atomicity edges from
+    the sibling audit: behaviour-preserving convergence was not
+    safe in this round; each stays with its audit reason on file
+    (`sibling_imports.md` in the analysis deliverables).
+  - avcraft `highlight_clips` -> `reframe_vertical` (optional
+    vertical post-step inside one transaction): bare omodul call,
+    kept because no orchestration engine exists in-tree and the
+    shared contract (`detector`/`stats`/`files`) must not be
+    duplicated without the package's own tests (absent at
+    admission). Recheck with the oservi engine.
+  - avcraft `omodul/__init__.py` lazy `__getattr__` re-exports (7
+    lint flags): namespace mechanism only; no sibling is called at
+    import time or by the re-export itself. The lint check matches
+    import statements textually; these flags are heuristic, not
+    calls, and are recorded rather than worked around.
+- avcraft omodul envelope gap: disclosed in `UPSTREAM-3O.md`
+  (see section 4.4); the package must not be cited as SPEC
+  section-6-conformant until its functions are registered and
+  adapted.
 
 ## 7. Acceptance criteria (machine-checked)
 
