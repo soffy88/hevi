@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(468 capabilities, one entry each, no "unclassified" remainder).
+(476 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -328,6 +328,12 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.variant_reuse_gate': {"layer": 'oskill', "reason": 'Multi-rule discipline gate: check_ combines change-and-reuse claim rules (gate rule)', "file": 'hevi/capabilities/variant_reuse_gate.py'},
     'qa.verdict_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/verdict_vocabulary.py'},
     'qa.version_cost_view': {"layer": 'obase', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/version_cost_view.py'},
+    'qa.vibevoice_asr_longform_note': {"layer": 'oskill', "reason": 'discipline gate: 60-minute single-pass ASR with who/when/what recorded as method note only; BitNet CPU is ASR, never a TTS solution', "file": 'hevi/capabilities/vibevoice_asr_longform_note.py'},
+    'qa.vibevoice_license_note': {"layer": 'oskill', "reason": 'discipline gate: code MIT, weights MIT on the model-hub card, repository silent on weights; three statements stay split, commercial use carries the research-only warning', "file": 'hevi/capabilities/vibevoice_license_note.py'},
+    'qa.vibevoice_longform_honesty_gate': {"layer": 'oskill', "reason": 'discipline gate: 1.5B 90-minute/4-speaker claims must declare disabled path and research status, never production; Realtime capped at 10 minutes, one speaker', "file": 'hevi/capabilities/vibevoice_longform_honesty_gate.py'},
+    'qa.vibevoice_realtime_speaker_gate': {"layer": 'oskill', "reason": 'discipline gate: only the 25 verified embedded Realtime speaker names pass; reference audio refused, experimental languages need acknowledgement', "file": 'hevi/capabilities/vibevoice_realtime_speaker_gate.py'},
+    'qa.vibevoice_tts_disabled_gate': {"layer": 'oskill', "reason": 'discipline gate: official TTS-1.5B path recorded disabled; official-run claims fail, reproductions must declare non-official and unverified', "file": 'hevi/capabilities/vibevoice_tts_disabled_gate.py'},
+    'qa.vibevoice_voice_prompt_authorization_gate': {"layer": 'oskill', "reason": 'discipline gate: reference-audio voice prompt is a clone equivalent; own/licensed authorization required, clone requests hard-intercepted', "file": 'hevi/capabilities/vibevoice_voice_prompt_authorization_gate.py'},
     'qa.virtual_clock_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/virtual_clock_contract.py'},
     'qa.vo_first_timing_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/vo_first_timing_gate.py'},
     'qa.voice_chain_discipline_gate': {"layer": 'oskill', "reason": 'discipline gate: voice cloning hard-intercepted, authorization and fallback narration required', "file": 'hevi/capabilities/voice_chain_discipline_gate.py'},
@@ -478,6 +484,8 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.three_layer_project_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake three-layer project schema, executed_here false, nothing built or rendered', "file": 'hevi/capabilities/three_layer_project_schema.py'},
     'video.tweakpane_panel_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake debug panel schema, executed_here false, no DOM created', "file": 'hevi/capabilities/tweakpane_panel_contract.py'},
     'video.two_tier_synthesis_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/two_tier_synthesis_contract.py'},
+    'video.vibevoice_longform_tts_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake 90-minute/4-speaker TTS contract, executed_here false, no inference', "file": 'hevi/capabilities/vibevoice_longform_tts_contract.py'},
+    'video.vibevoice_realtime_speaker_index': {"layer": 'obase', "reason": 'contract-only adapter: fake index of the 25 verified embedded Realtime speaker names, executed_here false, no audio or weights', "file": 'hevi/capabilities/vibevoice_realtime_speaker_index.py'},
     'video.virtual_clock_recorder': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/virtual_clock_recorder.py'},
     'video.whiteboard_mask_contract': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/whiteboard_mask_contract.py'},
     'video.word_anchor_timeline_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake word-anchor timeline schema, executed_here false, nothing aligned or rendered', "file": 'hevi/capabilities/word_anchor_timeline_schema.py'},

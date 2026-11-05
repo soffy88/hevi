@@ -1674,6 +1674,35 @@ _external_runtime_config_schema.register_external_runtime_config_schema_capabili
 from . import codefilm_generation_record_schema as _codefilm_generation_record_schema  # noqa: E402,F401
 _codefilm_generation_record_schema.register_codefilm_generation_record_schema_capabilities_once()
 
+# VibeVoice graft (see VIBEVOICE_ATTRIBUTION.md):
+# qa.vibevoice_tts_disabled_gate, qa.vibevoice_voice_prompt_authorization_gate,
+# qa.vibevoice_realtime_speaker_gate, qa.vibevoice_longform_honesty_gate,
+# qa.vibevoice_license_note, qa.vibevoice_asr_longform_note,
+# video.vibevoice_realtime_speaker_index, video.vibevoice_longform_tts_contract
+# (clean-room method only; no weights, no .pt speaker files, no demo audio,
+# no third-party TTS code; TTS-1.5B official path recorded disabled, never
+# weakened; reference-audio voice prompts are clone equivalents and go
+# through the clone hard intercept; A gates are discipline only, B schemas
+# are fake contracts, executed_here is false; weights download and GPU
+# inference remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import vibevoice_tts_disabled_gate as _vibevoice_tts_disabled_gate  # noqa: E402,F401
+_vibevoice_tts_disabled_gate.register_vibevoice_tts_disabled_gate_capabilities_once()
+from . import vibevoice_voice_prompt_authorization_gate as _vibevoice_voice_prompt_authorization_gate  # noqa: E402,F401
+_vibevoice_voice_prompt_authorization_gate.register_vibevoice_voice_prompt_authorization_gate_capabilities_once()
+from . import vibevoice_realtime_speaker_gate as _vibevoice_realtime_speaker_gate  # noqa: E402,F401
+_vibevoice_realtime_speaker_gate.register_vibevoice_realtime_speaker_gate_capabilities_once()
+from . import vibevoice_longform_honesty_gate as _vibevoice_longform_honesty_gate  # noqa: E402,F401
+_vibevoice_longform_honesty_gate.register_vibevoice_longform_honesty_gate_capabilities_once()
+from . import vibevoice_license_note as _vibevoice_license_note  # noqa: E402,F401
+_vibevoice_license_note.register_vibevoice_license_note_capabilities_once()
+from . import vibevoice_asr_longform_note as _vibevoice_asr_longform_note  # noqa: E402,F401
+_vibevoice_asr_longform_note.register_vibevoice_asr_longform_note_capabilities_once()
+from . import vibevoice_realtime_speaker_index as _vibevoice_realtime_speaker_index  # noqa: E402,F401
+_vibevoice_realtime_speaker_index.register_vibevoice_realtime_speaker_index_capabilities_once()
+from . import vibevoice_longform_tts_contract as _vibevoice_longform_tts_contract  # noqa: E402,F401
+_vibevoice_longform_tts_contract.register_vibevoice_longform_tts_contract_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

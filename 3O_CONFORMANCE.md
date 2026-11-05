@@ -408,3 +408,16 @@ stay canonical, `layer` is the only new axis.
   shared JSON (468 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 468. No
   renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (VibeVoice, 2026-11-05):
+  468 -> 476 registered names (6 oskill discipline gates:
+  TTS-1.5B disabled path, voice-prompt authorization, Realtime
+  embedded speaker, long-form honesty, license note, ASR
+  long-form note; 2 obase fake contracts: Realtime embedded
+  speaker index, long-form multi-speaker TTS contract),
+  landing on top of the Infinite Creation delta2 graft.
+  Layer attribution JSON and the generated table were extended
+  through `scripts/ci/gen_layer_attribution.py` from the
+  shared JSON (476 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 476. No
+  renames; the rename/alias migration plan is unchanged.
