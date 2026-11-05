@@ -1703,6 +1703,39 @@ _vibevoice_realtime_speaker_index.register_vibevoice_realtime_speaker_index_capa
 from . import vibevoice_longform_tts_contract as _vibevoice_longform_tts_contract  # noqa: E402,F401
 _vibevoice_longform_tts_contract.register_vibevoice_longform_tts_contract_capabilities_once()
 
+# cyber-xiaoya-live graft (see CYBER_XIAOYA_ATTRIBUTION.md):
+# qa.vidu_live_session_gate, qa.danmaku_router_gate,
+# qa.live_gift_vip_gate, qa.live_action_priority_gate,
+# qa.omnivoice_live_wire_note, qa.koubo_segment_discipline_gate,
+# video.vidu_live_session_schema, video.danmaku_route_schema,
+# video.live_gift_batch_schema, video.live_stage_contract
+# (clean-room method only; no AGPL code, no NOTICE materials,
+# no keys or platform accounts, no clone route connected;
+# A gates are discipline only, B schemas are fake contracts,
+# executed_here is false; weights download, GPU inference,
+# platform accounts and keys remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import vidu_live_session_gate as _vidu_live_session_gate  # noqa: E402,F401
+_vidu_live_session_gate.register_vidu_live_session_gate_capabilities_once()
+from . import danmaku_router_gate as _danmaku_router_gate  # noqa: E402,F401
+_danmaku_router_gate.register_danmaku_router_gate_capabilities_once()
+from . import live_gift_vip_gate as _live_gift_vip_gate  # noqa: E402,F401
+_live_gift_vip_gate.register_live_gift_vip_gate_capabilities_once()
+from . import live_action_priority_gate as _live_action_priority_gate  # noqa: E402,F401
+_live_action_priority_gate.register_live_action_priority_gate_capabilities_once()
+from . import omnivoice_live_wire_note as _omnivoice_live_wire_note  # noqa: E402,F401
+_omnivoice_live_wire_note.register_omnivoice_live_wire_note_capabilities_once()
+from . import koubo_segment_discipline_gate as _koubo_segment_discipline_gate  # noqa: E402,F401
+_koubo_segment_discipline_gate.register_koubo_segment_discipline_gate_capabilities_once()
+from . import vidu_live_session_schema as _vidu_live_session_schema  # noqa: E402,F401
+_vidu_live_session_schema.register_vidu_live_session_schema_capabilities_once()
+from . import danmaku_route_schema as _danmaku_route_schema  # noqa: E402,F401
+_danmaku_route_schema.register_danmaku_route_schema_capabilities_once()
+from . import live_gift_batch_schema as _live_gift_batch_schema  # noqa: E402,F401
+_live_gift_batch_schema.register_live_gift_batch_schema_capabilities_once()
+from . import live_stage_contract as _live_stage_contract  # noqa: E402,F401
+_live_stage_contract.register_live_stage_contract_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

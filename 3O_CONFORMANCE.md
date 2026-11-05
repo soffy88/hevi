@@ -421,3 +421,17 @@ stay canonical, `layer` is the only new axis.
   shared JSON (476 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 476. No
   renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (cyber-xiaoya-live, 2026-11-05):
+  476 -> 486 registered names (6 oskill discipline gates:
+  Vidu live session, danmaku router, live gift/VIP, live
+  action priority, OmniVoice live wiring note, koubo
+  segmentation discipline; 4 obase fake contracts: Vidu live
+  session schema, danmaku route schema, live gift batch
+  schema, live stage contract), landing on top of the
+  VibeVoice graft. Layer attribution JSON and the generated
+  table were extended through
+  `scripts/ci/gen_layer_attribution.py` from the shared JSON
+  (486 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 486. No
+  renames; the rename/alias migration plan is unchanged.
