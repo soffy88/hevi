@@ -395,3 +395,16 @@ stay canonical, `layer` is the only new axis.
   (461 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 461. No
   renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (Infinite Creation delta2, 2026-11-05):
+  461 -> 468 registered names (5 oskill discipline gates:
+  code-film category coverage, custom style admission, agent
+  runtime definition, reference media numbering, voice chain
+  discipline; 2 obase fake contracts: external runtime
+  configuration schema, code-film generation record schema),
+  landing on top of the shotcraft workbench/capture delta.
+  Layer attribution JSON and the generated table were extended
+  through `scripts/ci/gen_layer_attribution.py` from the
+  shared JSON (468 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 468. No
+  renames; the rename/alias migration plan is unchanged.

@@ -1648,6 +1648,32 @@ _workbench_manifest_schema.register_workbench_manifest_schema_capabilities_once(
 from . import capture_kit_schema as _capture_kit_schema  # noqa: E402,F401
 _capture_kit_schema.register_capture_kit_schema_capabilities_once()
 
+
+# Infinite Creation delta2 (see INFINITE_CREATION_ATTRIBUTION.md):
+# qa.codefilm_category_coverage_gate, qa.custom_style_admission_gate,
+# qa.agent_runtime_definition_gate, qa.reference_media_numbering_gate,
+# qa.voice_chain_discipline_gate, video.external_runtime_config_schema,
+# video.codefilm_generation_record_schema
+# (clean-room method only; no SKILL/STYLE/workflow text or code copied;
+# no weights, no referral or key material; clone_voice never connected;
+# A gates are discipline only, B schemas are fake contracts,
+# executed_here is false; real-machine execution remains a separate case).
+# Appended at the tail only; earlier registrations untouched.
+from . import codefilm_category_coverage_gate as _codefilm_category_coverage_gate  # noqa: E402,F401
+_codefilm_category_coverage_gate.register_codefilm_category_coverage_gate_capabilities_once()
+from . import custom_style_admission_gate as _custom_style_admission_gate  # noqa: E402,F401
+_custom_style_admission_gate.register_custom_style_admission_gate_capabilities_once()
+from . import agent_runtime_definition_gate as _agent_runtime_definition_gate  # noqa: E402,F401
+_agent_runtime_definition_gate.register_agent_runtime_definition_gate_capabilities_once()
+from . import reference_media_numbering_gate as _reference_media_numbering_gate  # noqa: E402,F401
+_reference_media_numbering_gate.register_reference_media_numbering_gate_capabilities_once()
+from . import voice_chain_discipline_gate as _voice_chain_discipline_gate  # noqa: E402,F401
+_voice_chain_discipline_gate.register_voice_chain_discipline_gate_capabilities_once()
+from . import external_runtime_config_schema as _external_runtime_config_schema  # noqa: E402,F401
+_external_runtime_config_schema.register_external_runtime_config_schema_capabilities_once()
+from . import codefilm_generation_record_schema as _codefilm_generation_record_schema  # noqa: E402,F401
+_codefilm_generation_record_schema.register_codefilm_generation_record_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
