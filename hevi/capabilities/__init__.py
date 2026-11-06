@@ -1778,6 +1778,48 @@ _palette_table_schema.register_palette_table_schema_capabilities_once()
 from . import character_sheet_schema as _character_sheet_schema  # noqa: E402,F401
 _character_sheet_schema.register_character_sheet_schema_capabilities_once()
 
+# ChrisHKAI-Video creator-intro graft (see CHRISHKAI_VIDEO_ATTRIBUTION.md):
+# qa.creator_story_gate, qa.vinyl_toy_identity_gate,
+# qa.toy_clearance_gate, qa.creator_pacing_gate,
+# qa.creator_color_legibility_gate, qa.film_ledger_difference_gate,
+# qa.creator_intro_review_gate, qa.story_text_probe_gate,
+# qa.third_party_portrait_authorization_gate,
+# video.vinyl_toy_character_schema, video.creator_intro_film_schema,
+# video.platform_safe_zone_schema, video.blender_cycles_render_schema
+# (clean-room method only, own words; no upstream code, no toy.json or
+# image assets, no demo creator material, no lemo sample audio, no
+# example films, no Grok account, no X login, no Blender render, no
+# voice/TTS/clone route added — none exists upstream; A gates are
+# discipline only, B schemas are fake contracts, executed_here is false;
+# real Blender render on a GPU and Grok/X access remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import creator_story_gate as _creator_story_gate  # noqa: E402,F401
+_creator_story_gate.register_creator_story_gate_capabilities_once()
+from . import vinyl_toy_identity_gate as _vinyl_toy_identity_gate  # noqa: E402,F401
+_vinyl_toy_identity_gate.register_vinyl_toy_identity_gate_capabilities_once()
+from . import toy_clearance_gate as _toy_clearance_gate  # noqa: E402,F401
+_toy_clearance_gate.register_toy_clearance_gate_capabilities_once()
+from . import creator_pacing_gate as _creator_pacing_gate  # noqa: E402,F401
+_creator_pacing_gate.register_creator_pacing_gate_capabilities_once()
+from . import creator_color_legibility_gate as _creator_color_legibility_gate  # noqa: E402,F401
+_creator_color_legibility_gate.register_creator_color_legibility_gate_capabilities_once()
+from . import film_ledger_difference_gate as _film_ledger_difference_gate  # noqa: E402,F401
+_film_ledger_difference_gate.register_film_ledger_difference_gate_capabilities_once()
+from . import creator_intro_review_gate as _creator_intro_review_gate  # noqa: E402,F401
+_creator_intro_review_gate.register_creator_intro_review_gate_capabilities_once()
+from . import story_text_probe_gate as _story_text_probe_gate  # noqa: E402,F401
+_story_text_probe_gate.register_story_text_probe_gate_capabilities_once()
+from . import third_party_portrait_authorization_gate as _third_party_portrait_authorization_gate  # noqa: E402,F401
+_third_party_portrait_authorization_gate.register_third_party_portrait_authorization_gate_capabilities_once()
+from . import vinyl_toy_character_schema as _vinyl_toy_character_schema  # noqa: E402,F401
+_vinyl_toy_character_schema.register_vinyl_toy_character_schema_capabilities_once()
+from . import creator_intro_film_schema as _creator_intro_film_schema  # noqa: E402,F401
+_creator_intro_film_schema.register_creator_intro_film_schema_capabilities_once()
+from . import platform_safe_zone_schema as _platform_safe_zone_schema  # noqa: E402,F401
+_platform_safe_zone_schema.register_platform_safe_zone_schema_capabilities_once()
+from . import blender_cycles_render_schema as _blender_cycles_render_schema  # noqa: E402,F401
+_blender_cycles_render_schema.register_blender_cycles_render_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

@@ -453,3 +453,25 @@ stay canonical, `layer` is the only new axis.
   shared JSON (499 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 499. No
   renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (ChrisHKAI-Video creator-intro, 2026-11-06):
+  499 -> 512 registered names (9 oskill discipline gates:
+  creator story, vinyl toy identity, toy clearance, creator
+  pacing, creator color legibility, film ledger difference,
+  creator intro review, story text probe, third-party
+  portrait authorization; 4 obase fake contracts: vinyl toy
+  character schema, creator intro film schema, platform safe
+  zone schema, Blender Cycles render schema), landing on top
+  of the Eian short-film workflow graft. Method restated in
+  own words; no upstream code, no toy.json or image assets,
+  no demo creator material, no lemo sample audio, no example
+  films, no Grok account, no X login, no Blender render, no
+  voice/TTS/clone route added (none exists upstream). The
+  portrait authorization gate fills the upstream identity
+  gap (no identity check of its own) and connects to
+  `qa.portrait_consent_gate`. Layer attribution JSON and the
+  generated table were extended through
+  `scripts/ci/gen_layer_attribution.py` from the shared JSON
+  (512 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 512. No
+  renames; the rename/alias migration plan is unchanged.
