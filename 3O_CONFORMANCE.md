@@ -435,3 +435,21 @@ stay canonical, `layer` is the only new axis.
   (486 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 486. No
   renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (Eian short-film workflow, 2026-11-06):
+  486 -> 499 registered names (9 oskill discipline gates:
+  story five standards, shotlist six rules, first/last-frame
+  checks, seven-section prompt, model error table, blind
+  review, final-film review, paid-generation economy,
+  reference-frame measurement; 4 obase fake contracts:
+  Seedance task schema, four-thread contract, palette table
+  schema, character sheet schema), landing on top of the
+  cyber-xiaoya-live graft. Method restated in own words; no
+  article prompt text copied, no ARK/Seedance key, no Codex
+  account or quota, no author case numbers stated as
+  verified facts, four-thread mapping only. Layer
+  attribution JSON and the generated table were extended
+  through `scripts/ci/gen_layer_attribution.py` from the
+  shared JSON (499 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 499. No
+  renames; the rename/alias migration plan is unchanged.

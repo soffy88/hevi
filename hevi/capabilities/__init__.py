@@ -1736,6 +1736,48 @@ _live_gift_batch_schema.register_live_gift_batch_schema_capabilities_once()
 from . import live_stage_contract as _live_stage_contract  # noqa: E402,F401
 _live_stage_contract.register_live_stage_contract_capabilities_once()
 
+# Eian short-film workflow graft (see EIAN_WORKFLOW_ATTRIBUTION.md):
+# qa.story_five_standard_gate, qa.shotlist_six_rule_gate,
+# qa.first_last_frame_check_gate, qa.seven_section_prompt_gate,
+# qa.model_error_table_gate, qa.blind_review_gate,
+# qa.final_film_review_gate, qa.paid_generation_economy_gate,
+# qa.reference_frame_measure_gate, video.seedance_task_schema,
+# video.four_thread_contract, video.palette_table_schema,
+# video.character_sheet_schema
+# (clean-room method only, own words; no article prompt text
+# copied, no ARK/Seedance key, no Codex account or quota, no
+# author case numbers stated as verified facts, four-thread
+# mapping only, never equivalence; A gates are discipline
+# only, B schemas are fake contracts, executed_here is false;
+# real Seedance/Codex calls and keys remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import story_five_standard_gate as _story_five_standard_gate  # noqa: E402,F401
+_story_five_standard_gate.register_story_five_standard_gate_capabilities_once()
+from . import shotlist_six_rule_gate as _shotlist_six_rule_gate  # noqa: E402,F401
+_shotlist_six_rule_gate.register_shotlist_six_rule_gate_capabilities_once()
+from . import first_last_frame_check_gate as _first_last_frame_check_gate  # noqa: E402,F401
+_first_last_frame_check_gate.register_first_last_frame_check_gate_capabilities_once()
+from . import seven_section_prompt_gate as _seven_section_prompt_gate  # noqa: E402,F401
+_seven_section_prompt_gate.register_seven_section_prompt_gate_capabilities_once()
+from . import model_error_table_gate as _model_error_table_gate  # noqa: E402,F401
+_model_error_table_gate.register_model_error_table_gate_capabilities_once()
+from . import blind_review_gate as _blind_review_gate  # noqa: E402,F401
+_blind_review_gate.register_blind_review_gate_capabilities_once()
+from . import final_film_review_gate as _final_film_review_gate  # noqa: E402,F401
+_final_film_review_gate.register_final_film_review_gate_capabilities_once()
+from . import paid_generation_economy_gate as _paid_generation_economy_gate  # noqa: E402,F401
+_paid_generation_economy_gate.register_paid_generation_economy_gate_capabilities_once()
+from . import reference_frame_measure_gate as _reference_frame_measure_gate  # noqa: E402,F401
+_reference_frame_measure_gate.register_reference_frame_measure_gate_capabilities_once()
+from . import seedance_task_schema as _seedance_task_schema  # noqa: E402,F401
+_seedance_task_schema.register_seedance_task_schema_capabilities_once()
+from . import four_thread_contract as _four_thread_contract  # noqa: E402,F401
+_four_thread_contract.register_four_thread_contract_capabilities_once()
+from . import palette_table_schema as _palette_table_schema  # noqa: E402,F401
+_palette_table_schema.register_palette_table_schema_capabilities_once()
+from . import character_sheet_schema as _character_sheet_schema  # noqa: E402,F401
+_character_sheet_schema.register_character_sheet_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
