@@ -475,3 +475,26 @@ stay canonical, `layer` is the only new axis.
   (512 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 512. No
   renames; the rename/alias migration plan is unchanged.
+
+- Registry growth (dance MV methodology, 2026-11-06):
+  512 -> 529 registered names (12 oskill discipline gates:
+  music structure, reference roles, asset/prop ledger, genre
+  grammar, action chain, time window and rotation budget,
+  physical camera, camera sync, transitions, H3 prompt,
+  generation review, MV pack format; 5 obase fake contracts:
+  segment card schema, action chain schema, camera shot
+  schema, transition table schema, MV prompt pack schema),
+  landing on top of the ChrisHKAI graft. Method restated in own
+  words; no Rev.1.4 C-chain text or numbers, none invented
+  (the five cited sources were not found); no article
+  paragraphs copied; article self-reported results not
+  stated as hevi-verified; hevi camera catalogues not
+  equated with the article's 13 physical paths; six-section
+  format is the house format only. A1/A2 are the
+  music-timing and reference-role increments Eian A1/A2 do
+  not cover, not duplicates. Layer attribution JSON and the
+  generated table were extended through
+  `scripts/ci/gen_layer_attribution.py` from the shared JSON
+  (529 entries); the conformance scope count in
+  `tests/test_3o_conformance.py` was updated to 529. No renames; the rename/alias migration plan
+  is unchanged.

@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(512 capabilities, one entry each, no "unclassified" remainder).
+(529 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -201,7 +201,19 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.creator_story_gate': {"layer": 'oskill', "reason": 'Story-first discipline gate: person before event, three directions with hook/payoff and one recommended, numbers sourced and dated, no invented turning points (ChrisHKAI creator-intro method)', "file": 'hevi/capabilities/creator_story_gate.py'},
     'qa.critic_review': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/critic_review.py'},
     'qa.custom_style_admission_gate': {"layer": 'oskill', "reason": 'discipline gate: custom styles need base, overrides and source; built-in claims need a named index', "file": 'hevi/capabilities/custom_style_admission_gate.py'},
+    'qa.dance_action_chain_gate': {"layer": 'oskill', "reason": 'discipline gate: three layers, ten chain facts, five linking steps, entry/exit states; library codes refused', "file": 'hevi/capabilities/dance_action_chain_gate.py'},
     'qa.dance_action_events': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/dance_action_events.py'},
+    'qa.dance_asset_prop_ledger_gate': {"layer": 'oskill', "reason": 'discipline gate: one source and changeable/unchangeable facts per asset, full record per prop, nothing appears undeclared', "file": 'hevi/capabilities/dance_asset_prop_ledger_gate.py'},
+    'qa.dance_camera_physical_gate': {"layer": 'oskill', "reason": 'discipline gate: eight physical facts per shot, real distance, no angle numbers except the true overhead preset, no abstract effect names', "file": 'hevi/capabilities/dance_camera_physical_gate.py'},
+    'qa.dance_camera_sync_gate': {"layer": 'oskill', "reason": 'discipline gate: camera and body start, peak and recover together on one clock, frame in place before any hero accent', "file": 'hevi/capabilities/dance_camera_sync_gate.py'},
+    'qa.dance_generation_review_gate': {"layer": 'oskill', "reason": 'discipline gate: sixteen-point pre-generation checklist, ten dimensions scored 1-5, seven-layer failure diagnosis, symptom-to-fix records, no vague acceptance', "file": 'hevi/capabilities/dance_generation_review_gate.py'},
+    'qa.dance_genre_grammar_gate': {"layer": 'oskill', "reason": 'discipline gate: one main genre from a closed twelve-genre vocabulary, declared fusion with a motive, every move inside a declared genre', "file": 'hevi/capabilities/dance_genre_grammar_gate.py'},
+    'qa.dance_h3_prompt_gate': {"layer": 'oskill', "reason": 'discipline gate: exactly the six house sections, one supplied audio used unchanged, one timecode basis, spoken words separated from dance, no library codes', "file": 'hevi/capabilities/dance_h3_prompt_gate.py'},
+    'qa.dance_music_structure_gate': {"layer": 'oskill', "reason": 'discipline gate: BPM-derived beat/bar/phrase, first downbeat offset, verified cuts manifest authority, one timecode basis only', "file": 'hevi/capabilities/dance_music_structure_gate.py'},
+    'qa.dance_mv_pack_format_gate': {"layer": 'oskill', "reason": 'discipline gate: one complete document, nine sections in order, every segment framed with its complete prompt, every boundary covered', "file": 'hevi/capabilities/dance_mv_pack_format_gate.py'},
+    'qa.dance_reference_role_gate': {"layer": 'oskill', "reason": 'discipline gate: four-picture modern / three-picture classical / single-picture templates, one authority per picture, stated conflict priority', "file": 'hevi/capabilities/dance_reference_role_gate.py'},
+    'qa.dance_time_window_gate': {"layer": 'oskill', "reason": 'discipline gate: per-band action capacity, hero techniques in their own window, at most two complete turns with support foot, axis and brake', "file": 'hevi/capabilities/dance_time_window_gate.py'},
+    'qa.dance_transition_gate': {"layer": 'oskill', "reason": 'discipline gate: eleven mechanisms in a closed vocabulary, one per boundary with a visible hook, designed climax and ending, dissolves and flashes sparing', "file": 'hevi/capabilities/dance_transition_gate.py'},
     'qa.danmaku_router_gate': {"layer": 'oskill', "reason": 'discipline gate: priority queue, batch limit 1..14, command confirm/dismiss, drop words and speaker-side banned words, reply interval and at most 2 replies per round; third-party collectors must declare risk', "file": 'hevi/capabilities/danmaku_router_gate.py'},
     'qa.decision_log': {"layer": 'obase', "reason": '外部适配/横切或数据资产/持久化存储（SPEC §3/§7）', "file": 'hevi/capabilities/decision_log.py'},
     'qa.degradation_ledger': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/degradation_ledger.py'},
@@ -472,6 +484,11 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.codefilm_generation_record_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake generation record schema, executed_here false, nothing rendered', "file": 'hevi/capabilities/codefilm_generation_record_schema.py'},
     'video.confirmed_text_overlay': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/confirmed_text_overlay.py'},
     'video.creator_intro_film_schema': {"layer": 'obase', "reason": 'Fake contract: creator intro film, template/theme/story/segments/sound, six-step flow, 16:9 or 9:16; no key, no render', "file": 'hevi/capabilities/creator_intro_film_schema.py'},
+    'video.dance_action_chain_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake dance action chain schema, three layers, five steps, plain language only, library codes refused, executed_here false', "file": 'hevi/capabilities/dance_action_chain_schema.py'},
+    'video.dance_camera_shot_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake dance camera shot schema, physical camera facts, framing before hero, executed_here false', "file": 'hevi/capabilities/dance_camera_shot_schema.py'},
+    'video.dance_mv_prompt_pack_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake dance MV prompt pack schema, nine sections in order, segments minus one boundaries, executed_here false', "file": 'hevi/capabilities/dance_mv_prompt_pack_schema.py'},
+    'video.dance_segment_card_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake dance segment card schema, place in song, audio, in/out cameras, must-land actions, executed_here false', "file": 'hevi/capabilities/dance_segment_card_schema.py'},
+    'video.dance_transition_table_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake dance transition table schema, one entry per boundary, eleven-mechanism closed vocabulary, executed_here false', "file": 'hevi/capabilities/dance_transition_table_schema.py'},
     'video.danmaku_route_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake danmaku route schema, executed_here false, no collector connected', "file": 'hevi/capabilities/danmaku_route_schema.py'},
     'video.draft_task_ledger': {"layer": 'obase', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/draft_task_ledger.py'},
     'video.edit_plan_compiler': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/edit_plan_compiler.py'},

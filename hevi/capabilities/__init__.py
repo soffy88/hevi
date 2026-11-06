@@ -1820,6 +1820,61 @@ _platform_safe_zone_schema.register_platform_safe_zone_schema_capabilities_once(
 from . import blender_cycles_render_schema as _blender_cycles_render_schema  # noqa: E402,F401
 _blender_cycles_render_schema.register_blender_cycles_render_schema_capabilities_once()
 
+# Dance MV methodology graft (see DANCE_MV_METHODOLOGY_ATTRIBUTION.md):
+# qa.dance_music_structure_gate, qa.dance_reference_role_gate,
+# qa.dance_asset_prop_ledger_gate, qa.dance_genre_grammar_gate,
+# qa.dance_action_chain_gate, qa.dance_time_window_gate,
+# qa.dance_camera_physical_gate, qa.dance_camera_sync_gate,
+# qa.dance_transition_gate, qa.dance_h3_prompt_gate,
+# qa.dance_generation_review_gate, qa.dance_mv_pack_format_gate,
+# video.dance_segment_card_schema, video.dance_action_chain_schema,
+# video.dance_camera_shot_schema, video.dance_transition_table_schema,
+# video.dance_mv_prompt_pack_schema
+# (clean-room method only, own words; no Rev.1.4 C-chain text or
+# numbers, none invented; no article paragraphs copied; article
+# self-reported results not stated as hevi-verified; hevi camera
+# catalogues not equated with the article's 13 physical paths;
+# six-section format is the house format only; A gates are
+# discipline only, B schemas are fake contracts, executed_here
+# is false; H3 real execution and GPU inference remain separate
+# cases. A1/A2 are the music-timing and reference-role increments
+# Eian A1/A2 do not cover, not duplicates.)
+# Appended at the tail only; earlier registrations untouched.
+from . import dance_music_structure_gate as _dance_music_structure_gate  # noqa: E402,F401
+_dance_music_structure_gate.register_dance_music_structure_gate_capabilities_once()
+from . import dance_reference_role_gate as _dance_reference_role_gate  # noqa: E402,F401
+_dance_reference_role_gate.register_dance_reference_role_gate_capabilities_once()
+from . import dance_asset_prop_ledger_gate as _dance_asset_prop_ledger_gate  # noqa: E402,F401
+_dance_asset_prop_ledger_gate.register_dance_asset_prop_ledger_gate_capabilities_once()
+from . import dance_genre_grammar_gate as _dance_genre_grammar_gate  # noqa: E402,F401
+_dance_genre_grammar_gate.register_dance_genre_grammar_gate_capabilities_once()
+from . import dance_action_chain_gate as _dance_action_chain_gate  # noqa: E402,F401
+_dance_action_chain_gate.register_dance_action_chain_gate_capabilities_once()
+from . import dance_time_window_gate as _dance_time_window_gate  # noqa: E402,F401
+_dance_time_window_gate.register_dance_time_window_gate_capabilities_once()
+from . import dance_camera_physical_gate as _dance_camera_physical_gate  # noqa: E402,F401
+_dance_camera_physical_gate.register_dance_camera_physical_gate_capabilities_once()
+from . import dance_camera_sync_gate as _dance_camera_sync_gate  # noqa: E402,F401
+_dance_camera_sync_gate.register_dance_camera_sync_gate_capabilities_once()
+from . import dance_transition_gate as _dance_transition_gate  # noqa: E402,F401
+_dance_transition_gate.register_dance_transition_gate_capabilities_once()
+from . import dance_h3_prompt_gate as _dance_h3_prompt_gate  # noqa: E402,F401
+_dance_h3_prompt_gate.register_dance_h3_prompt_gate_capabilities_once()
+from . import dance_generation_review_gate as _dance_generation_review_gate  # noqa: E402,F401
+_dance_generation_review_gate.register_dance_generation_review_gate_capabilities_once()
+from . import dance_mv_pack_format_gate as _dance_mv_pack_format_gate  # noqa: E402,F401
+_dance_mv_pack_format_gate.register_dance_mv_pack_format_gate_capabilities_once()
+from . import dance_segment_card_schema as _dance_segment_card_schema  # noqa: E402,F401
+_dance_segment_card_schema.register_dance_segment_card_schema_capabilities_once()
+from . import dance_action_chain_schema as _dance_action_chain_schema  # noqa: E402,F401
+_dance_action_chain_schema.register_dance_action_chain_schema_capabilities_once()
+from . import dance_camera_shot_schema as _dance_camera_shot_schema  # noqa: E402,F401
+_dance_camera_shot_schema.register_dance_camera_shot_schema_capabilities_once()
+from . import dance_transition_table_schema as _dance_transition_table_schema  # noqa: E402,F401
+_dance_transition_table_schema.register_dance_transition_table_schema_capabilities_once()
+from . import dance_mv_prompt_pack_schema as _dance_mv_prompt_pack_schema  # noqa: E402,F401
+_dance_mv_prompt_pack_schema.register_dance_mv_prompt_pack_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
