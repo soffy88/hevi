@@ -17,7 +17,12 @@ from hevi.production.artifacts import (
     verify_local_manifest,
     verify_production_artifact,
 )
-from hevi.layer4_legacy.zerolines.oprim_impl.specs import ZERO_LINES, resolve_engine
+from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
+    ZERO_LINES,
+    generate_broll_queries,
+    generate_script_lines,
+    resolve_engine,
+)
 from hevi.studio.kit import explainer_cues_from_text, storygraph_extract, tongjian_l0
 
 TARGETS = ("explainer", "tongjian", "shortdrama")
@@ -287,13 +292,24 @@ def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
     """Map a Studio order onto the zero-line request (inputs only, nothing invented)."""
     raw_lines = _slot(order, "script_lines") or order.get("script_lines") or []
     texts = _texts_from_order({"script_lines": raw_lines})
+    topic = str(_slot(order, "topic") or "")
+    lang = str(_slot(order, "language") or "zh")
+    if not texts and topic and line_id == "kinetic_promo":
+        texts = list(generate_script_lines(topic, lang=lang))
+    queries = _slot(order, "queries") or _slot(order, "broll_queries") or []
+    if not queries and line_id in {"kinetic_promo", "avatar_spokesperson"}:
+        from hevi.layer4_legacy.zerolines.oprim_impl.specs import LINE_SPECS
+
+        spec = LINE_SPECS.get(line_id)
+        if spec and "queries" in spec.inputs and (topic or texts):
+            queries = list(generate_broll_queries(topic or (texts[0] if texts else ""), tuple(texts), lang=lang))
     return {
         "line_id": line_id,
         "texts": texts,
-        "queries": _slot(order, "queries") or _slot(order, "broll_queries") or [],
-        "topic": str(_slot(order, "topic") or ""),
+        "queries": queries,
+        "topic": topic,
         "title": str(_slot(order, "title") or ""),
-        "lang": str(_slot(order, "language") or "zh"),
+        "lang": lang,
         "media_path": str(_slot(order, "media_path") or _slot(order, "reference_path") or _slot(order, "source") or ""),
         "offsets": _slot(order, "offsets") or [],
         "labels": _slot(order, "labels") or [],

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 import wave
@@ -132,38 +133,84 @@ def _pexels_key() -> str:
     return key
 
 
+def _urlopen_with_retry(req, *, timeout=20, attempts=6, backoff=2.0):
+    last = None
+    for i in range(attempts):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout)
+        except Exception as exc:  # network / auth: retry with backoff
+            last = exc
+            if i < attempts - 1:
+                time.sleep(backoff * (2 ** i))
+    raise last
+
+
 def pexels(query: str, *, orientation: str = "landscape", min_d: float = 4, exclude: set[int] | None = None) -> dict[str, Any]:
     """Download one Pexels clip (free licence); returns provenance incl. local path.
     ``exclude`` = clip ids already used in this film (no shot is repeated)."""
-    q = urllib.parse.quote(query)
-    req = urllib.request.Request(
-        f"https://api.pexels.com/videos/search?query={q}&per_page=15&orientation={orientation}",
-        headers={"Authorization": _pexels_key(), "User-Agent": "hevi-zerolines"},
-    )
-    try:
-        data = json.load(urllib.request.urlopen(req, timeout=20))
-    except Exception as exc:  # network / auth: surface, never substitute
-        raise ZeroMediaError(f"pexels search failed for {query!r}: {exc}") from exc
+    import time as _time
+    key = _pexels_key()
+    # try the query, then a shortened fallback
+    search_terms = [query]
+    words = query.split()
+    if len(words) > 2:
+        search_terms.append(" ".join(words[:2]))
+    data = None
+    last_exc = None
+    for term in search_terms:
+        cache_key = hashlib.sha256(f"{term}|{orientation}".encode()).hexdigest()[:16]
+        cache_path = CACHE / f"pexels_search_{cache_key}.json"
+        if cache_path.exists():
+            try:
+                data = json.loads(cache_path.read_text())
+                break
+            except Exception:
+                data = None
+        q = urllib.parse.quote(term)
+        req = urllib.request.Request(
+            f"https://api.pexels.com/videos/search?query={q}&per_page=15&orientation={orientation}",
+            headers={"Authorization": key, "User-Agent": "hevi-zerolines"},
+        )
+        try:
+            with _urlopen_with_retry(req, timeout=20, attempts=6, backoff=2.0) as resp:
+                data = json.load(resp)
+            CACHE.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps(data))
+            break
+        except Exception as exc:
+            last_exc = exc
+            data = None
+    if data is None:
+        raise ZeroMediaError(f"pexels search failed for {query!r}: {last_exc}")
     vids = [v for v in data.get("videos", []) if v.get("duration", 0) >= min_d and v["id"] not in (exclude or set())]
     if not vids:
         raise ZeroMediaError(f"pexels: no usable clip for {query!r}")
+    # relevance: prefer videos whose duration is closest to a sane 6-12s
+    vids.sort(key=lambda v: abs((v.get("duration") or 0) - 8))
     v = vids[0]
-    key = "width" if orientation == "landscape" else "height"
-    files = [f for f in v["video_files"] if f.get(key) and 1000 <= f[key] <= 2000 and f.get("file_type") == "video/mp4"]
-    files = files or sorted(v["video_files"], key=lambda f: -(f.get(key) or 0))
+    keydim = "width" if orientation == "landscape" else "height"
+    files = [f for f in v["video_files"] if f.get(keydim) and 1000 <= f[keydim] <= 2000 and f.get("file_type") == "video/mp4"]
+    files = files or sorted(v["video_files"], key=lambda f: -(f.get(keydim) or 0))
     f = files[0]
     CACHE.mkdir(parents=True, exist_ok=True)
     path = CACHE / f"pexels_{v['id']}_{f.get('width')}x{f.get('height')}.mp4"
     if not path.exists():
         part = path.with_suffix(".part")
-        try:
-            dreq = urllib.request.Request(f["link"], headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(dreq, timeout=180) as r, open(part, "wb") as o:
-                o.write(r.read())
-        except Exception as exc:
-            part.unlink(missing_ok=True)
-            raise ZeroMediaError(f"pexels download failed for {query!r}: {exc}") from exc
-        part.rename(path)
+        ok = False
+        for i in range(3):
+            try:
+                dreq = urllib.request.Request(f["link"], headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(dreq, timeout=180) as r, open(part, "wb") as o:
+                    o.write(r.read())
+                part.rename(path)
+                ok = True
+                break
+            except Exception as exc:
+                part.unlink(missing_ok=True)
+                last_exc = exc
+                _time.sleep(1.0 * (2 ** i))
+        if not ok:
+            raise ZeroMediaError(f"pexels download failed for {query!r}: {last_exc}")
     if exclude is not None:
         exclude.add(v["id"])
     return {"source": "pexels", "query": query, "pexels_id": v["id"], "page": v.get("url"),
@@ -239,12 +286,20 @@ def rms_envelope(wav: Path, fps: int) -> np.ndarray:
     return rms_from_pcm(np.frombuffer(raw, np.int16).astype(np.float32) / 32768, fps=fps, sr=16000)
 
 
+_WHISPER_CACHE: dict[str, Any] = {}
+
+
 def whisper_segments(src: str | Path, lang: str) -> list[dict[str, Any]]:
     if not Path(WHISPER_MODEL).exists():
         raise ZeroMediaError(f"whisper model missing: {WHISPER_MODEL} (set HEVI_WHISPER_MODEL)")
     from faster_whisper import WhisperModel
 
-    m = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8", cpu_threads=int(os.environ.get("HEVI_ZERO_WHISPER_THREADS", "4")))
+    cache_key = f"{WHISPER_MODEL}:{os.environ.get('HEVI_ZERO_WHISPER_THREADS','4')}"
+    m = _WHISPER_CACHE.get(cache_key)
+    if m is None:
+        m = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8",
+                         cpu_threads=int(os.environ.get("HEVI_ZERO_WHISPER_THREADS", "2")))
+        _WHISPER_CACHE[cache_key] = m
     segs, _ = m.transcribe(str(src), language=lang, word_timestamps=True, vad_filter=True)
     out = [{"start": s.start, "end": s.end, "text": s.text.strip(),
             "words": [(w.start, w.end, w.word) for w in (s.words or [])]} for s in segs]

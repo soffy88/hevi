@@ -18,7 +18,12 @@ from typing import Any
 
 from hevi.layer4_legacy.zerolines.omodul_impl._lines import PRODUCERS
 from hevi.layer4_legacy.zerolines.omodul_impl._media import ZeroMediaError, contact_sheet, measure
-from hevi.layer4_legacy.zerolines.oprim_impl.specs import ZeroLineRequest, spec_for
+from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
+    ZeroLineRequest,
+    generate_broll_queries,
+    generate_script_lines,
+    spec_for,
+)
 
 _enabled_pillars = {"report", "cost", "decision_trail"}
 
@@ -32,13 +37,31 @@ def request_from_input(input_data: dict[str, Any]) -> ZeroLineRequest:
             raw = [raw]
         return tuple(raw)
 
+    line_id = str(input_data.get("line_id") or "")
+    topic = str(input_data.get("topic") or "")
+    lang = str(input_data.get("lang") or "zh")
+    texts_raw = tup("texts")
+    texts = tuple(str(t).strip() for t in texts_raw) if texts_raw else ()
+    if not texts and topic and line_id == "kinetic_promo":
+        texts = generate_script_lines(topic, lang=lang)
+    queries_raw = tup("queries")
+    queries = tuple(str(q).strip() for q in queries_raw) if queries_raw else ()
+    spec = None
+    try:
+        spec = spec_for(line_id)
+    except KeyError:
+        spec = None
+    needs_queries = bool(spec and "queries" in spec.inputs)
+    auto_query_lines = {"kinetic_promo", "avatar_spokesperson"}
+    if needs_queries and not queries and line_id in auto_query_lines and (topic or texts):
+        queries = generate_broll_queries(topic or (texts[0] if texts else ""), texts, lang=lang)
     return ZeroLineRequest(
-        line_id=str(input_data.get("line_id") or ""),
-        texts=tuple(str(t).strip() for t in tup("texts")),
-        queries=tuple(str(q).strip() for q in tup("queries")),
-        topic=str(input_data.get("topic") or ""),
+        line_id=line_id,
+        texts=texts,
+        queries=queries,
+        topic=topic,
         title=str(input_data.get("title") or ""),
-        lang=str(input_data.get("lang") or "zh"),
+        lang=lang,
         media_path=str(input_data.get("media_path") or ""),
         offsets=tuple(float(o) for o in tup("offsets")),
         labels=tuple(str(x) for x in tup("labels")),

@@ -182,6 +182,81 @@ def resolve_engine(*, line_id: str, slot_engine: Any = None, env_engine: Any = N
     return chosen
 
 
+def generate_script_lines(topic: str, *, lang: str = "zh", n: int = 4) -> tuple[str, ...]:
+    """Deterministic per-topic narration fallback (line-agnostic skeleton).
+
+    Used when a request supplies only a topic.  Each line is short enough to
+    keep TTS durations sane and distinct enough to avoid template copy.
+    """
+    topic = (topic or "").strip()
+    if not topic:
+        return ()
+    if lang == "en":
+        base = [
+            f"Today we explore {topic}.",
+            "First, what it is and why it matters.",
+            "Then, one concrete detail worth remembering.",
+            "Finally, a takeaway you can use right away.",
+        ]
+    else:
+        base = [
+            f"今天，我们聊聊{topic}。",
+            "先说它是什么，以及为什么值得关注。",
+            "再看一个值得记住的具体细节。",
+            "最后，给你一个可以立刻用上的结论。",
+        ]
+    return tuple(base[: max(1, n)])
+
+
+def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str = "zh") -> tuple[str, ...]:
+    """Derive English b-roll queries from subject + scene + action.
+
+    Subject/scene keywords are mapped to English stock-search terms; the result
+    is de-duplicated and padded to ``len(texts)`` (or 4) entries.
+    """
+    t = (topic or "").strip()
+    low = t.lower()
+    subject = "nature scene"
+    scene = "cinematic"
+    # subject mapping
+    if "橘猫" in t or "橙猫" in t or "orange cat" in low or "tabby" in low:
+        subject = "orange tabby cat"
+    elif "猫" in t or "cat" in low:
+        subject = "cat"
+    elif "狗" in t or "dog" in low:
+        subject = "dog"
+    # scene mapping
+    if "海" in t or "ocean" in low or "sea" in low or "beach" in low:
+        scene = "beach ocean waves"
+    elif "山" in t or "mountain" in low:
+        scene = "mountain landscape"
+    elif "城市" in t or "city" in low:
+        scene = "city skyline"
+    elif "火" in t or "fire" in low:
+        scene = "fire flames"
+    candidates = [
+        f"{subject} {scene}",
+        f"{subject} {scene} close up",
+        f"{subject} looking at {scene.split()[0]}",
+        f"{scene} wide shot",
+        f"{subject} portrait",
+    ]
+    # de-dupe while preserving order
+    seen: set[str] = set()
+    out: list[str] = []
+    for q in candidates:
+        if q not in seen:
+            seen.add(q)
+            out.append(q)
+    target = max(4, len(texts) or 0)
+    # pad with numbered variants if needed
+    i = 0
+    while len(out) < target:
+        out.append(f"{subject} {scene} {i + 1}")
+        i += 1
+    return tuple(out[:target])
+
+
 def spec_for(line_id: str) -> ZeroLineSpec:
     try:
         return LINE_SPECS[line_id]
