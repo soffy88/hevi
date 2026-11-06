@@ -436,7 +436,7 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
         )
 
     if line_id == "documentary_montage":
-        visual_type = "stock_broll"
+        visual_type = "voiceover"
     elif line_id in avatar_lines:
         visual_type = "heygen_avatar"
     else:
@@ -681,7 +681,7 @@ async def _render_manim_line(order: dict[str, Any], output_dir: Path) -> dict[st
 
 
 async def _render_character_animation_line(
-    *, order: dict[str, Any], context: dict[str, Any], output_dir: Path
+    order: dict[str, Any], output_dir: Path
 ) -> dict[str, Any]:
     """Render a real SVG skeletal character animation driven by CMU mocap.
 
@@ -738,7 +738,7 @@ async def _render_character_animation_line(
         )
     manifest, quality = await _verified_video_manifest([(path, True, "character_animation")])
     return {
-        "status": "SUCCEEDED",
+        "status": "completed",
         "target": "character_animation",
         "line_id": str(order.get("line_id") or ""),
         "result_video_path": str(manifest.primary_path() or path),
@@ -818,7 +818,7 @@ async def _render_longvideo_line(order: dict[str, Any], output_dir: Path) -> dic
 
 
 async def _render_handdraw_line(
-    *, order: dict[str, Any], context: dict[str, Any], output_dir: Path
+    order: dict[str, Any], output_dir: Path
 ) -> dict[str, Any]:
     """Render a real path-based hand-drawn explainer video with continuous narration."""
     from hevi.layer4_legacy.handdraw.line import render_handdraw_line
