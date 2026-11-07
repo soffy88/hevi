@@ -257,6 +257,9 @@ _shotcraft.register_shotcraft_capabilities_once()
 from . import talking_head as _talking_head  # noqa: E402,F401
 _talking_head.register_talking_head_capabilities_once()
 
+from . import koubo_cut as _koubo_cut  # noqa: E402,F401
+_koubo_cut.register_koubo_cut_capabilities_once()
+
 # Paradigm normalization (2026-10-25): the five grafted story helpers
 # (story.shot_chain / story.reference_bundle / story.canvas_workflow /
 # story.novel_import / story.narration_srt) plus the drama-50 report
