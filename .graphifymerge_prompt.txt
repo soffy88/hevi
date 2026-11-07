@@ -1,0 +1,5 @@
+任务（用户已批准）：把 feat/graphify-3o 合并进主库并启用 VEYA_GRAPHIFY。中文报告。先读 ~/projects/hevi/GRAPHIFY_3O.md 了解背景。
+1) 3O 四库（/data/soffy/projects/platform/3O 下 obase oprim oskill omodul，分支 feat/graphify-3o，worktree /tmp/g3o/<库>）：主工作区检出别的分支且很脏，绝不 checkout/stash/reset 主工作区。用临时 worktree（/tmp/m3o/<库>，检出 main；若 main 已被某 worktree 检出就在那个 worktree 里做，前提是它干净）执行 git merge --no-ff feat/graphify-3o，冲突逐项解决（注册表 __init__/manifest/_ELEMENT_MAP/__all__ 取并集），跑新元素测试和相关已有测试，通过后提交。不 push。
+2) Veya：~/projects/veya 若在 main 且 tracked 文件干净，合并 feat/graphify-3o（worktree ~/projects/veya-graphify，tip 358c0322），--no-ff；否则用临时 worktree。若 veya 以子模块引用 3O 各库，把 gitlink 更新到步骤 1 的合并提交（确认该提交在子模块仓库里可达）。跑 graphify 相关测试和 tool_registry 相关测试。冲突或测试失败则 merge --abort 并报告，不要硬合。
+3) 启用：在生产配置中设置 VEYA_GRAPHIFY=1（找 ~/.config/veya/ 下 backend 的 env 文件），用标准命令 export HOME=/home/soffy; bash ~/.config/veya/backend-up.sh --force-recreate 重启，并确认 graphify 在容器/进程可用的 PATH 上、图谱 graph.json 路径可读；验证工具数从 162 变 165，并实际调用一次 graphify 查询工具。若重启失败，回滚 env 并重启恢复，报告原因。
+4) 禁止虚报：报告列每个合并 commit hash、测试输出摘要、重启后验证结果。同一问题卡住超过两次就停下说明。写 ~/projects/hevi/GRAPHIFY_MERGE.md，末行 GRAPHIFY_MERGE DONE。

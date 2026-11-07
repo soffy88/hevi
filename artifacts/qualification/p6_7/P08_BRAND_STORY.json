@@ -28,7 +28,10 @@
   "product_type": "P06_NARRATIVE_FILM",
   "profile": "P08_BRAND_STORY",
   "provider": {
-    "credentials_present": [],
+    "credentials_present": [
+      "OPENAI_API_KEY",
+      "DASHSCOPE_API_KEY"
+    ],
     "gpu_available": false,
     "mock_used": false,
     "real_render_qualification": "BLOCKED_BY_PROVIDER",

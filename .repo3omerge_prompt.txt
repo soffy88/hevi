@@ -1,0 +1,8 @@
+任务：把 /data/soffy/projects/platform/3O 下 obase oprim oskill omodul 四个仓库的 feat/repo3o-intake 分支合并进各自 main（主工作区 /data/soffy/projects/platform/3O/<库>）。不 push。
+主工作区有大量未提交改动，oprim 还有未解决冲突(UU)，这些是用户已有工作，必须保留：
+1) 先备份：对每个库，git status 存到 ~/projects/hevi/.repo3o_backup/<库>/status.txt；git diff HEAD > tracked.patch；未跟踪文件 tar 打包；git stash create 得到的 hash 也记下。
+2) oprim 的 UU 冲突：逐个看冲突文件，结合双方内容合理解决（保留双方功能，不能简单丢弃一方），git add 标记解决；若这是进行中的 merge/rebase/cherry-pick，判断后正确完成或保持状态并说明。跑相关测试证明没坏。
+3) 确认主工作区当前分支；若不是 main，记录并在 main 上合并要先说明理由（优先：在当前检出分支就是 main 时直接合；否则用 git stash -u 保存→切 main→合并→切回→stash pop，确保改动原样恢复）。合并用 git merge --no-ff feat/repo3o-intake；有冲突合理解决。合并后用户原有未提交改动必须仍在（对比备份的 status）。
+4) 在每个主工作区跑 repo3o 新测试（tests/test_kokoro_runtime.py test_embedding_gemma.py、oprim 5 个、oskill 8 个、omodul 4 个），PYTHONPATH 指向四个主工作区，贴真实 pytest 末行。
+5) 合并成功后删除 *-repo3o worktree（git worktree remove），保留分支。
+6) 写 ~/projects/hevi/REPO_3O_MERGE.md：每库 合并 commit hash、冲突及处理、oprim UU 怎么解决的、测试末行、未提交改动是否完整保留，只写实测。末行 REPO3O_MERGE DONE。卡住同一问题两次就停手写报告，宁可不合也不要破坏用户改动。

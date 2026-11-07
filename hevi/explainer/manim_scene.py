@@ -51,6 +51,8 @@ async def attach_manim_scenes(
     remotion_public: Path | None = None,
     width: int = 1920,
     height: int = 1080,
+    quality: str | None = None,
+    fps: int | None = None,
 ) -> list[ExplainerCue]:
     """给 manim_scene cue 渲 mp4 并写入 visual_config.assetUrl。
 
@@ -63,6 +65,12 @@ async def attach_manim_scenes(
                 cue.visual_type = "voiceover"
         return cues
     generate = renderer or manim_generate
+    # CPU 预览可传 quality="low", fps=15;不传则沿用 provider 默认,兼容旧 renderer 签名。
+    extra: dict[str, Any] = {}
+    if quality:
+        extra["quality"] = quality
+    if fps:
+        extra["fps"] = int(fps)
     for index, cue in enumerate(cues, start=1):
         if cue.visual_type != "manim_scene":
             continue
@@ -80,6 +88,7 @@ async def attach_manim_scenes(
                 width=width,
                 height=height,
                 code=code,
+                **extra,
             )
         except Exception as exc:
             logger.warning("manim_scene cue %s 渲染失败,降级 voiceover: %s", index, exc)

@@ -1,0 +1,13 @@
+任务：Gloom 强项 3O 内化第三轮——必须真实实现。上一轮执行者虚报：helios worktree 没有任何新提交、oprim/oservi 等只有骨架、报告里的行情与持仓数值是编造的。本轮任何编造都会被我逐项复核发现。中文写报告。
+位置：~/projects/gloom3o/{obase,oprim,oskill,omodul,oservi,helios}，分支 feat/gloom-3o（已存在，在此继续提交）。规范 /data/soffy/projects/platform/3O/HELIOS_3O_SPEC_v3_0.md。Gloomberb 源码 /tmp/gloomberb（没有就 git clone --depth 1 https://github.com/gloom-sh/gloomberb），MIT，借鉴处注明出处。
+网络：ubuntu26 直连 Deribit/OKX 不通。Helios 用 HTTP_PROXY=http://proxy:2080（docker 网络内）。先找出宿主机可用的代理端口（docker ps / docker port proxy 容器，或 docker run --network 同网络），把可用代理写进 ~/projects/gloom3o/NET.md；适配器通过 HTTPS_PROXY 环境变量走代理。
+逐项实现（每项完成后立刻 commit，再做下一项）：
+ a. oprim Kelly/风控：离散/连续/分数 Kelly、上限截断、VaR/CVaR（历史+参数）、最大回撤、相关矩阵；≥8 个测试含边界。
+ b. obase Deribit+OKX 期权公共适配器（超时/重试/缓存）+ oprim 期权指标（按到期 OI、max pain、PCR、ATM IV、25d skew、GEX 近似）；单测用固定样本，另有 integration 测试真实联网，把真实返回摘要写入 ~/projects/gloom3o/evidence/options_live.json（含抓取时间戳）。
+ c. oservi 命令解析与分发：QUOTE/DES/GP/OPX/KELLY/RISK/PORT/FUSION/HELP，CLI 入口；≥10 个测试。
+ d. 插件注册：manifest schema 校验、发现 ~/projects/helios-* 模块、依赖/版本检查；测试。
+ e. oskill 自然语言→命令路由（无 LLM key 走规则降级）+ oservi MCP server（mcp python SDK，tools 对应上述能力）；测试含一次真实 MCP tools/list 调用。
+ f. OKX v5 只读签名适配（balance/positions，严禁下单接口），无 key 降级；签名用官方文档测试向量单测。
+ g. Helios 接入：在 ~/projects/gloom3o/helios 新增 /api/gloom/* 路由（options、commands、risk、plugins），开关默认关，不改现有 Fusion Score；pytest 用 FastAPI TestClient 调用并通过；能本地起实例就起（不碰生产容器）并把真实响应存 evidence/api_*.json。
+铁律：所有数值样例必须来自真实运行并存进 evidence/ 文件；做不到就写“未完成+原因”，不准写示例值。不 push、不合并、不重启生产容器、不动各仓主工作区。同一问题卡两次就跳过记原因。
+最后写 ~/projects/hevi/GLOOM_3O_R3.md：每项列 commit hash、新增文件与行数(wc -l)、pytest 原始输出最后一行、evidence 文件路径、未完成项。最后一行 G3O3_DONE。

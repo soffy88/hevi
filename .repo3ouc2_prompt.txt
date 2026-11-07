@@ -1,0 +1,6 @@
+接续 ~/projects/hevi/REPO_3O_UNCOMMITTED.md（先读它和 ~/projects/hevi/.repo3ouc_prompt.txt）。工作目录 /data/soffy/projects/platform/3O，main 受保护只能走 PR，禁止 --force、不改保护规则。
+1) 合并 obase PR #16、oservi PR #3：确认 CI 绿、无冲突后用 gh pr merge 合并；有冲突就在其分支上合入最新 origin/main 解决再合。
+2) oskill：基于最新 origin/main 建分支 chore/uncommitted-review-2026-10-19（/tmp/review3o/oskill 可复用）。把主工作区改动分两类：实质改动（新元素、算法、协议、测试、bug 修复）和纯格式化/重排。实质改动按主题拆提交开 PR；纯格式化单独开一个 PR（只在与仓库 ruff 配置一致时才做，否则丢弃并在报告中注明）。与 origin/main 冲突要理解后合并，不覆盖 main 上的新代码。跑全量测试对比基线，零新增失败、改动完整才合并；否则只开 PR 写原因。
+3) omodul：同样处理（17 改+56 未跟踪），零新增失败才合并。
+4) 全部合并后：各库本地 main 快进到 origin/main。主工作区：再备份一次，若其改动已完全入库（内容一致），把它切回干净的 main；不一致的保持原样并列出差异。
+5) 更新 ~/projects/hevi/REPO_3O_UNCOMMITTED.md，追加“第二轮”章节：每库 PR 号/是否合并/提交 hash/测试真实末行与基线对比/主工作区最终状态。只写实测。末行打印 UNCOMMITTED2 DONE。

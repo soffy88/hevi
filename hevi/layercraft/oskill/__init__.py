@@ -1,0 +1,1 @@
+"""oskill: pure functions."""

@@ -31,6 +31,7 @@ SKILL_DIRS = (
     "story-to-film",
     "writing-market-research",
     "motion-canvas",
+    "pixel-diary",
 )
 
 _HOST_DIRS = {

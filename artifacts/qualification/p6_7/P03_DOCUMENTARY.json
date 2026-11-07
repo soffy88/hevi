@@ -27,7 +27,10 @@
   "product_type": "P05_DOCUMENTARY",
   "profile": "P03_DOCUMENTARY",
   "provider": {
-    "credentials_present": [],
+    "credentials_present": [
+      "OPENAI_API_KEY",
+      "DASHSCOPE_API_KEY"
+    ],
     "gpu_available": false,
     "mock_used": false,
     "real_render_qualification": "BLOCKED_BY_PROVIDER",

@@ -1,0 +1,170 @@
+{
+ "schema": "hevi.motioncanvas.script/v1",
+ "size": [
+  960,
+  540
+ ],
+ "fps": 30,
+ "background": "#101418",
+ "objects": [
+  {
+   "id": "title",
+   "type": "text",
+   "text": "逐行讲解：求和函数",
+   "x": 0,
+   "y": -210,
+   "fontSize": 34,
+   "hidden": true
+  },
+  {
+   "id": "code",
+   "type": "code",
+   "language": "js",
+   "fontSize": 26,
+   "x": -120,
+   "y": 10,
+   "code": "function sum(list) {\n  let total = 0;\n  for (const n of list) {\n    total += n;\n  }\n  return total;\n}"
+  },
+  {
+   "id": "marker",
+   "type": "rect",
+   "width": 18,
+   "height": 18,
+   "radius": 9,
+   "fill": "#e13238",
+   "x": -330,
+   "y": -88
+  },
+  {
+   "id": "note",
+   "type": "text",
+   "text": "",
+   "x": 300,
+   "y": 180,
+   "fontSize": 24,
+   "fill": "#ffd166"
+  }
+ ],
+ "timeline": [
+  {
+   "op": "show",
+   "target": "title",
+   "duration": 0.4
+  },
+  {
+   "op": "parallel",
+   "steps": [
+    {
+     "op": "highlight",
+     "target": "code",
+     "lines": 1,
+     "duration": 0.3
+    },
+    {
+     "op": "text",
+     "target": "note",
+     "text": "定义函数",
+     "duration": 0.3
+    }
+   ]
+  },
+  {
+   "op": "wait",
+   "duration": 0.5
+  },
+  {
+   "op": "parallel",
+   "steps": [
+    {
+     "op": "highlight",
+     "target": "code",
+     "lines": 2,
+     "duration": 0.3
+    },
+    {
+     "op": "move",
+     "target": "marker",
+     "y": -57,
+     "duration": 0.3
+    },
+    {
+     "op": "text",
+     "target": "note",
+     "text": "累加器置 0",
+     "duration": 0.3
+    }
+   ]
+  },
+  {
+   "op": "wait",
+   "duration": 0.5
+  },
+  {
+   "op": "parallel",
+   "steps": [
+    {
+     "op": "highlight",
+     "target": "code",
+     "lines": [
+      3,
+      5
+     ],
+     "duration": 0.3
+    },
+    {
+     "op": "move",
+     "target": "marker",
+     "y": 6,
+     "duration": 0.3
+    },
+    {
+     "op": "text",
+     "target": "note",
+     "text": "遍历并累加",
+     "duration": 0.3
+    }
+   ]
+  },
+  {
+   "op": "wait",
+   "duration": 0.6
+  },
+  {
+   "op": "parallel",
+   "steps": [
+    {
+     "op": "highlight",
+     "target": "code",
+     "lines": 6,
+     "duration": 0.3
+    },
+    {
+     "op": "move",
+     "target": "marker",
+     "y": 70,
+     "duration": 0.3
+    },
+    {
+     "op": "text",
+     "target": "note",
+     "text": "返回结果",
+     "duration": 0.3
+    }
+   ]
+  },
+  {
+   "op": "wait",
+   "duration": 0.5
+  },
+  {
+   "op": "highlight",
+   "target": "code",
+   "lines": null,
+   "duration": 0.3
+  },
+  {
+   "op": "wait",
+   "duration": 1.0
+  }
+ ]
+}

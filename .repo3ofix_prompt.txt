@@ -1,0 +1,7 @@
+你在 /data/soffy/projects/platform/3O 下的 5 个 worktree（obase-repo3o oprim-repo3o oskill-repo3o omodul-repo3o oservi-repo3o，分支 feat/repo3o-intake）修复 repo3o 内化的真实问题。规范：../HELIOS_3O_SPEC_v3_0.md、3O_MEDUSA_IMPLEMENTATION_SPEC.md。绝不碰主工作区 obase/ oprim/ 等目录，不 push，不合并 main。
+核验发现（真实 pytest 结果）：
+1) oprim：tests/test_synthesize_speech_chunk.py::test_success_with_runtime 失败 ModuleNotFoundError。修好。
+2) oprim/oskill：新元素 _crop_video_to_portrait _multimodal_embed _synthesize_speech_chunk _vector_cosine_search _whisper_transcribe 以及 oskill 8 个新元素都没登记进包的元素表/__init__/manifest（入库未完成）。按该库现有登记方式（如 oprim/__init__.py 的 _ELEMENT_MAP、__all__、manifest）登记，并用 python -c "from oprim import X" 证明可导入。
+3) omodul：4 个新测试全部 collection error。原因可能是依赖的 oprim/oskill 新元素来自主工作区安装版本。用 PYTHONPATH 指向各 *-repo3o worktree 跑，修到全部通过。
+4) oservi：没有任何 repo3o 元素（只有无关 baseline 提交）。按规范判断是否需要 oservi 元素（如研究/播客/短视频服务编排）；需要则实现+测试+登记，不需要则在报告说明理由。
+每项修完 commit 到 feat/repo3o-intake。最后用 PYTHONPATH=obase-repo3o:oprim-repo3o:oskill-repo3o:omodul-repo3o:oservi-repo3o 在各 worktree 跑全部 repo3o 新测试，把真实 pytest 末行、导入验证输出、commit hash 原样贴进 ~/projects/hevi/REPO_3O_IMPL.md（覆盖重写，只写实测结果），末行 REPO3O_IMPL DONE。

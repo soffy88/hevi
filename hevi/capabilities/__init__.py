@@ -218,17 +218,7 @@ from . import expression_rig as _expression_rig  # noqa: E402,F401
 _expression_rig.register_expression_rig_capabilities_once()
 
 # Generic data-driven three.js scenes (scene3d.generic): JSON scene + CatmullRom camera path; presets are templates.
-# Guarded (2026-11-03): the render engine hevi/scene3d/generic/ is still
-# untracked in-flight work, so this adapter module is absent from HEAD.
-# Importing hevi.capabilities must not fail for that reason: when the
-# module is absent the capability simply stays unregistered (no phantom
-# capability, no silent pass). When the module is present (e.g. the
-# production container graft, byte-identical file) it registers as before.
-# No gate references scene3d.generic (grep, 2026-11-03); nothing else to guard.
-try:
-    from . import scene3d_generic as _scene3d_generic  # noqa: E402,F401
-except ImportError:
-    _scene3d_generic = None  # noqa: F401
+from . import scene3d_generic as _scene3d_generic  # noqa: E402,F401
 
 
 # Pre-generation gate suite (preflight.*): prompt audit, first-frame check,

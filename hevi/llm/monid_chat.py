@@ -180,7 +180,8 @@ def chat_sync(
 # ---------------------------------------------------------------------------
 # Novel pipeline kinds: llm_fn(prompt, kind) -> str
 # (kinds from hevi.novelpipeline.core: book_outline | chapter_body |
-#  expand | shrink | summary | continue_setup)
+#  expand | shrink | summary | continue_setup | repair | segment_expand |
+#  segment_dialogue | segment_continue)
 # ---------------------------------------------------------------------------
 
 _KIND_SPECS: dict[str, tuple[str, int, float]] = {
@@ -205,6 +206,10 @@ _KIND_SPECS: dict[str, tuple[str, int, float]] = {
         4096,
         0.7,
     ),
+    "repair": ("你是长篇小说编辑。只输出修订后的完整正文，不要解释。", 4096, 0.7),
+    "segment_expand": ("你是长篇小说编辑。只输出本段正文，不要解释。", 4096, 0.7),
+    "segment_dialogue": ("你是长篇小说编辑。只输出改成对话后的本段正文，不要解释。", 4096, 0.7),
+    "segment_continue": ("你是长篇小说编辑。只输出续写的新增部分，不要重复原文，不要解释。", 4096, 0.7),
     "shrink": (
         "你是长篇小说编辑。只输出缩减后的完整正文，不要解释。",
         4096,

@@ -1,0 +1,9 @@
+任务：审查并处理 /data/soffy/projects/platform/3O 下 obase oprim oskill omodul（以及 oservi，如有）主工作区里的未提交改动。背景见 ~/projects/hevi/REPO_3O_PUSH.md（各库 main 已经 PR 合入并与 origin/main 一致；main 受保护，只能走 PR）。
+步骤（每个库）：
+1) 先完整备份：git diff/ git diff --cached 输出 patch，未跟踪文件打 tar，放 ~/projects/hevi/.repo3o_backup/uncommitted-2026-10-19/<库>/。
+2) 逐项审查改动：读 diff，判断属于哪个功能/是否完整/是否只是生成物（日志、缓存、临时文件、.pyc、构建产物）。生成物不提交，加入 .gitignore 合理的才加，不删除任何文件。
+3) 有价值的改动按主题拆成清晰的提交，放到基于最新 origin/main 的新分支 chore/uncommitted-review-2026-10-19（用 /tmp/review3o/<库> 的 worktree 操作，把改动应用过去；冲突要理解后合并保留双方）。不要 reset/checkout/stash 主工作区，主工作区保持原样。
+4) 修复改动里明显的 bug、残缺 import、冲突标记；跑相关测试和全量测试，与 origin/main 基线对比，不得新增失败。
+5) 推分支，开 PR（gh），零新增失败且改动完整的就合并 PR；不完整/有风险/半成品的只开 PR 不合并并写明原因。禁止 --force，不改分支保护。
+6) 合并后：本地 main 快进到 origin/main。主工作区若改动已全部入库，可在确认内容与入库版本一致后再让主工作区切回 main 干净状态（先再备份一次）；不一致就保持原样。
+7) 写 ~/projects/hevi/REPO_3O_UNCOMMITTED.md：每库 改动清单、判定（提交/忽略/保留）、提交 hash、PR 号与是否合并、测试真实末行+基线对比、主工作区最终状态。只写实测。末行打印 UNCOMMITTED DONE。

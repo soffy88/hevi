@@ -24,6 +24,8 @@ RECIPES: tuple[str, ...] = (
     "number_line",
     "axes_plot",
     "comparison",
+    "derivation",
+    "curve_plot",
 )
 THEMES: tuple[str, ...] = ("3b1b", "light")
 ENGINES: tuple[str, ...] = ("ce", "gl")
@@ -54,6 +56,11 @@ class ManimSceneIR:
     theme: str = "3b1b"
     scene_name: str = "HeviScene"
     use_mathtex: bool = False
+    # 板书:derivation 逐步推导(TransformMatchingTex);curve_plot 画函数曲线。
+    steps: list[str] = field(default_factory=list)
+    func: str = ""
+    x_range: list[float] = field(default_factory=lambda: [-3.0, 3.0])
+    y_range: list[float] = field(default_factory=lambda: [-1.5, 1.5])
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -70,6 +77,10 @@ class ManimSceneIR:
             "theme": self.theme,
             "scene_name": self.scene_name,
             "use_mathtex": self.use_mathtex,
+            "steps": list(self.steps),
+            "func": self.func,
+            "x_range": list(self.x_range),
+            "y_range": list(self.y_range),
         }
 
     @staticmethod
@@ -111,7 +122,54 @@ class ManimSceneIR:
             theme=theme,
             scene_name=name,
             use_mathtex=bool(data.get("use_mathtex")),
+            steps=[str(item).strip() for item in (data.get("steps") or []) if str(item).strip()][:8],
+            func=str(data.get("func") or ""),
+            x_range=_pair(data.get("x_range"), [-3.0, 3.0]),
+            y_range=_pair(data.get("y_range"), [-1.5, 1.5]),
         )
+
+
+def _pair(value: Any, default: list[float]) -> list[float]:
+    try:
+        lo, hi = float(value[0]), float(value[1])
+    except (TypeError, ValueError, IndexError, KeyError):
+        return list(default)
+    if not hi > lo or abs(lo) > 1e4 or abs(hi) > 1e4:
+        return list(default)
+    return [lo, hi]
+
+
+_FUNC_NAMES = {
+    "x": "x",
+    "pi": "PI",
+    "e": "np.e",
+    "sin": "np.sin",
+    "cos": "np.cos",
+    "tan": "np.tan",
+    "exp": "np.exp",
+    "sqrt": "np.sqrt",
+    "log": "np.log",
+    "abs": "np.abs",
+}
+_FUNC_CHARS = re.compile(r"^[0-9A-Za-z_\s\.\+\-\*/\(\)\^]+$")
+
+
+def safe_func_expr(expr: str) -> str:
+    """把 ``sin(x)*exp(-x^2)`` 之类白名单表达式转成 numpy 源码;非法返回空串。"""
+    text = (expr or "").strip()
+    if not text or len(text) > 120 or not _FUNC_CHARS.match(text):
+        return ""
+    if "__" in text:
+        return ""
+    names = re.findall(r"[A-Za-z_]+", text)
+    if any(name not in _FUNC_NAMES for name in names):
+        return ""
+    out = re.sub(r"[A-Za-z_]+", lambda m: _FUNC_NAMES[m.group(0)], text).replace("^", "**")
+    try:
+        compile(out, "<func>", "eval")
+    except SyntaxError:
+        return ""
+    return out
 
 
 def _safe_ident(name: str) -> str:
@@ -252,7 +310,40 @@ def _recipe_body(scene: ManimSceneIR, *, token_cls: str, fg: str, accent: str) -
         lines.append(f"        src = {token_cls}({tex!r}, font_size=64, color={fg!r})")
         lines.append(f"        dst = {token_cls}({tex_to!r}, font_size=64, color={accent!r})")
         lines.append(f"        self.play(Write(src), run_time={write_t:.2f})")
-        lines.append(f"        self.play(Transform(src, dst), run_time={hold_t:.2f})")
+        morph = "TransformMatchingTex" if token_cls in {"MathTex", "Tex"} else "Transform"
+        lines.append(f"        self.play({morph}(src, dst), run_time={hold_t:.2f})")
+        return "\n".join(lines) + "\n"
+    if scene.recipe == "derivation":
+        steps = scene.steps or [s for s in (tex, tex_to) if s]
+        step_t = max(min(scene.duration_s * 0.6 / max(len(steps), 1), 1.6), 0.4)
+        morph = "TransformMatchingTex" if token_cls in {"MathTex", "Tex"} else "Transform"
+        lines.append(f"        cur = {token_cls}({steps[0]!r}, font_size=60, color={fg!r})")
+        lines.append(f"        self.play(Write(cur), run_time={write_t:.2f})")
+        for step in steps[1:]:
+            lines.append(f"        nxt = {token_cls}({step!r}, font_size=60, color={fg!r})")
+            lines.append(f"        self.play({morph}(cur, nxt), run_time={step_t:.2f})")
+            lines.append("        cur = nxt")
+        lines.append(f"        self.play(Circumscribe(cur, color={accent!r}), run_time=0.6)")
+        return "\n".join(lines) + "\n"
+    if scene.recipe == "curve_plot":
+        body = safe_func_expr(scene.func) or "np.sin(x)"
+        x0, x1 = scene.x_range
+        y0, y1 = scene.y_range
+        xs = max((x1 - x0) / 6.0, 1e-3)
+        ys = max((y1 - y0) / 4.0, 1e-3)
+        lines.append(
+            f"        axes = Axes(x_range=[{x0:.4g}, {x1:.4g}, {xs:.4g}],"
+            f" y_range=[{y0:.4g}, {y1:.4g}, {ys:.4g}], x_length=9, y_length=4.5,"
+            f" axis_config={{'color': {fg!r}}})"
+        )
+        lines.append("        axes.shift(DOWN * 0.4)")
+        lines.append(f"        curve = axes.plot(lambda x: {body}, color={accent!r})")
+        lines.append("        self.play(Create(axes), run_time=0.8)")
+        lines.append(f"        self.play(Create(curve), run_time={write_t:.2f})")
+        if tex:
+            lines.append(f"        label = {token_cls}({tex!r}, font_size=40, color={accent!r})")
+            lines.append("        label.to_corner(UR)")
+            lines.append("        self.play(Write(label), run_time=0.6)")
         return "\n".join(lines) + "\n"
     if scene.recipe == "list_reveal":
         items = scene.bullets or [tex]

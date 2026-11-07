@@ -1,0 +1,1212 @@
+{
+ "name": "boat_sea_islands",
+ "duration_s": 6,
+ "fps": 24,
+ "resolution": 360,
+ "seed": 7,
+ "prompt": {
+  "subject": "海上的一只小船",
+  "must_have": [
+   "小船",
+   "岛",
+   "树",
+   "海"
+  ],
+  "must_not": [
+   "人物",
+   "文字",
+   "城市"
+  ]
+ },
+ "background": {
+  "type": "gradient",
+  "top": "#5fb6f0",
+  "bottom": "#e3f3ff"
+ },
+ "fog": {
+  "type": "linear",
+  "color": "#d6ecfb",
+  "near": 25,
+  "far": 110
+ },
+ "renderer": {
+  "shadows": true,
+  "tone_mapping": "aces",
+  "exposure": 1.05
+ },
+ "lights": [
+  {
+   "type": "hemisphere",
+   "sky": "#cfe9ff",
+   "ground": "#2d5d7b",
+   "intensity": 1.1
+  },
+  {
+   "type": "directional",
+   "color": "#fff1d6",
+   "intensity": 2.2,
+   "position": [
+    18,
+    26,
+    10
+   ],
+   "cast_shadow": true
+  }
+ ],
+ "objects": [
+  {
+   "id": "sea",
+   "type": "water",
+   "tags": [
+    "海",
+    "sea",
+    "water"
+   ],
+   "params": {
+    "size": 220,
+    "segments": 110
+   },
+   "material": {
+    "color": "#2b7bb0",
+    "roughness": 0.3,
+    "metalness": 0.05,
+    "flat_shading": true
+   }
+  },
+  {
+   "id": "boat",
+   "type": "group",
+   "tags": [
+    "小船",
+    "船",
+    "boat"
+   ],
+   "position": [
+    0,
+    0.15,
+    0
+   ],
+   "rotation": [
+    0,
+    30,
+    0
+   ],
+   "children": [
+    {
+     "id": "hull",
+     "type": "box",
+     "params": {
+      "width": 2.6,
+      "height": 0.55,
+      "depth": 1.1
+     },
+     "material": {
+      "color": "#8b5a2b",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "bow",
+     "type": "cone",
+     "params": {
+      "radius": 0.55,
+      "height": 0.9,
+      "segments": 4
+     },
+     "position": [
+      1.7,
+      0,
+      0
+     ],
+     "rotation": [
+      45,
+      0,
+      -90
+     ],
+     "scale": [
+      1,
+      1,
+      0.7
+     ],
+     "material": {
+      "color": "#8b5a2b",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "deck_stripe",
+     "type": "box",
+     "params": {
+      "width": 2.62,
+      "height": 0.08,
+      "depth": 1.12
+     },
+     "position": [
+      0,
+      0.2,
+      0
+     ],
+     "material": {
+      "color": "#f4f1e8"
+     }
+    },
+    {
+     "id": "cabin",
+     "type": "box",
+     "params": {
+      "width": 0.8,
+      "height": 0.5,
+      "depth": 0.7
+     },
+     "position": [
+      -0.6,
+      0.5,
+      0
+     ],
+     "material": {
+      "color": "#e8483b",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "mast",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.05,
+      "height": 2.6,
+      "segments": 6
+     },
+     "position": [
+      0.35,
+      1.5,
+      0
+     ],
+     "material": {
+      "color": "#5a3a1e"
+     }
+    },
+    {
+     "id": "sail",
+     "type": "plane",
+     "params": {
+      "width": 1.2,
+      "height": 1.8
+     },
+     "position": [
+      0.95,
+      1.65,
+      0
+     ],
+     "material": {
+      "type": "standard",
+      "color": "#fffaf0",
+      "side": "double",
+      "roughness": 1.0
+     }
+    }
+   ],
+   "anim": {
+    "bob": {
+     "amp": 0.12,
+     "freq": 0.45
+    },
+    "rock": {
+     "amp_deg": 5,
+     "freq": 0.35,
+     "axis": "x"
+    }
+   }
+  },
+  {
+   "id": "island_a",
+   "type": "group",
+   "tags": [
+    "岛",
+    "小岛",
+    "island"
+   ],
+   "position": [
+    -11,
+    -0.2,
+    -7
+   ],
+   "children": [
+    {
+     "id": "island_a_sand",
+     "type": "sphere",
+     "params": {
+      "radius": 4.5,
+      "width_segments": 18,
+      "height_segments": 10
+     },
+     "scale": [
+      1,
+      0.22,
+      1
+     ],
+     "material": {
+      "type": "standard",
+      "color": "#e9d7a5",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "island_a_grass",
+     "type": "sphere",
+     "params": {
+      "radius": 3.2399999999999998,
+      "width_segments": 16,
+      "height_segments": 10
+     },
+     "position": [
+      0,
+      0.8099999999999999,
+      0
+     ],
+     "scale": [
+      1,
+      0.3,
+      1
+     ],
+     "material": {
+      "type": "standard",
+      "color": "#6cbf4a",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "island_a_tree0",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      1.14,
+      1.575,
+      1.283
+     ],
+     "children": [
+      {
+       "id": "island_a_tree0_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.23848765884947432,
+        "radius_bottom": 0.3577314882742115,
+        "height": 0.9936985785394764,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.4968492892697382,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_a_tree0_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 1.1924382942473717,
+        "height": 1.7886574413710576,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.68928758351711,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_a_tree0_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.8347068059731602,
+        "height": 1.3911780099552669,
+        "segments": 7
+       },
+       "position": [
+        0,
+        2.5836163042026388,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    },
+    {
+     "id": "island_a_tree1",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      -0.032,
+      1.575,
+      1.003
+     ],
+     "children": [
+      {
+       "id": "island_a_tree1_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.2045450349971837,
+        "radius_bottom": 0.3068175524957756,
+        "height": 0.8522709791549322,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.4261354895774661,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_a_tree1_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 1.0227251749859185,
+        "height": 1.534087762478878,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.4488606645633848,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_a_tree1_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.7159076224901431,
+        "height": 1.193179370816905,
+        "segments": 7
+       },
+       "position": [
+        0,
+        2.215904545802824,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    },
+    {
+     "id": "island_a_tree2",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      -0.926,
+      1.575,
+      -1.301
+     ],
+     "children": [
+      {
+       "id": "island_a_tree2_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.1661368353716174,
+        "radius_bottom": 0.24920525305742605,
+        "height": 0.6922368140484058,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.3461184070242029,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_a_tree2_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 0.8306841768580869,
+        "height": 1.2460262652871303,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.1768025838822898,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_a_tree2_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.5814789238006608,
+        "height": 0.969131539667768,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.799815716525855,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "island_b",
+   "type": "group",
+   "tags": [
+    "岛",
+    "小岛",
+    "island"
+   ],
+   "position": [
+    13,
+    -0.2,
+    -12
+   ],
+   "children": [
+    {
+     "id": "island_b_sand",
+     "type": "sphere",
+     "params": {
+      "radius": 5.5,
+      "width_segments": 18,
+      "height_segments": 10
+     },
+     "scale": [
+      1,
+      0.22,
+      1
+     ],
+     "material": {
+      "type": "standard",
+      "color": "#e9d7a5",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "island_b_grass",
+     "type": "sphere",
+     "params": {
+      "radius": 3.96,
+      "width_segments": 16,
+      "height_segments": 10
+     },
+     "position": [
+      0,
+      0.99,
+      0
+     ],
+     "scale": [
+      1,
+      0.3,
+      1
+     ],
+     "material": {
+      "type": "standard",
+      "color": "#6cbf4a",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "island_b_tree0",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      2.257,
+      1.925,
+      -0.64
+     ],
+     "children": [
+      {
+       "id": "island_b_tree0_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.16210754771449534,
+        "radius_bottom": 0.24316132157174303,
+        "height": 0.675448115477064,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.337724057738532,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree0_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 0.8105377385724767,
+        "height": 1.215806607858715,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.1482617963110087,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree0_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.5673764170007337,
+        "height": 0.9456273616678895,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.7561651002403664,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    },
+    {
+     "id": "island_b_tree1",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      1.781,
+      1.925,
+      1.051
+     ],
+     "children": [
+      {
+       "id": "island_b_tree1_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.23548475881940054,
+        "radius_bottom": 0.3532271382291008,
+        "height": 0.9811864950808356,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.4905932475404178,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree1_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 1.1774237940970027,
+        "height": 1.766135691145504,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.6680170416374205,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree1_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.8241966558679018,
+        "height": 1.3736610931131696,
+        "segments": 7
+       },
+       "position": [
+        0,
+        2.5510848872101723,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    },
+    {
+     "id": "island_b_tree2",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      -0.369,
+      1.925,
+      -0.668
+     ],
+     "children": [
+      {
+       "id": "island_b_tree2_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.22144196989327394,
+        "radius_bottom": 0.33216295483991093,
+        "height": 0.9226748745553082,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.4613374372776541,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree2_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 1.1072098494663698,
+        "height": 1.6608147741995547,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.5685472867440238,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree2_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.7750468946264588,
+        "height": 1.2917448243774314,
+        "segments": 7
+       },
+       "position": [
+        0,
+        2.3989546738438015,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    },
+    {
+     "id": "island_b_tree3",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      -1.127,
+      1.925,
+      -0.894
+     ],
+     "children": [
+      {
+       "id": "island_b_tree3_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.173105349987519,
+        "radius_bottom": 0.2596580249812785,
+        "height": 0.7212722916146626,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.3606361458073313,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree3_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 0.865526749937595,
+        "height": 1.2982901249063927,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.2261628957449262,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_b_tree3_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.6058687249563165,
+        "height": 1.0097812082605275,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.8753079581981227,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "island_c",
+   "type": "group",
+   "tags": [
+    "岛",
+    "小岛",
+    "island"
+   ],
+   "position": [
+    -3,
+    -0.2,
+    -21
+   ],
+   "children": [
+    {
+     "id": "island_c_sand",
+     "type": "sphere",
+     "params": {
+      "radius": 3.5,
+      "width_segments": 18,
+      "height_segments": 10
+     },
+     "scale": [
+      1,
+      0.22,
+      1
+     ],
+     "material": {
+      "type": "standard",
+      "color": "#e9d7a5",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "island_c_grass",
+     "type": "sphere",
+     "params": {
+      "radius": 2.52,
+      "width_segments": 16,
+      "height_segments": 10
+     },
+     "position": [
+      0,
+      0.63,
+      0
+     ],
+     "scale": [
+      1,
+      0.3,
+      1
+     ],
+     "material": {
+      "type": "standard",
+      "color": "#6cbf4a",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "island_c_tree0",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      0.065,
+      1.225,
+      0.855
+     ],
+     "children": [
+      {
+       "id": "island_c_tree0_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.19595515798719257,
+        "radius_bottom": 0.29393273698078887,
+        "height": 0.8164798249466357,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.40823991247331787,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_c_tree0_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 0.9797757899359628,
+        "height": 1.4696636849039444,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.3880157024092807,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_c_tree0_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.685843052955174,
+        "height": 1.14307175492529,
+        "segments": 7
+       },
+       "position": [
+        0,
+        2.122847544861253,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    },
+    {
+     "id": "island_c_tree1",
+     "type": "group",
+     "tags": [
+      "树",
+      "tree"
+     ],
+     "position": [
+      -0.783,
+      1.225,
+      -0.599
+     ],
+     "children": [
+      {
+       "id": "island_c_tree1_trunk",
+       "type": "cylinder",
+       "params": {
+        "radius_top": 0.1630771167978998,
+        "radius_bottom": 0.2446156751968497,
+        "height": 0.6794879866579159,
+        "segments": 7
+       },
+       "position": [
+        0,
+        0.33974399332895794,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#7a4e2d",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_c_tree1_leaf1",
+       "type": "cone",
+       "params": {
+        "radius": 0.815385583989499,
+        "height": 1.2230783759842485,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.155129577318457,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#2f8f4e",
+        "flat_shading": true
+       }
+      },
+      {
+       "id": "island_c_tree1_leaf2",
+       "type": "cone",
+       "params": {
+        "radius": 0.5707699087926493,
+        "height": 0.9512831813210821,
+        "segments": 7
+       },
+       "position": [
+        0,
+        1.7666687653105813,
+        0
+       ],
+       "material": {
+        "type": "standard",
+        "color": "#3fae5e",
+        "flat_shading": true
+       }
+      }
+     ],
+     "anim": {
+      "rock": {
+       "amp_deg": 1.5,
+       "freq": 0.3,
+       "axis": "z"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "sun",
+   "type": "sphere",
+   "params": {
+    "radius": 4
+   },
+   "position": [
+    60,
+    40,
+    -90
+   ],
+   "material": {
+    "type": "basic",
+    "color": "#fff4c2"
+   }
+  }
+ ],
+ "camera": {
+  "aspect": "16:9",
+  "fov": 50,
+  "far": 400,
+  "path": {
+   "points": [
+    [
+     -10.261,
+     11.0,
+     28.191
+    ],
+    [
+     -23.866,
+     9.6,
+     11.129
+    ],
+    [
+     -21.3,
+     8.2,
+     -7.752
+    ],
+    [
+     -8.03,
+     6.8,
+     -17.22
+    ],
+    [
+     5.244,
+     5.4,
+     -14.409
+    ],
+    [
+     10.574,
+     4.0,
+     -4.931
+    ],
+    [
+     7.518,
+     2.6,
+     2.736
+    ]
+   ],
+   "curve": "centripetal",
+   "lookahead": 0.04,
+   "look_at": [
+    0,
+    0.8,
+    -3
+   ],
+   "look_at_blend": 0.8,
+   "ease": "in_out"
+  },
+  "fov_keys": [
+   {
+    "t": 0,
+    "fov": 55
+   },
+   {
+    "t": 6,
+    "fov": 42,
+    "ease": "in_out"
+   }
+  ],
+  "roll_keys": [
+   {
+    "t": 0,
+    "deg": -3
+   },
+   {
+    "t": 3,
+    "deg": 2
+   },
+   {
+    "t": 6,
+    "deg": 0
+   }
+  ]
+ }
+}
