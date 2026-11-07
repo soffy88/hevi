@@ -16,7 +16,7 @@ from hevi.koubo_cut.state import new_ledger, finalize_status
 @dataclass
 class KouboCutConfig:
     seed: int = 42
-    target_seconds: float = 25.0
+    target_seconds: float = 30.0
     width: int = 1080
     height: int = 1920
 
@@ -155,7 +155,7 @@ def _screenshot_evidence(out_dir: Path) -> list[dict]:
     return results
 
 
-def _build_hyperframes_project(out_dir: Path, sentences, words, duration, person_img: Path, audio_path: Path, evidence: list[dict]) -> Path:
+def _build_hyperframes_project(out_dir: Path, sentences, words, duration, avatar_video: Path, audio_path: Path, evidence: list[dict]) -> Path:
     proj = out_dir / "hf_project"
     if proj.exists():
         shutil.rmtree(proj)
@@ -166,8 +166,8 @@ def _build_hyperframes_project(out_dir: Path, sentences, words, duration, person
     gsap_src = Path("/data/soffy/launch-v7/worktree/hevi/riso/assets/vendor/gsap.min.js")
     if gsap_src.is_file():
         shutil.copy2(gsap_src, assets / "gsap.min.js")
-    # person
-    shutil.copy2(person_img, assets / "person.png")
+    # avatar (talking head, lipsync)
+    shutil.copy2(avatar_video, assets / "avatar.mp4")
     # audio
     shutil.copy2(audio_path, assets / "narration.wav")
     # evidence
@@ -185,7 +185,9 @@ def _build_hyperframes_project(out_dir: Path, sentences, words, duration, person
     words_json = _json.dumps(words, ensure_ascii=False)
     sentences_json = _json.dumps(sentences, ensure_ascii=False)
 
-    html = f'''<!doctype html>
+    ev0 = ev_files[0] if len(ev_files) > 0 else None
+    ev1 = ev_files[1] if len(ev_files) > 1 else ev_files[0] if ev_files else None
+    html = f"""<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
@@ -197,25 +199,29 @@ def _build_hyperframes_project(out_dir: Path, sentences, words, duration, person
 html,body{{width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif}}
 #root{{position:relative;width:100%;height:100%}}
 #person{{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover}}
-#pip{{position:absolute;right:40px;bottom:260px;width:260px;height:340px;border:3px solid #fff;border-radius:16px;object-fit:cover;opacity:0;box-shadow:0 8px 24px rgba(0,0,0,.6)}}
-#title{{position:absolute;left:0;right:0;top:18%;text-align:center;font-size:72px;font-weight:800;opacity:0;text-shadow:0 4px 16px #000}}
-#subtitle{{position:absolute;left:60px;right:60px;bottom:140px;text-align:center;font-size:46px;font-weight:700;line-height:1.3;text-shadow:0 2px 10px #000;opacity:0}}
-#card{{position:absolute;left:60px;right:60px;top:12%;background:rgba(15,15,25,.78);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:28px 32px;opacity:0;backdrop-filter:blur(6px)}}
+#pip{{position:absolute;right:40px;bottom:260px;width:260px;height:340px;border:3px solid #fff;border-radius:16px;object-fit:cover;opacity:0;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:5}}
+#title{{position:absolute;left:0;right:0;top:18%;text-align:center;font-size:72px;font-weight:800;opacity:0;text-shadow:0 4px 16px #000;z-index:6}}
+#subtitle{{position:absolute;left:60px;right:60px;bottom:140px;text-align:center;font-size:46px;font-weight:700;line-height:1.3;text-shadow:0 2px 10px #000;opacity:0;z-index:6}}
+#card{{position:absolute;left:60px;right:60px;top:12%;background:rgba(15,15,25,.78);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:28px 32px;opacity:0;backdrop-filter:blur(6px);z-index:4}}
 #cardFunc{{font-size:26px;color:var(--accent);margin-bottom:10px;font-weight:700}}
 #cardText{{font-size:34px;line-height:1.35}}
-#evidence{{width:100%;height:220px;object-fit:cover;border-radius:12px;margin-top:16px;opacity:0}}
+#evfull{{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;z-index:3}}
+#evnote{{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:220px;height:220px;border:6px solid #ff3b30;border-radius:50%;opacity:0;z-index:7;box-shadow:0 0 0 4px rgba(255,59,48,.3)}}
+#evlabel{{position:absolute;left:60px;top:60px;font-size:40px;font-weight:800;color:#ff3b30;opacity:0;z-index:7;text-shadow:0 2px 8px #000}}
 </style>
 </head>
 <body>
 <div id="root" data-composition-id="main" data-start="0" data-duration="{duration:.2f}" data-width="1080" data-height="1920" data-fps="30">
-  <img id="person" class="clip" data-start="0" data-duration="{duration:.2f}" src="assets/person.png" />
-  <img id="pip" class="clip" data-start="0" data-duration="{duration:.2f}" src="assets/person.png" />
+  <video id="person" class="clip" data-start="0" data-duration="{duration:.2f}" src="assets/avatar.mp4" muted playsinline></video>
+  <video id="pip" class="clip" data-start="0" data-duration="{duration:.2f}" src="assets/avatar.mp4" muted playsinline></video>
+  <img id="evfull" class="clip" data-start="0" data-duration="{duration:.2f}" src="{('assets/'+ev0) if ev0 else ''}" />
+  <div id="evlabel" class="clip" data-start="0" data-duration="{duration:.2f}">证据</div>
+  <div id="evnote" class="clip" data-start="0" data-duration="{duration:.2f}"></div>
   <div id="title" class="clip" data-start="0" data-duration="{duration:.2f}">口播精剪</div>
   <div id="subtitle" class="clip" data-start="0" data-duration="{duration:.2f}"></div>
   <div id="card" class="clip" data-start="0" data-duration="{duration:.2f}">
     <div id="cardFunc"></div>
     <div id="cardText"></div>
-    {('<img id="evidence" src="assets/'+first_ev+'" />') if first_ev else ''}
   </div>
   <audio id="aud" class="clip" data-start="0" data-duration="{duration:.2f}" src="assets/narration.wav"></audio>
 </div>
@@ -228,6 +234,9 @@ tl.set("#pip",{{opacity:0}},0);
 tl.set("#title",{{opacity:0}},0);
 tl.set("#subtitle",{{opacity:0}},0);
 tl.set("#card",{{opacity:0}},0);
+tl.set("#evfull",{{opacity:0}},0);
+tl.set("#evnote",{{opacity:0}},0);
+tl.set("#evlabel",{{opacity:0}},0);
 // title
 tl.to("#title",{{opacity:1,duration:0.4}},0.2);
 tl.to("#title",{{opacity:0,duration:0.4}},2.0);
@@ -237,8 +246,23 @@ tl.to("#subtitle",{{opacity:1,duration:0.2}},0.5);
 words.forEach(w=>{{
   tl.call(()=>{{document.getElementById("subtitle").textContent = w.text;}}, null, w.start);
 }});
+// evidence shot helper
+function showEv(imgSrc, st, en){{
+  if(!imgSrc) return;
+  const el = document.getElementById("evfull");
+  el.src = "assets/" + imgSrc;
+  tl.to("#person",{{opacity:0,duration:0.2}}, st);
+  tl.to("#evfull",{{opacity:1,duration:0.2}}, st);
+  tl.to("#evnote",{{opacity:1,duration:0.2}}, st);
+  tl.to("#evlabel",{{opacity:1,duration:0.2}}, st);
+  tl.to("#pip",{{opacity:1,duration:0.2}}, st);
+  tl.to("#person",{{opacity:1,duration:0.2}}, en);
+  tl.to("#evfull",{{opacity:0,duration:0.2}}, en);
+  tl.to("#evnote",{{opacity:0,duration:0.2}}, en);
+  tl.to("#evlabel",{{opacity:0,duration:0.2}}, en);
+}}
 // sentence-driven layout
-sentences.forEach(s=>{{
+sentences.forEach((s, idx)=>{{
   const st = Math.max(0, s.start);
   const en = Math.max(st+0.1, s.end);
   tl.to("#person",{{opacity:0.3,duration:0.2}}, st);
@@ -252,13 +276,17 @@ sentences.forEach(s=>{{
   tl.to("#pip",{{opacity:0,duration:0.2}}, en);
   tl.to("#card",{{opacity:0,duration:0.2}}, en);
 }});
+// force evidence shots: second and fourth sentences
+const evImgs = [{json.dumps(ev0)}, {json.dumps(ev1)}];
+if (sentences.length > 1) showEv(evImgs[0], Math.max(0,sentences[1].start), Math.max(sentences[1].start+2, sentences[1].end));
+if (sentences.length > 3) showEv(evImgs[1], Math.max(0,sentences[3].start), Math.max(sentences[3].start+2, sentences[3].end));
 window.__timelines = window.__timelines || {{}};
 window.__timelines["main"] = tl;
 tl.seek(0);
 </script>
 </body>
 </html>
-'''
+"""
     (proj / "index.html").write_text(html, encoding="utf-8")
     # hyperframes.json
     (proj / "hyperframes.json").write_text(json.dumps({
@@ -331,10 +359,10 @@ def run_koubo_cut(
         evidence = _screenshot_evidence(out)
         ledger["evidence"] = evidence
         evidence_ok = sum(1 for e in evidence if e.get("ok"))
-        # first frame person image
+        # first frame person image (for avatar lipsync input)
         person_img = out / "person.png"
         _extract_first_frame(src, person_img)
-        # duration
+        # duration target ~30s: pad audio with trailing silence if needed
         duration = _ffprobe_duration(src)
         if duration <= 0:
             duration = max((s["end"] for s in sentences), default=cfg.target_seconds)
@@ -342,8 +370,37 @@ def run_koubo_cut(
             ad = _ffprobe_duration(audio_path)
             if ad > 0:
                 duration = ad
+        if duration < cfg.target_seconds:
+            duration = cfg.target_seconds
+        # pad narration audio to target duration
+        padded_audio = out / "audio_padded.wav"
+        ffmpeg = shutil.which("ffmpeg") or "/home/soffy/.local/bin/ffmpeg"
+        subprocess.run(
+            [ffmpeg, "-y", "-i", str(audio_path), "-af", f"apad=pad_dur={max(0.0, duration-_ffprobe_duration(audio_path)):.3f}",
+             "-t", f"{duration:.3f}", "-ar", "16000", "-ac", "1", str(padded_audio)],
+            capture_output=True, check=False,
+        )
+        if padded_audio.is_file() and _ffprobe_duration(padded_audio) > 0:
+            audio_path = padded_audio
+            duration = _ffprobe_duration(audio_path)
+        # talking head lipsync via hevi wav2lip line
+        try:
+            from hevi.layer4_legacy.talkcraft.omodul_impl._avatar import build_avatar_clip
+            from hevi.layer4_legacy.talkcraft.oprim_impl.sync import AvatarSpec
+            avatar_work = out / "avatar_work"
+            avatar_work.mkdir(parents=True, exist_ok=True)
+            spec = AvatarSpec(mode="lipsync", image=str(person_img))
+            avatar_res = build_avatar_clip(spec=spec, voice_wav=audio_path, duration_s=duration,
+                                          work=avatar_work, name="avatar.mp4")
+            avatar_video = avatar_res.clip
+            ledger["avatar"] = {"engine": avatar_res.engine, "lipsync_corr": avatar_res.lipsync_corr,
+                                "frames": avatar_res.frames}
+        except Exception as exc:
+            # fallback: static portrait (honestly recorded)
+            avatar_video = person_img
+            ledger["avatar"] = {"engine": "none-fallback", "error": f"{type(exc).__name__}: {exc}"}
         # hyperframes render
-        proj = _build_hyperframes_project(out, sentences, words, duration, person_img, audio_path, evidence)
+        proj = _build_hyperframes_project(out, sentences, words, duration, avatar_video, audio_path, evidence)
         dst = out / "koubo_cut.mp4"
         _render_hyperframes(proj, dst, duration)
         # fcpxml
