@@ -38,6 +38,8 @@ class UnifiedGenerateConfig(BaseModel):
     emotion_aware_voiceover: bool = False
     locked_shot_list: list[dict[str, Any]] | None = None
     quality_profile: str = "standard"
+    judge: bool = False
+    judge_backend: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
 
 
