@@ -67,7 +67,7 @@ __all__ = [
     "run_talking_head",
 ]
 
-ENGINES = ("wav2lip", "musetalk")
+ENGINES = ("wav2lip", "musetalk", "livliv")
 VOICES = ("soffy", "en_male", "auto")
 
 
@@ -88,6 +88,7 @@ class TalkingHeadConfig:
     max_av_diff_s: float = 0.5
     clip_size: tuple[int, int] = (512, 512)
     audio_remediation: bool = True
+    character_id: str = "d03ft"
 
     def validate(self) -> None:
         if self.engine not in ENGINES:
@@ -231,6 +232,29 @@ def _default_lipsync(
     return final
 
 
+def _default_lipsync_livliv(
+    portrait: Path, voice_wav: Path, duration_s: float, work_dir: Path, engine: str,
+    *, clip_size: tuple[int, int] = (512, 512), character_id: str = "d03ft",
+) -> Path:
+    from hevi.avatar_livliv.render import render_clip
+
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    out = work_dir.parent / "livliv_render"
+    # Never upscale a small render: keep the character at >=720 wide (2:3).
+    lw = max(720, int(clip_size[0]))
+    lh = max(1080, int(round(lw * 1.5)))
+    result = render_clip(
+        character_id, Path(voice_wav), out, fps=30,
+        width=lw, height=lh, duration_s=duration_s,
+    )
+    outputs = result.get("outputs") or {}
+    mp4 = outputs.get("mp4")
+    if not mp4 or not Path(mp4).is_file():
+        raise RuntimeError(f"livliv render produced no mp4: {result}")
+    return Path(mp4)
+
+
 # ---------------------------------------------------------------------------
 # retry helper
 # ---------------------------------------------------------------------------
@@ -358,9 +382,15 @@ def run_talking_head(
 
     # -- 3. lip-sync + mux (one retry) --------------------------------------
     work_dir = out / "work"
-    lipsync = lipsync_fn or (
-        lambda p, w, d, wd, e: _default_lipsync(p, w, d, wd, e, clip_size=cfg.clip_size)
-    )
+    if cfg.engine == "livliv":
+        lipsync = lipsync_fn or (
+            lambda p, w, d, wd, e: _default_lipsync_livliv(
+                p, w, d, wd, e, clip_size=cfg.clip_size, character_id=cfg.character_id)
+        )
+    else:
+        lipsync = lipsync_fn or (
+            lambda p, w, d, wd, e: _default_lipsync(p, w, d, wd, e, clip_size=cfg.clip_size)
+        )
     try:
         final_video = _run_stage_with_retry(
             ledger, "lipsync",

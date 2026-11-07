@@ -59,7 +59,8 @@ class TalkcraftAvatarOption(BaseModel):
     """Optional digital-human picture-in-picture (talkcraft renderer only)."""
 
     mode: Literal["lipsync", "still"] = "lipsync"
-    engine: Literal["wav2lip", "musetalk"] = "wav2lip"  # musetalk: opt-in, ~40x slower
+    engine: Literal["wav2lip", "musetalk", "livliv"] = "wav2lip"  # musetalk: opt-in, ~40x slower
+    character_id: str = "d03ft"  # LivLiv character id when engine=livliv
     image: str | None = None  # local portrait path; omitted -> bundled presenter
     position: Literal["right", "left"] = "right"
 

@@ -21,3 +21,13 @@
 - **完整许可证文本**: `hevi/collage_broll/LICENSE_gbro`
 - **用途**: 半调纸拼贴 B-roll 隐喻/visual-spec/QA 模板复用；视频脚本未采用，不使用 GEMINI_API_KEY。
 - **入库日期**: 2026-11-07
+
+## livliv-player (hevi/avatar_livliv)
+
+- **来源**: https://github.com/livliv-dev/player (Apache-2.0)
+- **许可证**: Apache License 2.0 (代码); 角色另有许可 (个人非商用，署名 "Characters: LivLiv (livliv.ai)"，不得用于训练 AI，保留角落 LivLiv 标记，公开展示注明 AI 制作)
+- **完整许可证文本**: `hevi/avatar_livliv/licenses/LICENSE-player`, `NOTICE-player`
+- **角色许可/署名**: `hevi/avatar_livliv/licenses/CHARACTERS-LICENSE.md`, `CHARACTERS-CREDITS.md`
+- **用途**: 2.5D 角色口型/表演离线渲染器 (Playwright + Chromium 软件 GL)
+- **入库日期**: 2026-11-07
+- **备注**: vendor 只读引用 `/data/soffy/vendor/livliv-player`，不进 hevi git；hevi 内仅构建产物与许可证文件。

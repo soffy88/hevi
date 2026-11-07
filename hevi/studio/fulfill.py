@@ -385,6 +385,80 @@ def _engine_switch(line_id: str, legacy: Any) -> Any:
     return render
 
 
+def _wants_livliv(order: dict[str, Any]) -> bool:
+    """Opt-in LivLiv avatar engine for avatar lines (default path unchanged).
+
+    Slots: ``avatar_engine`` (alias ``lip_sync_engine``) == ``"livliv"`` plus
+    ``character_id``; gated by LIVLIV_CHARACTERS_ENABLED (default true,
+    non-commercial use only). The Studio ``engine`` slot stays reserved for
+    zero/legacy line engines to avoid breaking existing routing.
+    """
+    chosen = _slot(order, "avatar_engine") or _slot(order, "lip_sync_engine") or ""
+    if str(chosen).strip().lower() != "livliv":
+        return False
+    from hevi.avatar_livliv.characters import characters_enabled
+
+    return characters_enabled()
+
+
+async def _render_livliv_avatar_line(
+    order: dict[str, Any], output_dir: Path, *, line_id: str, topic: str, texts: list[str],
+) -> dict[str, Any]:
+    """avatar_spokesperson / talking_head via hevi.talking_head with engine=livliv."""
+    import asyncio
+
+    from hevi.talking_head.pipeline import TalkingHeadConfig, run_talking_head
+
+    character_id = str(_slot(order, "character_id") or "d03ft")
+    script = "\n".join(str(t).strip() for t in texts if str(t).strip()) or topic
+    if not script.strip():
+        return _blocked("LivLiv 头像需要脚本文本", target=str(order.get("target") or "explainer"), line_id=line_id)
+    presenter_image = _slot(order, "image_path") or _slot(order, "presenter_image_path")
+    if presenter_image and Path(str(presenter_image)).is_file():
+        portrait = str(presenter_image)
+    else:
+        # LivLiv needs no portrait pixels; the talking-head preflight still
+        # expects a file, so synthesize a neutral placeholder (honestly logged).
+        portrait_path = output_dir / "livliv_placeholder_portrait.png"
+        import subprocess as _sp
+
+        _sp.run(
+            ["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=0x202030:s=512x512:d=1",
+             "-frames:v", "1", str(portrait_path)],
+            capture_output=True, check=False,
+        )
+        portrait = str(portrait_path)
+    ledger = await asyncio.to_thread(
+        run_talking_head,
+        script_text=script,
+        portrait_path=portrait,
+        out_dir=output_dir / "livliv_talking_head",
+        config=TalkingHeadConfig(engine="livliv", character_id=character_id),
+    )
+    status = str(ledger.get("status") or "")
+    delivered = (ledger.get("deliver") or {}).get("output_video")
+    if status not in ("delivered", "delivered_with_warnings") or not delivered:
+        return _blocked(
+            f"LivLiv 渲染未交付 status={status or 'unknown'}",
+            target=str(order.get("target") or "explainer"), line_id=line_id,
+        )
+    manifest, quality = await _verified_video_manifest(
+        [(Path(str(delivered)), True, "portrait_video")],
+        require_audio=True,
+    )
+    return {
+        "status": "completed",
+        "target": str(order.get("target") or "explainer"),
+        "line_id": line_id,
+        "result_video_path": str(delivered),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "avatar_engine": "livliv",
+        "character_id": character_id,
+        "character_credit": "Characters: LivLiv (livliv.ai)，AI制作",
+    }
+
+
 async def _render_talkcraft_host_line(
     order: dict[str, Any], output_dir: Path, *, line_id: str, topic: str, texts: list[str], image: str | None
 ) -> dict[str, Any]:
@@ -442,6 +516,10 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
     avatar_lines = {"avatar_spokesperson", "talking_head"}
     presenter_image = _slot(order, "image_path") or _slot(order, "presenter_image_path")
     presenter_video = _slot(order, "presenter_video_path")
+    if line_id in avatar_lines and _wants_livliv(order):
+        return await _render_livliv_avatar_line(
+            order, output_dir, line_id=line_id, topic=topic, texts=texts,
+        )
     if line_id in avatar_lines and _wants_talkcraft_host(order):
         return await _render_talkcraft_host_line(
             order, output_dir, line_id=line_id, topic=topic, texts=texts,

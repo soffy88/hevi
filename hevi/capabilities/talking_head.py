@@ -69,13 +69,15 @@ def _render_talking_head(
         raise CapabilityError(f"talking_head.render: portrait not found: {portrait}")
     engine = str(params.get("engine") or "musetalk")
     voice = str(params.get("voice") or "soffy")
+    character_id = str(params.get("character_id") or "d03ft")
+    from hevi.talking_head.pipeline import TalkingHeadConfig
+
     try:
         ledger = run_talking_head(
             script_text=script_text,
             portrait_path=portrait,
             out_dir=out,
-            engine=engine,
-            voice=voice,
+            config=TalkingHeadConfig(engine=engine, voice=voice, character_id=character_id),
         )
     except Exception as exc:
         raise CapabilityError(f"talking_head.render: pipeline failed: {exc}") from exc
@@ -139,8 +141,13 @@ def register_talking_head_capabilities_once() -> list[str]:
                     },
                     "engine": {
                         "type": "string",
-                        "enum": ["wav2lip", "musetalk"],
+                        "enum": ["wav2lip", "musetalk", "livliv"],
                         "default": "musetalk",
+                    },
+                    "character_id": {
+                        "type": "string",
+                        "default": "d03ft",
+                        "description": "LivLiv character id when engine=livliv (e.g. d03ft Nana). Credits: Characters: LivLiv (livliv.ai), AI制作",
                     },
                     "voice": {
                         "type": "string",
@@ -156,7 +163,7 @@ def register_talking_head_capabilities_once() -> list[str]:
             description=(
                 "Talking-head presenter line (local, zero-fee): one portrait "
                 "plus one script in, one lip-synced MP4 out via LuxTTS "
-                "narration, wav2lip/musetalk lip-sync, and whisper/earshot/"
+                "narration, wav2lip/musetalk/livliv lip-sync, and whisper/earshot/"
                 "visual gates with a job-state.json ledger. A failed "
                 "pipeline raises instead of returning a fake success."
             ),

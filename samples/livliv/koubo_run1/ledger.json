@@ -1,0 +1,38 @@
+{
+  "line": "koubo_cut",
+  "seed": 42,
+  "out_dir": "samples/livliv/koubo_run1",
+  "status": "delivered",
+  "input": "samples/livliv/d03ft/clip.mp4",
+  "transcript": {
+    "sentences": 8,
+    "words": 111
+  },
+  "evidence": [
+    {
+      "name": "github",
+      "url": "https://github.com",
+      "ok": true,
+      "path": "samples/livliv/koubo_run1/evidence/evidence_0.png",
+      "error": ""
+    },
+    {
+      "name": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+      "ok": true,
+      "path": "samples/livliv/koubo_run1/evidence/evidence_1.png",
+      "error": ""
+    }
+  ],
+  "avatar": {
+    "engine": "livliv",
+    "character_id": "d03ft",
+    "frames": 970
+  },
+  "output": "samples/livliv/koubo_run1/koubo_cut.mp4",
+  "fcpxml": "samples/livliv/koubo_run1/koubo_cut.fcpxml",
+  "duration_s": 32.366667,
+  "resolution": "1080x1920",
+  "evidence_success": 2,
+  "finalized": true
+}

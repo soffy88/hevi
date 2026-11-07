@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import wave
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +32,13 @@ from hevi.koubo_cut.state import new_ledger, finalize_status
 W, H = 1080, 1920
 FPS = 30
 DEFAULT_TARGET_S = 30.0
+# LivLiv renders at a 2:3 canvas (the character package's native aspect).
+# 720x1080 keeps the render under the 5-minute budget while staying >=720 wide;
+# it is composited into a 1080x1620 main-subject box in the 1080x1920 frame.
+LIVLIV_RENDER_W, LIVLIV_RENDER_H = 720, 1080
+LIVLIV_MAIN_BOX = (0, 300, W, H)          # x, y, x2, y2 (1080x1620)
+LIVLIV_PIP_SIZE = (300, 450)              # 2:3 corner window during evidence
+LIVLIV_CREDIT = "AI 制作 · Characters: LivLiv (livliv.ai)"
 
 _FONT_CANDIDATES = (
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
@@ -460,6 +468,27 @@ def _audio_envelope(audio: Path, n_frames: int) -> list[float]:
         return [0.0] * n_frames
 
 
+def _livliv_frame_at(frames: Path, index: int, size: tuple[int, int]) -> Image.Image | None:
+    path = Path(frames) / f"frame_{index:05d}.png"
+    if not path.is_file():
+        return None
+    with Image.open(path) as im:
+        return im.convert("RGBA").resize(size, Image.LANCZOS)
+
+
+def _paste_corner_pip(frame: Image.Image, img: Image.Image, x: int, y: int,
+                      size: tuple[int, int]) -> None:
+    """One small 2:3 corner window (never a duplicate full-frame avatar)."""
+    w, h = size
+    backing = Image.new("RGBA", (w + 16, h + 16), (0, 0, 0, 0))
+    bd = ImageDraw.Draw(backing)
+    bd.rounded_rectangle((0, 0, w + 15, h + 15), radius=24, fill=(245, 239, 224, 255))
+    bd.rounded_rectangle((0, 0, w + 15, h + 15), radius=24, outline=(120, 90, 60, 255), width=4)
+    frame.paste(backing, (x - 8, y - 8), backing)
+    scaled = img.resize((w, h), Image.LANCZOS)
+    frame.paste(scaled, (x, y), scaled)
+
+
 def _render_frames(
     *,
     duration: float,
@@ -472,6 +501,8 @@ def _render_frames(
     pip: Image.Image,
     badge_text: str,
     output: Path,
+    livliv_frames: Path | None = None,
+    livliv_size: tuple[int, int] | None = None,
 ) -> None:
     base = _base_background()
     env = _audio_envelope(audio, int(duration * FPS))
@@ -479,6 +510,7 @@ def _render_frames(
     caption_font = _font(52)
     tag_font = _font(34)
     title_font = _font(40)
+    credit_font = _font(24)
 
     ff = subprocess.Popen(
         [
@@ -487,6 +519,8 @@ def _render_frames(
             "-i", str(audio),
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "128k", "-t", f"{duration:.3f}",
+            "-metadata", "title=koubo_cut",
+            "-metadata", "comment=Characters: LivLiv (livliv.ai)，AI制作",
             str(output),
         ],
         stdin=subprocess.PIPE,
@@ -498,17 +532,34 @@ def _render_frames(
     mcx, mcy = mouth_center
     topic_badge = (badge_text or (sentences[0]["text"][:12] if sentences else "口播精剪"))[:12]
     evidence_imgs = {path: Image.open(path).convert("RGB") for _st, _en, path in evidence}
+    main_w = LIVLIV_MAIN_BOX[2] - LIVLIV_MAIN_BOX[0]
+    main_h = LIVLIV_MAIN_BOX[3] - LIVLIV_MAIN_BOX[1]
+    main_size = (main_w, main_h)
+    pip_x, pip_y = W - 340, H - 540
     try:
         for fi in range(total):
             t = fi / FPS
             ev = next(((st, en, path) for st, en, path in evidence if st <= t < en), None)
             if ev is not None:
                 frame = evidence_imgs[ev[2]].copy()
-                frame.paste(pip, (W - 320, H - 420), pip)
+                if livliv_frames is not None:
+                    pip_img = _livliv_frame_at(livliv_frames, fi, LIVLIV_PIP_SIZE)
+                    if pip_img is not None:
+                        _paste_corner_pip(frame, pip_img, pip_x, pip_y, LIVLIV_PIP_SIZE)
+                else:
+                    frame.paste(pip, (W - 320, H - 420), pip)
             else:
                 breathe = int(8 * math.sin(2 * math.pi * t / 5.0))
                 frame = base.copy()
-                if presenter is not None:
+                if livliv_frames is not None:
+                    # Character is opaque, clear and the main subject: a 2:3
+                    # alpha frame standing in the lower ~84% of the frame over
+                    # the clean paper background (no translucent full-screen
+                    # overlay, no corner duplicate).
+                    char = _livliv_frame_at(livliv_frames, fi, main_size)
+                    if char is not None:
+                        frame.paste(char, (LIVLIV_MAIN_BOX[0], LIVLIV_MAIN_BOX[1] + breathe), char)
+                elif presenter is not None:
                     layer = presenter.copy()
                     # mouth follows the speech envelope
                     amp = env[fi] if fi < len(env) else 0.0
@@ -548,6 +599,12 @@ def _render_frames(
                 d.rounded_rectangle((50, 60, badge_w, 132), radius=20, fill=(20, 26, 36))
                 d.text((76, 76), topic_badge, font=title_font, fill=(245, 239, 224))
             d.text((W - 300, 78), "口播精剪", font=tag_font, fill=(120, 90, 60))
+            if livliv_frames is not None:
+                # AI production disclosure + character credit travels on-screen.
+                tw = int(d.textlength(LIVLIV_CREDIT, font=credit_font))
+                d.rounded_rectangle((40, H - 62, 40 + tw + 24, H - 16), radius=12,
+                                    fill=(18, 22, 30))
+                d.text((52, H - 56), LIVLIV_CREDIT, font=credit_font, fill=(232, 226, 214))
             ff.stdin.write(frame.tobytes())
     finally:
         ff.stdin.close()
@@ -596,6 +653,8 @@ def run_koubo_cut(
     seed: int = 42,
     config: KouboCutConfig | None = None,
     duration_s: float | None = None,
+    engine: str = "wav2lip",
+    character_id: str = "d03ft",
 ) -> dict[str, Any]:
     cfg = config or KouboCutConfig(seed=seed)
     target = float(duration_s or cfg.target_seconds or DEFAULT_TARGET_S)
@@ -648,13 +707,56 @@ def run_koubo_cut(
         if padded.is_file() and padded.stat().st_size > 0:
             audio_path = padded
 
+        # --- LivLiv avatar engine (opt-in; default path unchanged) ----------
+        # Renders transparent RGBA frames at a 2:3 canvas (>=720 wide) which are
+        # composited here: the character stands opaque as the main subject over
+        # a clean paper background, and shrinks to one corner window during
+        # evidence shots (never a full-screen translucent duplicate).
+        livliv_frames: Path | None = None
+        livliv_size: tuple[int, int] | None = None
+        if str(engine).strip().lower() == "livliv":
+            try:
+                from hevi.avatar_livliv.characters import characters_enabled
+
+                if not characters_enabled():
+                    raise RuntimeError("LIVLIV_CHARACTERS_ENABLED is off")
+                from hevi.avatar_livliv.audio import analyze
+                from hevi.avatar_livliv.render import render_frames
+
+                env = analyze(Path(audio_path), fps=FPS)
+                n = int(duration * FPS)
+                if len(env) > n:
+                    env = env[:n]
+                while len(env) < n:
+                    env.append({"t": len(env) / FPS, "mouthOpen": 0.0, "vowel": 0.0})
+                livliv_dir = out / "livliv_frames"
+                lw, lh = LIVLIV_RENDER_W, LIVLIV_RENDER_H
+                t0 = time.time()
+                render_frames(character_id, livliv_dir, env, fps=FPS, width=lw, height=lh)
+                livliv_frames = livliv_dir
+                livliv_size = (lw, lh)
+                ledger["avatar"] = {
+                    "engine": "livliv",
+                    "character_id": character_id,
+                    "character_name": _character_name(character_id),
+                    "render_size": f"{lw}x{lh}",
+                    "frames": len(env),
+                    "render_s": round(time.time() - t0, 1),
+                    "character_credit": "Characters: LivLiv (livliv.ai)，AI制作",
+                }
+            except Exception as exc:
+                livliv_frames = None
+                ledger["avatar"] = {"engine": "none-fallback",
+                                    "error": f"{type(exc).__name__}: {exc}"}
+        else:
+            ledger["avatar"] = {"engine": "synthetic-flat" if src is None else "input-video"}
+
         presenter, mouth_box, mouth_center = _presenter_layer()
         base = _base_background()
-        if presenter_frame is not None:
+        if presenter_frame is not None and livliv_frames is None:
             # Keep user footage as the full-screen presenter when provided.
-            frame = _cover(presenter_frame.convert("RGB"), (W, H))
-            base = frame
-        presenter_img = presenter if src is None else None
+            base = _cover(presenter_frame.convert("RGB"), (W, H))
+        presenter_img = presenter if (src is None and livliv_frames is None) else None
         if presenter_img is not None:
             pip_source = base.copy()
             pip_source.paste(presenter_img, (0, 0), presenter_img)
@@ -662,26 +764,32 @@ def run_koubo_cut(
             pip_source = base
         pip = _pip_image(pip_source)
 
-        # Evidence cards derived from the narration (never an unrelated page).
+        # Evidence cards: a real photo chosen from the narration's own keywords
+        # (never a generic web page, never an unrelated placeholder). If no
+        # on-topic photo can be fetched, the evidence segment is skipped rather
+        # than showing a picture the narration is not about.
         evidence: list[tuple[float, float, Path]] = []
-        subject_images = _subject_images(" ".join(s["text"] for s in sentences))
+        topic_text = " ".join(s["text"] for s in sentences)
+        topic_images = _topic_images(topic_text, out / "subject_assets", limit=2)
         picks = [i for i in (1, 3) if i < len(sentences)]
         for n, idx in enumerate(picks, start=1):
+            if n > len(topic_images):
+                break
             sent = sentences[idx]
-            subject_key = ("cat", "sea")[(n - 1) % 2]
-            img = subject_images.get(subject_key) or subject_images.get("cat") or subject_images.get("sea")
-            fallback = _subject_fallback({subject_key: subject_images.get(subject_key)})
             card = _evidence_card(
                 sent["text"], n, out / "evidence" / f"evidence_{n}.png",
-                image_path=img, fallback_image=fallback,
+                image_path=topic_images[n - 1], fallback_image=None,
             )
             start = max(0.0, float(sent["start"]) + 0.3)
             end = min(duration, max(start + 2.4, float(sent["end"])))
             evidence.append((start, min(end, start + 3.0), card))
         ledger["evidence"] = [
-            {"index": n + 1, "start": round(a, 2), "end": round(b, 2), "path": str(p)}
+            {"index": n + 1, "start": round(a, 2), "end": round(b, 2), "path": str(p),
+             "subject": str(topic_images[n]) if n < len(topic_images) else ""}
             for n, (a, b, p) in enumerate(evidence)
         ]
+        if not evidence:
+            ledger["evidence_skipped"] = "no on-topic subject photo for the narration"
 
         mp4 = out / "koubo_cut.mp4"
         _render_frames(
@@ -695,6 +803,8 @@ def run_koubo_cut(
             pip=pip,
             badge_text=topic or script_text,
             output=mp4,
+            livliv_frames=livliv_frames,
+            livliv_size=livliv_size,
         )
         if not mp4.is_file() or mp4.stat().st_size == 0:
             raise RuntimeError("ffmpeg produced no mp4")
@@ -727,32 +837,81 @@ def _cover(img: Image.Image, size: tuple[int, int]) -> Image.Image:
     return img.crop((left, top, left + w, top + h))
 
 
-def _subject_images(text: str) -> dict[str, Path | None]:
+# Narration keyword -> stock-photo query. Ordered: first match wins, at most
+# two distinct queries are used for the evidence shots. Anything not matched
+# yields no evidence segment at all (never an unrelated picture).
+_TOPIC_QUERIES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("人工智能", "AI ", "AI视频", "大模型", "机器学习", "算法"), "artificial intelligence technology"),
+    (("视频创作", "剪辑", "视频", "拍摄", "镜头", "短片"), "video production camera"),
+    (("咖啡", "拿铁", "手冲", "美式"), "coffee cup cafe"),
+    (("城市", "街道", "都市", "城市清晨"), "city street morning"),
+    (("橘猫", "猫", "小猫"), "cat"),
+    (("海边", "海浪", "浪", "大海", "海面", "海"), "ocean waves"),
+    (("雪山", "山", "森林", "山谷"), "mountain forest"),
+    (("读书", "书", "阅读"), "books reading"),
+    (("电脑", "代码", "程序员", "编程"), "laptop coding"),
+    (("手机", "移动端", "app"), "smartphone"),
+    (("音乐", "耳机", "歌"), "music headphones"),
+    (("旅行", "风景", "旅途"), "travel landscape"),
+    (("美食", "料理", "食物", "做饭"), "food cooking"),
+    (("办公", "工作", "会议室"), "office desk"),
+    (("孩子", "儿童", "小朋友"), "children playing"),
+    (("跑步", "健身", "运动"), "running fitness"),
+    (("花", "花园", "春天"), "flowers garden"),
+    (("星空", "夜晚", "夜景"), "night sky stars"),
+    (("下雨", "雨", "雨天"), "rain window"),
+    (("飞机", "机场", "航班"), "airport airplane"),
+    (("火车", "高铁", "地铁"), "train station"),
+    (("汽车", "开车", "公路"), "car road"),
+    (("宠物", "狗", "小狗"), "dog"),
+)
+
+_ASCII_WORD = re.compile(r"[A-Za-z][A-Za-z0-9\-]{2,}")
+
+
+def _topic_queries(text: str) -> list[str]:
+    queries: list[str] = []
+    for keys, query in _TOPIC_QUERIES:
+        if any(k in text for k in keys):
+            if query not in queries:
+                queries.append(query)
+    # English narration: use its own content words as the query.
+    for word in _ASCII_WORD.findall(text):
+        low = word.lower()
+        if low in {"the", "and", "for", "you", "your", "this", "that", "with",
+                   "video", "today", "about", "from", "have", "will", "are",
+                   "our", "its", "not", "but", "can", "all", "how", "what"}:
+            continue
+        if word not in queries:
+            queries.append(word)
+    return queries[:2]
+
+
+def _topic_images(text: str, out_dir: Path, *, limit: int = 2) -> list[Path]:
+    """Real, on-topic photos for the narration's keywords (no generic pages)."""
     try:
-        from hevi.collage_broll.assets import fetch_subjects, pexels_photo
-
-        out = Path(os.environ.get("HEVI_ZERO_CACHE", "/tmp")) / "koubo_subjects"
-        subjects = fetch_subjects(text, out)
-        if "猫" in text and "海" in text:
-            # Prefer a cat actually photographed at the water's edge: the
-            # narration describes the seaside, so the evidence card must match.
-            beach = pexels_photo("cat on beach", out / "assets" / "cat_beach.jpg")
-            if beach is not None:
-                subjects["cat"] = beach
-        return subjects
+        from hevi.collage_broll.assets import pexels_photo
     except Exception:
-        return {"cat": None, "sea": None}
+        return []
+    out_dir = Path(out_dir)
+    images: list[Path] = []
+    for i, query in enumerate(_topic_queries(text)):
+        if len(images) >= limit:
+            break
+        slug = re.sub(r"[^a-z0-9]+", "_", query.lower()).strip("_")[:40] or f"subject{i}"
+        path = pexels_photo(query, out_dir / f"{slug}.jpg")
+        if path is not None:
+            images.append(path)
+    return images
 
 
-def _subject_fallback(subjects: dict[str, Path | None]) -> Image.Image:
+def _character_name(cid: str) -> str:
     try:
-        from hevi.collage_broll.assets import procedural_cat, procedural_sea
+        from hevi.avatar_livliv.characters import character_name
 
-        if subjects.get("cat") is not None:
-            return procedural_sea((1080, 740))
-        return procedural_cat((740, 740))
+        return character_name(cid)
     except Exception:
-        return Image.new("RGB", (1080, 740), (46, 96, 132))
+        return cid
 
 
 def main(argv=None) -> int:

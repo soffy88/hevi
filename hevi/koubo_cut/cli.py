@@ -23,6 +23,9 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--script", type=str, default="", help="optional script text")
     rp.add_argument("--out", "-o", type=Path, default=Path("output/koubo_cut"), help="output directory")
     rp.add_argument("--seed", type=int, default=42, help="base seed")
+    rp.add_argument("--engine", choices=["wav2lip", "livliv"], default="wav2lip",
+                    help="lip-sync engine; livliv = LivLiv 2.5D character (see LIVLIV_CHARACTERS_ENABLED, non-commercial only)")
+    rp.add_argument("--character-id", default="d03ft", help="LivLiv character id (engine=livliv)")
     rp.set_defaults(func=_cmd_run)
 
     sp = sub.add_parser("preflight", help="check environment")
@@ -38,6 +41,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
         script_text=args.script,
         out_dir=out,
         seed=args.seed,
+        engine=args.engine,
+        character_id=args.character_id,
     )
     (out / "ledger.json").write_text(json.dumps(ledger, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(ledger, ensure_ascii=False, indent=2))
