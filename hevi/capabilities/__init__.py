@@ -73,6 +73,10 @@ register_stickman_capabilities_once()
 from hevi.riso.capabilities import register_riso_capabilities
 register_riso_capabilities()
 
+# Collage B-roll capabilities (feat/collage-broll)
+from hevi.collage_broll.capabilities import register_collage_broll_capabilities_once
+register_collage_broll_capabilities_once()
+
 
 # Multi-model pipeline (cloud providers via Monid, 2026-10-20):
 # audio.forced_align / image.gpt_generate / image.gpt_edit

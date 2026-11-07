@@ -1,0 +1,21 @@
+{
+  "index": 0,
+  "sentence": "它把爪子伸进沙里",
+  "core_meaning": "它把爪子伸进沙里",
+  "emotion": "冷静",
+  "visual_proposition": "以青绿色场为底，用黑白半调剪片与彩色卡纸拼贴表达：它把爪子伸进沙里",
+  "key_objects": [
+    "主体",
+    "结构",
+    "连接件",
+    "结果"
+  ],
+  "color_key": "collab",
+  "color_name": "青绿",
+  "background_hex": "#3FA7A0",
+  "accent_colors": [
+    "#F5EFE0",
+    "#2B2B2B"
+  ],
+  "assembly_order": "结构 → 主体/卡片 → 连接件 → 动作 → 结果"
+}

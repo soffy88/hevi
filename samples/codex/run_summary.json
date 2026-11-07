@@ -1,0 +1,37 @@
+{
+  "sentences": 1,
+  "results": [
+    {
+      "sentence": "风把它的耳朵吹起来",
+      "dir": "/data/soffy/projects/hevi-collage/samples/codex/01-风把它的耳朵吹起来",
+      "render": {
+        "gif": "/data/soffy/projects/hevi-collage/samples/codex/01-风把它的耳朵吹起来/clip.gif",
+        "mp4": "/data/soffy/projects/hevi-collage/samples/codex/01-风把它的耳朵吹起来/clip.mp4",
+        "frames": 100,
+        "layers": 4
+      },
+      "qa": {
+        "gif": {
+          "width": 720,
+          "height": 1280,
+          "codec": "gif",
+          "fps": "20/1"
+        },
+        "mp4": {
+          "width": 720,
+          "height": 1280,
+          "codec": "h264",
+          "fps": "24/1"
+        },
+        "checks": {
+          "gif_exists": true,
+          "mp4_exists": true,
+          "mp4_size": 419881,
+          "mp4_resolution_ok": true
+        },
+        "passed": true
+      },
+      "elapsed_s": 24.404
+    }
+  ]
+}

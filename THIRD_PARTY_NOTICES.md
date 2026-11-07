@@ -12,3 +12,12 @@
 - **备注**: `.git` 目录已移除(vendor 化),node 依赖通过 PATH 上的 node v26.4.0 运行。
   Archify 自带 schema 校验、provenance 校验、browser-check(含 containment/readability)。
   本项目通过 `hevi/visuals/archify_source.py` 封装 CLI, 调用方不直接依赖 node 模块。
+
+## collage_broll (gbro-collage-broll)
+
+- **来源**: https://github.com/pyang5166/gbro-collage-broll (MIT)
+- **许可证**: MIT License
+- **版权**: Copyright (c) 2026 pyang5166 (gbro-collage-broll)
+- **完整许可证文本**: `hevi/collage_broll/LICENSE_gbro`
+- **用途**: 半调纸拼贴 B-roll 隐喻/visual-spec/QA 模板复用；视频脚本未采用，不使用 GEMINI_API_KEY。
+- **入库日期**: 2026-11-07
