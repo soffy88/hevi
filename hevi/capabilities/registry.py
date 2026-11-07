@@ -74,6 +74,8 @@ class Capability:
     render: Any  # callable(params, out_dir, *, duration, aspect, seed) -> CapabilityResult
     description: str = ""
     line: str = ""  # owning product line (e.g. "scene3d")
+    has_media_output: bool = False
+    preview_restricted: bool = False
 
     def validate_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """Validate ``params`` against ``params_schema``; return the params.
@@ -212,6 +214,7 @@ def list_capabilities(
 
 # Public alias matching the contract's ``list(kind=..., aspect=...)`` signature.
 list = list_capabilities  # noqa: A001 - intentionally mirrors the contract API.
+
 
 
 def names() -> list[str]:
@@ -1004,3 +1007,6 @@ register(Capability(
     description="绘本配音对齐：按本地TTS实际时长重排镜头，双语字幕逐句对齐(<150ms)，旁白角色多音色语气，BGM避让留白",
     line="audio",
 ))
+
+# Public alias used by the huobao capability listing endpoint.
+describe = _summary  # noqa: A001

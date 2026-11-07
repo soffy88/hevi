@@ -27,7 +27,6 @@ RUN groupadd --system hevi && useradd --system --gid hevi --home-dir /app hevi
 # apt mirror: deb.debian.org is unreachable from this host's egress
 # (curl returns 000, verified 2026-10-23) while the TUNA mirror works;
 # same pattern as the NPM_REGISTRY mirror used below.
-RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg curl git nodejs npm \
@@ -132,9 +131,8 @@ RUN mkdir -p /app/output /app/data /app/assets /app/.cache/hevi/zerolines /app/.
         /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio && \
     chown -R hevi:hevi /app/.cache && \
     chown hevi:hevi /app /app/output /app/data /app/assets && \
-    chown -R 1000:1000 /app/.obase /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio /app/hevi && \
-    chmod -R a+rX /app && \
-    find /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio /app/hevi -exec chmod o+w {} +
+    chown 1000:1000 /app/hevi && \
+    chown -R 1000:1000 /app/.obase /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio
 USER hevi
 
 # cftunnel: obase 默认 ~/.obase/work,无 HOME 时解析到 /,UID 1000 无权创建
