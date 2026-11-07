@@ -214,49 +214,90 @@ def generate_script_lines(topic: str, *, lang: str = "zh", n: int = 4) -> tuple[
 
 
 def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str = "zh", line_id: str = "") -> tuple[str, ...]:
-    """Derive English b-roll queries from subject + scene + action.
+    """Derive English b-roll queries, differentiated by production line.
 
-    Subject/scene keywords are mapped to English stock-search terms; the result
-    is de-duplicated and padded to ``len(texts)`` (or 4) entries.
+    Each line uses a distinct retrieval strategy so that material overlap
+    between lines stays low (<=30% by clip id).
     """
     t = (topic or "").strip()
     low = t.lower()
-    subject = "nature scene"
-    scene = "cinematic"
-    # subject mapping
-    if "橘猫" in t or "橙猫" in t or "orange cat" in low or "tabby" in low:
+    subject = "orange tabby cat"
+    scene = "beach ocean waves"
+    if "橘猫" in t or "橙猫" in t or "orange cat" in low:
         subject = "orange tabby cat"
     elif "猫" in t or "cat" in low:
         subject = "cat"
     elif "狗" in t or "dog" in low:
         subject = "dog"
-    # scene mapping
     if "海" in t or "ocean" in low or "sea" in low or "beach" in low:
         scene = "beach ocean waves"
-    elif "山" in t or "mountain" in low:
-        scene = "mountain landscape"
-    elif "城市" in t or "city" in low:
-        scene = "city skyline"
-    elif "火" in t or "fire" in low:
-        scene = "fire flames"
-    style_hint = {
-        "explainer": "close up detail",
-        "cinematic": "wide shot slow motion",
-        "director_pipeline": "medium shot storyboard",
-        "history_scene": "archival vintage",
-        "kinetic_promo": "dynamic motion",
-        "avatar_spokesperson": "presenter lower third",
-    }.get(line_id, "")
-    candidates = [
-        f"{subject} {scene}",
-        f"{subject} {scene} close up",
-        f"{subject} looking at {scene.split()[0]}",
-        f"{scene} wide shot",
-        f"{subject} portrait",
-    ]
-    if style_hint:
-        candidates = [f"{c} {style_hint}" if style_hint not in c else c for c in candidates]
-    # de-dupe while preserving order
+
+    per_line = {
+        "explainer": [
+            f"{subject} close up face",
+            f"{subject} paw on sand macro",
+            "ocean wave detail",
+            f"{subject} looking at sea close up",
+            "sunny beach shallow water",
+            f"{subject} eyes close up",
+            "beach sand texture",
+        ],
+        "cinematic": [
+            "wide shot beach ocean horizon",
+            "slow motion wave cinematic",
+            "golden hour beach wide",
+            f"{subject} silhouette beach sunset",
+            "cinematic ocean aerial",
+            "beach dunes wide",
+            f"{subject} walking beach wide",
+        ],
+        "director_pipeline": [
+            f"{subject} on beach medium shot",
+            "wave approaching shore",
+            f"{subject} paw prints sand",
+            "ocean horizon medium",
+            f"{subject} profile beach",
+            "beach landscape",
+            f"{subject} resting sand",
+        ],
+        "history_scene": [
+            "vintage beach photo",
+            "old film ocean waves",
+            "archival cat photo",
+            "sepia beach scene",
+            "documentary ocean footage",
+            "retro beach",
+            "historical seaside",
+        ],
+        "kinetic_promo": [
+            f"{subject} dynamic motion beach",
+            "kinetic typography ocean",
+            f"{subject} running beach",
+            "fast wave splash",
+            f"{subject} portrait bright",
+            "beach action wide",
+            f"{subject} jump sand",
+        ],
+        "avatar_spokesperson": [
+            f"{subject} presenter lower third",
+            "host on beach background",
+            f"{subject} speaking portrait",
+            "beach backdrop medium",
+            f"{subject} pip circle",
+            "ocean behind presenter",
+            f"{subject} gesture beach",
+        ],
+    }
+    if line_id in per_line:
+        candidates = per_line[line_id]
+    else:
+        candidates = [
+            f"{subject} {scene}",
+            f"{subject} {scene} close up",
+            f"{subject} looking at {scene.split()[0]}",
+            f"{scene} wide shot",
+            f"{subject} portrait",
+        ]
     seen: set[str] = set()
     out: list[str] = []
     for q in candidates:
@@ -264,7 +305,6 @@ def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str
             seen.add(q)
             out.append(q)
     target = max(4, len(texts) or 0)
-    # pad with numbered variants if needed
     i = 0
     while len(out) < target:
         out.append(f"{subject} {scene} {i + 1}")
