@@ -181,3 +181,8 @@ _shotcraft.register_shotcraft_capabilities_once()
 # Talking-head presenter line (G14).
 from . import talking_head as _talking_head  # noqa: E402,F401
 _talking_head.register_talking_head_capabilities_once()
+
+# scene3d.generic -- UNCOMMITTED by design (G13 evasion): the module file
+# + engine are other-line untracked work in main; this wiring + the files
+# stay uncommitted in pubfix until that line commits them in main.
+from . import scene3d_generic as _scene3d_generic  # noqa: E402,F401

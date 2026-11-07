@@ -94,6 +94,22 @@ RUN --network=none cd hevi-remotion-talkcraft \
     && node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell --version \
     && npx --no-install remotion browser ensure
 COPY --chown=hevi:hevi hevi-remotion/ ./hevi-remotion/
+
+# hevi-remotion (canonical Remotion project, 4.0.486) browser fix
+# (2026-11-05, EACCES repro: `remotion render` as user hevi failed with
+# "EACCES: permission denied, mkdir '/app/hevi-remotion/node_modules/.remotion'"
+# because Remotion ensures/downloads Chrome Headless Shell at render time
+# into node_modules/.remotion, which npm ci leaves root-owned. Without a
+# preinstalled browser every render fails before bundling.)
+# Same remedy as the talkcraft layer above: reuse the host vendor copy of
+# chrome-headless-shell 149.0.7790.0 (== Remotion 4.0.486 TESTED_VERSION)
+# via the existing talkcraft_browser additional_context, no network
+# download, then verify with `browser ensure` (offline) and chown the
+# browser dir to hevi so the runtime ensure/verification can write.
+COPY --from=talkcraft_browser . ./hevi-remotion/node_modules/.remotion/
+RUN --network=none cd hevi-remotion \
+    && npx --no-install remotion browser ensure \
+    && chown -R hevi:hevi node_modules/.remotion
 COPY --chown=hevi:hevi hevi/ ./hevi/
 
 # earshot CLI (audio.earshot_gate / storyfilm narration mastering):
