@@ -7,7 +7,7 @@
 - hevi/layer4_legacy/zerolines/omodul_impl/_lines.py：explainer/cinematic 消费 extras（speed/grade/xd/素材关键词/脚本）。
 
 ## commit
-- 待本次提交（分支 hark/video-judge）
+- 654cbad5（分支 hark/video-judge）
 
 ## 验收数据
 - 校准：10 对，预期胜率 70%（7/10），换位一致 90%（9/10）；坏片 4/4 判输。
