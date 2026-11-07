@@ -26,7 +26,11 @@ from hevi.layer4_legacy.zerolines.oskill_impl.shots import camera_filter, source
 
 FONTS_DIR = os.environ.get("HEVI_ZERO_FONTS_DIR", "/usr/share/fonts/opentype/noto")
 CACHE = Path(os.environ.get("HEVI_ZERO_CACHE", str(Path.home() / ".cache/hevi/zerolines")))
-WHISPER_MODEL = os.environ.get("HEVI_WHISPER_MODEL", "/home/soffy/models/faster-whisper-large-v3-turbo")
+_whisper_env = os.environ.get("HEVI_WHISPER_MODEL", "").strip()
+if _whisper_env and (Path(_whisper_env).is_dir() or _whisper_env in {"tiny","base","small","medium","large","large-v2","large-v3","large-v3-turbo","turbo"}):
+    WHISPER_MODEL = _whisper_env
+else:
+    WHISPER_MODEL = "/home/soffy/models/faster-whisper-large-v3-turbo"
 
 
 class ZeroMediaError(RuntimeError):
