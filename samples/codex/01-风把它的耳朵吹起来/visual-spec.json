@@ -1,0 +1,47 @@
+{
+  "script_meaning": "风把它的耳朵吹起来",
+  "visual_metaphor": "以芥末黄色场为底，用黑白半调剪片与彩色卡纸拼贴表达：风把它的耳朵吹起来",
+  "style_signature": "flat bold color field, mixed black-and-white halftone cut-outs and colored cardstock accents, crisp cut edges, cream keylines, soft paper shadows, editorial paper collage",
+  "aspect_ratio": "9:16",
+  "color_field": {
+    "background_hex": "#D9A441",
+    "accent_colors": [
+      "#F5EFE0",
+      "#2B2B2B"
+    ],
+    "paper_grain": "fine uncoated-paper fiber"
+  },
+  "elements": [
+    {
+      "what": "主体",
+      "role": "key object",
+      "motion": "slide in",
+      "placement": "center"
+    },
+    {
+      "what": "结构",
+      "role": "key object",
+      "motion": "slide in",
+      "placement": "center"
+    },
+    {
+      "what": "连接件",
+      "role": "key object",
+      "motion": "slide in",
+      "placement": "center"
+    },
+    {
+      "what": "结果",
+      "role": "key object",
+      "motion": "slide in",
+      "placement": "center"
+    }
+  ],
+  "composition": {
+    "layout": "central 70%",
+    "negative_space": "generous color field",
+    "final_frame": "completed collage"
+  },
+  "motion_plan": "结构 → 主体/卡片 → 连接件 → 动作 → 结果",
+  "avoid": "typography, readable letters, numerals, logos, watermark, UI, subtitles, glossy 3D, photoreal environment"
+}

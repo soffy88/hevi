@@ -1,0 +1,30 @@
+id: collage_broll
+product: 半调纸拼贴 B-roll
+summary: 句级 B-roll：隐喻卡 → visual-spec → 静帧/动画（procedural/codex）→ GIF+MP4，供 talking_head/explainer 插入。
+handoff: none
+render_runtime: ffmpeg
+slots:
+  - name: sentence
+    required: true
+    description: 口播句子
+  - name: mode
+    required: false
+    description: procedural 或 codex
+  - name: out
+    required: false
+    description: 输出目录
+tools:
+  - collage_broll.metaphor
+  - collage_broll.run
+  - collage_broll.render
+pipeline:
+  name: collage_broll
+  stages:
+    - name: metaphor
+      fn: hevi.collage_broll.metaphor:generate_metaphor
+    - name: spec
+      fn: hevi.collage_broll.spec:build_visual_spec
+    - name: render
+      fn: hevi.collage_broll.render:procedural_render
+    - name: qa
+      fn: hevi.collage_broll.qa:run_qa

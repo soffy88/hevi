@@ -1,22 +1,27 @@
-# hevi 产线集成与补修（2026-11-07）
+# hevi 新产线：collage_broll 半调纸拼贴 B-roll（2026-11-07）
 
-你在 worktree /data/soffy/projects/hevi-integ（分支 hark/lines-integ，基于 8da6d735）。参考：/data/soffy/projects/hevi-audit-1106/AUDIT_1106_REPORT.md、/data/soffy/projects/hevi-linefix-a/LINEFIX_A_REPORT.md、/data/soffy/projects/hevi-linefix-b/LINEFIX_B_REPORT.md。
+你在 worktree /data/soffy/projects/hevi-collage（分支 hark/collage-broll，基于 8da6d735）。参考仓库 https://github.com/pyang5166/gbro-collage-broll（MIT）：git clone --depth 1 到 /tmp/drama-repos/gbro-collage-broll 只读参考。其 SKILL.md 的提示词模板、QA 清单可复用，但必须在 hevi/collage_broll/LICENSE_gbro 放原 LICENSE 全文并在 THIRD_PARTY_NOTICES.md 注明。不要用它的 Gemini/Veo 视频脚本，不需要 GEMINI_API_KEY。
 
-## 步骤
-1. 合并：先 git merge hark/linefix-b，再 git merge hark/linefix-a，认真解决 zerolines 等冲突（两边的修复都要保留），提交。两个旧 worktree 各有约 10 个未提交文件，检查是否是需要的修复（如是则带入并说明）。
-2. 补修（每项单独 commit + 单测）：
-   - A 线时长：character_animation(12s)、comic_narration(24.5s)、documentary_montage(25.5s)、handdraw(2s)、localization_dub(11.5s)、reference_adapt(7.2s)、scene3d(12s)、shorts_clip(19.4s) 都要尊重请求时长 30 秒（±10%）。shorts_clip/localization_dub/reference_adapt/podcast_repurpose 这类依赖源素材的线，时长受源素材限制时：准备一份 ≥60 秒的本地测试源素材（用 Piper 生成中文旁白 + 已有画面合成，放 samples/_fixtures/），按请求时长裁切。
-   - scene3d 必须有音轨（旁白 + BGM）。
-   - handdraw 必须是真正的逐笔手绘动画且有旁白，不是 2 秒占位。
-   - 同质化：explainer / cinematic / director_pipeline / history_scene 不能共用同一组素材。按线区分检索策略（例如 explainer 偏特写与图解卡片、cinematic 偏广角与慢镜调色、history_scene 偏档案质感），同一 job 内按线做素材去重；验收时两线素材重合率 ≤30%（用素材 id 统计）。
-   - podcast_repurpose 三次 md5 一致：查明是否缓存；默认每次真实重渲染，缓存需显式开关，并在报告说明。
-   - 字幕中英混杂（如 "curled up"）：中文题材的旁白与字幕全中文，加校验。
-3. 测试：/data/soffy/projects/hevi/.venv/bin/python -m pytest 跑 tests/ 中 zerolines、studio_slate、flowgen、riso 相关测试，全部通过。
-4. 验收：16 条线（explainer、cinematic、director_pipeline、kinetic_promo、history_scene、talking_head、avatar_spokesperson、podcast_repurpose、character_animation、shorts_clip、reference_adapt、comic_narration、handdraw、scene3d、localization_dub、documentary_montage）本地各跑 3 次，题材“一只橘猫第一次看海”，30 秒。记录成功数、耗时、ffprobe 时长/分辨率/音轨、volumedetect、md5；每条抽 6 帧拼 contact sheet。产物放 samples/<线>/run{1,2,3}/。
+## 目标流程（每句约 5 秒口播 → 一段 B-roll）
+1. 隐喻卡（LLM，用 hevi 已配置的免费 LLM；不可用则确定性回退）：核心意思、视觉隐喻、3–6 个关键物件、语义底色（焦橙/红=时间消耗劳动紧迫；芥末黄=工具警示；墨绿=认知审美；深紫=规范沉淀；青绿=判断协作）、组装顺序。可选人工确认闸门（API/CLI 参数 confirm_metaphor，默认关闭=自动通过）。批量时多句隐喻前后成叙事。
+2. visual-spec.json：平涂色场、黑白半调剪片、彩色卡纸点缀、机切边+奶油白描边、柔和投影、纸纤维颗粒。
+3. 静帧：通过服务器上已用 ChatGPT 登录的 Codex CLI（/home/soffy/.local/sgbin/codex，codex exec，调用其图像生成）出 9:16 静帧，按清单自检（隐喻可读、主体集中在中间 70%、无假字/logo/水印/UI、空场留够、3–6 大组），不过就重出（最多 2 次）。
+4. 动画两种引擎：
+   a) codex：以静帧为终点让图像模型出 5 秒 20fps 循环 GIF（assemble-from-empty，顺序固定、物理动词、镜头锁死），再 ffmpeg 转 720x1280 24fps H.264 MP4（-ignore_loop 1，yuv420p，-an）；逐段 QA：首帧空场、尾帧≈静帧、循环接头。
+   b) procedural（零额度回退、默认在测试里用）：让图像模型或本地 PIL 生成可分离的 3–6 个纸片图层（透明 PNG）+ 色场，用代码渲染定格式“从空场逐块滑入/落下/卡位→定格→清场”的 5 秒循环，半调网点和描边用 PIL 实现。没有 Codex 时整条链可完全离线跑（纯程序化素材）。
+5. 交付：每句 GIF + MP4；多句时按 TTS 时长拼成带旁白和字幕的成片，并提供给 talking_head/explainer 作为逐句 B-roll 插入的接口。
+6. 接入：hevi 能力注册 + /api/studio 产线（line_id=collage_broll）+ CLI python -m hevi.collage_broll run。
+
+## 额度规则（重要）
+- 开发与单测全部用 mock/procedural，不调用 Codex。
+- 全部完成后，用 Codex 真实调用最多 3 句（静帧+GIF，含自检重出在内总调用 ≤12 次），记录每次调用耗时。之后不得再调用。
+- 不调用任何付费 API，不下载 >200MB。
 
 ## 规则
-- 只在本 worktree 改代码和 commit；不推送、不碰主仓库 /data/soffy/projects/hevi 工作区、不重启/改动生产容器、不往生产 API 提交任务。
-- 不花钱；不下载 >200MB。同一问题卡两次就记录并继续。每完成一项追加 PROGRESS.md。
+- 只在本 worktree 改代码和 commit；不推送、不碰主仓库工作区、不重启/改动生产容器。同一问题卡两次就记录并继续。每完成一项追加 PROGRESS.md。单测 + /data/soffy/projects/hevi/.venv/bin/python -m pytest 相关测试通过。
+
+## 验收
+3 句示例（“一只橘猫第一次看海”的三句口播）：procedural 模式全部出片；Codex 模式 3 句真实出片。ffprobe 结果、contact sheet、GIF/MP4 路径放 samples/。
 
 ## 输出
-INTEG_REPORT.md（中文）：合并与冲突处理；每项补修 | commit；16 条线总表（3 次结果、平均耗时、时长、有声、字幕、md5 是否不同、素材重合率）；测试结果；仍存问题。最后一行 DONE。
+COLLAGE_REPORT.md（中文）：实现、文件、commit、两种模式结果、Codex 调用次数与耗时、QA 结果、许可署名、仍存问题。最后一行 DONE。

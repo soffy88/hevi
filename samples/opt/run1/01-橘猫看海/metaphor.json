@@ -1,0 +1,22 @@
+{
+  "index": 0,
+  "sentence": "橘猫看海",
+  "core_meaning": "橘猫看海",
+  "emotion": "冷静",
+  "visual_proposition": "以芥末黄色场为底，用黑白半调剪片与彩色卡纸拼贴表达：橘猫看海",
+  "key_objects": [
+    "橘猫看海",
+    "主体",
+    "结构",
+    "连接件",
+    "结果"
+  ],
+  "color_key": "tool",
+  "color_name": "芥末黄",
+  "background_hex": "#D9A441",
+  "accent_colors": [
+    "#F5EFE0",
+    "#2B2B2B"
+  ],
+  "assembly_order": "结构 → 主体/卡片 → 连接件 → 动作 → 结果"
+}

@@ -63,6 +63,10 @@ register_stickman_capabilities_once()
 # --- grafted from main closure branch 2026-10-21 (score_render sampled /
 # music_analyze / expression_rig transplant; module files copied verbatim) ---
 
+# Collage B-roll capabilities (feat/collage-broll)
+from hevi.collage_broll.capabilities import register_collage_broll_capabilities_once
+register_collage_broll_capabilities_once()
+
 # Score render (audio.score_render): ABC score -> wav, synth + sampled
 # real-instrument timbres (hevi.audio.sampled, vendored VCSL samples).
 from . import score_render as _score_render  # noqa: E402,F401
