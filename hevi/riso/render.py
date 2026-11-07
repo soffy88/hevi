@@ -11,6 +11,8 @@ Minimal Playwright seek frame capture adapter following webrender conventions:
 
 from __future__ import annotations
 
+import time
+
 import asyncio
 import concurrent.futures
 import json
@@ -154,7 +156,6 @@ class WebRenderSession:
             pass
         from playwright.sync_api import sync_playwright
 
-        self._playwright = sync_playwright().start()
         _CHROMIUM_ARGS = [
             "--use-angle=swiftshader",
             "--enable-unsafe-swiftshader",
@@ -163,18 +164,41 @@ class WebRenderSession:
             "--ignore-gpu-blocklist",
             "--disable-dev-shm-usage",
         ]
-        self._browser = self._playwright.chromium.launch(args=_CHROMIUM_ARGS)
-        self._page = self._browser.new_page(
-            viewport={"width": self.width, "height": self.height},
-            device_scale_factor=1.0,
-        )
-        self._page.goto(self.html_path.as_uri())
-
+        last_exc = None
+        for _attempt in range(3):
+            try:
+                self._playwright = sync_playwright().start()
+                self._browser = self._playwright.chromium.launch(args=_CHROMIUM_ARGS, timeout=30000)
+                self._page = self._browser.new_page(
+                    viewport={"width": self.width, "height": self.height},
+                    device_scale_factor=1.0,
+                )
+                self._page.goto(self.html_path.as_uri())
+                break
+            except Exception as exc:
+                last_exc = exc
+                try:
+                    if self._browser:
+                        self._browser.close()
+                except Exception:
+                    pass
+                try:
+                    if self._playwright:
+                        self._playwright.stop()
+                except Exception:
+                    pass
+                self._browser = None
+                self._playwright = None
+                self._page = None
+                if _attempt < 2:
+                    time.sleep(1.0)
+        if self._page is None:
+            raise FontLoadError(f"browser launch failed: {last_exc}")
         # Strict font loading verification gate
         try:
             self._page.wait_for_function(
                 "() => window.__fontsReady === true || window.__fontError !== null",
-                timeout=8000,
+                timeout=15000,
             )
         except Exception as e:
             raise FontLoadError(f"Timed out waiting for fonts to load: {e}")

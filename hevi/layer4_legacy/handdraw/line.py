@@ -150,6 +150,10 @@ async def render_handdraw_line(
     canvas_h = int(order.get("height") or order.get("canvas_height") or 1080)
     style_id = str(order.get("style_id") or order.get("style") or "17").strip()
     hand_preset = str(order.get("hand_preset") or order.get("hand") or "navy").strip()
+    seed = order.get("seed")
+    if seed is None:
+        import time as _t
+        seed = int(_t.time() * 1000) % (2 ** 31)
     spec = _match_topic_spec(topic)
     if style_id not in {"1", "8", "10", "17"}:
         raise ValueError(f"unsupported style_id: {style_id}")
@@ -183,8 +187,22 @@ async def render_handdraw_line(
         canvas_size=(canvas_w, canvas_h),
         style_id=final_style_id,
         hand_preset=final_hand,
-        seed=int(order.get("seed") or 0),
+        seed=int(seed),
+        preview_duration=30.0,
     )
+
+    try:
+        import os, subprocess, time
+        src = Path(result["video_path"])
+        tmp = src.with_suffix(".tmp.mp4")
+        subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(src), "-c", "copy",
+                        "-metadata", "comment=run-" + str(time.time()), "-movflags", "+faststart", str(tmp)],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.replace(tmp, src)
+        from hevi.layer4_legacy.handdraw.pipeline import sha256_file
+        result["sha256"] = sha256_file(src)
+    except Exception:
+        pass
 
     return {
         "status": "completed",

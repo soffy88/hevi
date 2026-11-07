@@ -13,7 +13,7 @@ from .renderer import SceneRenderer, ffprobe, make_contact_sheet, sha256
 from .schema import load_scene
 
 
-def stage_load(state: dict[str, Any], *, scene: str, out: str) -> dict[str, Any]:
+async def stage_load(state: dict[str, Any], *, scene: str, out: str) -> dict[str, Any]:
     spec = load_scene(scene)
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -22,20 +22,21 @@ def stage_load(state: dict[str, Any], *, scene: str, out: str) -> dict[str, Any]
     return state
 
 
-def stage_render(state: dict[str, Any]) -> dict[str, Any]:
+async def stage_render(state: dict[str, Any]) -> dict[str, Any]:
+    import asyncio
     spec = state["spec"]
     r = SceneRenderer(spec, state["out"])
     state["renderer"] = r
-    state["frame_paths"] = r.render_frames()
+    state["frame_paths"] = await asyncio.to_thread(r.render_frames)
     return state
 
 
-def stage_encode(state: dict[str, Any]) -> dict[str, Any]:
+async def stage_encode(state: dict[str, Any]) -> dict[str, Any]:
     state["video_path"] = state["renderer"].encode(state["frame_paths"])
     return state
 
 
-def stage_contact_sheet(state: dict[str, Any], cols: int = 5, thumb_w: int = 320) -> dict[str, Any]:
+async def stage_contact_sheet(state: dict[str, Any], cols: int = 5, thumb_w: int = 320) -> dict[str, Any]:
     spec = state["spec"]
     frames = state["frame_paths"]
     step = max(1, len(frames) // 25)
@@ -45,7 +46,7 @@ def stage_contact_sheet(state: dict[str, Any], cols: int = 5, thumb_w: int = 320
     return state
 
 
-def stage_report(state: dict[str, Any]) -> dict[str, Any]:
+async def stage_report(state: dict[str, Any]) -> dict[str, Any]:
     spec = state["spec"]
     video = state["video_path"]
     import json

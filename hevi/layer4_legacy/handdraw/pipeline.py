@@ -701,7 +701,7 @@ def render_handdraw_pipeline(
                 "-af", linear_filter, "-c:a", "aac", "-b:a", "192k",
                 "-map_metadata", "-1", "-movflags", "+faststart", str(normalized_video),
             ], check=True)
-            normalized_video.replace(video_path)
+            shutil.move(str(normalized_video), str(video_path))
         except Exception:
             # Keep failure explicit; the report must not claim an unmeasured pass.
             raise

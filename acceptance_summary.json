@@ -1,0 +1,361 @@
+{
+  "explainer": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 35.7,
+      "md5": "270b58bd540f9a4ae5a73df0dbdc2722",
+      "video": "/data/soffy/projects/hevi-integ/samples/explainer/_runtime/explainer.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 22.4,
+      "md5": "34b8c9b0852e2c101039fb48c77ecbe9",
+      "video": "/data/soffy/projects/hevi-integ/samples/explainer/_runtime/explainer.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 22.5,
+      "md5": "8b2897b933352f27de86592155917d67",
+      "video": "/data/soffy/projects/hevi-integ/samples/explainer/_runtime/explainer.mp4"
+    }
+  ],
+  "cinematic": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 38.0,
+      "md5": "280a6aaf52807df196d5d37c9760c676",
+      "video": "/data/soffy/projects/hevi-integ/samples/cinematic/_runtime/cinematic.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 22.6,
+      "md5": "1535e67406bbacaf2c0f525c38fd9548",
+      "video": "/data/soffy/projects/hevi-integ/samples/cinematic/_runtime/cinematic.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 22.2,
+      "md5": "787e44150415bee7b4c5ae88cbcdd0b5",
+      "video": "/data/soffy/projects/hevi-integ/samples/cinematic/_runtime/cinematic.mp4"
+    }
+  ],
+  "director_pipeline": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 35.7,
+      "md5": "8ff72d94c35213cfb8f0bbb38dbbb951",
+      "video": "/data/soffy/projects/hevi-integ/samples/director_pipeline/_runtime/director_pipeline.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 20.6,
+      "md5": "67750f5a89398c20c38dc5b5e99f8e5e",
+      "video": "/data/soffy/projects/hevi-integ/samples/director_pipeline/_runtime/director_pipeline.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 20.4,
+      "md5": "ae46e9da20a925f16f163a7404ae082b",
+      "video": "/data/soffy/projects/hevi-integ/samples/director_pipeline/_runtime/director_pipeline.mp4"
+    }
+  ],
+  "kinetic_promo": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 29.9,
+      "md5": "231e5ff9dfa76f49d04385ad29e25c29",
+      "video": "/data/soffy/projects/hevi-integ/samples/kinetic_promo/_runtime/kinetic_promo.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 20.1,
+      "md5": "064b23bc4b5b7345cd11c37ce757caad",
+      "video": "/data/soffy/projects/hevi-integ/samples/kinetic_promo/_runtime/kinetic_promo.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 20.2,
+      "md5": "4a17c6aa13a5f408632091096d3c2cd6",
+      "video": "/data/soffy/projects/hevi-integ/samples/kinetic_promo/_runtime/kinetic_promo.mp4"
+    }
+  ],
+  "history_scene": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 39.5,
+      "md5": "8edc6c6dafdb22f4aca34a1353de23d3",
+      "video": "/data/soffy/projects/hevi-integ/samples/history_scene/_runtime/history_scene.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 24.3,
+      "md5": "fd4ce15566b1feef08e418b7348172e6",
+      "video": "/data/soffy/projects/hevi-integ/samples/history_scene/_runtime/history_scene.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 24.4,
+      "md5": "fe9ba48fd7e775ec33fc2b3cb5e6400a",
+      "video": "/data/soffy/projects/hevi-integ/samples/history_scene/_runtime/history_scene.mp4"
+    }
+  ],
+  "talking_head": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 21.6,
+      "md5": "cade9bf8fa0c5a6e1aa6277480697183",
+      "video": "/data/soffy/projects/hevi-integ/samples/talking_head/_runtime/talking_head.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 21.1,
+      "md5": "729d233389ae4494044bc7d0b8b9d108",
+      "video": "/data/soffy/projects/hevi-integ/samples/talking_head/_runtime/talking_head.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 21.4,
+      "md5": "fbb3c7d537ba09b70837c4c857487c6c",
+      "video": "/data/soffy/projects/hevi-integ/samples/talking_head/_runtime/talking_head.mp4"
+    }
+  ],
+  "avatar_spokesperson": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 30.6,
+      "md5": "83002129695b6a8ebb8e334d8ab5439f",
+      "video": "/data/soffy/projects/hevi-integ/samples/avatar_spokesperson/_runtime/avatar_spokesperson.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 24.5,
+      "md5": "193ccc7761cb9d6e1d6ef29fcc1bed3a",
+      "video": "/data/soffy/projects/hevi-integ/samples/avatar_spokesperson/_runtime/avatar_spokesperson.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 24.1,
+      "md5": "7f21798673f7cb5a15b900d41dfc1290",
+      "video": "/data/soffy/projects/hevi-integ/samples/avatar_spokesperson/_runtime/avatar_spokesperson.mp4"
+    }
+  ],
+  "podcast_repurpose": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 50.4,
+      "md5": "f5e43907b3148529be83ef68edcc2ada",
+      "video": "/data/soffy/projects/hevi-integ/samples/podcast_repurpose/_runtime/podcast_repurpose.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 44.9,
+      "md5": "f5e43907b3148529be83ef68edcc2ada",
+      "video": "/data/soffy/projects/hevi-integ/samples/podcast_repurpose/_runtime/podcast_repurpose.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 46.4,
+      "md5": "f5e43907b3148529be83ef68edcc2ada",
+      "video": "/data/soffy/projects/hevi-integ/samples/podcast_repurpose/_runtime/podcast_repurpose.mp4"
+    }
+  ],
+  "character_animation": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 14.1,
+      "md5": "d59439be08912e4c34069c6c14599a13",
+      "video": "/data/soffy/projects/hevi-integ/samples/character_animation/_runtime/character_animation.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 14.0,
+      "md5": "b2029694c1858e6238d516c5dbad3d4e",
+      "video": "/data/soffy/projects/hevi-integ/samples/character_animation/_runtime/character_animation.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 13.9,
+      "md5": "6a30c95fbbdc09d79fbca23455639fff",
+      "video": "/data/soffy/projects/hevi-integ/samples/character_animation/_runtime/character_animation.mp4"
+    }
+  ],
+  "shorts_clip": [
+    {
+      "run": 1,
+      "status": "failed",
+      "elapsed": 48.9,
+      "error": "{'target': 'clip_video', 'line_id': 'shorts_clip', 'engine': 'zero', 'zero_record': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/record.json', 'status': 'failed', 'reason': 'QUALITY_GATE_FAILED: shorts_clip_01.mp4: motion_mean_ge_1, static_ratio_lt_0.5; shorts_clip_02.mp4: motion_mean_ge_1, static_ratio_lt_0.5', 'quality': {'verdict': 'fail', 'passed': False, 'violations': ['QUALITY_GATE_FAILED: shorts_clip_01.mp4: motion_mean_ge_1, static_ratio_lt_0.5; shorts_clip_02.mp4: motion_mean_ge_1, static_ratio_lt_0.5'], 'checks': {'zero_line_qa': [{'path': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/shorts_clip_01.mp4', 'sha256': 'cd127748241f8f4ce1c3639cf2dd0ad7e9067d74425126ce5d05a0e0afe4aaf5', 'bytes': 532259, 'duration': 23.5, 'resolution': '720x1280', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -18.0, 'frames_sampled': 94, 'motion_mean': 0.193, 'static_ratio': 0.849, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 23.9, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.1': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/contact_sheet_shorts_clip_01.jpg'}, {'path': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/shorts_clip_02.mp4', 'sha256': '51fa8f699906aeea9818bf64b46776ff1904057667368ee95d3ce5bee486445a', 'bytes': 418805, 'duration': 18.6, 'resolution': '720x1280', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -17.7, 'frames_sampled': 74, 'motion_mean': 0.171, 'static_ratio': 0.904, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 23.956, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.1': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/contact_sheet_shorts_clip_02.jpg'}]}}, 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'shorts_clip:render', 'idempotency_key': 'accept-shorts_clip', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    },
+    {
+      "run": 2,
+      "status": "failed",
+      "elapsed": 49.4,
+      "error": "{'target': 'clip_video', 'line_id': 'shorts_clip', 'engine': 'zero', 'zero_record': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/record.json', 'status': 'failed', 'reason': 'QUALITY_GATE_FAILED: shorts_clip_01.mp4: motion_mean_ge_1, static_ratio_lt_0.5; shorts_clip_02.mp4: motion_mean_ge_1, static_ratio_lt_0.5', 'quality': {'verdict': 'fail', 'passed': False, 'violations': ['QUALITY_GATE_FAILED: shorts_clip_01.mp4: motion_mean_ge_1, static_ratio_lt_0.5; shorts_clip_02.mp4: motion_mean_ge_1, static_ratio_lt_0.5'], 'checks': {'zero_line_qa': [{'path': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/shorts_clip_01.mp4', 'sha256': 'cd127748241f8f4ce1c3639cf2dd0ad7e9067d74425126ce5d05a0e0afe4aaf5', 'bytes': 532259, 'duration': 23.5, 'resolution': '720x1280', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -18.0, 'frames_sampled': 94, 'motion_mean': 0.193, 'static_ratio': 0.849, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 23.9, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.1': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/contact_sheet_shorts_clip_01.jpg'}, {'path': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/shorts_clip_02.mp4', 'sha256': '51fa8f699906aeea9818bf64b46776ff1904057667368ee95d3ce5bee486445a', 'bytes': 418805, 'duration': 18.6, 'resolution': '720x1280', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -17.7, 'frames_sampled': 74, 'motion_mean': 0.171, 'static_ratio': 0.904, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 23.956, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.1': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/contact_sheet_shorts_clip_02.jpg'}]}}, 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'shorts_clip:render', 'idempotency_key': 'accept-shorts_clip', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    },
+    {
+      "run": 3,
+      "status": "failed",
+      "elapsed": 50.2,
+      "error": "{'target': 'clip_video', 'line_id': 'shorts_clip', 'engine': 'zero', 'zero_record': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/record.json', 'status': 'failed', 'reason': 'QUALITY_GATE_FAILED: shorts_clip_01.mp4: motion_mean_ge_1, static_ratio_lt_0.5; shorts_clip_02.mp4: motion_mean_ge_1, static_ratio_lt_0.5', 'quality': {'verdict': 'fail', 'passed': False, 'violations': ['QUALITY_GATE_FAILED: shorts_clip_01.mp4: motion_mean_ge_1, static_ratio_lt_0.5; shorts_clip_02.mp4: motion_mean_ge_1, static_ratio_lt_0.5'], 'checks': {'zero_line_qa': [{'path': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/shorts_clip_01.mp4', 'sha256': 'cd127748241f8f4ce1c3639cf2dd0ad7e9067d74425126ce5d05a0e0afe4aaf5', 'bytes': 532259, 'duration': 23.5, 'resolution': '720x1280', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -18.0, 'frames_sampled': 94, 'motion_mean': 0.193, 'static_ratio': 0.849, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 23.9, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.1': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/contact_sheet_shorts_clip_01.jpg'}, {'path': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/shorts_clip_02.mp4', 'sha256': '51fa8f699906aeea9818bf64b46776ff1904057667368ee95d3ce5bee486445a', 'bytes': 418805, 'duration': 18.6, 'resolution': '720x1280', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -17.7, 'frames_sampled': 74, 'motion_mean': 0.171, 'static_ratio': 0.904, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 23.956, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.1': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/shorts_clip/_runtime/contact_sheet_shorts_clip_02.jpg'}]}}, 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'shorts_clip:render', 'idempotency_key': 'accept-shorts_clip', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    }
+  ],
+  "reference_adapt": [
+    {
+      "run": 1,
+      "status": "failed",
+      "elapsed": 18.3,
+      "error": "{'target': 'reference_adapt', 'line_id': 'reference_adapt', 'engine': 'zero', 'zero_record': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/record.json', 'status': 'failed', 'reason': 'QUALITY_GATE_FAILED: reference_adapt.mp4: motion_mean_ge_1, static_ratio_lt_0.5', 'quality': {'verdict': 'fail', 'passed': False, 'violations': ['QUALITY_GATE_FAILED: reference_adapt.mp4: motion_mean_ge_1, static_ratio_lt_0.5'], 'checks': {'zero_line_qa': [{'path': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/reference_adapt.mp4', 'sha256': '9d3c89500837ea2a09ab02d03055bbdce115381c67b17238f9a449023aa08089', 'bytes': 787042, 'duration': 31.511, 'resolution': '1280x720', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -19.8, 'frames_sampled': 126, 'motion_mean': 0.126, 'static_ratio': 0.896, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 8.102, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.35': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/contact_sheet.jpg'}]}}, 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'reference_adapt:render', 'idempotency_key': 'accept-reference_adapt', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    },
+    {
+      "run": 2,
+      "status": "failed",
+      "elapsed": 18.1,
+      "error": "{'target': 'reference_adapt', 'line_id': 'reference_adapt', 'engine': 'zero', 'zero_record': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/record.json', 'status': 'failed', 'reason': 'QUALITY_GATE_FAILED: reference_adapt.mp4: motion_mean_ge_1, static_ratio_lt_0.5', 'quality': {'verdict': 'fail', 'passed': False, 'violations': ['QUALITY_GATE_FAILED: reference_adapt.mp4: motion_mean_ge_1, static_ratio_lt_0.5'], 'checks': {'zero_line_qa': [{'path': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/reference_adapt.mp4', 'sha256': '2f95be906a3a86760895a343e4e033256885014157a5860aba84fe2f7d16cc8c', 'bytes': 787387, 'duration': 31.592, 'resolution': '1280x720', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -19.7, 'frames_sampled': 126, 'motion_mean': 0.126, 'static_ratio': 0.896, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 8.211, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.35': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/contact_sheet.jpg'}]}}, 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'reference_adapt:render', 'idempotency_key': 'accept-reference_adapt', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    },
+    {
+      "run": 3,
+      "status": "failed",
+      "elapsed": 18.4,
+      "error": "{'target': 'reference_adapt', 'line_id': 'reference_adapt', 'engine': 'zero', 'zero_record': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/record.json', 'status': 'failed', 'reason': 'QUALITY_GATE_FAILED: reference_adapt.mp4: motion_mean_ge_1, static_ratio_lt_0.5', 'quality': {'verdict': 'fail', 'passed': False, 'violations': ['QUALITY_GATE_FAILED: reference_adapt.mp4: motion_mean_ge_1, static_ratio_lt_0.5'], 'checks': {'zero_line_qa': [{'path': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/reference_adapt.mp4', 'sha256': '403f7321f0315761f769e177725e7e58edd82954fd8774cc194215223aa25325', 'bytes': 778255, 'duration': 31.116, 'resolution': '1280x720', 'video_codec': 'h264', 'fps': '30/1', 'audio_codec': 'aac', 'audio_channels': 2, 'mean_volume_db': -19.8, 'frames_sampled': 124, 'motion_mean': 0.128, 'static_ratio': 0.894, 'black_ratio': 0.0, 'dark_textcard_ratio': 0.0, 'luma_std_mean': 8.227, 'checks': {'has_video': True, 'resolution_matches_spec': True, 'duration_ge_6s': True, 'motion_mean_ge_1': False, 'static_ratio_lt_0.5': False, 'not_blank_luma_std_ge_8': True, 'black_ratio_lt_0.35': True, 'dark_textcard_ratio_lt_0.5': True, 'has_audio': True, 'audio_mean_volume_gt_-45dB': True}, 'checks_not_applicable': [], 'failed_checks': ['motion_mean_ge_1', 'static_ratio_lt_0.5'], 'pass': False, 'contact_sheet': '/data/soffy/projects/hevi-integ/samples/reference_adapt/_runtime/contact_sheet.jpg'}]}}, 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'reference_adapt:render', 'idempotency_key': 'accept-reference_adapt', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    }
+  ],
+  "comic_narration": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 112.0,
+      "md5": "a1a84ed84ab062392fbef9631bcacd09",
+      "video": "/data/soffy/projects/hevi-integ/samples/comic_narration/_runtime/final.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 90.1,
+      "md5": "d3e84726cb885b4b5083815153009c79",
+      "video": "/data/soffy/projects/hevi-integ/samples/comic_narration/_runtime/final.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 91.0,
+      "md5": "275c251c5d514f2b85879cd285ed550c",
+      "video": "/data/soffy/projects/hevi-integ/samples/comic_narration/_runtime/final.mp4"
+    }
+  ],
+  "handdraw": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 191.9,
+      "md5": "dc682400342894c808c4281a42d6c839",
+      "video": "/data/soffy/projects/hevi-integ/samples/handdraw/_runtime/outputs/film.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 202.8,
+      "md5": "dc682400342894c808c4281a42d6c839",
+      "video": "/data/soffy/projects/hevi-integ/samples/handdraw/_runtime/outputs/film.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 201.9,
+      "md5": "dc682400342894c808c4281a42d6c839",
+      "video": "/data/soffy/projects/hevi-integ/samples/handdraw/_runtime/outputs/film.mp4"
+    }
+  ],
+  "scene3d": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 147.0,
+      "md5": "3ea2b925278ffe58799f8488cbc68948",
+      "video": "/data/soffy/projects/hevi-integ/samples/scene3d/run1/_work/scene3d.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 146.0,
+      "md5": "75691bf33e935732fae328cc7140484e",
+      "video": "/data/soffy/projects/hevi-integ/samples/scene3d/run2/_work/scene3d.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 145.9,
+      "md5": "2547d91d9621c9a21e20a70e1686dc7f",
+      "video": "/data/soffy/projects/hevi-integ/samples/scene3d/run3/_work/scene3d.mp4"
+    }
+  ],
+  "localization_dub": [
+    {
+      "run": 1,
+      "status": "failed",
+      "elapsed": 0.1,
+      "error": "{'status': 'failed', 'error': {'code': 'RUNTIMEERROR', 'message': 'HEVI default LLM is unavailable; inject translator or configure a provider'}, 'fingerprint': 'e734df94da620493d6aff5e1', 'decision_trail': [{'stage': 'transcribe', 'segments': 7}, {'stage': 'failed', 'error': 'RuntimeError'}], 'report_path': '/data/soffy/projects/hevi-integ/samples/localization_dub/_runtime/video_localization_report.json', 'cost_usd': 0.0, 'pillars': ['cost', 'decision_trail', 'fingerprint', 'report'], 'artifacts': [], 'findings': {}, 'target': 'localize_video', 'line_id': 'localization_dub', 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'localization_dub:render', 'idempotency_key': 'accept-localization_dub', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    },
+    {
+      "run": 2,
+      "status": "failed",
+      "elapsed": 0.0,
+      "error": "{'status': 'failed', 'error': {'code': 'RUNTIMEERROR', 'message': 'HEVI default LLM is unavailable; inject translator or configure a provider'}, 'fingerprint': 'e734df94da620493d6aff5e1', 'decision_trail': [{'stage': 'transcribe', 'segments': 7}, {'stage': 'failed', 'error': 'RuntimeError'}], 'report_path': '/data/soffy/projects/hevi-integ/samples/localization_dub/_runtime/video_localization_report.json', 'cost_usd': 0.0, 'pillars': ['cost', 'decision_trail', 'fingerprint', 'report'], 'artifacts': [], 'findings': {}, 'target': 'localize_video', 'line_id': 'localization_dub', 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'localization_dub:render', 'idempotency_key': 'accept-localization_dub', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    },
+    {
+      "run": 3,
+      "status": "failed",
+      "elapsed": 0.0,
+      "error": "{'status': 'failed', 'error': {'code': 'RUNTIMEERROR', 'message': 'HEVI default LLM is unavailable; inject translator or configure a provider'}, 'fingerprint': 'e734df94da620493d6aff5e1', 'decision_trail': [{'stage': 'transcribe', 'segments': 7}, {'stage': 'failed', 'error': 'RuntimeError'}], 'report_path': '/data/soffy/projects/hevi-integ/samples/localization_dub/_runtime/video_localization_report.json', 'cost_usd': 0.0, 'pillars': ['cost', 'decision_trail', 'fingerprint', 'report'], 'artifacts': [], 'findings': {}, 'target': 'localize_video', 'line_id': 'localization_dub', 'retry_evidence': {'retry_supported': True, 'retry_exercised': False, 'operation_id': 'localization_dub:render', 'idempotency_key': 'accept-localization_dub', 'attempt_count': 1, 'failure_class': None, 'retryable': False, 'backoff_policy': {'max_attempts': 3, 'initial_backoff_s': 0.1, 'max_backoff_s': 1.0, 'jitter': False}, 'first_attempt_result': 'completed', 'final_attempt_result': 'completed', 'side_effect_duplicate_count': 0}}"
+    }
+  ],
+  "documentary_montage": [
+    {
+      "run": 1,
+      "status": "completed",
+      "elapsed": 34.2,
+      "md5": "2e163a93717b8f24e88db52e4e8fbb9e",
+      "video": "/data/soffy/projects/hevi-integ/samples/documentary_montage/_runtime/portrait.mp4"
+    },
+    {
+      "run": 2,
+      "status": "completed",
+      "elapsed": 33.6,
+      "md5": "11ccc244c08fc7e1867fc6fdedf42128",
+      "video": "/data/soffy/projects/hevi-integ/samples/documentary_montage/_runtime/portrait.mp4"
+    },
+    {
+      "run": 3,
+      "status": "completed",
+      "elapsed": 33.7,
+      "md5": "8e8c0a83e63fb78ba41b09e1be6151bf",
+      "video": "/data/soffy/projects/hevi-integ/samples/documentary_montage/_runtime/portrait.mp4"
+    }
+  ]
+}

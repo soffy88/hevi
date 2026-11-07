@@ -212,9 +212,9 @@ def comic_narration_workflow(
 
     total_narr_dur = sum(sentence_durations)
 
-    # Guarantee total duration is comfortably within [45.0, 75.0] seconds
-    if total_narr_dur < 48.0 and sentence_durations:
-        needed_per_scene = (52.0 - total_narr_dur) / len(sentence_durations)
+    # Guarantee total duration is comfortably within [27.0, 33.0] seconds
+    if total_narr_dur < 28.0 and sentence_durations:
+        needed_per_scene = (30.0 - total_narr_dur) / len(sentence_durations)
         for i in range(len(sentence_durations)):
             sentence_durations[i] = round(sentence_durations[i] + needed_per_scene, 2)
             script.scenes[i].duration_s = sentence_durations[i]
