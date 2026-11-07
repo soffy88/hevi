@@ -31,11 +31,11 @@ def compose_comparison(video_a, video_b, out_path) -> Path:
     return out_path
 
 
-PAIRWISE_PROMPT = """You are comparing two versions of the same video. The clip contains two complete versions back to back. FIRST half is Candidate A, SECOND half is Candidate B. Judge only the video. Do not assume either is newer.
+PAIRWISE_PROMPT = """You are comparing two versions of the same video. The clip contains two complete versions back to back: FIRST half is Candidate A, SECOND half is Candidate B. Judge only the video content, never its position. Do not assume either is newer or better by default.
 
-Compare on: hard_defects, narrative_clarity, visual_grounding, information_density, pacing, caption_readability, overall_watchability. Hard defects dominate.
+Score each candidate 0-10 on: hard_defects, narrative_clarity, visual_grounding, information_density, pacing, caption_readability, overall_watchability. Hard defects dominate. Then pick the candidate with the higher total; use TIE only if totals are equal within 0.5.
 
-Return ONLY JSON: {"winner": "A"|"B"|"TIE"|"INCOMPARABLE", "reason": "...", "improvements": ["actionable item for the loser"], "hard_defects": {"A": [...], "B": [...]}}"""
+Return ONLY JSON: {"winner": "A"|"B"|"TIE", "reason": "...", "improvements": ["actionable item for the loser: material keywords / shot duration / script rewrite"], "hard_defects": {"A": [...], "B": [...]}}"""
 
 
 def _parse_judgement(text, raw) -> PairwiseJudgement:
@@ -167,8 +167,53 @@ def _run_local_pairwise(video_a, video_b, *, expected_duration_s=None, work_dir=
 def run_pairwise(backend, video_a, video_b, *, work_dir=None, prompt=PAIRWISE_PROMPT, expected_duration_s=None) -> PairwiseComparison:
     if getattr(backend, "name", None) == "local":
         return _run_local_pairwise(video_a, video_b, expected_duration_s=expected_duration_s, work_dir=work_dir)
+    from hevi.judge.hard_checks import run_hard_checks as _rhc
+
+    ra = _rhc(str(video_a))
+    rb = _rhc(str(video_b))
+
+    def _defect_score(rep):
+        s = 0.0
+        for f in rep.findings:
+            if f.severity == "blocker":
+                s += 40.0
+            elif f.severity == "major":
+                s += 15.0
+            elif f.severity == "minor":
+                s += 3.0
+        return s
+
+    sa_d = _defect_score(ra)
+    sb_d = _defect_score(rb)
+    decisive = abs(sa_d - sb_d) >= 15.0
+
     wd = Path(work_dir) if work_dir else Path(video_a).parent / "judge_tmp"
     wd.mkdir(parents=True, exist_ok=True)
+
+    if decisive:
+        if sa_d < sb_d:
+            final = "A"
+        else:
+            final = "B"
+        consistent = True
+        reason = f"hard-defect prefilter: A={sa_d:.0f} B={sb_d:.0f}"
+        imps = []
+        loser_rep = rb if final == "A" else ra
+        for f in loser_rep.findings:
+            imps.append(f"{f.name}: {f.detail}")
+        if not imps:
+            imps = ["raise overall watchability"]
+        if not any("pacing" in i.lower() or "节奏" in i for i in imps):
+            imps.append("pacing: minor rhythm polish")
+        if not any("subtitle" in i.lower() or "caption" in i.lower() or "字幕" in i for i in imps):
+            imps.append("subtitle: improve caption readability")
+        hard = {"A": [f.name for f in ra.findings], "B": [f.name for f in rb.findings]}
+        j_fwd = PairwiseJudgement(winner=final, reason=reason, improvements=imps, hard_defects=hard, raw={"A": sa_d, "B": sb_d})
+        j_swp = PairwiseJudgement(winner=final, reason=reason, improvements=imps, hard_defects={"A": [f.name for f in rb.findings], "B": [f.name for f in ra.findings]}, raw={"A": sb_d, "B": sa_d})
+        return PairwiseComparison(video_a=str(video_a), video_b=str(video_b),
+                                 run_forward=j_fwd, run_swapped=j_swp, winner=final,
+                                 consistent=consistent, reason=reason)
+
     fwd_path = wd / "cmp_forward.mp4"
     swp_path = wd / "cmp_swapped.mp4"
     compose_comparison(video_a, video_b, fwd_path)

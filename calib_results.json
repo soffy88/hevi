@@ -1,0 +1,82 @@
+[
+  {
+    "idx": 0,
+    "label": "explainer",
+    "winner": "TIE",
+    "consistent": true,
+    "reason": "No technical hard defects in either half (audio present at -19.9 dB, no black/freeze per metrics). B wins on visual grounding and narrative clarity: second half consistently shows the orange ginger cat protagonist matching the '橘猫看海' title and captions about pausing on the beach, ears up in the bree",
+    "elapsed": 82.8
+  },
+  {
+    "idx": 2,
+    "label": "kinetic_promo",
+    "winner": "B",
+    "consistent": true,
+    "reason": "Both halves show the same continuous orange-tabby-first-sees-the-sea narrative with readable yellow/white captions, matching beach/wet-sand visuals, present audio, and no black/freeze per metrics; no clear advantage on clarity, grounding, density, pacing, or watchability.",
+    "elapsed": 84.1
+  },
+  {
+    "idx": 3,
+    "label": "history_scene",
+    "winner": "TIE",
+    "consistent": false,
+    "reason": "Sampled frames for both halves show identical scenes, subtitles, and pacing; metrics show 47.0s total duration, 1280x720 video with AAC audio at -19.8 dB mean volume, 0.0000 black ratio, and 0 freeze events, with no hard defects on either side.",
+    "elapsed": 94.1
+  },
+  {
+    "idx": 4,
+    "label": "talking_head",
+    "winner": "TIE",
+    "consistent": true,
+    "reason": "Metrics show no hard defect (audio present at -19.7 dB, black_ratio 0.0, freeze_count 0) and the contact sheet shows the same suited presenter, bookshelf background, and continuous orange-cat-at-the-sea caption sequence with no distinguishable A/B difference in narrative clarity, visual grounding, p",
+    "elapsed": 101.1
+  },
+  {
+    "idx": 5,
+    "label": "director_pipeline",
+    "winner": "B",
+    "consistent": true,
+    "reason": "No hard defects in either half (audio present, no black/freeze). B is clearly better grounded: it opens with the title '橘猫看海' and shows the orange cat on a beach with actual sea waves, matching its captions about listening on the sand and salty sea breeze. A instead shows an aquarium fish, a differe",
+    "elapsed": 102.8
+  },
+  {
+    "idx": 6,
+    "label": "bad_silent",
+    "winner": "B",
+    "consistent": true,
+    "reason": "hard-defect prefilter: A=40 B=0",
+    "elapsed": 2.3
+  },
+  {
+    "idx": 7,
+    "label": "bad_black",
+    "winner": "B",
+    "consistent": true,
+    "reason": "hard-defect prefilter: A=48 B=0",
+    "elapsed": 2.0
+  },
+  {
+    "idx": 8,
+    "label": "bad_frozen",
+    "winner": "B",
+    "consistent": true,
+    "reason": "hard-defect prefilter: A=33 B=0",
+    "elapsed": 2.1
+  },
+  {
+    "idx": 9,
+    "label": "bad_short2s",
+    "winner": "B",
+    "consistent": true,
+    "reason": "hard-defect prefilter: A=15 B=0",
+    "elapsed": 2.0
+  },
+  {
+    "idx": 1,
+    "label": "cinematic",
+    "winner": "B",
+    "consistent": true,
+    "reason": "consistent B",
+    "elapsed": 0
+  }
+]

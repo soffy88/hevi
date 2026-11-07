@@ -104,9 +104,12 @@ def check_frozen_frames(path):
     cp = _run(["ffmpeg", "-i", str(path), "-vf", "freezedetect=n=-60dB:d=2", "-an", "-f", "null", "-"])
     text = cp.stderr or ""
     freezes = re.findall(r"freeze_start:([\d.]+)\s*freeze_duration:([\d.]+)\s*freeze_end:([\d.]+)", text)
-    long_freezes = [f for f in freezes if float(f[1]) >= 3.0]
+    starts = re.findall(r"(?:lavfi\.freezedetect\.)?freeze_start:\s*([\d.]+)", text)
+    long_freezes = [f for f in freezes if len(f) >= 2 and float(f[1]) >= 2.0]
+    if not long_freezes and starts:
+        long_freezes = starts
     if long_freezes:
-        out.append(HardFinding("frozen_frames", "major", f"检测到 {len(long_freezes)} 处冻帧(≥3s)", long_freezes))
+        out.append(HardFinding("frozen_frames", "major", f"检测到 {len(long_freezes)} 处冻帧(≥2s)", long_freezes))
     return out
 
 
@@ -274,7 +277,11 @@ def _freeze_count(path):
     cp = _run(["ffmpeg", "-i", str(path), "-vf", "freezedetect=n=-60dB:d=2", "-an", "-f", "null", "-"])
     text = cp.stderr or ""
     freezes = re.findall(r"freeze_start:([\d.]+)\s*freeze_duration:([\d.]+)\s*freeze_end:([\d.]+)", text)
-    return sum(1 for f in freezes if float(f[1]) >= 2.0)
+    starts = re.findall(r"(?:lavfi\.freezedetect\.)?freeze_start:\s*([\d.]+)", text)
+    n = sum(1 for f in freezes if len(f) >= 2 and float(f[1]) >= 2.0)
+    if not n and starts:
+        n = len(starts)
+    return n
 
 
 def _repetition_ratio(path):

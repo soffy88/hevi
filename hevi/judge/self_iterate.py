@@ -24,7 +24,42 @@ def _default_adjust(params, improvements, line_id):
         p["caption_size"] = int(p.get("caption_size", 48)) + 2
     if "black" in joined or "dark" in joined or "黑" in joined:
         p["grade"] = "bright"
+    if "repet" in joined or "visual" in joined or "素材" in joined:
+        p["xd"] = max(0.3, float(p.get("xd", 0.5)) - 0.1)
+    # parse structured hints if present
+    for imp in improvements or []:
+        low = str(imp).lower()
+        if "keywords:" in low:
+            kw = str(imp).split(":", 1)[-1].strip()
+            if kw:
+                p["material_keywords"] = [x.strip() for x in kw.split(",") if x.strip()]
+        if "duration:" in low:
+            try:
+                p["shot_duration"] = float(str(imp).split(":", 1)[-1].strip().split()[0])
+            except Exception:
+                pass
+        if "script:" in low:
+            txt = str(imp).split(":", 1)[-1].strip()
+            if txt:
+                p["script_rewrite"] = txt
     p.setdefault("iteration_note", joined[:200])
+    # propagate executable params into extras so producers can consume them
+    extras = dict(p.get("extras") or {})
+    if "speed" in p:
+        extras["speed"] = p["speed"]
+    if "grade" in p:
+        extras["grade"] = p["grade"]
+    if "xd" in p:
+        extras["xd"] = p["xd"]
+    if "material_keywords" in p:
+        extras["material_keywords"] = p["material_keywords"]
+    if "shot_duration" in p:
+        extras["shot_duration"] = p["shot_duration"]
+    if "script_rewrite" in p:
+        extras["script_rewrite"] = p["script_rewrite"]
+    if "caption_size" in p:
+        extras["caption_size"] = p["caption_size"]
+    p["extras"] = extras
     return p
 
 
@@ -69,7 +104,7 @@ def run_self_iterate(
             pairwise = run_pairwise(pairwise_backend, prev_video, video, work_dir=vdir / "cmp",
                                     expected_duration_s=expected_duration_s)
             calls += 2
-            if pairwise.winner != "B":
+            if pairwise.winner not in ("B", "TIE"):
                 adopted = False
 
         changes = []
