@@ -116,7 +116,17 @@ def kinetic_promo(req: ZeroLineRequest, d: Path) -> Result:
 def explainer(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
-    film, audio, cues, prov, _ = _broll_film(req, tmp, W, H, grade="eq=saturation=1.1")
+    extras = getattr(req, "extras", {}) or {}
+    grade_map = {"bright": "eq=contrast=1.05:saturation=1.2", "dark": "eq=contrast=1.1:saturation=0.8", "normal": "eq=saturation=1.1"}
+    grade = grade_map.get(str(extras.get("grade", "normal")), "eq=saturation=1.1")
+    speed = float(extras.get("speed", 1.0))
+    xd = float(extras.get("xd", 0.5))
+    # executable params from judge feedback
+    if isinstance(extras.get("material_keywords"), list) and extras["material_keywords"]:
+        req = ZeroLineRequest(**{**req.to_dict(), "queries": tuple(extras["material_keywords"])})
+    if isinstance(extras.get("script_rewrite"), str) and extras["script_rewrite"]:
+        req = ZeroLineRequest(**{**req.to_dict(), "texts": (extras["script_rewrite"],)})
+    film, audio, cues, prov, _ = _broll_film(req, tmp, W, H, grade=grade, speed=speed, xd=xd)
     ev = caption_events(cues)
     for (a, b, _), h in zip(cues, req.labels, strict=False):
         if h:
@@ -131,9 +141,18 @@ def explainer(req: ZeroLineRequest, d: Path) -> Result:
 def cinematic(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
+    extras = getattr(req, "extras", {}) or {}
     grade = "eq=contrast=1.12:saturation=0.85:gamma=0.95,colorbalance=rs=0.08:bs=-0.06:rh=0.05:bh=-0.05"
+    if str(extras.get("grade", "")).lower() == "bright":
+        grade = "eq=contrast=1.05:saturation=1.15:gamma=1.0,colorbalance=rs=0.02:bs=0.02"
+    speed = float(extras.get("speed", 0.92))
+    xd = float(extras.get("xd", 0.5))
+    if isinstance(extras.get("material_keywords"), list) and extras["material_keywords"]:
+        req = ZeroLineRequest(**{**req.to_dict(), "queries": tuple(extras["material_keywords"])})
+    if isinstance(extras.get("script_rewrite"), str) and extras["script_rewrite"]:
+        req = ZeroLineRequest(**{**req.to_dict(), "texts": (extras["script_rewrite"],)})
     film, audio, cues, prov, _ = _broll_film(req, tmp, W, H, moves=("push", "pan_r", "push", "pull", "pan_l"),
-                                             grade=grade, speed=0.92)
+                                             grade=grade, speed=speed, xd=xd)
     ev = caption_events(cues)
     if _title(req):
         ev = [(0.2, 3.2, "Title", r"{\fad(400,400)\blur1}" + _title(req))] + ev

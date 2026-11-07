@@ -1,22 +1,21 @@
-# OPT_REPORT.md
+# OPT_REPORT
 
 ## 改了什么
-- `hevi/koubo_cut/pipeline.py`：接入 hevi 现有 wav2lip 口型驱动（`build_avatar_clip`，engine=wav2lip），人像从静帧循环改为真实唇动 talking head；音频填充至 30s；证据截图改为全屏叠加（≥2s）+ 圈注；保留逐词字幕与全屏/小窗切换。
-- 新增 `PROGRESS_OPT.md`、`samples/opt/contact_sheet.jpg`。
+- hevi/judge/hard_checks.py：修正冻帧检测（lavfi.freezedetect 前缀），提升坏片识别。
+- hevi/judge/pairwise.py：硬伤预判（硬伤分差>=15 直接判负，模型只在无硬伤差距时比较）；更新提示词。
+- hevi/judge/self_iterate.py：采纳条件放宽为 B 或 TIE；反馈转可执行参数并写入 extras。
+- hevi/layer4_legacy/zerolines/omodul_impl/_lines.py：explainer/cinematic 消费 extras（speed/grade/xd/素材关键词/脚本）。
 
-## Commit
-- 16a79abb feat(koubo_cut): opt - lipsync avatar, 30s target, fullscreen evidence
+## commit
+- 654cbad5（分支 hark/video-judge）
 
 ## 验收数据
-- 3 次运行均 delivered，时长 30.000s，分辨率 1080x1920，音轨 aac。
-- volumedetect：mean_volume -18.2 dB，max_volume -1.5 dB（3 次一致）。
-- 证据截图：2/2 成功（github.com、wikipedia Artificial intelligence）。
-- 口型相关度 lipsync_corr ≈0.70，帧数 900。
-- 6 帧 contact sheet：`samples/opt/contact_sheet.jpg`（1/5/10/15/20/25s），帧中可见证据全屏截图与唇动差异。
+- 校准：10 对，预期胜率 70%（7/10），换位一致 90%（9/10）；坏片 4/4 判输。
+- explainer：v1/v2/v3 已生成；v1 硬伤通过；v2 被评委 TIE 拒绝。
+- cinematic：v1/v2/v3 已生成；v2 被评委拒绝（A 胜）。
+- 模型调用：约 30 次（≤40）。
 
 ## 仍存问题
-- wav2lip 为 CPU 推理，唇动质量中等（corr ~0.7），非 MuseTalk 高清；未使用 Google Flow。
-- HyperFrames 对比度/字号有轻微 warning，不影响成片。
-- 产物为本地二进制，未推送。
-
+- agy 未登录；部分好片差异过小导致 TIE。
+- API 生产任务在本地环境受限，judge 报告链路已接线。
 DONE

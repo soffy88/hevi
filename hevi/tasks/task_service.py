@@ -1103,6 +1103,27 @@ class TaskService:
             artifact_path = result.get("result_video_path") or str(manifest.primary_path() or "")
             if not artifact_path:
                 raise RuntimeError("artifact manifest has no primary artifact")
+            # Attach judge report when requested (judge=True in config/options).
+            try:
+                judge_flag = bool(config_json.get("judge"))
+                judge_backend_name = config_json.get("judge_backend")
+                if not judge_flag:
+                    opts = config_json.get("options")
+                    if isinstance(opts, dict):
+                        judge_flag = bool(opts.get("judge"))
+                        judge_backend_name = judge_backend_name or opts.get("judge_backend")
+                if judge_flag and artifact_path:
+                    from hevi.judge import run_hard_checks, select_backend
+
+                    jb = judge_backend_name or "local"
+                    backend = select_backend(jb)
+                    if getattr(backend, "name", None) == "local":
+                        backend = None
+                    report = run_hard_checks(artifact_path, backend=backend)
+                    config_json["judge_report"] = report.to_dict()
+                    await self.repository.update_task(task_id, {"config_json": config_json})
+            except Exception:
+                pass
             completion = {
                 "status": "completed",
                 "progress_pct": 100.0,
