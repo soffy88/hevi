@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "historyId": "0e496454-e5d9-4d56-b1de-ab4de5843296",
+  "currentRevision": null,
+  "pendingChanges": false,
+  "files": {
+    "DESIGN.md": {
+      "hash": "5196bcae6577f6576fa38da13ee0b620f0410046adce13610589a00353206f64",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/51/5196bcae6577f6576fa38da13ee0b620f0410046adce13610589a00353206f64"
+    },
+    "assets/evidence_0.png": {
+      "hash": "beb281e57b4d7b5c58b260423f0103c66a7f8b3e782bf8f10d95d146b1bec94e",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/be/beb281e57b4d7b5c58b260423f0103c66a7f8b3e782bf8f10d95d146b1bec94e"
+    },
+    "assets/evidence_1.png": {
+      "hash": "262096b1a564e7d357082d3a5f674e9c249397b79b4dec01381e53e5b7eac810",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/26/262096b1a564e7d357082d3a5f674e9c249397b79b4dec01381e53e5b7eac810"
+    },
+    "assets/gsap.min.js": {
+      "hash": "92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/92/92bb9a96476f983d212a2bc4f54c889039c1696dd4461d40a736860938570fbb"
+    },
+    "assets/narration.wav": {
+      "hash": "998b169d7d8b33b02ae28ad005954690a6c6dfbebd33c8e951594f8a0bbe54cd",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/99/998b169d7d8b33b02ae28ad005954690a6c6dfbebd33c8e951594f8a0bbe54cd"
+    },
+    "assets/person.png": {
+      "hash": "997246e266046628cddcffdc577373929abd76ef9137c84a9a38fcda3c1a2973",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/99/997246e266046628cddcffdc577373929abd76ef9137c84a9a38fcda3c1a2973"
+    },
+    "hyperframes.json": {
+      "hash": "e3482479a509c30ea36cc4251a9bdcc286ce656f08471ba1015ca5bb212fd306",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/e3/e3482479a509c30ea36cc4251a9bdcc286ce656f08471ba1015ca5bb212fd306"
+    },
+    "index.html": {
+      "hash": "2271b6a2afccd5c6d753765ab7232e063b5538b6e55be3489782a738e0144b13",
+      "content": "/home/soffy/.cache/hyperframes/history/0e496454-e5d9-4d56-b1de-ab4de5843296/blobs/22/2271b6a2afccd5c6d753765ab7232e063b5538b6e55be3489782a738e0144b13"
+    }
+  },
+  "revisions": {},
+  "checks": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "snapshots": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "renders": {
+    "latest": {
+      "id": "2a76b909-7b13-478b-b433-7b14bbe9253d",
+      "completedAt": 1794023703466,
+      "output": "/data/soffy/projects/hevi-koubo/samples/run3/koubo_cut.mp4",
+      "status": "completed",
+      "revision": null
+    },
+    "retainedRevisions": []
+  },
+  "pendingArtifactCleanup": []
+}

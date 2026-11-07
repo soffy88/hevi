@@ -117,29 +117,30 @@ def caveman_scene(W=1280, H=720, fps=24, seconds=12.0):
     skin, fur, hair = (170, 120, 85), (120, 80, 45), (45, 30, 20)
     stone_pos = (W * 0.52, H * 0.835)
     rng = np.random.default_rng(1)
+    _sc = seconds / 12.0
     N = int(seconds * fps)
     for i in range(N):
         t = i / fps
         img = bg.copy()
         d = ImageDraw.Draw(img, 'RGBA')
         # timeline
-        if t < 4.5:
-            x = W * 0.12 + (W * 0.40) * (t / 4.5); phase = t * 2 * math.pi * 1.1; bend = 0; arm_up = 0
-        elif t < 7:
-            x = W * 0.52; phase = 0; k = min(1, (t - 4.5) / 0.8) if t < 6.2 else max(0, 1 - (t - 6.2) / 0.8); bend = k; arm_up = 0
+        if t < 4.5 * _sc:
+            x = W * 0.12 + (W * 0.40) * (t / (4.5 * _sc)); phase = t * 2 * math.pi * 1.1; bend = 0; arm_up = 0
+        elif t < 7 * _sc:
+            x = W * 0.52; phase = 0; k = min(1, (t - 4.5 * _sc) / (0.8 * _sc)) if t < 6.2 * _sc else max(0, 1 - (t - 6.2 * _sc) / (0.8 * _sc)); bend = k; arm_up = 0
         else:
-            x = W * 0.52; phase = 0; bend = 0; arm_up = min(1, (t - 7) / 1.2)
+            x = W * 0.52; phase = 0; bend = 0; arm_up = min(1, (t - 7 * _sc) / (1.2 * _sc))
         facing = 1
         turn = 0.0
-        if t > 10:
-            turn = min(1, (t - 10) / 0.8)
+        if t > 10 * _sc:
+            turn = min(1, (t - 10 * _sc) / (0.8 * _sc))
         sx = math.cos(turn * math.pi)  # 1 -> -1 horizontal flip (turn around)
         gy = H * 0.83
         hip = (x, gy - 150)
         lean = 0.9 * bend
         sh_ = (hip[0] + 110 * math.sin(lean) * sx, hip[1] - 110 * math.cos(lean))
         sw = math.sin(phase) * 0.5
-        bob = abs(math.cos(phase)) * 6 if t < 4.5 else 0
+        bob = abs(math.cos(phase)) * 6 if t < 4.5 * _sc else 0
         hip = (hip[0], hip[1] - bob); sh_ = (sh_[0], sh_[1] - bob)
         # legs
         for side, ph in ((0, sw), (1, -sw)):

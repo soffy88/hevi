@@ -90,7 +90,16 @@ def detect_manim_bin(engine: str = "ce") -> tuple[str, str] | None:
             found = shutil.which(name)
             if found:
                 return found, kind
+            # PATH 未激活 venv 时(装配进程常见),找当前解释器旁的 CLI。
+            sibling = Path(sys.executable).parent / name
+            if sibling.exists():
+                return str(sibling), kind
     return None
+
+
+def latex_available() -> bool:
+    """MathTex 需要 latex + dvisvgm 都在 PATH。"""
+    return bool(shutil.which("latex") and shutil.which("dvisvgm"))
 
 
 def _looks_like_python(text: str) -> bool:
@@ -259,8 +268,9 @@ async def manim_generate(
         limit = 180.0
     use_mathtex = bool(cfg.get("use_mathtex") or kwargs.get("use_mathtex"))
     if not use_mathtex:
-        flag = _settings_value("MANIM_USE_MATHTEX", "0").lower()
-        use_mathtex = flag in {"1", "true", "yes"}
+        # 默认 auto:本机有 LaTeX 就用 MathTex,否则退回 Text。
+        flag = _settings_value("MANIM_USE_MATHTEX", "auto").lower()
+        use_mathtex = flag in {"1", "true", "yes"} or (flag == "auto" and latex_available())
     w = int(width or cfg.get("width") or 1920)
     h = int(height or cfg.get("height") or 1080)
     detected = detect_manim_bin(wanted_engine)

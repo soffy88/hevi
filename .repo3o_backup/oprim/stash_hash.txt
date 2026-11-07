@@ -1,0 +1,17 @@
+oprim/changefeed/__init__.py: needs merge
+oprim/changefeed/reader.py: needs merge
+oprim/changefeed/schema.py: needs merge
+oprim/changefeed/snapshot.py: needs merge
+oprim/changefeed/writer.py: needs merge
+oprim/changefeed/__init__.py: unmerged (e69de29bb2d1d6434b8b29ae775ad8c2e48c5391)
+oprim/changefeed/__init__.py: unmerged (6fb9c71c6b810ccaef0f26b6b23db12c0f796c5b)
+oprim/changefeed/__init__.py: unmerged (d856804b5b5b5505c9d25b4bc5423437e11a2b63)
+oprim/changefeed/reader.py: unmerged (eb003da52b5f038c063088355b0cf3c2781da471)
+oprim/changefeed/reader.py: unmerged (0e98e33bccd9c4f05ba223ac0ec741b9d81cd3ea)
+oprim/changefeed/reader.py: unmerged (ace7a8105ef8d95d15db5127fe6eafcee1cd8785)
+oprim/changefeed/schema.py: unmerged (8cf1706d4750fe4f61ffbce264cc74bf8415f2f8)
+oprim/changefeed/schema.py: unmerged (774d6ec708c3164d87febfdd48a28a352ba1dde7)
+oprim/changefeed/schema.py: unmerged (e8b4719f05bbfdaadfbbf0267509c316a3e884cb)
+oprim/changefeed/snapshot.py: unmerged (2783330d553ee7d7981130add7935336f296d271)
+...
+Cannot save the current index state

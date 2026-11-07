@@ -4,7 +4,9 @@ The tests here pin the three properties that matter:
 
 1. Deny by default. An undeclared tenant, a missing principal, or an
    out-of-scope provider must refuse. There is no implicit "the route already
-   authenticated the caller, therefore the worker may execute".
+   authenticated the caller, therefore the worker may execute". A missing
+   tenant refuses unless the caller supplies the single-tenant fallback
+   (see the fallback tests at the end of this file).
 2. A refusal is a first-class record. It is persisted on the task row, not only
    logged, so the refusal survives the process that made it.
 3. A refusal is inert. No attempt row, no executor dispatch, no budget settle or
@@ -31,6 +33,7 @@ from hevi.provider_policy.permission import (
     PermissionError,
     PermissionRequest,
     TenantScope,
+    default_tenant_for,
     evaluate_permission,
     require_permission,
     resolver_from_settings,
@@ -442,3 +445,56 @@ def test_declared_tenant_is_not_derivable_from_the_user():
 
     field = LongVideoRequest.model_fields["workspace_id"]
     assert field.default is None
+
+
+# ------------------------------------------------------- single-tenant fallback
+
+
+def test_missing_workspace_falls_back_to_the_sole_configured_tenant():
+    """Single-tenant launch phase: a row with no workspace_id is evaluated
+    against the deployment's only declared scope instead of being refused.
+    The fallback is explicit (tenant_defaulted check) and changes nothing else:
+    provider, operation, and ceiling gates still apply."""
+    req = _request(tenant_id=None)
+    decision = evaluate_permission(
+        req, resolver_from_settings(SCOPE), default_tenant_id="ws-1"
+    )
+    assert decision.allowed
+    assert decision.reason() == "allowed"
+    assert any(
+        c["check"] == "tenant_defaulted" and c["ok"] for c in decision.checks
+    )
+
+
+def test_missing_workspace_without_a_default_still_denies():
+    req = _request(tenant_id=None)
+    decision = evaluate_permission(req, resolver_from_settings(SCOPE))
+    assert not decision.allowed
+    assert "unknown_tenant" in decision.reason()
+
+
+def test_present_but_undeclared_tenant_is_not_rescued_by_the_fallback():
+    req = _request(tenant_id="ws-not-declared")
+    decision = evaluate_permission(
+        req, resolver_from_settings(SCOPE), default_tenant_id="ws-1"
+    )
+    assert not decision.allowed
+    assert "unknown_tenant" in decision.reason()
+
+
+def test_default_tenant_for_requires_exactly_one_configured_tenant():
+    assert default_tenant_for(resolver_from_settings(SCOPE)) == "ws-1"
+    assert default_tenant_for(resolver_from_settings("")) is None
+    multi = SCOPE + "\nws-2|wan_local|||render|1.0"
+    assert default_tenant_for(resolver_from_settings(multi)) is None
+
+
+def test_fallback_still_enforces_provider_scope():
+    """Fallback changes only the tenant resolution, not the gates: a defaulted
+    task asking for a provider outside the sole scope still refuses."""
+    req = _request(tenant_id=None, provider="ltx2_cloud")
+    decision = evaluate_permission(
+        req, resolver_from_settings(SCOPE), default_tenant_id="ws-1"
+    )
+    assert not decision.allowed
+    assert "provider_outside_tenant_scope" in decision.reason()

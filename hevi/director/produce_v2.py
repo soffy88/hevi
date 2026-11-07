@@ -283,7 +283,15 @@ async def run_v2_produce(
         verify_no_duplicate_dialogue_renders,
     )
     from hevi.audio.voice_embed import voice_embed
-    from hevi.director.cut_style import classify_seam_cut_style
+    from hevi.director.cut_style import (  # noqa: F401  (classify kept for callers/tests)
+        classify_seam_cut_style,
+    )
+    from hevi.director.cut_style import (
+        native_start_ms as _native_start_ms,
+    )
+    from hevi.director.cut_style import (
+        seam_offset_ms as _seam_offset_ms,
+    )
     from hevi.director.final_review import (
         collect_retake_candidates,
         review_seam,
@@ -678,8 +686,18 @@ async def run_v2_produce(
             dialogue_audio = run_dir / f"_dialogue_native_{item['segment_id']}.wav"
             await extract_native_dialogue_audio(clip, windows, output_path=dialogue_audio)
             window_start_s = max(0.0, min(w[0] for w in windows) - 0.15)
-            start_ms = int((starts[i] + window_start_s) * 1000)
-            cues.append(DialogueCue(audio_path=dialogue_audio, start_ms=max(0, start_ms)))
+            seam_offset_ms = 0
+            if i > 0:
+                seam_offset_ms = _seam_offset_ms(
+                    script_segs_by_id.get(ordered[i - 1]["segment_id"]),
+                    script_segs_by_id.get(item["segment_id"]),
+                )
+            start_ms = _native_start_ms(
+                shot_start_s=starts[i],
+                window_start_s=window_start_s,
+                seam_offset_ms=seam_offset_ms,
+            )
+            cues.append(DialogueCue(audio_path=dialogue_audio, start_ms=start_ms))
         else:
             from hevi.audio.edge_tts_custom import edge_tts_synthesize_smart
             from hevi.tongjian.schemas import ScriptLine
@@ -745,14 +763,10 @@ async def run_v2_produce(
                 natural_start_ms = int((starts[i] + _XFADE_S + 0.2) * 1000)
                 offset_ms = 0
                 if i > 0:
-                    prev_seg = script_segs_by_id.get(ordered[i - 1]["segment_id"])
-                    cur_seg = script_segs_by_id.get(item["segment_id"])
-                    if prev_seg is not None and cur_seg is not None:
-                        seam = classify_seam_cut_style(prev_seg, cur_seg)
-                        if seam.style == "J":
-                            offset_ms = -int(seam.offset_s * 1000)
-                        elif seam.style == "L":
-                            offset_ms = int(seam.offset_s * 1000)
+                    offset_ms = _seam_offset_ms(
+                        script_segs_by_id.get(ordered[i - 1]["segment_id"]),
+                        script_segs_by_id.get(item["segment_id"]),
+                    )
                 cues.append(
                     DialogueCue(
                         audio_path=fallback_audio, start_ms=max(0, natural_start_ms + offset_ms)

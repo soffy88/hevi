@@ -340,23 +340,40 @@ class SceneRenderer:
         )
 
     # -- encode ----------------------------------------------------------- #
-    def encode(self, frame_paths: list[Path] | None = None) -> Path:
+    def encode(self, frame_paths: list[Path] | None = None, audio_path: str | Path | None = None) -> Path:
         if frame_paths is None:
             frame_paths = sorted(self.frames_dir.glob("frame_*.png"))
         pattern = (self.frames_dir / "frame_%05d.png").as_posix()
-        cmd = [
-            FFMPEG,
-            "-y",
-            "-framerate", str(self.spec.fps),
-            "-start_number", "1",
-            "-i", pattern,
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            "-preset", "veryfast",
-            "-crf", "20",
-            "-movflags", "+faststart",
-            str(self.video_path),
-        ]
+        if audio_path:
+            cmd = [
+                FFMPEG, "-y",
+                "-framerate", str(self.spec.fps),
+                "-start_number", "1",
+                "-i", pattern,
+                "-i", str(audio_path),
+                "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
+                "-preset", "veryfast",
+                "-crf", "20",
+                "-c:a", "aac",
+                "-shortest",
+                "-movflags", "+faststart",
+                str(self.video_path),
+            ]
+        else:
+            cmd = [
+                FFMPEG,
+                "-y",
+                "-framerate", str(self.spec.fps),
+                "-start_number", "1",
+                "-i", pattern,
+                "-c:v", "libx264",
+                "-pix_fmt", "yuv420p",
+                "-preset", "veryfast",
+                "-crf", "20",
+                "-movflags", "+faststart",
+                str(self.video_path),
+            ]
         subprocess.run(cmd, check=True, capture_output=True)
         return self.video_path
 

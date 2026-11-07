@@ -8,6 +8,7 @@ import re
 from typing import Any
 from pydantic import BaseModel, Field
 from hevi.storyplan.model import StoryPlan, NEW_INFO_REQUIRED_FIELDS
+from hevi.quality.kids_gate import FORBIDDEN_WORDS
 import jieba
 
 
@@ -25,13 +26,11 @@ class StoryCheckReport(BaseModel):
     summary: str = ""
 
 
-# 幼儿内容安全违禁词表（kids_gate 核心，覆盖 15 类词根）
-FORBIDDEN_KIDS_WORDS = [
-    "揍", "踢", "勒脖子", "踹飞", "鞭打", "毒药", "炸弹",
-    "陌生人", "辱骂", "鬼怪", "血", "刀", "枪", "恐怖", "吓死人",
-    "暴力", "武器", "死", "杀", "玩火", "爬窗", "独自外出",
-    "嘲笑", "笨", "蠢", "羞辱", "广告", "惊吓",
-]
+# 幼儿内容安全违禁词表单一来源：hevi.quality.kids_gate.FORBIDDEN_WORDS
+# （由 hevi/kids/data/kids_safety_rules.json 的 categories 扁平化而来）。
+# 此处只保留旧名别名供既有导入兼容，不再自备词表独立维护
+# （先例：hevi/kids/story_gate.py 同样直接复用 FORBIDDEN_WORDS）。
+FORBIDDEN_KIDS_WORDS = FORBIDDEN_WORDS
 
 
 def run_story_check(plan: StoryPlan, *, hook_window_sec: float = 3.5, max_chars_per_sec: float = 3.5) -> StoryCheckReport:
@@ -190,6 +189,68 @@ def run_story_check(plan: StoryPlan, *, hook_window_sec: float = 3.5, max_chars_
             status="PASS" if safe_ok else "FAIL",
             message="内容纯净安全，无违禁词" if safe_ok else f"命中幼儿安全红线词: {violations}",
             evidence={"violations": violations},
+        )
+    )
+
+    # 8) 反应环检查（C8，WARN 级）：叙事四环 cause→process→result→reaction。
+    # 含 result 拍时，其后（结尾收束前）应出现 reaction 拍——角色对结果的
+    # 情绪/行为反应（对应 cinematic shot_intelligence 的 close_reaction 词条，
+    # 此前无人强制调用）。缺失只报 WARN 不设 hard fail，避免打爆存量计划
+    # （如 kids 六拍 greeting→problem→attempt→solution→recap→farewell，
+    # 其中 recap 是复述而非反应，同样只会得到 WARN）。
+    beats = plan.narrative.beats
+    result_idx = next((i for i, b in enumerate(beats) if b.phase == "result"), None)
+    reaction_idx = next((i for i, b in enumerate(beats) if b.phase == "reaction"), None)
+    if result_idx is None:
+        reaction_status = "PASS"
+        reaction_msg = "无 result 拍，反应环检查不适用"
+    elif reaction_idx is not None and reaction_idx > result_idx:
+        reaction_status = "PASS"
+        reaction_msg = "result 后存在 reaction 反应拍，叙事四环完整"
+    elif reaction_idx is not None:
+        reaction_status = "WARN"
+        reaction_msg = "reaction 反应拍出现在 result 之前，未形成对结果的反应"
+    else:
+        reaction_status = "WARN"
+        reaction_msg = "含 result 拍但其后缺少 reaction 反应拍（角色对结果的情绪/行为反应），叙事四环缺反应环"
+    checks.append(
+        CheckItem(
+            check_id="C8_REACTION_BEAT",
+            name="叙事反应环检查",
+            status=reaction_status,
+            message=reaction_msg,
+            evidence={
+                "result_beat_index": result_idx,
+                "reaction_beat_index": reaction_idx,
+                "beat_phases": [b.phase for b in beats],
+            },
+        )
+    )
+
+    # 9) 跨镜动作衔接检查（C9，WARN 级）：下一镜 start_state 应与上一镜
+    # end_state 一致（仅同场景内、且两者都显式声明时比对）。
+    # 比对逻辑等价轻量实现自 hevi/prompt/continuity/validator.py
+    # validate_film() 检查项 4（跨镜 start_state vs 上一镜 end_state，
+    # strip 后逐字相等）；此处不改 validator 的公开行为，仅在 StoryPlan
+    # 层落地。场景切换处状态本可重置，故跨 scene 不比对。
+    continuity_notes: list[str] = []
+    prev_shot = None
+    for sh in all_shots:
+        if prev_shot is not None and sh.scene_id == prev_shot.scene_id:
+            prev_end = prev_shot.end_state.strip()
+            curr_start = sh.start_state.strip()
+            if prev_end and curr_start and prev_end != curr_start:
+                continuity_notes.append(
+                    f"镜头 {sh.shot_id} start_state 与上一镜 {prev_shot.shot_id} end_state 不一致"
+                )
+        prev_shot = sh
+    checks.append(
+        CheckItem(
+            check_id="C9_ACTION_CONTINUITY",
+            name="跨镜动作衔接检查",
+            status="PASS" if not continuity_notes else "WARN",
+            message="跨镜状态衔接一致" if not continuity_notes else "; ".join(continuity_notes),
+            evidence={"continuity_notes": continuity_notes},
         )
     )
 

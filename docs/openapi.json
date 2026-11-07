@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "hevi v6",
-    "version": "0.1.0"
+    "version": "6.0.0"
   },
   "paths": {
     "/health": {
@@ -2126,7 +2126,7 @@
           "capabilities"
         ],
         "summary": "Preview Capability Endpoint",
-        "description": "Render a 3-second preview clip for ``name`` and return it as an MP4.\n\nA missing/unknown capability returns 404.  An unsupported aspect or an\ninvalid param returns 422.  A genuine render failure (or a missing\nartefact) returns 500 — never a fake success.",
+        "description": "Render a 3-second preview for ``name`` — or a report, by kind.\n\nA missing/unknown capability returns 404.  An unsupported aspect\nor an invalid param returns 422.  A genuine render failure\nreturns 500 — never a fake success.\n\nPreview semantics by capability kind (M-15 / M-17 / S-03):\n\n* Media capabilities (``has_media_output``): the aspect check\n  applies (unsupported aspect is 422) and the response is the\n  produced media file.\n* Report/file capabilities (``has_media_output=False``): the\n  render ignores aspect, so the aspect check is skipped, and\n  the response is the report JSON (``qa`` payload + sha) — the\n  endpoint never fabricates an MP4 for a capability that has no\n  media, and never raises ``Path(None)`` on a missing artefact.\n* Restricted capabilities (``preview_restricted``, currently\n  only ``video.blender_mcp``): always 422.  Arbitrary bpy code\n  execution is not exposed to generic callers; trusted direct\n  callers render in-process via ``render_safe`` instead.",
         "operationId": "preview_capability_endpoint_api_capabilities__name__preview_post",
         "parameters": [
           {
@@ -14257,6 +14257,251 @@
         }
       }
     },
+    "/api/canvas/workflow-to-graph": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Workflow To Graph Endpoint",
+        "description": "Convert a story.canvas_workflow workflow to a canvas graph.",
+        "operationId": "workflow_to_graph_endpoint_api_canvas_workflow_to_graph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowToGraphRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Workflow To Graph Endpoint Api Canvas Workflow To Graph Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/graph-to-workflow": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Graph To Workflow Endpoint",
+        "description": "Convert a canvas graph back to a story.canvas_workflow workflow.",
+        "operationId": "graph_to_workflow_endpoint_api_canvas_graph_to_workflow_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphToWorkflowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Graph To Workflow Endpoint Api Canvas Graph To Workflow Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/planned-graph": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Planned Graph Endpoint",
+        "description": "Rerun scope for a workflow/graph: planned graph + run/skip plan.",
+        "operationId": "planned_graph_endpoint_api_canvas_planned_graph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlannedGraphRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Planned Graph Endpoint Api Canvas Planned Graph Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/workflow-preflight": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Workflow Preflight Endpoint",
+        "description": "Run the existing canvas preflight on a workflow (no execution).",
+        "operationId": "workflow_preflight_endpoint_api_canvas_workflow_preflight_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowPreflightRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Workflow Preflight Endpoint Api Canvas Workflow Preflight Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/workflow-execute": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Workflow Execute Endpoint",
+        "description": "Save a workflow as a canvas graph (owner = caller), then execute it.\n\nExecution is delegated to ExecutorService, the same path as a\nhand-drawn graph: the workflow itself is never executed inside\nthe capability layer.",
+        "operationId": "workflow_execute_endpoint_api_canvas_workflow_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Workflow Execute Endpoint Api Canvas Workflow Execute Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/canvas/{graph_id}": {
       "get": {
         "tags": [
@@ -23493,6 +23738,74 @@
         }
       }
     },
+    "/api/stickman/proposals": {
+      "get": {
+        "tags": [
+          "stickman"
+        ],
+        "summary": "Api List Proposals",
+        "description": "List persisted proposals (G11: survives API restart).",
+        "operationId": "api_list_proposals_api_stickman_proposals_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Api List Proposals Api Stickman Proposals Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stickman/proposals/{proposal_id}": {
+      "get": {
+        "tags": [
+          "stickman"
+        ],
+        "summary": "Api Get Proposal",
+        "operationId": "api_get_proposal_api_stickman_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "name": "proposal_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Api Get Proposal Api Stickman Proposals  Proposal Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/stickdir/options": {
       "get": {
         "tags": [
@@ -27849,6 +28162,25 @@
         ],
         "title": "GraphIn"
       },
+      "GraphToWorkflowRequest": {
+        "properties": {
+          "graph": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Graph"
+          },
+          "include_position": {
+            "type": "boolean",
+            "title": "Include Position",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph"
+        ],
+        "title": "GraphToWorkflowRequest"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -30171,6 +30503,28 @@
         ],
         "title": "PlanRequest"
       },
+      "PlannedGraphRequest": {
+        "properties": {
+          "source": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Source"
+          },
+          "selected_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Selected Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "selected_ids"
+        ],
+        "title": "PlannedGraphRequest"
+      },
       "PrepareRequest": {
         "properties": {
           "context": {
@@ -32413,6 +32767,11 @@
             "type": "string",
             "title": "Visual Type",
             "default": "scene"
+          },
+          "decision_point": {
+            "type": "boolean",
+            "title": "Decision Point",
+            "default": false
           }
         },
         "type": "object",
@@ -33022,6 +33381,16 @@
               }
             ],
             "title": "Duration"
+          },
+          "handle_head_s": {
+            "type": "number",
+            "title": "Handle Head S",
+            "default": 0.0
+          },
+          "handle_tail_s": {
+            "type": "number",
+            "title": "Handle Tail S",
+            "default": 0.0
           }
         },
         "type": "object",
@@ -35334,6 +35703,93 @@
         ],
         "title": "WebRTCOfferBody"
       },
+      "WorkflowExecuteRequest": {
+        "properties": {
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Workflow"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "default": "Untitled"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "on_error": {
+            "type": "string",
+            "title": "On Error",
+            "default": "rollback"
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          },
+          "target_duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Duration S"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow"
+        ],
+        "title": "WorkflowExecuteRequest"
+      },
+      "WorkflowPreflightRequest": {
+        "properties": {
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Workflow"
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          },
+          "target_duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Duration S"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow"
+        ],
+        "title": "WorkflowPreflightRequest"
+      },
       "WorkflowRunRequest": {
         "properties": {
           "workflow": {
@@ -35357,6 +35813,32 @@
         ],
         "title": "WorkflowRunRequest",
         "description": "通用 workflow 请求:config/input 以 JSON 透传,由各 workflow 构建 dataclass。"
+      },
+      "WorkflowToGraphRequest": {
+        "properties": {
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Workflow"
+          },
+          "positions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "workflow"
+        ],
+        "title": "WorkflowToGraphRequest"
       },
       "WriterDraftRequest": {
         "properties": {

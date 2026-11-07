@@ -1,9 +1,13 @@
-"""SFX 从运动长成、BGM ducking 与幼儿响度规范。
+"""SFX 从运动长成、BGM ducking 与音频事件完整性检查。
 
 规则:
 1. 速度峰 → whoosh, 冲量/撞击 → impact, 接触帧 → 点击/落地。
 2. 主讲/台词/重音处 BGM 自动让路 (ducking)。
-3. Kids 响度门: -16 ±1 LUFS, 真峰值 ≤ -1.5 dBTP, 相邻 400ms 响度跳变 ≤ 10 LU。
+3. 本模块只检查 brief 的音频事件是否完整（有无 BGM/SFX/ducking），
+   不读取也不测量任何音频文件、不做响度测量。成片响度测量归
+   earshot（audio.earshot_gate，通用档 -14±2 LUFS）与
+   hevi.quality.kids_gate.check_loudness（幼儿档 -16±1 LUFS、
+   真峰值 ≤ -1.5 dBTP）；-16/-1.5 在本模块仅是传给下游门禁的目标参数。
 """
 
 from __future__ import annotations
@@ -36,8 +40,13 @@ def generate_audio_events(brief: DirectorBrief) -> list[AudioEvent]:
 
 
 def check_audio_compliance(audio_events: list[AudioEvent], *, target_lufs: float = -16.0, max_true_peak: float = -1.5) -> dict[str, Any]:
-    """检查音轨是否符合幼儿线响度与包络规范。"""
-    # 模拟检查返回报告
+    """音频事件完整性检查：只看 brief 的音频事件有无 BGM/SFX/ducking。
+
+    不测量任何音频文件，响度不在此判定：报告中的 lufs / true_peak_dbtp
+    恒为 "not_measured"，target_lufs / max_true_peak 只是幼儿档目标参数
+    （供下游 earshot / kids_gate 测量门禁参考）。成片响度测量见
+    hevi.audio.earshot_client.measure 与 hevi.quality.kids_gate.check_loudness。
+    """
     has_ducking = any(e.kind == "bgm_duck" for e in audio_events)
     has_bgm = any(e.kind == "bgm" for e in audio_events)
     has_sfx = any(e.kind == "sfx" for e in audio_events)
@@ -45,12 +54,15 @@ def check_audio_compliance(audio_events: list[AudioEvent], *, target_lufs: float
     passed = has_bgm and (has_sfx or not audio_events)
     return {
         "passed": passed,
-        "lufs": target_lufs,
-        "true_peak_dbtp": max_true_peak,
+        "loudness": "not_measured",
+        "lufs": "not_measured",
+        "true_peak_dbtp": "not_measured",
+        "target_lufs": target_lufs,
+        "max_true_peak_dbtp": max_true_peak,
         "has_bgm": has_bgm,
         "has_sfx": has_sfx,
         "has_ducking": has_ducking,
-        "notes": "Audio complies with -16 LUFS target and ducking rules" if passed else "Audio audit missing key events",
+        "notes": "Audio events complete (BGM/SFX present); loudness not measured here — see earshot/kids_gate gates" if passed else "Audio audit missing key events",
     }
 
 

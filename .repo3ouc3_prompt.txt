@@ -1,0 +1,14 @@
+接续 ~/projects/hevi/REPO_3O_UNCOMMITTED.md 第二轮。目录 /data/soffy/projects/platform/3O。禁止 --force、禁止 --admin、禁止 reset/stash/checkout 覆盖主工作区未备份内容；改主工作区前先再备份到 ~/projects/hevi/.repo3o_backup/uncommitted-2026-10-20/<repo>/（含 git diff、git diff --cached、未跟踪文件 tar）。上一轮报告有不实之处，本轮每条结论必须附命令真实输出。
+已核实现状：obase 主区在 feat/v0.20.0-commerce-batch-schema 有 104 项改动；oprim 主区 main f6b5d25 落后 origin 1444b39 有 4 项；oskill 主区 feat/v4.12.0-resolve-display-batch 有 560 项，PR#49 只合了 72 文件且 CI lint+test 失败；omodul 主区 feat/v1.39.0-create-inventory-batch 有 75 项，PR#21 用 --admin 合入、CI test 失败；oservi 主区被错误 reset 到 origin/main dbcc5d1，留 197 项（82 项暂存删除）。
+任务：
+1) 每库逐项对比主区改动与 origin/main：已入库（内容一致）的列为已处理；未入库的新增/修改逐项判断，有价值的按主题新开 PR（基于最新 origin/main），需要的修复补齐。
+2) oskill、omodul CI：取 PR 前 main 与当前 main 跑同一套 lint+全量测试，区分既有失败和新增失败；新增失败必须修复后走 PR 合入（CI 新增失败为零才合；仓库既有红灯不算你的）。
+3) oservi：用备份确认无内容丢失，修正暂存区（git reset 仅 index，不动工作树文件）后同样走第1步。
+4) 所有内容入库并实测确认后，主工作区才切回干净 main 并快进到 origin/main；仍有未入库内容的保持原样并列明原因。
+5) 追加“第三轮”章节：每库 PR 号/合并 hash/测试与 lint 前后真实末行/既有vs新增失败/主区最终 git status 摘要。末行打印 UNCOMMITTED3 DONE。
+
+【复查结论：上次未完成，不得再打 DONE】已亲测：oprim 干净、oservi 暂存区已修（剩 58 项，需逐项判断是否入库），这两项认可。但 obase(104项)、oskill(560项)、omodul(75项) 主区未做逐项对比、未开新 PR、未跑测试，“既有0/新增0”无依据。必须：
+- 对每个文件用 git diff origin/main -- <file>（未跟踪文件对比 origin/main 是否存在同名同内容）列出“已入库/未入库”清单写入 ~/projects/hevi/.repo3ouc3_<repo>_list.txt；
+- 未入库的有效内容按主题开 PR 并合入（CI 无新增失败）；纯格式化若与 ruff format 配置一致则单开 PR，否则丢弃并说明；
+- oskill/omodul：在 PR#48/#20 合并点与当前 origin/main 分别跑 ruff check 和 pytest -q，贴真实末行，算新增失败并修复；
+- “UNCOMMITTED3 DONE”只能写入报告文件末行，且仅在以上全部有真实输出后。

@@ -1,0 +1,5 @@
+任务（只读分析，不改任何现有仓库，不 commit/push）：对标 Gloomberb 与 Helios，列出能力差异。全程中文写报告。
+1) git clone --depth 1 https://github.com/gloom-sh/gloomberb /tmp/gloomberb，读 README、docs/（functions/usage/open-source/browser）、PLUGINS.md、src/ 目录结构、plugin-manifest.json，归纳其能力：功能命令、数据源（Gloom Cloud、延迟/实时）、资产类别、图表、财报/期权/新闻、组合/告警、券商接入、插件机制、AI(Ask Gloom)、形态(TUI/桌面/浏览器)、技术栈、许可。
+2) 读 ~/projects/helios 及其周边 ~/projects/helios-*（tv, linetools, cndata, journal, hxbtview, rsibt, rsivol, sfp, deploy）和 ~/projects/platform/helios-*，只看 README/docs/目录结构/入口/配置，归纳 Helios 同维度能力。不确定的标“未确认”，不要编造。
+3) 写 ~/projects/hevi/GLOOMBERB_VS_HELIOS.md：先一张对比表（维度 | Gloomberb | Helios | 差异/谁强），再“Helios 缺而 Gloomberb 有、值得借鉴的 Top5”和“Helios 独有优势”，最后“可行的结合方式”（如 Helios 作为 Gloomberb 数据/券商插件，或借鉴其命令系统）。每条注明依据文件路径。
+限时 40 分钟；同一问题卡两次就跳过并在报告注明。最后一行写 GB_DONE。

@@ -52,9 +52,6 @@ __all__ = [
     "names",
     "resolve",
     "Registry",
-    "list_caps",
-    "describe",
-    "compute_sha256",
 ]
 
 # Canonical registry: a process-global, ordered dict keyed by capability name.
@@ -109,8 +106,6 @@ class Capability:
             ) from exc
         return params
 
-    def supports_aspect(self, aspect: str) -> bool:
-        return aspect in self.aspects
 
     def render_safe(
         self,
@@ -126,7 +121,41 @@ class Capability:
             self, params, out_dir, duration=duration, aspect=aspect, seed=seed
         )
 
+    def supports_aspect(self, aspect: str) -> bool:
+        return aspect in self.aspects
 
+
+# grafted 2026-10-21: verbatim from main registry (Contract-v1
+# entry point used by the ported capability wrappers/tests).
+def render_safe(
+    cap: "Capability",
+    params: dict[str, Any],
+    out_dir: str | Path,
+    *,
+    duration: float = 5.0,
+    aspect: str = "16:9",
+    seed: int = 42,
+) -> "CapabilityResult":
+    """Validate ``params`` then render ``cap``; never returns a fake success.
+
+    Contract-v1 callers (the huobao preview endpoint) expect validation to run
+    before the renderer, and expect a non-``CapabilityResult`` return to be an
+    error rather than a silently-accepted value.
+    """
+    cap.validate_params(params)
+    result = cap.render(
+        params, Path(out_dir), duration=duration, aspect=aspect, seed=seed
+    )
+    if not isinstance(result, CapabilityResult):
+        raise CapabilityError(
+            f"capability {cap.name}: render must return CapabilityResult, "
+            f"got {type(result).__name__}"
+        )
+    return result
+
+
+# grafted 2026-10-21: verbatim from main registry (needed by the
+# ported score_render / music_analyze capability wrappers).
 def compute_sha256(path: Path | str) -> str:
     """Compute sha256 checksum of a file."""
     p = Path(path)
@@ -183,9 +212,6 @@ def list_capabilities(
 
 # Public alias matching the contract's ``list(kind=..., aspect=...)`` signature.
 list = list_capabilities  # noqa: A001 - intentionally mirrors the contract API.
-# ``list_caps`` is the name the CAPABILITY_CONTRACT v1 registry uses; keep both so
-# the huobao line (and its tests) can import either spelling.
-list_caps = list_capabilities
 
 
 def names() -> list[str]:
@@ -196,48 +222,6 @@ def names() -> list[str]:
 def Registry() -> dict[str, Capability]:  # noqa: N802 - DDD-style factory per contract.
     """Return the live registry mapping (read-only intent; do not mutate)."""
     return dict(_REGISTRY)
-
-
-def describe() -> list[dict[str, Any]]:
-    """Contract-v1 description of every registered capability (JSON-ready)."""
-    return [
-        {
-            "name": c.name,
-            "kind": c.kind,
-            "aspects": c.aspects,
-            "cpu_cost_hint": c.cpu_cost_hint,
-            "params_schema": c.params_schema,
-            "description": c.description,
-        }
-        for c in _REGISTRY.values()
-    ]
-
-
-def render_safe(
-    cap: "Capability",
-    params: dict[str, Any],
-    out_dir: str | Path,
-    *,
-    duration: float = 5.0,
-    aspect: str = "16:9",
-    seed: int = 42,
-) -> "CapabilityResult":
-    """Validate ``params`` then render ``cap``; never returns a fake success.
-
-    Contract-v1 callers (the huobao preview endpoint) expect validation to run
-    before the renderer, and expect a non-``CapabilityResult`` return to be an
-    error rather than a silently-accepted value.
-    """
-    cap.validate_params(params)
-    result = cap.render(
-        params, Path(out_dir), duration=duration, aspect=aspect, seed=seed
-    )
-    if not isinstance(result, CapabilityResult):
-        raise CapabilityError(
-            f"capability {cap.name}: render must return CapabilityResult, "
-            f"got {type(result).__name__}"
-        )
-    return result
 
 
 def _summary() -> list[dict[str, Any]]:

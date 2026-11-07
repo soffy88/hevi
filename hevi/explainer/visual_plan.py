@@ -398,7 +398,7 @@ def register_explainer_visual_plan_capability() -> Capability:
         aspects=["16:9", "9:16"],
         cpu_cost_hint=0.1,
         render=_render_explainer_visual_plan,
-        description="节奏驱动视觉规划：依据音频词级时间戳排镜，支持关键词高亮、配图卡片、流程图逐层展开、主讲人布局切换与转场",
+        description="节奏驱动视觉规划：依据音频词级时间戳排镜，支持关键词高亮、配图卡片、流程图逐层展开、主讲人布局切换与转场。能力线：纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion 依赖），与 Studio explainer 线（assembly+Remotion 生产核，供 6 条 Studio 线与 API）是两条独立链；本线供能力目录按名调用与 lanshu styled explainer。",
         line="explainer",
         params_schema={
             "type": "object",

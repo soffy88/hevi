@@ -17,12 +17,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from hevi.auth.dependencies import get_current_user
 from hevi.core.workspace import new_task_id
 from hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_lite_assembler import run_lite_pipeline
 from hevi.layer4_legacy.pipeline_lite.omodul_impl.omodul_run_store import (
@@ -284,6 +285,8 @@ async def _render_run(run_id: str) -> None:
 
 @router.post("/runs", response_model=LiteRunRecord, status_code=202)
 async def create_run(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     body: LiteRunCreateRequest,
     background_tasks: BackgroundTasks,
 ) -> LiteRunRecord:
@@ -305,12 +308,16 @@ async def create_run(
 
 
 @router.get("/runs/{run_id}", response_model=LiteRunRecord)
-async def get_run(run_id: str) -> LiteRunRecord:
+async def get_run(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+run_id: str) -> LiteRunRecord:
     return _get_run(run_id)
 
 
 @router.get("/runs/{run_id}/preview.html", response_model=None)
-async def get_preview_html(run_id: str) -> FileResponse:
+async def get_preview_html(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+run_id: str) -> FileResponse:
     """审稿 HTML 预览(不落 MP4)。无缓存 draft 时 404。"""
     rec = _get_run(run_id)
     path = Path(rec.preview_html_path) if rec.preview_html_path else store_preview_path(run_id)
@@ -329,7 +336,9 @@ async def get_preview_html(run_id: str) -> FileResponse:
 
 
 @router.patch("/runs/{run_id}/script", response_model=LiteRunRecord)
-async def patch_script(run_id: str, body: LiteScriptPatch) -> LiteRunRecord:
+async def patch_script(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+run_id: str, body: LiteScriptPatch) -> LiteRunRecord:
     """人改文案;可选 reloop=true 再跑 veya-loop。"""
     rec = _get_run(run_id)
     if rec.status in ("drafting", "reviewing", "rendering"):
@@ -385,7 +394,9 @@ async def patch_script(run_id: str, body: LiteScriptPatch) -> LiteRunRecord:
 
 
 @router.post("/runs/{run_id}/reloop", response_model=LiteRunRecord)
-async def reloop(run_id: str, max_rounds: int = 2) -> LiteRunRecord:
+async def reloop(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+run_id: str, max_rounds: int = 2) -> LiteRunRecord:
     rec = _get_run(run_id)
     if rec.draft is None:
         raise HTTPException(status_code=422, detail="尚无文案可审")
@@ -408,6 +419,8 @@ async def reloop(run_id: str, max_rounds: int = 2) -> LiteRunRecord:
 
 @router.post("/runs/{run_id}/confirm", response_model=LiteRunRecord, status_code=202)
 async def confirm_run(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     run_id: str,
     background_tasks: BackgroundTasks,
     body: LiteConfirmRequest | None = None,
@@ -443,6 +456,8 @@ async def confirm_run(
 
 @router.post("/assemble", response_model=LiteAssembleAccepted, status_code=202)
 async def assemble_lite(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     body: LiteAssembleRequest,
     background_tasks: BackgroundTasks,
 ) -> LiteAssembleAccepted:
@@ -473,7 +488,9 @@ async def assemble_lite(
 
 
 @router.post("/generate", response_model=LiteAssembleResult, status_code=201)
-async def generate_lite_sync(body: LiteAssembleRequest) -> LiteAssembleResult:
+async def generate_lite_sync(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+body: LiteAssembleRequest) -> LiteAssembleResult:
     """同步出片:veya/外部编排直连。"""
     if not body.task_id:
         body.task_id = new_task_id()

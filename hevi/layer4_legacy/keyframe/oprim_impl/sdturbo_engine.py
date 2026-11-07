@@ -18,12 +18,8 @@ from hevi.layer4_legacy.keyframe.oprim_impl.lock import cpu_render_lock
 
 logger = logging.getLogger(__name__)
 
-SD_TURBO_DIR = Path(
-    os.environ.get(
-        "HEVI_SD_TURBO_PATH",
-        "/data/soffy/models/ms/models/AI-ModelScope--sd-turbo/snapshots/master",
-    )
-)
+_sd_env = os.environ.get("HEVI_SD_TURBO_PATH", "").strip()
+SD_TURBO_DIR = Path(_sd_env) if _sd_env and Path(_sd_env).is_dir() else Path("/data/soffy/models/ms/models/AI-ModelScope--sd-turbo/snapshots/master")
 TAESD_DIR = Path(
     os.environ.get(
         "HEVI_TAESD_PATH",

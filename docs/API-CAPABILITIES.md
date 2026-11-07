@@ -81,13 +81,18 @@
 |---|---|---|
 | GET | `/api/canvas` | List Graphs |
 | POST | `/api/canvas` | Save Graph |
+| POST | `/api/canvas/graph-to-workflow` | Graph To Workflow Endpoint |
 | GET | `/api/canvas/graphs` | ⚠️ 兼容 · List Graphs Legacy |
 | POST | `/api/canvas/graphs` | ⚠️ 兼容 · Save Graph Legacy |
 | DELETE | `/api/canvas/graphs/{graph_id}` | ⚠️ 兼容 · Delete Graph Legacy |
 | GET | `/api/canvas/graphs/{graph_id}` | ⚠️ 兼容 · Get Graph Legacy |
 | PATCH | `/api/canvas/graphs/{graph_id}` | ⚠️ 兼容 · Update Graph Legacy |
 | POST | `/api/canvas/graphs/{graph_id}/execute` | ⚠️ 兼容 · Execute Graph Legacy |
+| POST | `/api/canvas/planned-graph` | Planned Graph Endpoint |
 | POST | `/api/canvas/reference-image` | Upload Canvas Reference Image |
+| POST | `/api/canvas/workflow-execute` | Workflow Execute Endpoint |
+| POST | `/api/canvas/workflow-preflight` | Workflow Preflight Endpoint |
+| POST | `/api/canvas/workflow-to-graph` | Workflow To Graph Endpoint |
 | DELETE | `/api/canvas/{graph_id}` | Delete Graph |
 | GET | `/api/canvas/{graph_id}` | Get Graph |
 | PATCH | `/api/canvas/{graph_id}` | Update Graph |
@@ -515,6 +520,8 @@
 | POST | `/api/stickman/flow_pack` | Api Flow Pack |
 | POST | `/api/stickman/proposal/approve` | Api Approve Proposal |
 | POST | `/api/stickman/proposal/create` | Api Create Proposal |
+| GET | `/api/stickman/proposals` | Api List Proposals |
+| GET | `/api/stickman/proposals/{proposal_id}` | Api Get Proposal |
 | POST | `/api/stickman/render_local` | Api Render Local |
 | POST | `/api/stickman/structure_clone` | Api Structure Clone |
 | POST | `/api/stickman/topic_scout` | Api Topic Scout |

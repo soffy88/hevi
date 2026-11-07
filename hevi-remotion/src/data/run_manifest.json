@@ -2,15 +2,15 @@
   {
     "id": "cue-1",
     "sceneType": "hook",
-    "text": "你知道吗?咖啡的起源背后藏着这些细节。",
-    "audioFile": "runs/reference_adapt__b/audio/cue-1.mp3",
-    "durationSec": 5.568,
+    "text": "你知道吗?盐税背后藏着这些细节。",
+    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-1.wav",
+    "durationSec": 2.890896,
     "startSec": 0.0,
     "keywords": [
-      "你知道吗?咖啡的起源背后藏着这些细节。"
+      "你知道吗?盐税背后藏着这些细节。"
     ],
     "props": {
-      "title": "你知道吗?咖啡的起源背后",
+      "title": "你知道吗?盐税背后藏着这",
       "subtitle": "深度解说",
       "items": [
         {
@@ -22,13 +22,13 @@
     "captions": [
       {
         "text": "你知道吗",
-        "start": 0.105541,
-        "end": 1.230541
+        "start": 0.0,
+        "end": 0.8259702857142858
       },
       {
-        "text": "咖啡的起源背后藏着这些细节",
-        "start": 1.841666,
-        "end": 4.591666
+        "text": "盐税背后藏着这些细节",
+        "start": 0.8259702857142858,
+        "end": 2.890896
       }
     ],
     "visualType": "voiceover",
@@ -45,15 +45,15 @@
   {
     "id": "cue-2",
     "sceneType": "definition",
-    "text": "咖啡的起源的第1个关键点:值得你记住。",
-    "audioFile": "runs/reference_adapt__b/audio/cue-2.mp3",
-    "durationSec": 4.56,
-    "startSec": 5.568,
+    "text": "盐税的第1个关键点:值得你记住。",
+    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-2.wav",
+    "durationSec": 2.770208,
+    "startSec": 2.890896,
     "keywords": [
-      "咖啡的起源的第1个关键点:值得你记住。"
+      "盐税的第1个关键点:值得你记住。"
     ],
     "props": {
-      "question": "咖啡的起源的第1个关键点:值得你记住。",
+      "question": "盐税的第1个关键点:值得你记住。",
       "formulaHead": "核心概念",
       "formulaLines": [
         "= 事实与证据",
@@ -76,14 +76,14 @@
     },
     "captions": [
       {
-        "text": "咖啡的起源的第1个关键点",
-        "start": 0.105541,
-        "end": 2.216666
+        "text": "盐税的第1个关键点",
+        "start": 0.0,
+        "end": 1.780848
       },
       {
         "text": "值得你记住",
-        "start": 2.605541,
-        "end": 3.577749
+        "start": 1.780848,
+        "end": 2.770208
       }
     ],
     "visualType": "voiceover",
@@ -100,12 +100,12 @@
   {
     "id": "cue-3",
     "sceneType": "cards",
-    "text": "咖啡的起源的第2个关键点:值得你记住。",
-    "audioFile": "runs/reference_adapt__b/audio/cue-3.mp3",
-    "durationSec": 4.608,
-    "startSec": 10.128,
+    "text": "盐税的第2个关键点:值得你记住。",
+    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-3.wav",
+    "durationSec": 2.898792,
+    "startSec": 5.661104,
     "keywords": [
-      "咖啡的起源的第2个关键点:值得你记住。"
+      "盐税的第2个关键点:值得你记住。"
     ],
     "props": {
       "header": "关键画面",
@@ -113,20 +113,20 @@
         {
           "emoji": "📰",
           "title": "证据",
-          "desc": "咖啡的起源的第2个关键点:值得你记住。"
+          "desc": "盐税的第2个关键点:值得你记住。"
         }
       ]
     },
     "captions": [
       {
-        "text": "咖啡的起源的第2个关键点",
-        "start": 0.105541,
-        "end": 2.244416
+        "text": "盐税的第2个关键点",
+        "start": 0.0,
+        "end": 1.8635091428571429
       },
       {
         "text": "值得你记住",
-        "start": 2.633333,
-        "end": 3.633333
+        "start": 1.8635091428571429,
+        "end": 2.898792
       }
     ],
     "visualType": "voiceover",
@@ -143,16 +143,16 @@
   {
     "id": "cue-4",
     "sceneType": "reason",
-    "text": "咖啡的起源的第3个关键点:值得你记住。",
-    "audioFile": "runs/reference_adapt__b/audio/cue-4.mp3",
-    "durationSec": 4.608,
-    "startSec": 14.736,
+    "text": "盐税的第3个关键点:值得你记住。",
+    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-4.wav",
+    "durationSec": 3.131354,
+    "startSec": 8.559896,
     "keywords": [
-      "咖啡的起源的第3个关键点:值得你记住。"
+      "盐税的第3个关键点:值得你记住。"
     ],
     "props": {
       "question": "为什么重要？",
-      "brainLine": "咖啡的起源的第3个关键点:值得你记住。",
+      "brainLine": "盐税的第3个关键点:值得你记住。",
       "bubbleText": "把证据放回上下文。",
       "leftLabel": {
         "title": "只看表面",
@@ -165,14 +165,14 @@
     },
     "captions": [
       {
-        "text": "咖啡的起源的第3个关键点",
-        "start": 0.105541,
-        "end": 2.313875
+        "text": "盐税的第3个关键点",
+        "start": 0.0,
+        "end": 2.013013285714286
       },
       {
         "text": "值得你记住",
-        "start": 2.688875,
-        "end": 3.633333
+        "start": 2.013013285714286,
+        "end": 3.131354
       }
     ],
     "visualType": "voiceover",
@@ -189,43 +189,90 @@
   {
     "id": "cue-5",
     "sceneType": "method",
-    "text": "关于咖啡的起源,你还想了解什么?评论区告诉我。",
-    "audioFile": "runs/reference_adapt__b/audio/cue-5.mp3",
-    "durationSec": 5.76,
-    "startSec": 19.344,
+    "text": "关于盐税,你还想了解什么?评论区告诉我。",
+    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-5.wav",
+    "durationSec": 3.645542,
+    "startSec": 11.69125,
     "keywords": [
-      "关于咖啡的起源,你还想了解什么?评论区告诉我。"
+      "关于盐税,你还想了解什么?评论区告诉我。"
     ],
     "props": {
       "header": "三个检查动作",
       "points": [
         {
           "num": "1",
-          "title": "关于咖啡的起源,你还想了解什么?评论区告诉我。",
+          "title": "关于盐税,你还想了解什么?评论区告诉我。",
           "sub": "核对来源与时间"
         }
       ]
     },
     "captions": [
       {
-        "text": "关于咖啡的起源",
-        "start": 0.105541,
-        "end": 1.633333
+        "text": "关于盐税",
+        "start": 0.0,
+        "end": 0.8577745882352941
       },
       {
         "text": "你还想了解什么",
-        "start": 1.966666,
-        "end": 3.133332
+        "start": 0.8577745882352941,
+        "end": 2.358880117647059
       },
       {
         "text": "评论区告诉我",
-        "start": 3.536125,
-        "end": 4.786082
+        "start": 2.358880117647059,
+        "end": 3.645542
       }
     ],
     "visualType": "voiceover",
     "visualConfig": {
       "time_range": "00:00-05.0s",
+      "layout_mode": "fullscreen",
+      "audio_style": "formal"
+    },
+    "layoutMode": "fullscreen",
+    "audioStyle": "formal",
+    "visualSearchQuery": "",
+    "visual_config": {}
+  },
+  {
+    "id": "cue-6",
+    "sceneType": "outro",
+    "text": "本片内容参考维基百科公开资料。",
+    "audioFile": "runs/test_veya_execute_fulfills0/audio/cue-6.wav",
+    "durationSec": 3.21125,
+    "startSec": 15.336791999999999,
+    "keywords": [
+      "本片内容参考维基百科公开资料。"
+    ],
+    "props": {
+      "setupLine1": "把复杂问题讲清楚。",
+      "setupLine2": "下一次做决定前，记住这句话。",
+      "quoteLine1": "本片内容参考维基百科公开资料。",
+      "quoteLine2": "证据决定判断。",
+      "ctaEmojis": [
+        "👍",
+        "⭐",
+        "🔔"
+      ],
+      "ctaText": "点赞 · 收藏 · 关注",
+      "byline": "我们下期见"
+    },
+    "captions": [
+      {
+        "text": "本片内容参考维基百科公开资料",
+        "start": 0.0,
+        "end": 3.21125
+      }
+    ],
+    "visualType": "voiceover",
+    "visualConfig": {
+      "research_refs": [
+        "https://en.wikipedia.org/wiki/CJK%20Unified%20Ideographs%20%28Unicode%20block%29",
+        "https://en.wikipedia.org/wiki/Ky%C5%8Diku%20kanji",
+        "https://en.wikipedia.org/wiki/CJK%20Unified%20Ideographs%20%28YES%20order%29",
+        "https://en.wikipedia.org/wiki/Zhongwen%20Shuiping%20Kaoshi"
+      ],
+      "time_range": "00:00-03.0s",
       "layout_mode": "fullscreen",
       "audio_style": "formal"
     },

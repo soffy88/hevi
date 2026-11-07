@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 import uuid
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from hevi.auth.dependencies import get_current_user
 from hevi.subjects.reference_store import ReferenceStore
 
 router = APIRouter(prefix="/golive3", tags=["golive3"])
@@ -44,7 +45,9 @@ class AssetCreateRequest(BaseModel):
 
 
 @router.get("/assets")
-async def list_assets(project_id: str | None = None) -> list[dict[str, Any]]:
+async def list_assets(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+project_id: str | None = None) -> list[dict[str, Any]]:
     store = _load_store()
     assets = list(store.get("assets", {}).values())
     if project_id:
@@ -53,7 +56,9 @@ async def list_assets(project_id: str | None = None) -> list[dict[str, Any]]:
 
 
 @router.post("/assets", status_code=status.HTTP_201_CREATED)
-async def create_asset(body: AssetCreateRequest) -> dict[str, Any]:
+async def create_asset(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+body: AssetCreateRequest) -> dict[str, Any]:
     if body.kind not in {"character", "scene", "prop"}:
         raise HTTPException(status_code=422, detail=f"Invalid asset kind: {body.kind!r}")
     
@@ -78,7 +83,9 @@ async def create_asset(body: AssetCreateRequest) -> dict[str, Any]:
 
 
 @router.get("/assets/{asset_id}")
-async def get_asset(asset_id: str) -> dict[str, Any]:
+async def get_asset(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+asset_id: str) -> dict[str, Any]:
     store = _load_store()
     asset = store.get("assets", {}).get(asset_id)
     if not asset:
@@ -87,7 +94,9 @@ async def get_asset(asset_id: str) -> dict[str, Any]:
 
 
 @router.delete("/assets/{asset_id}")
-async def delete_asset(asset_id: str) -> dict[str, Any]:
+async def delete_asset(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+asset_id: str) -> dict[str, Any]:
     store = _load_store()
     if asset_id not in store.get("assets", {}):
         raise HTTPException(status_code=404, detail=f"Asset not found: {asset_id!r}")
@@ -97,7 +106,9 @@ async def delete_asset(asset_id: str) -> dict[str, Any]:
 
 
 @router.get("/snapshots/{snapshot_id}")
-async def get_project_snapshot(snapshot_id: str) -> dict[str, Any]:
+async def get_project_snapshot(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+snapshot_id: str) -> dict[str, Any]:
     store = _load_store()
     snapshot = store.get("snapshots", {}).get(snapshot_id)
     if not snapshot:
@@ -106,7 +117,9 @@ async def get_project_snapshot(snapshot_id: str) -> dict[str, Any]:
 
 
 @router.get("/snapshots")
-async def list_project_snapshots(project_id: str | None = None) -> list[dict[str, Any]]:
+async def list_project_snapshots(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+project_id: str | None = None) -> list[dict[str, Any]]:
     store = _load_store()
     snapshots = list(store.get("snapshots", {}).values())
     if project_id:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 from hevi.storyplan.model import (
+    ChangeStage,
     HookSpec,
     NarrativeLayer,
     Scene,
@@ -26,6 +27,7 @@ def autofill_story_plan(
     fps: int = 30,
     hook_type: str = "question",
     audience: str = "kids_2_6",
+    change_stages: list[ChangeStage | dict] | None = None,
 ) -> StoryPlan:
     """给定一句话主题，无需付费 API，按规则与模板全自动补全三层结构 StoryPlan（产物随主题深度变化）。"""
     clean_topic = topic.strip()
@@ -115,36 +117,85 @@ def autofill_story_plan(
     duration_sec = max(8.0, round(total_chars / 2.8, 1))
     total_ms = int(duration_sec * 1000)
 
-    # 2) 叙事层：beats（起因→经过→结果）+ 开场钩子
-    beats = [
-        StoryBeat(
-            beat_id=f"beat_{domain}_1_cause",
-            phase="cause",
-            summary=sentences[0] if len(sentences) > 0 else f"起因：引入主题 {clean_topic}",
-            expectation=hook_text,
-            start_ms=0,
-            end_ms=int(total_ms * 0.3),
-            semantic_refs=[domain, "topic_intro"],
-        ),
-        StoryBeat(
-            beat_id=f"beat_{domain}_2_process",
-            phase="process",
-            summary=sentences[1] if len(sentences) > 1 else "经过：探索与互动体验",
-            expectation="寻找核心解决方法",
-            start_ms=int(total_ms * 0.3),
-            end_ms=int(total_ms * 0.75),
-            semantic_refs=[domain, "exploration"],
-        ),
-        StoryBeat(
-            beat_id=f"beat_{domain}_3_result",
-            phase="result",
-            summary=sentences[2] if len(sentences) > 2 else "结果：得出结论与闭环总结",
-            expectation="回应开头期待与互动问句",
-            start_ms=int(total_ms * 0.75),
-            end_ms=total_ms,
-            semantic_refs=[domain, "closure"],
-        ),
+    # 2) 叙事层：beats + 开场钩子
+    # 归一化蒙太奇阶段清单（ChangeStage 或等价 dict 均可）
+    stages: list[ChangeStage] = [
+        raw_stage if isinstance(raw_stage, ChangeStage) else ChangeStage(**raw_stage)
+        for raw_stage in change_stages or []
     ]
+
+    if stages:
+        # 给定 change_stages 时按阶段生成 beats：一阶段至少一拍，
+        # 时间轴按阶段数等分；phase 缺省按首=cause / 尾=result / 中间=process
+        # 推断，阶段项自带合法 phase 时尊重其声明。
+        beats = []
+        n_stages = len(stages)
+        for i, stage in enumerate(stages):
+            declared = getattr(stage, "phase", None)
+            if declared in {"cause", "process", "result", "reaction", "flashback", "flashforward"}:
+                phase = declared  # type: ignore[assignment]
+            elif n_stages == 1:
+                phase = "process"
+            elif i == 0:
+                phase = "cause"
+            elif i == n_stages - 1:
+                phase = "result"
+            else:
+                phase = "process"
+            detail = stage.description or stage.target_state
+            beats.append(
+                StoryBeat(
+                    beat_id=f"beat_{domain}_stage_{i + 1}_{stage.name}",
+                    phase=phase,
+                    summary=f"{stage.name}：{detail}" if detail else stage.name,
+                    expectation=stage.target_state or "推进到下一阶段目标状态",
+                    start_ms=int(total_ms * i / n_stages),
+                    end_ms=int(total_ms * (i + 1) / n_stages),
+                    semantic_refs=[domain, "change_stage", stage.name],
+                )
+            )
+    else:
+        # 未给定 change_stages：保持原有百分比切分（cause 30% / process 45% /
+        # result 15%），并在 result 后、收束前补 reaction 反应拍（末 10%），
+        # 使自产计划叙事四环完整（见 check.py C8）。
+        beats = [
+            StoryBeat(
+                beat_id=f"beat_{domain}_1_cause",
+                phase="cause",
+                summary=sentences[0] if len(sentences) > 0 else f"起因：引入主题 {clean_topic}",
+                expectation=hook_text,
+                start_ms=0,
+                end_ms=int(total_ms * 0.3),
+                semantic_refs=[domain, "topic_intro"],
+            ),
+            StoryBeat(
+                beat_id=f"beat_{domain}_2_process",
+                phase="process",
+                summary=sentences[1] if len(sentences) > 1 else "经过：探索与互动体验",
+                expectation="寻找核心解决方法",
+                start_ms=int(total_ms * 0.3),
+                end_ms=int(total_ms * 0.75),
+                semantic_refs=[domain, "exploration"],
+            ),
+            StoryBeat(
+                beat_id=f"beat_{domain}_3_result",
+                phase="result",
+                summary=sentences[2] if len(sentences) > 2 else "结果：得出结论与闭环总结",
+                expectation="回应开头期待与互动问句",
+                start_ms=int(total_ms * 0.75),
+                end_ms=int(total_ms * 0.9),
+                semantic_refs=[domain, "closure"],
+            ),
+            StoryBeat(
+                beat_id=f"beat_{domain}_4_reaction",
+                phase="reaction",
+                summary=f"反应：主角看到结果后眼睛一亮，开心地拍手欢呼，把喜悦分享给小朋友（主题：{clean_topic}）",
+                expectation="角色情绪反应与互动邀请",
+                start_ms=int(total_ms * 0.9),
+                end_ms=total_ms,
+                semantic_refs=[domain, "reaction"],
+            ),
+        ]
 
     hook = HookSpec(
         hook_type=hook_kind,
@@ -158,6 +209,7 @@ def autofill_story_plan(
         hook=hook,
         beats=beats,
         closing_response=sentences[-1] if sentences else f"小朋友，我们一起来记住关于{clean_topic}的小知识吧！",
+        change_stages=stages or None,
     )
 
     # 3) 镜头层：Sequence → Scene → Shot（六项必填齐全，动作有明确结束状态）
@@ -185,7 +237,7 @@ def autofill_story_plan(
             scene_id="scene_1",
             sequence_id=1,
             purpose=f"探索 {clean_topic} 的过程与互动演示",
-            start_state="主角处于探索与实践状态中",
+            start_state="主角站定并微笑，疑问字幕清晰呈现",
             action=f"主角通过生动动作展示关于 {clean_topic} 的探索细节，动作平稳过渡",
             end_state="主角露出恍然大悟的欣喜表情，指向核心知识点",
             sound="旁白详细讲解，音效契合动作",
@@ -203,7 +255,7 @@ def autofill_story_plan(
             scene_id="scene_1",
             sequence_id=1,
             purpose=f"总结升华关于 {clean_topic} 的完整闭环",
-            start_state="主角微笑站在画面中央，场景温馨和谐",
+            start_state="主角露出恍然大悟的欣喜表情，指向核心知识点",
             action="主角做出点赞与挥手告别动作，伴随结尾闭环互动复述",
             end_state="画面平稳渐隐收尾，主角保持微笑定格",
             sound="旁白总结主题并留出互动空白，音乐柔和淡出",

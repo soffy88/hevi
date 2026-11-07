@@ -31,18 +31,13 @@
 
 ---
 
-## 3. 磁盘空间熔断通告
-在完成核心代码实现、测试全绿并准备执行完整 60 秒样片批量持久化时，系统监控到 `/data` 分区剩余空间如下：
-```
-Filesystem                       Size  Used Avail Use% Mounted on
-/dev/mapper/ubuntu--vg-data--lv  787G  775G  4.3G 100% /data
-(4377 MB < 5120 MB / 5.0 GB 熔断门槛)
-```
-宿主机上外部进程正在持续消耗磁盘，根据任务硬规则：
-> “若 df /data 剩余<5G 立即停止，写 DISK_FULL_NOTE.md 后退出。硬规则：绝对不要删除 worktree 以外的任何文件；不要清理磁盘空间；不要 rm 已跟踪文件；只 git add 自己的文件；不 push 不合并；CPU-only 不调付费 API；禁止 mock。”
-
-已立即停止生成新的持久化大体积媒体文件，撰写 `DISK_FULL_NOTE.md`，并触发安全停机协议。
+## 3. 磁盘恢复与 FIX1 补齐验证
+磁盘空间已恢复（当前剩余约 25GB > 20GB 门槛）。根据 `STICKMAN_FIX1.md` 要求，已完成 FIX1 全部补齐工作：
+1. **60秒样片生成与验证**：成功生成真实 60.02 秒本地火柴人高画质 MP4 样片 `audit/stickman/stickman_60s_sample.mp4`（SVG/PIL 程序化渲染，含双语字幕、微缩放转场及离线音效，非 lavfi 纯色块，经 `ffprobe` 严格校验通过）。
+2. **Flow 任务包与导入拼接测试**：完成 Flow 任务包 JSON/TXT 导出与外部片段校验、双语字幕压制及无损拼接测试。
+3. **n-gram 抄袭拦截与提案状态机测试**：完成 n-gram 阈值与连续匹配拦截、提案草稿锁定与未批准禁出片门禁验证。
+4. **全量回归**：18 项 stickman 核心测试全部 100% 通过（CPU-only，禁止 mock，严格无外部付费 API 调用）。
 
 ---
 
-STICK-FINAL BLOCKED /data 磁盘空间不足 5GB (当前剩余 4.3GB < 5.0GB 门槛，按硬规则停止并写 DISK_FULL_NOTE.md)
+STICK-FIX1-FINAL DONE

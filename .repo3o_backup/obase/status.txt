@@ -1,0 +1,116 @@
+On branch feat/v0.20.0-commerce-batch-schema
+Your branch is behind 'origin/feat/v0.20.0-commerce-batch-schema' by 2 commits, and can be fast-forwarded.
+  (use "git pull" to update your local branch)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   obase/__init__.py
+	modified:   obase/acp_adapter.py
+	modified:   obase/cognitive_store.py
+	modified:   obase/cost_tracker.py
+	modified:   obase/git.py
+	modified:   obase/mcp_client.py
+	modified:   obase/mcp_server/__init__.py
+	modified:   obase/orchestrator.py
+	modified:   obase/versionstore/__init__.py
+	modified:   pyproject.toml
+	modified:   tests/test_acp_adapter.py
+	modified:   uv.lock
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.veya-project/
+	.veya/
+	obase/_fernet_vault.py
+	obase/action.py
+	obase/adaptive_scraper.py
+	obase/base_types.py
+	obase/browser.py
+	obase/browser_runner.py
+	obase/browser_vision_runner.py
+	obase/causal_graph_store.py
+	obase/channel_adapter.py
+	obase/checkpoint_store.py
+	obase/computer.py
+	obase/context_vars.py
+	obase/contracts.py
+	obase/daemon_bus.py
+	obase/debounced_memory_queue.py
+	obase/decision_logger.py
+	obase/dlt_pipeline_store.py
+	obase/docker_pool.py
+	obase/durable_lease_queue.py
+	obase/event_barrier.py
+	obase/event_bus.py
+	obase/git_worktree.py
+	obase/graph_storage.py
+	obase/hardened_executor.py
+	obase/harness_bridge.py
+	obase/hierarchical_context.py
+	obase/hitl_signal_bus.py
+	obase/knowledge_store.py
+	obase/kv_cache_shared_memory.py
+	obase/kv_store.py
+	obase/lean_formal_prover.py
+	obase/livekit_webrtc.py
+	obase/llm_client.py
+	obase/local_sandbox_pool.py
+	obase/loop_breaker.py
+	obase/loop_event_store.py
+	obase/market_data.py
+	obase/mcp_http.py
+	obase/mcp_stdio.py
+	obase/media_scraper.py
+	obase/memory_bank.py
+	obase/mqtt_edge_gateway.py
+	obase/omodul_base_config.py
+	obase/permission_contract.py
+	obase/persistent_store.py
+	obase/plugin_loader.py
+	obase/plugin_registry.py
+	obase/population_genome_store.py
+	obase/posix_shm_allocator.py
+	obase/pseudo_anonymizer.py
+	obase/resource_limits.py
+	obase/runbook_loader.py
+	obase/runbook_runtime.py
+	obase/sandbox/
+	obase/sandbox_runner.py
+	obase/secrets_store.py
+	obase/signed_token_session.py
+	obase/skills_registry.py
+	obase/smt_solver_adapter.py
+	obase/snapshot_store.py
+	obase/ssrf_safe_network.py
+	obase/support_bundle_pack.py
+	obase/symbolic_executor.py
+	obase/team_registry.py
+	obase/token_counter.py
+	obase/trajectory_logger.py
+	obase/treesitter_indexer.py
+	obase/vad_pipeline.py
+	obase/vector_memory.py
+	obase/versionstore/snapshot.py
+	obase/vfs_sandbox.py
+	obase/wfg_deadlock_detector.py
+	obase/workspace_snapshot.py
+	obase/zero_egress_sandbox.py
+	obase/zeromq_bus.py
+	tests/obase/test_fullstack_additions.py
+	tests/obase/test_graft_openrsi.py
+	tests/obase/test_paradigm_phase1.py
+	tests/test_channel_adapter.py
+	tests/test_cross_capability_integration.py
+	tests/test_mcp_client.py
+	tests/test_mcp_skills.py
+	tests/test_veya_42_obase.py
+	tests/test_veya_agent_obase.py
+	tests/test_veya_frontier_obase.py
+	tests/test_veya_mind_obase.py
+	tests/test_veya_o1o2o3_obase.py
+	tests/test_veya_p12_obase.py
+	tests/test_veya_skills_graphify_obase.py
+	tests/test_veya_superpowers_obase.py
+
+no changes added to commit (use "git add" and/or "git commit -a")

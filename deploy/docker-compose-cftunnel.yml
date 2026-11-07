@@ -17,68 +17,6 @@
 name: hevi-cftunnel
 
 services:
-  # AI 算力引擎(v9.1: 由 voicebox sidecar 演进) —— 解说/通鉴共用的 GPU 引擎。
-  # Voicebox Qwen3-TTS 音色克隆 + CosyVoice 解说 + LongCat Talking Face 全部在此,
-  # HEVI 只通过内网 HTTP 调用, 不把 PyTorch 依赖塞进 API 镜像。
-  hevi-gen-engine:
-    build:
-      context: ..
-      dockerfile: services/gen_engine/Dockerfile
-      network: ${GEN_ENGINE_BUILD_NETWORK:-host}
-      args:
-        PYTORCH_VARIANT: ${PYTORCH_VARIANT:-cpu}
-        HTTP_PROXY: ${GEN_ENGINE_HTTP_PROXY:-}
-        HTTPS_PROXY: ${GEN_ENGINE_HTTPS_PROXY:-}
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '8'
-          memory: 16G
-    environment:
-      LOG_LEVEL: info
-      NUMBA_CACHE_DIR: /tmp/numba_cache
-      VOICEBOX_BACKEND_VARIANT: ${VOICEBOX_BACKEND_VARIANT:-cpu}
-      HF_HOME: /home/voicebox/.cache/huggingface
-      HF_HUB_OFFLINE: "1"
-      TRANSFORMERS_OFFLINE: "1"
-      VIBEVOICE_MODEL_DIR: /models/vibevoice-1.5b
-      COSYVOICE_MODEL_DIR: /opt/cosyvoice/model
-      COSYVOICE3_MODEL_DIR: /opt/cosyvoice/fun3
-      F5_TTS_MODEL_DIR: /models/f5-tts
-      FISH_SPEECH_MODEL_DIR: /models/fish-speech-1.5
-      LONGCAT_MODEL_PATH: /data/models/LongCat-Voice
-      VIBEVOICE_ASR_MODEL_DIR: /models/vibeasr
-    volumes:
-      - voicebox-data:/app/data
-      # The model is downloaded by the deployment host (through its proxy)
-      # and mounted read-only. Runtime containers need no outbound network.
-      - ../.voicebox-cache:/home/voicebox/.cache/huggingface/hub
-      # 语音/生成模型权重(宿主持有, 只读; 缺失时端点返回 501, API 自动降级)
-      # 注: COSYVOICE_MODEL_DIR 是 API→引擎透传的引擎内路径(见 .env),
-      # 挂载源用独立变量 COSYVOICE_HOST_MODEL_DIR(默认 CosyVoice3 目录,
-      # 重供货 worker 要求 model_dir 根含 cosyvoice2.yaml/cosyvoice3.yaml + 全部权重,
-      # worker 按 yaml 自动检测家族)。
-      - ${VIBEVOICE_MODEL_DIR:-/home/soffy/models/vibevoice-1.5b}:/models/vibevoice-1.5b:ro
-      - ${COSYVOICE_HOST_MODEL_DIR:-/home/soffy/models/CosyVoice3}:/opt/cosyvoice/model:ro
-      - ${COSYVOICE3_MODEL_DIR:-/home/soffy/models/CosyVoice3}:/opt/cosyvoice/fun3:ro
-      - ${F5_TTS_MODEL_DIR:-/home/soffy/models/f5-tts}:/models/f5-tts:ro
-      - ${FISH_SPEECH_MODEL_DIR:-/home/soffy/models/fish-speech-1.5}:/models/fish-speech-1.5:ro
-      - ${LONGCAT_MODEL_DIR:-/data/models/LongCat-Voice}:/data/models/LongCat-Voice:ro
-      - ${VIBEVOICE_ASR_MODEL_DIR:-/home/soffy/models/vibeasr}:/models/vibeasr:ro
-      # vibevoice 的 Qwen2.5-1.5B tokenizer 语言模型底座(只读; HF_HUB_OFFLINE 下从缓存加载)
-      - /home/soffy/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B:/home/voicebox/.cache/huggingface/hub/models--Qwen--Qwen2.5-1.5B:ro
-      # VibeVoice-ASR 的 Qwen2.5-7B 语言模型 tokenizer 底座(只读)
-      - /home/soffy/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B:/home/voicebox/.cache/huggingface/hub/models--Qwen--Qwen2.5-7B:ro
-    ports:
-      - "127.0.0.1:17600:17493"
-    healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:17493/api/ai/health"]
-      interval: 20s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-
   hevi-api:
     build:
       context: ..
@@ -90,10 +28,7 @@ services:
       args:
         NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
     restart: unless-stopped
-    # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 全部分配给 hevi-gen-engine。
-    # 用户覆盖:镜像默认 hevi(999),但持久化卷(output/data/assets)宿主持有为
-    # 1000:1000,不加此行则 slate/timeline/memory 全部落盘 Permission denied。
-    user: "1000:1000"
+    # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 不由本栈分配。
     deploy:
       resources:
         limits:
@@ -114,13 +49,14 @@ services:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
       MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      REDIS_URL: redis://hevi-redis:6379/0
       APP_ENV: production
       CORS_ORIGINS: https://hevi.kanpan.co
       VIBEVOICE_MODEL_DIR: /models/vibevoice-1.5b
       WAN2GP_DIR: /Wan2GP
       HEVI_LLM_PROVIDER: qwen_local
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: qwen2.5:7b
+      OLLAMA_MODEL: llama3.2:3b
       # 共享 RTX 3080 上另有租户常占 ~2.4GiB,不加这个 sdxl_local 关键帧 VAE decode 峰值会
       # CUDA OOM(2026-07-16 实证:加此 env 后本地出图/img2img 才成)。缺它 → engine=local
       # 关键帧全挂、退云端额度墙 → canon,v1/v2 关键帧路(含 SPEC-004 v2 朝向 img2img)全废。
@@ -128,23 +64,19 @@ services:
       # 消耗单价:credits_per_usd 默认 100(estimated_credits = cost_usd × 此值)。这台是 soffy
       # 自用测试实例,降到 10(每次产集扣的积分 1/10),配合手动授信足够反复测,不受额度墙卡。
       CREDITS_PER_USD: "10"
-      # 测试用:剧本只取前 4 场(下游 ~20 镜/~90s),快速小规模验证剧本细节达标。验证 OK 后
-      # 删掉这行重建即恢复全量(一段故事 ~11 场/~53 镜/~4min)。见 config.director_max_scenes。
-      DIRECTOR_MAX_SCENES: "4"
       # INC-002:每镜 LLM 生成 performance_track(镜头内部表演时间轴)的密度档。L2=eyeline+情绪+
       # 面部生理+运镜曲线。每镜一次 LLM 调用(并发,后台路径),分镜生成会明显变慢+花钱。见
       # config.performance_track_tier。不想填时删掉这行或设 L0。
       PERFORMANCE_TRACK_TIER: "L2"
-      HEVI_EXPLAINER_TTS_PROVIDER: edge_tts
-      HEVI_AUDIO_PROVIDER: voicebox
-      # 数字人:EchoMimicV2(宿主机 Comfy 8188)。容器走 host.docker.internal,
-      # 宿主脚本仍用 127.0.0.1。失败不要静默占位圈。
-      TALKING_FACE_ENGINE: echomimic
-      ECHO_MIMIC_COMFY_URL: http://host.docker.internal:8188
+      # wave2: 最小准入 scope(仅免费/本地 provider,低 ceiling,无任何付费 provider)。
+      # tenant 取值 = 任务提交时 caller 声明的 workspace_id,已用真实测试账号提交观测。
+      # targets/capabilities 留空: /tasks 路径的 production_source 为空,具名 targets 会拒掉它。
+      ADMISSION_TENANT_SCOPES: "wave2-test-ws|wan_local,ltx2_local,qwen_local,local|||render|1.0"
+      HEVI_EXPLAINER_TTS_PROVIDER: piper
+      HEVI_AUDIO_PROVIDER: piper
+      TALKING_FACE_ENGINE: generic
       # v9.1: AI 引擎统一地址(CosyVoice/LongCat/voicebox TTS 同源)。
       HEVI_ASSET_ROOT: /app/data/workspace/assets
-      GEN_ENGINE_BASE_URL: http://hevi-gen-engine:17493
-      VOICEBOX_BASE_URL: http://hevi-gen-engine:17493
       VOICEBOX_ENGINE: ${VOICEBOX_ENGINE:-qwen_custom_voice}
       VOICEBOX_MODEL_SIZE: ${VOICEBOX_MODEL_SIZE:-1.7B}
       VOICEBOX_PRESET_VOICE: ${VOICEBOX_PRESET_VOICE:-Dylan}
@@ -182,15 +114,8 @@ services:
       # 容器重建不丢进度,大盘/WebSocket 可读可下载。
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
-      # MCP lifespan 修复 (b5815c8): 单文件挂载免 rebuild (镜像内代码)
-      - /home/soffy/projects/hevi/hevi/api/mcp_mount.py:/app/hevi/api/mcp_mount.py:ro
-      - /home/soffy/projects/hevi/hevi/digital_human/talking_face.py:/app/hevi/digital_human/talking_face.py:ro
-      - /home/soffy/projects/hevi/hevi/digital_human/line_tts.py:/app/hevi/digital_human/line_tts.py:ro
-      - /home/soffy/projects/hevi/hevi/providers/echo_mimic:/app/hevi/providers/echo_mimic:ro
-      - /home/soffy/projects/hevi/hevi/providers/h3_local/comfy_client.py:/app/hevi/providers/h3_local/comfy_client.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/assembly.py:/app/hevi/explainer/assembly.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/render.py:/app/hevi/explainer/render.py:ro
-      - /home/soffy/projects/hevi/hevi/explainer/echo_avatar.py:/app/hevi/explainer/echo_avatar.py:ro
+      # wave2: 其余 5 处主仓单文件覆盖已随代码移植进镜像而删除。仅 scene_render_avatar
+      # 保留挂载:两版已实质分叉(40+ 处差异),直接去挂载会静默换掉通鉴 avatar 实现,合并另立项。
       - /home/soffy/projects/hevi/hevi/tongjian/scene_render_avatar.py:/app/hevi/tongjian/scene_render_avatar.py:ro
       # 主机已有的 HF 缓存(含 openai/clip-vit-base-patch32)只读挂进来,让
       # subjects/subject_embed.py 能算角色身份向量(local_files_only=True)——
@@ -200,16 +125,13 @@ services:
       # 让容器内 sdxl_local 关键帧引擎(engine="local")能加载模型在 GPU 上出锁脸/摆姿势
       # 关键帧——不挂则 engine=local 找不到权重、退回云端 edit(免费额度墙)→ canon。
       - /data/models/huggingface:/data/models/huggingface:ro
-      # hevi-remotion public/runs: 宿主持有, 容器写。原本镜像内 runs 归 hevi(999) 且无写权限。
-      - /home/soffy/projects/hevi/hevi-remotion/public/runs:/app/hevi-remotion/public/runs
-      # hevi-remotion src/data: Remotion 渲染期读写 run_manifest.json。镜像内该目录
-      # 归 hevi(999),cftunnel API 跑在 1000:1000 → 挂载到宿主卷让 UID 1000 可写。
-      - /home/soffy/projects/hevi/hevi-remotion/src/data:/app/hevi-remotion/src/data
     ports:
-      # Host-side Cloudflare Tunnel only; do not expose the API publicly.
-      - "127.0.0.1:8201:8000"
+      - "8201:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      hevi-redis:
+        condition: service_healthy
     command: >
       sh -c "alembic upgrade head &&
              uvicorn hevi.api.main:app --host 0.0.0.0 --port 8000 --workers 1"
@@ -225,13 +147,13 @@ services:
       context: ../hevi-web
       dockerfile: ../deploy/Dockerfile.web
       args:
+        NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
         NEXT_PUBLIC_DEPLOY_ENV: production
         NEXT_PUBLIC_API_BASE: https://hevi.kanpan.co
         NEXT_PUBLIC_USE_MOCK: "false"
     restart: unless-stopped
     ports:
-      # Host-side Cloudflare Tunnel only; keep Next.js bound to loopback.
-      - "127.0.0.1:3200:3000"
+      - "3200:3000"
     depends_on:
       hevi-api:
         condition: service_healthy
@@ -248,6 +170,133 @@ services:
       retries: 3
       start_period: 30s
 
+  # wave2: 正式 redis 服务(替代此前与 api 共享网络命名空间的临时容器)。
+  hevi-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - hevi-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # wave2: worker/scheduler 由 compose 正式承载(此前为 docker run 临时容器)。
+  # healthcheck 覆盖掉 api 的 curl :8000(worker/scheduler 内无 uvicorn,原探活恒误报):
+  # 改为校验 1 号进程命令行确为本服务入口。
+  hevi-worker:
+    image: hevi-cftunnel-hevi-api:latest
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      REDIS_URL: redis://hevi-redis:6379/0
+      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
+      MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      MNEME_DATABASE_URL: ${MNEME_DATABASE_URL:-}
+      MPT_API_BASE: http://host.docker.internal:8080
+      MPT_WEBUI_BASE: http://host.docker.internal:8501
+      APP_ENV: production
+      ADMISSION_TENANT_SCOPES: "wave2-test-ws|wan_local,ltx2_local,qwen_local,local|||render|1.0"
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3.2:3b
+      HEVI_EXPLAINER_TTS_PROVIDER: piper
+      HEVI_AUDIO_PROVIDER: piper
+      TALKING_FACE_ENGINE: generic
+      HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
+      HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
+      HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
+      HEVI_TALKCRAFT_REMOTION: /app/hevi-remotion-talkcraft
+      HEVI_TALKCRAFT_AVATAR_MODELS: /models/wav2lip
+      HEVI_TALKCRAFT_WHISPER: /models/faster-whisper-large-v3-turbo
+      HEVI_NODE_BIN: /usr/bin
+      HEVI_TALKCRAFT_THREADS: "2"
+      HEVI_ASSET_ROOT: /app/data/workspace/assets
+      EXPLAINER_CACHE_DIR: /app/output/explainer_cache
+    volumes:
+      - /home/soffy/models:/models:ro
+      - ${HEVI_PIPER_VOICES_DIR:-/data/soffy/projects/hevi-zero/voices}:/opt/piper/voices:ro
+      - hevi-zero-cache:/app/.cache/hevi/zerolines
+      - /home/soffy/Wan2GP:/Wan2GP:ro
+      - /home/soffy/projects/hevi/output:/app/output
+      - /home/soffy/projects/hevi/data:/app/data
+      - /home/soffy/projects/hevi/assets:/app/assets
+      - /home/soffy/.cache/huggingface:/root/.cache/huggingface:ro
+      - /data/models/huggingface:/data/models/huggingface:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      hevi-redis:
+        condition: service_healthy
+    command: ["python", "-m", "hevi.queue.worker_entrypoint"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0 if 'worker_entrypoint' in open('/proc/1/cmdline','rb').read().decode(errors='ignore') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  hevi-scheduler:
+    image: hevi-cftunnel-hevi-api:latest
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      REDIS_URL: redis://hevi-redis:6379/0
+      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
+      MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      MNEME_DATABASE_URL: ${MNEME_DATABASE_URL:-}
+      MPT_API_BASE: http://host.docker.internal:8080
+      MPT_WEBUI_BASE: http://host.docker.internal:8501
+      APP_ENV: production
+      ADMISSION_TENANT_SCOPES: "wave2-test-ws|wan_local,ltx2_local,qwen_local,local|||render|1.0"
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: llama3.2:3b
+      HEVI_EXPLAINER_TTS_PROVIDER: piper
+      HEVI_AUDIO_PROVIDER: piper
+      TALKING_FACE_ENGINE: generic
+      HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
+      HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
+      HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
+      HEVI_TALKCRAFT_REMOTION: /app/hevi-remotion-talkcraft
+      HEVI_TALKCRAFT_AVATAR_MODELS: /models/wav2lip
+      HEVI_TALKCRAFT_WHISPER: /models/faster-whisper-large-v3-turbo
+      HEVI_NODE_BIN: /usr/bin
+      HEVI_TALKCRAFT_THREADS: "2"
+      HEVI_ASSET_ROOT: /app/data/workspace/assets
+      EXPLAINER_CACHE_DIR: /app/output/explainer_cache
+    volumes:
+      - /home/soffy/projects/hevi/output:/app/output
+      - /home/soffy/projects/hevi/data:/app/data
+      - /home/soffy/projects/hevi/assets:/app/assets
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      hevi-redis:
+        condition: service_healthy
+    command: ["python", "-m", "hevi.scheduler.entrypoint"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0 if 'scheduler.entrypoint' in open('/proc/1/cmdline','rb').read().decode(errors='ignore') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
 networks:
   default:
     name: hevi-cftunnel_default
@@ -256,3 +305,4 @@ networks:
 volumes:
   voicebox-data:
   hevi-zero-cache:
+  hevi-redis-data:

@@ -66,3 +66,244 @@ def beat_snapped_xfade_durations(
         xfade_ds.append(d)
         merged = merged + durations[i] - d
     return xfade_ds
+
+
+# ---------------------------------------------------------------- beat-grid fit
+# Video-director residual (2026-10-31 recheck item 8): detection
+# plus snapping alone cannot see a grid that drifts. The fit below
+# is the missing half -- a least-squares grid over the detected
+# beats, a half/double-tempo ambiguity test, a residual bar, and
+# a refit after rendering. All pure functions, no new dependency.
+
+# Residual bar, kept at the upstream value and NOT widened: 15 ms
+# is the bar the source method calibrates against, and widening
+# it would hide exactly the failure it exists to catch (a ~2%
+# tempo error, or a grid that slipped by two beats). The bar is
+# reported with every fit, so a caller that needs a looser bar
+# for a named reason can pass its own tolerance explicitly.
+RESIDUAL_TOLERANCE_SEC = 0.015
+# Cut error bar: a cut must land within 3 frames of a beat, at the
+# fps the caller is actually measuring at. This is a different
+# instrument from the defect scan's 0.5 s cut tolerance (which
+# compares cuts sampled at up to 8 fps in final_qc): both are
+# reported in their own units, and neither is silently converted
+# into the other.
+CUT_TOLERANCE_FRAMES = 3
+
+
+def _least_squares_grid(beats: list[float]) -> dict[str, Any]:
+    """Least-squares fit t = t0 + period * index over sorted beats."""
+    ordered = sorted(float(b) for b in beats)
+    n = len(ordered)
+    if n < 2:
+        return {
+            "beat_count": n, "t0_sec": ordered[0] if ordered else None,
+            "period_sec": None, "bpm": None, "residuals_sec": [],
+            "rms_residual_sec": None, "max_abs_residual_sec": None,
+        }
+    xs = list(range(n))
+    mean_x = sum(xs) / n
+    mean_t = sum(ordered) / n
+    denom = sum((x - mean_x) ** 2 for x in xs)
+    period = sum((x - mean_x) * (t - mean_t) for x, t in zip(xs, ordered)) / denom
+    t0 = mean_t - period * mean_x
+    residuals = [t - (t0 + period * x) for x, t in zip(xs, ordered)]
+    rms = (sum(r * r for r in residuals) / n) ** 0.5
+    return {
+        "beat_count": n,
+        "t0_sec": round(t0, 4),
+        "period_sec": round(period, 4) if period > 0 else None,
+        "bpm": round(60.0 / period, 2) if period > 0 else None,
+        "residuals_sec": [round(r, 4) for r in residuals],
+        "rms_residual_sec": round(rms, 4),
+        "max_abs_residual_sec": round(max(abs(r) for r in residuals), 4),
+    }
+
+
+def _grid_rms(beats: list[float], t0: float, period: float) -> float:
+    """RMS distance of beats to the nearest grid point of (t0, period)."""
+    if period <= 0:
+        return float("inf")
+    sq = 0.0
+    for t in beats:
+        k = round((t - t0) / period)
+        sq += (t - (t0 + k * period)) ** 2
+    return (sq / len(beats)) ** 0.5
+
+
+def fit_beat_grid(
+    beats: list[float],
+    *,
+    residual_tolerance_sec: float = RESIDUAL_TOLERANCE_SEC,
+) -> dict[str, Any]:
+    """Fit a beat grid and test it for tempo ambiguity and drift.
+
+    Returns the least-squares fit (``t0_sec``, ``period_sec``,
+    ``bpm``, residuals), ``within_tolerance`` against the
+    +/-15 ms residual bar (kept, not widened -- see the note
+    above the constant), and a half/double-tempo check: if the
+    beats fit a half-period or double-period grid at least
+    twice as well *and* inside the same bar, the tempo is
+    ambiguous and the fit says which alternative won. Gaps
+    wider than 1.5 periods are reported as possible missed
+    beats. Fewer than 2 beats is ``undetermined``, never a fit.
+    """
+    if not isinstance(beats, list) or any(
+            not isinstance(b, (int, float)) or isinstance(b, bool) for b in beats):
+        raise ValueError("fit_beat_grid: beats must be a list of numbers")
+    ordered = sorted(float(b) for b in beats)
+    fit = _least_squares_grid(ordered)
+    base: dict[str, Any] = {
+        "capability": "assembly.beat_align",
+        "check": "beat_grid_fit",
+        "beats": ordered,
+        "residual_tolerance_sec": float(residual_tolerance_sec),
+        "tempo_ambiguity": None,
+        "missed_beat_gaps": [],
+    }
+    if fit["period_sec"] is None:
+        return {**base, **fit, "status": "undetermined",
+                "within_tolerance": None,
+                "reason": "fewer than 2 beats: no grid can be fitted"}
+    period = fit["period_sec"]
+    t0 = fit["t0_sec"]
+    rms = fit["rms_residual_sec"]
+    within = fit["max_abs_residual_sec"] <= float(residual_tolerance_sec)
+    # Half/double-tempo: would the same beats fit a grid at half
+    # or double the period at least twice as well, inside the bar?
+    ambiguity = None
+    for label, alt_period in (("half_tempo", period / 2.0), ("double_tempo", period * 2.0)):
+        alt_rms = _grid_rms(ordered, t0, alt_period)
+        if alt_rms <= float(residual_tolerance_sec) and alt_rms * 2.0 < rms:
+            ambiguity = {"alternative": label, "period_sec": round(alt_period, 4),
+                         "rms_residual_sec": round(alt_rms, 4),
+                         "base_rms_residual_sec": rms}
+            break
+    gaps = []
+    for i in range(len(ordered) - 1):
+        gap = ordered[i + 1] - ordered[i]
+        if gap > 1.5 * period:
+            gaps.append({"after_beat": i, "gap_sec": round(gap, 4),
+                         "periods": round(gap / period, 2)})
+    return {
+        **base, **fit,
+        "status": "pass" if (within and ambiguity is None) else "fail",
+        "within_tolerance": bool(within),
+        "tempo_ambiguity": ambiguity,
+        "missed_beat_gaps": gaps,
+        "reason": (
+            "grid fits within +/-15ms and no tempo ambiguity"
+            if within and ambiguity is None else
+            f"max residual {fit['max_abs_residual_sec']}s exceeds "
+            f"+/-{float(residual_tolerance_sec)}s"
+            if not within else
+            f"tempo ambiguity: {ambiguity['alternative']} fits better"
+        ),
+    }
+
+
+def refit_after_render(
+    planned_beats: list[float],
+    rendered_beats: list[float],
+    *,
+    residual_tolerance_sec: float = RESIDUAL_TOLERANCE_SEC,
+) -> dict[str, Any]:
+    """Re-fit the grid on rendered beats and compare with the plan.
+
+    Both sides are fitted independently; the verdict is about
+    *drift*: the rendered period must stay within +/-15 ms of
+    the planned period (the same bar as the fit itself, applied
+    to the period, not to single beats). A rendered side with
+    fewer than 2 beats is undetermined, never a silent match.
+    """
+    plan_fit = fit_beat_grid(planned_beats, residual_tolerance_sec=residual_tolerance_sec)
+    rendered_fit = fit_beat_grid(rendered_beats, residual_tolerance_sec=residual_tolerance_sec)
+    if plan_fit["period_sec"] is None or rendered_fit["period_sec"] is None:
+        return {
+            "capability": "assembly.beat_align",
+            "check": "beat_grid_refit",
+            "status": "undetermined",
+            "within_tolerance": None,
+            "plan_fit": plan_fit,
+            "rendered_fit": rendered_fit,
+            "period_drift_sec": None,
+            "bpm_drift_pct": None,
+            "reason": "one side has fewer than 2 beats: no refit comparison is possible",
+        }
+    drift = abs(rendered_fit["period_sec"] - plan_fit["period_sec"])
+    bpm_drift = abs(rendered_fit["bpm"] - plan_fit["bpm"]) / plan_fit["bpm"] * 100.0 \
+        if plan_fit["bpm"] else None
+    within = drift <= float(residual_tolerance_sec)
+    return {
+        "capability": "assembly.beat_align",
+        "check": "beat_grid_refit",
+        "status": "pass" if within else "fail",
+        "within_tolerance": bool(within),
+        "plan_fit": plan_fit,
+        "rendered_fit": rendered_fit,
+        "period_drift_sec": round(drift, 4),
+        "bpm_drift_pct": round(bpm_drift, 2) if bpm_drift is not None else None,
+        "reason": (
+            f"rendered period drift {drift:.4f}s within +/-{float(residual_tolerance_sec)}s"
+            if within else
+            f"rendered period drift {drift:.4f}s exceeds +/-{float(residual_tolerance_sec)}s"
+        ),
+    }
+
+
+def cut_errors(
+    cut_times: list[float],
+    beat_times: list[float],
+    fps: float,
+    *,
+    tolerance_frames: int = CUT_TOLERANCE_FRAMES,
+) -> dict[str, Any]:
+    """Cut-to-beat error for each planned cut, in seconds and frames.
+
+    A cut is within tolerance when its nearest beat is at most
+    3 frames away *at the fps the caller measures at* -- the
+    frame count, not the seconds, is the bar, because the same
+    0.1 s is 3 frames at 30 fps and under 1 frame at 8 fps
+    sampling. No beats at all is undetermined, never a pass.
+    """
+    if not isinstance(fps, (int, float)) or isinstance(fps, bool) or float(fps) <= 0:
+        raise ValueError("cut_errors: fps must be a positive number")
+    if not beat_times:
+        return {
+            "capability": "assembly.beat_align",
+            "check": "cut_errors",
+            "status": "undetermined",
+            "within_tolerance": None,
+            "tolerance_frames": int(tolerance_frames),
+            "fps": float(fps),
+            "cuts": [],
+            "reason": "no beats supplied: cut error cannot be measured",
+        }
+    cuts = []
+    for cut in cut_times:
+        nearest = min(beat_times, key=lambda b: abs(float(b) - float(cut)))
+        offset_sec = float(cut) - float(nearest)
+        offset_frames = offset_sec * float(fps)
+        cuts.append({
+            "cut_sec": float(cut),
+            "nearest_beat_sec": float(nearest),
+            "offset_sec": round(offset_sec, 4),
+            "offset_frames": round(offset_frames, 2),
+            "within_tolerance": abs(offset_frames) <= int(tolerance_frames),
+        })
+    within = all(c["within_tolerance"] for c in cuts)
+    return {
+        "capability": "assembly.beat_align",
+        "check": "cut_errors",
+        "status": "pass" if within else "fail",
+        "within_tolerance": bool(within),
+        "tolerance_frames": int(tolerance_frames),
+        "fps": float(fps),
+        "cuts": cuts,
+        "reason": (
+            f"all {len(cuts)} cut(s) within {int(tolerance_frames)} frames of a beat"
+            if within else
+            f"{sum(1 for c in cuts if not c['within_tolerance'])} cut(s) beyond "
+            f"{int(tolerance_frames)} frames of the nearest beat"
+        ),
+    }

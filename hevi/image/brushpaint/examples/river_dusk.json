@@ -1,0 +1,120 @@
+{
+  "name": "river_dusk",
+  "seed": 21,
+  "step": 14,
+  "background": "#2a1836",
+  "layers": [
+    {
+      "type": "swirl_sky",
+      "palette": [
+        "#3a2350",
+        "#7a3a5e",
+        "#c65a3a",
+        "#e88a4a"
+      ],
+      "horizon": 0.52,
+      "base_flow": 0.45,
+      "wave": 0.3,
+      "vortices": [
+        {
+          "x": 0.5,
+          "y": 0.44,
+          "r": 0.13,
+          "s": 0.8
+        }
+      ],
+      "sway": 1.6
+    },
+    {
+      "type": "moon",
+      "x": 0.5,
+      "y": 0.42,
+      "r": 0.075,
+      "palette": [
+        "#ffd9a0",
+        "#ffc98a",
+        "#ffb37a"
+      ],
+      "halo_palette": [
+        "#e88a4a",
+        "#c65a3a",
+        "#7a3a5e"
+      ]
+    },
+    {
+      "type": "clouds",
+      "palette": [
+        "#8a4a6a",
+        "#6e3a5e",
+        "#54304e"
+      ],
+      "blobs": [
+        {
+          "x": 0.22,
+          "y": 0.16,
+          "rx": 0.19,
+          "ry": 0.03
+        },
+        {
+          "x": 0.78,
+          "y": 0.1,
+          "rx": 0.15,
+          "ry": 0.026
+        }
+      ]
+    },
+    {
+      "type": "hills",
+      "base": 0.5,
+      "amp": 0.04,
+      "freq": 1.1,
+      "phase": 2.1,
+      "palette": [
+        "#4a2c4e",
+        "#3a2350",
+        "#2a1836"
+      ]
+    },
+    {
+      "type": "water",
+      "from": 0.56,
+      "palette": [
+        "#54304e",
+        "#3f2445",
+        "#2a1836"
+      ],
+      "reflect_x": 0.5,
+      "reflect_width": 0.07,
+      "glitter_palette": [
+        "#ffb37a",
+        "#ffd9a0",
+        "#e88a4a"
+      ]
+    },
+    {
+      "type": "tree",
+      "x": 0.85,
+      "base": 0.6,
+      "canopy_r": 0.058,
+      "canopy_h": 0.13,
+      "palette": [
+        "#38244a",
+        "#2e1e3e",
+        "#241830"
+      ],
+      "trunk_palette": [
+        "#1d1226",
+        "#241830"
+      ]
+    },
+    {
+      "type": "meadow",
+      "from": 0.94,
+      "palette": [
+        "#241830",
+        "#2c1c33"
+      ],
+      "flower_density": 0.0
+    }
+  ]
+}

@@ -1,0 +1,2002 @@
+{
+ "episode_no": "E01",
+ "title": "少年立志",
+ "target_duration_s": 300,
+ "aspect": "16:9",
+ "style": "明代中国写实电影质感，暖烛光内景、暖晨光外景、暖暮光厅堂，自然肤质与真实织物",
+ "encoding_note": "本夹具即 E1 v2 生产编码（重切版）：Q1 重切（对白段 4-6 秒、动作／静默段 2-3 秒、静帧段 ≤4 秒，镜时长与 300 秒总时长不动，台词逐字不动，clip 8-12 秒内浮动、边界显式标出）＋Q2 gate 4 null 修复＋Q3 clip 级档位＋Q5 S10 位置塾内（推断）。旧“标准重切版”夹具被取代，其机位重写、状态累积、S10 位置推断未标注、S01／S11 动镜运镜等失真项一并清除。line_function 为审计者语义标注（非剧本原文）；voice_quality／gaze_target 为可选字段、prompt v2 无此信息，诚实留空。Q5 人物为空落于 continuity entry 层：S10 入口人物为空（纯 VO 桥段，不承接前镜人物状态）、S11 入口人物为空（片尾字幕卡）；shot-level characters 仍按画面列出（S10／S11 均为守仁），否则 beats 画面与 [人物] 栏自相矛盾。",
+ "shots": [
+  {
+   "shot_no": "S01",
+   "scene": "京师私塾门外",
+   "time_of_day": "晨光",
+   "duration_s": 20,
+   "characters": [
+    "守仁"
+   ],
+   "props": [
+    "书卷"
+   ],
+   "camera": {
+    "shot_size": "全景",
+    "angle": "平视",
+    "movement": "static_shot",
+    "start_frame": {
+     "description": "京师清晨，私塾门外，书声起；少年守仁抱书卷入塾，脚步不停，视线先看门楣再落回路面，手指把书卷往怀里按了按。",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "京师清晨，私塾门外，书声起；少年守仁抱书卷入塾，脚步不停，视线先看门楣再落回路面，手指把书卷往怀里按了按。"
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "京师清晨，私塾门外，书声起；少年守仁抱书卷入塾，脚步不停，视线先看门楣再落回路面，手指把书卷往怀里按了按。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声＋脚步声"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 8.0,
+     "action": "京师清晨，私塾门外，书声起；少年守仁抱书卷入塾，脚步不停，视线先看门楣再落回路面，手指把书卷往怀里按了按。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声＋脚步声"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 8.0,
+     "t_end_s": 12.0,
+     "action": "京师清晨，私塾门外，书声起；少年守仁抱书卷入塾，脚步不停，视线先看门楣再落回路面，手指把书卷往怀里按了按。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声＋脚步声"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 12.0,
+     "t_end_s": 16.0,
+     "action": "京师清晨，私塾门外，书声起；少年守仁抱书卷入塾，脚步不停，视线先看门楣再落回路面，手指把书卷往怀里按了按。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声＋脚步声"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 16.0,
+     "t_end_s": 20.0,
+     "action": "京师清晨，私塾门外，书声起；少年守仁抱书卷入塾，脚步不停，视线先看门楣再落回路面，手指把书卷往怀里按了按。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声＋脚步声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "守仁": "抱书卷入塾途中"
+     },
+     "道具": {
+      "书卷": "守仁怀中"
+     },
+     "视线": {
+      "守仁": "门楣"
+     },
+     "空间锚点": "京师私塾门外"
+    },
+    "exit_state": {
+     "人物": {
+      "守仁": "入塾"
+     },
+     "道具": {
+      "书卷": "守仁怀中"
+     },
+     "视线": {
+      "守仁": "路面"
+     },
+     "空间锚点": "京师私塾门外"
+    },
+    "new_changes": {}
+   },
+   "clips": []
+  },
+  {
+   "shot_no": "S02",
+   "scene": "京师私塾塾内",
+   "time_of_day": "烛光",
+   "duration_s": 25,
+   "characters": [
+    "塾师",
+    "守仁",
+    "同窗甲",
+    "同窗乙",
+    "众同窗"
+   ],
+   "props": [
+    "戒尺",
+    "书卷"
+   ],
+   "camera": {
+    "shot_size": "中景",
+    "angle": "平视",
+    "movement": "slow_zoom_in",
+    "start_frame": {
+     "description": "Medium shot of a Ming private school classroom, warm candlelight. A stern middle-aged teacher in a dark robe with a goatee stands at his desk on the right holding a ruler. Six to eight schoolboys in grey-brown robes sit at wooden desks with scrolls. A 12-year-old boy in a blue headband sits foreground left.",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "Close-up of the teacher's face, eyes fixed on the blue-headband boy's seat, classroom quiet."
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 6.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 6.0,
+     "t_end_s": 10.5,
+     "action": "The teacher taps his ruler lightly on the desk and sweeps his gaze across the class.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "塾师",
+     "line": "都说说，读书是为了什么？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 10.5,
+     "t_end_s": 15.0,
+     "action": "A schoolboy springs up first, so fast he knocks over his own scroll, chest out, pointing toward the door.",
+     "camera_move": "slider_right",
+     "speaker": "同窗甲",
+     "line": "考状元！给我爹争口气！",
+     "sound": "环境声",
+     "line_function": "塑造",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 15.0,
+     "t_end_s": 19.0,
+     "action": "The other boys laugh and echo, leaning toward the standing boy.",
+     "camera_move": "static_shot",
+     "speaker": "众同窗",
+     "line": "就是！考状元！",
+     "sound": "笑声",
+     "line_function": "情绪变化",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 19.0,
+     "t_end_s": 21.0,
+     "action": "The teacher nods once, then turns his head and gaze toward the blue-headband boy's seat. Laughter fades.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "笑声"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 21.0,
+     "t_end_s": 23.0,
+     "action": "The teacher holds his gaze on the blue-headband boy, waiting. The standing boy sits back down, out of focus.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 8,
+     "t_start_s": 23.0,
+     "t_end_s": 25.0,
+     "action": "The teacher raises one eyebrow, still silent, the classroom falls quiet.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "塾师": "案前持戒尺",
+      "守仁": "座位",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中",
+      "书卷": "案上"
+     },
+     "视线": {
+      "塾师": "全班",
+      "守仁": "塾师"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "exit_state": {
+     "人物": {
+      "塾师": "注视守仁座位",
+      "守仁": "座位",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中放下",
+      "书卷": "案上",
+      "同窗甲书卷": "倒在案上"
+     },
+     "视线": {
+      "塾师": "守仁座位",
+      "守仁": "塾师"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "new_changes": {
+     "人物.守仁": "座位",
+     "道具.书卷": "案上",
+     "视线.守仁": "塾师",
+     "空间锚点": "京师私塾塾内",
+     "人物.塾师": "案前持戒尺",
+     "人物.同窗甲": "座位",
+     "人物.同窗乙": "座位",
+     "人物.众同窗": "座位",
+     "服装.塾师": "深袍",
+     "服装.守仁": "蓝头巾灰青布袍",
+     "服装.同窗": "灰褐布袍",
+     "道具.戒尺": "塾师手中",
+     "视线.塾师": "全班"
+    }
+   },
+   "clips": [
+    {
+     "clip_id": "S02c1",
+     "beats": [
+      3,
+      4
+     ]
+    },
+    {
+     "clip_id": "S02c2",
+     "beats": [
+      5,
+      6,
+      7,
+      8
+     ]
+    }
+   ]
+  },
+  {
+   "shot_no": "S03",
+   "scene": "京师私塾塾内",
+   "time_of_day": "烛光",
+   "duration_s": 30,
+   "characters": [
+    "塾师",
+    "守仁",
+    "同窗甲",
+    "同窗乙",
+    "众同窗"
+   ],
+   "props": [
+    "戒尺",
+    "书卷"
+   ],
+   "camera": {
+    "shot_size": "中景",
+    "angle": "平视",
+    "movement": "follow_shot",
+    "start_frame": {
+     "description": "Medium shot of the same classroom, warm candlelight. The teacher stands at his desk pointing toward the blue-headband boy. The boy sits with a scroll on his desk, classmates seated around him.",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "Wide shot of the classroom: the boy still standing, classmates laughing, the teacher at his desk watching."
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 5.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 5.0,
+     "t_end_s": 9.5,
+     "action": "The teacher points at the blue-headband boy and speaks to him directly.",
+     "camera_move": "follow_shot",
+     "speaker": "塾师",
+     "line": "守仁，你呢？想好了再说。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 9.5,
+     "t_end_s": 11.5,
+     "action": "The boy rises slowly, one hand pressed on his scroll, fingers tightening on the scroll's edge. He says nothing yet.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 11.5,
+     "t_end_s": 13.5,
+     "action": "The boy looks the teacher straight in the eye, takes a one-beat pause, breathes in. Classmates watch in silence.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 13.5,
+     "t_end_s": 17.5,
+     "action": "The boy speaks quietly and steadily, eyes never leaving the teacher.",
+     "camera_move": "static_shot",
+     "speaker": "守仁",
+     "line": "我想……做圣贤。",
+     "sound": "环境声",
+     "line_function": "塑造",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 17.5,
+     "t_end_s": 19.5,
+     "action": "The whole class bursts out laughing, boys leaning forward and back, one covering his mouth, one ducking his head to hide his laugh.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "笑声"
+    },
+    {
+     "beat_no": 8,
+     "t_start_s": 19.5,
+     "t_end_s": 21.5,
+     "action": "The boy stays standing, motionless, while laughter rolls around him. His hand stays on the scroll.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "笑声"
+    },
+    {
+     "beat_no": 9,
+     "t_start_s": 21.5,
+     "t_end_s": 26.0,
+     "action": "One boy, laughing hard, points at the standing boy and calls out through his laughter.",
+     "camera_move": "static_shot",
+     "speaker": "同窗乙",
+     "line": "圣贤？他以为他是谁啊！",
+     "sound": "笑声",
+     "line_function": "情绪变化",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 10,
+     "t_start_s": 26.0,
+     "t_end_s": 28.0,
+     "action": "Laughter continues across the classroom. The standing boy does not sit, does not look away.",
+     "camera_move": "dolly_out",
+     "speaker": "",
+     "line": "",
+     "sound": "笑声"
+    },
+    {
+     "beat_no": 11,
+     "t_start_s": 28.0,
+     "t_end_s": 30.0,
+     "action": "Laughter eases but does not stop. The boy remains standing.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "笑声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "塾师": "案前指向守仁",
+      "守仁": "座位",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中",
+      "书卷": "案上",
+      "同窗甲书卷": "倒在案上"
+     },
+     "视线": {
+      "塾师": "守仁",
+      "守仁": "塾师"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "exit_state": {
+     "人物": {
+      "塾师": "案前注视",
+      "守仁": "站立",
+      "同窗甲": "座位笑",
+      "同窗乙": "座位笑指守仁",
+      "众同窗": "座位笑"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中",
+      "书卷": "守仁案上",
+      "同窗甲书卷": "倒在案上"
+     },
+     "视线": {
+      "守仁": "塾师",
+      "塾师": "守仁"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "new_changes": {
+     "人物.塾师": "案前指向守仁",
+     "道具.戒尺": "塾师手中",
+     "视线.塾师": "守仁"
+    }
+   },
+   "clips": [
+    {
+     "clip_id": "S03c1",
+     "beats": [
+      3,
+      4,
+      5
+     ]
+    },
+    {
+     "clip_id": "S03c2",
+     "beats": [
+      6,
+      7,
+      8
+     ]
+    },
+    {
+     "clip_id": "S03c3",
+     "beats": [
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  {
+   "shot_no": "S04",
+   "scene": "京师私塾塾内",
+   "time_of_day": "烛光",
+   "duration_s": 35,
+   "characters": [
+    "塾师",
+    "守仁",
+    "同窗甲",
+    "同窗乙",
+    "众同窗"
+   ],
+   "props": [
+    "戒尺",
+    "书卷"
+   ],
+   "camera": {
+    "shot_size": "中近景",
+    "angle": "平视",
+    "movement": "slow_zoom_in",
+    "start_frame": {
+     "description": "Medium shot of the same classroom, warm candlelight. The teacher stands leaning forward over his desk, ruler in hand. The blue-headband boy stands facing him, not retreating.",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "Wide shot of the silent classroom, ruler still in mid-air, boy and teacher facing each other."
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 3.5,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 3.5,
+     "t_end_s": 7.5,
+     "action": "The teacher slams his ruler down on the desk and leans forward.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "塾师",
+     "line": "圣贤是你想当就能当的？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 7.5,
+     "t_end_s": 12.5,
+     "action": "The teacher stares hard at the boy, ruler pressed on the desk.",
+     "camera_move": "static_shot",
+     "speaker": "塾师",
+     "line": "你爹的状元，是真本事挣来的。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 12.5,
+     "t_end_s": 16.5,
+     "action": "The boy does not step back and does not drop his eyes.",
+     "camera_move": "static_shot",
+     "speaker": "塾师",
+     "line": "你呢？你有什么？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 16.5,
+     "t_end_s": 20.5,
+     "action": "The boy answers without raising his voice, eyes steady.",
+     "camera_move": "static_shot",
+     "speaker": "守仁",
+     "line": "尧舜也是人。",
+     "sound": "环境声",
+     "line_function": "塑造",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 20.5,
+     "t_end_s": 24.5,
+     "action": "The boy takes a short breath and continues, still looking at the teacher.",
+     "camera_move": "static_shot",
+     "speaker": "守仁",
+     "line": "我也是人。",
+     "sound": "环境声",
+     "line_function": "塑造",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 24.5,
+     "t_end_s": 29.0,
+     "action": "The boy finishes the sentence and holds the teacher's gaze. The teacher's expression changes.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "守仁",
+     "line": "凭什么他们行，我就不行？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 8,
+     "t_start_s": 29.0,
+     "t_end_s": 31.0,
+     "action": "The teacher's ruler stops in mid-air and hangs there. He says nothing.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 9,
+     "t_start_s": 31.0,
+     "t_end_s": 33.0,
+     "action": "The whole classroom holds its breath. One classmate sneaks a look at the teacher's face.",
+     "camera_move": "dolly_out",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 10,
+     "t_start_s": 33.0,
+     "t_end_s": 35.0,
+     "action": "Silence. The boy stands. The teacher stands. Nobody moves.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "塾师": "俯身案前",
+      "守仁": "站立对峙",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位屏息"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中",
+      "书卷": "案上",
+      "同窗甲书卷": "倒在案上"
+     },
+     "视线": {
+      "守仁": "塾师",
+      "塾师": "守仁"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "exit_state": {
+     "人物": {
+      "塾师": "戒尺停半空",
+      "守仁": "站立",
+      "同窗甲": "座位屏息",
+      "同窗乙": "座位屏息",
+      "众同窗": "座位屏息"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "停半空",
+      "书卷": "案上",
+      "同窗甲书卷": "倒在案上"
+     },
+     "视线": {
+      "守仁": "塾师",
+      "塾师": "守仁"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "new_changes": {
+     "人物.塾师": "俯身案前",
+     "人物.守仁": "站立对峙",
+     "人物.同窗甲": "座位",
+     "人物.同窗乙": "座位",
+     "人物.众同窗": "座位屏息",
+     "道具.书卷": "案上"
+    }
+   },
+   "clips": [
+    {
+     "clip_id": "S04c1",
+     "beats": [
+      2,
+      3
+     ]
+    },
+    {
+     "clip_id": "S04c2",
+     "beats": [
+      4,
+      5,
+      6
+     ]
+    },
+    {
+     "clip_id": "S04c3",
+     "beats": [
+      7,
+      8,
+      9,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "shot_no": "S05",
+   "scene": "京师私塾塾内",
+   "time_of_day": "烛光",
+   "duration_s": 30,
+   "characters": [
+    "塾师",
+    "守仁",
+    "同窗甲",
+    "同窗乙",
+    "众同窗"
+   ],
+   "props": [
+    "戒尺",
+    "书卷"
+   ],
+   "camera": {
+    "shot_size": "中景",
+    "angle": "平视",
+    "movement": "static_shot",
+    "start_frame": {
+     "description": "Medium shot of the same classroom, warm candlelight. The teacher stands at his desk, ruler in hand, looking at the standing boy.",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "Wide shot of the quiet classroom at candlelight, the boy seated again, thinking."
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 8.0,
+     "action": "The teacher lowers his voice and speaks quietly, almost to himself.",
+     "camera_move": "static_shot",
+     "speaker": "塾师",
+     "line": "嘴上说得漂亮。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 8.0,
+     "t_end_s": 12.0,
+     "action": "The teacher looks back at the boy and raises one finger.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "塾师",
+     "line": "明天我再问你一句。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 12.0,
+     "t_end_s": 14.0,
+     "action": "The teacher puts the ruler down with a light tap on the desk and takes one pacing step around it.",
+     "camera_move": "follow_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 14.0,
+     "t_end_s": 18.0,
+     "action": "The teacher stops pacing and turns back to face the boy.",
+     "camera_move": "static_shot",
+     "speaker": "塾师",
+     "line": "圣贤，到底怎么学？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 18.0,
+     "t_end_s": 22.0,
+     "action": "The teacher holds the boy's gaze and finishes the sentence slowly.",
+     "camera_move": "static_shot",
+     "speaker": "塾师",
+     "line": "今晚你自己先想想。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 22.0,
+     "t_end_s": 24.0,
+     "action": "The boy lowers his eyes, thinking. The classroom stays silent.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 8,
+     "t_start_s": 24.0,
+     "t_end_s": 26.0,
+     "action": "The teacher watches the boy in silence, arms still.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 9,
+     "t_start_s": 26.0,
+     "t_end_s": 28.0,
+     "action": "The whole class waits. Nobody speaks. Candlelight flickers.",
+     "camera_move": "dolly_out",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 10,
+     "t_start_s": 28.0,
+     "t_end_s": 30.0,
+     "action": "Stillness. The question hangs in the room.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "塾师": "案前持戒尺注视守仁",
+      "守仁": "站立",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位静默"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中",
+      "书卷": "案上",
+      "同窗甲书卷": "倒在案上"
+     },
+     "视线": {
+      "守仁": "塾师",
+      "塾师": "守仁"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "exit_state": {
+     "人物": {
+      "塾师": "案前注视",
+      "守仁": "座位思索",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位静默"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "案上",
+      "书卷": "案上",
+      "同窗甲书卷": "倒在案上"
+     },
+     "视线": {
+      "守仁": "低垂思索",
+      "塾师": "守仁"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "new_changes": {
+     "人物.塾师": "案前持戒尺注视守仁",
+     "人物.同窗甲": "座位",
+     "人物.同窗乙": "座位",
+     "人物.众同窗": "座位静默",
+     "道具.戒尺": "塾师手中"
+    }
+   },
+   "clips": [
+    {
+     "clip_id": "S05c1",
+     "beats": [
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "clip_id": "S05c2",
+     "beats": [
+      5,
+      6
+     ]
+    },
+    {
+     "clip_id": "S05c3",
+     "beats": [
+      7,
+      8,
+      9,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "shot_no": "S06",
+   "scene": "王家厅堂",
+   "time_of_day": "暮光",
+   "duration_s": 35,
+   "characters": [
+    "王华",
+    "守仁"
+   ],
+   "props": [
+    "状元匾",
+    "书卷"
+   ],
+   "camera": {
+    "shot_size": "中景",
+    "angle": "平视",
+    "movement": "static_shot",
+    "start_frame": {
+     "description": "Medium shot of a Ming family hall in the evening, warm evening light, a top-scholar plaque hanging high on the wall. A middle-aged scholar-official father in a dark scholar robe stands beneath the plaque. His 12-year-old son in a blue headband and grey-green robe enters and looks up at the plaque first.",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "Wide shot of father and son standing together beneath the top-scholar plaque in warm evening light."
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 3.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "厅堂安静"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 3.0,
+     "t_end_s": 7.0,
+     "action": "The father turns from the plaque toward his son and asks calmly.",
+     "camera_move": "static_shot",
+     "speaker": "王华",
+     "line": "今天先生问什么了？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 7.0,
+     "t_end_s": 11.0,
+     "action": "The son answers plainly, then looks up at the plaque.",
+     "camera_move": "follow_shot",
+     "speaker": "守仁",
+     "line": "问我们为什么读书。",
+     "sound": "环境声",
+     "line_function": "信息差",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 11.0,
+     "t_end_s": 13.0,
+     "action": "The son gazes up at the plaque in silence.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 13.0,
+     "t_end_s": 18.0,
+     "action": "The son lowers his eyes from the plaque, hesitates mid-sentence, then finishes quietly.",
+     "camera_move": "static_shot",
+     "speaker": "守仁",
+     "line": "我说想做圣贤……全班都笑我。",
+     "sound": "环境声",
+     "line_function": "情绪变化",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 18.0,
+     "t_end_s": 22.0,
+     "action": "The father answers without hesitation, steady and warm.",
+     "camera_move": "static_shot",
+     "speaker": "王华",
+     "line": "笑就笑吧。",
+     "sound": "环境声",
+     "line_function": "情绪变化",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 22.0,
+     "t_end_s": 24.0,
+     "action": "The father's hand pauses in mid-air, then starts toward his son's shoulder.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 8,
+     "t_start_s": 24.0,
+     "t_end_s": 28.5,
+     "action": "The father looks at his son and speaks slowly, his hand settling on the boy's shoulder.",
+     "camera_move": "static_shot",
+     "speaker": "王华",
+     "line": "别人笑，不代表你错了。",
+     "sound": "环境声",
+     "line_function": "塑造",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 9,
+     "t_start_s": 28.5,
+     "t_end_s": 33.0,
+     "action": "The father looks up at the plaque, then back at his son.",
+     "camera_move": "static_shot",
+     "speaker": "王华",
+     "line": "你的志气，自己拿稳了。",
+     "sound": "环境声",
+     "line_function": "塑造",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 10,
+     "t_start_s": 33.0,
+     "t_end_s": 35.0,
+     "action": "Father and son stand in silence beneath the plaque. Evening light holds.",
+     "camera_move": "dolly_out",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "王华": "匾下",
+      "守仁": "入厅堂望匾"
+     },
+     "服装": {
+      "守仁": "蓝头巾灰青布袍",
+      "王华": "深色文士袍"
+     },
+     "道具": {
+      "状元匾": "高悬",
+      "书卷": "守仁怀中"
+     },
+     "视线": {
+      "守仁": "状元匾",
+      "王华": "守仁"
+     },
+     "空间锚点": "王家厅堂"
+    },
+    "exit_state": {
+     "人物": {
+      "王华": "匾下手搭儿子肩",
+      "守仁": "匾下父亲身旁"
+     },
+     "服装": {
+      "守仁": "蓝头巾灰青布袍",
+      "王华": "深色文士袍"
+     },
+     "道具": {
+      "状元匾": "高悬",
+      "书卷": "守仁怀中"
+     },
+     "视线": {
+      "守仁": "父亲",
+      "王华": "守仁"
+     },
+     "空间锚点": "王家厅堂"
+    },
+    "new_changes": {
+     "人物.塾师": null,
+     "人物.守仁": "入厅堂望匾",
+     "人物.同窗甲": null,
+     "人物.同窗乙": null,
+     "人物.众同窗": null,
+     "服装.塾师": null,
+     "服装.同窗": null,
+     "道具.戒尺": null,
+     "道具.书卷": "守仁怀中",
+     "道具.同窗甲书卷": null,
+     "视线.守仁": "状元匾",
+     "视线.塾师": null,
+     "空间锚点": "王家厅堂",
+     "人物.王华": "匾下",
+     "服装.王华": "深色文士袍",
+     "道具.状元匾": "高悬",
+     "视线.王华": "守仁"
+    }
+   },
+   "clips": [
+    {
+     "clip_id": "S06c1",
+     "beats": [
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "clip_id": "S06c2",
+     "beats": [
+      5,
+      6,
+      7
+     ]
+    },
+    {
+     "clip_id": "S06c3",
+     "beats": [
+      8,
+      9,
+      10
+     ]
+    }
+   ]
+  },
+  {
+   "shot_no": "S07",
+   "scene": "少年书房夜",
+   "time_of_day": "夜",
+   "duration_s": 25,
+   "characters": [
+    "守仁"
+   ],
+   "props": [
+    "书卷",
+    "烛火"
+   ],
+   "camera": {
+    "shot_size": "中近景",
+    "angle": "平视",
+    "movement": "static_shot",
+    "start_frame": {
+     "description": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。"
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "夜"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 8.0,
+     "action": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "夜"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 8.0,
+     "t_end_s": 12.0,
+     "action": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "夜"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 12.0,
+     "t_end_s": 16.0,
+     "action": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "夜"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 16.0,
+     "t_end_s": 20.0,
+     "action": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "夜"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 20.0,
+     "t_end_s": 24.0,
+     "action": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "夜"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 24.0,
+     "t_end_s": 25.0,
+     "action": "烛光下，守仁展卷，手指按住书页，视线在书与窗外月之间移动；久久不动，烛火晃一下，他把书往烛光那边挪了挪。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "夜"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "守仁": "夜读"
+     },
+     "服装": {
+      "守仁": "蓝头巾灰青布袍"
+     },
+     "道具": {
+      "书卷": "展开",
+      "烛火": "晃动"
+     },
+     "视线": {
+      "守仁": "书与窗外月之间"
+     },
+     "空间锚点": "少年书房夜"
+    },
+    "exit_state": {
+     "人物": {
+      "守仁": "夜读"
+     },
+     "服装": {
+      "守仁": "蓝头巾灰青布袍"
+     },
+     "道具": {
+      "书卷": "移近烛光",
+      "烛火": "晃动"
+     },
+     "视线": {
+      "守仁": "书"
+     },
+     "空间锚点": "少年书房夜"
+    },
+    "new_changes": {
+     "人物.王华": null,
+     "人物.守仁": "夜读",
+     "服装.王华": null,
+     "道具.状元匾": null,
+     "道具.书卷": "展开",
+     "视线.守仁": "书与窗外月之间",
+     "视线.王华": null,
+     "空间锚点": "少年书房夜",
+     "道具.烛火": "晃动"
+    }
+   },
+   "clips": []
+  },
+  {
+   "shot_no": "S08",
+   "scene": "京师私塾塾内",
+   "time_of_day": "日光",
+   "duration_s": 35,
+   "characters": [
+    "塾师",
+    "守仁",
+    "同窗甲",
+    "同窗乙",
+    "众同窗"
+   ],
+   "props": [
+    "戒尺",
+    "书卷",
+    "竹子"
+   ],
+   "camera": {
+    "shot_size": "中景",
+    "angle": "平视",
+    "movement": "static_shot",
+    "start_frame": {
+     "description": "Medium shot of the same classroom in warm daylight. The teacher stands by the window, bamboo visible outside. The blue-headband boy sits at his desk.",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "The bamboo outside the window, still, in warm daylight."
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 6.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "书声"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 6.0,
+     "t_end_s": 10.0,
+     "action": "The teacher looks out at the bamboo, then turns back toward the boy.",
+     "camera_move": "static_shot",
+     "speaker": "塾师",
+     "line": "昨天那个问题，",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 10.0,
+     "t_end_s": 14.5,
+     "action": "The teacher asks the boy directly, waiting for an answer.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "塾师",
+     "line": "你想了一夜，有答案了吗？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 14.5,
+     "t_end_s": 16.5,
+     "action": "The boy says nothing. He follows the teacher's gaze toward the bamboo outside the window.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 16.5,
+     "t_end_s": 20.5,
+     "action": "The teacher walks one step toward the window and speaks plainly.",
+     "camera_move": "static_shot",
+     "speaker": "塾师",
+     "line": "那就别空想了。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 20.5,
+     "t_end_s": 24.5,
+     "action": "The teacher points out the window at one bamboo stalk.",
+     "camera_move": "follow_shot",
+     "speaker": "塾师",
+     "line": "去，盯着那根竹子看。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 8,
+     "t_start_s": 24.5,
+     "t_end_s": 29.0,
+     "action": "The teacher finishes and waits. The boy keeps looking at the bamboo.",
+     "camera_move": "follow_shot",
+     "speaker": "塾师",
+     "line": "理在哪儿，你自己看出来。",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "dialogue"
+    },
+    {
+     "beat_no": 9,
+     "t_start_s": 29.0,
+     "t_end_s": 31.0,
+     "action": "The boy stares at the bamboo in silence, thinking hard.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 10,
+     "t_start_s": 31.0,
+     "t_end_s": 33.0,
+     "action": "A bamboo leaf moves in the wind. The boy does not blink.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 11,
+     "t_start_s": 33.0,
+     "t_end_s": 35.0,
+     "action": "Silence. The bamboo stands. The question stands with it.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "塾师": "窗边",
+      "守仁": "座位",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中",
+      "书卷": "案上",
+      "竹子": "窗外"
+     },
+     "视线": {
+      "塾师": "窗外竹子",
+      "守仁": "塾师"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "exit_state": {
+     "人物": {
+      "塾师": "窗边",
+      "守仁": "望竹",
+      "同窗甲": "座位",
+      "同窗乙": "座位",
+      "众同窗": "座位"
+     },
+     "服装": {
+      "塾师": "深袍",
+      "守仁": "蓝头巾灰青布袍",
+      "同窗": "灰褐布袍"
+     },
+     "道具": {
+      "戒尺": "塾师手中",
+      "书卷": "案上",
+      "竹子": "窗外静立"
+     },
+     "视线": {
+      "守仁": "竹子",
+      "塾师": "守仁"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "new_changes": {
+     "人物.守仁": "座位",
+     "道具.书卷": "案上",
+     "道具.烛火": null,
+     "视线.守仁": "塾师",
+     "空间锚点": "京师私塾塾内",
+     "人物.塾师": "窗边",
+     "人物.同窗甲": "座位",
+     "人物.同窗乙": "座位",
+     "人物.众同窗": "座位",
+     "服装.塾师": "深袍",
+     "服装.同窗": "灰褐布袍",
+     "道具.戒尺": "塾师手中",
+     "道具.竹子": "窗外",
+     "视线.塾师": "窗外竹子"
+    }
+   },
+   "clips": [
+    {
+     "clip_id": "S08c1",
+     "beats": [
+      3,
+      4,
+      5
+     ]
+    },
+    {
+     "clip_id": "S08c2",
+     "beats": [
+      6,
+      7
+     ]
+    },
+    {
+     "clip_id": "S08c3",
+     "beats": [
+      8,
+      9,
+      10,
+      11
+     ]
+    }
+   ]
+  },
+  {
+   "shot_no": "S09",
+   "scene": "现代考场外",
+   "time_of_day": "日间",
+   "duration_s": 25,
+   "characters": [
+    "青年",
+    "问话者"
+   ],
+   "props": [],
+   "camera": {
+    "shot_size": "中近景",
+    "angle": "平视",
+    "movement": "slow_zoom_in",
+    "start_frame": {
+     "description": "Medium shot of a modern Chinese city in daytime, outside a modern exam hall. A young man in a grey hoodie stands on the plaza, facing the camera. Students pass in soft focus behind him.",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "Medium shot of the young man standing alone on the plaza as students pass by."
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "都市"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 8.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "都市"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 8.0,
+     "t_end_s": 9.0,
+     "action": "静帧过门缓推（无对白）",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "都市"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 9.0,
+     "t_end_s": 14.0,
+     "action": "An off-camera voice stops the young man with a blunt question. He freezes.",
+     "camera_move": "slow_zoom_in",
+     "speaker": "问话者（画外）",
+     "line": "别绕了，你到底要什么？",
+     "sound": "环境声",
+     "line_function": "推进",
+     "line_mode": "os",
+     "line_source": "画外问话者"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 14.0,
+     "t_end_s": 17.0,
+     "action": "The young man says nothing. His mouth stays shut. His grip tightens on what he is holding.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 17.0,
+     "t_end_s": 19.0,
+     "action": "He blinks once, still silent.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 19.0,
+     "t_end_s": 21.0,
+     "action": "His gaze drifts away across the plaza, then comes back. He still says nothing.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 8,
+     "t_start_s": 21.0,
+     "t_end_s": 23.0,
+     "action": "Students walk past behind him. He stands apart from them, unmoving.",
+     "camera_move": "dolly_out",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    },
+    {
+     "beat_no": 9,
+     "t_start_s": 23.0,
+     "t_end_s": 25.0,
+     "action": "Silence. The question hangs unanswered.",
+     "camera_move": "static_shot",
+     "speaker": "",
+     "line": "",
+     "sound": "环境声"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {
+      "青年": "考场外广场",
+      "问话者": "画外"
+     },
+     "服装": {
+      "青年": "灰连帽衫"
+     },
+     "视线": {
+      "青年": "镜头方向"
+     },
+     "空间锚点": "现代考场外"
+    },
+    "exit_state": {
+     "人物": {
+      "青年": "独立广场",
+      "问话者": "画外"
+     },
+     "服装": {
+      "青年": "灰连帽衫"
+     },
+     "视线": {
+      "青年": "飘开又收回"
+     },
+     "空间锚点": "现代考场外"
+    },
+    "new_changes": {
+     "人物.塾师": null,
+     "人物.守仁": null,
+     "人物.同窗甲": null,
+     "人物.同窗乙": null,
+     "人物.众同窗": null,
+     "服装.塾师": null,
+     "服装.守仁": null,
+     "服装.同窗": null,
+     "道具.戒尺": null,
+     "道具.书卷": null,
+     "道具.竹子": null,
+     "视线.守仁": null,
+     "视线.塾师": null,
+     "空间锚点": "现代考场外",
+     "人物.青年": "考场外广场",
+     "人物.问话者": "画外",
+     "服装.青年": "灰连帽衫",
+     "视线.青年": "镜头方向"
+    }
+   },
+   "clips": [
+    {
+     "clip_id": "S09c1",
+     "beats": [
+      4,
+      5
+     ]
+    },
+    {
+     "clip_id": "S09c2",
+     "beats": [
+      6,
+      7,
+      8,
+      9
+     ]
+    }
+   ]
+  },
+  {
+   "shot_no": "S10",
+   "scene": "京师私塾塾内",
+   "time_of_day": "未注明",
+   "duration_s": 15,
+   "characters": [
+    "守仁"
+   ],
+   "props": [],
+   "camera": {
+    "shot_size": "特写",
+    "angle": "平视",
+    "movement": "static_shot",
+    "start_frame": {
+     "description": "切回少年守仁，抬头，视线直视镜头方向，身体站定。",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "切回少年守仁，抬头，视线直视镜头方向，身体站定。"
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "切回少年守仁，抬头，视线直视镜头方向，身体站定。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "画外音"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 8.0,
+     "action": "切回少年守仁，抬头，视线直视镜头方向，身体站定。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "画外音"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 8.0,
+     "t_end_s": 12.0,
+     "action": "切回少年守仁，抬头，视线直视镜头方向，身体站定。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "画外音"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 12.0,
+     "t_end_s": 15.0,
+     "action": "切回少年守仁，抬头，视线直视镜头方向，身体站定。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "画外音"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {},
+     "服装": {},
+     "视线": {},
+     "空间锚点": "京师私塾塾内"
+    },
+    "exit_state": {
+     "人物": {
+      "守仁": "站定直视镜头"
+     },
+     "服装": {
+      "守仁": "蓝头巾灰青布袍"
+     },
+     "视线": {
+      "守仁": "镜头方向"
+     },
+     "空间锚点": "京师私塾塾内"
+    },
+    "new_changes": {
+     "人物.青年": null,
+     "人物.问话者": null,
+     "服装.青年": null,
+     "视线.青年": null,
+     "空间锚点": "京师私塾塾内"
+    }
+   },
+   "voiceover_line": "人人都可以成为尧舜。",
+   "clips": [],
+   "location_note": "S10 位置为推断、非剧本原文、编剧可改（Q5 工作决定：原理句 VO 回到发问的学堂，故承接为塾内）"
+  },
+  {
+   "shot_no": "S11",
+   "scene": "竹林",
+   "time_of_day": "日光",
+   "duration_s": 25,
+   "characters": [
+    "守仁"
+   ],
+   "props": [
+    "竹子"
+   ],
+   "camera": {
+    "shot_size": "全景",
+    "angle": "平视",
+    "movement": "static_shot",
+    "start_frame": {
+     "description": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "state_kind": "trigger_in_progress"
+    },
+    "end_frame": {
+     "description": "竹林，少年走向竹子，手触竹竿，竹叶动。"
+    }
+   },
+   "beats": [
+    {
+     "beat_no": 1,
+     "t_start_s": 0.0,
+     "t_end_s": 4.0,
+     "action": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "竹林"
+    },
+    {
+     "beat_no": 2,
+     "t_start_s": 4.0,
+     "t_end_s": 8.0,
+     "action": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "竹林"
+    },
+    {
+     "beat_no": 3,
+     "t_start_s": 8.0,
+     "t_end_s": 12.0,
+     "action": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "竹林"
+    },
+    {
+     "beat_no": 4,
+     "t_start_s": 12.0,
+     "t_end_s": 16.0,
+     "action": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "竹林"
+    },
+    {
+     "beat_no": 5,
+     "t_start_s": 16.0,
+     "t_end_s": 20.0,
+     "action": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "竹林"
+    },
+    {
+     "beat_no": 6,
+     "t_start_s": 20.0,
+     "t_end_s": 24.0,
+     "action": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "竹林"
+    },
+    {
+     "beat_no": 7,
+     "t_start_s": 24.0,
+     "t_end_s": 25.0,
+     "action": "竹林，少年走向竹子，手触竹竿，竹叶动。",
+     "camera_move": "slow_zoom_in",
+     "speaker": "",
+     "line": "",
+     "sound": "竹林"
+    }
+   ],
+   "continuity": {
+    "entry_state": {
+     "人物": {},
+     "服装": {},
+     "视线": {},
+     "道具": {
+      "竹子": "竹林"
+     },
+     "空间锚点": "竹林"
+    },
+    "exit_state": {
+     "道具": {
+      "竹子": "手触竹竿"
+     },
+     "空间锚点": "竹林"
+    },
+    "new_changes": {
+     "人物.守仁": null,
+     "服装.守仁": null,
+     "视线.守仁": null,
+     "空间锚点": "竹林",
+     "道具.竹子": "竹林"
+    }
+   },
+   "subtitle": "下集《格竹之败》",
+   "clips": []
+  }
+ ]
+}

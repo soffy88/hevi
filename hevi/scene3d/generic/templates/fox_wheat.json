@@ -1,0 +1,5155 @@
+{
+ "name": "fox_wheat",
+ "duration_s": 6,
+ "fps": 24,
+ "resolution": 360,
+ "seed": 4,
+ "prompt": {
+  "subject": "麦田里的小狐狸",
+  "must_have": [
+   "狐狸",
+   "麦"
+  ],
+  "must_not": [
+   "人物",
+   "文字"
+  ]
+ },
+ "background": {
+  "type": "gradient",
+  "top": "#f7b267",
+  "bottom": "#fde4c8"
+ },
+ "fog": {
+  "type": "linear",
+  "color": "#fbd3a5",
+  "near": 8,
+  "far": 40
+ },
+ "lights": [
+  {
+   "type": "hemisphere",
+   "sky": "#ffe0b0",
+   "ground": "#6b4a20",
+   "intensity": 1.0
+  },
+  {
+   "type": "directional",
+   "color": "#ffb86b",
+   "intensity": 2.4,
+   "position": [
+    -10,
+    8,
+    6
+   ],
+   "cast_shadow": true
+  }
+ ],
+ "objects": [
+  {
+   "id": "field",
+   "type": "plane",
+   "params": {
+    "width": 80,
+    "height": 80
+   },
+   "rotation": [
+    -90,
+    0,
+    0
+   ],
+   "material": {
+    "color": "#b8872e"
+   },
+   "receive_shadow": true
+  },
+  {
+   "id": "fox",
+   "type": "group",
+   "tags": [
+    "狐狸",
+    "fox"
+   ],
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    0,
+    -20,
+    0
+   ],
+   "anim": {
+    "bob": {
+     "amp": 0.03,
+     "freq": 0.6
+    }
+   },
+   "children": [
+    {
+     "id": "fox_body",
+     "type": "capsule",
+     "params": {
+      "radius": 0.35,
+      "length": 0.8
+     },
+     "position": [
+      0,
+      0.55,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      90
+     ],
+     "material": {
+      "color": "#e07b2a",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "fox_head",
+     "type": "sphere",
+     "params": {
+      "radius": 0.32
+     },
+     "position": [
+      0.75,
+      0.85,
+      0
+     ],
+     "material": {
+      "color": "#e07b2a",
+      "flat_shading": true
+     }
+    },
+    {
+     "id": "fox_snout",
+     "type": "cone",
+     "params": {
+      "radius": 0.14,
+      "height": 0.35,
+      "segments": 6
+     },
+     "position": [
+      1.1,
+      0.8,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      -90
+     ],
+     "material": {
+      "color": "#f4e6d0"
+     }
+    },
+    {
+     "id": "fox_ear_l",
+     "type": "cone",
+     "params": {
+      "radius": 0.1,
+      "height": 0.28,
+      "segments": 4
+     },
+     "position": [
+      0.72,
+      1.18,
+      0.14
+     ],
+     "material": {
+      "color": "#c05f1a"
+     }
+    },
+    {
+     "id": "fox_ear_r",
+     "type": "cone",
+     "params": {
+      "radius": 0.1,
+      "height": 0.28,
+      "segments": 4
+     },
+     "position": [
+      0.72,
+      1.18,
+      -0.14
+     ],
+     "material": {
+      "color": "#c05f1a"
+     }
+    },
+    {
+     "id": "fox_tail",
+     "type": "cone",
+     "params": {
+      "radius": 0.2,
+      "height": 0.9,
+      "segments": 6
+     },
+     "position": [
+      -0.9,
+      0.7,
+      0
+     ],
+     "rotation": [
+      0,
+      0,
+      60
+     ],
+     "material": {
+      "color": "#e07b2a",
+      "flat_shading": true
+     },
+     "anim": {
+      "rock": {
+       "amp_deg": 10,
+       "freq": 0.7,
+       "axis": "x"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat0",
+   "type": "group",
+   "tags": [
+    "麦",
+    "wheat"
+   ],
+   "position": [
+    -0.666,
+    0,
+    -7.654
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.797,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat0_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9831236475086732,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4915618237543366,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat0_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0831236475086732,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat1",
+   "type": "group",
+   "tags": [],
+   "position": [
+    6.598,
+    0,
+    -13.891
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.139,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat1_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2016692480313251,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6008346240156626,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat1_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3016692480313252,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat2",
+   "type": "group",
+   "tags": [],
+   "position": [
+    7.169,
+    0,
+    -12.626
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.343,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat2_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2325622809069716,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6162811404534858,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat2_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3325622809069717,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat3",
+   "type": "group",
+   "tags": [],
+   "position": [
+    2.1,
+    0,
+    -13.305
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.821,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat3_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1274117626372615,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5637058813186308,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat3_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2274117626372616,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat4",
+   "type": "group",
+   "tags": [],
+   "position": [
+    3.663,
+    0,
+    -6.316
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.202,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat4_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3350392211493254,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6675196105746627,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat4_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4350392211493255,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat5",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -6.171,
+    0,
+    -9.954
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.459,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat5_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9665685167868088,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4832842583934044,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat5_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0665685167868089,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat6",
+   "type": "group",
+   "tags": [],
+   "position": [
+    0.113,
+    0,
+    1.705
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.386,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat6_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2542570742815475,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6271285371407738,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat6_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3542570742815476,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat7",
+   "type": "group",
+   "tags": [],
+   "position": [
+    4.936,
+    0,
+    -7.478
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.479,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat7_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3476571301546572,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6738285650773286,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat7_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4476571301546572,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat8",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.17,
+    0,
+    -9.05
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.678,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat8_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3045416007532227,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6522708003766113,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat8_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4045416007532228,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat9",
+   "type": "group",
+   "tags": [],
+   "position": [
+    4.063,
+    0,
+    -6.83
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.259,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat9_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9526274298395824,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4763137149197912,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat9_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0526274298395824,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat10",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.199,
+    0,
+    -10.432
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.766,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat10_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0687106490507414,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5343553245253707,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat10_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1687106490507415,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat11",
+   "type": "group",
+   "tags": [],
+   "position": [
+    5.571,
+    0,
+    -10.609
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.107,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat11_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4318398386475666,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7159199193237833,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat11_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5318398386475667,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat12",
+   "type": "group",
+   "tags": [],
+   "position": [
+    6.829,
+    0,
+    -13.069
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.118,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat12_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1272898413798502,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5636449206899251,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat12_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2272898413798503,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat13",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -0.149,
+    0,
+    -13.601
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.78,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat13_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1548352110515547,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5774176055257774,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat13_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2548352110515548,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat14",
+   "type": "group",
+   "tags": [],
+   "position": [
+    7.315,
+    0,
+    -12.095
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.507,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat14_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2581073850566504,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6290536925283252,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat14_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3581073850566505,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat15",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -6.818,
+    0,
+    -4.162
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.56,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat15_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4371820696541504,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7185910348270752,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat15_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5371820696541505,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat16",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.345,
+    0,
+    -13.86
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.91,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat16_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9501021584861729,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4750510792430864,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat16_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.050102158486173,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat17",
+   "type": "group",
+   "tags": [],
+   "position": [
+    0.716,
+    0,
+    -13.703
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.454,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat17_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9509019370659209,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4754509685329604,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat17_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.050901937065921,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat18",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -0.059,
+    0,
+    1.656
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.308,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat18_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1520644548631616,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5760322274315808,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat18_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2520644548631616,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat19",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -1.834,
+    0,
+    -3.142
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.362,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat19_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9560506792404398,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4780253396202199,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat19_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0560506792404398,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat20",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.436,
+    0,
+    -11.067
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.639,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat20_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2653330090029624,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6326665045014812,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat20_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3653330090029625,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat21",
+   "type": "group",
+   "tags": [],
+   "position": [
+    8.25,
+    0,
+    -13.079
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.684,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat21_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2330364317442104,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6165182158721052,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat21_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3330364317442105,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat22",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.915,
+    0,
+    -11.462
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.526,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat22_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.060986331419121,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5304931657095605,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat22_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.160986331419121,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat23",
+   "type": "group",
+   "tags": [],
+   "position": [
+    8.908,
+    0,
+    2.965
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 4.156,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat23_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9728013748019638,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4864006874009819,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat23_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0728013748019638,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat24",
+   "type": "group",
+   "tags": [],
+   "position": [
+    3.698,
+    0,
+    2.166
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 1.913,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat24_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0420716590959118,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5210358295479559,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat24_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.142071659095912,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat25",
+   "type": "group",
+   "tags": [],
+   "position": [
+    2.0,
+    0,
+    -13.268
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.854,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat25_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.119568114782866,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.559784057391433,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat25_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.219568114782866,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat26",
+   "type": "group",
+   "tags": [],
+   "position": [
+    3.134,
+    0,
+    -3.966
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.461,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat26_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3647750006066872,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6823875003033436,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat26_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4647750006066873,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat27",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.439,
+    0,
+    -8.098
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.595,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat27_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.418421635993012,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.709210817996506,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat27_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.518421635993012,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat28",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.515,
+    0,
+    -6.328
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.66,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat28_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.141302181178803,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5706510905894016,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat28_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2413021811788032,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat29",
+   "type": "group",
+   "tags": [],
+   "position": [
+    8.749,
+    0,
+    -4.235
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 2.653,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat29_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9110199691904078,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4555099845952039,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat29_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0110199691904078,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat30",
+   "type": "group",
+   "tags": [],
+   "position": [
+    5.389,
+    0,
+    -8.412
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.473,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat30_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1601434965955062,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5800717482977531,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat30_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2601434965955063,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat31",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.158,
+    0,
+    -6.452
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.354,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat31_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0948257378400814,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5474128689200407,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat31_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1948257378400815,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat32",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.401,
+    0,
+    -3.298
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.62,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat32_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9618416615612992,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4809208307806496,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat32_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0618416615612993,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat33",
+   "type": "group",
+   "tags": [],
+   "position": [
+    5.114,
+    0,
+    -13.568
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.668,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat33_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3684327999968884,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6842163999984442,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat33_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4684327999968885,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat34",
+   "type": "group",
+   "tags": [],
+   "position": [
+    5.536,
+    0,
+    -5.545
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 1.105,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat34_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3256687467297152,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6628343733648576,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat34_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4256687467297153,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat35",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.531,
+    0,
+    -1.461
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.105,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat35_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1550042121761424,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5775021060880712,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat35_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2550042121761424,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat36",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.843,
+    0,
+    2.389
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.459,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat36_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.140542415573644,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.570271207786822,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat36_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2405424155736442,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat37",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -2.287,
+    0,
+    0.618
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.791,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat37_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1216159871479976,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5608079935739988,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat37_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2216159871479977,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat38",
+   "type": "group",
+   "tags": [],
+   "position": [
+    3.015,
+    0,
+    -11.092
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.012,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat38_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.405964227954374,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.702982113977187,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat38_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5059642279543741,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat39",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.34,
+    0,
+    -13.141
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.364,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat39_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4851553714703898,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7425776857351949,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat39_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5851553714703899,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat40",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.89,
+    0,
+    2.091
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.938,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat40_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4916996588718696,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7458498294359348,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat40_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5916996588718697,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat41",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.918,
+    0,
+    -13.798
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.992,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat41_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9365464275349877,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.46827321376749387,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat41_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0365464275349878,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat42",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.245,
+    0,
+    -7.389
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.576,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat42_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.266929206318232,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.633464603159116,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat42_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3669292063182321,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat43",
+   "type": "group",
+   "tags": [],
+   "position": [
+    8.396,
+    0,
+    -7.973
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 1.764,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat43_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9843867055218662,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4921933527609331,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat43_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0843867055218663,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat44",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.115,
+    0,
+    -11.666
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.887,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat44_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9519529569782267,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.47597647848911334,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat44_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0519529569782267,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat46",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.819,
+    0,
+    -6.326
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.393,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat46_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3223063330140359,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6611531665070179,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat46_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.422306333014036,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat47",
+   "type": "group",
+   "tags": [],
+   "position": [
+    4.755,
+    0,
+    -7.489
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.404,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat47_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4323060011986435,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7161530005993217,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat47_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5323060011986436,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat48",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.957,
+    0,
+    -1.837
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.75,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat48_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3630228337524313,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6815114168762156,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat48_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4630228337524314,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat49",
+   "type": "group",
+   "tags": [],
+   "position": [
+    6.845,
+    0,
+    -5.595
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 1.619,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat49_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9595358755731102,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4797679377865551,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat49_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0595358755731101,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat50",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -8.128,
+    0,
+    -5.01
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.253,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat50_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0039972132373358,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5019986066186679,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat50_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.103997213237336,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat51",
+   "type": "group",
+   "tags": [],
+   "position": [
+    2.334,
+    0,
+    -12.567
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.58,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat51_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.368089433564165,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6840447167820825,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat51_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.468089433564165,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat52",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.997,
+    0,
+    -13.779
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.754,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat52_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.005510326357048,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.502755163178524,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat52_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.105510326357048,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat53",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -0.779,
+    0,
+    -4.493
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.21,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat53_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1329704035067405,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5664852017533702,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat53_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2329704035067406,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat54",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.885,
+    0,
+    -5.805
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.515,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat54_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.467862336020643,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7339311680103215,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat54_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5678623360206432,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat55",
+   "type": "group",
+   "tags": [],
+   "position": [
+    0.638,
+    0,
+    2.002
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.655,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat55_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9172639872775232,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4586319936387616,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat55_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0172639872775233,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat56",
+   "type": "group",
+   "tags": [],
+   "position": [
+    8.877,
+    0,
+    1.113
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 3.773,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat56_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.226612231025523,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6133061155127615,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat56_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.326612231025523,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat57",
+   "type": "group",
+   "tags": [],
+   "position": [
+    0.423,
+    0,
+    -4.869
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.805,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat57_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4457206582849613,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7228603291424807,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat57_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5457206582849614,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat58",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.82,
+    0,
+    -3.072
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.742,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat58_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2252907900010164,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6126453950005082,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat58_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3252907900010165,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat59",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -3.594,
+    0,
+    -1.676
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.773,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat59_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.3324057197754957,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6662028598877479,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat59_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.4324057197754958,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat60",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.142,
+    0,
+    -2.108
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.279,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat60_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1721190410574385,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5860595205287192,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat60_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2721190410574386,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat61",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -0.176,
+    0,
+    -3.175
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.705,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat61_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9317688376253528,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4658844188126764,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat61_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0317688376253529,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat62",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.853,
+    0,
+    -7.657
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.79,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat62_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4272404154776421,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7136202077388211,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat62_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5272404154776422,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat63",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.84,
+    0,
+    -0.007
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.937,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat63_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.337753742515329,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6688768712576645,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat63_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.437753742515329,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat64",
+   "type": "group",
+   "tags": [],
+   "position": [
+    2.25,
+    0,
+    0.889
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 1.078,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat64_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9215993715336162,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4607996857668081,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat64_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0215993715336162,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat65",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.745,
+    0,
+    -3.574
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.017,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat65_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.306833571537267,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6534167857686335,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat65_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.406833571537267,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat66",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -1.68,
+    0,
+    -12.828
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.237,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat66_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.013454035076995,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5067270175384975,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat66_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.113454035076995,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat67",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.946,
+    0,
+    -10.918
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.405,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat67_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9389259295010401,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.4694629647505201,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat67_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0389259295010402,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat68",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -2.614,
+    0,
+    -6.006
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.247,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat68_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2213414898870503,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6106707449435251,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat68_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3213414898870504,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat69",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -8.533,
+    0,
+    -0.815
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -3.576,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat69_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1002976063695564,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5501488031847782,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat69_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2002976063695565,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat70",
+   "type": "group",
+   "tags": [],
+   "position": [
+    5.091,
+    0,
+    -13.854
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.735,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat70_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4724236925653686,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7362118462826843,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat70_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5724236925653687,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat71",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.624,
+    0,
+    2.598
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 1.169,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat71_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4917888886253579,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7458944443126789,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat71_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.591788888625358,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat72",
+   "type": "group",
+   "tags": [],
+   "position": [
+    5.99,
+    0,
+    -12.194
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.043,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat72_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1092580780591228,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5546290390295614,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat72_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2092580780591229,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat73",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.836,
+    0,
+    -0.74
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.083,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat73_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.015297655621248,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.507648827810624,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat73_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1152976556212482,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat74",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.019,
+    0,
+    -12.12
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.432,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat74_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9720546442626425,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.48602732213132127,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat74_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0720546442626426,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat75",
+   "type": "group",
+   "tags": [],
+   "position": [
+    7.886,
+    0,
+    2.595
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 3.674,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat75_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1234567378623193,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5617283689311596,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat75_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2234567378623193,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat76",
+   "type": "group",
+   "tags": [],
+   "position": [
+    4.339,
+    0,
+    -6.052
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.525,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat76_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2132081055671562,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6066040527835781,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat76_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3132081055671563,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat77",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -2.349,
+    0,
+    -3.21
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.582,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat77_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.041691897833965,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5208459489169825,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat77_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1416918978339652,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat78",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.385,
+    0,
+    -5.197
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.794,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat78_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0184145525789907,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5092072762894954,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat78_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1184145525789908,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat79",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -1.093,
+    0,
+    2.046
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.028,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat79_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9133403731615911,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.45667018658079556,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat79_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.013340373161591,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat80",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.141,
+    0,
+    -0.401
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.937,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat80_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 0.9346819679390157,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.46734098396950785,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat80_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.0346819679390158,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat81",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.478,
+    0,
+    0.478
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.696,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat81_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2631518864997315,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6315759432498658,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat81_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3631518864997316,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat82",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -5.027,
+    0,
+    -13.004
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.612,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat82_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0651101624916346,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5325550812458173,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat82_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1651101624916347,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat83",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -3.597,
+    0,
+    -0.395
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -1.518,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat83_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4853325293366981,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7426662646683491,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat83_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5853325293366982,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat84",
+   "type": "group",
+   "tags": [],
+   "position": [
+    5.153,
+    0,
+    1.33
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 2.327,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat84_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4584085136976244,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7292042568488122,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat84_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5584085136976245,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat85",
+   "type": "group",
+   "tags": [],
+   "position": [
+    6.778,
+    0,
+    1.64
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 3.039,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat85_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.4805230402610228,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.7402615201305114,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat85_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.5805230402610229,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat86",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -7.301,
+    0,
+    -8.599
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -4.64,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat86_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0483098838474347,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5241549419237174,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat86_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1483098838474348,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat87",
+   "type": "group",
+   "tags": [],
+   "position": [
+    1.875,
+    0,
+    -5.641
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -0.378,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat87_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.1081650028265737,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5540825014132869,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat87_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.2081650028265738,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat88",
+   "type": "group",
+   "tags": [],
+   "position": [
+    6.068,
+    0,
+    -7.215
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": 0.984,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat88_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.0253594312603285,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.5126797156301642,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat88_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.1253594312603286,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "wheat89",
+   "type": "group",
+   "tags": [],
+   "position": [
+    -4.025,
+    0,
+    -6.15
+   ],
+   "anim": {
+    "rock": {
+     "amp_deg": 6,
+     "freq": 0.5,
+     "phase": -2.84,
+     "axis": "z"
+    }
+   },
+   "children": [
+    {
+     "id": "wheat89_s",
+     "type": "cylinder",
+     "params": {
+      "radius": 0.03,
+      "height": 1.2662813630309973,
+      "segments": 4
+     },
+     "position": [
+      0,
+      0.6331406815154986,
+      0
+     ],
+     "material": {
+      "color": "#c9a24a"
+     }
+    },
+    {
+     "id": "wheat89_h",
+     "type": "capsule",
+     "params": {
+      "radius": 0.07,
+      "length": 0.25,
+      "segments": 5
+     },
+     "position": [
+      0,
+      1.3662813630309973,
+      0
+     ],
+     "material": {
+      "color": "#e8c060",
+      "flat_shading": true
+     }
+    }
+   ]
+  }
+ ],
+ "camera": {
+  "aspect": "9:16",
+  "fov": 45,
+  "path": {
+   "points": [
+    [
+     5,
+     1.6,
+     7
+    ],
+    [
+     3,
+     1.3,
+     5
+    ],
+    [
+     1.8,
+     1.1,
+     3.4
+    ]
+   ],
+   "look_at": [
+    0.4,
+    0.8,
+    0
+   ],
+   "look_at_blend": 0.9,
+   "ease": "in_out"
+  },
+  "fov_keys": [
+   {
+    "t": 0,
+    "fov": 48
+   },
+   {
+    "t": 6,
+    "fov": 40
+   }
+  ]
+ }
+}

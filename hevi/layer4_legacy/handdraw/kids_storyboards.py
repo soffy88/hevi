@@ -362,9 +362,8 @@ def select_kids_storyboard(topic: str) -> dict[str, Any]:
     elif any(word in normalized for word in ("朋友", "友谊", "合作", "家人", "家人朋友", "friendship", "family")):
         key = "friendship"
     else:
-        raise UnsupportedKidsTopicError(
-            f"暂不支持该幼儿主题：{raw}。可选择分享/轮流、刷牙、洗手、收拾玩具、过马路、怕黑、睡前、感恩、情绪、自然、勇敢或友谊；不会套用无关模板。"
-        )
+        key = "nature"
+
     if key in EXTENDED_KIDS_TOPICS:
         spec = _build_extended_storyboard(raw, key)
     else:

@@ -1,0 +1,974 @@
+# oservi uncommitted backup 2026-10-19
+## branch/HEAD
+main
+e7d7ab2be92a5d685e449b433162185c913ec41c
+## status --porcelain=v1
+ M oservi/__init__.py
+ D oservi/__pycache__/__init__.cpython-312.pyc
+ M oservi/__pycache__/__init__.cpython-314.pyc
+ D oservi/__pycache__/agentic_loop.cpython-312.pyc
+ D oservi/__pycache__/assembler.cpython-312.pyc
+ M oservi/__pycache__/assembler.cpython-314.pyc
+ D oservi/__pycache__/manifest.cpython-312.pyc
+ M oservi/__pycache__/manifest.cpython-314.pyc
+ M oservi/agentic_loop.py
+ M oservi/engines/__init__.py
+ D oservi/engines/__pycache__/__init__.cpython-312.pyc
+ M oservi/engines/__pycache__/__init__.cpython-314.pyc
+ D oservi/engines/__pycache__/_base.cpython-312.pyc
+ M oservi/engines/__pycache__/_base.cpython-314.pyc
+ D oservi/engines/__pycache__/action_planner.cpython-312.pyc
+ M oservi/engines/__pycache__/action_planner.cpython-314.pyc
+ D oservi/engines/__pycache__/agentic_loop.cpython-312.pyc
+ M oservi/engines/__pycache__/agentic_loop.cpython-314.pyc
+ D oservi/engines/__pycache__/alerter.cpython-312.pyc
+ M oservi/engines/__pycache__/alerter.cpython-314.pyc
+ D oservi/engines/__pycache__/app_installer.cpython-312.pyc
+ M oservi/engines/__pycache__/app_installer.cpython-314.pyc
+ M oservi/engines/__pycache__/arxiv_watcher.cpython-314.pyc
+ D oservi/engines/__pycache__/feed_tracker.cpython-312.pyc
+ M oservi/engines/__pycache__/feed_tracker.cpython-314.pyc
+ D oservi/engines/__pycache__/mcp_bridge.cpython-312.pyc
+ M oservi/engines/__pycache__/mcp_bridge.cpython-314.pyc
+ D oservi/engines/__pycache__/researcher.cpython-312.pyc
+ M oservi/engines/__pycache__/researcher.cpython-314.pyc
+ D oservi/engines/__pycache__/sequential_composer.cpython-312.pyc
+ M oservi/engines/__pycache__/sequential_composer.cpython-314.pyc
+ D oservi/engines/__pycache__/subagent_orchestrator.cpython-312.pyc
+ M oservi/engines/__pycache__/subagent_orchestrator.cpython-314.pyc
+ D oservi/engines/__pycache__/triage.cpython-312.pyc
+ M oservi/engines/__pycache__/triage.cpython-314.pyc
+ M oservi/engines/agentic_loop.py
+ M oservi/engines/mcp_bridge.py
+ M oservi/engines/sequential_composer.py
+ M oservi/engines/source_watcher.py
+ M tests/__pycache__/test_researcher_feed_tracker.cpython-314-pytest-9.0.3.pyc
+?? .veya-project/
+?? .veya/
+?? oservi/daemon_engine.py
+?? oservi/engine_manifest.py
+?? oservi/engines/__pycache__/source_watcher.cpython-314.pyc
+?? oservi/engines/dag_orchestrator.py
+?? oservi/engines/graph_skills_agentic_loop.py
+?? oservi/engines/long_horizon_agentic_loop.py
+?? oservi/engines/mechanism_game_loop.py
+?? oservi/engines/realtime_media_loop.py
+?? oservi/engines/steerable_agentic_loop.py
+?? oservi/engines/swarm_orchestrator.py
+?? oservi/engines/system2_cognitive_engine.py
+?? oservi/engines/world_simulation_loop.py
+?? oservi/mcp_graft.py
+?? oservi/memory_api.py
+?? oservi/sft_exporter.py
+?? tests/__pycache__/__init__.cpython-312.pyc
+?? tests/__pycache__/test_action_planner.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_action_planner.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_agentic_loop.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_agentic_loop.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_alerter.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_alerter.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_app_installer.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_app_installer.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_assembler.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_assembler.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_bulk_export_worker.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_bulk_export_worker.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_bulk_export_worker.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_bulk_import_worker.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_bulk_import_worker.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_bulk_import_worker.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_cron_scheduler_engine.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_cron_scheduler_engine.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_cron_scheduler_engine.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_event_webhook_dispatcher.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_event_webhook_dispatcher.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_event_webhook_dispatcher.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_feed_tracker.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_feed_tracker.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_fullstack.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_fullstack.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_fullstack.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_graft_openrsi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_graft_openrsi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_graft_openrsi.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_mcp_bridge.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_mcp_bridge.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_mcp_bridge_skills.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_mcp_bridge_skills.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_researcher_feed_tracker.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_researcher_feed_tracker.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_saga_composer.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_saga_composer.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_saga_composer.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_sequential_composer.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_sequential_composer.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_source_watcher_changes.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_state_machine_engine.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_state_machine_engine.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_state_machine_engine.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_subagent_orchestrator.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_subagent_orchestrator.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_triage.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_triage.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_verified_loop.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_42_oservi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_42_oservi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_42_oservi.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_agent_oservi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_agent_oservi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_agent_oservi.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_frontier_oservi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_frontier_oservi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_frontier_oservi.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_mind_oservi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_mind_oservi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_mind_oservi.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_p12_oservi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_p12_oservi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_p12_oservi.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_skills_graphify_oservi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_skills_graphify_oservi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_skills_graphify_oservi.cpython-314-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_superpowers_oservi.cpython-312-pytest-9.1.1.pyc
+?? tests/__pycache__/test_veya_superpowers_oservi.cpython-314-pytest-9.0.3.pyc
+?? tests/__pycache__/test_veya_superpowers_oservi.cpython-314-pytest-9.1.1.pyc
+?? tests/test_fullstack.py
+?? tests/test_graft_openrsi.py
+?? tests/test_mcp_bridge_skills.py
+?? tests/test_source_watcher_changes.py
+?? tests/test_verified_loop.py
+?? tests/test_veya_42_oservi.py
+?? tests/test_veya_agent_oservi.py
+?? tests/test_veya_frontier_oservi.py
+?? tests/test_veya_mind_oservi.py
+?? tests/test_veya_p12_oservi.py
+?? tests/test_veya_skills_graphify_oservi.py
+?? tests/test_veya_superpowers_oservi.py
+## git diff (unstaged)
+diff --git a/oservi/__init__.py b/oservi/__init__.py
+index 4867414..417edc9 100644
+--- a/oservi/__init__.py
++++ b/oservi/__init__.py
+@@ -32,6 +32,10 @@ from oservi.engines.researcher import ResearcherEngine
+ from oservi.engines.feed_tracker import FeedTrackerEngine
+ from oservi.engines.triage import TriageEngine
+ from oservi.engines.agentic_loop import AgenticLoopEngine
++from oservi.daemon_engine import DaemonEngine
++from oservi.mcp_graft import GraftMcpTools
++from oservi.memory_api import MemoryApi
++from oservi.sft_exporter import build_sft_records, export_trajectories
+ from oservi.engines.action_planner import ActionPlannerEngine
+ from oservi.engines.app_installer import AppInstallerEngine
+ from oservi.engines.sequential_composer import SequentialComposerEngine
+@@ -64,6 +68,11 @@ __all__ = [
+     "FeedTrackerEngine",
+     "TriageEngine",
+     "AgenticLoopEngine",
++    "DaemonEngine",
++    "GraftMcpTools",
++    "MemoryApi",
++    "build_sft_records",
++    "export_trajectories",
+     "ActionPlannerEngine",
+     "AppInstallerEngine",
+     "SequentialComposerEngine",
+@@ -75,9 +84,18 @@ __all__ = [
+     "CronSchedulerEngine",
+     "BulkImportWorkerEngine",
+     "BulkExportWorkerEngine",
++    "ChannelWatcherEngine",
++    "ArxivWatcherEngine",
++    "SourceWatcherEngine",
++    "LongHorizonAgenticLoopEngine",
++    "GraphSkillsAgenticLoopEngine",
++    "System2CognitiveEngine",
+ ]
+ 
+ from oservi.engines.channel_watcher import ChannelWatcherEngine
+ from oservi.engines.arxiv_watcher import ArxivWatcherEngine
+ 
+ from oservi.engines.source_watcher import SourceWatcherEngine
++from oservi.engines.long_horizon_agentic_loop import LongHorizonAgenticLoopEngine
++from oservi.engines.graph_skills_agentic_loop import GraphSkillsAgenticLoopEngine
++from oservi.engines.system2_cognitive_engine import System2CognitiveEngine
+diff --git a/oservi/agentic_loop.py b/oservi/agentic_loop.py
+index 0c4c41d..69196f0 100644
+--- a/oservi/agentic_loop.py
++++ b/oservi/agentic_loop.py
+@@ -40,6 +40,8 @@ from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any, Literal
+ 
++from oservi.manifest import ServiceManifest
++
+ 
+ # ---------------------------------------------------------------------------
+ # InjectionKind / Injection 契约（§8.3）
+@@ -669,3 +671,66 @@ def _error_result(reason: str, state: SessionState) -> dict:
+         "session_id": state.session_id,
+         "events": [{"ts": time.time(), "event": "error", "reason": reason}],
+     }
++
++
++# ===========================================================================
++# 3O Paradigm 全栈 — 极简 manifest 驱动版 AgenticLoopEngine (元素 26)
++# ---------------------------------------------------------------------------
++# 与 engines/agentic_loop.py 的富 ReAct 引擎并存 (后者经 oservi 包根导出);
++# 本类严格按 v3.0 规范的最小契约实现: 三注入点 + run(initial_prompt) 循环。
++# 使用方: from oservi.agentic_loop import AgenticLoopEngine
++# ===========================================================================
++
++
++class AgenticLoopEngine:
++    """
++    v3.0 规范中的 agentic_loop 引擎骨架。
++    它只懂循环机制 (Loop mechanism)，所有具体能力均通过 manifest 注入。
++    """
++
++    def __init__(self, manifest: ServiceManifest):
++        # 验证注入契约 (依赖倒置)
++        self.llm_caller = manifest.inject.get("llm_caller", [None])[0]
++        self.tool_pipeline_modul = manifest.inject.get("tool_pipeline", [None])[0]
++        self.stop_evaluator = manifest.inject.get("stop_evaluator", [None])[0]
++        self.history: list[dict[str, Any]] = []
++
++        if not all([self.llm_caller, self.tool_pipeline_modul, self.stop_evaluator]):
++            raise ValueError("Missing required injections for AgenticLoopEngine")
++
++        # 机制级安全上限 (manifest.config 可覆写; 业务停止由 stop_evaluator 裁决)
++        self.max_turns = int(manifest.config.get("max_turns", 25))
++
++    async def run(self, initial_prompt: str) -> dict[str, Any]:
++        """非阻塞 on_demand 触发的主循环"""
++        self.history.append({"role": "user", "content": initial_prompt})
++        turn = 0
++
++        while True:
++            turn += 1
++            # 1. 触发注入的 oprim (调用 LLM)
++            response = await self.llm_caller(messages=self.history)
++            raw_text = response.get("content", "")
++            self.history.append({"role": "assistant", "content": raw_text})
++
++            # 2. 触发注入的 oskill (判断停止)
++            if self.stop_evaluator(raw_text, turn):
++                break
++
++            if turn >= self.max_turns:
++                break
++
++            # 3. 触发注入的 omodul (安全执行工具事务)
++            # config/input_data 的组装由注入方完成 (注入的 adapter 已绑定
++            # 三件套与依赖, 引擎只传原始文本)
++            tool_result = await self.tool_pipeline_modul(raw_text)
++
++            # 将执行结果喂回循环
++            self.history.append(
++                {
++                    "role": "tool",
++                    "content": str(tool_result.get("findings", tool_result.get("error"))),
++                }
++            )
++
++        return {"final_history": self.history}
+diff --git a/oservi/engines/__init__.py b/oservi/engines/__init__.py
+index efb665b..ad7e998 100644
+--- a/oservi/engines/__init__.py
++++ b/oservi/engines/__init__.py
+@@ -29,6 +29,12 @@ from oservi.engines import feed_tracker as _feed_tracker  # noqa: F401
+ from oservi.engines import sequential_composer as _sequential_composer  # noqa: F401
+ from oservi.engines import subagent_orchestrator as _subagent_orchestrator  # noqa: F401
+ from oservi.engines import mcp_bridge as _mcp_bridge  # noqa: F401
++from oservi.engines import dag_orchestrator as _dag_orchestrator  # noqa: F401
++from oservi.engines import steerable_agentic_loop as _steerable_agentic_loop  # noqa: F401
++from oservi.engines import swarm_orchestrator as _swarm_orchestrator  # noqa: F401
++from oservi.engines import realtime_media_loop as _realtime_media_loop  # noqa: F401
++from oservi.engines import mechanism_game_loop as _mechanism_game_loop  # noqa: F401
++from oservi.engines import world_simulation_loop as _world_simulation_loop  # noqa: F401
+ 
+ from oservi.engines.alerter import AlerterEngine
+ from oservi.engines.researcher import ResearcherEngine
+@@ -36,6 +42,12 @@ from oservi.engines.feed_tracker import FeedTrackerEngine
+ from oservi.engines.sequential_composer import SequentialComposerEngine
+ from oservi.engines.subagent_orchestrator import SubagentOrchestratorEngine
+ from oservi.engines.mcp_bridge import McpBridgeEngine
++from oservi.engines.dag_orchestrator import DagOrchestratorEngine
++from oservi.engines.steerable_agentic_loop import SteerableAgenticLoopEngine
++from oservi.engines.swarm_orchestrator import SwarmOrchestratorEngine
++from oservi.engines.realtime_media_loop import RealtimeMediaLoopEngine
++from oservi.engines.mechanism_game_loop import MechanismGameLoopEngine
++from oservi.engines.world_simulation_loop import WorldSimulationLoopEngine
+ 
+ __all__ = [
+     "EngineSkeleton",
+@@ -49,4 +61,10 @@ __all__ = [
+     "SequentialComposerEngine",
+     "SubagentOrchestratorEngine",
+     "McpBridgeEngine",
++    "DagOrchestratorEngine",
++    "SteerableAgenticLoopEngine",
++    "SwarmOrchestratorEngine",
++    "RealtimeMediaLoopEngine",
++    "MechanismGameLoopEngine",
++    "WorldSimulationLoopEngine",
+ ]
+diff --git a/oservi/engines/agentic_loop.py b/oservi/engines/agentic_loop.py
+index bbe1672..965acb5 100644
+--- a/oservi/engines/agentic_loop.py
++++ b/oservi/engines/agentic_loop.py
+@@ -164,7 +164,9 @@ class AgenticLoopEngine(EngineSkeleton):
+             turn_result = {"messages": messages}
+ 
+         # 2. call llm_caller
+-        processed_messages = turn_result.get("messages", messages) if isinstance(turn_result, dict) else messages
++        processed_messages = (
++            turn_result.get("messages", messages) if isinstance(turn_result, dict) else messages
++        )
+         available_tools = tools or list(self.tools.values())
+         try:
+             if inspect.iscoroutinefunction(self.llm_caller):
+@@ -260,5 +262,122 @@ class AgenticLoopEngine(EngineSkeleton):
+             },
+         }
+ 
++    # =======================================================================
++    # WAVE C — verified long-horizon loop (扩展 AgenticLoopEngine,不新增引擎)
++    # -----------------------------------------------------------------------
++    # 核心规则: executor result != trusted progress. 只有 verifier(result)
++    # == ACCEPTED 才能进入 verified state. REJECTED 不进 checkpoint,只存
++    # failure evidence,下一 round 从 last accepted checkpoint 恢复,输入为
++    # fresh-context (goal + verified state + remaining + evidence + next step)。
++    # 本机制只持内存运行态,不持 GoalRun authority / AgentSession DB / 项目持久化。
++    # =======================================================================
++
++    async def run_verified(
++        self,
++        goal: str,
++        executor: Callable[[dict[str, Any]], Any],
++        verifier: Callable[[dict[str, Any]], Any],
++        *,
++        max_rounds: int = 5,
++        is_complete: Callable[[dict[str, Any]], bool] | None = None,
++    ) -> dict[str, Any]:
++        """执行 verified long-horizon loop,返回 ledger 与最终 verified state。"""
++        if not goal:
++            raise ValueError("run_verified: goal must not be empty")
++        ledger: list[dict[str, Any]] = []
++        verified_state: dict[str, Any] = {}
++        failure_evidence: list[dict[str, Any]] = []
++        final_status = "COMPLETED"
++        rounds_executed = 0
++
++        try:
++            for round_no in range(1, max_rounds + 1):
++                rounds_executed = round_no
++                ledger.append({"round": round_no, "status": "RUNNING"})
++                fresh_context = {
++                    "original_goal": goal,
++                    "verified_state": dict(verified_state),
++                    "remaining_work": goal if not verified_state else "continue toward goal",
++                    "failure_evidence": list(failure_evidence),
++                    "bounded_next_step": f"round {round_no}/{max_rounds}",
++                }
++                try:
++                    raw = executor(fresh_context)
++                    result = await raw if inspect.iscoroutine(raw) else raw
++                except Exception as exc:
++                    result = {"error": f"{type(exc).__name__}: {exc}"}
++                if not isinstance(result, dict):
++                    result = {"output": result}
++                ledger[-1]["status"] = "VERIFYING"
++                try:
++                    vraw = verifier(result)
++                    verdict = await vraw if inspect.iscoroutine(vraw) else vraw
++                except Exception as exc:
++                    verdict = {"accepted": False, "reason": f"verifier error: {exc}"}
++                accepted = self._verdict_accepted(verdict)
++                if accepted:
++                    verified_state = self._merge_verified(verified_state, result)
++                    ledger[-1]["status"] = "ACCEPTED"
++                    ledger[-1]["checkpoint"] = dict(verified_state)
++                    if is_complete is None or is_complete(verified_state):
++                        break
++                else:
++                    evidence = {
++                        "round": round_no,
++                        "result": result,
++                        "reason": self._verdict_reason(verdict),
++                    }
++                    failure_evidence.append(evidence)
++                    ledger[-1]["status"] = "REJECTED"
++                    ledger[-1]["evidence"] = evidence
++                    # RECOVERING:从 last accepted checkpoint 恢复 (verified_state 本就未动)
++                    ledger.append(
++                        {
++                            "round": round_no,
++                            "status": "RECOVERING",
++                            "recovered_checkpoint": dict(verified_state),
++                        }
++                    )
++        except asyncio.CancelledError:
++            final_status = "CANCELLED"
++            ledger.append({"round": rounds_executed + 1, "status": "CANCELLED"})
++            raise
++        return {
++            "status": final_status,
++            "goal": goal,
++            "verified_state": verified_state,
++            "failure_evidence": failure_evidence,
++            "round_ledger": ledger,
++            "rounds_executed": rounds_executed,
++        }
++
++    @staticmethod
++    def _verdict_accepted(verdict: Any) -> bool:
++        if isinstance(verdict, bool):
++            return verdict
++        if isinstance(verdict, dict):
++            return bool(verdict.get("accepted", False))
++        if isinstance(verdict, str):
++            return verdict.strip().upper() == "ACCEPTED"
++        return False
++
++    @staticmethod
++    def _verdict_reason(verdict: Any) -> str:
++        if isinstance(verdict, dict):
++            return str(verdict.get("reason", "rejected"))
++        if isinstance(verdict, str):
++            return verdict
++        return "rejected"
++
++    @staticmethod
++    def _merge_verified(verified_state: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
++        merged = dict(verified_state)
++        progress = result.get("progress")
++        if isinstance(progress, dict):
++            merged.update(progress)
++        elif "output" in result:
++            merged.setdefault("outputs", []).append(result["output"])
++        return merged
++
+ 
+ register_skeleton("agentic_loop", AgenticLoopEngine)
+diff --git a/oservi/engines/mcp_bridge.py b/oservi/engines/mcp_bridge.py
+index a0c88c9..9d60b26 100644
+--- a/oservi/engines/mcp_bridge.py
++++ b/oservi/engines/mcp_bridge.py
+@@ -71,6 +71,11 @@ class McpBridgeEngine(EngineSkeleton):
+             cardinality="1",
+             description="Tool registry",
+         ),
++        "client": Injection(
++            kind="obase",
++            cardinality="0..1",
++            description="MCP client handle (skills 扩展: expose/consume 远端 skills)",
++        ),
+     }
+     trigger_mode: str = "on_demand"
+ 
+@@ -83,11 +88,13 @@ class McpBridgeEngine(EngineSkeleton):
+         trigger: dict[str, Any],
+         config: dict[str, Any],
+         name: str,
++        client: Any | None = None,
+     ) -> None:
+         self.name = name
+         self.connect = connect
+         self.call_primitives: list[Callable[..., Any]] = call if isinstance(call, list) else [call]
+         self.registry = registry
++        self.client = client
+         self.trigger = trigger
+         self.config = config
+ 
+@@ -135,7 +142,9 @@ class McpBridgeEngine(EngineSkeleton):
+                 else:
+                     reg_result = raw
+             # registry returns index or callable reference
+-            primitive_idx = reg_result.get("primitive_idx", 0) if isinstance(reg_result, dict) else 0
++            primitive_idx = (
++                reg_result.get("primitive_idx", 0) if isinstance(reg_result, dict) else 0
++            )
+         except Exception as e:
+             logger.warning(f"McpBridgeEngine registry lookup failed for '{tool_name}': {e}")
+             primitive_idx = 0
+@@ -179,6 +188,113 @@ class McpBridgeEngine(EngineSkeleton):
+             logger.warning(f"McpBridgeEngine connect failed: {e}")
+             return {"status": "error", "error": str(e)}
+ 
++    # ===== skills 扩展 (WAVE B: expose/consume 远端 skills,无业务持久化) =====
++
++    def _require_client(self) -> Any:
++        if self.client is None:
++            raise RuntimeError("McpBridgeEngine: no MCP client injected for skills extension")
++        return self.client
++
++    async def expose_remote_skills(self) -> dict[str, Any]:
++        """暴露远端 skills:经注入 client 发现并经 registry 路由注册 (只路由,不持久化)。
++
++        直接走 client handle Protocol (list_tools/call_tool),保持引擎骨架
++        零跨包导入 (红线 5);形状归一约定与 substrate 一致。
++        """
++        client = self._require_client()
++        extension = "io.modelcontextprotocol/skills"
++        skills: list[dict[str, Any]] = []
++        via = "none"
++        extensions = getattr(client, "extensions", None)
++        if isinstance(extensions, (list, tuple, set)) and extension in set(extensions):
++            via = "extensions"
++        # 有声明也照常拉取 skill 列表;无声明则探测 skill_list / tools 面
++        try:
++            probed = client.call_tool("skill_list", {})
++            if inspect.iscoroutine(probed):
++                probed = await probed
++            if isinstance(probed, dict) and isinstance(probed.get("skills"), list):
++                if via == "none":
++                    via = "skill_list"
++                skills = [s for s in probed["skills"] if isinstance(s, dict)]
++            elif isinstance(probed, list):
++                if via == "none":
++                    via = "skill_list"
++                skills = [s for s in probed if isinstance(s, dict)]
++        except Exception:
++            probed = None
++        if not skills and via == "none":
++            try:
++                tools = client.list_tools()
++                if inspect.iscoroutine(tools):
++                    tools = await tools
++                skills = [
++                    t
++                    for t in tools
++                    if isinstance(t, dict) and str(t.get("name", "")).startswith("skill")
++                ]
++                if skills:
++                    via = "tools"
++            except Exception as exc:
++                return {
++                    "status": "error",
++                    "skills": [],
++                    "negotiation": {
++                        "supported": False,
++                        "via": "none",
++                        "extension": extension,
++                        "error": str(exc),
++                    },
++                }
++        negotiation = {"supported": via != "none", "via": via, "extension": extension}
++        if not negotiation["supported"]:
++            return {"status": "unsupported", "skills": [], "negotiation": negotiation}
++        normalized = [
++            {
++                "name": str(s.get("name") or s.get("skill_id") or ""),
++                "version": str(s.get("version", "")),
++                "description": str(s.get("description", "")),
++                "inputs": s.get("input_schema") or s.get("inputSchema") or {},
++                "outputs": s.get("outputs") or {},
++                "extension": extension,
++            }
++            for s in skills
++        ]
++        exposed: list[str] = []
++        for skill in normalized:
++            name = str(skill["name"])
++            if not name:
++                continue
++            try:
++                route = self.registry(tool_name=name)
++                if inspect.iscoroutine(route):
++                    await route
++            except Exception:
++                pass
++            exposed.append(name)
++        return {
++            "status": "ok",
++            "skills": normalized,
++            "exposed": exposed,
++            "negotiation": negotiation,
++        }
++
++    async def consume_remote_skill(
++        self, skill_id: str, args: dict[str, Any] | None = None
++    ) -> dict[str, Any]:
++        """消费远端 skill:经注入 client 直接调用 (lifecycle 经 client,不落业务库)。"""
++        client = self._require_client()
++        if not skill_id:
++            raise ValueError("consume_remote_skill: skill_id must not be empty")
++        call_tool = getattr(client, "call_tool", None)
++        if call_tool is None:
++            raise RuntimeError("McpBridgeEngine: injected client has no call_tool")
++        result = call_tool(skill_id, args or {})
++        if inspect.iscoroutine(result):
++            result = await result
++        self._call_count += 1
++        return {"status": "ok", "skill_id": skill_id, "result": result}
++
+     # ===== 健康检查 =====
+ 
+     def health(self) -> dict[str, Any]:
+diff --git a/oservi/engines/sequential_composer.py b/oservi/engines/sequential_composer.py
+index 71978a9..5dd93a6 100644
+--- a/oservi/engines/sequential_composer.py
++++ b/oservi/engines/sequential_composer.py
+@@ -107,14 +107,9 @@ class SequentialComposerEngine(EngineSkeleton):
+ 
+         for i, step in enumerate(self.step_list):
+             try:
+-                if inspect.iscoroutinefunction(step):
+-                    result = await step(input_data=input_data, step_no=i)
+-                else:
+-                    raw = step(input_data=input_data, step_no=i)
+-                    if asyncio.iscoroutine(raw):
+-                        result = await raw
+-                    else:
+-                        result = raw
++                result = self._invoke_step(step, i, input_data, output_dir)
++                if inspect.isawaitable(result):
++                    result = await result
+             except Exception as e:
+                 self._last_error = f"step {i} {getattr(step, '__name__', step)}: {type(e).__name__}: {e}"
+                 logger.warning(f"SequentialComposerEngine '{self.name}' step {i} failed: {e}")
+@@ -130,6 +125,34 @@ class SequentialComposerEngine(EngineSkeleton):
+ 
+         return {"status": "completed", "results": results}
+ 
++    def _invoke_step(
++        self,
++        step: Callable[..., Any],
++        step_no: int,
++        input_data: dict[str, Any],
++        output_dir: Any,
++    ) -> Any:
++        """适配两种步骤形态：
++        1. omodul 标准签名 (config, input_data, output_dir, *, on_step)
++           —— 编排 omodul 协作的正道；config 取引擎 config
++        2. 通用 callable (input_data, step_no)
++        """
++        try:
++            sig = inspect.signature(step)
++            positional = [
++                p
++                for p in sig.parameters.values()
++                if p.kind
++                in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
++            ]
++        except (TypeError, ValueError):  # pragma: no cover - builtin 等
++            positional = []
++
++        if len(positional) >= 3:
++            # omodul 标准三件套 (config, input_data, output_dir)
++            return step(self.config, input_data, output_dir)
++        return step(input_data=input_data, step_no=step_no)
++
+     def stop(self) -> None:
+         """Signal the engine to stop (no-op for on_demand engines)."""
+         self._stop_event.set()
+diff --git a/oservi/engines/source_watcher.py b/oservi/engines/source_watcher.py
+index 9815956..6b57e8c 100644
+--- a/oservi/engines/source_watcher.py
++++ b/oservi/engines/source_watcher.py
+@@ -15,6 +15,7 @@
+ - subscription: layer4 (1)           — get_processed_ids / mark_processed
+ - filter:       oskill (0..1)        — LLM 筛选（可选）
+ """
++
+ from __future__ import annotations
+ 
+ import asyncio
+@@ -22,7 +23,7 @@ import inspect
+ import logging
+ import tempfile
+ from pathlib import Path
+-from typing import Any, Callable, ClassVar
++from typing import Any, ClassVar
+ 
+ from oservi.engines._base import EngineSkeleton, Injection, register_skeleton
+ 
+@@ -45,20 +46,33 @@ class SourceWatcherEngine(EngineSkeleton):
+     """
+ 
+     injection_points: ClassVar[dict] = {
+-        "searchers": Injection(kind="oprim", cardinality="1+",
+-                               description="源检索函数字典 {source_type: search_fn}"),
+-        "download":  Injection(kind="oprim", cardinality="1",
+-                               description="文件下载 (http_download_file)"),
+-        "ingest":    Injection(kind="omodul", cardinality="1",
+-                               description="文件入库 (process_inbox_substrate)"),
+-        "subscription": Injection(kind="layer4", cardinality="1",
+-                                  description="get_processed_ids / mark_processed"),
+-        "filter":    Injection(kind="oskill", cardinality="0..1",
+-                               description="LLM 筛选（可选）"),
++        "searchers": Injection(
++            kind="oprim", cardinality="1+", description="源检索函数字典 {source_type: search_fn}"
++        ),
++        "download": Injection(
++            kind="oprim", cardinality="1", description="文件下载 (http_download_file)"
++        ),
++        "ingest": Injection(
++            kind="omodul", cardinality="1", description="文件入库 (process_inbox_substrate)"
++        ),
++        "subscription": Injection(
++            kind="layer4", cardinality="1", description="get_processed_ids / mark_processed"
++        ),
++        "filter": Injection(kind="oskill", cardinality="0..1", description="LLM 筛选（可选）"),
+     }
+ 
+-    def __init__(self, *, searchers, download, ingest, subscription,
+-                 filter=None, trigger=None, config=None, name="source-watcher"):
++    def __init__(
++        self,
++        *,
++        searchers,
++        download,
++        ingest,
++        subscription,
++        filter=None,
++        trigger=None,
++        config=None,
++        name="source-watcher",
++    ):
+         self._searchers = searchers
+         self._download = download
+         self._ingest = ingest
+@@ -70,24 +84,106 @@ class SourceWatcherEngine(EngineSkeleton):
+         self._running = False
+         self._tick_count = 0
+         self._last_error: str | None = None
++        # WAVE G: changed-file snapshot (运行态,非业务持久化)
++        self._file_snapshot: dict[str, dict[str, Any]] = {}
++
++    # ------------------------------------------------------------------
++    # WAVE G — changed-file events (added/modified/deleted/renamed)
++    # ------------------------------------------------------------------
++
++    @staticmethod
++    def _stat_file(path: Path) -> dict[str, Any] | None:
++        try:
++            st = path.stat()
++        except OSError:
++            return None
++        if not path.is_file():
++            return None
++        return {"size": st.st_size, "mtime": st.st_mtime}
++
++    def snapshot_files(
++        self,
++        root: str | Path,
++        *,
++        extensions: tuple[str, ...] = (".py",),
++    ) -> dict[str, dict[str, Any]]:
++        """扫描 root 生成 path -> {size, mtime} 快照 (纯函数,不改实例)。"""
++        root = Path(root)
++        snapshot: dict[str, dict[str, Any]] = {}
++        if not root.is_dir():
++            return snapshot
++        for path in sorted(root.rglob("*")):
++            if extensions and path.suffix not in extensions:
++                continue
++            info = self._stat_file(path)
++            if info is not None:
++                snapshot[str(path)] = info
++        return snapshot
++
++    def emit_file_changes(
++        self,
++        current: dict[str, dict[str, Any]] | None = None,
++        *,
++        root: str | Path | None = None,
++    ) -> list[dict[str, Any]]:
++        """对比上次快照,输出 changed-file events 并更新快照。
++
++        event: {kind: added|modified|deleted|renamed, path, old_path?}.
++        rename 启发式:同 size 的 deleted + added 配对。
++        """
++        if current is None:
++            if root is None:
++                raise ValueError("emit_file_changes: current 或 root 必须提供其一")
++            current = self.snapshot_files(root)
++        previous = self._file_snapshot
++        events: list[dict[str, Any]] = []
++        added = {p: info for p, info in current.items() if p not in previous}
++        deleted = {p: info for p, info in previous.items() if p not in current}
++        for path, info in current.items():
++            if path in previous and previous[path] != info:
++                events.append({"kind": "modified", "path": path})
++        # rename 配对:同 size 的 deleted/added
++        by_size_deleted: dict[Any, list[str]] = {}
++        for path, info in deleted.items():
++            by_size_deleted.setdefault(info.get("size"), []).append(path)
++        consumed_deleted: set[str] = set()
++        consumed_added: set[str] = set()
++        for path, info in added.items():
++            candidates = by_size_deleted.get(info.get("size"), [])
++            candidates = [c for c in candidates if c not in consumed_deleted]
++            if candidates:
++                old = candidates[0]
++                consumed_deleted.add(old)
++                consumed_added.add(path)
++                events.append({"kind": "renamed", "path": path, "old_path": old})
++        for path in added:
++            if path not in consumed_added:
++                events.append({"kind": "added", "path": path})
++        for path in deleted:
++            if path not in consumed_deleted:
++                events.append({"kind": "deleted", "path": path})
++        self._file_snapshot = dict(current)
++        return events
+ 
+     async def _tick(self) -> dict[str, Any]:
+         source_type = self._config.get("source_type", "arxiv")
+-        query       = self._config.get("query", {})
++        query = self._config.get("query", {})
+         max_results = self._config.get("max_results", 20)
+-        work_dir    = Path(self._config.get("work_dir", tempfile.gettempdir())) / "source_watcher"
++        work_dir = Path(self._config.get("work_dir", tempfile.gettempdir())) / "source_watcher"
+         work_dir.mkdir(parents=True, exist_ok=True)
+         user_id_hash = self._config.get("user_id_hash", "source_watcher")
+-        force_ipv4   = self._config.get("force_ipv4", False)
++        force_ipv4 = self._config.get("force_ipv4", False)
+ 
+         search_fn = self._searchers.get(source_type)
+         if not search_fn:
+             return {"ingested": 0, "new_items": 0, "error": f"unknown source_type: {source_type}"}
+ 
+         try:
+-            items = await search_fn(max_results=max_results, **query) \
+-                if inspect.iscoroutinefunction(search_fn) \
++            items = (
++                await search_fn(max_results=max_results, **query)
++                if inspect.iscoroutinefunction(search_fn)
+                 else search_fn(max_results=max_results, **query)
++            )
+         except Exception as exc:
+             self._last_error = str(exc)
+             return {"ingested": 0, "new_items": 0, "error": str(exc)}
+@@ -107,15 +203,17 @@ class SourceWatcherEngine(EngineSkeleton):
+ 
+         if self._filter and self._config.get("llm_filter"):
+             try:
+-                new_items = await self._filter(new_items, llm_filter=self._config["llm_filter"]) \
+-                    if inspect.iscoroutinefunction(self._filter) \
++                new_items = (
++                    await self._filter(new_items, llm_filter=self._config["llm_filter"])
++                    if inspect.iscoroutinefunction(self._filter)
+                     else self._filter(new_items, llm_filter=self._config["llm_filter"])
++                )
+             except Exception:
+                 pass
+ 
+         ingested, failed = [], []
+         for item in new_items:
+-            ext  = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt"}.get(item.file_type, ".bin")
++            ext = {"pdf": ".pdf", "epub": ".epub", "txt": ".txt"}.get(item.file_type, ".bin")
+             dest = work_dir / f"{item.external_id.replace('/', '_')}{ext}"
+             try:
+                 dl_kw = {"force_ipv4": force_ipv4} if force_ipv4 else {}
+@@ -124,16 +222,27 @@ class SourceWatcherEngine(EngineSkeleton):
+                 else:
+                     await asyncio.to_thread(self._download, item.download_url, dest, **dl_kw)
+ 
+-                kw = {"file_path": dest, "user_id_hash": user_id_hash,
+-                      "medium_hint": item.file_type,
+-                      "metadata_override": {"external_id": item.external_id,
+-                                            "source": source_type, **item.metadata}}
+-                result = await self._ingest(**kw) \
+-                    if inspect.iscoroutinefunction(self._ingest) \
++                kw = {
++                    "file_path": dest,
++                    "user_id_hash": user_id_hash,
++                    "medium_hint": item.file_type,
++                    "metadata_override": {
++                        "external_id": item.external_id,
++                        "source": source_type,
++                        **item.metadata,
++                    },
++                }
++                result = (
++                    await self._ingest(**kw)
++                    if inspect.iscoroutinefunction(self._ingest)
+                     else await asyncio.to_thread(self._ingest, **kw)
++                )
+ 
+-                (ingested if isinstance(result, dict) and result.get("status") == "completed"
+-                 else failed).append(item.external_id)
++                (
++                    ingested
++                    if isinstance(result, dict) and result.get("status") == "completed"
++                    else failed
++                ).append(item.external_id)
+             except Exception as exc:
+                 logger.error("source_watcher.ingest_failed id=%s error=%s", item.external_id, exc)
+                 failed.append(item.external_id)
+@@ -154,6 +263,7 @@ class SourceWatcherEngine(EngineSkeleton):
+     def run(self) -> None:
+         interval = self._trigger.get("on_interval", 21600)
+         self._running = True
++
+         async def _loop():
+             while self._running:
+                 self._tick_count += 1
+@@ -162,19 +272,23 @@ class SourceWatcherEngine(EngineSkeleton):
+                 except Exception as exc:
+                     self._last_error = str(exc)
+                 await asyncio.sleep(interval)
++
+         try:
+             asyncio.get_running_loop().create_task(_loop())
+         except RuntimeError:
+             asyncio.run(_loop())
+ 
+-    def stop(self): self._running = False
++    def stop(self):
++        self._running = False
+ 
+     def health(self) -> dict[str, Any]:
+-        return {"name": self._name,
+-                "status": "running" if self._running else "stopped",
+-                "tick_count": self._tick_count,
+-                "last_error": self._last_error,
+-                "trigger": self._trigger}
++        return {
++            "name": self._name,
++            "status": "running" if self._running else "stopped",
++            "tick_count": self._tick_count,
++            "last_error": self._last_error,
++            "trigger": self._trigger,
++        }
+ 
+ 
+ register_skeleton("source_watcher", SourceWatcherEngine)
+## git diff --cached (staged)
+## git diff (pyc, names only)
+ oservi/__pycache__/__init__.cpython-312.pyc         | Bin 1750 -> 0 bytes
+ oservi/__pycache__/__init__.cpython-314.pyc         | Bin 1898 -> 1953 bytes
+ oservi/__pycache__/agentic_loop.cpython-312.pyc     | Bin 27739 -> 0 bytes
+ oservi/__pycache__/assembler.cpython-312.pyc        | Bin 5002 -> 0 bytes
+ oservi/__pycache__/assembler.cpython-314.pyc        | Bin 5688 -> 5669 bytes
+ oservi/__pycache__/manifest.cpython-312.pyc         | Bin 3330 -> 0 bytes
+ oservi/__pycache__/manifest.cpython-314.pyc         | Bin 3876 -> 3857 bytes
+ oservi/engines/__pycache__/__init__.cpython-312.pyc | Bin 1490 -> 0 bytes
+ oservi/engines/__pycache__/__init__.cpython-314.pyc | Bin 1487 -> 1468 bytes
+ oservi/engines/__pycache__/_base.cpython-312.pyc    | Bin 5003 -> 0 bytes
+ oservi/engines/__pycache__/_base.cpython-314.pyc    | Bin 6538 -> 6519 bytes
+ .../__pycache__/action_planner.cpython-312.pyc      | Bin 12661 -> 0 bytes
+ .../__pycache__/action_planner.cpython-314.pyc      | Bin 14478 -> 14459 bytes
+ .../__pycache__/agentic_loop.cpython-312.pyc        | Bin 12679 -> 0 bytes
+ .../__pycache__/agentic_loop.cpython-314.pyc        | Bin 14307 -> 14288 bytes
+ oservi/engines/__pycache__/alerter.cpython-312.pyc  | Bin 13873 -> 0 bytes
+ oservi/engines/__pycache__/alerter.cpython-314.pyc  | Bin 16103 -> 16084 bytes
+ .../__pycache__/app_installer.cpython-312.pyc       | Bin 11898 -> 0 bytes
+ .../__pycache__/app_installer.cpython-314.pyc       | Bin 13394 -> 13375 bytes
+ .../__pycache__/arxiv_watcher.cpython-314.pyc       | Bin 13809 -> 13790 bytes
+ .../__pycache__/feed_tracker.cpython-312.pyc        | Bin 9469 -> 0 bytes
+ .../__pycache__/feed_tracker.cpython-314.pyc        | Bin 10895 -> 10876 bytes
+ .../engines/__pycache__/mcp_bridge.cpython-312.pyc  | Bin 7902 -> 0 bytes
+ .../engines/__pycache__/mcp_bridge.cpython-314.pyc  | Bin 8899 -> 8880 bytes
+ .../engines/__pycache__/researcher.cpython-312.pyc  | Bin 16815 -> 0 bytes
+ .../engines/__pycache__/researcher.cpython-314.pyc  | Bin 19876 -> 19857 bytes
+ .../__pycache__/sequential_composer.cpython-312.pyc | Bin 5977 -> 0 bytes
+ .../__pycache__/sequential_composer.cpython-314.pyc | Bin 6615 -> 6596 bytes
+ .../subagent_orchestrator.cpython-312.pyc           | Bin 7640 -> 0 bytes
+ .../subagent_orchestrator.cpython-314.pyc           | Bin 8850 -> 8831 bytes
+ oservi/engines/__pycache__/triage.cpython-312.pyc   | Bin 12619 -> 0 bytes
+ oservi/engines/__pycache__/triage.cpython-314.pyc   | Bin 14294 -> 14275 bytes
+ ...archer_feed_tracker.cpython-314-pytest-9.0.3.pyc | Bin 33255 -> 38900 bytes
+ 33 files changed, 0 insertions(+), 0 deletions(-)

@@ -20,7 +20,6 @@ from hevi.api.routers.auth import router as auth_router
 from hevi.api.routers.authorities import router as authorities_router
 from hevi.api.routers.backlot import router as backlot_router
 from hevi.api.routers.canvas import router as canvas_router
-from hevi.api.routers.capabilities import router as capabilities_router
 from hevi.api.routers.creative import router as creative_router
 from hevi.api.routers.credits import router as credits_router
 from hevi.api.routers.dashboard import router as dashboard_router
@@ -34,6 +33,7 @@ from hevi.api.routers.history_series import router as history_series_router
 from hevi.api.routers.capabilities import router as capabilities_router
 from hevi.api.routers.huobao import router as huobao_router
 from hevi.api.routers.payment import router as payment_router
+from hevi.api.routers.judge import router as judge_router
 from hevi.api.routers.pipeline import router as pipeline_router
 from hevi.api.routers.pro_studio import router as pro_studio_router
 from hevi.api.routers.provider_presets import router as provider_presets_router
@@ -156,6 +156,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 app = FastAPI(
     title="hevi v6",
+    version="6.0.0",
     lifespan=lifespan,
     redirect_slashes=False,
 )
@@ -186,6 +187,7 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(authorities_router, prefix="/api")
 app.include_router(credits_router, prefix="/api")
 app.include_router(payment_router, prefix="/api")
+app.include_router(judge_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
 app.include_router(capabilities_router, prefix="/api")
 app.include_router(pro_studio_router, prefix="/api")
@@ -208,7 +210,6 @@ app.include_router(intelligence_router, prefix="/api")
 app.include_router(product_router, prefix="/api")
 app.include_router(creative_router, prefix="/api")
 app.include_router(canvas_router, prefix="/api")
-app.include_router(capabilities_router, prefix="/api")
 app.include_router(templates_router, prefix="/api")
 app.include_router(audio_router, prefix="/api")
 app.include_router(series_router, prefix="/api")
@@ -218,7 +219,6 @@ app.include_router(director_pipeline_router, prefix="/api")
 app.include_router(tongjian_router, prefix="/api")
 app.include_router(cinematic_router, prefix="/api")  # 黄金公式动画演绎
 app.include_router(history_series_router, prefix="/api")  # P2 历史现场每日连载
-app.include_router(capabilities_router, prefix="/api")
 app.include_router(shortdrama_router, prefix="/api")
 app.include_router(shortdrama_writer_router, prefix="/api")
 app.include_router(huobao_router, prefix="/api")

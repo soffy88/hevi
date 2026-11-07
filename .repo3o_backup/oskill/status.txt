@@ -1,0 +1,573 @@
+On branch feat/v4.12.0-resolve-display-batch
+Your branch and 'origin/feat/v4.12.0-resolve-display-batch' have diverged,
+and have 4 and 2 different commits each, respectively.
+  (use "git pull" if you want to integrate the remote branch with yours)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   ADR-062.md
+	modified:   docs/signoffs/SELF_CHECK_P7_B3.md
+	modified:   docs/signoffs/SELF_CHECK_P7_B4.md
+	modified:   integration_test_search.py
+	modified:   oskill/__init__.py
+	modified:   oskill/_apply_edit_block.py
+	modified:   oskill/_apply_todo_update.py
+	modified:   oskill/_apply_unified_diff.py
+	modified:   oskill/_asset_reference_inject.py
+	modified:   oskill/_base.py
+	modified:   oskill/_batch_generate_animations.py
+	modified:   oskill/_build_repo_context.py
+	modified:   oskill/_build_subagent_prompt.py
+	modified:   oskill/_build_undo_plan.py
+	modified:   oskill/_capability_gap_analyze.py
+	modified:   oskill/_cascade_delete.py
+	modified:   oskill/_chunk_code.py
+	modified:   oskill/_community_cluster.py
+	modified:   oskill/_compose_plugin_manifest.py
+	modified:   oskill/_compress_context.py
+	modified:   oskill/_compute_line_item_totals.py
+	modified:   oskill/_compute_tax_lines.py
+	modified:   oskill/_conflict_resolution.py
+	modified:   oskill/_dedup_edits.py
+	modified:   oskill/_english_speaking_practice.py
+	modified:   oskill/_escalate_thinking_budget.py
+	modified:   oskill/_essay_assessment.py
+	modified:   oskill/_evaluate_hooks.py
+	modified:   oskill/_evaluate_tax_inclusive_pricing.py
+	modified:   oskill/_exceptions.py
+	modified:   oskill/_extract_symbols.py
+	modified:   oskill/_format_diagnostics.py
+	modified:   oskill/_generate_animation.py
+	modified:   oskill/_generate_patch_preview.py
+	modified:   oskill/_graph_expand_retrieval.py
+	modified:   oskill/_hc_types.py
+	modified:   oskill/_llm_caller.py
+	modified:   oskill/_load_skill_progressive.py
+	modified:   oskill/_match_permission_rule.py
+	modified:   oskill/_media_to_structured_md.py
+	modified:   oskill/_merge_config.py
+	modified:   oskill/_merge_subagent_result.py
+	modified:   oskill/_ontology_extract.py
+	modified:   oskill/_parse_llm_tool_calls.py
+	modified:   oskill/_physics_force_analysis_guide.py
+	modified:   oskill/_plan_decompose.py
+	modified:   oskill/_plan_to_todos.py
+	modified:   oskill/_query_cluster.py
+	modified:   oskill/_rank_relevant_files.py
+	modified:   oskill/_reading_comprehension_guide.py
+	modified:   oskill/_regenerate_animation.py
+	modified:   oskill/_relation_extract_llm.py
+	modified:   oskill/_relevance_compute.py
+	modified:   oskill/_render_shot.py
+	modified:   oskill/_repo_map_build.py
+	modified:   oskill/_resolve_memory_hierarchy.py
+	modified:   oskill/_resolve_mentions.py
+	modified:   oskill/_schemas.py
+	modified:   oskill/_select_region_currency.py
+	modified:   oskill/_select_skill.py
+	modified:   oskill/_select_tools.py
+	modified:   oskill/_semantic_search.py
+	modified:   oskill/_signal.py
+	modified:   oskill/_summarize_file.py
+	modified:   oskill/_syntax_check.py
+	modified:   oskill/_theorem_verify_3way.py
+	modified:   oskill/_three_way_merge.py
+	modified:   oskill/_two_step_ingest.py
+	modified:   oskill/_types.py
+	modified:   oskill/_utils.py
+	modified:   oskill/_validate_edit.py
+	modified:   oskill/_video_cost_proposal.py
+	modified:   oskill/_video_filter_by_rules.py
+	modified:   oskill/agentic_investigate_loop.py
+	modified:   oskill/analysis.py
+	modified:   oskill/asset_reference_inject.py
+	modified:   oskill/audit.py
+	modified:   oskill/audit/__init__.py
+	modified:   oskill/avatar_assembler.py
+	modified:   oskill/backtest/embargo_cv.py
+	modified:   oskill/backtest/market_rules_backtest.py
+	modified:   oskill/backtest/walk_forward_optimization.py
+	modified:   oskill/backtest_strategy_skills.py
+	modified:   oskill/backup_schedule_check.py
+	modified:   oskill/batch_edit.py
+	modified:   oskill/batch_generate_animations.py
+	modified:   oskill/bayesian/__init__.py
+	modified:   oskill/bayesian/gp_regression.py
+	modified:   oskill/bayesian/hierarchical.py
+	modified:   oskill/bayesian/linear_regression.py
+	modified:   oskill/bayesian/posterior_diagnostics.py
+	modified:   oskill/bayesian/var.py
+	modified:   oskill/behavioral/__init__.py
+	modified:   oskill/behavioral/cpt_analytical.py
+	modified:   oskill/behavioral/cpt_portfolio.py
+	modified:   oskill/behavioral/salience_pricing.py
+	modified:   oskill/bocpd_changepoint.py
+	modified:   oskill/caddy_route_add.py
+	modified:   oskill/call_hierarchy_trace.py
+	modified:   oskill/candidate_universe_builder_v3.py
+	modified:   oskill/canvas_workflow_executor.py
+	modified:   oskill/causal.py
+	modified:   oskill/causal_discovery.py
+	modified:   oskill/change_point/bayesian_online.py
+	modified:   oskill/change_point/pelt.py
+	modified:   oskill/circuit_breaker_check.py
+	modified:   oskill/classifier/rule_based.py
+	modified:   oskill/classify_signal.py
+	modified:   oskill/code_intel_lookup.py
+	modified:   oskill/code_search.py
+	modified:   oskill/cognitive_state.py
+	modified:   oskill/cointegration_pairs.py
+	modified:   oskill/cold_start_single.py
+	modified:   oskill/comic_to_animation_workflow/__init__.py
+	modified:   oskill/compute_capacity_forecast.py
+	modified:   oskill/compute_severity_score.py
+	modified:   oskill/conformal/__init__.py
+	modified:   oskill/conformal/adaptive_cp.py
+	modified:   oskill/conformal/change_point_cp.py
+	modified:   oskill/conformal/split_cp.py
+	modified:   oskill/consistency_check.py
+	modified:   oskill/container_health_aggregate.py
+	modified:   oskill/container_resource_rank.py
+	modified:   oskill/context_compact.py
+	modified:   oskill/cost/_sigmoid.py
+	modified:   oskill/covariance/__init__.py
+	modified:   oskill/covariance/denoising.py
+	modified:   oskill/cross_layer_search.py
+	modified:   oskill/data/__init__.py
+	modified:   oskill/data/calendar_surprise_detect.py
+	modified:   oskill/diagnose_pattern_match.py
+	modified:   oskill/distribution.py
+	modified:   oskill/distributional_rl/__init__.py
+	modified:   oskill/distributional_rl/iqn.py
+	modified:   oskill/distributional_rl/quantile_regression.py
+	modified:   oskill/dsl/evaluator.py
+	modified:   oskill/echo_loop_skill.py
+	modified:   oskill/edit.py
+	modified:   oskill/essay_guide.py
+	modified:   oskill/exchange/__init__.py
+	modified:   oskill/exchange/okx_demo/__init__.py
+	modified:   oskill/exchange/okx_demo/_signing.py
+	modified:   oskill/exchange/okx_demo/_types.py
+	modified:   oskill/exchange/okx_demo/rest_client.py
+	modified:   oskill/exchange/okx_demo/ws_private.py
+	modified:   oskill/expand_tasks_from_note.py
+	modified:   oskill/factor/__init__.py
+	modified:   oskill/factor/barra.py
+	modified:   oskill/factor/carhart.py
+	modified:   oskill/factor/disclosure_scoring.py
+	modified:   oskill/factor/event_theme_cluster.py
+	modified:   oskill/factor/fama_french.py
+	modified:   oskill/factor/neutralization.py
+	modified:   oskill/factor/quantile_returns.py
+	modified:   oskill/factor/sector_rotation.py
+	modified:   oskill/find_consistency_issues.py
+	modified:   oskill/generate_animation.py
+	modified:   oskill/generate_practice_set.py
+	modified:   oskill/generative/ddpm_paths.py
+	modified:   oskill/git_safe_snapshot.py
+	modified:   oskill/hmm.py
+	modified:   oskill/hmm_regime_detect.py
+	modified:   oskill/hybrid_retrieve.py
+	modified:   oskill/hybrid_search.py
+	modified:   oskill/image_to_video_workflow.py
+	modified:   oskill/ingest_substrate.py
+	modified:   oskill/install_plugin.py
+	modified:   oskill/interleave_select.py
+	modified:   oskill/knowledge/__init__.py
+	modified:   oskill/knowledge/_context.py
+	modified:   oskill/knowledge/classify_inbox_file.py
+	modified:   oskill/knowledge/detect_duplicate_substrate.py
+	modified:   oskill/knowledge/generate_audio_narration.py
+	modified:   oskill/knowledge/generate_derivative.py
+	modified:   oskill/knowledge/generate_illustration.py
+	modified:   oskill/knowledge/transcribe_audio_substrate.py
+	modified:   oskill/knowledge/web_search_augmented.py
+	modified:   oskill/ku_extract_pipeline.py
+	modified:   oskill/llm/__init__.py
+	modified:   oskill/llm/batch_classify.py
+	modified:   oskill/llm/consistency.py
+	modified:   oskill/llm/cot.py
+	modified:   oskill/llm/deterministic_call.py
+	modified:   oskill/llm/faithfulness.py
+	modified:   oskill/llm/multi_model.py
+	modified:   oskill/llm/text_translate.py
+	modified:   oskill/llm/tool_validation.py
+	modified:   oskill/llm_agent/_parsing.py
+	modified:   oskill/llm_agent/bear_analyst.py
+	modified:   oskill/llm_agent/bull_analyst.py
+	modified:   oskill/llm_agent/referee.py
+	modified:   oskill/llm_client/deepseek.py
+	modified:   oskill/llm_factor_debate.py
+	modified:   oskill/llm_skills.py
+	modified:   oskill/longitudinal_pattern.py
+	modified:   oskill/market_impact_sigmoid.py
+	modified:   oskill/market_making/_base.py
+	modified:   oskill/market_making/avellaneda_stoikov.py
+	modified:   oskill/mcp_tool_invoke.py
+	modified:   oskill/mean_reversion_compose.py
+	modified:   oskill/metacog_scaffold.py
+	modified:   oskill/metadata_generate.py
+	modified:   oskill/metric_baseline_compare.py
+	modified:   oskill/microstructure/__init__.py
+	modified:   oskill/microstructure/bar_aggregation.py
+	modified:   oskill/microstructure/hawkes.py
+	modified:   oskill/microstructure/order_flow.py
+	modified:   oskill/microstructure/state_hawkes.py
+	modified:   oskill/ml_finance/__init__.py
+	modified:   oskill/ml_finance/fractional_diff.py
+	modified:   oskill/ml_finance/meta_labeling.py
+	modified:   oskill/mllm_frame_consistency_check.py
+	modified:   oskill/multi_node_health_sweep.py
+	modified:   oskill/networks/__init__.py
+	modified:   oskill/networks/centrality.py
+	modified:   oskill/networks/clearing.py
+	modified:   oskill/networks/contagion.py
+	modified:   oskill/node_register_probe.py
+	modified:   oskill/paper_grading.py
+	modified:   oskill/patch_apply_verified.py
+	modified:   oskill/performance.py
+	modified:   oskill/permission_evaluate.py
+	modified:   oskill/point_process.py
+	modified:   oskill/policy_sector_attribution.py
+	modified:   oskill/portfolio/ssd_milp.py
+	modified:   oskill/prediction.py
+	modified:   oskill/prompt_assemble.py
+	modified:   oskill/rag/chunking.py
+	modified:   oskill/rag/reranking.py
+	modified:   oskill/recursive_utility/__init__.py
+	modified:   oskill/recursive_utility/ez_solver.py
+	modified:   oskill/reference_generator.py
+	modified:   oskill/regenerate_animation.py
+	modified:   oskill/regime/multi_state_classify.py
+	modified:   oskill/regime_gate_eval.py
+	modified:   oskill/regime_smoothing.py
+	modified:   oskill/render_shot.py
+	modified:   oskill/researcher_workflow.py
+	modified:   oskill/response_decode.py
+	modified:   oskill/restart_and_verify.py
+	modified:   oskill/retrieve_and_synthesize.py
+	modified:   oskill/retrieve_runbook.py
+	modified:   oskill/risk/__init__.py
+	modified:   oskill/risk/systemic.py
+	modified:   oskill/robust/maxmin_eu.py
+	modified:   oskill/robust/smooth_ambiguity.py
+	modified:   oskill/runbook_match.py
+	modified:   oskill/scan_project_structure.py
+	modified:   oskill/scm_fit.py
+	modified:   oskill/script_writer.py
+	modified:   oskill/select_reference.py
+	modified:   oskill/semantic_file_read.py
+	modified:   oskill/shorts_recompose.py
+	modified:   oskill/shot_generator.py
+	modified:   oskill/signal_detection.py
+	modified:   oskill/signal_fusion_skills.py
+	modified:   oskill/signals/aggregation.py
+	modified:   oskill/signals/ensemble.py
+	modified:   oskill/signals/forward_returns.py
+	modified:   oskill/signature/__init__.py
+	modified:   oskill/signature/kernel.py
+	modified:   oskill/signature/pricing.py
+	modified:   oskill/similarity.py
+	modified:   oskill/similarity_indexing.py
+	modified:   oskill/smart_edit.py
+	modified:   oskill/socratic_guide_v2.py
+	modified:   oskill/socratic_loop.py
+	modified:   oskill/solve_and_visualize.py
+	modified:   oskill/spectral/clustering.py
+	modified:   oskill/state_space/_base.py
+	modified:   oskill/state_space/kalman.py
+	modified:   oskill/state_space/particle.py
+	modified:   oskill/storyboard_planner.py
+	modified:   oskill/streaming_assemble.py
+	modified:   oskill/structured_log_anomaly_cluster.py
+	modified:   oskill/subagent_dispatch.py
+	modified:   oskill/sync/__init__.py
+	modified:   oskill/sync/errors.py
+	modified:   oskill/sync/flush_outbox.py
+	modified:   oskill/sync/restore_from_snapshot.py
+	modified:   oskill/sync/snapshot_backup.py
+	modified:   oskill/synthesize_action_plan.py
+	modified:   oskill/threeo_ingester.py
+	modified:   oskill/tool_call_loop.py
+	modified:   oskill/tool_schema_assemble.py
+	modified:   oskill/tooling.py
+	modified:   oskill/trace_dependency.py
+	modified:   oskill/transform_pipeline.py
+	modified:   oskill/translate_substrate.py
+	modified:   oskill/trend_compose.py
+	modified:   oskill/validation/__init__.py
+	modified:   oskill/validation/_legacy.py
+	modified:   oskill/validation/csv.py
+	modified:   oskill/validation/full_cpcv.py
+	modified:   oskill/validation/pbo.py
+	modified:   oskill/variant_for_review.py
+	modified:   oskill/verify_health_after_action.py
+	modified:   oskill/video_assembler.py
+	modified:   oskill/video_cost_proposal.py
+	modified:   oskill/video_self_assess.py
+	modified:   oskill/walk_forward.py
+	modified:   oskill/wave2_skills.py
+	modified:   oskill/web_research.py
+	modified:   oskill/worktree_prepare.py
+	modified:   pyproject.toml
+	modified:   scripts/check_init_refs.py
+	modified:   tests/backtest/test_market_rules_backtest.py
+	modified:   tests/backtest/test_random_subsampling.py
+	modified:   tests/backtest/test_walk_forward.py
+	modified:   tests/bayesian/test_bayesian_linear_regression.py
+	modified:   tests/bayesian/test_bayesian_var.py
+	modified:   tests/bayesian/test_gaussian_process_regression.py
+	modified:   tests/bayesian/test_hierarchical_bayes.py
+	modified:   tests/bayesian/test_posterior_diagnostics.py
+	modified:   tests/behavioral/test_cpt_analytical.py
+	modified:   tests/behavioral/test_cpt_portfolio.py
+	modified:   tests/behavioral/test_salience_pricing.py
+	modified:   tests/causal/test_pcmci.py
+	modified:   tests/causal/test_scm_fit.py
+	modified:   tests/causal/test_symbolic_transfer_entropy.py
+	modified:   tests/change_point/test_bocpd.py
+	modified:   tests/change_point/test_pelt.py
+	modified:   tests/classifier/test_rule_based.py
+	modified:   tests/conformal/test_adaptive_cp.py
+	modified:   tests/conformal/test_change_point_cp.py
+	modified:   tests/conformal/test_split_cp.py
+	modified:   tests/conftest.py
+	modified:   tests/cost/test_crypto_market_impact_sigmoid.py
+	modified:   tests/covariance/test_denoising.py
+	modified:   tests/covariance/test_shrinkage.py
+	modified:   tests/data/test_point_in_time_join.py
+	modified:   tests/distributional_rl/test_iqn.py
+	modified:   tests/distributional_rl/test_qr_loss.py
+	modified:   tests/dsl/test_evaluator.py
+	modified:   tests/exchange/test_okx_demo_rest_mock.py
+	modified:   tests/exchange/test_okx_demo_signing.py
+	modified:   tests/factor/test_carhart.py
+	modified:   tests/factor/test_disclosure_scoring.py
+	modified:   tests/factor/test_ff5.py
+	modified:   tests/factor/test_ic.py
+	modified:   tests/factor/test_quantile_returns.py
+	modified:   tests/factor/test_sector_rotation.py
+	modified:   tests/generative/test_ddpm_paths.py
+	modified:   tests/hmm/test_gaussian_hmm.py
+	modified:   tests/integration/test_deepseek_real.py
+	modified:   tests/knowledge/conftest.py
+	modified:   tests/knowledge/test_classify_inbox_file.py
+	modified:   tests/knowledge/test_detect_duplicate_substrate.py
+	modified:   tests/knowledge/test_e2e.py
+	modified:   tests/knowledge/test_generate_derivative.py
+	modified:   tests/knowledge/test_hybrid_search.py
+	modified:   tests/knowledge/test_ingest_substrate.py
+	modified:   tests/knowledge/test_lint.py
+	modified:   tests/knowledge/test_translate_substrate.py
+	modified:   tests/llm/test_batch_classify.py
+	modified:   tests/llm/test_consistency.py
+	modified:   tests/llm/test_cot.py
+	modified:   tests/llm/test_deterministic_call.py
+	modified:   tests/llm/test_faithfulness.py
+	modified:   tests/llm/test_multi_model.py
+	modified:   tests/llm/test_prompt_fingerprint.py
+	modified:   tests/llm/test_text_translate.py
+	modified:   tests/llm/test_tool_validation.py
+	modified:   tests/llm_agent/test_bull_bear.py
+	modified:   tests/llm_agent/test_referee.py
+	modified:   tests/llm_client/test_deepseek_mock.py
+	modified:   tests/market_making/test_avellaneda_stoikov.py
+	modified:   tests/market_making/test_cartea_jaimungal.py
+	modified:   tests/microstructure/test_bar_aggregation.py
+	modified:   tests/microstructure/test_hawkes.py
+	modified:   tests/microstructure/test_order_flow.py
+	modified:   tests/microstructure/test_state_hawkes.py
+	modified:   tests/ml_finance/test_bet_sizing.py
+	modified:   tests/ml_finance/test_cusum_filter.py
+	modified:   tests/ml_finance/test_fractional_diff.py
+	modified:   tests/ml_finance/test_sample_weights.py
+	modified:   tests/ml_finance/test_triple_barrier.py
+	modified:   tests/networks/test_centrality.py
+	modified:   tests/networks/test_clearing.py
+	modified:   tests/networks/test_contagion.py
+	modified:   tests/operational_risk/test_lda.py
+	modified:   tests/performance/test_rule_compliance_winrate_diff.py
+	modified:   tests/performance/test_subject_forward_winrate.py
+	modified:   tests/point_process/test_fit_hawkes.py
+	modified:   tests/portfolio/test_hrp_v2.py
+	modified:   tests/portfolio/test_ssd_milp.py
+	modified:   tests/rag/test_chunking.py
+	modified:   tests/rag/test_reranking.py
+	modified:   tests/recursive_utility/test_ez_solver.py
+	modified:   tests/reference_papers/test_bansal_yaron_2004.py
+	modified:   tests/reference_papers/test_cpt_analytical_bernard_ghossoub_2010.py
+	modified:   tests/reference_papers/test_eisenberg_noe_2001.py
+	modified:   tests/reference_papers/test_hrp_v2_lopez_de_prado_2016.py
+	modified:   tests/regime/test_multi_state_classify.py
+	modified:   tests/risk/test_systemic.py
+	modified:   tests/robust/test_maxmin_eu.py
+	modified:   tests/robust/test_smooth_ambiguity.py
+	modified:   tests/screening/test_candidate_pool_builder.py
+	modified:   tests/signal_detection/test_signal_detection.py
+	modified:   tests/signals/test_signal_ensemble.py
+	modified:   tests/signals/test_weighted_signal_aggregation.py
+	modified:   tests/signature/test_signature_kernel.py
+	modified:   tests/signature/test_signature_pricing.py
+	modified:   tests/similarity/test_batch_indexing.py
+	modified:   tests/state_space/test_kalman.py
+	modified:   tests/state_space/test_particle.py
+	modified:   tests/sync/conftest.py
+	modified:   tests/sync/test_apply_remote_events.py
+	modified:   tests/sync/test_flush_outbox.py
+	modified:   tests/sync/test_restore_from_snapshot.py
+	modified:   tests/sync/test_snapshot_backup.py
+	modified:   tests/test_aegis_b3_composition.py
+	modified:   tests/test_aegis_b3_pure_algo.py
+	modified:   tests/test_aegis_oskills_batch2.py
+	modified:   tests/test_aegis_oskills_batch3_4.py
+	modified:   tests/test_agentic_investigate_loop.py
+	modified:   tests/test_aii_k1_k2.py
+	modified:   tests/test_aii_k3_k4.py
+	modified:   tests/test_asset_reference_inject.py
+	modified:   tests/test_backtest_strategy_skills.py
+	modified:   tests/test_batch_d.py
+	modified:   tests/test_batch_generate_animations.py
+	modified:   tests/test_batch_helivex_c.py
+	modified:   tests/test_batch_hevi_f11.py
+	modified:   tests/test_batch_md.py
+	modified:   tests/test_cc_supplement_oskill.py
+	modified:   tests/test_character_consistency_workflow.py
+	modified:   tests/test_character_three_view.py
+	modified:   tests/test_comic_to_animation_workflow.py
+	modified:   tests/test_container_health_aggregate.py
+	modified:   tests/test_distribution.py
+	modified:   tests/test_event_trail_correlate.py
+	modified:   tests/test_expand_tasks_from_note.py
+	modified:   tests/test_feed_diff_pipeline.py
+	modified:   tests/test_find_consistency_issues.py
+	modified:   tests/test_formal_proof_verify.py
+	modified:   tests/test_generate_animation.py
+	modified:   tests/test_graph_k1_k5.py
+	modified:   tests/test_hevi_oskill_part1.py
+	modified:   tests/test_hevi_oskill_part2.py
+	modified:   tests/test_hicode_batch_hc.py
+	modified:   tests/test_hybrid_retrieve.py
+	modified:   tests/test_hybrid_search_v3.py
+	modified:   tests/test_image_qa.py
+	modified:   tests/test_ku_extract_pipeline.py
+	modified:   tests/test_media_k1_k2.py
+	modified:   tests/test_metric_baseline_compare.py
+	modified:   tests/test_mllm_frame_consistency_check.py
+	modified:   tests/test_mneme_k1_k2.py
+	modified:   tests/test_multi_angle_9.py
+	modified:   tests/test_multi_shot_storyboard_workflow.py
+	modified:   tests/test_ontology_extract.py
+	modified:   tests/test_p6b3_modules.py
+	modified:   tests/test_p6b4_extensions.py
+	modified:   tests/test_performance.py
+	modified:   tests/test_prediction.py
+	modified:   tests/test_r7_compose.py
+	modified:   tests/test_regenerate_animation.py
+	modified:   tests/test_regime_conditional_score_weighted.py
+	modified:   tests/test_regime_smoothing.py
+	modified:   tests/test_render_shot.py
+	modified:   tests/test_render_template.py
+	modified:   tests/test_restart_and_verify.py
+	modified:   tests/test_retrieve_and_synthesize.py
+	modified:   tests/test_runbook_match.py
+	modified:   tests/test_select_reference.py
+	modified:   tests/test_signal_fusion_skills.py
+	modified:   tests/test_similarity.py
+	modified:   tests/test_solver_convergence.py
+	modified:   tests/test_storyboard_grid.py
+	modified:   tests/test_stratum_b2_group_a.py
+	modified:   tests/test_stratum_b2_group_b.py
+	modified:   tests/test_structured_log_anomaly_cluster.py
+	modified:   tests/test_theorem_verify_3way.py
+	modified:   tests/test_tool_call_loop.py
+	modified:   tests/test_trace_dependency.py
+	modified:   tests/test_validation.py
+	modified:   tests/test_video_cost_proposal.py
+	modified:   tests/test_wave2_skills.py
+	modified:   tests/test_web_search_augmented.py
+	modified:   tests/tide_step2/test_b10_oskills.py
+	modified:   tests/validation/test_cscv.py
+	modified:   tests/validation/test_deflated_sharpe.py
+	modified:   tests/validation/test_full_cpcv.py
+	modified:   tests/validation/test_haircut.py
+	modified:   tests/validation/test_pbo.py
+	modified:   tests/validation/test_trial_correction.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.veya-project/
+	.veya/
+	oskill/_auto_data_curation.py
+	oskill/_backtranslate_diff.py
+	oskill/_bayesian_belief_update.py
+	oskill/_browser_automation_loop.py
+	oskill/_buffer_stride_alignment.py
+	oskill/_code_review_gate.py
+	oskill/_code_symbol_investigate.py
+	oskill/_cognitive_honeypot_gen.py
+	oskill/_context_compression.py
+	oskill/_contextual_reschedule.py
+	oskill/_counterfactual_reasoning.py
+	oskill/_dag_visual_layout.py
+	oskill/_deep_research_tree.py
+	oskill/_embodied_kinematics_serialize.py
+	oskill/_error_diagnose_skill.py
+	oskill/_extract_counterexample.py
+	oskill/_formal_code_proof.py
+	oskill/_genetic_dag_mutate.py
+	oskill/_graph_impact_analysis.py
+	oskill/_harness_uniform_route.py
+	oskill/_hitl_instruction_steer.py
+	oskill/_leader_worker_dispatch.py
+	oskill/_long_context_compress.py
+	oskill/_mcp_schema_adapter.py
+	oskill/_mcp_tool_route.py
+	oskill/_mcts_thought_planner.py
+	oskill/_meta_strategy.py
+	oskill/_multi_modal_fusion.py
+	oskill/_mus_shrink_algorithm.py
+	oskill/_neuro_symbolic_verify.py
+	oskill/_proactive_deep_reach.py
+	oskill/_prompt_evolution_eval.py
+	oskill/_puct_tree_search.py
+	oskill/_rag_rerank.py
+	oskill/_repomap_gen.py
+	oskill/_skills_dynamic_inject.py
+	oskill/_smart_web_scraping.py
+	oskill/_soul_self_evolution.py
+	oskill/_structure_learn.py
+	oskill/_task_dag_split.py
+	oskill/_theory_of_mind_simulator.py
+	oskill/_vlm_page_nav.py
+	oskill/_voice_interruption_handler.py
+	oskill/_worktree_conflict_resolve.py
+	oskill/ast_analyzer.py
+	oskill/code_auditor.py
+	oskill/context_compress.py
+	oskill/diff_apply.py
+	oskill/evaluate_stop.py
+	oskill/evo_crossover.py
+	oskill/evo_debug.py
+	oskill/evo_draft.py
+	oskill/evo_improve.py
+	oskill/memory_induction.py
+	oskill/progressive_disclosure.py
+	oskill/protocol_translate.py
+	oskill/protocols.py
+	oskill/pure_parsers.py
+	oskill/symbol_summarize.py
+	tests/test_graft_openrsi.py
+	tests/test_paradigm_fullstack.py
+	tests/test_paradigm_phase3.py
+	tests/test_progressive_disclosure.py
+	tests/test_veya_42_oskill.py
+	tests/test_veya_agent_oskill.py
+	tests/test_veya_frontier_oskill.py
+	tests/test_veya_mind_oskill.py
+	tests/test_veya_o1o2o3_oskill.py
+	tests/test_veya_p12_oskill.py
+	tests/test_veya_skills_graphify_oskill.py
+	tests/test_veya_superpowers_oskill.py
+
+no changes added to commit (use "git add" and/or "git commit -a")

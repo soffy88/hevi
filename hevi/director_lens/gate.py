@@ -94,11 +94,11 @@ def director_check_workflow(
     if not hierarchy_ok:
         warnings.append(f"主次层次告警: {hierarchy_violations}")
 
-    # 7. 声画对齐与响度
+    # 7. 声画对齐与音频事件完整性（响度测量不在此，归 earshot/kids_gate）
     audio_rep = check_audio_compliance(brief.audio_events)
     checks["audio_compliance"] = audio_rep
     if not audio_rep["passed"]:
-        errors.append("声画对齐或响度规范未通过")
+        errors.append("声画对齐或音频事件完整性未通过")
 
     # 8. 串接 kids_gate (若受众含幼儿或动漫线)
     kids_passed = True

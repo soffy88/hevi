@@ -1,0 +1,13 @@
+任务：把 Gloomberb 强项按 3O 范式内化为 Helios 能力。全程中文写报告。
+背景：~/projects/hevi/GLOOMBERB_VS_HELIOS.md 是对比报告；Gloomberb 源码在 /tmp/gloomberb（没有就 git clone --depth 1 https://github.com/gloom-sh/gloomberb /tmp/gloomberb），MIT 许可，借鉴代码需在文件头注明出处。
+1) 先读 /data/soffy/projects/platform/3O 下 HELIOS_3O_SPEC_v3_0.md、3O_MEDUSA_IMPLEMENTATION_SPEC.md 等规范（找不到就在 ~/projects/platform 下搜 3O），理解 obase/oprim/oskill/omodul/oservi 分层与注册方式（__init__/manifest/_ELEMENT_MAP/__all__），并参考 ~/projects/hevi/GRAPHIFY_3O.md 里上次内化的做法。
+2) 要内化的 Gloomberb 强项（Helios 是加密、顾问性质不下单，按此适配）：
+ a. Kelly/仓位与风险计算（KELLY、PORT 风险）→ oprim 原子 + oskill
+ b. 期权定位/衍生品深度（加密用 Deribit/OKX 公共接口：OI、max pain、put/call、IV）→ obase 适配器 + oprim
+ c. 命令语义查询（类 DES/GP/QUOTE 的命令解析 → 调用 Helios 能力，CLI + API 端点）→ oservi
+ d. 插件/能力注册中心（统一挂载 helios-* 周边模块，manifest 驱动）→ obase/omodul
+ e. 自然语言 AI 问答 + MCP 暴露 Helios 能力 → oservi/oskill
+ f. 券商持仓同步：Helios 不下单，仅做只读持仓同步（OKX 只读）作为可选元素，无 key 时优雅降级
+ 每项按规范放到正确层并注册，每个元素配 pytest。
+3) 硬约束：不要动 helios 主工作区（不 checkout/stash/reset），在新 worktree /tmp/h3o-gloom（从 ~/projects/helios 或规范指定的 3O 仓库创建）新建分支 feat/gloom-3o 提交，不 push、不合并、不重启任何容器。每个元素必须真实文件 + pytest 通过 + git commit，禁止虚报。同一问题卡两次就跳过并写明原因。
+4) 完成写 ~/projects/hevi/GLOOM_3O.md：每项列层级、文件、commit hash、pytest 摘要、未完成项与原因。最后一行写 G3O_DONE。

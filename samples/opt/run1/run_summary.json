@@ -1,0 +1,41 @@
+{
+  "sentences": 1,
+  "results": [
+    {
+      "sentence": "橘猫看海",
+      "dir": "samples/opt/run1/01-橘猫看海",
+      "render": {
+        "gif": "samples/opt/run1/01-橘猫看海/clip.gif",
+        "mp4": "samples/opt/run1/01-橘猫看海/clip.mp4",
+        "frames": 720,
+        "layers": 4,
+        "duration": 30.0,
+        "narration": true
+      },
+      "qa": {
+        "gif": {
+          "width": 360,
+          "height": 640,
+          "codec": "gif",
+          "fps": "25/2"
+        },
+        "mp4": {
+          "width": 720,
+          "height": 1280,
+          "codec": "h264",
+          "fps": "24/1"
+        },
+        "checks": {
+          "gif_exists": true,
+          "mp4_exists": true,
+          "mp4_size": 6029056,
+          "mp4_resolution_ok": true
+        },
+        "passed": true
+      },
+      "elapsed_s": 105.815
+    }
+  ],
+  "duration": 30.0,
+  "narration": true
+}

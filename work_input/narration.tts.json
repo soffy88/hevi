@@ -1,0 +1,75 @@
+{
+  "provider": "luxtts_http",
+  "endpoint": "http://127.0.0.1:8796/tts",
+  "voice_requested": "soffy",
+  "sample_rate": 48000,
+  "channels": 1,
+  "sample_width_bytes": 2,
+  "sentence_gap_ms": 150,
+  "sentence_count": 5,
+  "duration_seconds": 26.104,
+  "total_gen_seconds": 25.5,
+  "output_path": "work_input/narration.wav",
+  "sentences": [
+    {
+      "index": 1,
+      "text": "大家好，今天我们聊聊用 AI 剪口播的三个误区。",
+      "voice_requested": "soffy",
+      "voice": "soffy",
+      "duration_seconds": 4.4373,
+      "api_audio_seconds": 4.44,
+      "gen_seconds": 4.65,
+      "http_attempts": 1,
+      "start_seconds": 0.0,
+      "temp_wav": "/data/soffy/projects/hevi-koubo/.tmp/lux_tts_99f8e1b4589846a5b673d3ce2b4717f2/sentence-001.wav"
+    },
+    {
+      "index": 2,
+      "text": "第一个误区：以为 AI 能自动剪出爆款，其实它只能帮你加速，关键决策还得人来做。",
+      "voice_requested": "soffy",
+      "voice": "soffy",
+      "duration_seconds": 7.5413,
+      "api_audio_seconds": 7.54,
+      "gen_seconds": 7.29,
+      "http_attempts": 1,
+      "start_seconds": 4.5873,
+      "temp_wav": "/data/soffy/projects/hevi-koubo/.tmp/lux_tts_99f8e1b4589846a5b673d3ce2b4717f2/sentence-002.wav"
+    },
+    {
+      "index": 3,
+      "text": "第二个误区：把所有口误都剪掉，反而让视频失去真实感，观众会怀疑你。",
+      "voice_requested": "soffy",
+      "voice": "soffy",
+      "duration_seconds": 5.984,
+      "api_audio_seconds": 5.98,
+      "gen_seconds": 5.9,
+      "http_attempts": 1,
+      "start_seconds": 12.2787,
+      "temp_wav": "/data/soffy/projects/hevi-koubo/.tmp/lux_tts_99f8e1b4589846a5b673d3ce2b4717f2/sentence-003.wav"
+    },
+    {
+      "index": 4,
+      "text": "第三个误区：只看播放量，不看完播率和转化，方向就偏了。",
+      "voice_requested": "soffy",
+      "voice": "soffy",
+      "duration_seconds": 4.96,
+      "api_audio_seconds": 4.96,
+      "gen_seconds": 4.96,
+      "http_attempts": 1,
+      "start_seconds": 18.4127,
+      "temp_wav": "/data/soffy/projects/hevi-koubo/.tmp/lux_tts_99f8e1b4589846a5b673d3ce2b4717f2/sentence-004.wav"
+    },
+    {
+      "index": 5,
+      "text": "记住，AI 是工具，不是导演。",
+      "voice_requested": "soffy",
+      "voice": "soffy",
+      "duration_seconds": 2.5813,
+      "api_audio_seconds": 2.58,
+      "gen_seconds": 2.7,
+      "http_attempts": 1,
+      "start_seconds": 23.5227,
+      "temp_wav": "/data/soffy/projects/hevi-koubo/.tmp/lux_tts_99f8e1b4589846a5b673d3ce2b4717f2/sentence-005.wav"
+    }
+  ]
+}

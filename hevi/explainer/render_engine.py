@@ -5,6 +5,7 @@
 生成:
 1. 快速低清预览帧序列 + 预览分镜大图 (preview_storyboard.png)
 2. 最终广播级 MP4 视频，集成旁白音轨、动态逐层图示、转场与画中画布局
+双实现互指：本模块是能力目录 explainer.* 的纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion）；Studio explainer 线的 Remotion 渲染编排在 hevi/explainer/render.py（assembly+Remotion 生产核），两条链独立，勿混用。
 """
 
 from __future__ import annotations
@@ -420,7 +421,7 @@ def register_explainer_render_capability() -> Capability:
         aspects=["16:9", "9:16"],
         cpu_cost_hint=0.2,
         render=_render_explainer,
-        description="解说视频快速低清预览帧与纯 CPU 本地 FFmpeg MP4 最终视频渲染",
+        description="解说视频快速低清预览帧与纯 CPU 本地 FFmpeg MP4 最终视频渲染。能力线：纯 CPU 自含链（FFmpeg/PIL，无 Node/Remotion 依赖），与 Studio explainer 线（assembly+Remotion 生产核，供 6 条 Studio 线与 API）是两条独立链；本线供能力目录按名调用与 lanshu styled explainer。",
         line="explainer",
         params_schema={
             "type": "object",

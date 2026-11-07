@@ -1,0 +1,76 @@
+[project]
+name = "oskill"
+version = "4.14.0"
+description = "Composite financial analysis workflows built on oprim atomic operations"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Wiki" }]
+keywords = ["finance", "quantitative", "meta-skills", "bootstrap-sharpe", "cpcv", "calibration"]
+
+dependencies = [
+    "oprim>=3.0.0",
+    "obase>=0.12.1",
+    "numpy>=1.24",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "statsmodels>=0.14",
+    "pydantic>=2.0",
+    "aiohttp>=3.10",              # DeepSeek REST client (llm_client)
+    "structlog>=23.0",            # structured logging in llm_agent
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-benchmark>=4.0",
+    "pytest-mock>=3.0",
+    "pytest-asyncio>=0.24",       # async test support (llm_client)
+    "ruff>=0.1.0",
+    "mypy>=1.5",
+    "pyarrow>=14.0",              # knowledge tests → oprim.vector_db.lancedb
+    "trafilatura>=1.8.0",         # knowledge tests → oprim.parser.parse_html
+]
+
+[project.urls]
+Repository = "https://github.com/helios-plat/oskill"
+Issues = "https://github.com/helios-plat/oskill/issues"
+Documentation = "https://github.com/helios-plat/oskill/blob/main/docs/INDEX.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "oskill/_version.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers -v"
+asyncio_mode = "auto"
+markers = [
+    "academic_reference: test verifies against published academic/RFC/FIPS reference vectors",
+    "integration: requires live external service (OAuth, storage, network)",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.coverage.run]
+source = ["oskill"]
+
+[tool.coverage.report]
+fail_under = 78
+show_missing = true

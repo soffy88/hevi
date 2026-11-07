@@ -16,7 +16,7 @@ import type { RuntimeConfig } from './runtime-config-type';
 
 export type FrontendEnvironment = 'development' | 'demo' | 'staging' | 'production';
 
-/** Production API base: same-origin Cloudflare path routing sends /api/* to the API service. */
+/** The only production API origin accepted by a production artifact. */
 export const PRODUCTION_API_BASE = 'https://hevi.kanpan.co';
 
 function normaliseBase(value: string): string {

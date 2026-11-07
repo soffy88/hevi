@@ -1,0 +1,11 @@
+HEAD detached from 730c504
+Unmerged paths:
+  (use "git restore --staged <file>..." to unstage)
+  (use "git add <file>..." to mark resolution)
+	both modified:   oprim/changefeed/__init__.py
+	both modified:   oprim/changefeed/reader.py
+	both modified:   oprim/changefeed/schema.py
+	both modified:   oprim/changefeed/snapshot.py
+	both modified:   oprim/changefeed/writer.py
+
+no changes added to commit (use "git add" and/or "git commit -a")

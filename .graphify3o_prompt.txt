@@ -1,0 +1,6 @@
+任务：安装 graphify 并按 3O 范式内化到 Veya。全程中文写报告。
+A) 安装：uv tool install "graphifyy[mcp,leiden,chinese]"（官方 PyPI 包名 graphifyy，双 y；无 uv 用 pipx）。然后 graphify install --platform pi、--platform opencode、--platform codex。验证 graphify --version，并在 ~/projects/veya 上跑 graphify extract --code-only（GRAPHIFY_BACKEND=none，不耗 LLM），确认生成 graphify-out/graph.json 和 GRAPH_REPORT.md，跑一次 graphify query 与 graphify explain 验证。graphify-out 加入 .gitignore 不提交。
+B) 3O 内化：先读 /data/soffy/projects/platform/3O 下的 HELIOS_3O_SPEC_v3_0.md、VEYA_42_ELEMENTS_PROGRESS.md、3O_MEDUSA_IMPLEMENTATION_SPEC.md 理解分层规范（obase 基础设施/适配器、oprim 原子能力、oskill 组合技能、omodul 工作流、oservi 服务）及注册方式（__init__/manifest/_ELEMENT_MAP/__all__）。把 graphify 能力拆成元素：obase 加 graphify CLI/graph.json 适配器；oprim 加 build_code_graph、query_code_graph、graph_path、graph_explain 等原子；oskill 加"代码库理解/影响分析"组合技能；如规范需要再加 omodul 工作流。每个元素配 pytest。
+C) 接入 Veya：在 ~/projects/veya 让 agent 能调用上述能力（按 Veya 现有工具注册/skill_hub/lazy tools 方式），代码问题优先查图谱而非 grep。
+硬约束：另一个 codex 任务正在 3O 四库做 sync/push，绝不要动 3O 和 veya 的主工作区（不 checkout/stash/reset），一律在新 worktree（/tmp/g3o/<库>、~/projects/veya-graphify）新建分支 feat/graphify-3o 提交，不 push、不合并。每个元素必须真实文件 + pytest 通过 + git commit，报告里列 commit hash 和 pytest 输出摘要，禁止虚报。卡住同一问题超过两次就停下写明原因。
+完成写 ~/projects/hevi/GRAPHIFY_3O.md，最后一行写 GRAPHIFY_3O DONE。

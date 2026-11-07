@@ -1,0 +1,10 @@
+任务：把 /data/soffy/projects/platform/3O 下 obase oprim oskill omodul 四个仓库的本地 main 与 origin/main 同步并推送。用户已批准推送整个本地 main（包括之前未推送的提交）。
+现状：本地 main 与 origin/main 分叉（obase 落后3领先7；oprim 落后13领先47；oskill 落后40领先22；omodul 落后7领先24），push 被拒非快进。
+主工作区（/data/soffy/projects/platform/3O/<库>）检出的是别的分支且有大量未提交改动，绝对不要动主工作区：不 checkout、不 stash、不 reset。
+步骤（每个库）：
+1) git fetch origin；git worktree add /tmp/sync3o/<库> main（main 未在别处检出时可直接用，否则 --detach 后最后 git push origin HEAD:main 并 git branch -f main HEAD）。
+2) 在该 worktree：git merge --no-ff origin/main。逐个解决冲突，保留双方功能（不得简单 ours/theirs 丢弃一方），理解代码后合并；注意 __init__/manifest/_ELEMENT_MAP/__all__ 类登记文件要两边条目都保留。
+3) 跑测试：至少该库全部 tests/ 中与冲突文件相关的测试 + repo3o 测试（obase tests/test_kokoro_runtime.py tests/test_embedding_gemma.py；oprim tests/test_{crop_video_to_portrait,multimodal_embed,synthesize_speech_chunk,vector_cosine_search,whisper_transcribe}.py；oskill 8 个 repo3o 测试；omodul tests/test_{deep_research_workflow,long_to_short_video_workflow,marketing_video_generation,podcast_generation_workflow}.py），PYTHONPATH 指向四个 /tmp/sync3o/<库>。再跑一次全量 pytest，与 origin/main 本身的全量结果对比（origin/main 原有失败不算你引入的）。
+4) 无新增失败则 git push origin main（或 HEAD:main）。禁止 --force。若 push 时远端又更新，重复 fetch+merge。
+5) 删除 /tmp/sync3o 下 worktree。
+6) 写 ~/projects/hevi/REPO_3O_PUSH.md：每库 冲突文件及处理方式、测试真实末行（含与 origin/main 基线对比）、推送后的 origin/main hash、git push 原始输出末行。只写实测。某库无法安全解决就不推该库并说明原因。末行 REPO3O_PUSH DONE。

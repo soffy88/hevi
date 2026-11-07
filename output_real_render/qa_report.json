@@ -1,0 +1,22 @@
+{
+  "status": "PASSED",
+  "checks": [
+    {
+      "target": "9:16 video",
+      "resolution": "1080x1920",
+      "status": "OK",
+      "path": "/data/soffy/projects/hevi/output_real_render/real_render_916.mp4"
+    },
+    {
+      "target": "16:9 video",
+      "resolution": "1920x1080",
+      "status": "OK",
+      "path": "/data/soffy/projects/hevi/output_real_render/real_render_169.mp4"
+    },
+    {
+      "target": "Audio-Video Sync",
+      "status": "OK",
+      "duration": "60s"
+    }
+  ]
+}

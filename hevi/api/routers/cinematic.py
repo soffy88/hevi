@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from hevi.artifact_store.http import materialize_artifact
+from hevi.auth.dependencies import get_current_user
 from hevi.cinematic.animation_pipeline import run_animation_pipeline
 from hevi.cinematic.golden_formula import GoldenBeat, parse_golden_beats
 from hevi.core.db import engine, get_session
@@ -54,6 +55,8 @@ def _utcnow() -> datetime:
 
 @router.post("/animate", response_model=AnimateAccepted, status_code=202)
 async def animate(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     body: AnimateRequest,
     background_tasks: BackgroundTasks,
     session: SessionDep,
@@ -221,6 +224,8 @@ async def _run_animation(
 
 @router.get("/tasks/{task_id}")
 async def get_animation_task(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     task_id: str,
     session: SessionDep,
     pool: Annotated[PgPool | None, Depends(get_hevi_pg_pool)] = None,
@@ -257,6 +262,8 @@ async def get_animation_task(
 
 @router.get("/tasks/{task_id}/video")
 async def get_animation_video(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     task_id: str,
     session: SessionDep,
     pool: Annotated[PgPool | None, Depends(get_hevi_pg_pool)] = None,

@@ -183,6 +183,9 @@ class TimelineClip:
     start_ms: int = 0
     order: int = 0
     source_in_ms: int = 0
+    # Optional total length of the source asset. Default None = unknown,
+    # and then no source-length validation happens (backwards compatible).
+    source_duration_ms: int | None = None
     text: str = ""
     gain: float = 1.0
     transition_in: Transition = field(default_factory=Transition)
@@ -192,6 +195,8 @@ class TimelineClip:
         _require_int_ms(self.start_ms, "start_ms", "clip")
         _require_int_ms(self.duration_ms, "duration_ms", "clip")
         _require_int_ms(self.source_in_ms, "source_in_ms", "clip")
+        if self.source_duration_ms is not None:
+            _require_int_ms(self.source_duration_ms, "source_duration_ms", "clip")
         _require_int(self.order, "order", "clip")
         if not self.clip_id:
             raise TimelineIRError("TIMELINE_CLIP_WITHOUT_ID")
@@ -210,6 +215,18 @@ class TimelineClip:
             raise TimelineIRError(
                 f"TIMELINE_CLIP_NEGATIVE_SOURCE_IN:{self.clip_id}"
                 f":{self.source_in_ms}")
+        if self.source_duration_ms is not None:
+            if self.source_duration_ms <= 0:
+                raise TimelineIRError(
+                    f"TIMELINE_CLIP_NON_POSITIVE_SOURCE_DURATION:{self.clip_id}"
+                    f":{self.source_duration_ms}")
+            # Only validated when the source length is known: the used
+            # window [source_in, source_in+duration) must fit inside it.
+            if self.source_in_ms + self.duration_ms > self.source_duration_ms:
+                raise TimelineIRError(
+                    f"TIMELINE_CLIP_EXCEEDS_SOURCE_DURATION:{self.clip_id}"
+                    f":{self.source_in_ms}+{self.duration_ms}"
+                    f">{self.source_duration_ms}")
         if self.order < 0:
             raise TimelineIRError(
                 f"TIMELINE_CLIP_NEGATIVE_ORDER:{self.clip_id}:{self.order}")
@@ -221,12 +238,18 @@ class TimelineClip:
     def end_ms(self) -> int:
         return self.start_ms + self.duration_ms
 
+    @property
+    def source_out_ms(self) -> int:
+        """End of the used window inside the source asset."""
+        return self.source_in_ms + self.duration_ms
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "clip_id": self.clip_id, "track": self.track.value,
             "source_path": self.source_path, "start_ms": self.start_ms,
             "duration_ms": self.duration_ms, "order": self.order,
-            "source_in_ms": self.source_in_ms, "text": self.text,
+            "source_in_ms": self.source_in_ms,
+            "source_duration_ms": self.source_duration_ms, "text": self.text,
             "gain": self.gain,
             "transition_in": self.transition_in.to_dict(),
             "transition_out": self.transition_out.to_dict(),
@@ -531,6 +554,10 @@ def validate_timeline(payload: dict[str, Any]) -> TimelineIR:
             start_ms=_require_int_ms(raw.get("start_ms", 0), "start_ms", clip_id),
             order=_require_int_ms(raw.get("order", 0), "order", clip_id),
             source_in_ms=_require_int_ms(raw.get("source_in_ms", 0), "source_in_ms", clip_id),
+            source_duration_ms=(
+                _require_int_ms(raw["source_duration_ms"], "source_duration_ms", clip_id)
+                if raw.get("source_duration_ms") is not None else None
+            ),
             text=str(raw.get("text", "")),
             gain=float(raw.get("gain", 1.0)),
             transition_in=transition("transition_in"),

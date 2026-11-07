@@ -1,0 +1,775 @@
+{
+ "name": "planet_orbit",
+ "duration_s": 8,
+ "fps": 24,
+ "resolution": 360,
+ "seed": 11,
+ "prompt": {
+  "subject": "漂浮的小星球",
+  "must_have": [
+   "星球",
+   "树",
+   "星"
+  ],
+  "must_not": [
+   "文字"
+  ]
+ },
+ "background": {
+  "type": "gradient",
+  "top": "#060a24",
+  "bottom": "#2a1838"
+ },
+ "fog": {
+  "type": "exp2",
+  "color": "#1d1630",
+  "density": 0.008
+ },
+ "lights": [
+  {
+   "type": "hemisphere",
+   "sky": "#8aa0ff",
+   "ground": "#402040",
+   "intensity": 0.9
+  },
+  {
+   "type": "directional",
+   "color": "#ffd9a0",
+   "intensity": 2.0,
+   "position": [
+    8,
+    14,
+    6
+   ],
+   "cast_shadow": true
+  }
+ ],
+ "objects": [
+  {
+   "id": "planet",
+   "type": "group",
+   "tags": [
+    "星球",
+    "planet"
+   ],
+   "anim": {
+    "spin": {
+     "speed_deg": 8,
+     "axis": "y"
+    }
+   },
+   "children": [
+    {
+     "id": "planet_ball",
+     "type": "icosahedron",
+     "params": {
+      "radius": 4,
+      "detail": 3
+     },
+     "material": {
+      "type": "toon",
+      "color": "#7cc96b"
+     }
+    },
+    {
+     "id": "pivot0",
+     "type": "group",
+     "rotation": [
+      14.748203386764231,
+      267.04331613386256,
+      35.4232278678836
+     ],
+     "children": [
+      {
+       "id": "ptree0",
+       "type": "group",
+       "tags": [
+        "树",
+        "tree"
+       ],
+       "position": [
+        0,
+        3.9,
+        0
+       ],
+       "children": [
+        {
+         "id": "ptree0_trunk",
+         "type": "cylinder",
+         "params": {
+          "radius_top": 0.108,
+          "radius_bottom": 0.162,
+          "height": 0.45,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.225,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#7a4e2d",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree0_leaf1",
+         "type": "cone",
+         "params": {
+          "radius": 0.54,
+          "height": 0.81,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.765,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#2f8f4e",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree0_leaf2",
+         "type": "cone",
+         "params": {
+          "radius": 0.378,
+          "height": 0.63,
+          "segments": 7
+         },
+         "position": [
+          0,
+          1.1700000000000002,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#3fae5e",
+          "flat_shading": true
+         }
+        }
+       ],
+       "anim": {
+        "rock": {
+         "amp_deg": 1.5,
+         "freq": 0.3,
+         "axis": "z"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "pivot1",
+     "type": "group",
+     "rotation": [
+      53.094034053246034,
+      266.36348690637504,
+      50.678999599850044
+     ],
+     "children": [
+      {
+       "id": "ptree1",
+       "type": "group",
+       "tags": [
+        "树",
+        "tree"
+       ],
+       "position": [
+        0,
+        3.9,
+        0
+       ],
+       "children": [
+        {
+         "id": "ptree1_trunk",
+         "type": "cylinder",
+         "params": {
+          "radius_top": 0.108,
+          "radius_bottom": 0.162,
+          "height": 0.45,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.225,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#7a4e2d",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree1_leaf1",
+         "type": "cone",
+         "params": {
+          "radius": 0.54,
+          "height": 0.81,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.765,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#2f8f4e",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree1_leaf2",
+         "type": "cone",
+         "params": {
+          "radius": 0.378,
+          "height": 0.63,
+          "segments": 7
+         },
+         "position": [
+          0,
+          1.1700000000000002,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#3fae5e",
+          "flat_shading": true
+         }
+        }
+       ],
+       "anim": {
+        "rock": {
+         "amp_deg": 1.5,
+         "freq": 0.3,
+         "axis": "z"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "pivot2",
+     "type": "group",
+     "rotation": [
+      -56.51937260596623,
+      167.62415557611791,
+      53.20280603979765
+     ],
+     "children": [
+      {
+       "id": "ptree2",
+       "type": "group",
+       "tags": [
+        "树",
+        "tree"
+       ],
+       "position": [
+        0,
+        3.9,
+        0
+       ],
+       "children": [
+        {
+         "id": "ptree2_trunk",
+         "type": "cylinder",
+         "params": {
+          "radius_top": 0.108,
+          "radius_bottom": 0.162,
+          "height": 0.45,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.225,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#7a4e2d",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree2_leaf1",
+         "type": "cone",
+         "params": {
+          "radius": 0.54,
+          "height": 0.81,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.765,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#2f8f4e",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree2_leaf2",
+         "type": "cone",
+         "params": {
+          "radius": 0.378,
+          "height": 0.63,
+          "segments": 7
+         },
+         "position": [
+          0,
+          1.1700000000000002,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#3fae5e",
+          "flat_shading": true
+         }
+        }
+       ],
+       "anim": {
+        "rock": {
+         "amp_deg": 1.5,
+         "freq": 0.3,
+         "axis": "z"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "pivot3",
+     "type": "group",
+     "rotation": [
+      17.876946376430908,
+      324.3241770302242,
+      -46.41528424162267
+     ],
+     "children": [
+      {
+       "id": "ptree3",
+       "type": "group",
+       "tags": [
+        "树",
+        "tree"
+       ],
+       "position": [
+        0,
+        3.9,
+        0
+       ],
+       "children": [
+        {
+         "id": "ptree3_trunk",
+         "type": "cylinder",
+         "params": {
+          "radius_top": 0.108,
+          "radius_bottom": 0.162,
+          "height": 0.45,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.225,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#7a4e2d",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree3_leaf1",
+         "type": "cone",
+         "params": {
+          "radius": 0.54,
+          "height": 0.81,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.765,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#2f8f4e",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree3_leaf2",
+         "type": "cone",
+         "params": {
+          "radius": 0.378,
+          "height": 0.63,
+          "segments": 7
+         },
+         "position": [
+          0,
+          1.1700000000000002,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#3fae5e",
+          "flat_shading": true
+         }
+        }
+       ],
+       "anim": {
+        "rock": {
+         "amp_deg": 1.5,
+         "freq": 0.3,
+         "axis": "z"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "pivot4",
+     "type": "group",
+     "rotation": [
+      -3.7117142661403477,
+      88.76621974313892,
+      5.251303108311646
+     ],
+     "children": [
+      {
+       "id": "ptree4",
+       "type": "group",
+       "tags": [
+        "树",
+        "tree"
+       ],
+       "position": [
+        0,
+        3.9,
+        0
+       ],
+       "children": [
+        {
+         "id": "ptree4_trunk",
+         "type": "cylinder",
+         "params": {
+          "radius_top": 0.108,
+          "radius_bottom": 0.162,
+          "height": 0.45,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.225,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#7a4e2d",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree4_leaf1",
+         "type": "cone",
+         "params": {
+          "radius": 0.54,
+          "height": 0.81,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.765,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#2f8f4e",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree4_leaf2",
+         "type": "cone",
+         "params": {
+          "radius": 0.378,
+          "height": 0.63,
+          "segments": 7
+         },
+         "position": [
+          0,
+          1.1700000000000002,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#3fae5e",
+          "flat_shading": true
+         }
+        }
+       ],
+       "anim": {
+        "rock": {
+         "amp_deg": 1.5,
+         "freq": 0.3,
+         "axis": "z"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "pivot5",
+     "type": "group",
+     "rotation": [
+      8.872942551372091,
+      4.721108252004793,
+      -33.99242394433822
+     ],
+     "children": [
+      {
+       "id": "ptree5",
+       "type": "group",
+       "tags": [
+        "树",
+        "tree"
+       ],
+       "position": [
+        0,
+        3.9,
+        0
+       ],
+       "children": [
+        {
+         "id": "ptree5_trunk",
+         "type": "cylinder",
+         "params": {
+          "radius_top": 0.108,
+          "radius_bottom": 0.162,
+          "height": 0.45,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.225,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#7a4e2d",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree5_leaf1",
+         "type": "cone",
+         "params": {
+          "radius": 0.54,
+          "height": 0.81,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.765,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#2f8f4e",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree5_leaf2",
+         "type": "cone",
+         "params": {
+          "radius": 0.378,
+          "height": 0.63,
+          "segments": 7
+         },
+         "position": [
+          0,
+          1.1700000000000002,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#3fae5e",
+          "flat_shading": true
+         }
+        }
+       ],
+       "anim": {
+        "rock": {
+         "amp_deg": 1.5,
+         "freq": 0.3,
+         "axis": "z"
+        }
+       }
+      }
+     ]
+    },
+    {
+     "id": "pivot6",
+     "type": "group",
+     "rotation": [
+      -26.46211607866676,
+      329.8843338510787,
+      31.887054195497015
+     ],
+     "children": [
+      {
+       "id": "ptree6",
+       "type": "group",
+       "tags": [
+        "树",
+        "tree"
+       ],
+       "position": [
+        0,
+        3.9,
+        0
+       ],
+       "children": [
+        {
+         "id": "ptree6_trunk",
+         "type": "cylinder",
+         "params": {
+          "radius_top": 0.108,
+          "radius_bottom": 0.162,
+          "height": 0.45,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.225,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#7a4e2d",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree6_leaf1",
+         "type": "cone",
+         "params": {
+          "radius": 0.54,
+          "height": 0.81,
+          "segments": 7
+         },
+         "position": [
+          0,
+          0.765,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#2f8f4e",
+          "flat_shading": true
+         }
+        },
+        {
+         "id": "ptree6_leaf2",
+         "type": "cone",
+         "params": {
+          "radius": 0.378,
+          "height": 0.63,
+          "segments": 7
+         },
+         "position": [
+          0,
+          1.1700000000000002,
+          0
+         ],
+         "material": {
+          "type": "standard",
+          "color": "#3fae5e",
+          "flat_shading": true
+         }
+        }
+       ],
+       "anim": {
+        "rock": {
+         "amp_deg": 1.5,
+         "freq": 0.3,
+         "axis": "z"
+        }
+       }
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "stars",
+   "type": "points",
+   "tags": [
+    "星",
+    "stars"
+   ],
+   "params": {
+    "count": 1500,
+    "radius": 300,
+    "inner_radius": 80,
+    "size": 1.2,
+    "fog": false
+   }
+  }
+ ],
+ "camera": {
+  "aspect": "16:9",
+  "fov": 42,
+  "path": {
+   "points": [
+    [
+     14.0,
+     4.0,
+     0.0
+    ],
+    [
+     7.0,
+     5.732,
+     12.124
+    ],
+    [
+     -7.0,
+     2.268,
+     12.124
+    ],
+    [
+     -14.0,
+     4.0,
+     0.0
+    ],
+    [
+     -7.0,
+     5.732,
+     -12.124
+    ],
+    [
+     7.0,
+     2.268,
+     -12.124
+    ]
+   ],
+   "closed": true,
+   "look_at": [
+    0,
+    0,
+    0
+   ],
+   "look_at_blend": 1.0
+  },
+  "fov_keys": []
+ }
+}

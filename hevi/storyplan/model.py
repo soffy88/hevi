@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 
-BEAT_KINDS = {"cause", "process", "result", "flashback", "flashforward"}
+BEAT_KINDS = {"cause", "process", "result", "reaction", "flashback", "flashforward"}
 HOOK_TYPES = {"question", "conflict", "curiosity_image", "result_first"}
 ROLL_ROLES = {"A_main", "B_support", "B_environment", "B_emotion", "B_transition"}
 SHOT_TYPES = {"establishing", "character", "insert", "cutaway", "empty"}
@@ -49,10 +49,29 @@ class HookSpec(BaseModel):
         return v
 
 
+class ChangeStage(BaseModel):
+    """蒙太奇阶段清单的一项：一个变化阶段及其目标状态。
+
+    ``name`` 是阶段名（如「种子」「发芽」「开花」），``target_state``
+    是该阶段结束时应达到的状态，``description`` 为可选补充说明。
+    """
+
+    name: str
+    target_state: str = ""
+    description: str = ""
+    # Optional explicit beat phase (must be in BEAT_KINDS). autofill
+    # respects a declared phase; without one it infers first=cause,
+    # last=result, middle=process.
+    phase: str | None = None
+
+
 class NarrativeLayer(BaseModel):
     hook: HookSpec = Field(default_factory=HookSpec)
     beats: list[StoryBeat] = Field(default_factory=list)
     closing_response: str = ""
+    # 蒙太奇阶段清单（可选中间产物）：给定后 autofill 按阶段生成 beats；
+    # 默认 None 表示未指定，旧计划 JSON 无此字段时保持 None，向后兼容。
+    change_stages: list[ChangeStage] | None = None
 
 
 class Shot(BaseModel):

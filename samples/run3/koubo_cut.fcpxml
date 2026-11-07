@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.9">
+  <resources>
+    <format id="r1" name="FFVideoFormat1080x1920p30" frameDuration="1/30s" width="1080" height="1920" colorSpace="1-1-1 (Rec. 709)"/>
+    <asset id="a1" name="koubo_cut" src="file:///data/soffy/projects/hevi-koubo/samples/run3/koubo_cut.mp4" start="0s" duration="26.112s" hasVideo="1" hasAudio="1"/>
+  </resources>
+  <library>
+    <event name="koubo_cut">
+      <project name="koubo_cut">
+        <sequence format="r1" duration="26.112s" tcStart="0s" tcFormat="NDF">
+          <spine>
+            <asset-clip name="koubo_cut_main" ref="a1" offset="0s" duration="26.112s" />
+          </spine>
+        </sequence>
+      </project>
+    </event>
+  </library>
+</fcpxml>

@@ -38,6 +38,8 @@ class UnifiedGenerateConfig(BaseModel):
     emotion_aware_voiceover: bool = False
     locked_shot_list: list[dict[str, Any]] | None = None
     quality_profile: str = "standard"
+    judge: bool = False
+    judge_backend: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -171,6 +173,8 @@ async def generate_unified(
     cfg = body.config
     options = _fuse_generate_options(body.source_channel, cfg)
     options["adapter_type"] = body.adapter_type
+    options["judge"] = bool(cfg.judge)
+    options["judge_backend"] = cfg.judge_backend
     try:
         task = await svc.create_production(
             ProductionRequest(

@@ -1,0 +1,183 @@
+{
+ "name": "star_sea",
+ "duration_s": 6,
+ "fps": 24,
+ "resolution": 360,
+ "seed": 3,
+ "prompt": {
+  "subject": "穿过星海",
+  "must_have": [
+   "星",
+   "星球"
+  ],
+  "must_not": [
+   "文字"
+  ]
+ },
+ "background": {
+  "type": "color",
+  "color": "#02030a"
+ },
+ "fog": {
+  "type": "exp2",
+  "color": "#0a0c22",
+  "density": 0.006
+ },
+ "renderer": {
+  "shadows": false
+ },
+ "lights": [
+  {
+   "type": "ambient",
+   "color": "#8899ff",
+   "intensity": 0.4
+  },
+  {
+   "type": "point",
+   "color": "#ffd0a0",
+   "intensity": 800,
+   "position": [
+    0,
+    10,
+    -150
+   ]
+  }
+ ],
+ "objects": [
+  {
+   "id": "stars_near",
+   "type": "points",
+   "tags": [
+    "星",
+    "stars"
+   ],
+   "params": {
+    "count": 3000,
+    "radius": 120,
+    "size": 0.6
+   },
+   "material": {
+    "color": "#dfe6ff"
+   }
+  },
+  {
+   "id": "stars_far",
+   "type": "points",
+   "params": {
+    "count": 1500,
+    "radius": 500,
+    "inner_radius": 250,
+    "size": 2.0,
+    "fog": false
+   },
+   "material": {
+    "color": "#a8b8ff"
+   }
+  },
+  {
+   "id": "dest_planet",
+   "type": "sphere",
+   "tags": [
+    "星球",
+    "planet"
+   ],
+   "params": {
+    "radius": 12,
+    "width_segments": 32,
+    "height_segments": 20
+   },
+   "position": [
+    8,
+    4,
+    -170
+   ],
+   "material": {
+    "type": "standard",
+    "color": "#c78f5a",
+    "emissive": "#331100",
+    "emissive_intensity": 0.6
+   }
+  },
+  {
+   "id": "ring",
+   "type": "torus",
+   "params": {
+    "radius": 20,
+    "tube": 0.6,
+    "radial_segments": 6,
+    "tubular_segments": 64
+   },
+   "position": [
+    8,
+    4,
+    -170
+   ],
+   "rotation": [
+    75,
+    0,
+    10
+   ],
+   "material": {
+    "type": "basic",
+    "color": "#e8c9a0"
+   }
+  }
+ ],
+ "camera": {
+  "aspect": "16:9",
+  "fov": 60,
+  "far": 1200,
+  "path": {
+   "points": [
+    [
+     0,
+     0,
+     60
+    ],
+    [
+     3,
+     1,
+     20
+    ],
+    [
+     -2,
+     2,
+     -30
+    ],
+    [
+     2,
+     3,
+     -90
+    ],
+    [
+     6,
+     4,
+     -125
+    ]
+   ],
+   "lookahead": 0.08,
+   "ease": "in"
+  },
+  "fov_keys": [
+   {
+    "t": 0,
+    "fov": 60
+   },
+   {
+    "t": 6,
+    "fov": 75
+   }
+  ],
+  "roll_keys": [
+   {
+    "t": 0,
+    "deg": 0
+   },
+   {
+    "t": 6,
+    "deg": 25,
+    "ease": "in_out"
+   }
+  ]
+ }
+}

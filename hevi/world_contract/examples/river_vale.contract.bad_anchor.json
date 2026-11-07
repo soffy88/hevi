@@ -1,0 +1,293 @@
+{
+  "anchors": [
+    {
+      "description": "Hero shot of the great tree, camera south of the trunk looking north.",
+      "facing_deg": 90,
+      "id": "hero_tree_base",
+      "position": [
+        -18,
+        0,
+        9
+      ]
+    },
+    {
+      "description": "Cottage front door close-up.",
+      "facing_deg": 90,
+      "id": "cottage_front",
+      "position": [
+        24,
+        0,
+        12.2
+      ]
+    },
+    {
+      "description": "Mid-deck of the suspension bridge.",
+      "facing_deg": 0,
+      "id": "bridge_mid_deck",
+      "position": [
+        6,
+        3.4,
+        0
+      ]
+    },
+    {
+      "description": "Wide establishing view from the north bank.",
+      "facing_deg": 35,
+      "id": "wide_river_view",
+      "position": [
+        -80,
+        3,
+        -14
+      ]
+    }
+  ],
+  "contract_version": "1.0",
+  "formulas": [
+    {
+      "description": "Great-tree trunk radius (m) as a function of height (m). Both the grove zone (trunk) and the canopy zone (branch attach) evaluate this same formula.",
+      "id": "trunk_radius_m",
+      "kind": "piecewise_linear",
+      "points": [
+        [
+          0,
+          0.9
+        ],
+        [
+          2,
+          0.62
+        ],
+        [
+          5,
+          0.4
+        ],
+        [
+          9,
+          0.24
+        ],
+        [
+          13,
+          0.14
+        ]
+      ],
+      "tolerance": 0.02,
+      "unit": "m",
+      "variable": "height_m"
+    },
+    {
+      "coeffs": [
+        0.0,
+        4.8,
+        -4.8
+      ],
+      "description": "Bridge deck sag (m) as a function of span fraction u in 0..1.",
+      "id": "bridge_deck_sag_m",
+      "kind": "polynomial",
+      "tolerance": 0.02,
+      "unit": "m",
+      "variable": "span_fraction"
+    }
+  ],
+  "ground": {
+    "a": 0.0,
+    "b": 0.0,
+    "c": 0.0,
+    "expression": "h(x, z) = a*x + b*z + c",
+    "kind": "formula",
+    "note": "Flat valley floor at y=0. groundAt(x, z) for every zone reads this one provider; the riverbed is carved by the river zone, not by a second height source."
+  },
+  "landmarks": [
+    {
+      "description": "The great tree.",
+      "id": "great_tree",
+      "position": [
+        -18,
+        0,
+        12
+      ],
+      "size": [
+        4,
+        14,
+        4
+      ]
+    },
+    {
+      "description": "The small cottage.",
+      "id": "cottage",
+      "position": [
+        24,
+        0,
+        16
+      ],
+      "size": [
+        8,
+        4.5,
+        6
+      ]
+    },
+    {
+      "description": "Suspension bridge spanning the river at x=6.",
+      "id": "suspension_bridge",
+      "position": [
+        6,
+        0,
+        0
+      ],
+      "size": [
+        3,
+        7,
+        26
+      ]
+    }
+  ],
+  "lighting": {
+    "note": "One global timeline. Every zone, effect and render reads sun position and night_factor from here; no zone may keep a private sun.",
+    "shared": true,
+    "timeline": [
+      {
+        "night_factor": 1.0,
+        "sun_azimuth_deg": 90,
+        "sun_elevation_deg": -18,
+        "t": 0.0
+      },
+      {
+        "night_factor": 0.6,
+        "sun_azimuth_deg": 105,
+        "sun_elevation_deg": 2,
+        "t": 6.0
+      },
+      {
+        "night_factor": 0.0,
+        "sun_azimuth_deg": 140,
+        "sun_elevation_deg": 38,
+        "t": 9.0
+      },
+      {
+        "night_factor": 0.0,
+        "sun_azimuth_deg": 195,
+        "sun_elevation_deg": 55,
+        "t": 13.0
+      },
+      {
+        "night_factor": 0.25,
+        "sun_azimuth_deg": 255,
+        "sun_elevation_deg": 8,
+        "t": 18.0
+      },
+      {
+        "night_factor": 0.85,
+        "sun_azimuth_deg": 280,
+        "sun_elevation_deg": -6,
+        "t": 20.0
+      },
+      {
+        "night_factor": 1.0,
+        "sun_azimuth_deg": 90,
+        "sun_elevation_deg": -18,
+        "t": 24.0
+      }
+    ]
+  },
+  "rules": [
+    {
+      "applies_to": [
+        "building",
+        "tree"
+      ],
+      "id": "river_no_build",
+      "kind": "no_place",
+      "reason": "Nothing built or planted in the river; props and the bridge structure are exempt.",
+      "region": {
+        "x_max": 60,
+        "x_min": -60,
+        "z_max": 4,
+        "z_min": -4
+      }
+    },
+    {
+      "applies_to": [
+        "building"
+      ],
+      "id": "root_protection",
+      "kind": "no_place",
+      "reason": "No buildings within 5 m of the great tree trunk (root zone).",
+      "region": {
+        "cx": -18,
+        "cz": 12,
+        "radius": 5
+      }
+    },
+    {
+      "applies_to": [
+        "*"
+      ],
+      "id": "east_low_rise",
+      "kind": "max_height",
+      "max_height": 3.0,
+      "reason": "East meadow stays low-rise so the wide shot keeps its skyline.",
+      "region": {
+        "x_max": 60,
+        "x_min": 34,
+        "z_max": 40,
+        "z_min": -40
+      }
+    }
+  ],
+  "time": {
+    "convention": "shot_local",
+    "note": "Action time is relative to the shot: each shot's t=0 is its own first frame. No builder may schedule action on whole-film absolute time."
+  },
+  "world": {
+    "bounds": {
+      "x_max": 60,
+      "x_min": -60,
+      "z_max": 40,
+      "z_min": -40
+    },
+    "name": "river_vale",
+    "seed": 20261023,
+    "units": "m",
+    "up_axis": "y"
+  },
+  "zones": [
+    {
+      "bounds": {
+        "x_max": 60,
+        "x_min": -60,
+        "z_max": 4,
+        "z_min": -4
+      },
+      "description": "The river, flowing west to east.",
+      "id": "river"
+    },
+    {
+      "bounds": {
+        "x_max": 60,
+        "x_min": -60,
+        "z_max": 40,
+        "z_min": 4
+      },
+      "description": "Meadow south of the river.",
+      "id": "south_meadow"
+    },
+    {
+      "bounds": {
+        "x_max": 60,
+        "x_min": -60,
+        "z_max": -4,
+        "z_min": -40
+      },
+      "description": "North bank.",
+      "id": "north_bank"
+    },
+    {
+      "bounds": {
+        "x_max": -4,
+        "x_min": -42,
+        "z_max": 32,
+        "z_min": 5
+      },
+      "description": "Grove around the great tree (overlaps south_meadow).",
+      "id": "grove"
+    }
+  ]
+}

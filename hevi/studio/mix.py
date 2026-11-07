@@ -54,8 +54,18 @@ def split_history_script(script: Any) -> tuple[list[dict[str, Any]], list[dict[s
 async def plan_history_mix(script: Any, *, visual_type: str = "voiceover") -> HistoryMix:
     """把通鉴剧本拆成解说 cue + 演绎对白,并对对白跑史料出处闸。"""
     commentary, drama = split_history_script(script)
-    texts = [str(item.get("text") or "").strip() for item in commentary if item.get("text")]
+    text_items = [item for item in commentary if str(item.get("text") or "").strip()]
+    texts = [str(item.get("text") or "").strip() for item in text_items]
     cues = await explainer_cues_from_text({"texts": texts, "visual_type": visual_type})
+    cue_list = list(cues.get("cues") or [])
+    # 吕氏五段法抉择点:讲解行 decision_point → 对应 cue 打 decision_hold 标记(停顿秒数 +
+    # 问题上屏),供 edit_plan/渲染层在此留白。cue 与 text_items 同序一一对应(都按非空
+    # 文本顺序生成)。渲染层(Remotion)消费此标记为后续工作,当前先把标记落进数据。
+    for item, cue in zip(text_items, cue_list):
+        if item.get("decision_point"):
+            vc = dict(cue.get("visual_config") or {})
+            vc["decision_hold"] = {"pause_s": 3.0, "on_screen_question": True}
+            cue["visual_config"] = vc
     provenance = tongjian_provenance({"lines": drama})
     total = len(commentary) + len(drama)
     return HistoryMix(

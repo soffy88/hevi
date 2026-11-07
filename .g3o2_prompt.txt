@@ -1,0 +1,14 @@
+任务：Gloom 强项 3O 内化第二轮——真实实现并接入 Helios。全程中文写报告。
+现状：第一轮在 /tmp/h3o-gloom/{obase,oprim,oskill,omodul,oservi} 分支 feat/gloom-3o 有 10 个提交（见 ~/projects/hevi/GLOOM_3O.md），但只是骨架（每文件 20~50 行、1~2 个测试），未接入 Helios，且放在 /tmp。规范：/data/soffy/projects/platform/3O/HELIOS_3O_SPEC_v3_0.md 与 3O_MEDUSA_IMPLEMENTATION_SPEC.md。Gloomberb 源码 /tmp/gloomberb（没有就 clone），MIT，借鉴处注明出处。
+步骤：
+1) 找到五个层仓库的正式位置（git remote / ~/projects/platform 等），在其上新建持久 worktree 到 ~/projects/gloom3o/<层名>，分支 feat/gloom-3o，把第一轮提交 cherry-pick 过来。不要动各仓库主工作区（不 checkout/stash/reset）。
+2) 逐项做成真实可用实现（参考 Gloomberb 对应实现的算法与边界处理）：
+ a. Kelly/仓位风控：离散/连续 Kelly、分数 Kelly、上限截断、组合 VaR/CVaR（历史法+参数法）、最大回撤、相关性；输入校验。
+ b. 加密期权定位：Deribit 公共 API（get_book_summary_by_currency、get_instruments）+ OKX 公共期权接口，真实拉 BTC/ETH：按到期日的 OI、max pain、put/call（OI 与成交量）、ATM IV、25d skew、gamma 敞口近似；超时/限流/重试/缓存。
+ c. 命令语义查询：完整命令表（QUOTE/DES/GP/OPX/KELLY/RISK/PORT/FUSION/HELP 等），解析参数，分发到真实能力，CLI 入口 + Helios FastAPI 端点。
+ d. 插件注册中心：manifest schema 校验、发现 helios-* 周边模块（tv/linetools/cndata/journal/rsibt/rsivol/sfp 等）、启停、依赖与版本检查、列表 API。
+ e. AI 问答 + MCP：自然语言→命令路由（用 Helios 已有 LLM 编排/配置；无 key 时规则路由降级），MCP server 暴露上述能力为 tools（标准 MCP 协议，可用 mcp python SDK）。
+ f. OKX 只读持仓：真实 OKX v5 签名只读接口（balance/positions），key 从 Helios 现有配置/环境变量读，无 key 优雅降级；严禁任何下单接口。
+3) 接入 Helios：在 ~/projects/helios 新建 worktree ~/projects/gloom3o/helios（分支 feat/gloom-3o），按 Helios 现有依赖方式引用这些元素，新增 API 路由（如 /api/gloom/*），期权定位与风险结果可供融合/雷达使用（作为可选输入，默认关闭开关，不改变现有 Fusion Score 行为）。
+4) 验证：每项单测 + 至少一个真实联网集成测试（Deribit/OKX 公共接口实拉数据，打印样例数值）；Helios 侧起本地测试实例（不碰生产容器）调用新端点，记录真实响应样例。每项真实文件 + pytest 通过 + git commit，禁止虚报；同一问题卡两次跳过并写明原因。不 push、不合并、不重启任何生产容器。
+5) 写 ~/projects/hevi/GLOOM_3O_R2.md：每项列层、文件、行数、commit hash、pytest 输出摘要、真实联网样例数值、Helios 端点样例响应、未完成项与原因。最后一行写 G3O2_DONE。

@@ -9,7 +9,7 @@ from oprim.hevi_types import CanvasNode
 
 logger = logging.getLogger(__name__)
 
-VALID_NODE_TYPES: frozenset[str] = frozenset({"text", "image", "video", "audio", "script"})
+VALID_NODE_TYPES: frozenset[str] = frozenset({"text", "image", "video", "audio", "script", "segment", "asset"})
 
 
 def _upstream_text(upstream: dict[str, Any]) -> str:
@@ -33,6 +33,8 @@ NODE_EXECUTORS: dict[str, str] = {
     "video": "video_node_executor",
     "audio": "audio_node_executor",
     "script": "script_node_executor",
+    "segment": "segment_node_executor",
+    "asset": "asset_node_executor",
 }
 
 
@@ -178,7 +180,42 @@ async def _script_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
         return {"type": "script", "sub_type": sub, "config": cfg, "note": f"plan-only: {e}"}
 
 
+async def _segment_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
+    """Segment node — plan-only.
+
+    A material-pack segment's prompt lives in its config (see
+    hevi.canvas.material_pack). Whole-graph execution never
+    regenerates a segment: single-segment regeneration goes
+    through material_pack.request_regeneration, which runs the
+    prompt-compiler + segment-assembly gates, preflight and the
+    spend brake first. This executor only reports the plan.
+    """
+    cfg = node.config or {}
+    return {
+        "type": "segment",
+        "sub_type": "material_pack",
+        "prompt": cfg.get("prompt", ""),
+        "duration_s": cfg.get("duration_s", cfg.get("duration_sec")),
+        "status": cfg.get("material_pack_status"),
+        "note": "plan-only: regenerate via canvas.material_pack gates",
+    }
+
+
+async def _asset_executor(node: CanvasNode, upstream: dict[str, Any]) -> Any:
+    """Asset node — master record only; generates nothing."""
+    cfg = node.config or {}
+    return {
+        "type": "asset",
+        "asset_id": cfg.get("asset_id") or cfg.get("material_pack_asset_id"),
+        "asset_kind": cfg.get("asset_kind"),
+        "asset_version": cfg.get("asset_version"),
+        "note": "plan-only: single master asset record",
+    }
+
+
 _EXECUTOR_MAP: dict[str, Callable[..., Any]] = {
+    "segment": _segment_executor,
+    "asset": _asset_executor,
     "text": _text_executor,
     "image": _image_executor,
     "video": _video_executor,

@@ -29,20 +29,16 @@ import hashlib
 import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from hevi.auth.dependencies import get_current_user
 from hevi.capabilities import CapabilityError, get, list_capabilities
-from hevi.huobao.capabilities import register_huobao_capabilities
 
 router = APIRouter(prefix="/capabilities", tags=["capabilities"])
-
-# Register the huobao (short-drama) capability family on import so
-# GET /api/capabilities exposes them alongside every other line.
-register_huobao_capabilities()
 
 
 def _summary(name: str) -> dict[str, Any]:
@@ -94,6 +90,8 @@ async def get_capability_endpoint(name: str) -> dict[str, Any]:
 # API and would otherwise raise "Playwright Sync API inside the asyncio loop".
 @router.post("/{name}/preview")
 def preview_capability_endpoint(
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+
     name: str,
     params: dict[str, Any] | None = None,
     aspect: str = "16:9",

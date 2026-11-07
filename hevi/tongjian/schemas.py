@@ -47,9 +47,15 @@ class EventIR(BaseModel):
 class Segment(BaseModel):
     """EventUnit 内的有序段落——SPEC-005 §1.1 选段产出。type 决定生产路径:
     narration(讲解)走 narration_script.py 的讲解稿模板;drama(演绎)走 SPEC-003 导演五级链
-    (本 schema 不覆盖该链,只负责标记与透传 source_text)。"""
+    (本 schema 不覆盖该链,只负责标记与透传 source_text)。
 
-    type: str = "narration"  # narration(讲解) | drama(演绎)
+    与 ScriptLine.type 的对应(吕氏五段法,规范见 docs/rules/history_scene_narrative.md):
+    Segment.narration ↔ ScriptLine.narration(讲解)、Segment.drama ↔ ScriptLine.dialogue
+    (演绎对白);ScriptLine.commentary(史论)在原文段里没有独立对应(由讲解段的评论部分在
+    L2 改写生成);modern_echo(鉴今)是全片收尾把原则落回现代的段,原文里不存在,只能由
+    撰稿层在末尾追加——选段抽取不产出(见 event_unit.py 的 _VALID_SEGMENT_TYPES 注释)。"""
+
+    type: str = "narration"  # narration(讲解) | drama(演绎) | modern_echo(鉴今,仅撰稿层追加)
     source_text: str = ""
     est_duration_s: int = 0
     order: int = 0
@@ -143,7 +149,7 @@ class Constitution(BaseModel):
 class ScriptLine(BaseModel):
     line_id: str
     act: int = 1
-    type: str = "narration"  # narration/dialogue/commentary
+    type: str = "narration"  # narration/dialogue/commentary/modern_echo(鉴今收尾段:吕氏五段法第 5 段,至多一段且必须全集最后一段,结构门见 script.gate_script)
     speaker: str = "NARRATOR"
     text: str = ""
     event_id: str | None = None
@@ -161,6 +167,12 @@ class ScriptLine(BaseModel):
     # 按讲解稿内容打标,驱动 L6 image_gen 在 diagram_gen(确定性)与常规生成/检索间分发。
     # 空场景不受影响——drama 行不打标,永远走默认 "scene"。
     visual_type: str = "scene"
+    # 吕氏五段法第 2 段「抉择点」(docs/rules/history_scene_narrative.md):讲解行推进到关键
+    # 抉择时置 True——时间轴在此停顿留白、问题上屏,让观众先代入作答,再看演绎揭晓古人
+    # 怎么做。一集至多一处(撰稿层校验见 authored_episode.compile_authored_episode;L2 生成
+    # 路径由 prompt 约束)。L3 落点:voiceover.synthesize_voiceover 在该行后插入
+    # purpose="decision_point_hold" 的 TimelineGap,L8 装配把它渲成真实静音停顿。
+    decision_point: bool = False
 
 
 class Script(BaseModel):
