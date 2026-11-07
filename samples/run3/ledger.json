@@ -1,0 +1,33 @@
+{
+  "line": "koubo_cut",
+  "seed": 42,
+  "out_dir": "samples/run3",
+  "status": "delivered",
+  "input": "work_input/input_portrait.mp4",
+  "transcript": {
+    "sentences": 7,
+    "words": 104
+  },
+  "evidence": [
+    {
+      "name": "github",
+      "url": "https://github.com",
+      "ok": true,
+      "path": "samples/run3/evidence/evidence_0.png",
+      "error": ""
+    },
+    {
+      "name": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Artificial_intelligence",
+      "ok": true,
+      "path": "samples/run3/evidence/evidence_1.png",
+      "error": ""
+    }
+  ],
+  "output": "samples/run3/koubo_cut.mp4",
+  "fcpxml": "samples/run3/koubo_cut.fcpxml",
+  "duration_s": 26.133333,
+  "resolution": "1080x1920",
+  "evidence_success": 2,
+  "finalized": true
+}

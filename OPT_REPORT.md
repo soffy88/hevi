@@ -1,19 +1,22 @@
-# OPT_REPORT
+# OPT_REPORT.md
 
 ## 改了什么
-- hevi/collage_broll/assets.py：新增 Pexels 图片检索（橘猫/海）+ rembg 本地抠图，User-Agent 修复 403。
-- hevi/collage_broll/render.py：切题出图；海为底、猫抠图前景，半调网点+撕纸边+纸纹，视差动画；支持 duration/narration；TTS 旁白（piper）+ 字幕；B-roll 静音。
-- hevi/collage_broll/capabilities.py：接入 studio CapabilityResult 契约（mp4/duration_s/sha256/qa）。
-- hevi/collage_broll/__main__.py：--mode/--duration/--narration。
+- `hevi/koubo_cut/pipeline.py`：接入 hevi 现有 wav2lip 口型驱动（`build_avatar_clip`，engine=wav2lip），人像从静帧循环改为真实唇动 talking head；音频填充至 30s；证据截图改为全屏叠加（≥2s）+ 圈注；保留逐词字幕与全屏/小窗切换。
+- 新增 `PROGRESS_OPT.md`、`samples/opt/contact_sheet.jpg`。
 
-## commit
-c22bb4e979babf04ee2a670d6872333c988738d6
+## Commit
+- 16a79abb feat(koubo_cut): opt - lipsync avatar, 30s target, fullscreen evidence
 
 ## 验收数据
-- 主题“橘猫看海”运行 3 次，均 30.0s，含 AAC 音轨。
-- contact sheet: samples/opt/contact_sheet.png（6 帧）。
+- 3 次运行均 delivered，时长 30.000s，分辨率 1080x1920，音轨 aac。
+- volumedetect：mean_volume -18.2 dB，max_volume -1.5 dB（3 次一致）。
+- 证据截图：2/2 成功（github.com、wikipedia Artificial intelligence）。
+- 口型相关度 lipsync_corr ≈0.70，帧数 900。
+- 6 帧 contact sheet：`samples/opt/contact_sheet.jpg`（1/5/10/15/20/25s），帧中可见证据全屏截图与唇动差异。
 
 ## 仍存问题
-- 渲染 30s 约 105s/次，偏慢；GIF 为 5s 预览。
-- 未调用 Codex（按规则开发/单测用 procedural）。
+- wav2lip 为 CPU 推理，唇动质量中等（corr ~0.7），非 MuseTalk 高清；未使用 Google Flow。
+- HyperFrames 对比度/字号有轻微 warning，不影响成片。
+- 产物为本地二进制，未推送。
+
 DONE
