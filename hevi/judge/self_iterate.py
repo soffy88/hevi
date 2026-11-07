@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from hevi.judge.backend import select_backend
 from hevi.judge.hard_checks import run_hard_checks
 from hevi.judge.pairwise import run_pairwise
 from hevi.judge.types import IterationRecord, SelfIterateResult
-
 
 GenerateFn = Callable[[dict[str, Any], int, Path], Path]
 AdjustFn = Callable[[dict[str, Any], list[str], str], dict[str, Any]]
@@ -61,12 +61,13 @@ def run_self_iterate(
         video = Path(generate(current_params, version, vdir))
         calls += 1
 
-        hard = run_hard_checks(video, expected_duration_s=expected_duration_s)
+        hard = run_hard_checks(video, expected_duration_s=expected_duration_s, backend=backend)
 
         pairwise = None
         adopted = True
         if prev_video is not None:
-            pairwise = run_pairwise(pairwise_backend, prev_video, video, work_dir=vdir / "cmp")
+            pairwise = run_pairwise(pairwise_backend, prev_video, video, work_dir=vdir / "cmp",
+                                    expected_duration_s=expected_duration_s)
             calls += 2
             if pairwise.winner != "B":
                 adopted = False

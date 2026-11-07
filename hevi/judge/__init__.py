@@ -6,6 +6,7 @@ from hevi.judge.backend import (
     GeminiCliBackend,
     LocalMetricsBackend,
     MockBackend,
+    OpencodeJudgeBackend,
     select_backend,
 )
 from hevi.judge.calibration import calibrate
@@ -31,6 +32,7 @@ __all__ = [
     "IterationRecord",
     "LocalMetricsBackend",
     "MockBackend",
+    "OpencodeJudgeBackend",
     "PairwiseComparison",
     "PairwiseJudgement",
     "SelfIterateResult",

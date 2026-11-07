@@ -4,8 +4,8 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
 
 from hevi.judge.types import HardCheckReport, HardFinding
 
@@ -210,7 +210,33 @@ def check_subtitles(path, subtitle_path=None, duration=None):
     return out
 
 
-def run_hard_checks(video_path, *, expected_duration_s=None, subtitle_path=None, target_duration_s=None):
+MODEL_HARD_CHECK_PROMPT = """You are a video quality judge. Inspect the attached contact sheet (frames every 2s) and the metrics. Identify model-level hard defects: off-topic content, fabricated text/UI (fake subtitles, fake interface), audio-visual mismatch if cues exist, severe visual artifacts. Return ONLY JSON: {"findings": [{"name": "...", "severity": "blocker|major|minor", "detail": "..."}], "passed": true|false}. Empty findings if none."""
+
+
+def run_model_hard_checks(backend, video_path):
+    out = []
+    try:
+        res = backend.run(str(video_path), MODEL_HARD_CHECK_PROMPT)
+        data = res.raw if isinstance(res.raw, dict) else extract_json(res.text) if False else None
+    except Exception:
+        return out
+    from hevi.judge.backend import extract_json
+    data = res.raw if isinstance(res.raw, dict) else extract_json(res.text)
+    if not isinstance(data, dict):
+        return out
+    for f in (data.get("findings") or []):
+        if not isinstance(f, dict):
+            continue
+        name = str(f.get("name") or "model_defect")
+        sev = str(f.get("severity") or "minor")
+        if sev not in ("blocker", "major", "minor"):
+            sev = "minor"
+        detail = str(f.get("detail") or "")
+        out.append(HardFinding(name, sev, detail, None))
+    return out
+
+
+def run_hard_checks(video_path, *, expected_duration_s=None, subtitle_path=None, target_duration_s=None, backend=None):
     vp = str(video_path)
     findings = []
     metrics = {}
@@ -225,5 +251,89 @@ def run_hard_checks(video_path, *, expected_duration_s=None, subtitle_path=None,
     findings += check_first_last_frames(vp)
     findings += check_repetition(vp)
     findings += check_subtitles(vp, subtitle_path=subtitle_path, duration=info["duration"])
+    if backend is not None:
+        findings += run_model_hard_checks(backend, vp)
     passed = not any(f.severity in ("blocker", "major") for f in findings)
     return HardCheckReport(video_path=vp, passed=passed, findings=findings, metrics=metrics)
+
+
+def _black_ratio(path):
+    cp = _run(["ffmpeg", "-i", str(path), "-vf", "blackdetect=d=0.2:pix_th=0.10", "-an", "-f", "null", "-"])
+    text = cp.stderr or ""
+    total_black = 0.0
+    for m in re.finditer(r"black_start:([\d.]+)\s*black_end:([\d.]+)\s*black_duration:([\d.]+)", text):
+        try:
+            total_black += float(m.group(3))
+        except ValueError:
+            pass
+    dur = probe_video(path)["duration"] or 1.0
+    return total_black / dur if dur > 0 else 0.0
+
+
+def _freeze_count(path):
+    cp = _run(["ffmpeg", "-i", str(path), "-vf", "freezedetect=n=-60dB:d=2", "-an", "-f", "null", "-"])
+    text = cp.stderr or ""
+    freezes = re.findall(r"freeze_start:([\d.]+)\s*freeze_duration:([\d.]+)\s*freeze_end:([\d.]+)", text)
+    return sum(1 for f in freezes if float(f[1]) >= 2.0)
+
+
+def _repetition_ratio(path):
+    info = probe_video(path)
+    dur = info["duration"]
+    if dur <= 0:
+        return 0.0
+    import hashlib
+    from collections import Counter
+    n = 8
+    hashes = []
+    for i in range(n):
+        t = dur * (i + 0.5) / n
+        cp = subprocess.run(["ffmpeg", "-ss", f"{t:.3f}", "-i", str(path), "-frames:v", "1", "-f", "image2pipe", "-vcodec", "mjpeg", "-"], capture_output=True)
+        if cp.returncode == 0 and cp.stdout:
+            hashes.append(hashlib.md5(cp.stdout).hexdigest())
+    if not hashes:
+        return 0.0
+    c = Counter(hashes)
+    dup = sum(v - 1 for v in c.values() if v > 1)
+    return dup / len(hashes)
+
+
+def _first_last_brightness(path):
+    info = probe_video(path)
+    dur = info["duration"]
+    if dur <= 0:
+        return None, None
+    first = _sample_frame_brightness(str(path), 0.05)
+    last = _sample_frame_brightness(str(path), max(0.0, dur - 0.1))
+    return first, last
+
+
+def local_quality_score(video_path, expected_duration_s=None):
+    vp = str(video_path)
+    rep = run_hard_checks(vp, expected_duration_s=expected_duration_s)
+    info = rep.metrics.get("probe", {}) or probe_video(vp)
+    score = 0.0
+    for f in rep.findings:
+        score += 100.0 if f.severity == "blocker" else 10.0 if f.severity == "major" else 1.0
+    br = _black_ratio(vp)
+    score += br * 50.0
+    fc = _freeze_count(vp)
+    score += fc * 5.0
+    rr = _repetition_ratio(vp)
+    score += rr * 20.0
+    mv = _mean_volume(vp)
+    if mv is not None:
+        if mv < -45:
+            score += (-45 - mv) * 2.0
+        if mv > -3:
+            score += (mv + 3) * 2.0
+    first, last = _first_last_brightness(vp)
+    for b in (first, last):
+        if b is not None and b < 10:
+            score += (10 - b)
+    if expected_duration_s and expected_duration_s > 0 and info.get("duration", 0) > 0:
+        score += abs(info["duration"] - expected_duration_s) / expected_duration_s * 10.0
+    # duration floor preference: very short videos slightly penalized
+    if info.get("duration", 0) < 5:
+        score += 5.0
+    return score, rep, info

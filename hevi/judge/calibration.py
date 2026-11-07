@@ -7,13 +7,13 @@ from typing import Any
 from hevi.judge.pairwise import run_pairwise
 
 
-def calibrate(backend, pairs, *, work_dir=None) -> dict[str, Any]:
+def calibrate(backend, pairs, *, work_dir=None, expected_duration_s=None) -> dict[str, Any]:
     results = []
     wins = 0
     total = 0
     for old, new in pairs:
         total += 1
-        cmp = run_pairwise(backend, old, new, work_dir=work_dir)
+        cmp = run_pairwise(backend, old, new, work_dir=work_dir, expected_duration_s=expected_duration_s)
         ok = cmp.winner == "B" and cmp.consistent
         if ok:
             wins += 1

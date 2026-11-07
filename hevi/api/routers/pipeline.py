@@ -173,6 +173,8 @@ async def generate_unified(
     cfg = body.config
     options = _fuse_generate_options(body.source_channel, cfg)
     options["adapter_type"] = body.adapter_type
+    options["judge"] = bool(cfg.judge)
+    options["judge_backend"] = cfg.judge_backend
     try:
         task = await svc.create_production(
             ProductionRequest(
