@@ -161,6 +161,11 @@ class ZeroLineRequest:
             errors.append(f"unsupported language {self.lang!r} (zh|en)")
         if any(not t.strip() for t in self.texts):
             errors.append("empty narration line")
+        if self.lang == "zh":
+            import re as _re
+            for t in self.texts:
+                if _re.search(r"[A-Za-z]{2,}", t):
+                    errors.append(f"{self.line_id}: narration must be Chinese (no Latin letters): {t!r}")
         return errors
 
     def to_dict(self) -> dict[str, Any]:
@@ -208,7 +213,7 @@ def generate_script_lines(topic: str, *, lang: str = "zh", n: int = 4) -> tuple[
     return tuple(base[: max(1, n)])
 
 
-def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str = "zh") -> tuple[str, ...]:
+def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str = "zh", line_id: str = "") -> tuple[str, ...]:
     """Derive English b-roll queries from subject + scene + action.
 
     Subject/scene keywords are mapped to English stock-search terms; the result
@@ -234,6 +239,14 @@ def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str
         scene = "city skyline"
     elif "火" in t or "fire" in low:
         scene = "fire flames"
+    style_hint = {
+        "explainer": "close up detail",
+        "cinematic": "wide shot slow motion",
+        "director_pipeline": "medium shot storyboard",
+        "history_scene": "archival vintage",
+        "kinetic_promo": "dynamic motion",
+        "avatar_spokesperson": "presenter lower third",
+    }.get(line_id, "")
     candidates = [
         f"{subject} {scene}",
         f"{subject} {scene} close up",
@@ -241,6 +254,8 @@ def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str
         f"{scene} wide shot",
         f"{subject} portrait",
     ]
+    if style_hint:
+        candidates = [f"{c} {style_hint}" if style_hint not in c else c for c in candidates]
     # de-dupe while preserving order
     seen: set[str] = set()
     out: list[str] = []

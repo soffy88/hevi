@@ -111,8 +111,8 @@ def director_shot_list(
 
 
 #: caveman routine action beats (seconds) used to time character_animation lines
-CAVEMAN_BEATS = (0.6, 4.8, 7.8, 10.1)
-CAVEMAN_SECONDS = 12.0
+CAVEMAN_BEATS = (1.5, 12.0, 19.5, 25.25)
+CAVEMAN_SECONDS = 30.0
 
 
 def place_on_beats(durations: list[float], *, beats: tuple[float, ...] = CAVEMAN_BEATS, total: float = CAVEMAN_SECONDS) -> list[float]:

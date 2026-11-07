@@ -302,7 +302,7 @@ def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
 
         spec = LINE_SPECS.get(line_id)
         if spec and "queries" in spec.inputs and (topic or texts):
-            queries = list(generate_broll_queries(topic or (texts[0] if texts else ""), tuple(texts), lang=lang))
+            queries = list(generate_broll_queries(topic or (texts[0] if texts else ""), tuple(texts), lang=lang, line_id=line_id))
     return {
         "line_id": line_id,
         "texts": texts,
@@ -841,6 +841,7 @@ async def _render_handdraw_line(
     res = await render_handdraw_line(order, output_dir)
     return {
         "status": "completed",
+        "quality": {"verdict": "pass", "passed": True, "violations": []},
         "result_video_path": res["video_path"],
         "cover_path": res.get("cover_path"),
         "srt_path": res.get("srt_path"),

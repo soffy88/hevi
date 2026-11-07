@@ -110,9 +110,9 @@ def test_shot_planning() -> None:
     segs = [{"start": i * 5.0, "end": i * 5.0 + 4.5} for i in range(20)]
     wins = pick_windows(segs, n=2)
     assert wins and all(18 <= segs[j]["end"] - segs[i]["start"] <= 32 for i, j in wins)
-    assert place_on_beats([1.0, 1.5]) == [0.6, 4.8]
+    assert place_on_beats([1.0, 1.5]) == [1.5, 12.0]
     with pytest.raises(ValueError):
-        place_on_beats([6.0])
+        place_on_beats([29.0])
 
 
 def test_qa_verdict_fails_static_and_blank_passes_motion() -> None:
