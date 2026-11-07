@@ -42,8 +42,8 @@ def request_from_input(input_data: dict[str, Any]) -> ZeroLineRequest:
     lang = str(input_data.get("lang") or "zh")
     texts_raw = tup("texts")
     texts = tuple(str(t).strip() for t in texts_raw) if texts_raw else ()
-    if not texts and topic and line_id == "kinetic_promo":
-        texts = generate_script_lines(topic, lang=lang)
+    if not texts and topic:
+        texts = generate_script_lines(topic, lang=lang, line_id=line_id)
     queries_raw = tup("queries")
     queries = tuple(str(q).strip() for q in queries_raw) if queries_raw else ()
     spec = None

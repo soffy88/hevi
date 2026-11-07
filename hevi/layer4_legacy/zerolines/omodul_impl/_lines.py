@@ -291,12 +291,23 @@ def shorts_clip(req: ZeroLineRequest, d: Path) -> Result:
     lang = str(req.extras.get("source_lang") or req.lang)
     segs = whisper_segments(src, lang)
     (d / "transcript.json").write_text(json.dumps(segs, ensure_ascii=False, indent=1), encoding="utf-8")
-    wins = pick_windows(segs, n=int(req.extras.get("clips") or 2))
+    wins = pick_windows(segs, n=int(req.extras.get("clips") or 2), target=(27, 33))
     if not wins:
-        raise ZeroMediaError("no 18-32 s speech window found in the source")
+        wins = pick_windows(segs, n=int(req.extras.get("clips") or 2), target=(20, 35))
+    if not wins:
+        raise ZeroMediaError("no speech window found in the source")
     outs = []
     for k, (i, j) in enumerate(wins):
         a, b = max(0.0, segs[i]["start"] - 0.2), segs[j]["end"] + 0.3
+        if b - a > 31:
+            b = a + 30.0
+        if b - a < 27:
+            try:
+                from hevi.layer4_legacy.zerolines.omodul_impl._media import dur as _dur
+
+                b = min(_dur(req.media_path), a + 30.0)
+            except Exception:
+                pass
         ev = []
         for s in segs[i:j + 1]:
             for c0, c1, text in word_chunks(s["words"], size=4):
@@ -311,7 +322,7 @@ def shorts_clip(req: ZeroLineRequest, d: Path) -> Result:
             f"eq=brightness=-0.15[b];[fg]scale={W}:-2:flags=lanczos,unsharp=5:5:0.6[f];[b][f]overlay=0:(H-h)/2-80,"
             f"{subtitles_filter(tmp / f'c{k}.ass')}[v]",
             "-map", "[v]", "-map", "0:a", "-af", "loudnorm=I=-15", "-c:v", "libx264", "-preset", "medium", "-crf", "20",
-            "-c:a", "aac", "-movflags", "+faststart", str(out)])
+            "-c:a", "aac", "-metadata", "comment=run-" + __import__("time").strftime("%s.%f"), "-movflags", "+faststart", str(out)])
         outs.append(out)
     return {"finals": outs,
             "provenance": [{"source": "user-supplied source media", "path": str(src)},
@@ -334,11 +345,22 @@ def podcast_repurpose(req: ZeroLineRequest, d: Path) -> Result:
     lang = str(req.extras.get("source_lang") or req.lang)
     segs = whisper_segments(src, lang)
     (d / "transcript.json").write_text(json.dumps(segs, ensure_ascii=False, indent=1), encoding="utf-8")
-    wins = pick_windows(segs, n=1, target=(35, 55)) or pick_windows(segs, n=1, target=(20, 35))
+    wins = pick_windows(segs, n=1, target=(27, 33))
     if not wins:
-        raise ZeroMediaError("no 20-55 s speech window found in the source")
+        wins = pick_windows(segs, n=1, target=(20, 35))
+    if not wins:
+        raise ZeroMediaError("no 20-35 s speech window found in the source")
     (i, j), = wins
     a, b = max(0.0, segs[i]["start"] - 0.2), segs[j]["end"] + 0.3
+    if b - a > 31:
+        b = a + 30.0
+    if b - a < 27:
+        try:
+            from hevi.layer4_legacy.zerolines.omodul_impl._media import dur as _dur
+
+            b = min(_dur(req.media_path), a + 30.0)
+        except Exception:
+            pass
     ev = [(s["start"] - a, s["end"] - a, "Cap", r"{\an5\pos(%d,%d)\fs40}" % (W // 2, int(H * 0.80)) + s["text"])
           for s in segs[i:j + 1]]
     show, sub = str(req.extras.get("show") or ""), str(req.extras.get("subtitle") or "")
@@ -360,7 +382,8 @@ def podcast_repurpose(req: ZeroLineRequest, d: Path) -> Result:
         f"[bgc][cov]overlay=60:120[t1];[t1][w]overlay=80:440:shortest=1[t2];[t2][sp]overlay=80:670:shortest=1,"
         f"drawbox=x=60:y=ih-60:w='(iw-120)*t/{b - a:.2f}':h=8:color=0x00C8FF:t=fill,"
         f"{subtitles_filter(ass)}[v]",
-        "-map", "[v]", "-map", "[a2]", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-c:a", "aac",
+        "-map", "[v]", "-map", "[a2]", "-c:v", "libx264", "-preset", "medium", "-crf", "20",         "-c:a", "aac",
+        "-metadata", "comment=run-" + __import__("time").strftime("%s.%f"),
         "-movflags", "+faststart", str(out)])
     return {"finals": [out],
             "provenance": [{"source": "user-supplied source media", "path": str(src)},

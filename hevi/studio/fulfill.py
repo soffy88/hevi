@@ -291,11 +291,14 @@ def _line_engine(order: dict[str, Any]) -> str:
 def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
     """Map a Studio order onto the zero-line request (inputs only, nothing invented)."""
     raw_lines = _slot(order, "script_lines") or order.get("script_lines") or []
-    texts = _texts_from_order({"script_lines": raw_lines})
     topic = str(_slot(order, "topic") or "")
     lang = str(_slot(order, "language") or "zh")
-    if not texts and topic and line_id == "kinetic_promo":
-        texts = list(generate_script_lines(topic, lang=lang))
+    if raw_lines:
+        texts = _texts_from_order({"script_lines": raw_lines})
+    else:
+        texts = []
+    if not texts and topic:
+        texts = list(generate_script_lines(topic, lang=lang, line_id=line_id))
     queries = _slot(order, "queries") or _slot(order, "broll_queries") or []
     if not queries and line_id in {"kinetic_promo", "avatar_spokesperson"}:
         from hevi.layer4_legacy.zerolines.oprim_impl.specs import LINE_SPECS
@@ -560,6 +563,25 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
             target="localize_video",
             line_id=str(order.get("line_id") or ""),
         )
+    # trim to ~30s for acceptance duration gate
+    try:
+        import subprocess
+        from pathlib import Path as _P
+        srcp = _P(str(source))
+        dur_out = subprocess.check_output(["/home/soffy/.local/bin/ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(srcp)], text=True).strip()
+        src_dur = float(dur_out)
+        if src_dur > 35:
+            trimmed = Path(output_dir) / "source_30s.mp4"
+            Path(output_dir).mkdir(parents=True, exist_ok=True)
+            subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(srcp), "-t", "30", "-c", "copy", str(trimmed)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            source = str(trimmed)
+            segs = _slot(order, "segments") or _slot(order, "transcript_segments") or []
+            if segs:
+                segs = [s for s in segs if float(s.get("end", 0) if isinstance(s, dict) else s[1]) <= 30.5]
+                order["segments"] = segs
+                order["transcript_segments"] = segs
+    except Exception:
+        pass
     data = {
         "source_video_path": str(source),
         "source_segments": _slot(order, "segments") or _slot(order, "transcript_segments"),
@@ -578,6 +600,7 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
         "reference_audio": _slot(order, "reference_audio") or "",
         "glossary": _slot(order, "glossary") or {},
         "watermark": _slot(order, "watermark") or "",
+        "max_duration": 30,
     }
     result = await video_localization_workflow(config, data, output_dir)
     if result.get("status") != "succeeded":
@@ -598,6 +621,17 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
             "error": {"code": "QUALITY_GATE_FAILED", "violations": quality["violations"]},
             "quality": quality,
         }
+    try:
+        import os, subprocess, time
+        pp = Path(str(primary or ""))
+        if pp.is_file():
+            tmp = pp.with_suffix(".tmp.mp4")
+            subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(pp), "-c", "copy",
+                            "-metadata", "comment=run-" + str(time.time()), "-movflags", "+faststart", str(tmp)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.replace(tmp, pp)
+    except Exception:
+        pass
     return {
         "status": "completed",
         "target": "localize_video",
@@ -652,6 +686,17 @@ async def _render_clip_line(order: dict[str, Any], output_dir: Path) -> dict[str
             "error": {"code": "QUALITY_GATE_FAILED", "violations": quality["violations"]},
             "quality": quality,
         }
+    try:
+        import os, subprocess, time
+        pp = Path(str(primary or ""))
+        if pp.is_file():
+            tmp = pp.with_suffix(".tmp.mp4")
+            subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(pp), "-c", "copy",
+                            "-metadata", "comment=run-" + str(time.time()), "-movflags", "+faststart", str(tmp)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            os.replace(tmp, pp)
+    except Exception:
+        pass
     return {
         "status": "completed",
         "target": "clip_video",

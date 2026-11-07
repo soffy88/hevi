@@ -7,6 +7,7 @@ omodul transaction measures the rendered MP4 and compares it with these.
 
 from __future__ import annotations
 
+import os
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -187,29 +188,166 @@ def resolve_engine(*, line_id: str, slot_engine: Any = None, env_engine: Any = N
     return chosen
 
 
-def generate_script_lines(topic: str, *, lang: str = "zh", n: int = 4) -> tuple[str, ...]:
-    """Deterministic per-topic narration fallback (line-agnostic skeleton).
+_LINE_SCRIPT_TEMPLATES: dict[str, list[str]] = {
+    "kinetic_promo": [
+        "{topic}，三秒抓住你的眼球！",
+        "看这个节奏：画面、字幕、音乐一起动起来。",
+        "别眨眼，高潮马上到来。",
+        "现在就去试试，别错过。",
+    ],
+    "explainer": [
+        "今天我们用{topic}讲清楚一个概念。",
+        "先说它是什么，以及为什么值得关注。",
+        "再看一个值得记住的具体细节。",
+        "最后，给你一个可以立刻用上的结论。",
+    ],
+    "cinematic": [
+        "海风拂过，{topic}在光影里慢慢展开。",
+        "镜头拉远，世界安静下来。",
+        "一个细节，藏着全部的答案。",
+        "故事结束，回声还在。",
+    ],
+    "director_pipeline": [
+        "镜头一：{topic}，全景建立空间。",
+        "镜头二：推进，聚焦关键动作。",
+        "镜头三：特写，揭示情绪。",
+        "镜头四：拉远，收束全片。",
+    ],
+    "history_scene": [
+        "在很久以前，{topic}就已留下痕迹。",
+        "档案与影像，还原那段时光。",
+        "细节之中，藏着历史的温度。",
+        "回望过去，理解现在。",
+    ],
+    "character_animation": [
+        "小角色登场：{topic}。",
+        "它跑向浪花，又停住脚步。",
+        "一个动作，胜过千言。",
+        "动画结束，微笑留下。",
+    ],
+    "talking_head": [
+        "大家好，今天我们聊聊{topic}。",
+        "我先给大家一个直观感受。",
+        "然后拆解其中的关键点。",
+        "希望对你有帮助，我们下期见。",
+    ],
+    "avatar_spokesperson": [
+        "欢迎收看本期节目，主题是{topic}。",
+        "我是你的主持人，带你深入了解。",
+        "接下来是三个要点。",
+        "感谢收看，记得关注。",
+    ],
+    "shorts_clip": [
+        "你绝对想不到{topic}的反应！",
+        "三秒高能，别划走。",
+        "这就是全部真相。",
+        "点赞关注，下期更精彩。",
+    ],
+    "podcast_repurpose": [
+        "今天我们请到嘉宾，聊聊{topic}。",
+        "先从一个故事开始。",
+        "中间穿插几段精彩对话。",
+        "最后总结给听众的启示。",
+    ],
+    "reference_adapt": [
+        "根据参考视频，我们重新演绎{topic}。",
+        "保留原节奏，换上新内容。",
+        "关键镜头重新编排。",
+        "成品更贴合你的需求。",
+    ],
+    "comic_narration": [
+        "第一格：{topic}登场。",
+        "第二格：发生意外。",
+        "第三格：反转来了。",
+        "第四格：结局出人意料。",
+    ],
+    "documentary_montage": [
+        "镜头记录{topic}的完整过程。",
+        "从准备到高潮，一气呵成。",
+        "每帧都是真实瞬间。",
+        "纪录片的温度，在细节里。",
+    ],
+    "localization_dub": [
+        "This is {topic} in a new voice.",
+        "We dub and subtitle for you.",
+        "Same story, new language.",
+        "Enjoy the localized version.",
+    ],
+    "handdraw": [
+        "从前有一只小家伙，第一次遇见{topic}。",
+        "画笔慢慢勾勒出海边的风景。",
+        "一笔一画，都是心意。",
+        "故事画完，梦还没醒。",
+    ],
+    "scene3d": [
+        "在三维场景中，{topic}立体呈现。",
+        "镜头环绕，空间感十足。",
+        "光影变化，突出主体。",
+        "渲染完成，所见即所得。",
+    ],
+}
 
-    Used when a request supplies only a topic.  Each line is short enough to
-    keep TTS durations sane and distinct enough to avoid template copy.
+
+def generate_script_lines(topic: str, *, lang: str = "zh", n: int = 4, line_id: str = "") -> tuple[str, ...]:
+    """Deterministic per-line narration fallback.
+
+    Used when a request supplies only a topic.  Each production line has its
+    own template (structure / tone / voice) so that the 16 lines never share
+    the same narration text.  ``line_id`` selects the template; unknown lines
+    fall back to a generic but line-salted skeleton.  A free LLM may be used
+    when ``HEVI_USE_FREE_LLM_SCRIPTS=1`` and a channel is available.
     """
     topic = (topic or "").strip()
     if not topic:
         return ()
-    if lang == "en":
-        base = [
-            f"Today we explore {topic}.",
-            "First, what it is and why it matters.",
-            "Then, one concrete detail worth remembering.",
-            "Finally, a takeaway you can use right away.",
-        ]
-    else:
-        base = [
-            f"今天，我们聊聊{topic}。",
-            "先说它是什么，以及为什么值得关注。",
-            "再看一个值得记住的具体细节。",
-            "最后，给你一个可以立刻用上的结论。",
-        ]
+    templates = None
+    if line_id and line_id in _LINE_SCRIPT_TEMPLATES:
+        templates = _LINE_SCRIPT_TEMPLATES[line_id]
+    if templates is None:
+        salt = line_id or "default"
+        if lang == "en":
+            templates = [
+                f"Today we explore {topic} ({salt}).",
+                "First, what it is and why it matters.",
+                "Then, one concrete detail worth remembering.",
+                "Finally, a takeaway you can use right away.",
+            ]
+        else:
+            templates = [
+                f"今天，我们聊聊{topic}（{salt}视角）。",
+                "先说它是什么，以及为什么值得关注。",
+                "再看一个值得记住的具体细节。",
+                "最后，给你一个可以立刻用上的结论。",
+            ]
+    if os.environ.get("HEVI_USE_FREE_LLM_SCRIPTS") == "1":
+        try:
+            import asyncio
+
+            from hevi.providers.free_llm import resolve_free_llm
+
+            _ch, caller = resolve_free_llm("auto")
+
+            async def _run():
+                style_hint = line_id or "generic"
+                prompt = (
+                    f"请为视频脚本写{n}句中文旁白，主题：{topic}，风格：{style_hint}。"
+                    "只输出JSON数组，不要其它文字。"
+                )
+                resp = await caller(messages=[{"role": "user", "content": prompt}], max_tokens=512)
+                import json as _json
+
+                content = resp.get("content", "")
+                arr = _json.loads(content.strip().strip("`").strip())
+                if isinstance(arr, list):
+                    return [str(x) for x in arr][:n]
+                return []
+
+            out = asyncio.run(asyncio.wait_for(_run(), timeout=8.0))
+            if out and len(out) >= max(1, n // 2):
+                return tuple(out[: max(1, n)])
+        except Exception:
+            pass
+    base = [t.format(topic=topic) for t in templates]
     return tuple(base[: max(1, n)])
 
 

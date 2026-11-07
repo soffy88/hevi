@@ -13,11 +13,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from difflib import SequenceMatcher
+
 from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
     LEGACY_ONLY_LINES,
     LINE_SPECS,
     ZERO_LINES,
     ZeroLineRequest,
+    generate_script_lines,
     resolve_engine,
 )
 from hevi.layer4_legacy.zerolines.oskill_impl.audio_math import mouth_series, rms_from_pcm, synth_bgm
@@ -364,3 +367,17 @@ def test_zero_line_briefs_fill_recipe_required_slots():
     for line, brief in briefs.items():
         assert line in recipes, line
         assert recipes[line].missing_slots(brief) == [], (line, recipes[line].missing_slots(brief))
+
+
+# ---------------------------------------------------------------- per-line distinct scripts
+def test_per_line_scripts_distinct() -> None:
+    topic = "橘猫看海"
+    all_lines = list(ZERO_LINES) + list(LEGACY_ONLY_LINES) + ["handdraw", "scene3d"]
+    scripts = {line: generate_script_lines(topic, line_id=line) for line in all_lines}
+    assert len(scripts) == 16
+    for line in all_lines:
+        assert scripts[line], line
+    for i, a in enumerate(all_lines):
+        for b in all_lines[i + 1 :]:
+            sim = SequenceMatcher(None, " ".join(scripts[a]), " ".join(scripts[b])).ratio()
+            assert sim < 0.6, (a, b, round(sim, 3))

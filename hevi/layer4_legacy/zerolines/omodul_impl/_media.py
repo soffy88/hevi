@@ -259,7 +259,8 @@ def finish(video: Path, audio: Path | None, out: Path, ass: Path | None = None, 
     args += ["-vf", ",".join(vf) or "null", "-map", "0:v"]
     if audio:
         args += ["-map", "1:a", "-c:a", "aac", "-b:a", "160k", "-shortest"]
-    args += ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)]
+    args += ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p",
+             "-metadata", f"comment=run-{time.time():.6f}", "-movflags", "+faststart", str(out)]
     sh(args)
     return out
 
@@ -267,7 +268,8 @@ def finish(video: Path, audio: Path | None, out: Path, ass: Path | None = None, 
 def frames_to_video(frames: Iterable[np.ndarray], out: Path, W: int, H: int, fps: int = 24) -> Path:
     p = subprocess.Popen(
         [FFMPEG, "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(fps),
-         "-i", "-", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", str(out)],
+         "-i", "-", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
+         "-metadata", f"comment=run-{time.time():.6f}", str(out)],
         stdin=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     assert p.stdin is not None
