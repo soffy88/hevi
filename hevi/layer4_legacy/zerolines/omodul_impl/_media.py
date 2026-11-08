@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import socket
 import subprocess
 import time
 import urllib.parse
@@ -257,9 +258,7 @@ def commons_image(query: str, *, width: int = 1280, exclude: set[str] | None = N
             "format": "json",
         }
         url = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode(params)
-        req = urllib.request.Request(url, headers={"User-Agent": "hevi-zerolines/1.0 (topic b-roll)"})
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            data = json.load(resp)
+        data = json.loads(_https_get(url, timeout=20, headers={"User-Agent": "hevi-zerolines/1.0 (topic b-roll)"}))
         search_json.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     pages = (data.get("query") or {}).get("pages") or {}
     for page in pages.values():
@@ -279,9 +278,9 @@ def commons_image(query: str, *, width: int = 1280, exclude: set[str] | None = N
         if not path.exists():
             part = path.with_suffix(path.suffix + ".part")
             try:
-                dreq = urllib.request.Request(link, headers={"User-Agent": "Mozilla/5.0"})
-                with urllib.request.urlopen(dreq, timeout=120) as r, open(part, "wb") as o:
-                    o.write(r.read())
+                blob = _https_get(link, timeout=120, headers={"User-Agent": "Mozilla/5.0"})
+                with open(part, "wb") as o:
+                    o.write(blob)
                 part.rename(path)
             except Exception:
                 part.unlink(missing_ok=True)
@@ -310,6 +309,33 @@ def still_shot(src: str | Path, out: Path, d: float, W: int, H: int, *, move: st
     return out
 
 
+def _https_get(url: str, *, timeout: float, headers: dict[str, str] | None = None) -> bytes:
+    """GET over HTTPS forcing IPv4 (some containers have AAAA records but no IPv6 route)."""
+    import http.client
+    import ssl
+
+    parsed = urllib.parse.urlparse(url)
+    host = parsed.hostname or ""
+    port = parsed.port or 443
+    infos = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+    sock = socket.create_connection(infos[0][4], timeout=timeout)
+    ctx = ssl.create_default_context()
+    ssock = ctx.wrap_socket(sock, server_hostname=host)
+    conn = http.client.HTTPSConnection(host, port, context=ctx)
+    conn.sock = ssock
+    path = parsed.path or "/"
+    if parsed.query:
+        path += "?" + parsed.query
+    conn.request("GET", path, headers=headers or {})
+    resp = conn.getresponse()
+    data = resp.read()
+    status = resp.status
+    conn.close()
+    if status >= 400:
+        raise ZeroMediaError(f"HTTPS {status} for {host}")
+    return data
+
+
 def translate_to_english(text: str, *, timeout: float = 6.0) -> str:
     """Free zh->en rendering of a topic for stock queries (no paid API).
 
@@ -335,9 +361,7 @@ def translate_to_english(text: str, *, timeout: float = 6.0) -> str:
             + urllib.parse.quote(text)
             + "&langpair=zh-CN%7Cen"
         )
-        req = urllib.request.Request(url, headers={"User-Agent": "hevi-zerolines"})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.load(resp)
+        data = json.loads(_https_get(url, timeout=timeout, headers={"User-Agent": "hevi-zerolines"}))
         out = html.unescape(str((data.get("responseData") or {}).get("translatedText") or "")).strip()
         # MyMemory sometimes echoes the query or returns an all-caps error string.
         if out and out.lower() != text.lower() and not out.isupper():
