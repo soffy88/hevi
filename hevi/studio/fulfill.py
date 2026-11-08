@@ -10,12 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
-    ZERO_LINES,
-    generate_broll_queries,
-    generate_script_lines,
-    resolve_engine,
-)
+from hevi.layer4_legacy.zerolines.oprim_impl.specs import ZERO_LINES, resolve_engine
 from hevi.production.artifacts import (
     Artifact,
     ArtifactManifest,
@@ -354,33 +349,68 @@ def _conform_duration(path: Path, target: float = 30.0, tol: float = 3.0) -> Non
 
 def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
     """Map a Studio order onto the zero-line request (inputs only, nothing invented)."""
-    raw_lines = _slot(order, "script_lines") or order.get("script_lines") or []
+    from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
+        LINE_SPECS,
+        _topic_subject,
+        generate_broll_queries,
+        generate_script_lines,
+    )
+
+    slots = order.get("slots") if isinstance(order.get("slots"), dict) else {}
+    user_lines = slots.get("script_lines") or slots.get("texts") or []
+    derived_lines = order.get("script_lines") or []
     topic = str(_slot(order, "topic") or "")
     lang = str(_slot(order, "language") or "zh")
-    if raw_lines:
-        texts = _texts_from_order({"script_lines": raw_lines})
-    else:
-        texts = []
+    texts = _texts_from_order({"script_lines": user_lines}) if user_lines else []
     if not texts and topic:
-        texts = list(generate_script_lines(topic, lang=lang, line_id=line_id))
+        # 30 s product: 7 narration lines for b-roll lines, 4 action-beat lines
+        # for the fixed 30 s puppet scene.  A per-line template beats the
+        # generic script.quick skeleton for these product lines; a caller that
+        # supplied script_lines/texts still wins.
+        n = 4 if line_id == "character_animation" else 7
+        texts = list(generate_script_lines(topic, lang=lang, line_id=line_id, n=n))
+    elif not texts and derived_lines:
+        texts = _texts_from_order({"script_lines": derived_lines})
     queries = _slot(order, "queries") or _slot(order, "broll_queries") or []
     media_path = str(
         _slot(order, "media_path") or _slot(order, "reference_path") or _slot(order, "source") or ""
     )
     offsets = _slot(order, "offsets") or []
 
+    spec = LINE_SPECS.get(line_id)
+    # Translate the topic once (free, cached) so stock queries are on-topic for
+    # arbitrary Chinese subjects instead of the old cat-on-a-beach default.
+    subject_hint = _topic_subject(topic) if topic else ""
+    if topic and not subject_hint and spec is not None and "queries" in spec.inputs:
+        from hevi.layer4_legacy.zerolines.omodul_impl._media import translate_to_english
+
+        subject_hint = translate_to_english(topic)
+
     # Every line whose spec requires ``queries`` derives them from the topic /
     # script; asking the public API caller for internal b-roll strings made 13 of
     # 18 lines unusable in S8.  An explicit ``queries`` slot still wins.
-    from hevi.layer4_legacy.zerolines.oprim_impl.specs import LINE_SPECS
-
-    spec = LINE_SPECS.get(line_id)
     if spec is not None and "queries" in spec.inputs and not queries and (topic or texts):
         queries = list(
             generate_broll_queries(
-                topic or (texts[0] if texts else ""), tuple(texts), lang=lang, line_id=line_id
+                topic or (texts[0] if texts else ""),
+                tuple(texts),
+                lang=lang,
+                line_id=line_id,
+                subject_hint=subject_hint,
             )
         )
+
+    # reference_adapt is the one line whose product is "re-cut a reference".
+    # With only a topic there is no user reference, so fetch a free stock clip
+    # as the reference (provenance is recorded) instead of blocking the order.
+    if line_id == "reference_adapt" and not media_path and (topic or texts):
+        from hevi.layer4_legacy.zerolines.omodul_impl._media import pexels
+
+        ref_query = (queries[0] if queries else subject_hint or topic or "cinematic landscape")
+        ref = pexels(ref_query, orientation="portrait", min_d=6)
+        media_path = str(ref["path"])
+        order = {**order, "reference_source": "pexels", "reference_query": ref_query}
+
     # reference_adapt needs one offset per narration line; when the caller only
     # supplies a reference + topic, spread the new sentences over its duration.
     if spec is not None and "offsets" in spec.inputs and media_path and texts and not offsets:
@@ -388,17 +418,31 @@ def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
         if total > 0:
             step = total / len(texts)
             offsets = [round(i * step, 3) for i in range(len(texts))]
+
+    labels = _slot(order, "labels") or []
+    if not labels and line_id == "history_scene":
+        labels = ["缘起", "档案", "影像", "器物", "街巷", "拼合", "回望"]
+    elif not labels and line_id == "explainer":
+        labels = ["概念", "背景", "拆解", "细节", "证据", "对照", "结论"]
+
+    title = str(_slot(order, "title") or "").strip() or topic[:18]
     return {
         "line_id": line_id,
         "texts": texts,
         "queries": queries,
         "topic": topic,
-        "title": str(_slot(order, "title") or ""),
+        "title": title,
         "lang": lang,
         "media_path": media_path,
         "offsets": offsets,
-        "labels": _slot(order, "labels") or [],
-        "extras": _slot(order, "zero_extras") or {},
+        "labels": labels,
+        "extras": {
+            **(_slot(order, "zero_extras") or {}),
+            **({"subject_hint": subject_hint} if subject_hint else {}),
+            **({"reference_source": order.get("reference_source"),
+                "reference_query": order.get("reference_query")}
+               if order.get("reference_source") else {}),
+        },
     }
 
 
@@ -425,6 +469,10 @@ async def _render_zero_line(order: dict[str, Any], output_dir: Path) -> dict[str
                         "checks": {"zero_line_qa": out.get("qa") or []}},
         }
     finals = [Path(p) for p in out["finals"]]
+    # Product spec: 9:16, 30 s ±3 s.  Producers aim at 30 s; this is the
+    # measured safety net (same conform used by the source-media lines).
+    for _p in finals:
+        _conform_duration(_p, float(_slot(order, "duration_s") or 30.0))
     manifest, quality = await _verified_video_manifest(
         [(p, i == 0, "video" if i == 0 else f"video_{i + 1}") for i, p in enumerate(finals)],
         require_audio=True,

@@ -16,7 +16,18 @@ SUPPORTED_RENDER_RUNTIMES = ("remotion", "hyperframes", "ffmpeg", "handdraw", "z
 
 # 首发线白名单（S9）。只有这些线对外可见/可下单；其余标 internal（内测）。
 # 后端可切换：HEVI_LAUNCH_LINES="a,b,c"；HEVI_LAUNCH_STRICT=1 时非白名单线直接拒绝。
-DEFAULT_LAUNCH_LINES = ("collage_broll", "koubo_cut")
+DEFAULT_LAUNCH_LINES = (
+    "collage_broll",
+    "koubo_cut",
+    # S11: zero-engine lines verified at 9:16 / 30 s / audio, quality >= 4
+    "explainer",
+    "talking_head",
+    "history_scene",
+    "cinematic",
+    "avatar_spokesperson",
+    "kinetic_promo",
+    "director_pipeline",
+)
 
 
 def launch_lines() -> tuple[str, ...]:

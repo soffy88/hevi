@@ -228,6 +228,126 @@ def pexels(query: str, *, orientation: str = "landscape", min_d: float = 4, excl
 
 
 # ---------------------------------------------------------------- shots / assembly
+def commons_image(query: str, *, width: int = 1280, exclude: set[str] | None = None) -> dict[str, Any]:
+    """One free Wikimedia Commons still for a topic (fallback for thin stock).
+
+    Commons has deep coverage of historical/art subjects where Pexels video is
+    thin.  License + author are returned so the renderer can log provenance.
+    """
+    key = hashlib.sha256(f"commons|{query}|{width}".encode()).hexdigest()[:16]
+    cache_dir = CACHE / "commons"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    search_json = cache_dir / f"search_{key}.json"
+    data = None
+    if search_json.exists():
+        try:
+            data = json.loads(search_json.read_text(encoding="utf-8"))
+        except Exception:
+            data = None
+    if data is None:
+        params = {
+            "action": "query",
+            "generator": "search",
+            "gsrsearch": f"{query} filetype:bitmap",
+            "gsrnamespace": "6",
+            "gsrlimit": "12",
+            "prop": "imageinfo",
+            "iiprop": "url|extmetadata|mime",
+            "iiurlwidth": str(width),
+            "format": "json",
+        }
+        url = "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url, headers={"User-Agent": "hevi-zerolines/1.0 (topic b-roll)"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.load(resp)
+        search_json.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    pages = (data.get("query") or {}).get("pages") or {}
+    for page in pages.values():
+        info = (page.get("imageinfo") or [{}])[0]
+        mime = str(info.get("mime") or "")
+        if mime not in ("image/jpeg", "image/png", "image/webp"):
+            continue
+        title = str(page.get("title") or "")
+        if exclude and title in exclude:
+            continue
+        link = str(info.get("thumburl") or info.get("url") or "")
+        if not link:
+            continue
+        ext = ".jpg" if mime == "image/jpeg" else (".png" if mime == "image/png" else ".webp")
+        fname = "commons_" + hashlib.sha256(link.encode()).hexdigest()[:16] + ext
+        path = cache_dir / fname
+        if not path.exists():
+            part = path.with_suffix(path.suffix + ".part")
+            try:
+                dreq = urllib.request.Request(link, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(dreq, timeout=120) as r, open(part, "wb") as o:
+                    o.write(r.read())
+                part.rename(path)
+            except Exception:
+                part.unlink(missing_ok=True)
+                continue
+        meta = info.get("extmetadata") or {}
+
+        def _m(name: str, _meta: dict = meta) -> str:
+            import html as _html
+            return _html.unescape(str((_meta.get(name) or {}).get("value") or ""))
+        if exclude is not None:
+            exclude.add(title)
+        return {
+            "source": "wikimedia_commons", "query": query, "title": title,
+            "page": (info.get("descriptionurl") or ""), "author": _m("Artist"),
+            "licence": _m("LicenseShortName"), "path": str(path),
+        }
+    raise ZeroMediaError(f"commons: no usable image for {query!r}")
+
+
+def still_shot(src: str | Path, out: Path, d: float, W: int, H: int, *, move: str = "push",
+               grade: str = "", fps: int = 30) -> Path:
+    """Animate a still (Ken Burns) into a fixed-size clip."""
+    vf = camera_filter(move=move, d=d, width=W, height=H, fps=fps, grade=grade)
+    sh([FFMPEG, "-y", "-v", "error", "-loop", "1", "-i", str(src), "-t", f"{d:.3f}", "-vf", vf,
+        "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-r", str(fps), str(out)])
+    return out
+
+
+def translate_to_english(text: str, *, timeout: float = 6.0) -> str:
+    """Free zh->en rendering of a topic for stock queries (no paid API).
+
+    Cached on disk; returns "" on any error so the caller can fall back to the
+    keyword map / neutral visuals instead of failing the render.
+    """
+    import html
+
+    text = (text or "").strip()
+    if not text:
+        return ""
+    if all(ord(ch) < 128 for ch in text):
+        return text
+    key = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    cache_dir = CACHE / "translate"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cached = cache_dir / f"{key}.txt"
+    if cached.exists():
+        return cached.read_text(encoding="utf-8").strip()
+    try:
+        url = (
+            "https://api.mymemory.translated.net/get?q="
+            + urllib.parse.quote(text)
+            + "&langpair=zh-CN%7Cen"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "hevi-zerolines"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.load(resp)
+        out = html.unescape(str((data.get("responseData") or {}).get("translatedText") or "")).strip()
+        # MyMemory sometimes echoes the query or returns an all-caps error string.
+        if out and out.lower() != text.lower() and not out.isupper():
+            cached.write_text(out, encoding="utf-8")
+            return out
+    except Exception:
+        pass
+    return ""
+
+
 def shot(src: str | Path, out: Path, d: float, W: int, H: int, *, ss: float | None = None, move: str = "push",
          grade: str = "", fps: int = 30) -> Path:
     sd = dur(src)

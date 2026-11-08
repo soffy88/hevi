@@ -44,7 +44,8 @@ def test_twelve_zero_lines_and_two_legacy_only() -> None:
     from hevi.studio.production_catalog import CANONICAL_LINES
 
     assert len(ZERO_LINES) == 12 and set(ZERO_LINES) == set(LINE_SPECS)
-    assert set(ZERO_LINES) | set(LEGACY_ONLY_LINES) == set(CANONICAL_LINES)
+    # koubo_cut has its own (non-zero) renderer and is listed in the canonical catalog separately.
+    assert set(ZERO_LINES) | set(LEGACY_ONLY_LINES) | {"koubo_cut"} == set(CANONICAL_LINES)
     assert not set(ZERO_LINES) & set(LEGACY_ONLY_LINES)
 
 
@@ -316,7 +317,7 @@ def test_character_animation_real_render(tmp_path: Path) -> None:
     out = zero_line_workflow({}, {"line_id": "character_animation", "texts": ["他走向洞口。", "火把点亮了。"]}, tmp_path)
     assert out["status"] == "succeeded", out["reason"]
     qa = out["qa"][0]
-    assert qa["resolution"] == "1280x720" and qa["duration"] >= 11.5 and qa["pass"]
+    assert qa["resolution"] == "720x1280" and qa["duration"] >= 29.0 and qa["pass"]
     assert Path(qa["contact_sheet"]).is_file()
 
 

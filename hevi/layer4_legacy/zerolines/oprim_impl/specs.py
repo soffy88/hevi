@@ -63,41 +63,41 @@ _DEF = QAThresholds()
 
 LINE_SPECS: dict[str, ZeroLineSpec] = {
     "kinetic_promo": ZeroLineSpec(
-        "kinetic_promo", 1280, 720, ("texts", "queries"),
+        "kinetic_promo", 720, 1280, ("texts", "queries"),
         description="stock b-roll + per-clause kinetic typography (ASS transforms) + bright BGM",
     ),
     "explainer": ZeroLineSpec(
-        "explainer", 1280, 720, ("texts", "queries"),
+        "explainer", 720, 1280, ("texts", "queries"),
         description="one stock shot per narration line, numbered headings, captions",
     ),
     "cinematic": ZeroLineSpec(
-        "cinematic", 1280, 720, ("texts", "queries"),
+        "cinematic", 720, 1280, ("texts", "queries"),
         # letterbox bars (2 x 12% of height) + night grade: black frames are by design,
         # so the black-frame ceiling is raised to 0.25 (still gated), dark-card stays 0.5
         qa=QAThresholds(max_black_ratio=0.25),
         description="graded letterboxed b-roll film, slower read, title card",
     ),
     "director_pipeline": ZeroLineSpec(
-        "director_pipeline", 1280, 720, ("texts", "queries"),
+        "director_pipeline", 720, 1280, ("texts", "queries"),
         description="rule-based director: beat -> shot spec (size/camera/query) -> assembly; writes shot_list.json",
     ),
     "history_scene": ZeroLineSpec(
-        "history_scene", 1280, 720, ("texts", "queries"),
+        "history_scene", 720, 1280, ("texts", "queries"),
         description="archival-graded b-roll, year/label lower-thirds",
     ),
     "character_animation": ZeroLineSpec(
-        "character_animation", 1280, 720, ("texts",),
+        "character_animation", 720, 1280, ("texts",),
         qa=QAThresholds(min_motion=0.4, min_duration_s=8.0),
         max_texts=4,
         description="procedural 2D caveman (PIL): walk, crouch+pick stone, light torch, turn; lines timed to actions",
     ),
     "talking_head": ZeroLineSpec(
-        "talking_head", 1280, 720, ("texts",),
+        "talking_head", 720, 1280, ("texts",),
         qa=QAThresholds(min_motion=0.3),
         description="2D illustrated presenter, mouth driven by VO RMS (5 visemes); not a photoreal avatar",
     ),
     "avatar_spokesperson": ZeroLineSpec(
-        "avatar_spokesperson", 1280, 720, ("texts", "queries"),
+        "avatar_spokesperson", 720, 1280, ("texts", "queries"),
         description="stock b-roll + circular 2D presenter PiP (RMS lip-sync) + lower third + CTA card",
     ),
     "shorts_clip": ZeroLineSpec(
@@ -113,7 +113,7 @@ LINE_SPECS: dict[str, ZeroLineSpec] = {
         description="audiogram: cover + live waveform + captions + progress bar",
     ),
     "reference_adapt": ZeroLineSpec(
-        "reference_adapt", 1280, 720, ("media_path", "texts", "offsets"),
+        "reference_adapt", 720, 1280, ("media_path", "texts", "offsets"),
         # orbital night passes in the reference are legitimately black
         qa=QAThresholds(max_black_ratio=0.35),
         description="re-structured reference segments + new narration, grade, moves, transitions",
@@ -191,50 +191,74 @@ def resolve_engine(*, line_id: str, slot_engine: Any = None, env_engine: Any = N
 _LINE_SCRIPT_TEMPLATES: dict[str, list[str]] = {
     "kinetic_promo": [
         "{topic}，三秒抓住你的眼球！",
-        "看这个节奏：画面、字幕、音乐一起动起来。",
-        "别眨眼，高潮马上到来。",
+        "节奏拉满，画面跟着鼓点跳。",
+        "字幕炸开，信息一秒到位。",
+        "别眨眼，高潮就在下一拍。",
+        "快切、推进、再来一个特写。",
+        "记住这个名字，也记住这个瞬间。",
         "现在就去试试，别错过。",
     ],
     "explainer": [
         "今天我们用{topic}讲清楚一个概念。",
         "先说它是什么，以及为什么值得关注。",
+        "把复杂的问题，拆成几个清楚的步骤。",
         "再看一个值得记住的具体细节。",
+        "数据和例子，会让抽象变得具体。",
+        "其中也有容易被忽略的反面。",
         "最后，给你一个可以立刻用上的结论。",
     ],
     "cinematic": [
-        "海风拂过，{topic}在光影里慢慢展开。",
-        "镜头拉远，世界安静下来。",
-        "一个细节，藏着全部的答案。",
+        "{topic}，在光影里慢慢展开。",
+        "风从远处吹来，世界安静下来。",
+        "镜头贴着呼吸，缓慢向前推进。",
+        "一个眼神，藏着没有说出口的话。",
+        "光线落下，时间像被拉长。",
+        "远方的轮廓，终于显出行迹。",
         "故事结束，回声还在。",
     ],
     "director_pipeline": [
-        "镜头一：{topic}，全景建立空间。",
-        "镜头二：推进，聚焦关键动作。",
-        "镜头三：特写，揭示情绪。",
-        "镜头四：拉远，收束全片。",
+        "第一场：{topic}，全景建立空间。",
+        "第二场：中景推进，交代人物关系。",
+        "第三场：特写，捕捉手上的细节。",
+        "第四场：横向移动，带出环境。",
+        "第五场：俯拍，压住整体节奏。",
+        "第六场：拉远，留出呼吸。",
+        "最后一场：收束全片，停在一个空镜。",
     ],
     "history_scene": [
-        "在很久以前，{topic}就已留下痕迹。",
-        "档案与影像，还原那段时光。",
-        "细节之中，藏着历史的温度。",
-        "回望过去，理解现在。",
+        "很久以前，{topic}已经留下痕迹。",
+        "档案里的纸页，记下了当时的声音。",
+        "影像褪色，细节却还清楚。",
+        "一件器物，连着一段生活。",
+        "一条街巷，走过几代人的脚步。",
+        "把碎片拼起来，时间重新有了形状。",
+        "回望过去，是为了理解现在。",
     ],
     "character_animation": [
         "小角色登场：{topic}。",
-        "它跑向浪花，又停住脚步。",
-        "一个动作，胜过千言。",
+        "它先探出头，看看四周。",
+        "然后迈开步子，走向前面。",
+        "一个动作，胜过千言万语。",
+        "停下、转身、再抬手示意。",
+        "节奏跟着动作，一点点展开。",
         "动画结束，微笑留下。",
     ],
     "talking_head": [
         "大家好，今天我们聊聊{topic}。",
-        "我先给大家一个直观感受。",
-        "然后拆解其中的关键点。",
+        "我先给你一个直观的感受。",
+        "这件事，远比看上去复杂。",
+        "我们把它拆成三个关键点。",
+        "第一点，先看它的来龙去脉。",
+        "第二点，看看它影响了谁。",
         "希望对你有帮助，我们下期见。",
     ],
     "avatar_spokesperson": [
         "欢迎收看本期节目，主题是{topic}。",
         "我是你的主持人，带你深入了解。",
-        "接下来是三个要点。",
+        "今天的节目，准备了三个部分。",
+        "先看背景，再看现场。",
+        "接着请出两位当事人。",
+        "最后给出我们的观察。",
         "感谢收看，记得关注。",
     ],
     "shorts_clip": [
@@ -250,9 +274,12 @@ _LINE_SCRIPT_TEMPLATES: dict[str, list[str]] = {
         "最后总结给听众的启示。",
     ],
     "reference_adapt": [
-        "根据参考视频，我们重新演绎{topic}。",
-        "保留原节奏，换上新内容。",
-        "关键镜头重新编排。",
+        "参考镜头的节奏，我们重新演绎{topic}。",
+        "保留原来的运镜，换上新旁白。",
+        "关键画面重新排序，重点更清楚。",
+        "色调统一，字幕跟着语速走。",
+        "快的地方更快，慢的地方留白。",
+        "新的故事，仍沿用熟悉的骨架。",
         "成品更贴合你的需求。",
     ],
     "comic_narration": [
@@ -351,91 +378,113 @@ def generate_script_lines(topic: str, *, lang: str = "zh", n: int = 4, line_id: 
     return tuple(base[: max(1, n)])
 
 
-def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str = "zh", line_id: str = "") -> tuple[str, ...]:
-    """Derive English b-roll queries, differentiated by production line.
+def generate_broll_queries(
+    topic: str,
+    texts: tuple[str, ...] = (),
+    *,
+    lang: str = "zh",
+    line_id: str = "",
+    subject_hint: str = "",
+) -> tuple[str, ...]:
+    """Derive English b-roll queries from the topic, differentiated per line.
 
-    Each line uses a distinct retrieval strategy so that material overlap
-    between lines stays low (<=30% by clip id).
+    ``subject_hint`` is an optional English rendering of the topic (the IO layer
+    may translate it with a free service); when empty, ASCII topics are used
+    directly and a small keyword map covers the common Chinese subjects.  The
+    old hard-coded "orange tabby cat on a beach" default is gone: an unknown
+    topic gets neutral visual queries instead of off-topic cat footage.
     """
     t = (topic or "").strip()
-    low = t.lower()
-    subject = "orange tabby cat"
-    scene = "beach ocean waves"
-    if "橘猫" in t or "橙猫" in t or "orange cat" in low:
-        subject = "orange tabby cat"
-    elif "猫" in t or "cat" in low:
-        subject = "cat"
-    elif "狗" in t or "dog" in low:
-        subject = "dog"
-    if "海" in t or "ocean" in low or "sea" in low or "beach" in low:
-        scene = "beach ocean waves"
+    subject = subject_hint.strip()
+    if not subject:
+        subject = _topic_subject(t) or ("visual story" if not _is_ascii(t) else t)
+    subject = subject.strip(" .,;:!?，。；：！？") or "visual story"
 
     per_line = {
+        "kinetic_promo": [
+            f"{subject} dynamic motion",
+            f"{subject} fast action",
+            f"{subject} bright detail",
+            f"{subject} close up",
+            f"{subject} wide shot",
+            f"{subject} slow motion",
+            f"{subject} energy",
+            f"{subject} portrait",
+        ],
         "explainer": [
-            f"{subject} close up face",
-            f"{subject} paw on sand macro",
-            "ocean wave detail",
-            f"{subject} looking at sea close up",
-            "sunny beach shallow water",
-            f"{subject} eyes close up",
-            "beach sand texture",
+            f"{subject} close up",
+            f"{subject} detail",
+            f"{subject} wide shot",
+            f"{subject} texture",
+            f"{subject} macro",
+            f"{subject} in context",
+            f"{subject} background",
+            f"{subject} overview",
         ],
         "cinematic": [
-            "wide shot beach ocean horizon",
-            "slow motion wave cinematic",
-            "golden hour beach wide",
-            f"{subject} silhouette beach sunset",
-            "cinematic ocean aerial",
-            "beach dunes wide",
-            f"{subject} walking beach wide",
+            f"{subject} cinematic wide",
+            f"{subject} slow motion",
+            f"{subject} golden hour",
+            f"{subject} silhouette",
+            f"{subject} aerial",
+            f"{subject} detail",
+            f"{subject} atmosphere",
+            f"{subject} night",
         ],
         "director_pipeline": [
-            f"{subject} on beach medium shot",
-            "wave approaching shore",
-            f"{subject} paw prints sand",
-            "ocean horizon medium",
-            f"{subject} profile beach",
-            "beach landscape",
-            f"{subject} resting sand",
+            f"{subject} wide shot",
+            f"{subject} medium shot",
+            f"{subject} close up",
+            f"{subject} detail",
+            f"{subject} profile",
+            f"{subject} environment",
+            f"{subject} wide shot",
+            f"{subject} still",
         ],
         "history_scene": [
-            "vintage beach photo",
-            "old film ocean waves",
-            "archival cat photo",
-            "sepia beach scene",
-            "documentary ocean footage",
-            "retro beach",
-            "historical seaside",
-        ],
-        "kinetic_promo": [
-            f"{subject} dynamic motion beach",
-            "kinetic typography ocean",
-            f"{subject} running beach",
-            "fast wave splash",
-            f"{subject} portrait bright",
-            "beach action wide",
-            f"{subject} jump sand",
+            f"{subject} archival",
+            f"{subject} old film",
+            f"{subject} museum",
+            f"{subject} sepia",
+            f"{subject} document",
+            f"{subject} ancient",
+            f"{subject} wide shot",
+            f"{subject} archive",
         ],
         "avatar_spokesperson": [
-            f"{subject} presenter lower third",
-            "host on beach background",
-            f"{subject} speaking portrait",
-            "beach backdrop medium",
-            f"{subject} pip circle",
-            "ocean behind presenter",
-            f"{subject} gesture beach",
+            f"{subject} background",
+            f"{subject} studio",
+            f"{subject} workspace",
+            f"{subject} wide shot",
+            f"{subject} detail",
+            f"{subject} in context",
+            f"{subject} atmosphere",
+            f"{subject} close up",
+        ],
+        "reference_adapt": [
+            f"{subject} wide shot",
+            f"{subject} medium shot",
+            f"{subject} close up",
+            f"{subject} detail",
+            f"{subject} movement",
+            f"{subject} atmosphere",
+            f"{subject} still",
+            f"{subject} overview",
         ],
     }
-    if line_id in per_line:
-        candidates = per_line[line_id]
-    else:
-        candidates = [
-            f"{subject} {scene}",
-            f"{subject} {scene} close up",
-            f"{subject} looking at {scene.split()[0]}",
-            f"{scene} wide shot",
+    candidates = per_line.get(
+        line_id,
+        [
+            f"{subject} wide shot",
+            f"{subject} close up",
+            f"{subject} detail",
+            f"{subject} environment",
             f"{subject} portrait",
-        ]
+            f"{subject} overview",
+            f"{subject} still",
+            f"{subject} movement",
+        ],
+    )
     seen: set[str] = set()
     out: list[str] = []
     for q in candidates:
@@ -445,9 +494,48 @@ def generate_broll_queries(topic: str, texts: tuple[str, ...] = (), *, lang: str
     target = max(4, len(texts) or 0)
     i = 0
     while len(out) < target:
-        out.append(f"{subject} {scene} {i + 1}")
+        out.append(f"{subject} scene {i + 1}")
         i += 1
     return tuple(out[:target])
+
+
+#: common Chinese subject words -> English Pexels query (used when translation is unavailable)
+_TOPIC_MAP: tuple[tuple[str, str], ...] = (
+    ("橘猫", "orange tabby cat"), ("橙猫", "orange tabby cat"), ("猫", "cat"),
+    ("狗", "dog"), ("熊猫", "panda"), ("鸟", "bird"), ("海", "ocean waves"),
+    ("沙滩", "beach sand"), ("山", "mountain landscape"), ("森林", "forest"),
+    ("城市", "city skyline"), ("夜景", "city night"), ("街道", "street"),
+    ("敦煌", "Dunhuang murals"), ("壁画", "ancient mural"), ("故宫", "Forbidden City"),
+    ("长城", "Great Wall of China"), ("茶", "tea ceremony"), ("咖啡", "coffee"),
+    ("美食", "food cooking"), ("厨房", "kitchen cooking"), ("面", "noodles"),
+    ("量子", "quantum physics"), ("人工智能", "artificial intelligence"),
+    ("机器人", "robot"), ("芯片", "computer chip"), ("太空", "outer space"),
+    ("火箭", "rocket launch"), ("星球", "planet"), ("星空", "starry sky"),
+    ("历史", "history archive"), ("战争", "war history"), ("古", "ancient ruins"),
+    ("博物馆", "museum"), ("书法", "calligraphy"), ("绘画", "painting art"),
+    ("音乐", "music performance"), ("舞蹈", "dance"), ("电影", "cinema"),
+    ("运动", "sports action"), ("足球", "soccer"), ("篮球", "basketball"),
+    ("跑步", "running"), ("旅行", "travel landscape"), ("火车", "train"),
+    ("飞机", "airplane"), ("汽车", "car driving"), ("工厂", "factory"),
+    ("科技", "technology"), ("电脑", "computer"), ("手机", "smartphone"),
+    ("医疗", "medical hospital"), ("医生", "doctor"), ("学校", "school classroom"),
+    ("孩子", "children playing"), ("老人", "elderly people"), ("家庭", "family"),
+    ("花", "flowers"), ("雨", "rain"), ("雪", "snow"), ("风", "wind landscape"),
+    ("火", "fire"), ("光", "light abstract"), ("水", "water surface"),
+    ("树", "trees"), ("沙漠", "desert"), ("河", "river"), ("湖", "lake"),
+    ("建筑", "architecture"), ("桥", "bridge"), ("港口", "harbor"),
+    ("渔", "fishing boat"), ("农", "farm field"), ("稻田", "rice field"),
+)
+
+
+def _is_ascii(text: str) -> bool:
+    return bool(text) and all(ord(ch) < 128 for ch in text)
+
+
+def _topic_subject(topic: str) -> str:
+    """First matching keyword -> English subject; longest key wins."""
+    matches = [en for zh, en in _TOPIC_MAP if zh in topic]
+    return max(matches, key=len) if matches else ""
 
 
 def spec_for(line_id: str) -> ZeroLineSpec:

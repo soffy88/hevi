@@ -18,6 +18,7 @@ import numpy as np
 from hevi.layer4_legacy.zerolines.omodul_impl._media import (
     FFMPEG,
     ZeroMediaError,
+    commons_image,
     dur,
     finish,
     frames_to_video,
@@ -26,6 +27,7 @@ from hevi.layer4_legacy.zerolines.omodul_impl._media import (
     rms_envelope,
     sh,
     shot,
+    still_shot,
     subtitles_filter,
     tts_lines,
     whisper_segments,
@@ -65,18 +67,70 @@ def _write_ass(path: Path, W: int, H: int, events: list) -> Path:
     return path
 
 
+def _orient(W: int, H: int) -> str:
+    return "portrait" if H > W else "landscape"
+
+
+def _fit_lengths(lengths: list[float], xd: float, target: float = 30.0) -> list[float]:
+    """Grow the final shot so the assembled film reaches the 30 s product length.
+
+    The clip is stream-looped by ``shot`` when the source is shorter, so the
+    extra time keeps the camera move alive instead of freezing the last frame.
+    """
+    if not lengths:
+        return lengths
+    span = sum(lengths) - xd * (len(lengths) - 1)
+    if span < target:
+        lengths = list(lengths)
+        lengths[-1] += target - span
+    return lengths
+
+
+_ARCHIVAL_KEYS = (
+    "mural", "ancient", "dynasty", "history", "historic", "museum",
+    "archive", "cave", "temple", "traditional", "cultural", "art",
+)
+
+
+def _stills_args(req: ZeroLineRequest) -> tuple[str, int]:
+    """Commons stills for historical/art topics (thin stock video), else none."""
+    subject = str(req.extras.get("subject_hint") or req.topic or "").lower()
+    if any(k in subject for k in _ARCHIVAL_KEYS):
+        return (req.topic or (req.texts[0] if req.texts else "")), 1
+    return "", 0
+
+
 def _broll_film(req: ZeroLineRequest, tmp: Path, W: int, H: int, *, moves=None, grade: str = "", mood: str = "warm",
-                speed: float = 1.0, xd: float = 0.5):
-    """Narration line i is covered by stock shot i (shot length = line length)."""
+                speed: float = 1.0, xd: float = 0.5, stills_query: str = "", still_every: int = 3):
+    """Narration line i is covered by stock shot i (shot length = line length).
+
+    ``stills_query`` mixes free Wikimedia Commons stills (Ken Burns) into the
+    film: every ``still_every``th shot when >0.  Commons covers historical/art
+    subjects that stock video does not, so the film stays on-topic instead of
+    falling back to unrelated clips.
+    """
     vo, cues = tts_lines(list(req.texts), tmp / "vo", lang=req.lang, speed=speed)
-    total = dur(vo) + 1.2
     used: set[int] = set()
+    used_titles: set[str] = set()
     shots, prov = [], []
-    lengths = narration_shot_lengths(cues, xd=xd)
+    lengths = _fit_lengths(narration_shot_lengths(cues, xd=xd), xd)
+    total = sum(lengths) - xd * (len(lengths) - 1)
+    orient = _orient(W, H)
     for i, (seg, q) in enumerate(zip(lengths, req.queries, strict=False)):
-        src = pexels(q, min_d=4, exclude=used)
-        prov.append(_prov(src, f"shot {i + 1}"))
         mv = (moves or DEFAULT_MOVES)[i % len(moves or DEFAULT_MOVES)]
+        if stills_query and still_every > 0 and i % still_every == 0:
+            try:
+                img = commons_image(stills_query, width=max(W, H), exclude=used_titles)
+                prov.append({"source": "wikimedia_commons", "query": stills_query,
+                             "title": img["title"], "author": img.get("author", ""),
+                             "licence": img.get("licence", ""), "page": img.get("page", ""),
+                             "used_for": f"shot {i + 1}"})
+                shots.append(still_shot(img["path"], tmp / f"s{i}.mp4", seg, W, H, move=mv, grade=grade))
+                continue
+            except Exception:
+                pass  # thin Commons coverage: fall back to stock video
+        src = pexels(q, orientation=orient, min_d=4, exclude=used)
+        prov.append(_prov(src, f"shot {i + 1}"))
         shots.append(shot(src["path"], tmp / f"s{i}.mp4", seg, W, H, move=mv, grade=grade))
     film = xfade_concat(shots, tmp / "film.mp4", xd)
     audio = mix(vo, write_bgm(tmp / "bgm.wav", total + 1, mood), tmp / "mix.wav", total)
@@ -92,12 +146,27 @@ def kinetic_promo(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
     vo, cues = tts_lines(list(req.texts), tmp / "vo", lang=req.lang, speed=1.05)
-    total = max(10.0, dur(vo) + 1.5)
+    total = max(30.0, dur(vo) + 1.5)
     used: set[int] = set()
     seg = total / len(req.queries) + 0.4
     shots, prov = [], []
+    orient = _orient(W, H)
+    stills_query, still_every = _stills_args(req)
+    used_titles: set[str] = set()
     for i, q in enumerate(req.queries):
-        s = pexels(q, min_d=4, exclude=used)
+        if stills_query and still_every > 0 and i % still_every == 0:
+            try:
+                img = commons_image(stills_query, width=max(W, H), exclude=used_titles)
+                prov.append({"source": "wikimedia_commons", "query": stills_query,
+                             "title": img["title"], "author": img.get("author", ""),
+                             "licence": img.get("licence", ""), "used_for": f"shot {i + 1}"})
+                shots.append(still_shot(img["path"], tmp / f"s{i}.mp4", seg, W, H,
+                                        move=DEFAULT_MOVES[i % 4],
+                                        grade="eq=brightness=-0.04:saturation=1.15"))
+                continue
+            except Exception:
+                pass
+        s = pexels(q, orientation=orient, min_d=4, exclude=used)
         prov.append(_prov(s, f"shot {i + 1}"))
         shots.append(shot(s["path"], tmp / f"s{i}.mp4", seg, W, H, move=DEFAULT_MOVES[i % 4],
                           grade="eq=brightness=-0.04:saturation=1.15"))
@@ -126,7 +195,13 @@ def explainer(req: ZeroLineRequest, d: Path) -> Result:
         req = ZeroLineRequest(**{**req.to_dict(), "queries": tuple(extras["material_keywords"])})
     if isinstance(extras.get("script_rewrite"), str) and extras["script_rewrite"]:
         req = ZeroLineRequest(**{**req.to_dict(), "texts": (extras["script_rewrite"],)})
-    film, audio, cues, prov, _ = _broll_film(req, tmp, W, H, grade=grade, speed=speed, xd=xd)
+    # Historical/art subjects are thin on stock video but deep on Commons;
+    # modern subjects keep the livelier Pexels video.
+    stills_query, still_every = _stills_args(req)
+    film, audio, cues, prov, _ = _broll_film(
+        req, tmp, W, H, grade=grade, speed=speed, xd=xd,
+        stills_query=stills_query, still_every=still_every,
+    )
     ev = caption_events(cues)
     for (a, b, _), h in zip(cues, req.labels, strict=False):
         if h:
@@ -151,8 +226,10 @@ def cinematic(req: ZeroLineRequest, d: Path) -> Result:
         req = ZeroLineRequest(**{**req.to_dict(), "queries": tuple(extras["material_keywords"])})
     if isinstance(extras.get("script_rewrite"), str) and extras["script_rewrite"]:
         req = ZeroLineRequest(**{**req.to_dict(), "texts": (extras["script_rewrite"],)})
+    stills_query, still_every = _stills_args(req)
     film, audio, cues, prov, _ = _broll_film(req, tmp, W, H, moves=("push", "pan_r", "push", "pull", "pan_l"),
-                                             grade=grade, speed=speed, xd=xd)
+                                             grade=grade, speed=speed, xd=xd,
+                                             stills_query=stills_query, still_every=still_every)
     ev = caption_events(cues)
     if _title(req):
         ev = [(0.2, 3.2, "Title", r"{\fad(400,400)\blur1}" + _title(req))] + ev
@@ -174,12 +251,10 @@ def director_pipeline(req: ZeroLineRequest, d: Path) -> Result:
                                     ensure_ascii=False, indent=2), encoding="utf-8")
     driven = ZeroLineRequest(**{**req.to_dict(), "queries": tuple(s["query"] for s in plan),
                                 "texts": tuple(s["narration"] for s in plan)})
-    film, audio, cues, prov, _ = _broll_film(driven, tmp, W, H, moves=tuple(s["camera"] for s in plan), mood="bright")
-    ev = caption_events(cues) + [
-        (a, b, "Kicker", r"{\an9\pos(%d,40)\fs26\c&HFFFFFF&\alpha&H40&}SHOT %02d · %s · %s"
-         % (W - 40, i + 1, plan[i]["size"], plan[i]["camera"].upper()))
-        for i, (a, b, _) in enumerate(cues)
-    ]
+    stills_query, still_every = _stills_args(req)
+    film, audio, cues, prov, _ = _broll_film(driven, tmp, W, H, moves=tuple(s["camera"] for s in plan),
+                                             mood="bright", stills_query=stills_query, still_every=still_every)
+    ev = caption_events(cues)
     if _title(req):
         ev = [(0.2, 3.0, "Title", r"{\fad(400,400)}" + _title(req))] + ev
     ass = _write_ass(tmp / "dp.ass", W, H, ev)
@@ -193,7 +268,9 @@ def history_scene(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
     film, audio, cues, prov, _ = _broll_film(req, tmp, W, H, moves=("pull", "pan_r", "push", "push", "pan_l", "pull"),
-                                             grade="eq=saturation=0.8,colorbalance=rs=0.06:bs=-0.05")
+                                             grade="eq=saturation=0.8,colorbalance=rs=0.06:bs=-0.05",
+                                             stills_query=req.topic or (req.texts[0] if req.texts else ""),
+                                             still_every=1)
     ev = caption_events(cues) + [
         (a, b, "Lower", r"{\an7\pos(70,80)\fad(250,250)\fs56\c&H7FD7FF&}" + y)
         for (a, b, _), y in zip(cues, req.labels, strict=False) if y
@@ -232,8 +309,12 @@ def character_animation(req: ZeroLineRequest, d: Path) -> Result:
                      "lines start on the action beats"}
 
 
-def _presenter_video(tmp: Path, wav: Path, W: int, H: int, fps: int = 24, **kw: Any) -> Path:
+def _presenter_video(tmp: Path, wav: Path, W: int, H: int, fps: int = 24, seconds: float | None = None,
+                     **kw: Any) -> Path:
     mouth = mouth_series(rms_envelope(wav, fps))
+    if seconds:
+        n = max(1, int(seconds * fps))
+        mouth = list(mouth[:n]) + [0.0] * max(0, n - len(mouth))
     p = puppets.Presenter(W, H, **kw)
     return frames_to_video((np.asarray(p.frame(i, float(m), fps)) for i, m in enumerate(mouth)),
                            tmp / f"presenter_{W}x{H}.mp4", W, H, fps)
@@ -243,12 +324,12 @@ def talking_head(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
     vo, cues = tts_lines(list(req.texts), tmp / "vo", lang=req.lang)
-    pv = _presenter_video(tmp, vo, W, H)
-    total = dur(vo)
+    total = max(30.0, dur(vo) + 0.4)
+    pv = _presenter_video(tmp, vo, W, H, seconds=total)
     audio = mix(vo, write_bgm(tmp / "bgm.wav", total + 1, "warm"), tmp / "mix.wav", total, -26)
     ev = caption_events(cues)
     if _title(req):
-        ev.append((0.3, 4.5, "Lower", r"{\an1\fad(300,300)\fs34}" + _title(req)))
+        ev.append((0.3, 4.5, "Lower", r"{\an7\pos(60,80)\fad(300,300)\fs34}" + _title(req)))
     ass = _write_ass(tmp / "t.ass", W, H, ev)
     final = finish(pv, audio, d / f"{req.line_id}.mp4", ass)
     return {"finals": [final],
@@ -262,17 +343,31 @@ def avatar_spokesperson(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
     vo, cues = tts_lines(list(req.texts), tmp / "vo", lang=req.lang)
-    total = dur(vo) + 0.8
+    total = max(30.0, dur(vo) + 0.8)
     used: set[int] = set()
     seg = total / len(req.queries) + 0.5
     shots, prov = [], []
+    orient = _orient(W, H)
+    stills_query, still_every = _stills_args(req)
+    used_titles: set[str] = set()
     for i, q in enumerate(req.queries):
-        s = pexels(q, min_d=4, exclude=used)
+        if stills_query and still_every > 0 and i % still_every == 0:
+            try:
+                img = commons_image(stills_query, width=max(W, H), exclude=used_titles)
+                prov.append({"source": "wikimedia_commons", "query": stills_query,
+                             "title": img["title"], "author": img.get("author", ""),
+                             "licence": img.get("licence", ""), "used_for": f"shot {i + 1}"})
+                shots.append(still_shot(img["path"], tmp / f"s{i}.mp4", seg, W, H,
+                                        move=DEFAULT_MOVES[i % 4]))
+                continue
+            except Exception:
+                pass
+        s = pexels(q, orientation=orient, min_d=4, exclude=used)
         prov.append(_prov(s, f"shot {i + 1}"))
         shots.append(shot(s["path"], tmp / f"s{i}.mp4", seg, W, H, move=DEFAULT_MOVES[i % 4]))
     film = xfade_concat(shots, tmp / "film.mp4", 0.5)
-    P = 360
-    pv = _presenter_video(tmp, vo, P, P, bg=((235, 245, 250), (200, 225, 240)), suit=(40, 110, 90),
+    P = int(min(W, H) * 0.34)
+    pv = _presenter_video(tmp, vo, P, P, seconds=total, bg=((235, 245, 250), (200, 225, 240)), suit=(40, 110, 90),
                           skin=(245, 210, 185), hair=(25, 20, 18), tie=(240, 190, 60), studio=False)
     comp = tmp / "comp.mp4"
     sh([FFMPEG, "-y", "-v", "error", "-i", str(film), "-i", str(pv), "-filter_complex",
@@ -418,7 +513,11 @@ def reference_adapt(req: ZeroLineRequest, d: Path) -> Result:
 
     # Breakdown-driven mode: if breakdown card or mode is specified in extras
     if req.extras.get("mode") == "breakdown_driven" or req.extras.get("breakdown_path") or req.extras.get("breakdown"):
-        from hevi.viralclone import compile_viral_template, draft_template_from_breakdown, reference_breakdown
+        from hevi.viralclone import (
+            compile_viral_template,
+            draft_template_from_breakdown,
+            reference_breakdown,
+        )
         bd_path = req.extras.get("breakdown_path")
         if bd_path and Path(bd_path).is_file():
             bd_dict = json.loads(Path(bd_path).read_text(encoding="utf-8"))
@@ -472,8 +571,8 @@ def reference_adapt(req: ZeroLineRequest, d: Path) -> Result:
     if bad:
         raise ZeroMediaError(f"reference offsets outside the {ref_d:.1f}s reference: {bad}")
     vo, cues = tts_lines(list(req.texts), tmp / "vo", lang=req.lang)
-    total = dur(vo) + 1.0
-    lengths = narration_shot_lengths(cues, xd=0.6, tail=1.0)
+    lengths = _fit_lengths(narration_shot_lengths(cues, xd=0.6, tail=1.0), 0.6)
+    total = sum(lengths) - 0.6 * (len(lengths) - 1)
     shots = [shot(ref, tmp / f"s{k}.mp4", seg, W, H, ss=float(ss), move=("push", "pan_r", "pull", "pan_l")[k % 4],
                   grade="scale=iw:ih:flags=lanczos,unsharp=5:5:0.8,eq=contrast=1.08:saturation=1.2")
              for k, (seg, ss) in enumerate(zip(lengths, req.offsets, strict=True))]

@@ -15,12 +15,18 @@ def ass_time(s: float) -> str:
 
 
 def ass_styles(width: int, height: int) -> dict[str, str]:
-    h = height
+    h, w = height, width
+    # Clamp by width too: portrait (720x1280) height-derived sizes overflow the
+    # frame for 7-character Chinese lines.
+    cap = int(min(h * 0.058, w * 0.062))
+    title = int(min(h * 0.09, w * 0.1))
+    kicker = int(min(h * 0.035, w * 0.042))
+    lower = int(min(h * 0.05, w * 0.062))
     return {
-        "Cap": f"{FONT},{int(h * 0.058)},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,3,1,2,60,60,{int(h * 0.06)},1",
-        "Title": f"{FONT},{int(h * 0.09)},&H00FFFFFF,&H000000FF,&H00101010,&H80000000,-1,0,0,0,100,100,2,0,1,4,2,5,60,60,60,1",
-        "Kicker": f"{FONT},{int(h * 0.035)},&H0000C8FF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,4,0,1,2,0,5,60,60,60,1",
-        "Lower": f"{FONT},{int(h * 0.05)},&H00FFFFFF,&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,0,0,3,14,0,1,70,70,{int(h * 0.1)},1",
+        "Cap": f"{FONT},{cap},&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,3,1,2,60,60,{int(h * 0.06)},1",
+        "Title": f"{FONT},{title},&H00FFFFFF,&H000000FF,&H00101010,&H80000000,-1,0,0,0,100,100,2,0,1,4,2,5,60,60,60,1",
+        "Kicker": f"{FONT},{kicker},&H0000C8FF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,4,0,1,2,0,5,60,60,60,1",
+        "Lower": f"{FONT},{lower},&H00FFFFFF,&H000000FF,&H00000000,&HA0000000,-1,0,0,0,100,100,0,0,3,14,0,1,70,70,{int(h * 0.1)},1",
     }
 
 
@@ -112,7 +118,9 @@ def kinetic_events(
             anim = r"{\an5\move(%d,%d,%d,%d,0,300)}" % (width + 400, height // 2, width // 2, height // 2)
         big = k == longest or k == len(words) - 1 or k % 3 == 0
         style = "Title" if big else "Kicker"
-        ev.append((a, b, style, anim + r"{\fs%d\bord5}" % (int(height * (0.15 if big else 0.1))) + w))
+        room = width * 0.9 / max(1, len(w))
+        size = int(min(height * (0.15 if big else 0.1), room))
+        ev.append((a, b, style, anim + r"{\fs%d\bord5}" % max(28, size) + w))
     return ev
 
 

@@ -4,8 +4,11 @@ summary: 史料 → 研究闸 + 讲解/演绎混排 + 时间线，交接通鉴 L
 handoff: tongjian
 render_runtime: remotion
 slots:
-  - name: source_text
+  - name: topic
     required: true
+    description: 历史主题（只给主题即可出片）
+  - name: source_text
+    required: false
     description: 史料原文或纪实材料
   - name: source_name
     required: false

@@ -79,7 +79,8 @@
         "subway train arriving",
         "busy crosswalk city timelapse"
       ],
-      "manuscript": "凌晨五点，城市还在沉睡。第一盏灯亮起，有人已经出门。早餐摊的蒸汽升起来。地铁载着第一批人穿过城市。八点，街道彻底醒了。"
+      "manuscript": "凌晨五点，城市还在沉睡。第一盏灯亮起，有人已经出门。早餐摊的蒸汽升起来。地铁载着第一批人穿过城市。八点，街道彻底醒了。",
+      "topic": "城市醒来"
     },
     "history_scene": {
       "title": "周口店 · 北京人",
@@ -108,7 +109,8 @@
         "1987"
       ],
       "source_text": "周口店遗址位于北京西南的房山区龙骨山。一九二一年起，学者们在这里开始调查和发掘。一九二九年十二月二日，裴文中发现了第一个北京人头盖骨。北京人生活在大约七十万到二十万年前，会打制石器，也会用火。一九四一年，头盖骨化石在战乱中下落不明，至今仍是未解之谜。一九八七年，周口店北京人遗址被列入世界文化遗产名录。",
-      "source_name": "周口店北京人遗址"
+      "source_name": "周口店北京人遗址",
+      "topic": "周口店 · 北京人"
     },
     "character_animation": {
       "topic": "原始人走向洞口、拾石、点亮火把",
@@ -185,7 +187,8 @@
         164,
         174
       ],
-      "transcript": "NASA “Earth Views from the International Space Station”: cloud decks over the ocean, deserts and coastlines passing below, the station robotic arm capturing a cargo spacecraft, an orbital sunrise over the horizon, and the thin blue limb of the atmosphere."
+      "transcript": "NASA “Earth Views from the International Space Station”: cloud decks over the ocean, deserts and coastlines passing below, the station robotic arm capturing a cargo spacecraft, an orbital sunrise over the horizon, and the thin blue limb of the atmosphere.",
+      "topic": "从轨道看家园"
     },
     "comic_narration": {
       "title": "为什么猫总爱把东西推下桌？",

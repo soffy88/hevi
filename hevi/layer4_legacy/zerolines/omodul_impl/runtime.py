@@ -19,6 +19,7 @@ from typing import Any
 from hevi.layer4_legacy.zerolines.omodul_impl._lines import PRODUCERS
 from hevi.layer4_legacy.zerolines.omodul_impl._media import ZeroMediaError, contact_sheet, measure
 from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
+    LINE_SPECS,
     ZeroLineRequest,
     generate_broll_queries,
     generate_script_lines,
@@ -43,7 +44,8 @@ def request_from_input(input_data: dict[str, Any]) -> ZeroLineRequest:
     texts_raw = tup("texts")
     texts = tuple(str(t).strip() for t in texts_raw) if texts_raw else ()
     if not texts and topic:
-        texts = generate_script_lines(topic, lang=lang, line_id=line_id)
+        n = 4 if line_id == "character_animation" else 7
+        texts = generate_script_lines(topic, lang=lang, line_id=line_id, n=n)
     queries_raw = tup("queries")
     queries = tuple(str(q).strip() for q in queries_raw) if queries_raw else ()
     spec = None
@@ -52,9 +54,21 @@ def request_from_input(input_data: dict[str, Any]) -> ZeroLineRequest:
     except KeyError:
         spec = None
     needs_queries = bool(spec and "queries" in spec.inputs)
-    auto_query_lines = {"kinetic_promo", "avatar_spokesperson"}
-    if needs_queries and not queries and line_id in auto_query_lines and (topic or texts):
-        queries = generate_broll_queries(topic or (texts[0] if texts else ""), texts, lang=lang)
+    auto_query_lines = set(LINE_SPECS) - {"comic_narration"}
+    if needs_queries and not queries and line_id in auto_query_lines and topic:
+        from hevi.layer4_legacy.zerolines.oprim_impl.specs import _topic_subject
+
+        subject_hint = _topic_subject(topic) if topic else ""
+        if topic and not subject_hint:
+            try:
+                from hevi.layer4_legacy.zerolines.omodul_impl._media import translate_to_english
+
+                subject_hint = translate_to_english(topic)
+            except Exception:
+                pass
+        queries = generate_broll_queries(
+            topic or (texts[0] if texts else ""), texts, lang=lang, line_id=line_id, subject_hint=subject_hint
+        )
     return ZeroLineRequest(
         line_id=line_id,
         texts=texts,

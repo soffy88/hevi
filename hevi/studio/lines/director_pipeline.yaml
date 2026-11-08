@@ -4,8 +4,11 @@ summary: 手稿 → 故事图/场面调度/分镜资产 → 时间线，交接�
 handoff: shortdrama
 render_runtime: remotion
 slots:
-  - name: manuscript
+  - name: topic
     required: true
+    description: 主题（只给主题即可出片）
+  - name: manuscript
+    required: false
     description: 小说/剧本手稿
   - name: episode_count
     required: false

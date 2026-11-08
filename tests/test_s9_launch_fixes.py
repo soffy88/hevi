@@ -42,8 +42,9 @@ def test_launch_whitelist_labels_internal(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.delenv("HEVI_LAUNCH_STRICT", raising=False)
     assert "collage_broll" in launch_lines()
     assert line_availability("collage_broll") == "ga"
-    assert line_availability("explainer") == "internal"
-    assert get_recipe("explainer").to_dict()["availability"] == "internal"
+    assert line_availability("explainer") == "ga"  # S11 promoted after verification
+    assert get_recipe("explainer").to_dict()["availability"] == "ga"
+    assert line_availability("character_animation") == "internal"
     assert launch_strict() is False
 
     monkeypatch.setenv("HEVI_LAUNCH_LINES", "explainer")

@@ -14,13 +14,18 @@ def frame_stats(frames: np.ndarray) -> dict[str, float]:
     if len(fr) == 0:
         raise ValueError("no frames decoded")
     diffs = np.abs(np.diff(fr, axis=0)).mean((1, 2)) if len(fr) > 1 else np.array([0.0])
+    means = fr.mean((1, 2))
+    stds = fr.std((1, 2))
+    # A "black screen" is dark AND flat.  Night footage / dark grading has a low
+    # mean but high spatial variance (lights, silhouettes) and must not be
+    # mistaken for a blank frame.
     return {
         "frames_sampled": int(len(fr)),
         "motion_mean": float(diffs.mean()),
         "static_ratio": float((diffs < 0.6).mean()),
-        "black_ratio": float((fr.mean((1, 2)) < 12).mean()),
-        "dark_textcard_ratio": float(((fr < 40).mean((1, 2)) > 0.85).mean()),
-        "luma_std_mean": float(fr.std((1, 2)).mean()),
+        "black_ratio": float(((means < 12) & (stds < 8)).mean()),
+        "dark_textcard_ratio": float((((fr < 40).mean((1, 2)) > 0.85) & (stds < 8)).mean()),
+        "luma_std_mean": float(stds.mean()),
     }
 
 

@@ -4,8 +4,11 @@ summary: 看片节奏 → 差异化概念 → 脚本/时间线 → 按概念选�
 handoff: explainer
 render_runtime: remotion
 slots:
-  - name: transcript
+  - name: topic
     required: true
+    description: 改编主题（只给主题时自动取免费参考片）
+  - name: transcript
+    required: false
     description: 参考片转写或摘要
   - name: duration_s
     required: false
