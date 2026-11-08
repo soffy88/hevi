@@ -178,7 +178,7 @@ def kinetic_promo(req: ZeroLineRequest, d: Path) -> Result:
     ass = _write_ass(tmp / "k.ass", W, H, ev)
     audio = mix(vo, write_bgm(tmp / "bgm.wav", total + 1, "bright"), tmp / "mix.wav", total, -14)
     final = finish(film, audio, d / f"{req.line_id}.mp4", ass)
-    return {"finals": [final], "provenance": prov + [PIPER_PROV, BGM_PROV],
+    return {"finals": [final], "provenance": [*prov, PIPER_PROV, BGM_PROV],
             "notes": "per-clause kinetic typography timed to narration character offsets"}
 
 
@@ -210,7 +210,7 @@ def explainer(req: ZeroLineRequest, d: Path) -> Result:
         ev.insert(0, (0.1, cues[0][1], "Title", r"{\fad(300,300)}" + _title(req)))
     ass = _write_ass(tmp / "e.ass", W, H, ev)
     final = finish(film, audio, d / f"{req.line_id}.mp4", ass)
-    return {"finals": [final], "provenance": prov + [PIPER_PROV, BGM_PROV], "notes": "one stock shot per point + headings"}
+    return {"finals": [final], "provenance": [*prov, PIPER_PROV, BGM_PROV], "notes": "one stock shot per point + headings"}
 
 
 def cinematic(req: ZeroLineRequest, d: Path) -> Result:
@@ -232,13 +232,13 @@ def cinematic(req: ZeroLineRequest, d: Path) -> Result:
                                              stills_query=stills_query, still_every=still_every)
     ev = caption_events(cues)
     if _title(req):
-        ev = [(0.2, 3.2, "Title", r"{\fad(400,400)\blur1}" + _title(req))] + ev
+        ev = [(0.2, 3.2, "Title", r"{\fad(400,400)\blur1}" + _title(req)), *ev]
     bar = int(H * 0.12)
     extra = (f"drawbox=x=0:y=0:w=iw:h={bar}:color=black:t=fill,"
              f"drawbox=x=0:y=ih-{bar}:w=iw:h={bar}:color=black:t=fill")
     ass = _write_ass(tmp / "c.ass", W, H, ev)
     final = finish(film, audio, d / f"{req.line_id}.mp4", ass, extra)
-    return {"finals": [final], "provenance": prov + [PIPER_PROV, BGM_PROV], "notes": "graded 2.35-style letterbox film"}
+    return {"finals": [final], "provenance": [*prov, PIPER_PROV, BGM_PROV], "notes": "graded 2.35-style letterbox film"}
 
 
 def director_pipeline(req: ZeroLineRequest, d: Path) -> Result:
@@ -256,10 +256,10 @@ def director_pipeline(req: ZeroLineRequest, d: Path) -> Result:
                                              mood="bright", stills_query=stills_query, still_every=still_every)
     ev = caption_events(cues)
     if _title(req):
-        ev = [(0.2, 3.0, "Title", r"{\fad(400,400)}" + _title(req))] + ev
+        ev = [(0.2, 3.0, "Title", r"{\fad(400,400)}" + _title(req)), *ev]
     ass = _write_ass(tmp / "dp.ass", W, H, ev)
     final = finish(film, audio, d / f"{req.line_id}.mp4", ass)
-    return {"finals": [final], "provenance": prov + [PIPER_PROV, BGM_PROV],
+    return {"finals": [final], "provenance": [*prov, PIPER_PROV, BGM_PROV],
             "notes": "shot_list.json is the director output that drove the assembly",
             "artifacts": {"shot_list": str(shot_list)}}
 
@@ -276,10 +276,10 @@ def history_scene(req: ZeroLineRequest, d: Path) -> Result:
         for (a, b, _), y in zip(cues, req.labels, strict=False) if y
     ]
     if _title(req):
-        ev = [(0.2, 3.4, "Title", r"{\fad(400,400)}" + _title(req))] + ev
+        ev = [(0.2, 3.4, "Title", r"{\fad(400,400)}" + _title(req)), *ev]
     ass = _write_ass(tmp / "h.ass", W, H, ev)
     final = finish(film, audio, d / f"{req.line_id}.mp4", ass)
-    return {"finals": [final], "provenance": prov + [PIPER_PROV, BGM_PROV], "notes": "archival grade + year lower-thirds"}
+    return {"finals": [final], "provenance": [*prov, PIPER_PROV, BGM_PROV], "notes": "archival grade + year lower-thirds"}
 
 
 # ---------------------------------------------------------------- procedural characters
@@ -375,7 +375,7 @@ def avatar_spokesperson(req: ZeroLineRequest, d: Path) -> Result:
         f"[0:v][c]overlay=W-w-50:H-h-120:shortest=1,format=yuv420p[v]", "-map", "[v]", "-c:v", "libx264",
         "-preset", "veryfast", "-crf", "20", str(comp)])
     audio = mix(vo, write_bgm(tmp / "bgm.wav", total + 1, "bright"), tmp / "mix.wav", total, -22)
-    ev = [(a, b, "Cap", r"{\an1\pos(70,%d)}" % (H - 70) + t) for a, b, t in cues]
+    ev = [(a, b, "Cap", rf"{{\an1\pos(70,{H - 70})}}" + t) for a, b, t in cues]
     cta = str(req.extras.get("cta") or "")
     if _title(req):
         ev.append((0.3, total - (3 if cta else 0.3), "Lower", r"{\an7\pos(70,60)\fs34}" + _title(req)))
@@ -384,8 +384,7 @@ def avatar_spokesperson(req: ZeroLineRequest, d: Path) -> Result:
     ass = _write_ass(tmp / "a.ass", W, H, ev)
     final = finish(comp, audio, d / f"{req.line_id}.mp4", ass)
     return {"finals": [final],
-            "provenance": prov + [{"source": "procedural 2D presenter PiP, RMS lip-sync", "licence": "own"},
-                                  PIPER_PROV, BGM_PROV],
+            "provenance": [*prov, {"source": "procedural 2D presenter PiP, RMS lip-sync", "licence": "own"}, PIPER_PROV, BGM_PROV],
             "notes": "spokesperson layout: stock b-roll + circular presenter PiP + lower third + CTA card"}
 
 
@@ -425,11 +424,12 @@ def shorts_clip(req: ZeroLineRequest, d: Path) -> Result:
         ev = []
         for s in segs[i:j + 1]:
             for c0, c1, text in word_chunks(s["words"], size=4):
-                ev.append((c0 - a, c1 - a, "Cap", r"{\an5\pos(%d,%d)\fs54\bord5\fad(60,60)}" % (W // 2, int(H * 0.72))
+                ev.append((c0 - a, c1 - a, "Cap",
+                           rf"{{\an5\pos({W // 2},{int(H * 0.72)})\fs54\bord5\fad(60,60)}}"
                            + (text.upper() if lang == "en" else text)))
         if _title(req):
-            ev.append((0, b - a, "Kicker", r"{\an8\pos(%d,140)\fs38}" % (W // 2) + _title(req)))
-        ass = _write_ass(tmp / f"c{k}.ass", W, H, ev)
+            ev.append((0, b - a, "Kicker", rf"{{\an8\pos({W // 2},140)\fs38}}" + _title(req)))
+        _write_ass(tmp / f"c{k}.ass", W, H, ev)
         out = d / f"{req.line_id}_{k + 1:02d}.mp4"
         sh([FFMPEG, "-y", "-v", "error", "-ss", f"{a:.2f}", "-t", f"{b - a:.2f}", "-i", str(src), "-filter_complex",
             f"[0:v]split[bg][fg];[bg]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},boxblur=30:3,"
@@ -475,7 +475,8 @@ def podcast_repurpose(req: ZeroLineRequest, d: Path) -> Result:
             b = min(_dur(req.media_path), a + 30.0)
         except Exception:
             pass
-    ev = [(s["start"] - a, s["end"] - a, "Cap", r"{\an5\pos(%d,%d)\fs40}" % (W // 2, int(H * 0.80)) + s["text"])
+    ev = [(s["start"] - a, s["end"] - a, "Cap",
+           rf"{{\an5\pos({W // 2},{int(H * 0.80)})\fs40}}" + s["text"])
           for s in segs[i:j + 1]]
     show, sub = str(req.extras.get("show") or ""), str(req.extras.get("subtitle") or "")
     if show:
@@ -541,7 +542,7 @@ def reference_adapt(req: ZeroLineRequest, d: Path) -> Result:
         compile_inp = {
             "template": template_spec,
             "slots": slots,
-            "brolls": [str(ref)] + list(req.extras.get("brolls") or []),
+            "brolls": [str(ref), *list(req.extras.get("brolls") or [])],
             "product_video": str(req.extras.get("product_video") or ""),
             "output_name": req.line_id,
             "aspect_ratio": "9:16" if (W, H) == (720, 1280) else "16:9",
@@ -579,7 +580,7 @@ def reference_adapt(req: ZeroLineRequest, d: Path) -> Result:
     film = xfade_concat(shots, tmp / "film.mp4", 0.6, "circleopen")
     ev = caption_events(cues)
     if _title(req):
-        ev = [(0.2, 3.0, "Title", r"{\fad(300,300)}" + _title(req))] + ev
+        ev = [(0.2, 3.0, "Title", r"{\fad(300,300)}" + _title(req)), *ev]
     ass = _write_ass(tmp / "r.ass", W, H, ev)
     audio = mix(vo, write_bgm(tmp / "bgm.wav", total + 1, "warm"), tmp / "mix.wav", total)
     final = finish(film, audio, d / f"{req.line_id}.mp4", ass)

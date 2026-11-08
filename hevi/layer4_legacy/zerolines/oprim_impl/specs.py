@@ -144,11 +144,13 @@ class ZeroLineRequest:
         if spec is None:
             return [f"line {self.line_id!r} has no zero-cost engine"]
         errors: list[str] = []
-        for name in spec.inputs:
-            if not getattr(self, name):
-                if self.line_id == "comic_narration" and name == "topic" and self.texts:
-                    continue
-                errors.append(f"{self.line_id}: missing required input {name!r}")
+        missing = [
+            name
+            for name in spec.inputs
+            if not getattr(self, name)
+            and not (self.line_id == "comic_narration" and name == "topic" and self.texts)
+        ]
+        errors.extend(f"{self.line_id}: missing required input {name!r}" for name in missing)
         if "queries" in spec.inputs and self.texts and self.queries and self.line_id not in {
             "kinetic_promo", "avatar_spokesperson"
         } and len(self.queries) < len(self.texts):
@@ -164,9 +166,11 @@ class ZeroLineRequest:
             errors.append("empty narration line")
         if self.lang == "zh":
             import re as _re
-            for t in self.texts:
-                if _re.search(r"[A-Za-z]{2,}", t):
-                    errors.append(f"{self.line_id}: narration must be Chinese (no Latin letters): {t!r}")
+            errors.extend(
+                f"{self.line_id}: narration must be Chinese (no Latin letters): {t!r}"
+                for t in self.texts
+                if _re.search(r"[A-Za-z]{2,}", t)
+            )
         return errors
 
     def to_dict(self) -> dict[str, Any]:
@@ -549,8 +553,8 @@ __all__ = [
     "ENGINES",
     "LEGACY_ONLY_LINES",
     "LINE_SPECS",
-    "QAThresholds",
     "ZERO_LINES",
+    "QAThresholds",
     "ZeroLineRequest",
     "ZeroLineSpec",
     "resolve_engine",

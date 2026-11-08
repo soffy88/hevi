@@ -115,12 +115,12 @@ def kinetic_events(
         b = max(b, a + 0.5)
         anim = KINETIC_ANIMS[k % 4]
         if anim == "MOVE":
-            anim = r"{\an5\move(%d,%d,%d,%d,0,300)}" % (width + 400, height // 2, width // 2, height // 2)
+            anim = rf"{{\an5\move({width + 400},{height // 2},{width // 2},{height // 2},0,300)}}"
         big = k == longest or k == len(words) - 1 or k % 3 == 0
         style = "Title" if big else "Kicker"
         room = width * 0.9 / max(1, len(w))
         size = int(min(height * (0.15 if big else 0.1), room))
-        ev.append((a, b, style, anim + r"{\fs%d\bord5}" % max(28, size) + w))
+        ev.append((a, b, style, anim + rf"{{\fs{max(28, size)}\bord5}}" + w))
     return ev
 
 
@@ -133,8 +133,8 @@ def word_chunks(words: list[tuple[float, float, str]], *, size: int = 4) -> list
 
 
 __all__ = [
-    "Event",
     "FONT",
+    "Event",
     "ass_styles",
     "ass_time",
     "build_ass",

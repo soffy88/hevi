@@ -20,7 +20,7 @@ def frame_stats(frames: np.ndarray) -> dict[str, float]:
     # mean but high spatial variance (lights, silhouettes) and must not be
     # mistaken for a blank frame.
     return {
-        "frames_sampled": int(len(fr)),
+        "frames_sampled": len(fr),
         "motion_mean": float(diffs.mean()),
         "static_ratio": float((diffs < 0.6).mean()),
         "black_ratio": float(((means < 12) & (stds < 8)).mean()),
