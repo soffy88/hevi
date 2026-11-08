@@ -1032,7 +1032,13 @@ async def _render_koubo_cut_line(order: dict[str, Any], output_dir: Path) -> dic
     livliv = _wants_livliv(order)
     character_id = str(_slot(order, "character_id") or "d03ft")
     cap = _get_cap("koubo_cut.render")
-    res = cap.render(
+    # Run off the event loop: the LivLiv engine drives Playwright's sync API,
+    # which refuses to start inside a running asyncio loop, and a 20-30 s
+    # render would otherwise block every other request.
+    import asyncio
+
+    res = await asyncio.to_thread(
+        cap.render,
         {
             "script_text": script_text,
             "script_lines": order.get("script_lines") or [],

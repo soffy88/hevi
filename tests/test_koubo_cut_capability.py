@@ -1,5 +1,7 @@
 """Capability-level tests for koubo_cut.render."""
 
+import pytest
+
 import hevi.capabilities as caps
 from hevi.capabilities import get
 from hevi.capabilities.errors import CapabilityError
@@ -55,3 +57,57 @@ def test_wants_livliv_gating(monkeypatch):
     assert _wants_livliv({"slots": {"avatar_engine": "wav2lip"}}) is False
     monkeypatch.setenv("LIVLIV_CHARACTERS_ENABLED", "false")
     assert _wants_livliv({"slots": {"avatar_engine": "livliv"}}) is False
+
+
+@pytest.mark.asyncio
+async def test_koubo_cut_render_runs_off_event_loop(monkeypatch, tmp_path):
+    """LivLiv drives Playwright's sync API, which refuses to start inside a
+    running asyncio loop; the renderer must be dispatched to a thread."""
+    import threading
+    from pathlib import Path
+
+    import hevi.capabilities as caps_mod
+    import hevi.studio.fulfill as f
+
+    loop_thread = threading.get_ident()
+    seen: dict[str, int] = {}
+
+    class _Result:
+        def __init__(self, mp4: Path) -> None:
+            self.mp4 = str(mp4)
+
+    class _Cap:
+        def render(self, params, out, **kwargs):
+            seen["tid"] = threading.get_ident()
+            p = Path(out) / "koubo_cut.mp4"
+            p.write_bytes(b"fake")
+            return _Result(p)
+
+    class _Manifest:
+        def primary_path(self):
+            return None
+
+        def model_dump(self, mode="json"):
+            return {}
+
+    async def _fake_verify(*args, **kwargs):
+        return _Manifest(), {"passed": True, "verdict": "pass"}
+
+    monkeypatch.setattr(caps_mod, "get", lambda name: _Cap())
+    monkeypatch.setattr(f, "_verified_video_manifest", _fake_verify)
+
+    res = await f._render_koubo_cut_line(
+        {
+            "line_id": "koubo_cut",
+            "slots": {
+                "script_text": "测试",
+                "duration_s": 1,
+                "avatar_engine": "livliv",
+                "character_id": "d03ft",
+            },
+        },
+        tmp_path,
+    )
+    assert res["status"] == "completed"
+    assert res["avatar_engine"] == "livliv"
+    assert seen["tid"] != loop_thread

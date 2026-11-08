@@ -10,7 +10,7 @@ def characters_enabled() -> bool:
     v = os.environ.get("LIVLIV_CHARACTERS_ENABLED", "true").strip().lower()
     return v not in ("0", "false", "no", "off")
 
-VENDOR = Path("/data/soffy/vendor/livliv-player")
+VENDOR = Path(os.environ.get("HEVI_LIVLIV_VENDOR", "").strip() or "/data/soffy/vendor/livliv-player")
 INDEX = VENDOR / "characters" / "index.json"
 
 def list_characters() -> list[dict[str, Any]]:
