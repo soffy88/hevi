@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Hevi 每日数据库备份：pg_dump 自定义压缩格式，保留最近 N 份。
+#
+# 由宿主 cron 调用（04:00 Asia/Shanghai）。pg_dump 在 postgres 容器内执行，
+# 凭据不出容器、不落到脚本或日志。输出目录只清理本脚本自己的 hevi-*.dump。
+set -euo pipefail
+
+BACKUP_DIR="${HEVI_BACKUP_DIR:-/data/soffy/backups/hevi-daily}"
+CONTAINER="${HEVI_PG_CONTAINER:-hevi-vault-postgres-1}"
+DB_USER="${HEVI_DB_USER:-hevi}"
+DB_NAME="${HEVI_DB_NAME:-hevi}"
+KEEP="${HEVI_BACKUP_KEEP:-7}"
+
+log() { printf '%s hevi-backup %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+
+mkdir -p "$BACKUP_DIR"
+
+if ! docker inspect "$CONTAINER" >/dev/null 2>&1; then
+  log "ERROR postgres container $CONTAINER not found"
+  exit 1
+fi
+
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+final="$BACKUP_DIR/hevi-$ts.dump"
+tmp="$BACKUP_DIR/.hevi-$ts.dump.tmp"
+
+cleanup() { if [ -f "$tmp" ]; then rm -f "$tmp"; fi; return 0; }
+trap cleanup EXIT
+
+log "dump start db=$DB_NAME container=$CONTAINER -> $final"
+# -Fc = custom format (already compressed); --compress=9 max level.
+if ! docker exec "$CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" \
+      --format=custom --compress=9 --no-owner >"$tmp"; then
+  log "ERROR pg_dump failed"
+  exit 1
+fi
+mv "$tmp" "$final"
+sha256sum "$final" >"$final.sha256"
+size="$(stat -c '%s' "$final")"
+log "dump done size=${size}B sha256=$(cut -d' ' -f1 "$final.sha256")"
+
+# Retain the newest $KEEP dumps; only touch files this script names.
+mapfile -t old < <(ls -1t "$BACKUP_DIR"/hevi-*.dump 2>/dev/null | tail -n +$((KEEP + 1)))
+for file in "${old[@]:-}"; do
+  [ -n "$file" ] || continue
+  log "prune $(basename "$file")"
+  rm -f "$file" "$file.sha256"
+done
+
+count="$(ls -1 "$BACKUP_DIR"/hevi-*.dump 2>/dev/null | wc -l)"
+log "retained=$count keep=$KEEP"

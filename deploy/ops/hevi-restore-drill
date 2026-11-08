@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Hevi 备份恢复演练：把最新（或指定）dump 恢复到一个临时库，校验后删除。
+#
+# 只操作名称以 hevi_restore_drill_ 开头的临时库，绝不接触生产库 hevi。
+set -euo pipefail
+
+BACKUP_DIR="${HEVI_BACKUP_DIR:-/data/soffy/backups/hevi-daily}"
+CONTAINER="${HEVI_PG_CONTAINER:-hevi-vault-postgres-1}"
+DB_USER="${HEVI_DB_USER:-hevi}"
+
+log() { printf '%s hevi-restore-drill %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+
+dump="${1:-}"
+if [ -z "$dump" ]; then
+  dump="$(ls -1t "$BACKUP_DIR"/hevi-*.dump 2>/dev/null | head -n 1 || true)"
+fi
+if [ -z "$dump" ] || [ ! -f "$dump" ]; then
+  log "ERROR no dump found in $BACKUP_DIR"
+  exit 1
+fi
+
+drill_db="hevi_restore_drill_$(date -u +%Y%m%d%H%M%S)"
+case "$drill_db" in
+  hevi_restore_drill_*) ;;
+  *) log "ERROR refusing unsafe db name"; exit 1 ;;
+esac
+
+drop_drill() {
+  docker exec "$CONTAINER" psql -U "$DB_USER" -d postgres -tAc \
+    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$drill_db'" >/dev/null 2>&1 || true
+  docker exec "$CONTAINER" psql -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS \"$drill_db\"" >/dev/null
+  return 0
+}
+trap drop_drill EXIT
+
+log "restore $(basename "$dump") -> $drill_db"
+docker exec "$CONTAINER" psql -U "$DB_USER" -d postgres -c "CREATE DATABASE \"$drill_db\"" >/dev/null
+docker exec -i "$CONTAINER" pg_restore -U "$DB_USER" -d "$drill_db" \
+  --no-owner --exit-on-error <"$dump"
+
+tables="$(docker exec "$CONTAINER" psql -U "$DB_USER" -d "$drill_db" -tAc \
+  "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")"
+revision="$(docker exec "$CONTAINER" psql -U "$DB_USER" -d "$drill_db" -tAc \
+  "SELECT version_num FROM alembic_version")"
+users="$(docker exec "$CONTAINER" psql -U "$DB_USER" -d "$drill_db" -tAc \
+  "SELECT count(*) FROM users")"
+tasks="$(docker exec "$CONTAINER" psql -U "$DB_USER" -d "$drill_db" -tAc \
+  "SELECT count(*) FROM video_tasks")"
+
+log "verify tables=$tables alembic=$revision users=$users video_tasks=$tasks"
+if [ "$tables" -lt 10 ] || [ -z "$revision" ]; then
+  log "ERROR restore verification failed"
+  exit 1
+fi
+log "OK drill database dropped"

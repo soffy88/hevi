@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Hevi 宿主健康巡检：每 5 分钟由 cron 调用。
+#
+# 检查首页、API health、应用容器健康与 /data 可用空间；失败时
+#   - 追加 /var/log/hevi-alert.log（root 可读）
+#   - 追加 /data/soffy/projects/hevi-alerts/ALERTS.md
+#   - 若 HEVI_ALERT_WEBHOOK_URL 非空才 POST（默认关闭，不配置任何外部地址）
+set -uo pipefail
+
+ENV_FILE="${HEVI_ALERT_ENV_FILE:-/etc/hevi-alert.env}"
+# shellcheck disable=SC1090
+[ -r "$ENV_FILE" ] && . "$ENV_FILE"
+
+WEB_URL="${HEVI_CHECK_WEB_URL:-http://127.0.0.1:3200/}"
+API_URL="${HEVI_CHECK_API_URL:-http://127.0.0.1:8201/api/health}"
+CURL_TIMEOUT="${HEVI_CHECK_TIMEOUT_S:-10}"
+MIN_FREE_GB="${HEVI_CHECK_MIN_FREE_GB:-15}"
+DISK_PATH="${HEVI_CHECK_DISK_PATH:-/data}"
+CONTAINERS="${HEVI_CHECK_CONTAINERS:-hevi-cftunnel-hevi-api-1 hevi-cftunnel-hevi-worker-1 hevi-cftunnel-hevi-scheduler-1 hevi-cftunnel-hevi-web-1 hevi-cftunnel-hevi-redis-1}"
+ALERT_LOG="/var/log/hevi-alert.log"
+ALERTS_DIR="${HEVI_ALERTS_DIR:-/data/soffy/projects/hevi-alerts}"
+ALERTS_MD="$ALERTS_DIR/ALERTS.md"
+WEBHOOK_URL="${HEVI_ALERT_WEBHOOK_URL:-}"
+WEBHOOK_TIMEOUT="${HEVI_ALERT_WEBHOOK_TIMEOUT_S:-5}"
+
+fails=()
+
+http_code() {
+  curl -s -o /dev/null -m "$CURL_TIMEOUT" -w '%{http_code}' "$1" 2>/dev/null || true
+}
+
+code="$(http_code "$WEB_URL")"
+case "$code" in
+  2*|3*) ;;
+  *) fails+=("homepage ${WEB_URL} -> HTTP ${code:-timeout}") ;;
+esac
+
+code="$(http_code "$API_URL")"
+if [ "$code" != "200" ]; then
+  fails+=("api health ${API_URL} -> HTTP ${code:-timeout}")
+fi
+
+for name in $CONTAINERS; do
+  status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$name" 2>/dev/null || true)"
+  [ -n "$status" ] || status="missing"
+  if [ "$status" != "healthy" ]; then
+    fails+=("container ${name} -> ${status}")
+  fi
+done
+
+avail_kb="$(df -P "$DISK_PATH" | awk 'NR==2{print $4}')"
+if [ -n "${avail_kb:-}" ]; then
+  avail_gb=$((avail_kb / 1024 / 1024))
+  if [ "$avail_gb" -lt "$MIN_FREE_GB" ]; then
+    fails+=("disk ${DISK_PATH} -> ${avail_gb}G < ${MIN_FREE_GB}G")
+  fi
+else
+  fails+=("disk ${DISK_PATH} -> unreadable")
+fi
+
+if [ "${#fails[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+body="$(printf '%s\n' "${fails[@]}")"
+line="$ts hevi-healthcheck FAIL"
+for f in "${fails[@]}"; do line+=$'\n'"  - $f"; done
+
+# /var/log/hevi-alert.log needs root; soffy has passwordless sudo.
+if ! printf '%s\n' "$line" | sudo -n /usr/bin/tee -a "$ALERT_LOG" >/dev/null 2>&1; then
+  printf '%s cannot write %s\n' "$line" "$ALERT_LOG" >&2
+fi
+
+mkdir -p "$ALERTS_DIR"
+if [ ! -f "$ALERTS_MD" ]; then
+  {
+    printf '# Hevi 告警记录\n\n'
+    printf '由宿主 cron `hevi-healthcheck`（每 5 分钟）自动追加。\n\n'
+  } >"$ALERTS_MD"
+fi
+{
+  printf '## %s\n\n' "$ts"
+  printf '```\n%s\n```\n\n' "$body"
+} >>"$ALERTS_MD"
+
+if [ -n "$WEBHOOK_URL" ]; then
+  payload="$(printf '{"service":"hevi","host":"%s","ts":"%s","failures":["%s"]}' \
+    "$(hostname)" "$ts" "$(printf '%s' "${fails[*]}" | sed 's/"/\\"/g')")"
+  if ! curl -fsS -m "$WEBHOOK_TIMEOUT" -H 'Content-Type: application/json' \
+      -d "$payload" "$WEBHOOK_URL" >/dev/null 2>&1; then
+    printf '%s hevi-healthcheck webhook delivery failed\n' "$ts" >&2
+  fi
+fi
+
+printf '%s\n' "$line" >&2
+exit 1

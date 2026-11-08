@@ -1,0 +1,13 @@
+[Unit]
+Description=Hevi daily PostgreSQL backup (pg_dump, keep 7)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=soffy
+Group=soffy
+ExecStart=/usr/local/sbin/hevi-backup
+StandardOutput=append:/data/soffy/backups/hevi-daily/backup.log
+StandardError=append:/data/soffy/backups/hevi-daily/backup.log
+TimeoutStartSec=30min

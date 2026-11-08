@@ -1,0 +1,12 @@
+[Unit]
+Description=Hevi host health probe (web/api/containers/disk)
+After=docker.service
+
+[Service]
+Type=oneshot
+User=soffy
+Group=soffy
+ExecStart=/usr/local/sbin/hevi-healthcheck
+StandardOutput=append:/data/soffy/projects/hevi-alerts/cron.log
+StandardError=append:/data/soffy/projects/hevi-alerts/cron.log
+TimeoutStartSec=2min
