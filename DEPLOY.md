@@ -25,3 +25,14 @@ docker compose --env-file /root/hevi-cftunnel.env --env-file .env \
 ## 已废弃
 `hevi/deploy/docker-compose-{dev,live,prod}.yml`、`docker-compose-release-overlay.yml`、手动 `docker run` 的 `hevi-vnext-*`。
 2026-10-11 下线前的数据备份在 `/data/soffy/backups/hevi-20261011/`。
+
+## 运维（宿主，2026-11-08 S6）
+
+- **每日备份**：systemd `hevi-backup.timer`，`04:00 Asia/Shanghai`，`pg_dump -Fc` 到
+  `/data/soffy/backups/hevi-daily/`，保留 7 份；恢复演练 `hevi-restore-drill`。
+- **健康告警**：systemd `hevi-healthcheck.timer` 每 5 分钟检查首页/`/api/health`/
+  容器 healthy/`/data` 可用空间（<15G）；失败写 `/var/log/hevi-alert.log` 与
+  `/data/soffy/projects/hevi-alerts/ALERTS.md`。Webhook 预留（`/etc/hevi-alert.env`，
+  默认关闭）。
+- 脚本与安装步骤：`deploy/ops/README.md`。
+- `hevi-web` 由本 compose 的 `hevi-web` 服务托管（`3200:3000`，node HTTP 探活）。
