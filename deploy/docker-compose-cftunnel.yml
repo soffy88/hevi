@@ -19,7 +19,9 @@ name: hevi-cftunnel
 services:
   hevi-api:
     build:
-      context: ..
+      # S8: 生产镜像只从固定发布 worktree /data/soffy/projects/hevi-release 构建，
+      # 不依赖主仓库当前检出的分支。未设置时退回旧行为（仅限本地开发）。
+      context: ${HEVI_RELEASE_ROOT:-..}
       dockerfile: deploy/Dockerfile.api
       # talkcraft 主播线的 chrome-headless-shell(Remotion 4.0.519 配套 149.0.7790.0),
       # 取宿主 vendor runtime 已下载的那份,构建/运行都不联网下载浏览器。
@@ -164,8 +166,9 @@ services:
 
   hevi-web:
     build:
-      context: ../hevi-web
-      dockerfile: ../deploy/Dockerfile.web
+      # S8: 同 hevi-api，生产 web 也从固定发布 worktree 构建。
+      context: ${HEVI_RELEASE_ROOT:-..}/hevi-web
+      dockerfile: ${HEVI_RELEASE_ROOT:-..}/deploy/Dockerfile.web
       args:
         NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
         NEXT_PUBLIC_DEPLOY_ENV: production

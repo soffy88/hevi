@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Hevi 生产构建/部署入口（S8）。
+#
+# 唯一构建源：固定发布 worktree /data/soffy/projects/hevi-release。
+# 构建前强校验：
+#   1) release worktree 存在，status --porcelain 为空；
+#   2) release HEAD == 主仓库 refs/heads/main（即 main）。
+# 任一不满足直接拒绝构建，绝不从正在漂移的工作树出镜像。
+#
+# 用法：
+#   deploy/ops/hevi-deploy api            # 构建并切换 api/worker/scheduler
+#   deploy/ops/hevi-deploy web            # 构建并切换 web
+#   deploy/ops/hevi-deploy all            # 两者
+#   deploy/ops/hevi-deploy --check        # 只做校验，不构建
+#
+# 依赖：/root/hevi-cftunnel.env（600）与主仓库 .env；计划内切换 <1 分钟。
+set -euo pipefail
+
+MAIN_REPO="${HEVI_MAIN_REPO:-/data/soffy/projects/hevi}"
+RELEASE="${HEVI_RELEASE_ROOT:-/data/soffy/projects/hevi-release}"
+COMPOSE="$RELEASE/deploy/docker-compose-cftunnel.yml"
+ENV_DB="${HEVI_CFTUNNEL_ENV:-/root/hevi-cftunnel.env}"
+ENV_APP="${HEVI_APP_ENV_FILE:-$MAIN_REPO/.env}"
+
+log() { printf '%s hevi-deploy %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+die() { log "REFUSE: $*"; exit 1; }
+
+target="${1:-api}"
+case "$target" in
+  api|web|all|--check) ;;
+  *) die "unknown target '$target' (api|web|all|--check)";;
+esac
+
+# --- 构建源固定校验 ---------------------------------------------------------
+[ -d "$RELEASE/.git" ] || [ -f "$RELEASE/.git" ] || die "release worktree missing: $RELEASE"
+[ -r "$COMPOSE" ] || die "compose file missing: $COMPOSE"
+
+release_dirty="$(git -C "$RELEASE" status --porcelain 2>/dev/null || echo __git_error__)"
+[ "$release_dirty" != "__git_error__" ] || die "cannot read git status in $RELEASE"
+[ -z "$release_dirty" ] || die "$RELEASE has uncommitted changes (git status --porcelain not empty)"
+
+main_sha="$(git -C "$MAIN_REPO" rev-parse --verify refs/heads/main 2>/dev/null || true)"
+[ -n "$main_sha" ] || die "cannot resolve refs/heads/main in $MAIN_REPO"
+release_sha="$(git -C "$RELEASE" rev-parse --verify HEAD 2>/dev/null || true)"
+[ -n "$release_sha" ] || die "cannot resolve HEAD in $RELEASE"
+[ "$release_sha" = "$main_sha" ] || die "release HEAD ($release_sha) != main ($main_sha); run: git -C $RELEASE checkout --detach main"
+
+log "preflight OK release=$RELEASE sha=$release_sha target=$target"
+if [ "$target" = "--check" ]; then
+  exit 0
+fi
+
+[ -r "$ENV_DB" ] || die "missing $ENV_DB (600, container DSNs)"
+[ -r "$ENV_APP" ] || die "missing $ENV_APP"
+
+export HEVI_RELEASE_ROOT="$RELEASE"
+compose() {
+  docker compose --env-file "$ENV_DB" --env-file "$ENV_APP" -f "$COMPOSE" "$@"
+}
+
+started="$(date +%s)"
+if [ "$target" = "api" ] || [ "$target" = "all" ]; then
+  log "build hevi-api from $RELEASE"
+  compose build hevi-api
+  log "recreate hevi-api hevi-worker hevi-scheduler"
+  compose up -d --no-deps --force-recreate hevi-api hevi-worker hevi-scheduler
+fi
+if [ "$target" = "web" ] || [ "$target" = "all" ]; then
+  log "build hevi-web from $RELEASE"
+  compose build hevi-web
+  log "recreate hevi-web"
+  compose up -d --no-deps --force-recreate hevi-web
+fi
+log "done target=$target elapsed=$(( $(date +%s) - started ))s"
