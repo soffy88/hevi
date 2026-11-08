@@ -34,9 +34,21 @@ logger = logging.getLogger(__name__)
 
 COSYVOICE_URL = os.environ.get("COSYVOICE_URL", "http://127.0.0.1:17600/api/ai/cosyvoice")
 COSY_TIMEOUT = float(os.environ.get("HANDDRAW_COSY_TIMEOUT", "360"))
-PIPER_BIN = os.environ.get("HANDDRAW_PIPER_BIN", "/data/soffy/projects/hevi-zero/.venv/bin/piper")
-PIPER_MODEL = os.environ.get(
-    "HANDDRAW_PIPER_MODEL", "/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx"
+# Container-first: the deployment mounts Piper at /opt/piper and exports
+# HEVI_TALKCRAFT_PIPER/VOICES.  HANDDRAW_* still wins when set explicitly.
+PIPER_BIN = (
+    os.environ.get("HANDDRAW_PIPER_BIN")
+    or os.environ.get("HEVI_TALKCRAFT_PIPER")
+    or "/data/soffy/projects/hevi-zero/.venv/bin/piper"
+)
+PIPER_MODEL = (
+    os.environ.get("HANDDRAW_PIPER_MODEL")
+    or (
+        str(Path(os.environ["HEVI_TALKCRAFT_VOICES"]) / "zh_CN-huayan-medium.onnx")
+        if os.environ.get("HEVI_TALKCRAFT_VOICES")
+        else ""
+    )
+    or "/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx"
 )
 FFMPEG = os.environ.get("HANDDRAW_FFMPEG", shutil.which("ffmpeg") or "/home/soffy/.local/bin/ffmpeg")
 SAMPLE_RATE = 48000
