@@ -10,6 +10,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
@@ -275,22 +276,30 @@ def _resolve_artifact(path: str) -> Path:
     return resolved
 
 
+_optional_bearer = HTTPBearer(auto_error=False)
+
+
 @router.get("/artifacts/download")
 async def download_studio_artifact(
     path: str = Query(min_length=1, description="slate/canvas 产物路径"),
     token: str | None = Query(default=None, description="JWT（<video> 无法带 Authorization 头）"),
-    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_optional_bearer)] = None,
 ) -> FileResponse:
-    """Authenticated download for slate / canvas artifacts (short-lived token)."""
-    if not token and _user is None:
+    """Authenticated download for slate / canvas artifacts.
+
+    Accepts either an Authorization header (API clients) or a ``token`` query
+    parameter (browser <a>/<video>), without the strict header dependency that
+    would reject the query form before it is read.
+    """
+    raw = credentials.credentials if credentials is not None else token
+    if not raw:
         raise HTTPException(status_code=401, detail="Missing token")
-    if token:
-        try:
-            payload = decode_access_token(token)
-        except Exception as exc:
-            raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
-        if not payload.get("sub"):
-            raise HTTPException(status_code=401, detail="Invalid token: missing sub")
+    try:
+        payload = decode_access_token(raw)
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+    if not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Invalid token: missing sub")
     resolved = _resolve_artifact(path)
     media_type = mimetypes.guess_type(resolved.name)[0] or "application/octet-stream"
     return FileResponse(
