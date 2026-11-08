@@ -66,7 +66,17 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_execution_nodes_plan_id", table_name="execution_nodes")
-    op.drop_table("execution_nodes")
-    op.drop_index("ix_execution_plans_production_id", table_name="execution_plans")
-    op.drop_table("execution_plans")
+    # Idempotent for databases where the sibling ``c0d1e2f3a4b8`` branch ran
+    # first in one direction or the other: a full ``downgrade base`` must not
+    # depend on which side of the merge created the tables.
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if inspector.has_table("execution_nodes"):
+        op.execute("DROP INDEX IF EXISTS ix_execution_nodes_plan_id")
+        op.drop_table("execution_nodes")
+    if inspector.has_table("execution_plans"):
+        op.execute("DROP INDEX IF EXISTS ix_execution_plans_production_id")
+        op.execute("DROP INDEX IF EXISTS uq_exec_plan_version")
+        op.execute("DROP INDEX IF EXISTS ix_exec_production")
+        op.execute("DROP INDEX IF EXISTS ix_exec_revision")
+        op.drop_table("execution_plans")

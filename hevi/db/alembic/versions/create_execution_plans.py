@@ -6,7 +6,6 @@ New versions only via ExecutionPlan.create() or from_existing() factory methods.
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c0d1e2f3a4b8"
@@ -70,6 +69,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_exec_revision", table_name="execution_plans")
-    op.drop_index("ix_exec_production", table_name="execution_plans")
-    op.drop_table("execution_plans")
+    # This revision converges a table that may have been created by the
+    # sibling ``b8c9d0e1f234`` branch, which also owns ``execution_nodes``
+    # (FK -> execution_plans).  Dropping the table here would break that
+    # branch's downgrade, so only undo the indexes added here; the sibling
+    # revision drops the nodes table first and then the plans table.
+    op.execute("DROP INDEX IF EXISTS ix_exec_revision")
+    op.execute("DROP INDEX IF EXISTS ix_exec_production")
