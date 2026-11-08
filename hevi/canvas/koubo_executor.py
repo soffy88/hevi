@@ -421,34 +421,29 @@ def _run_edit_segments(node: Any, upstream: dict[str, Any]) -> dict[str, Any]:
         concat.write_text(
             "\n".join(f"file '{path.resolve()}'" for path in files), encoding="utf-8"
         )
+        # Every segment was encoded with the same codec parameters, so a
+        # stream-copy concat is valid and ~100x cheaper than re-encoding the
+        # whole film on every one-sentence edit.  Fall back to a re-encode if
+        # the copy produces nothing usable.
         subprocess.run(
             [
-                kp._ffmpeg(),
-                "-y",
-                "-f",
-                "concat",
-                "-safe",
-                "0",
-                "-i",
-                str(concat),
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-crf",
-                "20",
-                "-pix_fmt",
-                "yuv420p",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "128k",
-                str(mp4),
+                kp._ffmpeg(), "-y", "-fflags", "+genpts",
+                "-f", "concat", "-safe", "0", "-i", str(concat),
+                "-c", "copy", "-movflags", "+faststart", str(mp4),
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
         )
+        if not mp4.is_file() or mp4.stat().st_size == 0 or kp._ffprobe_duration(mp4) <= 0:
+            subprocess.run(
+                [
+                    kp._ffmpeg(), "-y", "-f", "concat", "-safe", "0", "-i", str(concat),
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", str(mp4),
+                ],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+            )
     if not mp4.is_file():
         _input_video(mp4, max(1.0, duration_total))
     cursor = 0.0
