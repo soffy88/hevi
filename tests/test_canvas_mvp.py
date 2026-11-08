@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 from hevi.canvas import graph_diff as gd
+from hevi.canvas.graph_service import GraphService
 from hevi.canvas.incremental_executor import ExecuteOptions, IncrementalExecutor
 from hevi.canvas.koubo_template import (
     KOUBO_STEPS,
@@ -308,3 +309,54 @@ def test_normalize_artifacts_picks_known_paths(tmp_path) -> None:
     assert rows[0]["kind"] == "video"
     assert rows[0]["digest"] and len(rows[0]["digest"]) == 64
     assert rows[0]["size_bytes"] == len(b"not-a-real-video")
+
+
+# ── API route ordering (no DB) ───────────────────────────────────────────────
+
+
+class _MiniGraphRepo:
+    def __init__(self) -> None:
+        self.rows: dict[str, dict[str, Any]] = {}
+
+    async def create(self, data: dict[str, Any]) -> dict[str, Any]:
+        self.rows[str(data["id"])] = data
+        return data
+
+    async def get(self, graph_id: str) -> dict[str, Any] | None:
+        return self.rows.get(str(graph_id))
+
+    async def update(self, graph_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
+        row = self.rows.get(str(graph_id))
+        if row is not None:
+            row.update(updates)
+        return row
+
+    async def list_graphs(self, *, user_id: str | None = None, limit: int = 100):
+        return list(self.rows.values())
+
+    async def delete(self, graph_id: str) -> bool:
+        return bool(self.rows.pop(str(graph_id), None))
+
+
+@pytest.mark.asyncio
+async def test_koubo_template_route_creates_eight_nodes(client: Any) -> None:
+    from hevi.api.main import app
+    from hevi.api.routers.canvas import get_current_user, get_graph_service
+
+    store = InMemoryNodeStore()
+    svc = GraphService(_MiniGraphRepo(), node_store=store)
+    app.dependency_overrides[get_graph_service] = lambda: svc
+    app.dependency_overrides[get_current_user] = lambda: {"id": "test-user"}
+    try:
+        resp = await client.post(
+            "/api/canvas/templates/koubo",
+            json={"topic": "测试口播", "script_text": "第一句。第二句。", "duration_s": 5},
+        )
+    finally:
+        app.dependency_overrides.clear()
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["graph_id"]
+    assert [n["node_id"] for n in body["nodes"]] == [s["key"] for s in KOUBO_STEPS]
+    assert body["nodes"][0]["status"] == "pending"
+    assert len(body["edges"]) == 7
