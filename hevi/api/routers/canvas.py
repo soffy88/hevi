@@ -11,6 +11,7 @@ from hevi.auth.dependencies import get_current_user
 from hevi.canvas.executor_service import ExecutorService
 from hevi.canvas.graph_repository import GraphRepository
 from hevi.canvas.graph_service import GraphService
+from hevi.canvas.node_store import PgNodeStore
 from hevi.db.pg_pool import get_hevi_pg_pool
 
 router = APIRouter(prefix="/canvas", tags=["canvas"])
@@ -33,6 +34,30 @@ async def _load_owned_graph(
 
 def _serialize_graph(g: dict[str, Any]) -> dict[str, Any]:
     return {**g, "nodes": g.get("nodes_json", []), "edges": g.get("edges_json", [])}
+
+
+def _merge_node_state(graph: dict[str, Any], states: dict[str, Any]) -> dict[str, Any]:
+    """JSON mirror + execution state (status/review/revision/artifacts)."""
+    nodes: list[dict[str, Any]] = []
+    for node in graph.get("nodes_json", []) or []:
+        merged = dict(node)
+        state = states.get(str(node.get("node_id")))
+        if state is not None:
+            data = state.as_dict() if hasattr(state, "as_dict") else dict(state)
+            merged.update(
+                {
+                    "status": data.get("status"),
+                    "revision": data.get("revision"),
+                    "locked": data.get("locked"),
+                    "review": data.get("review"),
+                    "artifacts": data.get("artifacts") or [],
+                    "output": data.get("output"),
+                    "estimated_cost": data.get("estimated_cost"),
+                    "actual_cost": data.get("actual_cost"),
+                }
+            )
+        nodes.append(merged)
+    return {**graph, "nodes": nodes, "edges": graph.get("edges_json", [])}
 
 
 # ── Request schemas ───────────────────────────────────────────────────────────
@@ -59,6 +84,11 @@ class ExecuteGraphRequest(BaseModel):
     # 不强制所有调用方都得算好这两个值才能执行)。
     budget_usd: float | None = None
     target_duration_s: float | None = None
+    # Canvas MVP: dirty (default) 只跑 stale/pending/fail；selected 只跑选中节点
+    # 及其下游；all 全跑。locked 节点永远跳过并在结果里报 locked_skipped。
+    scope: str = "dirty"
+    selected_ids: list[str] = []
+    max_retries: int = 1
 
 
 class WorkflowToGraphRequest(BaseModel):
@@ -101,7 +131,7 @@ async def get_pg_pool() -> PgPool:
 async def get_graph_service(
     pool: Annotated[PgPool, Depends(get_pg_pool)],
 ) -> GraphService:
-    return GraphService(GraphRepository(pool))
+    return GraphService(GraphRepository(pool), node_store=PgNodeStore(pool))
 
 
 async def get_executor_service(
@@ -132,7 +162,16 @@ async def _do_list_graphs(svc: GraphService, user: dict[str, Any]) -> list[dict[
 
 
 async def _do_get_graph(graph_id: str, svc: GraphService, user: dict[str, Any]) -> dict[str, Any]:
-    return _serialize_graph(await _load_owned_graph(graph_id, svc, user))
+    graph = await _load_owned_graph(graph_id, svc, user)
+    store = svc.node_store
+    if store is not None:
+        try:
+            states = await store.load_nodes(graph_id)
+        except Exception:
+            states = {}
+        if states:
+            return _merge_node_state(graph, states)
+    return _serialize_graph(graph)
 
 
 async def _do_update_graph(
@@ -177,6 +216,9 @@ async def _do_execute_graph(
             on_error=body.on_error,
             budget_usd=body.budget_usd,
             target_duration_s=body.target_duration_s,
+            scope=body.scope,
+            selected_ids=list(body.selected_ids or []),
+            max_retries=max(0, int(body.max_retries)),
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -556,7 +598,189 @@ async def material_pack_regenerate_endpoint(
     return {**plan, "status": "executed", "graph_id": str(graph_id), "execution": execution}
 
 
+# ── Canvas MVP: koubo default graph + node-level operations ──────────────
+# Fixed paths come before /{graph_id}; node subroutes hang off the
+# parameterised graph path. Every node op reuses the same ExecutorService and
+# node store as the graph-level execute, so there is no second executor.
+
+
+class KouboTemplateRequest(BaseModel):
+    script_text: str = ""
+    topic: str = ""
+    duration_s: float = 10.0
+    engine: str = "livliv"
+    character_id: str = "d03ft"
+    out_dir: str = ""
+    plan: dict[str, Any] | None = None
+    positions: dict[str, Any] | None = None
+
+
+class NodePatchRequest(BaseModel):
+    config: dict[str, Any] | None = None
+    label: str | None = None
+    position: dict[str, Any] | None = None
+    locked: bool | None = None
+
+
+@router.post("/templates/koubo", status_code=201)
+async def create_koubo_template(
+    body: KouboTemplateRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    """Create (and save) the default koubo_cut graph, one node per step."""
+    from hevi.canvas.koubo_template import build_koubo_graph, project_execution_plan
+
+    graph = build_koubo_graph(
+        script_text=body.script_text,
+        topic=body.topic,
+        duration_s=body.duration_s,
+        engine=body.engine,
+        character_id=body.character_id,
+        out_dir=body.out_dir,
+        plan=body.plan,
+        positions=body.positions,
+    )
+    saved = await svc.save_graph(
+        name=str(graph.get("name") or "koubo_cut 口播默认图"),
+        description=str(graph.get("description") or ""),
+        nodes=graph["nodes"],
+        edges=graph["edges"],
+        user_id=str(user["id"]),
+    )
+    graph_id = str(saved.get("id") or saved.get("graph_id"))
+    states = {}
+    if svc.node_store is not None:
+        states = await svc.node_store.load_nodes(graph_id)
+    payload = _merge_node_state(saved, states) if states else _serialize_graph(saved)
+    return {
+        **payload,
+        "graph_id": graph_id,
+        "template_id": "koubo_cut",
+        "projection": project_execution_plan(body.plan),
+    }
+
+
+async def _node_state_or_404(svc: GraphService, graph_id: str, node_key: str):
+    if svc.node_store is None:
+        raise HTTPException(status_code=503, detail="node store unavailable")
+    state = await svc.node_store.get_node(graph_id, node_key)
+    if state is None:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return state
+
+
+@router.get("/{graph_id}/nodes/{node_key}/revisions")
+async def list_node_revisions(
+    graph_id: str,
+    node_key: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    await _load_owned_graph(graph_id, svc, user)
+    await _node_state_or_404(svc, graph_id, node_key)
+    rows = await svc.node_store.list_revisions(graph_id, node_key)  # type: ignore[union-attr]
+    return {"graph_id": graph_id, "node_id": node_key, "revisions": rows}
+
+
+@router.patch("/{graph_id}/nodes/{node_key}")
+async def patch_node(
+    graph_id: str,
+    node_key: str,
+    body: NodePatchRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    """Edit one node's config/label/position and/or lock it.
+
+    A config change goes through the normal graph update, which marks the
+    changed node and its downstream stale without rewriting them.
+    """
+    graph = await _load_owned_graph(graph_id, svc, user)
+    nodes = []
+    found = False
+    for node in graph.get("nodes_json", []) or []:
+        item = dict(node)
+        if str(item.get("node_id")) == node_key:
+            found = True
+            if body.config is not None:
+                item["config"] = {**(item.get("config") or {}), **body.config}
+            if body.label is not None:
+                item["label"] = body.label
+            if body.position is not None:
+                item["position"] = body.position
+        nodes.append(item)
+    if not found:
+        raise HTTPException(status_code=404, detail="Node not found")
+    updated = await svc.update_graph(graph_id, nodes=nodes)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Graph not found")
+    if body.locked is not None and svc.node_store is not None:
+        await svc.node_store.set_locked(graph_id, node_key, body.locked)
+    state = await svc.node_store.get_node(graph_id, node_key) if svc.node_store else None
+    return {
+        "graph_id": graph_id,
+        "node": {
+            **(next((n for n in nodes if str(n.get("node_id")) == node_key), {})),
+            **({"status": state.status, "revision": state.revision, "locked": state.locked}
+               if state else {}),
+        },
+    }
+
+
+@router.post("/{graph_id}/nodes/{node_key}/execute")
+async def execute_node(
+    graph_id: str,
+    node_key: str,
+    body: ExecuteGraphRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    exe: Annotated[ExecutorService, Depends(get_executor_service)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    """Rerun exactly this node plus its downstream (scope=selected)."""
+    await _load_owned_graph(graph_id, svc, user)
+    await _node_state_or_404(svc, graph_id, node_key)
+    return await _do_execute_graph(
+        graph_id,
+        ExecuteGraphRequest(
+            on_error=body.on_error,
+            budget_usd=body.budget_usd,
+            target_duration_s=body.target_duration_s,
+            scope="selected",
+            selected_ids=[node_key],
+            max_retries=body.max_retries,
+        ),
+        exe,
+        svc,
+        user,
+    )
+
+
+@router.post("/{graph_id}/nodes/{node_key}/review")
+async def review_node_endpoint(
+    graph_id: str,
+    node_key: str,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    """Re-run the node self-check on its latest output and write it back."""
+    from hevi.canvas.self_check import review_node, status_for_review
+
+    await _load_owned_graph(graph_id, svc, user)
+    state = await _node_state_or_404(svc, graph_id, node_key)
+    review = review_node(
+        {"node_type": state.node_type, "config": state.config},
+        state.output,
+    )
+    await svc.node_store.set_status(  # type: ignore[union-attr]
+        graph_id, node_key, status_for_review(review), review=review
+    )
+    return {"graph_id": graph_id, "node_id": node_key, "status": status_for_review(review),
+            "review": review}
+
+
 # ── Parameterised routes (after fixed-path aliases) ───────────────────────────
+
 
 
 @router.get("/{graph_id}")
