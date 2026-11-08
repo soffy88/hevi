@@ -36,7 +36,10 @@ docker compose --env-file /root/hevi-cftunnel.env --env-file /data/soffy/project
 docker compose ... up -d --no-deps --force-recreate hevi-api hevi-worker hevi-scheduler
 ```
 - compose 的 `hevi-api`/`hevi-web` 构建 context 走 `HEVI_RELEASE_ROOT`（默认仍是 `..`，仅本地开发用）。
-- 发布 worktree 需要 `.env` 软链：`ln -s /data/soffy/projects/hevi/.env /data/soffy/projects/hevi-release/.env`（gitignore，不影响 status）。
+- 发布 worktree 初始化（两者都在 gitignore，不影响 status）：
+  `ln -sfn /data/soffy/projects/hevi/.env /data/soffy/projects/hevi-release/.env`
+  `sudo cp -al /data/soffy/projects/hevi/.venv /data/soffy/projects/hevi-release/.venv`
+  （`Dockerfile.api` 会把宿主 `.venv` 打进镜像；硬链接复制不额外占盘。缺任一项 `hevi-deploy` 会拒绝构建。）
 - 一定要带 `--no-deps`：这个 compose 里还有一个旧的 `hevi-gen-engine` 服务，引擎由 `services/gen_engine` 单独管理。
 - `/root/hevi-cftunnel.env`（权限 600）放 CFTUNNEL_DATABASE_URL 等容器内地址；`.env` 放其余配置。
 - APP_ENV=production 下弱密码会拒绝启动；数据库和 MinIO 凭据已在 2026-10-11 换成强密码（旧 `.env` 备份为 `.env.bak-20261011`）。

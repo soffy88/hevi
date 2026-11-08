@@ -34,6 +34,10 @@ esac
 # --- 构建源固定校验 ---------------------------------------------------------
 [ -d "$RELEASE/.git" ] || [ -f "$RELEASE/.git" ] || die "release worktree missing: $RELEASE"
 [ -r "$COMPOSE" ] || die "compose file missing: $COMPOSE"
+# Dockerfile.api copies the host venv into the image; the release worktree must
+# carry a .venv (hardlink copy is enough) and a readable .env (compose env_file).
+[ -e "$RELEASE/.venv" ] || die "$RELEASE has no .venv; run: sudo cp -al $MAIN_REPO/.venv $RELEASE/.venv"
+[ -r "$RELEASE/.env" ] || die "$RELEASE has no readable .env; run: ln -sfn $MAIN_REPO/.env $RELEASE/.env"
 
 release_dirty="$(git -C "$RELEASE" status --porcelain 2>/dev/null || echo __git_error__)"
 [ "$release_dirty" != "__git_error__" ] || die "cannot read git status in $RELEASE"
