@@ -57,6 +57,12 @@ services:
       HEVI_LLM_PROVIDER: qwen_local
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: llama3.2:3b
+      # Canvas text review: host bridge proxy to OpenCode Zen (free model).
+      # The proxy listens on the Docker bridge only; see deploy/llm-proxy/.
+      OMNIROUTE_BASE_URL: http://host.docker.internal:20129/v1
+      OMNIROUTE_MODEL: deepseek-v4.1-flash
+      HEVI_CANVAS_LLM_CHANNEL: omniroute_free
+      HEVI_CANVAS_LLM_TIMEOUT_S: "60"
       # 共享 RTX 3080 上另有租户常占 ~2.4GiB,不加这个 sdxl_local 关键帧 VAE decode 峰值会
       # CUDA OOM(2026-07-16 实证:加此 env 后本地出图/img2img 才成)。缺它 → engine=local
       # 关键帧全挂、退云端额度墙 → canon,v1/v2 关键帧路(含 SPEC-004 v2 朝向 img2img)全废。
@@ -221,6 +227,10 @@ services:
       ADMISSION_TENANT_SCOPES: "wave2-test-ws|wan_local,ltx2_local,qwen_local,local|||render|1.0"
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: llama3.2:3b
+      OMNIROUTE_BASE_URL: http://host.docker.internal:20129/v1
+      OMNIROUTE_MODEL: deepseek-v4.1-flash
+      HEVI_CANVAS_LLM_CHANNEL: omniroute_free
+      HEVI_CANVAS_LLM_TIMEOUT_S: "60"
       HEVI_EXPLAINER_TTS_PROVIDER: piper
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
@@ -293,7 +303,17 @@ services:
       ADMISSION_TENANT_SCOPES: "wave2-test-ws|wan_local,ltx2_local,qwen_local,local|||render|1.0"
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: llama3.2:3b
+      OMNIROUTE_BASE_URL: http://host.docker.internal:20129/v1
+      OMNIROUTE_MODEL: deepseek-v4.1-flash
+      HEVI_CANVAS_LLM_CHANNEL: omniroute_free
+      HEVI_CANVAS_LLM_TIMEOUT_S: "60"
       HEVI_EXPLAINER_TTS_PROVIDER: piper
+      # Daily output retention (scheduler only): intermediates 7d, finals 30d.
+      HEVI_OUTPUT_RETENTION_ENABLED: "1"
+      HEVI_OUTPUT_ROOT: /app/output
+      HEVI_OUTPUT_INTERMEDIATE_DAYS: "7"
+      HEVI_OUTPUT_FINAL_DAYS: "30"
+      HEVI_OUTPUT_RETENTION_INTERVAL_S: "86400"
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
