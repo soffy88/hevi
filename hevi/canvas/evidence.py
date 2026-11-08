@@ -17,6 +17,7 @@ when one is supplied, otherwise the photo's own alt text/tags.  Undecidable is
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -226,8 +227,12 @@ def fetch_for_sentence(
     q = query or query_for_sentence(sentence, topic)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # The cache key must include the query: node ids repeat across graphs and
+    # share one output root, so a path-only cache would serve the first graph's
+    # photo for a later, different sentence.
+    key = hashlib.sha1(q.encode("utf-8")).hexdigest()[:12]
     suffix = f"_{pick}" if pick else ""
-    photo_path = out_dir / f"evidence{suffix}.jpg"
+    photo_path = out_dir / f"evidence_{key}{suffix}.jpg"
     meta: dict[str, Any] | None = None
     try:
         from hevi.collage_broll.assets import pexels_photo_meta
@@ -236,7 +241,7 @@ def fetch_for_sentence(
     except Exception:
         meta = None
     if meta is None and allow_web:
-        meta = _web_screenshot(q, out_dir / f"evidence_web{suffix}.png")
+        meta = _web_screenshot(q, out_dir / f"evidence_web_{key}{suffix}.png")
     if meta is None:
         return {
             "ok": False,
