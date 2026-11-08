@@ -14,7 +14,8 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict, deque
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
@@ -56,6 +57,61 @@ def node_fingerprint(node: dict[str, Any]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
+def config_fingerprint(node: dict[str, Any]) -> str:
+    """Digest of one node's own execution config (no upstream)."""
+    config = execution_config(node.get("config") or {})
+    blob = json.dumps(config, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def output_content_hash(output: Any) -> str:
+    """Content hash of one node output (engine bookkeeping excluded).
+
+    A node may declare ``content_hash`` itself (a sentence's text, a segment's
+    inputs).  Otherwise the JSON without private ``_`` keys is hashed; that is
+    stable because every node writes into its own fixed directory.
+    """
+    if isinstance(output, dict):
+        explicit = output.get("content_hash")
+        if isinstance(explicit, str) and explicit:
+            return explicit
+        engine = output.get("_engine")
+        if isinstance(engine, dict) and isinstance(engine.get("content_hash"), str):
+            return engine["content_hash"]
+        clean = {k: v for k, v in output.items() if not str(k).startswith("_")}
+        blob = json.dumps(clean, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    else:
+        blob = json.dumps(output, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def node_input_fingerprint(node: dict[str, Any], upstream: dict[str, Any]) -> str:
+    """Fingerprint of a node's config plus its upstream *content*.
+
+    Per-sentence koubo nodes declare ``sentence_index``: for those, only that
+    slice of an upstream ``sentences`` output counts, so editing sentence 2
+    leaves sentence 3's branch fingerprint untouched.  Every other upstream
+    contributes its content hash (not its file path or revision).
+    """
+    config = execution_config(node.get("config") or {})
+    index = config.get("sentence_index")
+    parts: list[str] = []
+    for key in sorted(upstream, key=str):
+        out = upstream[key]
+        slice_value = None
+        if isinstance(index, int) and isinstance(out, dict):
+            sentences = out.get("sentences")
+            if isinstance(sentences, list) and 0 <= index < len(sentences):
+                slice_value = sentences[index]
+        parts.append(output_content_hash(slice_value if slice_value is not None else out))
+    payload = {
+        "config": config,
+        "upstream": parts,
+    }
+    blob = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
 def _node_key(node: dict[str, Any]) -> str:
     return str(node.get("node_id") or node.get("id") or "")
 
@@ -80,7 +136,7 @@ def adjacency(edges: Iterable[dict[str, Any]]) -> dict[str, list[str]]:
 def topological_layers(node_keys: Iterable[str], edges: Iterable[dict[str, Any]]) -> list[list[str]]:
     keys = [str(k) for k in node_keys]
     known = set(keys)
-    in_degree = {k: 0 for k in keys}
+    in_degree = dict.fromkeys(keys, 0)
     adj = adjacency(edges)
     for src, dst in edge_pairs(edges):
         if src in known and dst in known:

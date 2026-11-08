@@ -20,9 +20,12 @@ executor (``create_node_executor``) and a reviewer.
 
 from __future__ import annotations
 
+import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from pathlib import Path
+from typing import Any
 
 from oprim.canvas_node_execute import CanvasNodeResult
 from oprim.hevi_types import CanvasEdge, CanvasNode
@@ -43,6 +46,7 @@ class ExecuteOptions:
     max_retries: int = 1
     budget_usd: float | None = None
     llm_reviewer: Any = None
+    llm_rewriter: Any = None
     vision_backend: Any = None
 
 
@@ -54,6 +58,24 @@ class NodeRun:
     output: Any = None
     success: bool = True
     error: str | None = None
+    reused: bool = False
+
+
+def _artifacts_ok(state: NodeState) -> bool:
+    if not state.artifacts:
+        return state.output is not None
+    for artifact in state.artifacts:
+        path = Path(str(artifact.get("path") or ""))
+        if not str(path) or not path.exists():
+            return False
+    return True
+
+
+def _text_key(config: dict[str, Any]) -> str | None:
+    for key in ("content", "script_text", "prompt", "text"):
+        if isinstance(config.get(key), str):
+            return key
+    return None
 
 
 def _node_model(node: dict[str, Any]) -> CanvasNode:
@@ -170,6 +192,7 @@ class IncrementalExecutor:
                 error=run.error or "",
             ).model_dump()
         failed = [k for k, r in runs.items() if not r.success]
+        reused = [k for k, r in runs.items() if r.reused]
         elapsed = round(time.monotonic() - started, 3)
         return {
             "graph_id": graph_id,
@@ -178,7 +201,8 @@ class IncrementalExecutor:
             "results": results,
             "scope": opts.scope,
             "selected_ids": opts.selected_ids,
-            "ran": list(runs),
+            "ran": [k for k, r in runs.items() if not r.reused],
+            "reused": reused,
             "skipped": plan["skipped"],
             "locked_skipped": plan["locked"],
             "failed": failed,
@@ -199,6 +223,35 @@ class IncrementalExecutor:
         upstream_text = " ".join(
             str(v.get("output") or "") for v in upstream.values() if isinstance(v, dict)
         )
+        config_fp = gd.config_fingerprint(node.model_dump())
+        input_fp = gd.node_input_fingerprint(node.model_dump(), upstream)
+
+        # Content-hash reuse (CJF impact method): in a dirty rerun, a node whose
+        # own config and whose upstream *content* are unchanged keeps its
+        # artifact, revision and status.  Editing sentence 2 therefore does not
+        # rebuild sentence 3's branch even though the whole sentences node
+        # re-emitted.  Explicit selected/all runs never reuse (the user asked).
+        if (
+            opts.scope == "dirty"
+            and state is not None
+            and state.revision > 0
+            and _artifacts_ok(state)
+            and isinstance(state.output, dict)
+            and isinstance(state.output.get("_engine"), dict)
+        ):
+            engine = state.output["_engine"]
+            if engine.get("config_fp") == config_fp and engine.get("input_fp") == input_fp:
+                current_status = status_for_review(state.review)
+                await self._store.set_status(graph_id, node.node_id, current_status)
+                return NodeRun(
+                    node_key=node.node_id,
+                    attempts=0,
+                    review=state.review,
+                    output=state.output,
+                    success=True,
+                    reused=True,
+                )
+
         attempts = 0
         output: Any = None
         review: dict[str, Any] | None = None
@@ -214,7 +267,8 @@ class IncrementalExecutor:
                 output = None
                 error = f"{type(exc).__name__}: {exc}"
             try:
-                review = self._reviewer(
+                review = await asyncio.to_thread(
+                    self._reviewer,
                     current.model_dump(),
                     output,
                     upstream_text=upstream_text,
@@ -238,8 +292,31 @@ class IncrementalExecutor:
             next_config = retry_config(current.model_dump(), review)
             if next_config is None:
                 break
+            # A text node is rewritten once *from the LLM's suggestion* instead
+            # of merely appending the suggestion to the prompt.
+            suggestion = str(review.get("suggested_prompt") or "").strip()
+            base_cfg = dict(current.config or {})
+            key = _text_key(base_cfg)
+            if opts.llm_rewriter is not None and key and suggestion:
+                try:
+                    rewritten = await asyncio.to_thread(
+                        opts.llm_rewriter, base_cfg[key], suggestion, base_cfg
+                    )
+                except Exception:
+                    rewritten = None
+                if isinstance(rewritten, str) and rewritten.strip():
+                    next_config = {**base_cfg, key: rewritten.strip()}
             current = current.model_copy(update={"config": next_config})
             # The retry is a new attempt of the same node, not a new graph edit.
+        if isinstance(output, dict):
+            output = {
+                **output,
+                "_engine": {
+                    "config_fp": config_fp,
+                    "input_fp": input_fp,
+                    "content_hash": gd.output_content_hash(output),
+                },
+            }
         status = status_for_review(review)
         await self._store.save_result(
             graph_id,

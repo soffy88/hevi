@@ -37,6 +37,7 @@ export interface CanvasReview {
   reasons?: string[];
   suggested_prompt?: string;
   model?: string;
+  review_mode?: 'llm' | 'offline_rules' | 'deterministic' | string;
   ts?: string;
   signals?: Record<string, unknown>;
 }

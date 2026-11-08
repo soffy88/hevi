@@ -408,6 +408,7 @@ def _evidence_card(
     *,
     image_path: Path | None,
     fallback_image: Image.Image | None = None,
+    source_label: str | None = None,
 ) -> Path:
     card = Image.new("RGB", (W, H), (14, 20, 32))
     d = ImageDraw.Draw(card)
@@ -451,9 +452,11 @@ def _evidence_card(
               outline=(255, 64, 48), width=10)
     d.line((px + pw * 0.72, py + ph * 0.22, px + pw * 0.90, py + ph * 0.10),
            fill=(255, 64, 48), width=8)
-    # footer
-    d.text((70, 1612), "来源：本片口播讲稿 · 画面：Pexels 免费素材",
-           font=_font(30), fill=(190, 198, 210))
+    # footer — only name a source that actually produced the picture
+    has_image = image_path is not None and Path(image_path).exists()
+    if source_label is None:
+        source_label = "来源：本片口播讲稿" if not has_image else "来源：本片口播讲稿 · 画面：见图"
+    d.text((70, 1612), source_label, font=_font(28), fill=(190, 198, 210))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     card.save(out_path)
     return out_path

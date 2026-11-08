@@ -59,6 +59,11 @@ export function NodeInspector({
           <div className="hevi-inspector__label">
             自检：{review.result === 'pass' ? '通过' : review.result === 'warn' ? '提醒' : '未通过'}
             {review.model ? `（${review.model}）` : ''}
+            {review.review_mode === 'offline_rules'
+              ? ' · 离线规则审稿'
+              : review.review_mode === 'llm'
+                ? ' · LLM 审稿'
+                : ''}
           </div>
           {(review.reasons ?? []).length > 0 && (
             <ul className="hevi-inspector__reasons">

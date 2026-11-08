@@ -338,7 +338,8 @@ function CanvasInner() {
         character_id: 'd03ft',
       });
       openGraph(graph);
-      flash('koubo_cut 默认图已创建：8 个节点');
+      const nodeCount = Array.isArray(graph.nodes) ? graph.nodes.length : 0;
+      flash(`koubo_cut 默认图已创建：${nodeCount} 个节点（每句并行分支）`);
     } catch { flash('创建默认图失败'); }
   };
 

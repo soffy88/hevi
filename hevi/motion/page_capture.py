@@ -61,6 +61,8 @@ def capture_page_assets(
     element_selectors: list[str] | None = None,
     fullpage: bool = True,
     timeout_ms: int = 30_000,
+    executable_path: str | None = None,
+    launch_args: list[str] | None = None,
 ) -> PageAsset:
     """无头浏览器采集:全页 2x 纹理 + 元素级抠图 + layout.json。
 
@@ -88,7 +90,10 @@ def capture_page_assets(
     out.mkdir(parents=True, exist_ok=True)
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch()
+            browser = pw.chromium.launch(
+                executable_path=executable_path or None,
+                args=list(launch_args or []),
+            )
             page = browser.new_page(
                 viewport={"width": viewport[0], "height": viewport[1]},
                 device_scale_factor=device_scale_factor,

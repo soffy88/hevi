@@ -23,10 +23,10 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-from dataclasses import dataclass, field
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 PASS = "pass"
 WARN = "warn"
@@ -65,7 +65,7 @@ def _first_path(output: Any, suffixes: tuple[str, ...]) -> Path | None:
 
 
 def _mmss(seconds: float) -> str:
-    seconds = max(0, int(round(seconds)))
+    seconds = max(0, round(seconds))
     return f"{seconds // 60:d}:{seconds % 60:02d}"
 
 
@@ -74,7 +74,7 @@ def _video_contact_sheet(path: Path, out_path: Path, *, frames: int = 9) -> str 
     if ffmpeg is None:
         return None
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    vf = f"fps=1/1,scale=320:-1,tile=3x3:padding=4:margin=4"
+    vf = "fps=1/1,scale=320:-1,tile=3x3:padding=4:margin=4"
     proc = subprocess.run(
         [ffmpeg, "-y", "-i", str(path), "-vf", vf, "-frames:v", "1", str(out_path)],
         capture_output=True,
@@ -98,11 +98,14 @@ def _check_text(
     text = str(out.get("output") or out.get("content") or cfg.get("content") or "").strip()
     reasons: list[str] = []
     result = PASS
+    llm_mode = "offline_rules"
+    llm_model = ""
     if not text:
         return {
             "result": FAIL,
             "reasons": ["节点没有产出文本"],
             "suggested_prompt": "补全该节点的文本内容，至少包含一句完整的话。",
+            "review_mode": llm_mode,
         }
     min_chars = int(cfg.get("min_chars") or 12)
     max_chars = int(cfg.get("max_chars") or 6000)
@@ -131,13 +134,16 @@ def _check_text(
             extra = llm_reviewer(text, cfg)
         except Exception as exc:  # a broken reviewer never fails a good node
             extra = None
-            reasons.append(f"LLM 审稿不可用：{type(exc).__name__}")
+            reasons.append(f"LLM 审稿不可用（离线规则兜底）：{type(exc).__name__}")
         if isinstance(extra, dict):
+            llm_mode = "llm"
+            llm_model = str(extra.get("model") or "")
             verdict = str(extra.get("result") or "").lower()
             if verdict in (PASS, WARN, FAIL):
                 if verdict == FAIL or (verdict == WARN and result == PASS):
                     result = verdict
-                reasons.extend(str(r) for r in (extra.get("reasons") or []))
+                issues = extra.get("issues") or extra.get("reasons") or []
+                reasons.extend(str(r) for r in issues)
             if extra.get("suggested_prompt"):
                 cfg = {**cfg, "_suggested_prompt": extra["suggested_prompt"]}
     suggestion = str(cfg.get("_suggested_prompt") or "")
@@ -148,6 +154,8 @@ def _check_text(
         "reasons": reasons,
         "suggested_prompt": suggestion,
         "signals": {"chars": len(text)},
+        "review_mode": llm_mode,
+        "llm_model": llm_model,
     }
 
 
@@ -188,7 +196,9 @@ def _check_video(node: dict[str, Any], output: Any, *, backend: Any = None) -> d
             for f in report.findings
         ]
         step = str((cfg or {}).get("koubo_step") or "")
-        audio_required = bool(cfg.get("require_audio", step in ("edit", "final")))
+        audio_required = bool(
+            cfg.get("require_audio", step in ("edit", "edit_segments", "final", "segment"))
+        )
         for finding in report.findings:
             if finding.name in ("no_audio_track", "silent_audio") and not audio_required:
                 # An avatar/evidence intermediate clip has no narration track by
@@ -201,12 +211,15 @@ def _check_video(node: dict[str, Any], output: Any, *, backend: Any = None) -> d
                     result = WARN
                 reasons.append(f"{finding.name}: {finding.detail}")
                 continue
-            if finding.name == "first_last_frames" and step in ("avatar", "evidence"):
+            if finding.name == "first_last_frames" and step in ("avatar", "avatar_sentence"):
                 continue
-            if finding.severity == "blocker":
-                result = FAIL
-                reasons.append(f"{finding.name}: {finding.detail}")
-            elif finding.severity == "major" and result != FAIL:
+            if finding.name == "duration_too_short" and step in (
+                "avatar", "avatar_sentence", "segment", "evidence", "evidence_sentence"
+            ):
+                # A per-sentence clip is legitimately short; the final duration
+                # is checked on the edit/final node instead.
+                continue
+            if finding.severity == "blocker" or (finding.severity == "major" and result != FAIL):
                 result = FAIL
                 reasons.append(f"{finding.name}: {finding.detail}")
             elif finding.severity == "minor" and result == PASS:
@@ -272,10 +285,10 @@ def _check_audio(node: dict[str, Any], output: Any) -> dict[str, Any]:
         if not probe.get("duration"):
             proc = _run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
                          "json", str(path)], timeout=30)
-            try:
+            import contextlib
+
+            with contextlib.suppress(Exception):
                 signals["duration"] = float(json.loads(proc.stdout)["format"]["duration"])
-            except Exception:
-                pass
         if not signals.get("duration"):
             result = FAIL
             reasons.append("无法读取音频时长")
@@ -332,13 +345,16 @@ def _check_image(node: dict[str, Any], output: Any) -> dict[str, Any]:
     }
 
 
-def _check_subtitle(node: dict[str, Any], output: Any) -> dict[str, Any]:
+def _check_subtitle(
+    node: dict[str, Any], output: Any, *, llm_reviewer: Reviewer | None = None
+) -> dict[str, Any]:
     path = _first_path(output, (".srt",))
     if path is None or not path.is_file():
         return {
             "result": FAIL,
             "reasons": ["字幕节点没有产出 SRT 文件"],
             "suggested_prompt": "重新生成字幕，确认上游分句结果非空。",
+            "review_mode": "offline_rules",
         }
     text = path.read_text(encoding="utf-8", errors="ignore")
     rows = [line for line in text.splitlines() if "-->" in line]
@@ -347,12 +363,108 @@ def _check_subtitle(node: dict[str, Any], output: Any) -> dict[str, Any]:
             "result": FAIL,
             "reasons": ["SRT 没有任何时间轴条目"],
             "suggested_prompt": "重新生成字幕时间轴。",
+            "review_mode": "offline_rules",
+        }
+    result = PASS
+    reasons: list[str] = []
+    mode = "offline_rules"
+    model = ""
+    if llm_reviewer is not None:
+        # Review the spoken text, not the SRT file path.
+        cues = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip() and "-->" not in line and not line.strip().isdigit()
+        ]
+        cue_text = "\n".join(cues)
+        try:
+            extra = llm_reviewer(cue_text, dict(node.get("config") or {}))
+        except Exception as exc:
+            extra = None
+            reasons.append(f"LLM 审稿不可用（离线规则兜底）：{type(exc).__name__}")
+        if isinstance(extra, dict):
+            mode = "llm"
+            model = str(extra.get("model") or "")
+            verdict = str(extra.get("result") or "").lower()
+            if verdict in (PASS, WARN, FAIL):
+                result = verdict
+                reasons.extend(str(r) for r in (extra.get("issues") or extra.get("reasons") or []))
+    return {
+        "result": result,
+        "reasons": reasons,
+        "suggested_prompt": "",
+        "signals": {"path": str(path), "cues": len(rows)},
+        "review_mode": mode,
+        "llm_model": model,
+    }
+
+
+def _check_evidence(node: dict[str, Any], output: Any, *, vision_backend: Any = None) -> dict[str, Any]:
+    """Evidence node: real material exists and matches its sentence.
+
+    A skipped segment is yellow with the reason, never a fake pass.  An
+    explicitly unrelated picture is red, which triggers the one automatic
+    retry with a different photo (``retry_config`` bumps ``_evidence_retry``).
+    """
+    out = output if isinstance(output, dict) else {}
+    items = [item for item in (out.get("evidence") or []) if isinstance(item, dict)]
+    if not items:
+        return {
+            "result": WARN,
+            "reasons": [str(out.get("skipped_reason") or "未取得证据素材，已跳过该证据段")],
+            "suggested_prompt": "",
+            "signals": {"items": 0},
+        }
+    from hevi.canvas import evidence as evidence_mod
+
+    reasons: list[str] = []
+    irrelevant = False
+    unknown = False
+    skipped = 0
+    signals: dict[str, Any] = {"items": len(items)}
+    for item in items:
+        if not item.get("ok"):
+            skipped += 1
+            reasons.append(str(item.get("skipped_reason") or "该句证据素材缺失，已跳过"))
+            continue
+        path = Path(str(item.get("path") or ""))
+        if not path.is_file() or path.stat().st_size == 0:
+            return {
+                "result": FAIL,
+                "reasons": [f"证据素材文件缺失：{path}"],
+                "suggested_prompt": "重新获取该句的证据素材。",
+                "signals": signals,
+            }
+        verdict = item.get("relevant")
+        if verdict is None:
+            verdict = evidence_mod.judge_relevance(
+                str(item.get("sentence") or ""), item, vision_backend=vision_backend
+            )
+        if verdict is False:
+            irrelevant = True
+            reasons.append(f"证据图与句子不相关：{str(item.get('sentence') or '')[:40]}")
+        elif verdict is None:
+            unknown = True
+            reasons.append("无法自动判断证据图相关性（离线规则），请人工看一眼")
+    if irrelevant:
+        return {
+            "result": FAIL,
+            "reasons": reasons,
+            "suggested_prompt": "换一张更切题的证据图（与句子主题一致）。",
+            "signals": signals,
+        }
+    if unknown or skipped:
+        return {
+            "result": WARN,
+            "reasons": reasons,
+            "suggested_prompt": "",
+            "signals": {**signals, "skipped": skipped},
         }
     return {
         "result": PASS,
         "reasons": [],
         "suggested_prompt": "",
-        "signals": {"path": str(path), "cues": len(rows)},
+        "signals": signals,
     }
 
 
@@ -367,15 +479,28 @@ def review_node(
     """Return the review dict written back to ``Node.review``."""
     node_type = str(node.get("node_type") or "text")
     step = str((node.get("config") or {}).get("koubo_step") or "")
-    model = "hevi.canvas.self_check/offline"
+    model = "hevi.canvas.self_check/offline-rules"
+    review_mode = "deterministic"
     if step == "subtitle":
-        payload = _check_subtitle(node, output)
-    elif step == "avatar" or step == "evidence" or step == "edit" or step == "final":
+        payload = _check_subtitle(node, output, llm_reviewer=llm_reviewer)
+        review_mode = str(payload.get("review_mode") or "offline_rules")
+        if review_mode == "llm":
+            model = str(payload.get("llm_model") or "hevi.canvas.self_check/text+llm")
+        else:
+            model = "hevi.canvas.self_check/offline-rules"
+    elif step in ("evidence", "evidence_sentence"):
+        payload = _check_evidence(node, output, vision_backend=vision_backend)
+    elif step in ("avatar", "avatar_sentence", "edit", "edit_segments", "final", "segment"):
         payload = _check_video(node, output, backend=vision_backend)
     elif node_type in ("text", "script"):
         payload = _check_text(
             node, output, upstream_text=upstream_text, llm_reviewer=llm_reviewer
         )
+        review_mode = str(payload.get("review_mode") or "offline_rules")
+        if review_mode == "llm":
+            model = str(payload.get("llm_model") or "hevi.canvas.self_check/text+llm")
+        else:
+            model = "hevi.canvas.self_check/offline-rules"
     elif node_type == "video":
         payload = _check_video(node, output, backend=vision_backend)
     elif node_type == "audio":
@@ -389,14 +514,13 @@ def review_node(
             "suggested_prompt": "",
             "signals": {"note": f"{node_type} 节点无需媒体检查"},
         }
-    if llm_reviewer is not None and node_type in ("text", "script"):
-        model = "hevi.canvas.self_check/text+llm"
     return {
         "result": payload["result"],
         "reasons": payload.get("reasons") or [],
         "suggested_prompt": payload.get("suggested_prompt") or "",
         "signals": payload.get("signals") or {},
         "model": model,
+        "review_mode": review_mode,
         "ts": _ts(),
     }
 
@@ -411,6 +535,10 @@ def retry_config(node: dict[str, Any], review: dict[str, Any]) -> dict[str, Any]
     if review.get("result") != FAIL:
         return None
     cfg = dict(node.get("config") or {})
+    # Evidence: the retry must actually fetch a *different* photo.
+    if str(cfg.get("koubo_step") or "") in ("evidence", "evidence_sentence"):
+        cfg["_evidence_retry"] = int(cfg.get("_evidence_retry") or 0) + 1
+        return cfg
     suggestion = str(review.get("suggested_prompt") or "").strip()
     for key in ("prompt", "content", "script_text", "text"):
         if key in cfg and isinstance(cfg[key], str):
