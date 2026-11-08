@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
+from hevi.api.rate_limit import rate_limit
 from hevi.auth.dependencies import get_current_user
 from hevi.canvas.executor_service import ExecutorService
 from hevi.canvas.graph_repository import GraphRepository
@@ -728,7 +729,10 @@ async def patch_node(
     }
 
 
-@router.post("/{graph_id}/nodes/{node_key}/execute")
+@router.post(
+    "/{graph_id}/nodes/{node_key}/execute",
+    dependencies=[Depends(rate_limit("canvas_execute", max_requests=20, window_s=60, per_user=True))],
+)
 async def execute_node(
     graph_id: str,
     node_key: str,
@@ -811,7 +815,10 @@ async def delete_graph(
     return await _do_delete_graph(graph_id, svc, user)
 
 
-@router.post("/{graph_id}/execute")
+@router.post(
+    "/{graph_id}/execute",
+    dependencies=[Depends(rate_limit("canvas_execute", max_requests=20, window_s=60, per_user=True))],
+)
 async def execute_graph(
     graph_id: str,
     body: ExecuteGraphRequest,

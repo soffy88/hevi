@@ -13,6 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from obase.persistence import PgPool
 from pydantic import BaseModel, Field
 
+from hevi.api.rate_limit import rate_limit
 from hevi.auth.dependencies import get_current_user
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
@@ -161,7 +162,11 @@ def _serialize(task: dict[str, Any], source: str) -> dict[str, Any]:
     }
 
 
-@router.post("/generate", status_code=201)
+@router.post(
+    "/generate",
+    status_code=201,
+    dependencies=[Depends(rate_limit("video_submit", max_requests=10, window_s=60, per_user=True))],
+)
 async def generate_unified(
     body: UnifiedGenerateRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
@@ -205,7 +210,11 @@ async def generate_unified(
     return _serialize(task, source)
 
 
-@router.post("/productions", status_code=201)
+@router.post(
+    "/productions",
+    status_code=201,
+    dependencies=[Depends(rate_limit("video_submit", max_requests=10, window_s=60, per_user=True))],
+)
 async def create_production(
     body: ProductionRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],

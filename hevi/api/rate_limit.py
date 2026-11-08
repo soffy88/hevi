@@ -1,8 +1,9 @@
 """Lightweight in-process rate limiting.
 
-A dependency-free sliding-window limiter keyed by client IP + scope. Protects
-the abuse-prone endpoints (auth brute-force/enumeration, expensive GPU/LLM
-creative calls, task creation) without an external store.
+A dependency-free sliding-window limiter keyed by client IP (or authenticated
+user) + scope. Protects the abuse-prone endpoints (auth brute-force/enumeration,
+expensive GPU/LLM creative calls, task creation, video submission) without an
+external store.
 
 Scope/limits are per-process — matching the current single-instance worker
 topology (the queue worker runs inside the app lifespan). For multi-instance
@@ -33,15 +34,43 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _user_id(request: Request) -> str | None:
+    """Best-effort authenticated-user identity for per-user buckets.
+
+    Invalid/expired tokens fall back to the IP bucket. Rate limiting must never
+    become an oracle for token validity, so decode failures are silent.
+    """
+    header = request.headers.get("authorization") or ""
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    try:
+        from hevi.auth.jwt_handler import decode_access_token
+
+        sub = decode_access_token(token.strip()).get("sub")
+    except Exception:
+        return None
+    return str(sub) if sub else None
+
+
 def rate_limit(
-    scope: str, max_requests: int, window_s: float
+    scope: str,
+    max_requests: int,
+    window_s: float,
+    per_user: bool = False,
 ) -> Callable[[Request], Awaitable[None]]:
-    """Return a FastAPI dependency enforcing max_requests per window_s per IP."""
+    """Return a FastAPI dependency enforcing max_requests per window_s.
+
+    ``per_user=True`` keys authenticated requests by user id so one account
+    cannot spread submission traffic across IPs; anonymous requests and
+    endpoints where a user is not yet known stay keyed by client IP.
+    """
 
     async def _dep(request: Request) -> None:
         if settings.debug:
             return
-        key = f"{scope}:{_client_ip(request)}"
+        user = _user_id(request) if per_user else None
+        key = f"{scope}:u:{user}" if user else f"{scope}:{_client_ip(request)}"
         now = time.monotonic()
         bucket = _BUCKETS[key]
         cutoff = now - window_s
