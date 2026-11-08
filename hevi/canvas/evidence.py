@@ -74,17 +74,23 @@ def _tokens(text: str) -> set[str]:
 
 
 def query_for_sentence(sentence: str, topic: str = "") -> str:
-    """Deterministic English stock query for a Chinese/English sentence."""
-    text = f"{sentence} {topic}".strip()
-    lowered = text.lower()
-    for needle, query in _QUERY_MAP:
-        if needle.isascii():
-            if re.search(rf"(?<![a-z0-9]){re.escape(needle.lower())}(?![a-z0-9])", lowered):
+    """Deterministic English stock query for a Chinese/English sentence.
+
+    The sentence itself wins; the topic is only a fallback, so a casual topic
+    word (e.g. "AI") cannot hijack every sentence's evidence.
+    """
+    for text in (sentence, topic):
+        lowered = str(text or "").strip().lower()
+        if not lowered:
+            continue
+        for needle, query in _QUERY_MAP:
+            if needle.isascii():
+                if re.search(rf"(?<![a-z0-9]){re.escape(needle.lower())}(?![a-z0-9])", lowered):
+                    return query
+            elif needle.lower() in lowered:
                 return query
-        elif needle.lower() in lowered:
-            return query
     # ASCII words already in the sentence are a usable query.
-    ascii_words = re.findall(r"[A-Za-z]{3,}", text)
+    ascii_words = re.findall(r"[A-Za-z]{3,}", f"{sentence} {topic}")
     if ascii_words:
         return " ".join(ascii_words[:4]).lower()
     return "abstract background texture"
