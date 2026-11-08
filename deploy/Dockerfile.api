@@ -132,7 +132,8 @@ RUN mkdir -p /app/output /app/data /app/assets /app/.cache/hevi/zerolines /app/.
     chown -R hevi:hevi /app/.cache && \
     chown hevi:hevi /app /app/output /app/data /app/assets && \
     chown 1000:1000 /app/hevi && \
-    chown -R 1000:1000 /app/.obase /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio
+    chown -R hevi:hevi /app/.obase && \
+    chown -R 1000:1000 /app/hevi-remotion/public/runs /app/hevi-remotion/src/data /app/hevi-remotion/public/audio
 USER hevi
 
 # cftunnel: obase 默认 ~/.obase/work,无 HOME 时解析到 /,UID 1000 无权创建
