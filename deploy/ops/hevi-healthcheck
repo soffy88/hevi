@@ -17,7 +17,7 @@ CURL_TIMEOUT="${HEVI_CHECK_TIMEOUT_S:-10}"
 MIN_FREE_GB="${HEVI_CHECK_MIN_FREE_GB:-15}"
 DISK_PATH="${HEVI_CHECK_DISK_PATH:-/data}"
 CONTAINERS="${HEVI_CHECK_CONTAINERS:-hevi-cftunnel-hevi-api-1 hevi-cftunnel-hevi-worker-1 hevi-cftunnel-hevi-scheduler-1 hevi-cftunnel-hevi-web-1 hevi-cftunnel-hevi-redis-1}"
-ALERT_LOG="/var/log/hevi-alert.log"
+ALERT_LOG="${HEVI_ALERT_LOG:-/var/log/hevi-alert.log}"
 ALERTS_DIR="${HEVI_ALERTS_DIR:-/data/soffy/projects/hevi-alerts}"
 ALERTS_MD="$ALERTS_DIR/ALERTS.md"
 WEBHOOK_URL="${HEVI_ALERT_WEBHOOK_URL:-}"
@@ -58,31 +58,85 @@ else
   fails+=("disk ${DISK_PATH} -> unreadable")
 fi
 
+# --- 告警去重（S8）---------------------------------------------------------
+# 同一故障集合 1 小时内只告警一次；恢复时发一次恢复通知。
+# 状态文件在 soffy 可写的告警目录；/var/log 仍用 sudo tee。
+STATE_FILE="${HEVI_ALERT_STATE_FILE:-$ALERTS_DIR/.healthcheck-state}"
+DEDUPE_S="${HEVI_ALERT_DEDUPE_S:-3600}"
+
+state_get() {
+  [ -f "$STATE_FILE" ] || return 0
+  sed -n "s/^$1=//p" "$STATE_FILE" 2>/dev/null | head -n 1
+}
+
+state_write() {
+  mkdir -p "$(dirname "$STATE_FILE")"
+  umask 022
+  {
+    printf 'status=%s\n' "$1"
+    printf 'fingerprint=%s\n' "$2"
+    printf 'last_alert_ts=%s\n' "$3"
+    printf 'last_recovery_ts=%s\n' "$4"
+  } >"$STATE_FILE.tmp"
+  mv "$STATE_FILE.tmp" "$STATE_FILE"
+}
+
+append_alert() {
+  # $1 = full text block, $2 = line for /var/log and stderr
+  local block="$1" line="$2"
+  if ! printf '%s\n' "$line" | sudo -n /usr/bin/tee -a "$ALERT_LOG" >/dev/null 2>&1; then
+    printf '%s cannot write %s\n' "$line" "$ALERT_LOG" >&2
+  fi
+  mkdir -p "$ALERTS_DIR"
+  if [ ! -f "$ALERTS_MD" ]; then
+    {
+      printf '# Hevi 告警记录\n\n'
+      printf '由宿主 cron `hevi-healthcheck`（每 5 分钟）自动追加。\n\n'
+    } >"$ALERTS_MD"
+  fi
+  printf '%s\n' "$block" >>"$ALERTS_MD"
+}
+
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+now="$(date +%s)"
+prev_status="$(state_get status)"
+prev_fp="$(state_get fingerprint)"
+prev_alert_ts="$(state_get last_alert_ts)"
+prev_recovery_ts="$(state_get last_recovery_ts)"
+
 if [ "${#fails[@]}" -eq 0 ]; then
+  if [ "$prev_status" = "fail" ]; then
+    line="$ts hevi-healthcheck RECOVERED (previous failures: ${prev_fp:-unknown})"
+    block="$(printf '## %s\n\n```\n%s\n```\n\n' "$ts" "$line")"
+    append_alert "$block" "$line"
+    if [ -n "$WEBHOOK_URL" ]; then
+      payload="$(printf '{"service":"hevi","host":"%s","ts":"%s","recovered":true,"failures":[]}' \
+        "$(hostname)" "$ts")"
+      if ! curl -fsS -m "$WEBHOOK_TIMEOUT" -H 'Content-Type: application/json' \
+          -d "$payload" "$WEBHOOK_URL" >/dev/null 2>&1; then
+        printf '%s hevi-healthcheck recovery webhook delivery failed\n' "$ts" >&2
+      fi
+    fi
+    # 恢复不清除 fingerprint/时间：同一故障 1 小时内再次出现仍算同一故障，不重复告警。
+    state_write ok "$prev_fp" "$prev_alert_ts" "$now"
+    printf '%s\n' "$line" >&2
+  fi
   exit 0
 fi
 
-ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 body="$(printf '%s\n' "${fails[@]}")"
+fingerprint="$(printf '%s\n' "${fails[@]}" | sort | sha256sum | cut -d' ' -f1)"
+
+if [ "$prev_fp" = "$fingerprint" ] \
+   && [ -n "$prev_alert_ts" ] && [ $(( now - prev_alert_ts )) -lt "$DEDUPE_S" ]; then
+  # 同一故障仍在持续且距上次告警不足窗口：静默，只保持非零退出供 systemd 记录。
+  exit 1
+fi
+
 line="$ts hevi-healthcheck FAIL"
 for f in "${fails[@]}"; do line+=$'\n'"  - $f"; done
-
-# /var/log/hevi-alert.log needs root; soffy has passwordless sudo.
-if ! printf '%s\n' "$line" | sudo -n /usr/bin/tee -a "$ALERT_LOG" >/dev/null 2>&1; then
-  printf '%s cannot write %s\n' "$line" "$ALERT_LOG" >&2
-fi
-
-mkdir -p "$ALERTS_DIR"
-if [ ! -f "$ALERTS_MD" ]; then
-  {
-    printf '# Hevi 告警记录\n\n'
-    printf '由宿主 cron `hevi-healthcheck`（每 5 分钟）自动追加。\n\n'
-  } >"$ALERTS_MD"
-fi
-{
-  printf '## %s\n\n' "$ts"
-  printf '```\n%s\n```\n\n' "$body"
-} >>"$ALERTS_MD"
+block="$(printf '## %s\n\n```\n%s\n```\n\n' "$ts" "$body")"
+append_alert "$block" "$line"
 
 if [ -n "$WEBHOOK_URL" ]; then
   payload="$(printf '{"service":"hevi","host":"%s","ts":"%s","failures":["%s"]}' \
@@ -93,5 +147,6 @@ if [ -n "$WEBHOOK_URL" ]; then
   fi
 fi
 
+state_write fail "$fingerprint" "$now" "$prev_recovery_ts"
 printf '%s\n' "$line" >&2
 exit 1
