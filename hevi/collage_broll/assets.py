@@ -37,16 +37,42 @@ def load_pexels_key() -> str:
     return ""
 
 
-def pexels_photo(query: str, out_path: Path, orientation: str = "portrait") -> Path | None:
+def pexels_photo_meta(
+    query: str,
+    out_path: Path,
+    orientation: str = "portrait",
+    *,
+    per_page: int = 1,
+    pick: int = 0,
+) -> dict[str, Any] | None:
+    """Pexels photo search that keeps the provenance the caller must show.
+
+    Same request/download path as :func:`pexels_photo`; the only addition is
+    the photo's real metadata (author, page URL, alt text) saved beside the
+    image so an evidence card can name the actual source instead of a generic
+    "Pexels free stock" label.  ``pick`` selects a later result, which lets a
+    relevance check retry with a different photo.
+    """
     out_path = Path(out_path)
+    meta_path = out_path.with_suffix(out_path.suffix + ".json")
     if out_path.exists() and out_path.stat().st_size > 0:
-        return out_path
+        try:
+            cached = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            cached = {}
+        return {
+            **cached,
+            "path": str(out_path),
+            "provider": "pexels",
+            "query": query,
+            "cached": True,
+        }
     key = load_pexels_key()
     if not key:
         return None
     out_path.parent.mkdir(parents=True, exist_ok=True)
     url = "https://api.pexels.com/v1/search?" + urllib.parse.urlencode(
-        {"query": query, "per_page": 1, "orientation": orientation}
+        {"query": query, "per_page": max(1, int(per_page)), "orientation": orientation}
     )
     req = urllib.request.Request(url, headers={"Authorization": key, "User-Agent": "Mozilla/5.0"})
     try:
@@ -57,7 +83,8 @@ def pexels_photo(query: str, out_path: Path, orientation: str = "portrait") -> P
     photos = data.get("photos") or []
     if not photos:
         return None
-    src = photos[0].get("src") or {}
+    photo = photos[max(0, min(int(pick), len(photos) - 1))]
+    src = photo.get("src") or {}
     img_url = src.get("large2x") or src.get("large") or src.get("medium")
     if not img_url:
         return None
@@ -67,7 +94,31 @@ def pexels_photo(query: str, out_path: Path, orientation: str = "portrait") -> P
             out_path.write_bytes(resp.read())
     except Exception:
         return None
-    return out_path if out_path.exists() and out_path.stat().st_size > 0 else None
+    if not out_path.exists() or out_path.stat().st_size == 0:
+        return None
+    meta = {
+        "path": str(out_path),
+        "provider": "pexels",
+        "query": query,
+        "photo_id": str(photo.get("id") or ""),
+        "photographer": str(photo.get("photographer") or ""),
+        "photographer_url": str(photo.get("photographer_url") or ""),
+        "page_url": str(photo.get("url") or ""),
+        "alt": str(photo.get("alt") or ""),
+        "width": int(photo.get("width") or 0),
+        "height": int(photo.get("height") or 0),
+        "license": "Pexels License (https://www.pexels.com/license/)",
+    }
+    import contextlib
+
+    with contextlib.suppress(OSError):
+        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return meta
+
+
+def pexels_photo(query: str, out_path: Path, orientation: str = "portrait") -> Path | None:
+    meta = pexels_photo_meta(query, out_path, orientation)
+    return Path(meta["path"]) if meta else None
 
 
 def _subject_queries(sentence: str) -> dict[str, str]:

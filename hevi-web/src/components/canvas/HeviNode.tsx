@@ -5,7 +5,7 @@
 'use client';
 
 import { Handle, Position, type NodeProps } from 'reactflow';
-import type { NodeType, NodeResult, TaskStatus } from '@/types/api';
+import type { CanvasArtifact, CanvasReview, NodeType, NodeResult, TaskStatus } from '@/types/api';
 import { NODE_META } from '@/lib/canvas-rules';
 
 export interface HeviNodeData {
@@ -16,19 +16,36 @@ export interface HeviNodeData {
   config?: Record<string, unknown>;
   status?: TaskStatus;
   result?: NodeResult;
+  revision?: number;
+  locked?: boolean;
+  review?: CanvasReview | null;
+  artifacts?: CanvasArtifact[];
 }
 
 const STATUS_RING: Partial<Record<TaskStatus, string>> = {
   pending:   'transparent',
   running:   'var(--primary)',
   completed: 'var(--success, oklch(0.62 0.18 145))',
+  ok:        'var(--success, oklch(0.62 0.18 145))',
+  warn:      'var(--warning, oklch(0.70 0.15 80))',
   failed:    'var(--destructive)',
+  fail:      'var(--destructive)',
+  stale:     'oklch(0.62 0.02 90)',
+  locked:    'oklch(0.55 0.12 240)',
   paused:    'var(--warning, oklch(0.70 0.15 80))',
+};
+
+const REVIEW_COLOR: Record<string, string> = {
+  pass: 'oklch(0.62 0.18 145)',
+  warn: 'oklch(0.70 0.15 80)',
+  fail: 'var(--destructive)',
 };
 
 export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
   const meta = NODE_META[data.nodeType];
   const ring = data.status ? STATUS_RING[data.status] : 'transparent';
+  const review = data.review ?? null;
+  const artifactCount = data.artifacts?.length ?? 0;
 
   return (
     <div
@@ -48,9 +65,36 @@ export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
           <span className="hevi-node__tool">{String(data.config.tool_id)}</span>
         )}
         {data.status === 'running' && <span className="hevi-node__spinner" aria-hidden />}
-        {data.status === 'completed' && <span className="hevi-node__check">✓</span>}
-        {data.status === 'failed' && <span className="hevi-node__fail">✕</span>}
+        {(data.status === 'completed' || data.status === 'ok') && <span className="hevi-node__check">✓</span>}
+        {(data.status === 'failed' || data.status === 'fail') && <span className="hevi-node__fail">✕</span>}
+        {data.status === 'warn' && <span className="hevi-node__fail" style={{ color: REVIEW_COLOR.warn }}>!</span>}
+        {data.status === 'stale' && <span className="hevi-node__tool">stale</span>}
+        {data.locked && <span className="hevi-node__tool" title="已锁定，不会重跑">🔒</span>}
+        {typeof data.revision === 'number' && data.revision > 0 && (
+          <span className="hevi-node__tool">v{data.revision}</span>
+        )}
       </div>
+
+      {/* 自检回写：绿/黄/红 + 第一条原因 + 产物数 */}
+      {(review || artifactCount > 0) && (
+        <div className="hevi-node__result">
+          {review && (
+            <div
+              className="hevi-node__data-badge"
+              style={{ color: REVIEW_COLOR[review.result] ?? undefined }}
+              title={(review.reasons ?? []).join('\n')}
+            >
+              {review.result === 'pass' ? '自检通过' : review.result === 'warn' ? '自检提醒' : '自检未通过'}
+              {review.reasons?.[0] ? `：${review.reasons[0].slice(0, 40)}` : ''}
+            </div>
+          )}
+          {artifactCount > 0 && (
+            <div className="hevi-node__data-badge">
+              产物 {artifactCount} 个 · {data.artifacts!.map((a) => a.kind).slice(0, 3).join('/')}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 结果预览 */}
       {data.result && (

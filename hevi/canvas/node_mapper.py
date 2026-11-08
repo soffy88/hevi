@@ -228,6 +228,13 @@ def create_node_executor() -> Callable[..., Any]:
     """Return the hevi node dispatch executor for canvas_workflow_executor."""
 
     async def executor(node: CanvasNode, upstream_outputs: dict[str, Any]) -> Any:
+        # koubo_cut default graph: each step is its own node, executed by the
+        # granular offline executor (script -> sentences -> TTS -> avatar ->
+        # evidence -> edit -> subtitle -> final).
+        if (node.config or {}).get("koubo_step"):
+            from hevi.canvas.koubo_executor import run_koubo_node
+
+            return await run_koubo_node(node, upstream_outputs)
         tool_id = (node.config or {}).get("tool_id")
         if tool_id:
             from hevi.studio.tools import invoke_tool

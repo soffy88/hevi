@@ -4,13 +4,20 @@ import uuid
 from typing import Any
 
 from hevi.canvas.graph_repository import GraphRepository
+from hevi.canvas.node_store import NodeStore
 
 
 class GraphService:
-    """画布图持久化业务层 — save/load/list/update/delete canvas graphs."""
+    """画布图持久化业务层 — save/load/list/update/delete canvas graphs.
 
-    def __init__(self, repo: GraphRepository) -> None:
+    When a ``node_store`` is supplied, every save/update also materialises the
+    first-class node/edge rows (dual write): ``nodes_json``/``edges_json``
+    remain the frontend mirror, the node graph is what the executor reads.
+    """
+
+    def __init__(self, repo: GraphRepository, node_store: NodeStore | None = None) -> None:
         self._repo = repo
+        self._nodes = node_store
 
     async def save_graph(
         self,
@@ -29,7 +36,14 @@ class GraphService:
             "edges_json": edges,
             "user_id": user_id,
         }
-        return await self._repo.create(data)
+        stored = await self._repo.create(data)
+        if self._nodes is not None:
+            await self._nodes.sync_graph(
+                str(stored.get("id") or data["id"]),
+                list(stored.get("nodes_json") or nodes),
+                list(stored.get("edges_json") or edges),
+            )
+        return stored
 
     async def load_graph(self, graph_id: str) -> dict[str, Any] | None:
         return await self._repo.get(graph_id)
@@ -57,7 +71,18 @@ class GraphService:
             updates["edges_json"] = edges
         if not updates:
             return await self._repo.get(graph_id)
-        return await self._repo.update(graph_id, updates)
+        stored = await self._repo.update(graph_id, updates)
+        if stored is not None and self._nodes is not None and (nodes is not None or edges is not None):
+            await self._nodes.sync_graph(
+                str(graph_id),
+                list(stored.get("nodes_json") or []),
+                list(stored.get("edges_json") or []),
+            )
+        return stored
+
+    @property
+    def node_store(self) -> NodeStore | None:
+        return self._nodes
 
     async def delete_graph(self, graph_id: str) -> bool:
         return await self._repo.delete(graph_id)

@@ -25,6 +25,12 @@ class ExecutorService:
         on_error: str = "rollback",
         budget_usd: float | None = None,
         target_duration_s: float | None = None,
+        scope: str = "dirty",
+        selected_ids: list[str] | None = None,
+        max_retries: int = 1,
+        llm_reviewer: Any = None,
+        llm_rewriter: Any = None,
+        vision_backend: Any = None,
     ) -> dict[str, Any]:
         """Load graph, validate, preflight-critique, and execute.
 
@@ -60,6 +66,51 @@ class ExecutorService:
             raise PreflightError("; ".join(errors))
 
         executor = create_node_executor()
+
+        # Incremental node engine: one node row per step, stale-only rerun,
+        # locked nodes skipped, per-node self-check + one automatic retry.
+        node_store = getattr(self._graph_svc, "node_store", None)
+        if node_store is not None:
+            from hevi.canvas.incremental_executor import ExecuteOptions, IncrementalExecutor
+
+            # Text nodes (script / sentences / subtitle) are reviewed by the
+            # configured free LLM channel when one answers; otherwise the
+            # deterministic offline rules stay in force and the node records
+            # review_mode=offline_rules.
+            if llm_reviewer is None:
+                try:
+                    from hevi.canvas import llm_review
+
+                    built = llm_review.build()
+                except Exception:
+                    built = None
+                if built is not None:
+                    llm_reviewer, built_rewriter, _channel = built
+                    if llm_rewriter is None:
+                        llm_rewriter = built_rewriter
+
+            engine = IncrementalExecutor(node_store, executor=executor)
+            result = await engine.execute(
+                graph_id,
+                graph,
+                options=ExecuteOptions(
+                    scope=scope,
+                    selected_ids=list(selected_ids or []),
+                    on_error=on_error,
+                    max_retries=max_retries,
+                    budget_usd=budget_usd,
+                    llm_reviewer=llm_reviewer,
+                    llm_rewriter=llm_rewriter,
+                    vision_backend=vision_backend,
+                ),
+            )
+            result["node_count"] = len(nodes)
+            result["preflight"] = {
+                "estimated_cost_usd": preflight.estimated_cost_usd,
+                "warnings": [i.message for i in preflight.issues if i.severity == "warning"],
+            }
+            return result
+
         results: dict[str, CanvasNodeResult] = await canvas_workflow_executor(
             nodes=nodes,
             edges=edges,

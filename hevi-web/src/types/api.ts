@@ -10,15 +10,45 @@ export type NodeType = 'text' | 'image' | 'video' | 'audio' | 'script' | 'segmen
 export interface CanvasNode {
   node_id: string;
   node_type: NodeType;
+  label?: string;
   // 后端 oprim.CanvasNode 的真实字段名是 config,不是 inputs(HEVI 路线图 Phase1 #31
   // 修复:此前 onSave 一直发 inputs,执行时 CanvasNode.model_validate 静默丢弃,
   // 导致任何节点配置——包括视频节点的 prompt/reference_image——从未真正到达后端)。
   config?: Record<string, unknown>;
-  upstream_ids: string[];
+  upstream_ids?: string[];
   // 前端补充(画布位置 + 执行状态)
   position?: { x: number; y: number };
-  status?: TaskStatus;
+  status?: CanvasNodeStatus;
   result?: NodeResult;
+  // Canvas MVP: node revision chain / self-check verdict / artifacts.
+  revision?: number;
+  locked?: boolean;
+  review?: CanvasReview | null;
+  artifacts?: CanvasArtifact[];
+  estimated_cost?: number;
+  actual_cost?: number;
+}
+
+export type CanvasNodeStatus =
+  | 'pending' | 'running' | 'ok' | 'warn' | 'fail' | 'stale' | 'locked';
+
+export interface CanvasReview {
+  result: 'pass' | 'warn' | 'fail';
+  reasons?: string[];
+  suggested_prompt?: string;
+  model?: string;
+  review_mode?: 'llm' | 'offline_rules' | 'deterministic' | string;
+  ts?: string;
+  signals?: Record<string, unknown>;
+}
+
+export interface CanvasArtifact {
+  id?: string;
+  kind: string;
+  path: string;
+  mime?: string | null;
+  digest?: string | null;
+  size_bytes?: number | null;
 }
 
 export interface NodeResult {
@@ -52,7 +82,8 @@ export type EdgeValidation = { valid: boolean; reason?: string };
 // ── 任务/进度 ─────────────────────────────────────
 export type TaskStatus =
   | 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'failed'
-  | 'blocked' | 'cancelled' | 'paused' | 'interrupted' | 'unknown';
+  | 'blocked' | 'cancelled' | 'paused' | 'interrupted' | 'unknown'
+  | 'ok' | 'warn' | 'fail' | 'stale' | 'locked';
 
 export type DurationArchetype = 'short' | '1-5min' | '5-15min' | '15-45min' | '45min+';
 export type VideoProvider = 'wan_local' | 'veo3' | 'kling_v2' | 'hailuo' | 'ltx2_cloud' | 'wan_cloud';

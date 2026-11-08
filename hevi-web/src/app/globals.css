@@ -2019,3 +2019,31 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Canvas MVP: node self-check / inspector ─────────────────────────── */
+.hevi-node__tool { font-size: 11px; opacity: 0.8; }
+.hevi-inspector__section {
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: var(--muted, rgba(0, 0, 0, 0.04));
+  border-radius: 8px;
+}
+.hevi-inspector__reasons {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  font-size: 12px;
+}
+.hevi-inspector__artifacts {
+  margin: 4px 0 0 16px;
+  padding: 0;
+  font-size: 12px;
+  max-height: 120px;
+  overflow: auto;
+}
+.hevi-inspector__actions {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+.product-page--canvas .hevi-canvas { min-height: 70vh; }
