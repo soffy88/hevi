@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -20,15 +19,14 @@ from hevi.assembly.subtitle_timeline_atoms import (
     validate_ass,
     validate_srt,
 )
+from hevi.core.asr_paths import resolve_whisper_model
 from hevi.voicepro.oprim.subtitle_timeline import (
     cues_to_srt as cues_to_srt_ms,
 )
 
-# faster-whisper 模型目录: 优先 env, 兜底本地 large-v3-turbo。
-_MODEL_DIR = os.environ.get(
-    "FASTER_WHISPER_MODEL_DIR",
-    str(Path.home() / "models/faster-whisper-large-v3-turbo"),
-)
+# faster-whisper 模型目录: 统一解析（FASTER_WHISPER_MODEL_DIR / HEVI_WHISPER_MODEL /
+# HEVI_TALKCRAFT_WHISPER / 常规本地目录）。见 hevi.core.asr_paths。
+_MODEL_DIR = resolve_whisper_model(required=False)
 
 
 @dataclass(frozen=True)
@@ -90,15 +88,10 @@ def transcribe_to_cues(
     model_dir: str | None = None,
 ) -> list[Cue]:
     """用 faster-whisper 转写音频为带时间码的字幕段(强制对齐)。"""
-    resolved_model_dir = Path(model_dir or _MODEL_DIR).expanduser()
-    if not resolved_model_dir.is_dir():
-        raise FileNotFoundError(
-            f"faster-whisper model directory is unavailable: {resolved_model_dir}; "
-            "configure FASTER_WHISPER_MODEL_DIR with a downloaded model"
-        )
+    resolved_model = resolve_whisper_model(model_dir, required=True)
     from faster_whisper import WhisperModel
 
-    model = WhisperModel(str(resolved_model_dir), device="cpu", compute_type="int8")
+    model = WhisperModel(str(resolved_model), device="cpu", compute_type="int8")
     segments, _info = model.transcribe(str(audio_path), language=language, vad_filter=True)
     cues: list[Cue] = []
     for seg in segments:

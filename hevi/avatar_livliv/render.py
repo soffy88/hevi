@@ -71,6 +71,26 @@ window.renderFrame = (mo, v, dt) => {{
 }};
 window.setExpression = (id) => {{ try {{ player.setExpression(id); }} catch(e){{}} }};
 window.act = (a) => {{ try {{ player.act(a); }} catch(e){{}} }};
+// Render several frames per CDP round-trip; expressions/actions are applied
+// inside the loop so batching never changes the animation schedule.
+window.renderBatch = (items) => {{
+  const out = [];
+  for (const it of items) {{
+    if (it[3]) window.setExpression(it[3]);
+    if (it[4]) window.act(it[4]);
+    out.push(window.renderFrame(it[0], it[1], it[2]));
+  }}
+  return out;
+}};
+// Fast-forward a worker's page to its segment start without PNG encoding.
+window.advanceFrame = (mo, v, dt, ex, ac) => {{
+  if (ex) window.setExpression(ex);
+  if (ac) window.act(ac);
+  const p = player;
+  p.params.mouthOpen = mo;
+  p.params.vowel = v;
+  p.draw(dt || 1/30);
+}};
 </script>
 </body></html>
 """
@@ -148,6 +168,65 @@ def _serve_root(tmp: Path, w: int, h: int, cid: str) -> Path:
     return root
 
 
+def _wait_ready(page: Any, *, attempts: int = 100) -> None:
+    for _ in range(attempts):
+        if page.evaluate("window.__ready") is True:
+            return
+        time.sleep(0.1)
+    raise RuntimeError("LivLiv player did not load")
+
+
+def _render_segment(
+    *,
+    port: int,
+    width: int,
+    height: int,
+    mouth_frames: list[dict[str, float]],
+    fps: int,
+    start: int,
+    end: int,
+    out_dir: Path,
+    expr_map: dict[int, str],
+    act_map: dict[int, str],
+    batch_size: int,
+) -> None:
+    """Fast-forward to ``start`` on a private page, then capture [start, end)."""
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(**_launch_kwargs())
+        try:
+            page = browser.new_page(viewport={"width": width, "height": height})
+            page.goto(f"http://127.0.0.1:{port}/index.html")
+            _wait_ready(page)
+            dt = 1.0 / fps
+            # Idle breathing/blink depends on accumulated draw time, so a worker
+            # must replay (render, without encoding) every frame before its
+            # segment.  Splitting frames without this would make the idle phase
+            # jump at every splice.
+            for i in range(0, start):
+                fr = mouth_frames[i]
+                page.evaluate(
+                    "([mo,v,dt,ex,ac]) => window.advanceFrame(mo,v,dt,ex,ac)",
+                    [float(fr.get("mouthOpen", 0.0)), float(fr.get("vowel", 0.0)),
+                     dt, expr_map.get(i), act_map.get(i)],
+                )
+            for base in range(start, end, batch_size):
+                items = []
+                for i in range(base, min(end, base + batch_size)):
+                    fr = mouth_frames[i]
+                    items.append(
+                        [float(fr.get("mouthOpen", 0.0)), float(fr.get("vowel", 0.0)),
+                         dt, expr_map.get(i), act_map.get(i)]
+                    )
+                urls = page.evaluate("window.renderBatch", items)
+                for offset, data_url in enumerate(urls):
+                    b64 = data_url.split(",", 1)[1]
+                    (out_dir / f"frame_{base + offset:05d}.png").write_bytes(
+                        base64.b64decode(b64)
+                    )
+        finally:
+            browser.close()
+
+
 def render_frames(
     character_id: str,
     out_dir: Path,
@@ -164,53 +243,81 @@ def render_frames(
             stale.unlink()
         except OSError:
             pass
+    if not mouth_frames:
+        return 0
     tmp = Path(tempfile.mkdtemp(prefix="livliv_", dir=str(_tmp_root())))
     root = _serve_root(tmp, width, height, character_id)
-    # start http server
     import subprocess as sp
     port = _free_port()
     srv = sp.Popen(["python3", "-m", "http.server", str(port)], cwd=str(root),
                    stdout=sp.DEVNULL, stderr=sp.DEVNULL)
-    time.sleep(1)
+    time.sleep(0.5)
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(**_launch_kwargs())
-            page = browser.new_page(viewport={"width": width, "height": height})
-            page.goto(f"http://127.0.0.1:{port}/index.html")
-            for _ in range(100):
-                if page.evaluate("window.__ready") is True:
-                    break
-                time.sleep(0.5)
-            assert page.evaluate("window.__ready") is True, "player did not load"
-            if expressions is None or actions is None:
+        if expressions is None or actions is None:
+            # Probe the schedule once; the actual pages are opened per worker.
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(**_launch_kwargs())
                 try:
-                    avail = page.evaluate("() => (window.__player.expressions || []).map(e => e.id)")
-                except Exception:
-                    avail = []
-                d_expr, d_act = plan_performance(
-                    len(mouth_frames), fps=fps, expressions_available=avail,
-                    sentences=None,
-                )
-                if expressions is None:
-                    expressions = d_expr
-                if actions is None:
-                    actions = d_act
-            expr_map = {f: e for f, e in (expressions or [])}
-            act_map: dict[int, str] = {}
-            for f, a in (actions or []):
-                act_map.setdefault(f, a)
-            dt = 1.0 / fps
-            for i, fr in enumerate(mouth_frames):
-                mo = float(fr.get("mouthOpen", 0.0))
-                v = float(fr.get("vowel", 0.0))
-                if i in expr_map:
-                    page.evaluate("window.setExpression", expr_map[i])
-                if i in act_map:
-                    page.evaluate("window.act", act_map[i])
-                data_url = page.evaluate("([mo,v,dt]) => window.renderFrame(mo,v,dt)", [mo, v, dt])
-                b64 = data_url.split(",", 1)[1]
-                (out_dir / f"frame_{i:05d}.png").write_bytes(base64.b64decode(b64))
-            browser.close()
+                    page = browser.new_page(viewport={"width": width, "height": height})
+                    page.goto(f"http://127.0.0.1:{port}/index.html")
+                    _wait_ready(page)
+                    try:
+                        avail = page.evaluate(
+                            "() => (window.__player.expressions || []).map(e => e.id)"
+                        )
+                    except Exception:
+                        avail = []
+                finally:
+                    browser.close()
+            d_expr, d_act = plan_performance(
+                len(mouth_frames), fps=fps, expressions_available=avail, sentences=None
+            )
+            if expressions is None:
+                expressions = d_expr
+            if actions is None:
+                actions = d_act
+        expr_map = {f: e for f, e in (expressions or [])}
+        act_map: dict[int, str] = {}
+        for f, a in (actions or []):
+            act_map.setdefault(f, a)
+
+        n = len(mouth_frames)
+        try:
+            workers = int(os.environ.get("HEVI_LIVLIV_WORKERS", "0") or 0)
+        except ValueError:
+            workers = 0
+        if workers <= 0:
+            workers = 3 if (os.cpu_count() or 1) >= 8 else 1
+        workers = max(1, min(workers, n))
+        chunk = (n + workers - 1) // workers
+        segments = [(i * chunk, min(n, (i + 1) * chunk)) for i in range(workers)]
+        segments = [seg for seg in segments if seg[0] < seg[1]]
+        try:
+            batch_size = max(1, int(os.environ.get("HEVI_LIVLIV_BATCH", "12")))
+        except ValueError:
+            batch_size = 12
+        if len(segments) == 1:
+            _render_segment(
+                port=port, width=width, height=height, mouth_frames=mouth_frames,
+                fps=fps, start=segments[0][0], end=segments[0][1], out_dir=out_dir,
+                expr_map=expr_map, act_map=act_map, batch_size=batch_size,
+            )
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+
+            with ThreadPoolExecutor(max_workers=len(segments)) as pool:
+                futures = [
+                    pool.submit(
+                        _render_segment,
+                        port=port, width=width, height=height,
+                        mouth_frames=mouth_frames, fps=fps, start=a, end=b,
+                        out_dir=out_dir, expr_map=expr_map, act_map=act_map,
+                        batch_size=batch_size,
+                    )
+                    for a, b in segments
+                ]
+                for future in futures:
+                    future.result()
     finally:
         srv.terminate()
         srv.wait()

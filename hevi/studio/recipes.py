@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,26 @@ from hevi.pipeline.manifest import PipelineManifest
 
 LINES_DIR = Path(__file__).resolve().parent / "lines"
 SUPPORTED_RENDER_RUNTIMES = ("remotion", "hyperframes", "ffmpeg", "handdraw", "zero", "scene3d")
+
+# 首发线白名单（S9）。只有这些线对外可见/可下单；其余标 internal（内测）。
+# 后端可切换：HEVI_LAUNCH_LINES="a,b,c"；HEVI_LAUNCH_STRICT=1 时非白名单线直接拒绝。
+DEFAULT_LAUNCH_LINES = ("collage_broll", "koubo_cut")
+
+
+def launch_lines() -> tuple[str, ...]:
+    raw = os.environ.get("HEVI_LAUNCH_LINES", "").strip()
+    if not raw:
+        return DEFAULT_LAUNCH_LINES
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
+
+
+def launch_strict() -> bool:
+    return os.environ.get("HEVI_LAUNCH_STRICT", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def line_availability(line_id: str) -> str:
+    """``ga`` = 对外首发；``internal`` = 内测（前端隐藏或标“内测”）。"""
+    return "ga" if line_id in launch_lines() else "internal"
 
 
 class SlotSpec(BaseModel):
@@ -63,6 +84,7 @@ class Recipe(BaseModel):
             "slots": [s.model_dump() for s in self.slots],
             "tools": list(self.tools),
             "render_runtime": self.render_runtime,
+            "availability": line_availability(self.id),
             "stages": [st.name for st in self.pipeline.stages],
         }
 

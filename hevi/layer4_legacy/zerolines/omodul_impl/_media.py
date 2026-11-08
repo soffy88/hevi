@@ -19,18 +19,23 @@ from typing import Any
 
 import numpy as np
 
-from hevi.layer4_legacy.talkcraft.omodul_impl._media import FFMPEG, FFPROBE, PIPER, VOICE_DIR, VOICES
+from hevi.core.asr_paths import resolve_whisper_model
+from hevi.layer4_legacy.talkcraft.omodul_impl._media import (
+    FFMPEG,
+    FFPROBE,
+    PIPER,
+    VOICE_DIR,
+    VOICES,
+)
 from hevi.layer4_legacy.zerolines.oskill_impl.audio_math import rms_from_pcm, synth_bgm
 from hevi.layer4_legacy.zerolines.oskill_impl.qa import frame_stats, judge
 from hevi.layer4_legacy.zerolines.oskill_impl.shots import camera_filter, source_offset, xfade_graph
 
 FONTS_DIR = os.environ.get("HEVI_ZERO_FONTS_DIR", "/usr/share/fonts/opentype/noto")
 CACHE = Path(os.environ.get("HEVI_ZERO_CACHE", str(Path.home() / ".cache/hevi/zerolines")))
-_whisper_env = os.environ.get("HEVI_WHISPER_MODEL", "").strip()
-if _whisper_env and (Path(_whisper_env).is_dir() or _whisper_env in {"tiny","base","small","medium","large","large-v2","large-v3","large-v3-turbo","turbo"}):
-    WHISPER_MODEL = _whisper_env
-else:
-    WHISPER_MODEL = "/home/soffy/models/faster-whisper-large-v3-turbo"
+# Import-time best effort only; ``whisper_segments`` resolves again and raises a
+# readable Chinese error when nothing is mounted.
+WHISPER_MODEL = resolve_whisper_model(required=False) or ""
 
 
 class ZeroMediaError(RuntimeError):
@@ -296,14 +301,16 @@ _WHISPER_CACHE: dict[str, Any] = {}
 
 
 def whisper_segments(src: str | Path, lang: str) -> list[dict[str, Any]]:
-    if not Path(WHISPER_MODEL).exists():
-        raise ZeroMediaError(f"whisper model missing: {WHISPER_MODEL} (set HEVI_WHISPER_MODEL)")
+    try:
+        model_ref = resolve_whisper_model(required=True)
+    except FileNotFoundError as exc:
+        raise ZeroMediaError(str(exc)) from exc
     from faster_whisper import WhisperModel
 
-    cache_key = f"{WHISPER_MODEL}:{os.environ.get('HEVI_ZERO_WHISPER_THREADS','4')}"
+    cache_key = f"{model_ref}:{os.environ.get('HEVI_ZERO_WHISPER_THREADS','4')}"
     m = _WHISPER_CACHE.get(cache_key)
     if m is None:
-        m = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8",
+        m = WhisperModel(model_ref, device="cpu", compute_type="int8",
                          cpu_threads=int(os.environ.get("HEVI_ZERO_WHISPER_THREADS", "2")))
         _WHISPER_CACHE[cache_key] = m
     segs, _ = m.transcribe(str(src), language=lang, word_timestamps=True, vad_filter=True)

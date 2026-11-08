@@ -6,7 +6,6 @@ uses the same TaskService lifecycle as the regular task API.
 
 from __future__ import annotations
 
-import os
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -15,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from hevi.api.rate_limit import rate_limit
 from hevi.auth.dependencies import get_current_user
+from hevi.cost.circuit_breaker import CostLimitExceeded
 from hevi.credits.account_service import AccountService
 from hevi.credits.billing_service import BillingService, InsufficientCredits
 from hevi.credits.repository import CreditRepository
@@ -201,7 +201,22 @@ async def generate_unified(
     except InsufficientCredits as exc:
         raise HTTPException(
             status_code=402,
-            detail={"error": "insufficient_credits", "credits_needed": exc.credits_needed},
+            detail={
+                "error": "insufficient_credits",
+                "message": "积分不足，请充值或减少时长/画质后再试",
+                "credits_needed": exc.credits_needed,
+                "credits_available": getattr(exc, "credits_available", None),
+            },
+        ) from exc
+    except CostLimitExceeded as exc:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "cost_limit_exceeded",
+                "message": str(exc),
+                "estimated_cost_usd": exc.estimate_usd,
+                "cost_limit_usd": exc.limit_usd,
+            },
         ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -247,7 +262,9 @@ async def create_production(
             "requested_capability": "local_media",
             "voice_identity": body.options.get("voice_identity") or {"voice_id": "zh_female_standard"},
         }
-        model_dir = os.getenv("FASTER_WHISPER_MODEL_DIR", "").strip()
+        from hevi.core.asr_paths import resolve_whisper_model
+
+        model_dir = resolve_whisper_model(required=False)
         if model_dir:
             normalized_options.setdefault("asr_model_dir", model_dir)
         body = body.model_copy(
@@ -266,8 +283,19 @@ async def create_production(
             status_code=402,
             detail={
                 "error": "insufficient_credits",
+                "message": "积分不足，请充值或减少时长/画质后再试",
                 "credits_needed": exc.credits_needed,
                 "credits_available": exc.credits_available,
+            },
+        ) from exc
+    except CostLimitExceeded as exc:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "cost_limit_exceeded",
+                "message": str(exc),
+                "estimated_cost_usd": exc.estimate_usd,
+                "cost_limit_usd": exc.limit_usd,
             },
         ) from exc
     except ValueError as exc:

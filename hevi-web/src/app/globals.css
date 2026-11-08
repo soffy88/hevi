@@ -157,6 +157,17 @@ html, body {
   color: var(--muted-foreground);
   margin-bottom: var(--space-1, 4px);
 }
+.hevi-palette__internal-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--text-xs, 0.6875rem); font-weight: 400;
+  text-transform: none; letter-spacing: 0; margin-left: 8px; cursor: pointer;
+}
+.hevi-palette__badge {
+  margin-left: auto; padding: 1px 6px; border-radius: 999px;
+  font-size: 10px; font-weight: 600; line-height: 1.6;
+  background: oklch(0.70 0.15 80 / 0.18); color: oklch(0.62 0.14 70);
+  border: 1px solid oklch(0.70 0.15 80 / 0.35);
+}
 .hevi-palette__btn {
   display: flex; align-items: center; gap: var(--space-2, 8px);
   padding: var(--space-2, 8px) var(--space-3, 12px);
@@ -2069,6 +2080,16 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
   background: color-mix(in oklch, var(--primary) 10%, transparent);
   color: var(--primary); font-size: 12px; font-weight: 800;
 }
+.legal-page__draft-note { margin: -6px 0 20px; color: var(--destructive); font-size: 13px; font-weight: 700; }
+.legal-page__operator {
+  margin: 0 0 26px; padding: 16px 18px; border-radius: 12px;
+  border: 1px dashed color-mix(in oklch, var(--destructive) 55%, var(--border));
+  background: color-mix(in oklch, var(--destructive) 6%, transparent);
+}
+.legal-page__operator-title { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--destructive); }
+.legal-page__operator dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 13px; }
+.legal-page__operator dt { color: var(--muted-foreground); }
+.legal-page__operator dd { margin: 0; font-weight: 700; color: var(--destructive); }
 .legal-page__eyebrow { margin: 0 0 6px; color: var(--muted-foreground); font-size: 11px; font-weight: 900; letter-spacing: .16em; }
 .legal-page h1 { margin: 0 0 6px; font-size: clamp(28px, 4vw, 40px); letter-spacing: -.03em; }
 .legal-page__meta { margin: 0 0 22px; color: var(--muted-foreground); font-size: 12.5px; }

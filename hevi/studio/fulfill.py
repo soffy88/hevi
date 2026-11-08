@@ -10,18 +10,18 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
+    ZERO_LINES,
+    generate_broll_queries,
+    generate_script_lines,
+    resolve_engine,
+)
 from hevi.production.artifacts import (
     Artifact,
     ArtifactManifest,
     ArtifactVerificationError,
     verify_local_manifest,
     verify_production_artifact,
-)
-from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
-    ZERO_LINES,
-    generate_broll_queries,
-    generate_script_lines,
-    resolve_engine,
 )
 from hevi.studio.kit import explainer_cues_from_text, storygraph_extract, tongjian_l0
 
@@ -288,6 +288,70 @@ def _line_engine(order: dict[str, Any]) -> str:
     )
 
 
+def _media_duration(path: str) -> float:
+    """Best-effort ffprobe duration; 0.0 when unreadable (never invents one)."""
+    import subprocess
+
+    try:
+        out = subprocess.check_output(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", path],
+            text=True, timeout=20, stderr=subprocess.DEVNULL,
+        )
+        return max(0.0, float(out.strip()))
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return 0.0
+
+
+def _conform_duration(path: Path, target: float = 30.0, tol: float = 3.0) -> None:
+    """Hold or trim a clip into the product's 30 s ±3 s window.
+
+    podcast/shorts/localization/handdraw derive their length from the source
+    audio; S8 measured several of them at 20 s or 42 s.  Padding clones the last
+    frame (+ silence) instead of inventing content; trimming keeps the head.
+    """
+    import shutil
+    import subprocess
+
+    if not path.is_file() or target <= 0:
+        return
+    ffprobe = shutil.which("ffprobe") or "ffprobe"
+    ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
+    try:
+        current = float(
+            subprocess.check_output(
+                [ffprobe, "-v", "error", "-show_entries", "format=duration",
+                 "-of", "csv=p=0", str(path)],
+                text=True, timeout=20, stderr=subprocess.DEVNULL,
+            ).strip()
+        )
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return
+    if abs(current - target) <= tol:
+        return
+    tmp = path.with_suffix(".conform.mp4")
+    try:
+        if current > target + tol:
+            cmd = [ffmpeg, "-y", "-v", "error", "-i", str(path), "-t", f"{target:.3f}",
+                   "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                   "-c:a", "aac", "-b:a", "128k", str(tmp)]
+        else:
+            pad = max(0.0, target - current)
+            cmd = [ffmpeg, "-y", "-v", "error", "-i", str(path),
+                   "-filter_complex",
+                   f"[0:v]tpad=stop_mode=clone:stop_duration={pad:.3f}[v];"
+                   f"[0:a]apad=pad_dur={pad:.3f}[a]",
+                   "-map", "[v]", "-map", "[a]", "-t", f"{target:.3f}",
+                   "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                   "-c:a", "aac", "-b:a", "128k", str(tmp)]
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=300)
+        if tmp.is_file() and tmp.stat().st_size > 0:
+            tmp.replace(path)
+    except (OSError, subprocess.SubprocessError):
+        tmp.unlink(missing_ok=True)
+
+
 def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
     """Map a Studio order onto the zero-line request (inputs only, nothing invented)."""
     raw_lines = _slot(order, "script_lines") or order.get("script_lines") or []
@@ -300,12 +364,30 @@ def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
     if not texts and topic:
         texts = list(generate_script_lines(topic, lang=lang, line_id=line_id))
     queries = _slot(order, "queries") or _slot(order, "broll_queries") or []
-    if not queries and line_id in {"kinetic_promo", "avatar_spokesperson"}:
-        from hevi.layer4_legacy.zerolines.oprim_impl.specs import LINE_SPECS
+    media_path = str(
+        _slot(order, "media_path") or _slot(order, "reference_path") or _slot(order, "source") or ""
+    )
+    offsets = _slot(order, "offsets") or []
 
-        spec = LINE_SPECS.get(line_id)
-        if spec and "queries" in spec.inputs and (topic or texts):
-            queries = list(generate_broll_queries(topic or (texts[0] if texts else ""), tuple(texts), lang=lang, line_id=line_id))
+    # Every line whose spec requires ``queries`` derives them from the topic /
+    # script; asking the public API caller for internal b-roll strings made 13 of
+    # 18 lines unusable in S8.  An explicit ``queries`` slot still wins.
+    from hevi.layer4_legacy.zerolines.oprim_impl.specs import LINE_SPECS
+
+    spec = LINE_SPECS.get(line_id)
+    if spec is not None and "queries" in spec.inputs and not queries and (topic or texts):
+        queries = list(
+            generate_broll_queries(
+                topic or (texts[0] if texts else ""), tuple(texts), lang=lang, line_id=line_id
+            )
+        )
+    # reference_adapt needs one offset per narration line; when the caller only
+    # supplies a reference + topic, spread the new sentences over its duration.
+    if spec is not None and "offsets" in spec.inputs and media_path and texts and not offsets:
+        total = _media_duration(media_path)
+        if total > 0:
+            step = total / len(texts)
+            offsets = [round(i * step, 3) for i in range(len(texts))]
     return {
         "line_id": line_id,
         "texts": texts,
@@ -313,8 +395,8 @@ def _zero_input(order: dict[str, Any], line_id: str) -> dict[str, Any]:
         "topic": topic,
         "title": str(_slot(order, "title") or ""),
         "lang": lang,
-        "media_path": str(_slot(order, "media_path") or _slot(order, "reference_path") or _slot(order, "source") or ""),
-        "offsets": _slot(order, "offsets") or [],
+        "media_path": media_path,
+        "offsets": offsets,
         "labels": _slot(order, "labels") or [],
         "extras": _slot(order, "zero_extras") or {},
     }
@@ -641,17 +723,21 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
             target="localize_video",
             line_id=str(order.get("line_id") or ""),
         )
-    # trim to ~30s for acceptance duration gate
+    # trim to ~30s for acceptance duration gate (use PATH tools: the old
+    # /home/soffy/.local/bin paths do not exist inside the API image)
     try:
+        import shutil as _shutil
         import subprocess
         from pathlib import Path as _P
         srcp = _P(str(source))
-        dur_out = subprocess.check_output(["/home/soffy/.local/bin/ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(srcp)], text=True).strip()
+        ffprobe = _shutil.which("ffprobe") or "ffprobe"
+        ffmpeg_bin = _shutil.which("ffmpeg") or "ffmpeg"
+        dur_out = subprocess.check_output([ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(srcp)], text=True).strip()
         src_dur = float(dur_out)
-        if src_dur > 35:
+        if src_dur > 31:
             trimmed = Path(output_dir) / "source_30s.mp4"
             Path(output_dir).mkdir(parents=True, exist_ok=True)
-            subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(srcp), "-t", "30", "-c", "copy", str(trimmed)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run([ffmpeg_bin, "-y", "-v", "error", "-i", str(srcp), "-t", "30", "-c", "copy", str(trimmed)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             source = str(trimmed)
             segs = _slot(order, "segments") or _slot(order, "transcript_segments") or []
             if segs:
@@ -687,6 +773,8 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
         ArtifactManifest.model_validate({"artifacts": result.get("artifacts") or []})
     )
     primary = manifest.primary_path()
+    if primary is not None:
+        _conform_duration(Path(str(primary)), float(_slot(order, "duration_s") or 30.0))
     _, quality = await _verified_video_manifest(
         [(primary, True, "localized_video")] if primary is not None else [],
         require_audio=False,
@@ -700,11 +788,14 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
             "quality": quality,
         }
     try:
-        import os, subprocess, time
+        import os
+        import subprocess
+        import time
         pp = Path(str(primary or ""))
         if pp.is_file():
             tmp = pp.with_suffix(".tmp.mp4")
-            subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(pp), "-c", "copy",
+            ffmpeg_bin = __import__("shutil").which("ffmpeg") or "ffmpeg"
+            subprocess.run([ffmpeg_bin, "-y", "-v", "error", "-i", str(pp), "-c", "copy",
                             "-metadata", "comment=run-" + str(time.time()), "-movflags", "+faststart", str(tmp)],
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             os.replace(tmp, pp)
@@ -752,6 +843,8 @@ async def _render_clip_line(order: dict[str, Any], output_dir: Path) -> dict[str
         ArtifactManifest.model_validate({"artifacts": result.get("artifacts") or []})
     )
     primary = manifest.primary_path()
+    if primary is not None:
+        _conform_duration(Path(str(primary)), float(_slot(order, "duration_s") or 30.0))
     _, quality = await _verified_video_manifest(
         [(primary, True, "short_clip")] if primary is not None else [],
         require_audio=False,
@@ -765,11 +858,14 @@ async def _render_clip_line(order: dict[str, Any], output_dir: Path) -> dict[str
             "quality": quality,
         }
     try:
-        import os, subprocess, time
+        import os
+        import subprocess
+        import time
         pp = Path(str(primary or ""))
         if pp.is_file():
             tmp = pp.with_suffix(".tmp.mp4")
-            subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(pp), "-c", "copy",
+            ffmpeg_bin = __import__("shutil").which("ffmpeg") or "ffmpeg"
+            subprocess.run([ffmpeg_bin, "-y", "-v", "error", "-i", str(pp), "-c", "copy",
                             "-metadata", "comment=run-" + str(time.time()), "-movflags", "+faststart", str(tmp)],
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             os.replace(tmp, pp)
@@ -962,6 +1058,8 @@ async def _render_handdraw_line(
     """Render a real path-based hand-drawn explainer video with continuous narration."""
     from hevi.layer4_legacy.handdraw.line import render_handdraw_line
     res = await render_handdraw_line(order, output_dir)
+    if res.get("video_path"):
+        _conform_duration(Path(str(res["video_path"])), float(_slot(order, "duration_s") or 30.0))
     return {
         "status": "completed",
         "quality": {"verdict": "pass", "passed": True, "violations": []},
@@ -991,7 +1089,10 @@ async def _render_collage_broll_line(order: dict[str, Any], output_dir: Path) ->
     ).strip()
     duration = float(_slot(order, "duration_s") or 30.0)
     cap = _get_cap("collage_broll.render")
-    res = cap.render(
+    # Sync ffmpeg render must not block the API event loop (S8: /api/health
+    # timed out 15s while two collage renders ran).
+    res = await asyncio.to_thread(
+        cap.render,
         {"sentence": sentence, "narration": True},
         output_dir,
         duration=duration,
@@ -1092,6 +1193,19 @@ _RENDERERS = {
     "avatar_spokesperson": _render_explainer_line,
     "comic_narration": _render_explainer_line,
 }
+
+
+async def _render_scene3d_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    """scene3d 的 Blender/Three.js 执行器不在本镜像内：明确拒绝，别静默空 reason。"""
+    del order, output_dir
+    return _blocked(
+        "scene3d 产线未在当前部署开放（缺少 3D 渲染执行器）；请改用其他产线或等待上线",
+        target="scene3d",
+        line_id="scene3d",
+    )
+
+
+_RENDERERS["scene3d"] = _render_scene3d_line
 
 for _zero_line in ZERO_LINES:
     _RENDERERS[_zero_line] = _engine_switch(_zero_line, _RENDERERS[_zero_line])

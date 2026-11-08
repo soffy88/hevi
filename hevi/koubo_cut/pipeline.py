@@ -27,7 +27,7 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
-from hevi.koubo_cut.state import new_ledger, finalize_status
+from hevi.koubo_cut.state import finalize_status, new_ledger
 
 W, H = 1080, 1920
 FPS = 30
@@ -136,6 +136,8 @@ def _font(size: int) -> ImageFont.FreeTypeFont:
 
 
 def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, width: int) -> list[str]:
+    # textlength refuses multiline strings; every newline is a hard line break.
+    text = " ".join(str(text or "").split())
     lines: list[str] = []
     current = ""
     for ch in text:
@@ -166,24 +168,43 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, wi
 _PLACEHOLDER_SCRIPT = re.compile(r"第\d+个关键点|值得你记住")
 
 
+def _flatten_line(text: str) -> list[str]:
+    """Split one user script item into measurable single-line sentences.
+
+    PIL raises ``can't measure length of multiline text`` on ``textlength``
+    when a line keeps a ``\\n``; canvas nodes are per sentence, so newlines must
+    become separate lines instead of surviving into text measurement.
+    """
+    parts: list[str] = []
+    for chunk in re.split(r"[\r\n]+", str(text or "")):
+        chunk = " ".join(chunk.split())
+        if not chunk:
+            continue
+        if re.search(r"[。！？!?；;]", chunk):
+            parts.extend(p.strip() for p in re.split(r"(?<=[。！？!?；;])\s*", chunk) if p.strip())
+        else:
+            parts.append(chunk)
+    return parts
+
+
 def _script_lines(
     *, script_text: str, script_lines: list[Any], topic: str
 ) -> list[str]:
     texts: list[str] = []
     for item in script_lines or []:
         if isinstance(item, str) and item.strip():
-            texts.append(item.strip())
+            texts.extend(_flatten_line(item))
         elif isinstance(item, dict):
             text = str(item.get("text") or item.get("line") or "").strip()
             if text:
-                texts.append(text)
+                texts.extend(_flatten_line(text))
     # script.quick's deterministic template ("第N个关键点:值得你记住") is a
     # placeholder, not a script: replace it with topic-specific narration so the
     # evidence cards quote something the viewer can actually connect to the image.
     if texts and not any(_PLACEHOLDER_SCRIPT.search(t) for t in texts):
         return texts
 
-    base = (script_text or topic or "口播").strip()
+    base = " ".join((script_text or topic or "口播").split())
     parts = [p.strip() for p in re.split(r"(?<=[。！？!?；;])\s*", base) if p.strip()]
     if len(parts) > 1:
         return parts
@@ -321,6 +342,39 @@ def _speech_duration(audio: Path) -> float:
             return wf.getnframes() / float(wf.getframerate() or 1)
     except Exception:
         return _ffprobe_duration(audio)
+
+
+def _fit_audio(src: Path, out: Path, max_duration: float) -> tuple[Path, float]:
+    """Tempo-adjust speech so the finished product honours its target length.
+
+    A 30 s koubo product used to become 35 s because the narration was simply
+    kept and the video length followed it (``max(target, audio + 0.8)``).
+    Small tempo changes are inaudible; >2x is chained through ffmpeg's atempo.
+    The final ``-t`` also trims the tail when even 2x cannot fit.
+    """
+    current = _speech_duration(src)
+    if current <= 0 or current <= max_duration:
+        return src, current
+    tempo = min(4.0, current / max(0.5, max_duration))
+    if tempo <= 1.02:
+        return src, current
+    filters: list[str] = []
+    remaining = tempo
+    while remaining > 2.0:
+        filters.append("atempo=2.0")
+        remaining /= 2.0
+    filters.append(f"atempo={remaining:.4f}")
+    try:
+        subprocess.run(
+            [_ffmpeg(), "-y", "-i", str(src), "-filter:a", ",".join(filters),
+             "-t", f"{max_duration:.3f}", "-ar", "44100", "-ac", "2", str(out)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=180,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return src, current
+    if not out.is_file() or out.stat().st_size == 0:
+        return src, current
+    return out, min(max_duration, _speech_duration(out))
 
 
 # ---------------------------------------------------------------------------
@@ -502,7 +556,7 @@ def _livliv_frame_at(frames: Path, index: int, size: tuple[int, int]) -> Image.I
         return None
     with Image.open(path) as im:
         rgba = im.convert("RGBA")
-        return rgba if rgba.size == size else rgba.resize(size, Image.LANCZOS)
+        return rgba if rgba.size == size else rgba.resize(size, Image.BICUBIC)
 
 
 def _paste_corner_pip(frame: Image.Image, img: Image.Image, x: int, y: int,
@@ -514,7 +568,7 @@ def _paste_corner_pip(frame: Image.Image, img: Image.Image, x: int, y: int,
     bd.rounded_rectangle((0, 0, w + 15, h + 15), radius=24, fill=(245, 239, 224, 255))
     bd.rounded_rectangle((0, 0, w + 15, h + 15), radius=24, outline=(120, 90, 60, 255), width=4)
     frame.paste(backing, (x - 8, y - 8), backing)
-    scaled = img.resize((w, h), Image.LANCZOS)
+    scaled = img.resize((w, h), Image.BICUBIC)
     frame.paste(scaled, (x, y), scaled)
 
 
@@ -707,7 +761,11 @@ def run_koubo_cut(
             if frame_path.is_file():
                 presenter_frame = Image.open(frame_path).convert("RGBA")
             audio_duration = _ffprobe_duration(src) or target
-            duration = max(target, audio_duration)
+            # A reference video longer than the product target is trimmed, not
+            # allowed to stretch a 30 s product to 60 s.
+            if audio_duration > target:
+                audio_path, audio_duration = _fit_audio(audio_path, out / "audio_fit.wav", target)
+            duration = target
         else:
             lines = _script_lines(script_text=script_text, script_lines=script_lines or [], topic=topic or script_text)
             speech = out / "audio.wav"
@@ -715,10 +773,20 @@ def run_koubo_cut(
             if spoken is None:
                 _silence(target, speech)
                 spoken = speech
-            audio_duration = _speech_duration(spoken)
-            duration = max(target, audio_duration + 0.8)
-            sentences = _sentence_times(lines, audio_duration)
             audio_path = spoken
+            audio_duration = _speech_duration(spoken)
+            if audio_duration + 0.8 > target:
+                fitted, audio_duration = _fit_audio(
+                    spoken, out / "audio_fit.wav", max(4.0, target - 0.4)
+                )
+                if fitted != spoken:
+                    ledger["audio_tempo_fitted"] = {
+                        "before_s": round(_speech_duration(spoken), 3),
+                        "after_s": round(audio_duration, 3),
+                    }
+                audio_path = fitted
+            sentences = _sentence_times(lines, audio_duration)
+            duration = target
             presenter_frame = None
             ledger["input"] = "synthetic-presenter"
         ledger["transcript"] = {"sentences": len(sentences), "words": 0}

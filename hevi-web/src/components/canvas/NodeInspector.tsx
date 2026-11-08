@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import type { Node } from 'reactflow';
 import type { HeviNodeData } from './HeviNode';
-import { canvasApi } from '@/lib/api-client';
+import { artifactDownloadUrl, canvasApi } from '@/lib/api-client';
 
 export interface NodeInspectorProps {
   node: Node<HeviNodeData>;
@@ -96,7 +96,14 @@ export function NodeInspector({
           <ul className="hevi-inspector__artifacts">
             {artifacts.map((a, i) => (
               <li key={`${a.path}-${i}`} title={a.path}>
-                {a.kind}: {a.path.split('/').pop()}
+                {a.kind}:{' '}
+                <a
+                  className="hevi-inspector__download"
+                  href={artifactDownloadUrl(a.path)}
+                  download
+                >
+                  {a.path.split('/').pop()}
+                </a>
               </li>
             ))}
           </ul>

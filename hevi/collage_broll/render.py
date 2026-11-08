@@ -444,6 +444,23 @@ def procedural_render(
         audio_path = None
         audio_duration = 0.0
 
+    def _camera(frame: Image.Image, t: float) -> Image.Image:
+        """Slow paper-camera drift: the held collage is never truly frozen.
+
+        S8 saw "almost the whole clip is a still image with jitter".  A 2–5%
+        zoom plus a small orbital pan reads as motion while keeping the
+        stop-motion paper look; captions/credits stay pixel-fixed afterwards.
+        """
+        span = max(duration, 0.001)
+        progress = min(1.0, t / span)
+        zoom = 1.02 + 0.03 * progress
+        cw, ch = max(2, int(W / zoom)), max(2, int(H / zoom))
+        cx = W // 2 + int(0.010 * W * math.sin(2 * math.pi * t / 9.0))
+        cy = H // 2 + int(0.008 * H * math.sin(2 * math.pi * t / 13.0))
+        x0 = max(0, min(W - cw, cx - cw // 2))
+        y0 = max(0, min(H - ch, cy - ch // 2))
+        return frame.crop((x0, y0, x0 + cw, y0 + ch)).resize((W, H), Image.BICUBIC)
+
     def frame_at(fi: int) -> Image.Image:
         t = fi / FPS_MP4
         frame = bg.copy().convert("RGBA")
@@ -453,6 +470,7 @@ def procedural_render(
         for idx, element in enumerate(elements):
             dx, dy, _rot = _settle(idx, t, float(element["arrive"]))
             frame.alpha_composite(element["img"], (element["x"] + dx, element["y"] + dy))
+        frame = _camera(frame, t)
         if narration:
             bar = Image.new("RGBA", (W, 118), (0, 0, 0, 205))
             frame.alpha_composite(bar, (0, H - 118))

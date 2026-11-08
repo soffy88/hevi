@@ -31,6 +31,10 @@ logger = logging.getLogger(__name__)
 
 _FAIL_COOLDOWN_S = float(os.getenv("HEVI_CANVAS_LLM_COOLDOWN_S", "600"))
 _DEFAULT_TIMEOUT_S = float(os.getenv("HEVI_CANVAS_LLM_TIMEOUT_S", "25"))
+# Reasoning models spend the completion budget on hidden reasoning first; 600
+# tokens left ``content`` empty in S8.  Budget for reasoning + the small JSON.
+_REVIEW_MAX_TOKENS = int(os.getenv("HEVI_CANVAS_LLM_REVIEW_TOKENS", "2400"))
+_REWRITE_MAX_TOKENS = int(os.getenv("HEVI_CANVAS_LLM_REWRITE_TOKENS", "2000"))
 
 _SYSTEM = (
     "你是中文短视频口播稿的严格审稿人。只输出严格 JSON，不要解释、不要 markdown。"
@@ -129,7 +133,12 @@ def _call(channel: str, caller: Any, prompt: str, *, max_tokens: int) -> str:
 
     response = _run_sync(factory, timeout + 5)
     content = response.get("content") if isinstance(response, dict) else None
-    return str(content or "")
+    text = str(content or "").strip()
+    if not text:
+        # Empty content is a channel failure: let _call_any try the next one
+        # instead of returning an unparsable '' that degrades to a fake "warn".
+        raise RuntimeError(f"{channel}: empty content (max_tokens={max_tokens})")
+    return text
 
 
 def _call_any(prompt: str, *, max_tokens: int) -> tuple[str, str]:
@@ -156,10 +165,10 @@ def _reviewer_factory(channel: str | None = None, caller: Any = None) -> Any:
         prompt = _REVIEW_PROMPT.format(text=str(text)[:6000])
         if caller is not None:
             name = str(channel or "mock")
-            content = _call(name, caller, prompt, max_tokens=600)
+            content = _call(name, caller, prompt, max_tokens=_REVIEW_MAX_TOKENS)
             channel_name = name
         else:
-            channel_name, content = _call_any(prompt, max_tokens=600)
+            channel_name, content = _call_any(prompt, max_tokens=_REVIEW_MAX_TOKENS)
         data = _parse_json(content)
         if not data:
             # A non-JSON answer is a failed review, not a node failure.
@@ -189,9 +198,9 @@ def _rewriter_factory(channel: str | None = None, caller: Any = None) -> Any:
     def rewrite(text: str, suggestion: str, cfg: dict[str, Any]) -> str:
         prompt = _REWRITE_PROMPT.format(text=str(text)[:6000], suggestion=str(suggestion)[:800])
         if caller is not None:
-            content = _call(str(channel or "mock"), caller, prompt, max_tokens=1200)
+            content = _call(str(channel or "mock"), caller, prompt, max_tokens=_REWRITE_MAX_TOKENS)
         else:
-            _channel, content = _call_any(prompt, max_tokens=1200)
+            _channel, content = _call_any(prompt, max_tokens=_REWRITE_MAX_TOKENS)
         clean = content.strip()
         if clean.startswith("```"):
             clean = re.sub(r"^```[a-zA-Z]*\n?", "", clean)

@@ -11,7 +11,13 @@ import { studioApi, USE_MOCK } from '@/lib/api-client';
 const TYPES: NodeType[] = ['text', 'image', 'video', 'audio', 'script', 'segment', 'asset'];
 
 export type StudioTool = { id: string; kind: string; summary: string };
-export type StudioLine = { id: string; product: string; summary: string; tools: string[] };
+export type StudioLine = {
+  id: string;
+  product: string;
+  summary: string;
+  tools: string[];
+  availability?: 'ga' | 'internal';
+};
 
 export function NodePalette({
   onAdd,
@@ -26,6 +32,7 @@ export function NodePalette({
   const [lines, setLines] = useState<StudioLine[]>([]);
   const [q, setQ] = useState('');
   const [kind, setKind] = useState('');
+  const [showInternal, setShowInternal] = useState(false);
 
   useEffect(() => {
     if (USE_MOCK) return;
@@ -59,18 +66,33 @@ export function NodePalette({
         );
       })}
 
-      <div className="hevi-palette__label">产线</div>
-      {lines.map((line) => (
-        <button
-          key={line.id}
-          type="button"
-          className="hevi-palette__btn hevi-palette__btn--line"
-          title={line.summary}
-          onClick={() => onApplyLine?.(line)}
-        >
-          {line.product}
-        </button>
-      ))}
+      <div className="hevi-palette__label">
+        产线
+        <label className="hevi-palette__internal-toggle" title="显示尚未开放的内测产线">
+          <input
+            type="checkbox"
+            checked={showInternal}
+            onChange={(e) => setShowInternal(e.target.checked)}
+          />
+          显示内测
+        </label>
+      </div>
+      {lines
+        .filter((line) => showInternal || line.availability !== 'internal')
+        .map((line) => (
+          <button
+            key={line.id}
+            type="button"
+            className="hevi-palette__btn hevi-palette__btn--line"
+            title={line.summary}
+            onClick={() => onApplyLine?.(line)}
+          >
+            {line.product}
+            {line.availability === 'internal' && (
+              <span className="hevi-palette__badge">内测</span>
+            )}
+          </button>
+        ))}
 
       <div className="hevi-palette__label">工具 {tools.length || ''}</div>
       <input

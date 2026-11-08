@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LegalOperatorNotice } from '@/components/LegalOperatorNotice';
 
 export const metadata: Metadata = {
   title: '隐私政策（草案）· hevi',
@@ -51,9 +52,13 @@ const sections = [
 export default function PrivacyPage() {
   return (
     <main className="legal-page">
-      <div className="legal-page__draft">草案，待运营方确认</div>
+      <div className="legal-page__draft">草案 · 运营方信息待确认</div>
+      <p className="legal-page__draft-note">
+        本页尚未生效：运营主体、联系方式、备案号等字段均为占位，须由运营方本人确认后替换。
+      </p>
       <p className="legal-page__eyebrow">HEVI / LEGAL</p>
       <h1>隐私政策</h1>
+      <LegalOperatorNotice />
       <p className="legal-page__meta">更新日期：2026-11-08 · 版本：草案 v0.1</p>
       <p className="legal-page__lead">
         本政策说明 hevi 如何收集、使用、保存与删除你的信息，以及使用 AI 生成内容与第三方素材时应注意的事项。

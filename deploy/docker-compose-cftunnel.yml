@@ -85,6 +85,7 @@ services:
       TALKING_FACE_ENGINE: generic
       # v9.1: AI 引擎统一地址(CosyVoice/LongCat/voicebox TTS 同源)。
       HEVI_ASSET_ROOT: /app/data/workspace/assets
+      HEVI_OUTPUT_ROOT: /app/output
       VOICEBOX_ENGINE: ${VOICEBOX_ENGINE:-qwen_custom_voice}
       VOICEBOX_MODEL_SIZE: ${VOICEBOX_MODEL_SIZE:-1.7B}
       VOICEBOX_PRESET_VOICE: ${VOICEBOX_PRESET_VOICE:-Dylan}
@@ -98,9 +99,12 @@ services:
       # 零成本线引擎(docs/ZEROLINES.md):11 条 zero 线默认走 CPU 本地管线
       # (Piper TTS + Pexels 免费素材 + PIL + faster-whisper),订单槽 engine 仍可显式覆盖。
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut}
+      HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      FASTER_WHISPER_MODEL_DIR: /models/faster-whisper-large-v3-turbo
       # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
       U2NET_HOME: /u2net
       HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
@@ -119,6 +123,8 @@ services:
       HEVI_LIVLIV_VENDOR: /livliv
       HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
       HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
+      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-3}
+      HEVI_LIVLIV_BATCH: ${HEVI_LIVLIV_BATCH:-12}
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/.u2net:/u2net:ro
@@ -238,9 +244,12 @@ services:
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut}
+      HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      FASTER_WHISPER_MODEL_DIR: /models/faster-whisper-large-v3-turbo
       # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
       U2NET_HOME: /u2net
       HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
@@ -256,7 +265,10 @@ services:
       HEVI_LIVLIV_VENDOR: /livliv
       HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
       HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
+      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-3}
+      HEVI_LIVLIV_BATCH: ${HEVI_LIVLIV_BATCH:-12}
       HEVI_ASSET_ROOT: /app/data/workspace/assets
+      HEVI_OUTPUT_ROOT: /app/output
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
     volumes:
       - /home/soffy/models:/models:ro
@@ -317,12 +329,16 @@ services:
       HEVI_OUTPUT_INTERMEDIATE_DAYS: "7"
       HEVI_OUTPUT_FINAL_DAYS: "30"
       HEVI_OUTPUT_RETENTION_INTERVAL_S: "86400"
+      HEVI_OUTPUT_RETENTION_STATE: /app/output/.output-retention-last-run
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut}
+      HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      FASTER_WHISPER_MODEL_DIR: /models/faster-whisper-large-v3-turbo
       # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
       U2NET_HOME: /u2net
       HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
@@ -338,9 +354,12 @@ services:
       HEVI_LIVLIV_VENDOR: /livliv
       HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
       HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
+      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-3}
+      HEVI_LIVLIV_BATCH: ${HEVI_LIVLIV_BATCH:-12}
       HEVI_ASSET_ROOT: /app/data/workspace/assets
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
     volumes:
+      - /home/soffy/models:/models:ro
       - /home/soffy/.u2net:/u2net:ro
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data

@@ -7,7 +7,22 @@ from hevi.cost.estimator import CostEstimate
 
 
 class CostLimitExceeded(Exception):
-    """Raised when cost exceeds configured limits."""
+    """Raised when cost exceeds configured limits.
+
+    ``limit_usd`` / ``estimate_usd`` are advisory fields for HTTP mapping; older
+    call sites keep working with a bare message.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        limit_usd: float | None = None,
+        estimate_usd: float | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.limit_usd = limit_usd
+        self.estimate_usd = estimate_usd
 
 
 @dataclass
@@ -22,7 +37,9 @@ async def check_before_run(estimate: CostEstimate, limit: CostLimit | None = Non
     if estimate.total_usd > effective_limit.max_per_task_usd:
         raise CostLimitExceeded(
             f"Estimated cost ${estimate.total_usd:.2f} "
-            f"exceeds limit ${effective_limit.max_per_task_usd:.2f}"
+            f"exceeds limit ${effective_limit.max_per_task_usd:.2f}",
+            limit_usd=effective_limit.max_per_task_usd,
+            estimate_usd=estimate.total_usd,
         )
 
 
@@ -53,7 +70,9 @@ class CostTracker:
         if prospective > effective_limit.max_per_task_usd:
             raise CostLimitExceeded(
                 f"Cumulative cost ${prospective:.2f} (adding ${amount_usd:.2f}) would "
-                f"exceed limit ${effective_limit.max_per_task_usd:.2f}"
+                f"exceed limit ${effective_limit.max_per_task_usd:.2f}",
+                limit_usd=effective_limit.max_per_task_usd,
+                estimate_usd=prospective,
             )
         self.spent_usd = prospective
 

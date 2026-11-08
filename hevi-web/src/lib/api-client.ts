@@ -168,9 +168,16 @@ export const canvasApi = {
   },
 };
 
+/** 产线/画布产物下载：浏览器 <a>/<video> 无法带 Authorization，token 走查询参数。 */
+export function artifactDownloadUrl(path: string): string {
+  const q = new URLSearchParams({ path });
+  if (authToken) q.set('token', authToken);
+  return `${API_BASE}/api/studio/artifacts/download?${q.toString()}`;
+}
+
 export const studioApi = {
   tools: () => authedReq<{ tools: { id: string; kind: string; summary: string }[]; total: number }>('/api/studio/tools'),
-  lines: () => authedReq<{ lines: { id: string; product: string; summary: string; tools: string[]; render_runtime?: string }[]; total: number }>('/api/studio/lines'),
+  lines: () => authedReq<{ lines: { id: string; product: string; summary: string; tools: string[]; render_runtime?: string; availability?: 'ga' | 'internal' }[]; total: number }>('/api/studio/lines'),
   shotCards: (category?: string, search?: string) => {
     const q = new URLSearchParams(); if (category) q.set('category', category); if (search) q.set('search', search);
     return authedReq<{ cards: Array<Record<string, unknown>>; total: number; index: Record<string, string[]> }>(`/api/studio/motion/shot-cards${q.toString() ? `?${q}` : ''}`);

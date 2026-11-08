@@ -7,6 +7,7 @@ import logging
 import os
 import time
 import uuid
+from pathlib import Path
 
 from hevi.core.config import settings
 from hevi.execution import ResourceSnapshot
@@ -30,7 +31,28 @@ class SchedulerService:
         self._retention_interval = float(
             os.getenv("HEVI_OUTPUT_RETENTION_INTERVAL_S", "86400")
         )
-        self._last_retention = time.monotonic()
+        self._retention_state = Path(
+            os.getenv(
+                "HEVI_OUTPUT_RETENTION_STATE",
+                str(Path.home() / ".cache/hevi/output-retention-last-run"),
+            )
+        )
+        # Persist the last *wall-clock* run: a restart must not reset the 24h
+        # timer forever (S8 left 59 >30-day finals because it did).
+        self._last_retention = self._read_last_retention()
+
+    def _read_last_retention(self) -> float:
+        try:
+            return float(self._retention_state.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return 0.0  # never ran: run on the first iteration
+
+    def _write_last_retention(self, when: float) -> None:
+        try:
+            self._retention_state.parent.mkdir(parents=True, exist_ok=True)
+            self._retention_state.write_text(f"{when:.0f}\n", encoding="utf-8")
+        except OSError:
+            logger.warning("cannot persist retention timestamp at %s", self._retention_state)
 
     def stop(self) -> None:
         self._running = False
@@ -69,6 +91,7 @@ class SchedulerService:
             logger.exception("output retention failed")
             return None
         logger.info("output retention: %s", summary.as_dict())
+        self._write_last_retention(time.time())
         return summary.as_dict()
 
     async def run(self) -> None:
@@ -76,9 +99,10 @@ class SchedulerService:
         logger.info("scheduler service started owner=%s", self.owner_id)
         while self._running:
             try:
-                if time.monotonic() - self._last_retention >= self._retention_interval:
-                    await self.run_retention()
-                    self._last_retention = time.monotonic()
+                if time.time() - self._last_retention >= self._retention_interval:
+                    summary = await self.run_retention()
+                    if summary is not None:
+                        self._last_retention = time.time()
                 scheduled = await self.run_once()
                 if scheduled:
                     logger.info("scheduler dispatched %d task(s)", scheduled)

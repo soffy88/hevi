@@ -36,12 +36,18 @@ class SlateResult:
     reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
+        from urllib.parse import quote
+
+        video = str(self.data.get("result_video_path") or "")
         return {
             "status": self.status,
             "slate_id": self.slate_id,
             "line_id": self.line_id,
             "product": self.product,
             "missing": self.missing,
+            "download_url": (
+                f"/api/studio/artifacts/download?path={quote(video, safe='')}" if video else None
+            ),
             "production_order": self.production_order,
             "data": {
                 k: self.data[k]
@@ -176,6 +182,15 @@ async def execute_lot_task(task: dict[str, Any], pool: Any = None) -> dict[str, 
     cfg = task.get("config_json") or {}
     options = cfg.get("options") or cfg
     line_id = str(options.get("line_id") or cfg.get("line_id") or "")
+    from hevi.studio.recipes import launch_strict, line_availability
+
+    if launch_strict() and line_availability(line_id) != "ga":
+        return {
+            "status": "failed",
+            "error": f"该产线（{line_id}）尚未开放，当前处于内测阶段",
+            "result_video_path": None,
+            "config_json": cfg,
+        }
     slots = dict(options.get("slots") or {})
     if "topic" not in slots and task.get("topic"):
         slots["topic"] = task["topic"]

@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import mimetypes
+import os
+from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
+from hevi.auth.jwt_handler import decode_access_token
 from hevi.studio.assets import list_assets
 from hevi.studio.conversational_edit import execute_edit
-from hevi.studio.recipes import get_recipe, list_recipes
+from hevi.studio.recipes import get_recipe, launch_strict, line_availability, list_recipes
 from hevi.studio.slate import Slate, run_slate
 from hevi.studio.timeline import (
     export_timeline,
@@ -173,6 +179,11 @@ async def create_slate(
     req: SlateRequest,
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
+    if launch_strict() and line_availability(req.line_id) != "ga":
+        raise HTTPException(
+            status_code=403,
+            detail=f"该产线（{req.line_id}）尚未开放，当前处于内测阶段",
+        )
     slate = Slate(
         line_id=req.line_id,
         slots=req.slots,
@@ -183,6 +194,83 @@ async def create_slate(
     if result.status == "failed" and result.reason.startswith("unknown line"):
         raise HTTPException(status_code=404, detail=result.reason)
     return result.to_dict()
+
+
+_ARTIFACT_SUFFIXES = {
+    ".mp4", ".mov", ".webm", ".m4a", ".wav", ".mp3", ".srt", ".ass",
+    ".jpg", ".jpeg", ".png", ".webp", ".gif", ".json", ".txt",
+}
+
+
+def _artifact_roots() -> list[Path]:
+    roots = [
+        os.environ.get("HEVI_OUTPUT_ROOT", ""),
+        os.environ.get("HEVI_ASSET_ROOT", ""),
+        str(Path.cwd() / "output"),
+        str(Path.cwd() / "assets"),
+        str(Path.cwd() / "data"),
+    ]
+    resolved: list[Path] = []
+    for raw in roots:
+        if not raw:
+            continue
+        try:
+            path = Path(raw).expanduser().resolve()
+        except OSError:
+            continue
+        if path.is_dir() and path not in resolved:
+            resolved.append(path)
+    return resolved
+
+
+def _resolve_artifact(path: str) -> Path:
+    """Resolve a produced artifact inside the deployment's output roots.
+
+    Slate/canvas results expose absolute container paths.  Serving them needs a
+    download endpoint, but never an arbitrary file read: the resolved target must
+    stay under an allowed root and carry a media/document suffix.
+    """
+    target = Path(path).expanduser()
+    if not target.is_absolute():
+        target = Path.cwd() / target
+    try:
+        resolved = target.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(status_code=404, detail="产物不存在或已被清理") from exc
+    if not resolved.is_file():
+        raise HTTPException(status_code=404, detail="产物不存在或已被清理")
+    if resolved.suffix.lower() not in _ARTIFACT_SUFFIXES:
+        raise HTTPException(status_code=415, detail="不支持的产物类型")
+    roots = _artifact_roots()
+    if not any(resolved == root or root in resolved.parents for root in roots):
+        raise HTTPException(status_code=403, detail="产物不在允许的下载目录内")
+    return resolved
+
+
+@router.get("/artifacts/download")
+async def download_studio_artifact(
+    path: str = Query(min_length=1, description="slate/canvas 产物路径"),
+    token: str | None = Query(default=None, description="JWT（<video> 无法带 Authorization 头）"),
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> FileResponse:
+    """Authenticated download for slate / canvas artifacts (short-lived token)."""
+    if not token and _user is None:
+        raise HTTPException(status_code=401, detail="Missing token")
+    if token:
+        try:
+            payload = decode_access_token(token)
+        except Exception as exc:
+            raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+        if not payload.get("sub"):
+            raise HTTPException(status_code=401, detail="Invalid token: missing sub")
+    resolved = _resolve_artifact(path)
+    media_type = mimetypes.guess_type(resolved.name)[0] or "application/octet-stream"
+    return FileResponse(
+        str(resolved),
+        media_type=media_type,
+        filename=resolved.name,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(resolved.name)}"},
+    )
 
 
 class TimelineCreateRequest(BaseModel):
