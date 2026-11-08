@@ -2153,3 +2153,32 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
     width: auto; max-height: 62dvh; overflow: auto;
   }
 }
+
+/* ── 顶部导航移动端：桌面链接折叠为汉堡 drawer（375px 不横向溢出）────── */
+.hevi-topnav__hamburger {
+  display: none; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--card); color: var(--foreground); font-size: 16px; cursor: pointer;
+}
+.hevi-topnav__hamburger span { display: block; width: 16px; height: 2px; margin: 1px 0; background: currentColor; border-radius: 1px; }
+.hevi-topnav__drawer {
+  position: absolute; top: 56px; left: 0; right: 0; z-index: 70;
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 12px 12px;
+  border-bottom: 1px solid var(--border); background: var(--card);
+  box-shadow: 0 14px 30px rgb(0 0 0 / .12);
+}
+.hevi-topnav__drawer-link {
+  padding: 10px 12px; border-radius: 8px; color: var(--foreground);
+  font-size: 14px; text-decoration: none;
+}
+.hevi-topnav__drawer-link[data-active="true"] { background: var(--muted); color: var(--primary); }
+@media (max-width: 760px) {
+  .hevi-topnav { gap: 10px; padding: 0 12px; overflow: visible; position: relative; }
+  .hevi-topnav__links--desktop { display: none; }
+  .hevi-topnav__hamburger { display: inline-flex; }
+  .hevi-topnav__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .hevi-home { padding: 28px 16px 48px; }
+  .hevi-home__panel { max-width: 100%; }
+  .hevi-home__presets { grid-template-columns: 1fr; }
+}

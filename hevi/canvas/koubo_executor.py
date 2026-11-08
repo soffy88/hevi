@@ -442,7 +442,8 @@ def _run_edit_segments(node: Any, upstream: dict[str, Any]) -> dict[str, Any]:
             [
                 kp._ffmpeg(), "-y", "-fflags", "+genpts",
                 "-f", "concat", "-safe", "0", "-i", str(concat),
-                "-c", "copy", "-movflags", "+faststart", str(mp4),
+                "-c", "copy", "-movflags", "+faststart",
+                "-metadata", "comment=AI 生成 · hevi 合成", str(mp4),
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -453,7 +454,8 @@ def _run_edit_segments(node: Any, upstream: dict[str, Any]) -> dict[str, Any]:
                 [
                     kp._ffmpeg(), "-y", "-f", "concat", "-safe", "0", "-i", str(concat),
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", str(mp4),
+                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
+                    "-metadata", "comment=AI 生成 · hevi 合成", str(mp4),
                 ],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
             )
@@ -546,7 +548,20 @@ def _run_final(node: Any, upstream: dict[str, Any]) -> dict[str, Any]:
     source = Path(str(edit.get("output") or merged.get("video") or merged.get("output") or ""))
     final = out / "koubo_cut.mp4"
     if source.is_file():
-        shutil.copy2(source, final)
+        # The final copy must carry the AI disclosure metadata even when the
+        # edit node used a plain stream-copy concat.  Remux is cheap (copy).
+        subprocess.run(
+            [
+                kp._ffmpeg(), "-y", "-i", str(source), "-c", "copy",
+                "-metadata", "comment=AI 生成 · hevi 合成",
+                "-movflags", "+faststart", str(final),
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if not final.is_file() or final.stat().st_size == 0:
+            shutil.copy2(source, final)
     else:
         _input_video(final, duration)
     fcpxml = kp._write_fcpxml(out, duration, final)
