@@ -229,6 +229,69 @@ def pexels(query: str, *, orientation: str = "landscape", min_d: float = 4, excl
 
 
 # ---------------------------------------------------------------- shots / assembly
+def pexels_photo(query: str, *, orientation: str = "portrait", min_w: int = 900,
+                 exclude: set[str] | None = None) -> dict[str, Any]:
+    """One free Pexels photo (same API/key as the video source).
+
+    Photo search has much deeper coverage of historical/art subjects than the
+    video library, and the API host is reachable from production containers
+    where Wikimedia is not.
+    """
+    key = _pexels_key()
+    cache_key = hashlib.sha256(f"photo|{query}|{orientation}".encode()).hexdigest()[:16]
+    search_json = CACHE / f"pexels_photo_{cache_key}.json"
+    data = None
+    if search_json.exists():
+        try:
+            data = json.loads(search_json.read_text(encoding="utf-8"))
+        except Exception:
+            data = None
+    if data is None:
+        params = {"query": query, "per_page": "20", "orientation": orientation, "size": "large"}
+        url = "https://api.pexels.com/v1/search?" + urllib.parse.urlencode(params)
+        req = urllib.request.Request(url, headers={"Authorization": key, "User-Agent": "hevi-zerolines"})
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            data = json.load(resp)
+        CACHE.mkdir(parents=True, exist_ok=True)
+        search_json.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    for photo in data.get("photos", []):
+        pid = str(photo.get("id") or "")
+        if not pid or pid in (exclude or set()):
+            continue
+        if int(photo.get("width") or 0) < min_w:
+            continue
+        src = (photo.get("src") or {})
+        link = str(src.get("large2x") or src.get("large") or src.get("original") or "")
+        if not link:
+            continue
+        path = CACHE / f"pexels_photo_{pid}.jpg"
+        if not path.exists():
+            part = path.with_suffix(".part")
+            try:
+                blob = _https_get(link, timeout=120, headers={"User-Agent": "Mozilla/5.0"})
+                with open(part, "wb") as o:
+                    o.write(blob)
+                part.rename(path)
+            except Exception:
+                part.unlink(missing_ok=True)
+                continue
+        if exclude is not None:
+            exclude.add(pid)
+        return {"source": "pexels_photo", "query": query, "pexels_id": pid,
+                "page": photo.get("url"), "author": photo.get("photographer"),
+                "licence": "Pexels License (free)", "path": str(path)}
+    raise ZeroMediaError(f"pexels photo: no usable image for {query!r}")
+
+
+def topic_still(query: str, *, width: int = 1280, exclude: set[str] | None = None) -> dict[str, Any]:
+    """Topic-specific still: Pexels photo first (production-reachable), Commons fallback."""
+    orientation = "portrait" if width >= 1200 else "landscape"
+    try:
+        return pexels_photo(query, orientation=orientation, exclude=exclude)
+    except Exception:
+        return commons_image(query, width=width, exclude=exclude)
+
+
 def commons_image(query: str, *, width: int = 1280, exclude: set[str] | None = None) -> dict[str, Any]:
     """One free Wikimedia Commons still for a topic (fallback for thin stock).
 

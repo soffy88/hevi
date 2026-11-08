@@ -18,7 +18,6 @@ import numpy as np
 from hevi.layer4_legacy.zerolines.omodul_impl._media import (
     FFMPEG,
     ZeroMediaError,
-    commons_image,
     dur,
     finish,
     frames_to_video,
@@ -29,6 +28,7 @@ from hevi.layer4_legacy.zerolines.omodul_impl._media import (
     shot,
     still_shot,
     subtitles_filter,
+    topic_still,
     tts_lines,
     whisper_segments,
     write_bgm,
@@ -120,9 +120,9 @@ def _broll_film(req: ZeroLineRequest, tmp: Path, W: int, H: int, *, moves=None, 
         mv = (moves or DEFAULT_MOVES)[i % len(moves or DEFAULT_MOVES)]
         if stills_query and still_every > 0 and i % still_every == 0:
             try:
-                img = commons_image(stills_query, width=max(W, H), exclude=used_titles)
-                prov.append({"source": "wikimedia_commons", "query": stills_query,
-                             "title": img["title"], "author": img.get("author", ""),
+                img = topic_still(stills_query, width=max(W, H), exclude=used_titles)
+                prov.append({"source": img.get("source", "topic_still"), "query": stills_query,
+                             "title": img.get("title", ""), "author": img.get("author", ""),
                              "licence": img.get("licence", ""), "page": img.get("page", ""),
                              "used_for": f"shot {i + 1}"})
                 shots.append(still_shot(img["path"], tmp / f"s{i}.mp4", seg, W, H, move=mv, grade=grade))
@@ -156,9 +156,9 @@ def kinetic_promo(req: ZeroLineRequest, d: Path) -> Result:
     for i, q in enumerate(req.queries):
         if stills_query and still_every > 0 and i % still_every == 0:
             try:
-                img = commons_image(stills_query, width=max(W, H), exclude=used_titles)
-                prov.append({"source": "wikimedia_commons", "query": stills_query,
-                             "title": img["title"], "author": img.get("author", ""),
+                img = topic_still(stills_query, width=max(W, H), exclude=used_titles)
+                prov.append({"source": img.get("source", "topic_still"), "query": stills_query,
+                             "title": img.get("title", ""), "author": img.get("author", ""),
                              "licence": img.get("licence", ""), "used_for": f"shot {i + 1}"})
                 shots.append(still_shot(img["path"], tmp / f"s{i}.mp4", seg, W, H,
                                         move=DEFAULT_MOVES[i % 4],
@@ -353,9 +353,9 @@ def avatar_spokesperson(req: ZeroLineRequest, d: Path) -> Result:
     for i, q in enumerate(req.queries):
         if stills_query and still_every > 0 and i % still_every == 0:
             try:
-                img = commons_image(stills_query, width=max(W, H), exclude=used_titles)
-                prov.append({"source": "wikimedia_commons", "query": stills_query,
-                             "title": img["title"], "author": img.get("author", ""),
+                img = topic_still(stills_query, width=max(W, H), exclude=used_titles)
+                prov.append({"source": img.get("source", "topic_still"), "query": stills_query,
+                             "title": img.get("title", ""), "author": img.get("author", ""),
                              "licence": img.get("licence", ""), "used_for": f"shot {i + 1}"})
                 shots.append(still_shot(img["path"], tmp / f"s{i}.mp4", seg, W, H,
                                         move=DEFAULT_MOVES[i % 4]))
