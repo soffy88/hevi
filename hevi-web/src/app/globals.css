@@ -2047,3 +2047,33 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
   flex-wrap: wrap;
 }
 .product-page--canvas .hevi-canvas { min-height: 70vh; }
+
+
+/* ── 法律页与全站页脚（草案） ─────────────────────────────────────────── */
+.hevi-site-footer {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 8px 18px; padding: 18px 20px 28px; border-top: 1px solid var(--border);
+  color: var(--muted-foreground); font-size: 12px;
+}
+.hevi-site-footer nav { display: flex; gap: 14px; }
+.hevi-site-footer a { color: inherit; text-decoration: none; }
+.hevi-site-footer a:hover { color: var(--foreground); text-decoration: underline; }
+.hevi-site-footer__note { opacity: .7; }
+.legal-page {
+  width: min(860px, 100%); margin: 0 auto; padding: 40px 20px 64px;
+  color: var(--foreground); line-height: 1.75;
+}
+.legal-page__draft {
+  display: inline-block; margin-bottom: 18px; padding: 6px 12px; border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--primary) 45%, var(--border));
+  background: color-mix(in oklch, var(--primary) 10%, transparent);
+  color: var(--primary); font-size: 12px; font-weight: 800;
+}
+.legal-page__eyebrow { margin: 0 0 6px; color: var(--muted-foreground); font-size: 11px; font-weight: 900; letter-spacing: .16em; }
+.legal-page h1 { margin: 0 0 6px; font-size: clamp(28px, 4vw, 40px); letter-spacing: -.03em; }
+.legal-page__meta { margin: 0 0 22px; color: var(--muted-foreground); font-size: 12.5px; }
+.legal-page__lead { margin: 0 0 28px; color: var(--muted-foreground); font-size: 15px; }
+.legal-page section { margin: 0 0 22px; }
+.legal-page h2 { margin: 0 0 8px; font-size: 17px; }
+.legal-page p { margin: 0; color: color-mix(in oklch, var(--foreground) 88%, var(--muted-foreground)); }
+.legal-page__footer-note { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 12.5px; }

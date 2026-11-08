@@ -68,7 +68,7 @@ export default function LoginPage() {
       loading={loading}
       onEmailLogin={handleLogin}
       onEmailRegister={handleRegister}
-      links={<a href="/pricing">查看套餐</a>}
+      links={<><a href="/pricing">查看套餐</a> · <a href="/privacy">隐私政策</a> · <a href="/terms">用户协议</a></>}
     />
   );
 }

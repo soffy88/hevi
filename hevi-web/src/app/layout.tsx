@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/components/AuthProvider';
+import { SiteFooter } from '@/components/SiteFooter';
 
 export const metadata: Metadata = {
   title: 'hevi — AI 视频创作工作台',
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh" data-theme="professional">
-      <body><AuthProvider>{children}</AuthProvider></body>
+      <body><AuthProvider>{children}</AuthProvider><SiteFooter /></body>
     </html>
   );
 }
