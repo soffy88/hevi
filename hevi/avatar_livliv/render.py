@@ -287,7 +287,11 @@ def render_frames(
         except ValueError:
             workers = 0
         if workers <= 0:
-            workers = 3 if (os.cpu_count() or 1) >= 8 else 1
+            # The API container is CPU-capped (2 cpus); three workers each replay
+            # the idle animation from frame 0, so on a small quota they add work
+            # instead of removing it (S9: 452 s).  Default to one page; opt into
+            # parallelism with HEVI_LIVLIV_WORKERS on a larger quota.
+            workers = 1
         workers = max(1, min(workers, n))
         chunk = (n + workers - 1) // workers
         segments = [(i * chunk, min(n, (i + 1) * chunk)) for i in range(workers)]

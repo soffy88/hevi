@@ -123,7 +123,7 @@ services:
       HEVI_LIVLIV_VENDOR: /livliv
       HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
       HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
-      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-3}
+      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-1}
       HEVI_LIVLIV_BATCH: ${HEVI_LIVLIV_BATCH:-12}
     volumes:
       - /home/soffy/models:/models:ro
@@ -265,7 +265,7 @@ services:
       HEVI_LIVLIV_VENDOR: /livliv
       HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
       HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
-      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-3}
+      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-1}
       HEVI_LIVLIV_BATCH: ${HEVI_LIVLIV_BATCH:-12}
       HEVI_ASSET_ROOT: /app/data/workspace/assets
       HEVI_OUTPUT_ROOT: /app/output
@@ -354,7 +354,7 @@ services:
       HEVI_LIVLIV_VENDOR: /livliv
       HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
       HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
-      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-3}
+      HEVI_LIVLIV_WORKERS: ${HEVI_LIVLIV_WORKERS:-1}
       HEVI_LIVLIV_BATCH: ${HEVI_LIVLIV_BATCH:-12}
       HEVI_ASSET_ROOT: /app/data/workspace/assets
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
