@@ -238,6 +238,7 @@ def wire_events(
     stage template, every event suppressed) returns
     ``verdict: "fail"`` with named issues; malformed input
     raises.
+    Composes (3O SPEC 1.2): validate_stage_block.
     """
     if not _is_num(tolerance_ms) or float(tolerance_ms) <= 0:
         raise CapabilityError("qa.event_trigger_wiring: tolerance_ms must be > 0")

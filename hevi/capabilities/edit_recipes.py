@@ -10,7 +10,7 @@ strings, and loading one never executes anything.
 Validation on save (and again on load, so a hand-edited file cannot
 sneak past the save-time check):
 * exactly one camera movement, and it must exist in the
-  ``shot.camera_movements`` catalogue (40 movements);
+  ``shot.camera_movements`` catalogue (46 movements);
 * every layer id must exist in ``shot.cinematic_techniques`` and must
   NOT itself be a camera movement (the one-shot-one-movement rule);
 * every SFX id must exist in ``edit_recipes_data/sfx_layers.json``

@@ -1918,6 +1918,92 @@
         }
       }
     },
+    "/api/judge/hard-check": {
+      "post": {
+        "tags": [
+          "judge"
+        ],
+        "summary": "Hard Check",
+        "operationId": "hard_check_api_judge_hard_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HardCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Hard Check Api Judge Hard Check Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/judge/pairwise": {
+      "post": {
+        "tags": [
+          "judge"
+        ],
+        "summary": "Pairwise",
+        "operationId": "pairwise_api_judge_pairwise_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairwiseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Pairwise Api Judge Pairwise Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pipeline/capabilities": {
       "get": {
         "tags": [
@@ -2126,8 +2212,13 @@
           "capabilities"
         ],
         "summary": "Preview Capability Endpoint",
-        "description": "Render a 3-second preview for ``name`` — or a report, by kind.\n\nA missing/unknown capability returns 404.  An unsupported aspect\nor an invalid param returns 422.  A genuine render failure\nreturns 500 — never a fake success.\n\nPreview semantics by capability kind (M-15 / M-17 / S-03):\n\n* Media capabilities (``has_media_output``): the aspect check\n  applies (unsupported aspect is 422) and the response is the\n  produced media file.\n* Report/file capabilities (``has_media_output=False``): the\n  render ignores aspect, so the aspect check is skipped, and\n  the response is the report JSON (``qa`` payload + sha) — the\n  endpoint never fabricates an MP4 for a capability that has no\n  media, and never raises ``Path(None)`` on a missing artefact.\n* Restricted capabilities (``preview_restricted``, currently\n  only ``video.blender_mcp``): always 422.  Arbitrary bpy code\n  execution is not exposed to generic callers; trusted direct\n  callers render in-process via ``render_safe`` instead.",
+        "description": "Render a 3-second preview clip for ``name`` and return it as an MP4.\n\nA missing/unknown capability returns 404.  An unsupported aspect or an\ninvalid param returns 422.  A genuine render failure (or a missing\nartefact) returns 500 — never a fake success.",
         "operationId": "preview_capability_endpoint_api_capabilities__name__preview_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "name",
@@ -8738,7 +8829,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/tasks": {
@@ -14502,6 +14598,457 @@
         ]
       }
     },
+    "/api/canvas/material-pack/graph": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Material Pack Graph Endpoint",
+        "description": "Map a material pack (or stable-film manifest) to a canvas graph.",
+        "operationId": "material_pack_graph_endpoint_api_canvas_material_pack_graph_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialPackGraphRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Material Pack Graph Endpoint Api Canvas Material Pack Graph Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/material-pack/edit": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Material Pack Edit Endpoint",
+        "description": "Apply a human prompt edit to one segment node (dirty + downstream).",
+        "operationId": "material_pack_edit_endpoint_api_canvas_material_pack_edit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialPackEditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Material Pack Edit Endpoint Api Canvas Material Pack Edit Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/material-pack/regenerate": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Material Pack Regenerate Endpoint",
+        "description": "Gate one segment for regeneration; execute only if asked.\n\nWithout ``execute`` this returns the ready/refused plan and runs\nnothing. With ``execute`` the single segment node (plan-only\nsegment executor) is run through ExecutorService like any other\ngraph -- the whole film is never re-run from here.",
+        "operationId": "material_pack_regenerate_endpoint_api_canvas_material_pack_regenerate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialPackRegenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Material Pack Regenerate Endpoint Api Canvas Material Pack Regenerate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/templates/koubo": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Create Koubo Template",
+        "description": "Create (and save) the default koubo_cut graph, one node per step.",
+        "operationId": "create_koubo_template_api_canvas_templates_koubo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KouboTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Koubo Template Api Canvas Templates Koubo Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/canvas/{graph_id}/nodes/{node_key}/revisions": {
+      "get": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "List Node Revisions",
+        "operationId": "list_node_revisions_api_canvas__graph_id__nodes__node_key__revisions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "graph_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Graph Id"
+            }
+          },
+          {
+            "name": "node_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Node Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Node Revisions Api Canvas  Graph Id  Nodes  Node Key  Revisions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/canvas/{graph_id}/nodes/{node_key}": {
+      "patch": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Patch Node",
+        "description": "Edit one node's config/label/position and/or lock it.\n\nA config change goes through the normal graph update, which marks the\nchanged node and its downstream stale without rewriting them.",
+        "operationId": "patch_node_api_canvas__graph_id__nodes__node_key__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "graph_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Graph Id"
+            }
+          },
+          {
+            "name": "node_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Node Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodePatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Patch Node Api Canvas  Graph Id  Nodes  Node Key  Patch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/canvas/{graph_id}/nodes/{node_key}/execute": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Execute Node",
+        "description": "Rerun exactly this node plus its downstream (scope=selected).",
+        "operationId": "execute_node_api_canvas__graph_id__nodes__node_key__execute_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "graph_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Graph Id"
+            }
+          },
+          {
+            "name": "node_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Node Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExecuteGraphRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Execute Node Api Canvas  Graph Id  Nodes  Node Key  Execute Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/canvas/{graph_id}/nodes/{node_key}/review": {
+      "post": {
+        "tags": [
+          "canvas"
+        ],
+        "summary": "Review Node Endpoint",
+        "description": "Re-run the node self-check on its latest output and write it back.",
+        "operationId": "review_node_endpoint_api_canvas__graph_id__nodes__node_key__review_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "graph_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Graph Id"
+            }
+          },
+          {
+            "name": "node_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Node Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Review Node Endpoint Api Canvas  Graph Id  Nodes  Node Key  Review Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/canvas/{graph_id}": {
       "get": {
         "tags": [
@@ -17570,7 +18117,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/cinematic/tasks/{task_id}": {
@@ -17580,6 +18132,11 @@
         ],
         "summary": "Get Animation Task",
         "operationId": "get_animation_task_api_cinematic_tasks__task_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "task_id",
@@ -17624,6 +18181,11 @@
         ],
         "summary": "Get Animation Video",
         "operationId": "get_animation_video_api_cinematic_tasks__task_id__video_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "task_id",
@@ -17666,6 +18228,11 @@
         ],
         "summary": "Get Queue",
         "operationId": "get_queue_api_history_series_queue_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "tb_id",
@@ -17714,6 +18281,11 @@
         ],
         "summary": "Get Next",
         "operationId": "get_next_api_history_series_next_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "tb_id",
@@ -17807,6 +18379,11 @@
         ],
         "summary": "Produce Daily",
         "operationId": "produce_daily_api_history_series_produce_daily_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "tb_id",
@@ -19223,7 +19800,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/mpt/status/{task_id}": {
@@ -19234,6 +19816,11 @@
         "summary": "Get Task Status",
         "description": "查询 MPT 任务状态",
         "operationId": "get_task_status_api_mpt_status__task_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "task_id",
@@ -19312,7 +19899,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/mpt/cross-post": {
@@ -19356,7 +19948,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/mpt/reference/analyze": {
@@ -19398,7 +19995,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/mpt/hevi/submit-job": {
@@ -19409,6 +20011,11 @@
         "summary": "Submit Job From Hevi",
         "description": "从 hevi 工作流提交 MPT 任务（内部调用）",
         "operationId": "submit_job_from_hevi_api_mpt_hevi_submit_job_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "production_id",
@@ -19581,7 +20188,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/gallery": {
@@ -19591,6 +20203,11 @@
         ],
         "summary": "List Gallery",
         "operationId": "list_gallery_api_gallery_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "category",
@@ -19689,6 +20306,11 @@
         ],
         "summary": "Get Gallery Item",
         "operationId": "get_gallery_item_api_gallery__item_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "item_id",
@@ -21566,6 +22188,11 @@
         "summary": "List Tasks",
         "description": "任务列表:created_at 倒序 + 可选 status 过滤 + 分页;附带全量状态计数。",
         "operationId": "list_tasks_api_dashboard_tasks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "status",
@@ -21640,6 +22267,11 @@
         ],
         "summary": "Get Task",
         "operationId": "get_task_api_dashboard_tasks__task_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "task_id",
@@ -21684,6 +22316,11 @@
         ],
         "summary": "Serve Task Output",
         "operationId": "serve_task_output_api_dashboard_tasks__task_id__output_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "task_id",
@@ -21756,7 +22393,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/lite/runs/{run_id}": {
@@ -21766,6 +22408,11 @@
         ],
         "summary": "Get Run",
         "operationId": "get_run_api_lite_runs__run_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -21809,6 +22456,11 @@
         "summary": "Get Preview Html",
         "description": "审稿 HTML 预览(不落 MP4)。无缓存 draft 时 404。",
         "operationId": "get_preview_html_api_lite_runs__run_id__preview_html_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -21850,6 +22502,11 @@
         "summary": "Patch Script",
         "description": "人改文案;可选 reloop=true 再跑 veya-loop。",
         "operationId": "patch_script_api_lite_runs__run_id__script_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -21902,6 +22559,11 @@
         ],
         "summary": "Reloop",
         "operationId": "reloop_api_lite_runs__run_id__reloop_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -21955,6 +22617,11 @@
         "summary": "Confirm Run",
         "description": "人确认文案 → 后台本地零费用渲染。",
         "operationId": "confirm_run_api_lite_runs__run_id__confirm_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "run_id",
@@ -22046,7 +22713,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/lite/generate": {
@@ -22088,7 +22760,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/agent/longcat/capabilities": {
@@ -23452,7 +24129,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/stickman/structure_clone": {
@@ -23495,7 +24177,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/stickman/proposal/create": {
@@ -23538,7 +24225,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/stickman/proposal/approve": {
@@ -23583,7 +24275,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/stickman/render_local": {
@@ -23626,7 +24323,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/stickman/flow_pack": {
@@ -23669,7 +24371,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/stickman/flow_import": {
@@ -23712,7 +24419,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/stickman/credits": {
@@ -27111,6 +27823,24 @@
               }
             ],
             "title": "Target Duration S"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": "dirty"
+          },
+          "selected_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Selected Ids",
+            "default": []
+          },
+          "max_retries": {
+            "type": "integer",
+            "title": "Max Retries",
+            "default": 1
           }
         },
         "type": "object",
@@ -28231,6 +28961,41 @@
         "title": "HandheldCurve",
         "description": "手持感(可随时间演化)——频率与幅度解耦(可频率高但幅度小)。"
       },
+      "HardCheckRequest": {
+        "properties": {
+          "video_path": {
+            "type": "string",
+            "title": "Video Path"
+          },
+          "expected_duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Duration S"
+          },
+          "subtitle_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "video_path"
+        ],
+        "title": "HardCheckRequest"
+      },
       "HistoricalProductRequest": {
         "properties": {
           "title": {
@@ -28473,6 +29238,66 @@
           "record"
         ],
         "title": "IntelligenceRecordRequest"
+      },
+      "KouboTemplateRequest": {
+        "properties": {
+          "script_text": {
+            "type": "string",
+            "title": "Script Text",
+            "default": ""
+          },
+          "topic": {
+            "type": "string",
+            "title": "Topic",
+            "default": ""
+          },
+          "duration_s": {
+            "type": "number",
+            "title": "Duration S",
+            "default": 10.0
+          },
+          "engine": {
+            "type": "string",
+            "title": "Engine",
+            "default": "livliv"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id",
+            "default": "d03ft"
+          },
+          "out_dir": {
+            "type": "string",
+            "title": "Out Dir",
+            "default": ""
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          },
+          "positions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positions"
+          }
+        },
+        "type": "object",
+        "title": "KouboTemplateRequest"
       },
       "LayerConfig": {
         "properties": {
@@ -29573,6 +30398,139 @@
         ],
         "title": "MaterialItem"
       },
+      "MaterialPackEditRequest": {
+        "properties": {
+          "graph": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Graph"
+          },
+          "segment_id": {
+            "type": "string",
+            "title": "Segment Id"
+          },
+          "patch": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Patch"
+          },
+          "base_revision": {
+            "type": "integer",
+            "title": "Base Revision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph",
+          "segment_id",
+          "patch",
+          "base_revision"
+        ],
+        "title": "MaterialPackEditRequest"
+      },
+      "MaterialPackGraphRequest": {
+        "properties": {
+          "pack": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Pack"
+          },
+          "existing_graph": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Graph"
+          },
+          "pack_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Revision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pack"
+        ],
+        "title": "MaterialPackGraphRequest"
+      },
+      "MaterialPackRegenerateRequest": {
+        "properties": {
+          "graph": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Graph"
+          },
+          "segment_id": {
+            "type": "string",
+            "title": "Segment Id"
+          },
+          "confirmed": {
+            "title": "Confirmed"
+          },
+          "smoke_passed": {
+            "title": "Smoke Passed",
+            "default": false
+          },
+          "budget_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Usd"
+          },
+          "estimated_unit_cost": {
+            "title": "Estimated Unit Cost"
+          },
+          "free_route": {
+            "type": "boolean",
+            "title": "Free Route",
+            "default": false
+          },
+          "execute": {
+            "type": "boolean",
+            "title": "Execute",
+            "default": false
+          },
+          "on_error": {
+            "type": "string",
+            "title": "On Error",
+            "default": "rollback"
+          },
+          "target_duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Duration S"
+          }
+        },
+        "type": "object",
+        "required": [
+          "graph",
+          "segment_id"
+        ],
+        "title": "MaterialPackRegenerateRequest"
+      },
       "MaterialSearchRequest": {
         "properties": {
           "query": {
@@ -30081,6 +31039,58 @@
         ],
         "title": "NodeIn"
       },
+      "NodePatchRequest": {
+        "properties": {
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "locked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locked"
+          }
+        },
+        "type": "object",
+        "title": "NodePatchRequest"
+      },
       "OAuthRequest": {
         "properties": {
           "code": {
@@ -30180,6 +31190,35 @@
           "input"
         ],
         "title": "OpenAISpeechRequest"
+      },
+      "PairwiseRequest": {
+        "properties": {
+          "video_a": {
+            "type": "string",
+            "title": "Video A"
+          },
+          "video_b": {
+            "type": "string",
+            "title": "Video B"
+          },
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "video_a",
+          "video_b"
+        ],
+        "title": "PairwiseRequest"
       },
       "ParamsBody": {
         "properties": {
@@ -34281,10 +35320,16 @@
             "type": "string",
             "enum": [
               "wav2lip",
-              "musetalk"
+              "musetalk",
+              "livliv"
             ],
             "title": "Engine",
             "default": "wav2lip"
+          },
+          "character_id": {
+            "type": "string",
+            "title": "Character Id",
+            "default": "d03ft"
           },
           "image": {
             "anyOf": [
@@ -34930,6 +35975,22 @@
             "type": "string",
             "title": "Quality Profile",
             "default": "standard"
+          },
+          "judge": {
+            "type": "boolean",
+            "title": "Judge",
+            "default": false
+          },
+          "judge_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Backend"
           },
           "options": {
             "additionalProperties": true,

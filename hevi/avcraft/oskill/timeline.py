@@ -118,17 +118,11 @@ def timeline_set_keep(tl: dict, clip_ids: list[str], keep: bool, reason: str = "
     return tl
 
 
-def save_timeline(tl: dict, path: str | Path) -> Path:
-    p = Path(path)
-    p.write_text(json.dumps(tl, ensure_ascii=False, indent=1))
-    return p
+# Persistence lives in obase/timeline_io.py (oskill must not own IO);
+# re-exported here so the established import path keeps working.
+from hevi.avcraft.obase.timeline_io import load_timeline, save_timeline
 
-
-def load_timeline(path: str | Path) -> dict:
-    tl = json.loads(Path(path).read_text())
-    if tl.get("schema") != SCHEMA:
-        raise ValueError(f"unexpected schema {tl.get('schema')}")
-    return tl
+__all__ = ["load_timeline", "save_timeline"]
 
 
 # ====================================================================== P1：统一编辑时间线

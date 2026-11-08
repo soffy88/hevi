@@ -31,7 +31,9 @@ from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.errors import CapabilityError
-from hevi.capabilities.model_directory import register_model
+from hevi.capabilities.model_directory import (
+    record_in_directory as record_models_in_directory,
+)
 from hevi.capabilities.registry import (
     Capability,
     CapabilityResult,
@@ -226,15 +228,16 @@ def validate_modal_config(config: Any) -> dict[str, Any]:
 def record_in_directory(directory_path: Path) -> dict[str, dict[str, Any]]:
     """Record the Modal compute record (unverified) in a model-directory JSON file.
 
-    Delegates to ``model.model_directory.register_model``: the record
-    lands with ``status: unverified`` and ``verified_at: null``. No
-    account is created, no money moves, no network call is made, and
-    no Modal API is connected.
+    Delegates to the single write path
+    ``model.model_directory.record_in_directory``: the record lands
+    with ``status: unverified`` and ``verified_at: null``. No account
+    is created, no money moves, no network call is made, and no Modal
+    API is connected.
     """
-    path = Path(directory_path)
     config = validate_modal_config(modal_pricing_config())
-    record = register_model(path, model_id=MODAL_MODEL_ID, config=config)
-    return {MODAL_MODEL_ID: record}
+    return record_models_in_directory(
+        Path(directory_path), {MODAL_MODEL_ID: config}
+    )
 
 
 def _render(params: dict[str, Any], out_dir: Path, *, duration: float,

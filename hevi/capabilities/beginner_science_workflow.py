@@ -729,7 +729,7 @@ def check_music_alignment(
     fails outright; the remaining events are checked against the
     planned beat grid by ``pipeline.code_studio_workflow``.
     """
-    from hevi.capabilities.code_studio_workflow import check_beat_alignment
+    from hevi.capabilities.pure_helpers import check_beat_alignment
 
     problems: list[str] = []
     beat_events: list[dict[str, Any]] = []

@@ -37,7 +37,7 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
-from hevi.capabilities.verdict_vocabulary import normalise_verdict
+from hevi.capabilities.pure_helpers import normalise_verdict
 
 _Registered = False
 

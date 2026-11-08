@@ -207,7 +207,7 @@ def _coverage_for(
 ) -> dict[str, Any] | None:
     if not expected_lines:
         return None
-    from hevi.capabilities.prompt_eval_harness import _containment_coverage
+    from hevi.capabilities.pure_helpers import _containment_coverage
 
     per_line = [
         round(_containment_coverage(line, normalized), 4) for line in expected_lines

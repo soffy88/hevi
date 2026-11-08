@@ -443,6 +443,7 @@ def key_video(job: Any, out_dir: Any) -> dict[str, Any]:
     fixed plate; when omitted the plate is measured per frame).
     Returns the report dict; deliveries and the independent gate
     verdict are inside it.
+    Composes (3O SPEC 1.2): check_chroma_key_evidence.
     """
     if not isinstance(job, dict):
         raise CapabilityError("video.alpha_cutout_keyer: job must be a JSON object")

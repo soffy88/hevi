@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from hevi.capabilities.errors import CapabilityError
-from hevi.capabilities.project_graph import create_graph, validate_graph
+from hevi.capabilities.project_graph import create_graph
 from hevi.capabilities.project_snapshot import create_snapshot, list_snapshots
 from hevi.capabilities.registry import (
     Capability,
@@ -67,6 +67,7 @@ class WorldSession:
         *,
         graph_nodes: list[dict[str, Any]] | None = None,
     ) -> None:
+        """Composes (3O SPEC 1.2): create_graph."""
         root = Path(project_root)
         if not root.is_dir():
             raise CapabilityError(f"pipeline.athenaion_session: project root not found: {root}")

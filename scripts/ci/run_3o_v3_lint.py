@@ -17,15 +17,26 @@ The matrix is the union of the pre-existing HEVI 3O checks and the v3.0 checks:
   8. check_oservi_injection         (mechanism-only, injected handlers)
   9. check_async_contract           (fail-closed async workflow contract)
 
-Legacy pre-v3.0 violations are recognised through the freshness-checked debt
-ledger at ``artifacts/qualification/legacy-3o-v3-debt.json``; a new element can
-never be admitted through it.
+Scope (2026-11-04, 3O conformance): the checks run with
+``HEVI_3O_LINT_SCOPE=hevi-only``, so canonical packages that resolve to
+``.venv`` site-packages installs are skipped — they are separate repos
+with their own CI, and scanning them produced a permanently-false FAIL
+(1578 violation lines, all outside the hevi tree). A PASS here covers
+the hevi tree only and must not be read as a verdict on the canonical
+libraries.
+
+The legacy debt-ledger mechanism (``artifacts/qualification/
+legacy-3o-v3-debt.json``, consumed only by the superseded WAVE A-G
+qualification audit) is retired for registry-conformance scope: the
+file does not exist and no code path in this runner reads it. Do not
+reintroduce the reference as if it gated admission.
 
 Exit code: 0 = all checks pass, 1 = at least one check failed.
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -48,12 +59,15 @@ CHECKS = (
 
 def main() -> int:
     failures: list[str] = []
+    env = dict(os.environ, HEVI_3O_LINT_SCOPE="hevi-only")
+    print("scope=hevi-only (site-packages canonical installs excluded)")
     for name in CHECKS:
         proc = subprocess.run(
             [sys.executable, str(CI / name)],
             cwd=ROOT,
             capture_output=True,
             text=True,
+            env=env,
         )
         verdict = "PASS" if proc.returncode == 0 else "FAIL"
         print(f"[{verdict}] {name}")

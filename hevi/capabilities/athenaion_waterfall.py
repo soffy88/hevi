@@ -28,7 +28,9 @@ from pathlib import Path
 from typing import Any
 
 from hevi.capabilities.athenaion_browser import capture_actions, page_html
-from hevi.capabilities.athenaion_world import height_at
+from hevi.capabilities.pure_helpers import (
+    height_at,
+)
 from hevi.capabilities.errors import CapabilityError
 from hevi.capabilities.registry import (
     Capability,

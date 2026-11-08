@@ -246,3 +246,44 @@ def register_spend_brake_capabilities_once() -> list[str]:
 
 
 register_spend_brake_capabilities_once()
+
+
+def check_spend_approval(
+    params: dict[str, Any], *, capability: str
+) -> dict[str, Any]:
+    """Consult the spend gate for one generation call.
+
+    The caller supplies an optional ``spend_approval`` block with
+    ``{storyboard, confirmed, smoke_passed, batch_size,
+    estimated_unit_cost}``. When the block is present,
+    ``authorize_spend`` must approve or the call is refused here --
+    before any key is read, any network call is made, or any GPU
+    work starts -- by the CapabilityError it raises. When the block
+    is absent, spending responsibility stays caller-side: the call
+    proceeds and the returned verdict records
+    ``spend_gate_not_consulted`` so no audit trail can mistake the
+    call for gate-approved.
+    """
+    approval = params.get("spend_approval") if isinstance(params, dict) else None
+    if not isinstance(approval, dict):
+        return {
+            "consulted": False,
+            "spend_gate_not_consulted": True,
+            "note": (
+                f"{capability}: no spend_approval block supplied; "
+                "spending responsibility stays caller-side"
+            ),
+        }
+    decision = authorize_spend(
+        approval.get("storyboard"),
+        confirmed=approval.get("confirmed"),
+        smoke_passed=approval.get("smoke_passed"),
+        batch_size=approval.get("batch_size", 1),
+        estimated_unit_cost=approval.get("estimated_unit_cost"),
+    )
+    return {
+        "consulted": True,
+        "approved": True,
+        "mode": decision["mode"],
+        "batch_size": decision["batch_size"],
+    }

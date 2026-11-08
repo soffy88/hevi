@@ -75,8 +75,8 @@ from hevi.stickman.capabilities import register_stickman_capabilities_once
 register_stickman_capabilities_once()
 
 # Riso B-roll capabilities (feat/riso-broll)
-from hevi.riso.capabilities import register_riso_capabilities
-register_riso_capabilities()
+from hevi.riso.capabilities import register_riso_capabilities_once
+register_riso_capabilities_once()
 
 
 # Multi-model pipeline (cloud providers via Monid, 2026-10-20):
@@ -323,7 +323,7 @@ from . import blender_mcp as _blender_mcp  # noqa: E402,F401
 _blender_mcp.register_blender_mcp_capabilities_once()
 
 # Cinematic technique libraries (movie-atmosphere 10-site intake, 2026-10-25):
-# shot.camera_movements (40 movements) + shot.cinematic_techniques
+# shot.camera_movements (46 movements) + shot.cinematic_techniques
 # (melies index, 30 vvsvs core techniques, index-only pointers).
 from . import cinematic_techniques as _cinematic_techniques  # noqa: E402,F401
 _cinematic_techniques.register_cinematic_techniques_capabilities_once()
@@ -1329,3 +1329,561 @@ from . import code_film_style_contract as _code_film_style_contract  # noqa: E40
 _code_film_style_contract.register_code_film_style_contract_capabilities_once()
 from . import candidate_selection_ledger as _candidate_selection_ledger  # noqa: E402,F401
 _candidate_selection_ledger.register_candidate_selection_ledger_capabilities_once()
+
+# 3D cartoon 6-step tutorial graft (see CARTOON_TUTORIAL_6STEPS_ATTRIBUTION.md):
+# qa.hook_reversal_script_gate, qa.prerelease_self_check_gate,
+# qa.reference_anchor_gate, qa.word_pop_subtitle_contract,
+# video.remotion_bridge_smoke, video.word_pop_renderer
+# (clean-room method only; no tutorial text, no Agloe defaults; Three.js geometry unproven).
+# Appended at the tail only; earlier registrations untouched.
+from . import hook_reversal_script_gate as _hook_reversal_script_gate  # noqa: E402,F401
+_hook_reversal_script_gate.register_hook_reversal_script_gate_capabilities_once()
+from . import prerelease_self_check_gate as _prerelease_self_check_gate  # noqa: E402,F401
+_prerelease_self_check_gate.register_prerelease_self_check_gate_capabilities_once()
+from . import reference_anchor_gate as _reference_anchor_gate  # noqa: E402,F401
+_reference_anchor_gate.register_reference_anchor_gate_capabilities_once()
+from . import word_pop_subtitle_contract as _word_pop_subtitle_contract  # noqa: E402,F401
+_word_pop_subtitle_contract.register_word_pop_subtitle_contract_capabilities_once()
+from . import remotion_bridge_smoke as _remotion_bridge_smoke  # noqa: E402,F401
+_remotion_bridge_smoke.register_remotion_bridge_smoke_capabilities_once()
+from . import word_pop_renderer as _word_pop_renderer  # noqa: E402,F401
+_word_pop_renderer.register_word_pop_renderer_capabilities_once()
+
+# batch-video-plugin graft (see BATCH_VIDEO_PLUGIN_ATTRIBUTION.md):
+# qa.round_cap_gate, qa.stale_round_watchdog_gate,
+# qa.spec_authenticity_dual_track_gate, qa.dialogue_unverified_gate,
+# qa.ai_disclosure_dual_track_gate, qa.failed_shot_no_hard_cut_gate,
+# qa.review_signal_vocabulary, video.edit_plan_compiler,
+# qa.round_engine_contract, qa.template_plan_substitution
+# (clean-room method restatement; no upstream text, no fixed
+# 10s/24fps default, no supplier/publishing wiring; execution deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import round_cap_gate as _round_cap_gate  # noqa: E402,F401
+_round_cap_gate.register_round_cap_gate_capabilities_once()
+from . import stale_round_watchdog_gate as _stale_round_watchdog_gate  # noqa: E402,F401
+_stale_round_watchdog_gate.register_stale_round_watchdog_gate_capabilities_once()
+from . import spec_authenticity_dual_track_gate as _spec_authenticity_dual_track_gate  # noqa: E402,F401
+_spec_authenticity_dual_track_gate.register_spec_authenticity_dual_track_gate_capabilities_once()
+from . import dialogue_unverified_gate as _dialogue_unverified_gate  # noqa: E402,F401
+_dialogue_unverified_gate.register_dialogue_unverified_gate_capabilities_once()
+from . import ai_disclosure_dual_track_gate as _ai_disclosure_dual_track_gate  # noqa: E402,F401
+_ai_disclosure_dual_track_gate.register_ai_disclosure_dual_track_gate_capabilities_once()
+from . import failed_shot_no_hard_cut_gate as _failed_shot_no_hard_cut_gate  # noqa: E402,F401
+_failed_shot_no_hard_cut_gate.register_failed_shot_no_hard_cut_gate_capabilities_once()
+from . import review_signal_vocabulary as _review_signal_vocabulary  # noqa: E402,F401
+_review_signal_vocabulary.register_review_signal_vocabulary_capabilities_once()
+from . import edit_plan_compiler as _edit_plan_compiler  # noqa: E402,F401
+_edit_plan_compiler.register_edit_plan_compiler_capabilities_once()
+from . import round_engine_contract as _round_engine_contract  # noqa: E402,F401
+_round_engine_contract.register_round_engine_contract_capabilities_once()
+from . import template_plan_substitution as _template_plan_substitution  # noqa: E402,F401
+_template_plan_substitution.register_template_plan_substitution_capabilities_once()
+# vibe-knowledge graft (see VIBE_KNOWLEDGE_ATTRIBUTION.md):
+# qa.source_sentence_ledger, qa.premium_composition_gate,
+# qa.duration_complexity_advisor, qa.quote_confirmation_gate,
+# qa.narration_alignment_gate, qa.ai_disclosure_gate,
+# story.knowledge_film_templates, video.style_catalog_schema,
+# qa.knowledge_qc_contract, video.two_tier_synthesis_contract
+# (clean-room method only; no SKILL/STYLE text, no stills/BGM/voice
+# assets, no Renoise/MiMo chains, no cloning execution; effects unverified).
+# Appended at the tail only; earlier registrations untouched.
+from . import source_sentence_ledger as _source_sentence_ledger  # noqa: E402,F401
+_source_sentence_ledger.register_source_sentence_ledger_capabilities_once()
+from . import premium_composition_gate as _premium_composition_gate  # noqa: E402,F401
+_premium_composition_gate.register_premium_composition_gate_capabilities_once()
+from . import duration_complexity_advisor as _duration_complexity_advisor  # noqa: E402,F401
+_duration_complexity_advisor.register_duration_complexity_advisor_capabilities_once()
+from . import quote_confirmation_gate as _quote_confirmation_gate  # noqa: E402,F401
+_quote_confirmation_gate.register_quote_confirmation_gate_capabilities_once()
+from . import narration_alignment_gate as _narration_alignment_gate  # noqa: E402,F401
+_narration_alignment_gate.register_narration_alignment_gate_capabilities_once()
+from . import ai_disclosure_gate as _ai_disclosure_gate  # noqa: E402,F401
+_ai_disclosure_gate.register_ai_disclosure_gate_capabilities_once()
+from . import knowledge_film_templates as _knowledge_film_templates  # noqa: E402,F401
+_knowledge_film_templates.register_knowledge_film_templates_capabilities_once()
+from . import style_catalog_schema as _style_catalog_schema  # noqa: E402,F401
+_style_catalog_schema.register_style_catalog_schema_capabilities_once()
+from . import knowledge_qc_contract as _knowledge_qc_contract  # noqa: E402,F401
+_knowledge_qc_contract.register_knowledge_qc_contract_capabilities_once()
+from . import two_tier_synthesis_contract as _two_tier_synthesis_contract  # noqa: E402,F401
+_two_tier_synthesis_contract.register_two_tier_synthesis_contract_capabilities_once()
+
+# video-shotcraft graft (see VIDEO_SHOTCRAFT_ATTRIBUTION.md):
+# qa.shotcraft_card_fidelity_gate, qa.jianying_export_contract_gate,
+# qa.shotcraft_theme_vocabulary, qa.preview_provenance_gate,
+# qa.sfx_sourcing_gate, qa.ink_press_structure_gate,
+# video.shotcraft_card_index, video.jianying_draft_adapter
+# (clean-room method only; no card text, demo/template code, BGM/SFX
+# assets, referral links, or publishing chains; 124-card index is
+# identity/provenance only, nothing recorded as rendered).
+# Appended at the tail only; earlier registrations untouched.
+from . import shotcraft_card_fidelity_gate as _shotcraft_card_fidelity_gate  # noqa: E402,F401
+_shotcraft_card_fidelity_gate.register_shotcraft_card_fidelity_gate_capabilities_once()
+from . import jianying_export_contract_gate as _jianying_export_contract_gate  # noqa: E402,F401
+_jianying_export_contract_gate.register_jianying_export_contract_gate_capabilities_once()
+from . import shotcraft_theme_vocabulary as _shotcraft_theme_vocabulary  # noqa: E402,F401
+_shotcraft_theme_vocabulary.register_shotcraft_theme_vocabulary_capabilities_once()
+from . import preview_provenance_gate as _preview_provenance_gate  # noqa: E402,F401
+_preview_provenance_gate.register_preview_provenance_gate_capabilities_once()
+from . import sfx_sourcing_gate as _sfx_sourcing_gate  # noqa: E402,F401
+_sfx_sourcing_gate.register_sfx_sourcing_gate_capabilities_once()
+from . import ink_press_structure_gate as _ink_press_structure_gate  # noqa: E402,F401
+_ink_press_structure_gate.register_ink_press_structure_gate_capabilities_once()
+from . import shotcraft_card_index as _shotcraft_card_index  # noqa: E402,F401
+_shotcraft_card_index.register_shotcraft_card_index_capabilities_once()
+from . import jianying_draft_adapter as _jianying_draft_adapter  # noqa: E402,F401
+_jianying_draft_adapter.register_jianying_draft_adapter_capabilities_once()
+
+# aicameramovements completion graft (see CAMERA_MOVEMENTS_ATTRIBUTION.md):
+# qa.camera_movement_vocabulary_gate, qa.camera_movement_four_field_gate,
+# qa.camera_movement_end_gate, qa.zoom_track_distinction_gate,
+# qa.special_movement_flag_gate, qa.slow_zoom_clarification,
+# video.camera_movement_index, video.camera_movement_clause_assembler
+# (clean-room method only; no site prompt text, no preview media;
+# slow_zoom_in/out are legal hevi ids, the ban wording is H3's).
+# Appended at the tail only; earlier registrations untouched.
+from . import camera_movement_vocabulary_gate as _camera_movement_vocabulary_gate  # noqa: E402,F401
+_camera_movement_vocabulary_gate.register_camera_movement_vocabulary_gate_capabilities_once()
+from . import camera_movement_four_field_gate as _camera_movement_four_field_gate  # noqa: E402,F401
+_camera_movement_four_field_gate.register_camera_movement_four_field_gate_capabilities_once()
+from . import camera_movement_end_gate as _camera_movement_end_gate  # noqa: E402,F401
+_camera_movement_end_gate.register_camera_movement_end_gate_capabilities_once()
+from . import zoom_track_distinction_gate as _zoom_track_distinction_gate  # noqa: E402,F401
+_zoom_track_distinction_gate.register_zoom_track_distinction_gate_capabilities_once()
+from . import special_movement_flag_gate as _special_movement_flag_gate  # noqa: E402,F401
+_special_movement_flag_gate.register_special_movement_flag_gate_capabilities_once()
+from . import slow_zoom_clarification as _slow_zoom_clarification  # noqa: E402,F401
+_slow_zoom_clarification.register_slow_zoom_clarification_capabilities_once()
+from . import camera_movement_index as _camera_movement_index  # noqa: E402,F401
+_camera_movement_index.register_camera_movement_index_capabilities_once()
+from . import camera_movement_clause_assembler as _camera_movement_clause_assembler  # noqa: E402,F401
+_camera_movement_clause_assembler.register_camera_movement_clause_assembler_capabilities_once()
+
+# 20 open skills graft (see OPEN_SKILLS_ATTRIBUTION.md):
+# qa.remotion_skills_method_gate, qa.animejs_v4_vocabulary,
+# qa.motion_variant_gate, qa.postprocessing_variant_gate,
+# qa.whisperx_subtitle_contract, qa.open_skills_method_notes,
+# video.lottie_overlay_adapter, video.quarks_particle_contract
+# (clean-room method only; no source/SKILL text copied, no package
+# installs, no ComfyUI upgrade, no clone/training/livestream routes;
+# GPL items are local-backend/method reference only; Remotion Skills
+# pinned to commit c7cb2fdcacd134fb2ccb9b7a44f9ffa44e467271; Anime.js
+# v4 only; B1/B2 are fake contracts, executed_here is false;
+# B3/B4/B5 deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import remotion_skills_method_gate as _remotion_skills_method_gate  # noqa: E402,F401
+_remotion_skills_method_gate.register_remotion_skills_method_gate_capabilities_once()
+from . import animejs_v4_vocabulary as _animejs_v4_vocabulary  # noqa: E402,F401
+_animejs_v4_vocabulary.register_animejs_v4_vocabulary_capabilities_once()
+from . import motion_variant_gate as _motion_variant_gate  # noqa: E402,F401
+_motion_variant_gate.register_motion_variant_gate_capabilities_once()
+from . import postprocessing_variant_gate as _postprocessing_variant_gate  # noqa: E402,F401
+_postprocessing_variant_gate.register_postprocessing_variant_gate_capabilities_once()
+from . import whisperx_subtitle_contract as _whisperx_subtitle_contract  # noqa: E402,F401
+_whisperx_subtitle_contract.register_whisperx_subtitle_contract_capabilities_once()
+from . import open_skills_method_notes as _open_skills_method_notes  # noqa: E402,F401
+_open_skills_method_notes.register_open_skills_method_notes_capabilities_once()
+from . import lottie_overlay_adapter as _lottie_overlay_adapter  # noqa: E402,F401
+_lottie_overlay_adapter.register_lottie_overlay_adapter_capabilities_once()
+from . import quarks_particle_contract as _quarks_particle_contract  # noqa: E402,F401
+_quarks_particle_contract.register_quarks_particle_contract_capabilities_once()
+
+# qa.krita_file_contract_gate, qa.r3f_variant_gate,
+# qa.audacity_version_gate, qa.cosyvoice_attribution_note,
+# qa.one_shot_film_honesty_gate, video.krita_asset_index,
+# video.r3f_scene_contract
+# (clean-room method only; no source/brush bundle/plugin copied,
+# no desktop app installed, no companion fork compiled, no
+# clone/training routes; GPL items are file-contract/method
+# reference only; CosyVoice code QwenAudio / models FunAudioLLM;
+# one-shot shape recorded as not connected; B1/B2 are fake
+# contracts, executed_here is false; B3 deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import krita_file_contract_gate as _krita_file_contract_gate  # noqa: E402,F401
+_krita_file_contract_gate.register_krita_file_contract_gate_capabilities_once()
+from . import r3f_variant_gate as _r3f_variant_gate  # noqa: E402,F401
+_r3f_variant_gate.register_r3f_variant_gate_capabilities_once()
+from . import audacity_version_gate as _audacity_version_gate  # noqa: E402,F401
+_audacity_version_gate.register_audacity_version_gate_capabilities_once()
+from . import cosyvoice_attribution_note as _cosyvoice_attribution_note  # noqa: E402,F401
+_cosyvoice_attribution_note.register_cosyvoice_attribution_note_capabilities_once()
+from . import one_shot_film_honesty_gate as _one_shot_film_honesty_gate  # noqa: E402,F401
+_one_shot_film_honesty_gate.register_one_shot_film_honesty_gate_capabilities_once()
+from . import krita_asset_index as _krita_asset_index  # noqa: E402,F401
+_krita_asset_index.register_krita_asset_index_capabilities_once()
+from . import r3f_scene_contract as _r3f_scene_contract  # noqa: E402,F401
+_r3f_scene_contract.register_r3f_scene_contract_capabilities_once()
+# claude-animation-skills graft (see ANIMATION_SKILLS_ATTRIBUTION.md):
+# qa.ig_safe_area_profile, qa.graph_honesty_gate, qa.map_honesty_gate,
+# qa.whatif_script_format_gate, qa.exploded_view_label_gate,
+# qa.code_animation_caption_band_gate, video.exploded_view_schema,
+# video.cartoon_rig_schema
+# (clean-room method only; no SKILL/template/engine text copied, no
+# install script run, no model/browser downloads, no voice-service
+# key handled, no creator affiliation claimed, no view-count claim,
+# no schematic map presented as real, English-only voice/timing
+# models never presented as Chinese support; B1/B2 are fake
+# contracts, executed_here is false; B3/B4 deferred).
+# Appended at the tail only; earlier registrations untouched.
+from . import ig_safe_area_profile as _ig_safe_area_profile  # noqa: E402,F401
+_ig_safe_area_profile.register_ig_safe_area_profile_capabilities_once()
+from . import graph_honesty_gate as _graph_honesty_gate  # noqa: E402,F401
+_graph_honesty_gate.register_graph_honesty_gate_capabilities_once()
+from . import map_honesty_gate as _map_honesty_gate  # noqa: E402,F401
+_map_honesty_gate.register_map_honesty_gate_capabilities_once()
+from . import whatif_script_format_gate as _whatif_script_format_gate  # noqa: E402,F401
+_whatif_script_format_gate.register_whatif_script_format_gate_capabilities_once()
+from . import exploded_view_label_gate as _exploded_view_label_gate  # noqa: E402,F401
+_exploded_view_label_gate.register_exploded_view_label_gate_capabilities_once()
+from . import code_animation_caption_band_gate as _code_animation_caption_band_gate  # noqa: E402,F401
+_code_animation_caption_band_gate.register_code_animation_caption_band_gate_capabilities_once()
+from . import exploded_view_schema as _exploded_view_schema  # noqa: E402,F401
+_exploded_view_schema.register_exploded_view_schema_capabilities_once()
+from . import cartoon_rig_schema as _cartoon_rig_schema  # noqa: E402,F401
+_cartoon_rig_schema.register_cartoon_rig_schema_capabilities_once()
+
+# Deferred shotcraft batch B (see VIDEO_SHOTCRAFT_ATTRIBUTION.md):
+# video.remotion_bridge_contract, video.shotcraft_theme_catalog
+# (clean-room method only; no card/demo/template text or palette
+# values copied; Remotion rendering measured blocked by container
+# EACCES on 2026-11-04, no MP4 produced; both are fake contracts,
+# executed_here is false; B3 render remains a separate case).
+# Appended at the tail only; earlier registrations untouched.
+from . import remotion_bridge_contract as _remotion_bridge_contract  # noqa: E402,F401
+_remotion_bridge_contract.register_remotion_bridge_contract_capabilities_once()
+from . import shotcraft_theme_catalog as _shotcraft_theme_catalog  # noqa: E402,F401
+_shotcraft_theme_catalog.register_shotcraft_theme_catalog_capabilities_once()
+
+# Deferred camera-movement batch B (see CAMERA_MOVEMENTS_ATTRIBUTION.md):
+# video.camera_render_mapping, qa.camera_duration_advisory
+# (clean-room method only; no site prompt text copied; mapping
+# marks 42 movements not_supported with no silent fallback;
+# advisory uses only hevi's own duration tiers and H3 lattice,
+# no invented durations; both unverified on real renders).
+# Appended at the tail only; earlier registrations untouched.
+from . import camera_render_mapping as _camera_render_mapping  # noqa: E402,F401
+_camera_render_mapping.register_camera_render_mapping_capabilities_once()
+from . import camera_duration_advisory as _camera_duration_advisory  # noqa: E402,F401
+_camera_duration_advisory.register_camera_duration_advisory_capabilities_once()
+
+# Deferred 20-skills batch B (see OPEN_SKILLS_ATTRIBUTION.md):
+# video.jolt_rigid_body_contract, qa.cosyvoice_authorization_gate,
+# video.tweakpane_panel_contract
+# (clean-room method only; no source/SKILL text copied; Jolt
+# soft-body scope narrowed out; clone route never connected;
+# CosyVoice code QwenAudio / models FunAudioLLM; all fake
+# contracts/gates, executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import jolt_rigid_body_contract as _jolt_rigid_body_contract  # noqa: E402,F401
+_jolt_rigid_body_contract.register_jolt_rigid_body_contract_capabilities_once()
+from . import cosyvoice_authorization_gate as _cosyvoice_authorization_gate  # noqa: E402,F401
+_cosyvoice_authorization_gate.register_cosyvoice_authorization_gate_capabilities_once()
+from . import tweakpane_panel_contract as _tweakpane_panel_contract  # noqa: E402,F401
+_tweakpane_panel_contract.register_tweakpane_panel_contract_capabilities_once()
+
+# Deferred 15-tools batch B (see FIFTEEN_TOOLS_ATTRIBUTION.md):
+# audio.audacity_effect_chain_contract
+# (clean-room method only; no Audacity code copied; 3.x-only,
+# 4.x scripting claims fail closed; fake contract,
+# executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import audacity_effect_chain_contract as _audacity_effect_chain_contract  # noqa: E402,F401
+_audacity_effect_chain_contract.register_audacity_effect_chain_contract_capabilities_once()
+
+# Deferred animation-skills batch B (see ANIMATION_SKILLS_ATTRIBUTION.md):
+# video.word_timing_warp_contract, video.minimal_line_motif_schema
+# (clean-room method only; no SKILL/template/engine text copied;
+# English-only timing models never presented as Chinese
+# support; both fake contracts, executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import word_timing_warp_contract as _word_timing_warp_contract  # noqa: E402,F401
+_word_timing_warp_contract.register_word_timing_warp_contract_capabilities_once()
+from . import minimal_line_motif_schema as _minimal_line_motif_schema  # noqa: E402,F401
+_minimal_line_motif_schema.register_minimal_line_motif_schema_capabilities_once()
+
+# Hypit graft (see HYPIT_ATTRIBUTION.md):
+# qa.word_anchor_gate, qa.three_layer_project_gate,
+# qa.variant_reuse_gate, qa.code_rendered_text_gate,
+# qa.cost_honesty_gate, qa.hypit_license_note,
+# video.word_anchor_timeline_schema,
+# video.three_layer_project_schema
+# (clean-room method only; no DSL/example/Skill text copied;
+# modified Apache 2.0, no multi-tenant/SaaS use; A gates are
+# discipline only, B schemas are fake contracts,
+# executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import word_anchor_gate as _word_anchor_gate  # noqa: E402,F401
+_word_anchor_gate.register_word_anchor_gate_capabilities_once()
+from . import three_layer_project_gate as _three_layer_project_gate  # noqa: E402,F401
+_three_layer_project_gate.register_three_layer_project_gate_capabilities_once()
+from . import variant_reuse_gate as _variant_reuse_gate  # noqa: E402,F401
+_variant_reuse_gate.register_variant_reuse_gate_capabilities_once()
+from . import code_rendered_text_gate as _code_rendered_text_gate  # noqa: E402,F401
+_code_rendered_text_gate.register_code_rendered_text_gate_capabilities_once()
+from . import cost_honesty_gate as _cost_honesty_gate  # noqa: E402,F401
+_cost_honesty_gate.register_cost_honesty_gate_capabilities_once()
+from . import hypit_license_note as _hypit_license_note  # noqa: E402,F401
+_hypit_license_note.register_hypit_license_note_capabilities_once()
+from . import word_anchor_timeline_schema as _word_anchor_timeline_schema  # noqa: E402,F401
+_word_anchor_timeline_schema.register_word_anchor_timeline_schema_capabilities_once()
+from . import three_layer_project_schema as _three_layer_project_schema  # noqa: E402,F401
+_three_layer_project_schema.register_three_layer_project_schema_capabilities_once()
+
+# Shotcraft workbench/capture delta (see VIDEO_SHOTCRAFT_ATTRIBUTION.md):
+# qa.workbench_manifest_gate, qa.workbench_edit_boundary_gate,
+# qa.capture_discipline_gate, qa.brand_attribution_gate,
+# qa.beat_sync_honesty_gate, video.workbench_manifest_schema,
+# video.capture_kit_schema
+# (clean-room method only; no workbench/capture/demo/card text or
+# assets copied; no write-back, no copy extraction, no login or
+# paywall capture; brand list closed, parity unverified; A gates
+# are discipline only, B schemas are fake contracts,
+# executed_here is false; real-machine runs remain a separate case).
+# Appended at the tail only; earlier registrations untouched.
+from . import workbench_manifest_gate as _workbench_manifest_gate  # noqa: E402,F401
+_workbench_manifest_gate.register_workbench_manifest_gate_capabilities_once()
+from . import workbench_edit_boundary as _workbench_edit_boundary  # noqa: E402,F401
+_workbench_edit_boundary.register_workbench_edit_boundary_gate_capabilities_once()
+from . import capture_discipline_gate as _capture_discipline_gate  # noqa: E402,F401
+_capture_discipline_gate.register_capture_discipline_gate_capabilities_once()
+from . import brand_attribution_gate as _brand_attribution_gate  # noqa: E402,F401
+_brand_attribution_gate.register_brand_attribution_gate_capabilities_once()
+from . import beat_sync_honesty_gate as _beat_sync_honesty_gate  # noqa: E402,F401
+_beat_sync_honesty_gate.register_beat_sync_honesty_gate_capabilities_once()
+from . import workbench_manifest_schema as _workbench_manifest_schema  # noqa: E402,F401
+_workbench_manifest_schema.register_workbench_manifest_schema_capabilities_once()
+from . import capture_kit_schema as _capture_kit_schema  # noqa: E402,F401
+_capture_kit_schema.register_capture_kit_schema_capabilities_once()
+
+
+# Infinite Creation delta2 (see INFINITE_CREATION_ATTRIBUTION.md):
+# qa.codefilm_category_coverage_gate, qa.custom_style_admission_gate,
+# qa.agent_runtime_definition_gate, qa.reference_media_numbering_gate,
+# qa.voice_chain_discipline_gate, video.external_runtime_config_schema,
+# video.codefilm_generation_record_schema
+# (clean-room method only; no SKILL/STYLE/workflow text or code copied;
+# no weights, no referral or key material; clone_voice never connected;
+# A gates are discipline only, B schemas are fake contracts,
+# executed_here is false; real-machine execution remains a separate case).
+# Appended at the tail only; earlier registrations untouched.
+from . import codefilm_category_coverage_gate as _codefilm_category_coverage_gate  # noqa: E402,F401
+_codefilm_category_coverage_gate.register_codefilm_category_coverage_gate_capabilities_once()
+from . import custom_style_admission_gate as _custom_style_admission_gate  # noqa: E402,F401
+_custom_style_admission_gate.register_custom_style_admission_gate_capabilities_once()
+from . import agent_runtime_definition_gate as _agent_runtime_definition_gate  # noqa: E402,F401
+_agent_runtime_definition_gate.register_agent_runtime_definition_gate_capabilities_once()
+from . import reference_media_numbering_gate as _reference_media_numbering_gate  # noqa: E402,F401
+_reference_media_numbering_gate.register_reference_media_numbering_gate_capabilities_once()
+from . import voice_chain_discipline_gate as _voice_chain_discipline_gate  # noqa: E402,F401
+_voice_chain_discipline_gate.register_voice_chain_discipline_gate_capabilities_once()
+from . import external_runtime_config_schema as _external_runtime_config_schema  # noqa: E402,F401
+_external_runtime_config_schema.register_external_runtime_config_schema_capabilities_once()
+from . import codefilm_generation_record_schema as _codefilm_generation_record_schema  # noqa: E402,F401
+_codefilm_generation_record_schema.register_codefilm_generation_record_schema_capabilities_once()
+
+# VibeVoice graft (see VIBEVOICE_ATTRIBUTION.md):
+# qa.vibevoice_tts_disabled_gate, qa.vibevoice_voice_prompt_authorization_gate,
+# qa.vibevoice_realtime_speaker_gate, qa.vibevoice_longform_honesty_gate,
+# qa.vibevoice_license_note, qa.vibevoice_asr_longform_note,
+# video.vibevoice_realtime_speaker_index, video.vibevoice_longform_tts_contract
+# (clean-room method only; no weights, no .pt speaker files, no demo audio,
+# no third-party TTS code; TTS-1.5B official path recorded disabled, never
+# weakened; reference-audio voice prompts are clone equivalents and go
+# through the clone hard intercept; A gates are discipline only, B schemas
+# are fake contracts, executed_here is false; weights download and GPU
+# inference remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import vibevoice_tts_disabled_gate as _vibevoice_tts_disabled_gate  # noqa: E402,F401
+_vibevoice_tts_disabled_gate.register_vibevoice_tts_disabled_gate_capabilities_once()
+from . import vibevoice_voice_prompt_authorization_gate as _vibevoice_voice_prompt_authorization_gate  # noqa: E402,F401
+_vibevoice_voice_prompt_authorization_gate.register_vibevoice_voice_prompt_authorization_gate_capabilities_once()
+from . import vibevoice_realtime_speaker_gate as _vibevoice_realtime_speaker_gate  # noqa: E402,F401
+_vibevoice_realtime_speaker_gate.register_vibevoice_realtime_speaker_gate_capabilities_once()
+from . import vibevoice_longform_honesty_gate as _vibevoice_longform_honesty_gate  # noqa: E402,F401
+_vibevoice_longform_honesty_gate.register_vibevoice_longform_honesty_gate_capabilities_once()
+from . import vibevoice_license_note as _vibevoice_license_note  # noqa: E402,F401
+_vibevoice_license_note.register_vibevoice_license_note_capabilities_once()
+from . import vibevoice_asr_longform_note as _vibevoice_asr_longform_note  # noqa: E402,F401
+_vibevoice_asr_longform_note.register_vibevoice_asr_longform_note_capabilities_once()
+from . import vibevoice_realtime_speaker_index as _vibevoice_realtime_speaker_index  # noqa: E402,F401
+_vibevoice_realtime_speaker_index.register_vibevoice_realtime_speaker_index_capabilities_once()
+from . import vibevoice_longform_tts_contract as _vibevoice_longform_tts_contract  # noqa: E402,F401
+_vibevoice_longform_tts_contract.register_vibevoice_longform_tts_contract_capabilities_once()
+
+# cyber-xiaoya-live graft (see CYBER_XIAOYA_ATTRIBUTION.md):
+# qa.vidu_live_session_gate, qa.danmaku_router_gate,
+# qa.live_gift_vip_gate, qa.live_action_priority_gate,
+# qa.omnivoice_live_wire_note, qa.koubo_segment_discipline_gate,
+# video.vidu_live_session_schema, video.danmaku_route_schema,
+# video.live_gift_batch_schema, video.live_stage_contract
+# (clean-room method only; no AGPL code, no NOTICE materials,
+# no keys or platform accounts, no clone route connected;
+# A gates are discipline only, B schemas are fake contracts,
+# executed_here is false; weights download, GPU inference,
+# platform accounts and keys remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import vidu_live_session_gate as _vidu_live_session_gate  # noqa: E402,F401
+_vidu_live_session_gate.register_vidu_live_session_gate_capabilities_once()
+from . import danmaku_router_gate as _danmaku_router_gate  # noqa: E402,F401
+_danmaku_router_gate.register_danmaku_router_gate_capabilities_once()
+from . import live_gift_vip_gate as _live_gift_vip_gate  # noqa: E402,F401
+_live_gift_vip_gate.register_live_gift_vip_gate_capabilities_once()
+from . import live_action_priority_gate as _live_action_priority_gate  # noqa: E402,F401
+_live_action_priority_gate.register_live_action_priority_gate_capabilities_once()
+from . import omnivoice_live_wire_note as _omnivoice_live_wire_note  # noqa: E402,F401
+_omnivoice_live_wire_note.register_omnivoice_live_wire_note_capabilities_once()
+from . import koubo_segment_discipline_gate as _koubo_segment_discipline_gate  # noqa: E402,F401
+_koubo_segment_discipline_gate.register_koubo_segment_discipline_gate_capabilities_once()
+from . import vidu_live_session_schema as _vidu_live_session_schema  # noqa: E402,F401
+_vidu_live_session_schema.register_vidu_live_session_schema_capabilities_once()
+from . import danmaku_route_schema as _danmaku_route_schema  # noqa: E402,F401
+_danmaku_route_schema.register_danmaku_route_schema_capabilities_once()
+from . import live_gift_batch_schema as _live_gift_batch_schema  # noqa: E402,F401
+_live_gift_batch_schema.register_live_gift_batch_schema_capabilities_once()
+from . import live_stage_contract as _live_stage_contract  # noqa: E402,F401
+_live_stage_contract.register_live_stage_contract_capabilities_once()
+
+# Eian short-film workflow graft (see EIAN_WORKFLOW_ATTRIBUTION.md):
+# qa.story_five_standard_gate, qa.shotlist_six_rule_gate,
+# qa.first_last_frame_check_gate, qa.seven_section_prompt_gate,
+# qa.model_error_table_gate, qa.blind_review_gate,
+# qa.final_film_review_gate, qa.paid_generation_economy_gate,
+# qa.reference_frame_measure_gate, video.seedance_task_schema,
+# video.four_thread_contract, video.palette_table_schema,
+# video.character_sheet_schema
+# (clean-room method only, own words; no article prompt text
+# copied, no ARK/Seedance key, no Codex account or quota, no
+# author case numbers stated as verified facts, four-thread
+# mapping only, never equivalence; A gates are discipline
+# only, B schemas are fake contracts, executed_here is false;
+# real Seedance/Codex calls and keys remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import story_five_standard_gate as _story_five_standard_gate  # noqa: E402,F401
+_story_five_standard_gate.register_story_five_standard_gate_capabilities_once()
+from . import shotlist_six_rule_gate as _shotlist_six_rule_gate  # noqa: E402,F401
+_shotlist_six_rule_gate.register_shotlist_six_rule_gate_capabilities_once()
+from . import first_last_frame_check_gate as _first_last_frame_check_gate  # noqa: E402,F401
+_first_last_frame_check_gate.register_first_last_frame_check_gate_capabilities_once()
+from . import seven_section_prompt_gate as _seven_section_prompt_gate  # noqa: E402,F401
+_seven_section_prompt_gate.register_seven_section_prompt_gate_capabilities_once()
+from . import model_error_table_gate as _model_error_table_gate  # noqa: E402,F401
+_model_error_table_gate.register_model_error_table_gate_capabilities_once()
+from . import blind_review_gate as _blind_review_gate  # noqa: E402,F401
+_blind_review_gate.register_blind_review_gate_capabilities_once()
+from . import final_film_review_gate as _final_film_review_gate  # noqa: E402,F401
+_final_film_review_gate.register_final_film_review_gate_capabilities_once()
+from . import paid_generation_economy_gate as _paid_generation_economy_gate  # noqa: E402,F401
+_paid_generation_economy_gate.register_paid_generation_economy_gate_capabilities_once()
+from . import reference_frame_measure_gate as _reference_frame_measure_gate  # noqa: E402,F401
+_reference_frame_measure_gate.register_reference_frame_measure_gate_capabilities_once()
+from . import seedance_task_schema as _seedance_task_schema  # noqa: E402,F401
+_seedance_task_schema.register_seedance_task_schema_capabilities_once()
+from . import four_thread_contract as _four_thread_contract  # noqa: E402,F401
+_four_thread_contract.register_four_thread_contract_capabilities_once()
+from . import palette_table_schema as _palette_table_schema  # noqa: E402,F401
+_palette_table_schema.register_palette_table_schema_capabilities_once()
+from . import character_sheet_schema as _character_sheet_schema  # noqa: E402,F401
+_character_sheet_schema.register_character_sheet_schema_capabilities_once()
+
+# ChrisHKAI-Video creator-intro graft (see CHRISHKAI_VIDEO_ATTRIBUTION.md):
+# qa.creator_story_gate, qa.vinyl_toy_identity_gate,
+# qa.toy_clearance_gate, qa.creator_pacing_gate,
+# qa.creator_color_legibility_gate, qa.film_ledger_difference_gate,
+# qa.creator_intro_review_gate, qa.story_text_probe_gate,
+# qa.third_party_portrait_authorization_gate,
+# video.vinyl_toy_character_schema, video.creator_intro_film_schema,
+# video.platform_safe_zone_schema, video.blender_cycles_render_schema
+# (clean-room method only, own words; no upstream code, no toy.json or
+# image assets, no demo creator material, no lemo sample audio, no
+# example films, no Grok account, no X login, no Blender render, no
+# voice/TTS/clone route added — none exists upstream; A gates are
+# discipline only, B schemas are fake contracts, executed_here is false;
+# real Blender render on a GPU and Grok/X access remain separate cases).
+# Appended at the tail only; earlier registrations untouched.
+from . import creator_story_gate as _creator_story_gate  # noqa: E402,F401
+_creator_story_gate.register_creator_story_gate_capabilities_once()
+from . import vinyl_toy_identity_gate as _vinyl_toy_identity_gate  # noqa: E402,F401
+_vinyl_toy_identity_gate.register_vinyl_toy_identity_gate_capabilities_once()
+from . import toy_clearance_gate as _toy_clearance_gate  # noqa: E402,F401
+_toy_clearance_gate.register_toy_clearance_gate_capabilities_once()
+from . import creator_pacing_gate as _creator_pacing_gate  # noqa: E402,F401
+_creator_pacing_gate.register_creator_pacing_gate_capabilities_once()
+from . import creator_color_legibility_gate as _creator_color_legibility_gate  # noqa: E402,F401
+_creator_color_legibility_gate.register_creator_color_legibility_gate_capabilities_once()
+from . import film_ledger_difference_gate as _film_ledger_difference_gate  # noqa: E402,F401
+_film_ledger_difference_gate.register_film_ledger_difference_gate_capabilities_once()
+from . import creator_intro_review_gate as _creator_intro_review_gate  # noqa: E402,F401
+_creator_intro_review_gate.register_creator_intro_review_gate_capabilities_once()
+from . import story_text_probe_gate as _story_text_probe_gate  # noqa: E402,F401
+_story_text_probe_gate.register_story_text_probe_gate_capabilities_once()
+from . import third_party_portrait_authorization_gate as _third_party_portrait_authorization_gate  # noqa: E402,F401
+_third_party_portrait_authorization_gate.register_third_party_portrait_authorization_gate_capabilities_once()
+from . import vinyl_toy_character_schema as _vinyl_toy_character_schema  # noqa: E402,F401
+_vinyl_toy_character_schema.register_vinyl_toy_character_schema_capabilities_once()
+from . import creator_intro_film_schema as _creator_intro_film_schema  # noqa: E402,F401
+_creator_intro_film_schema.register_creator_intro_film_schema_capabilities_once()
+from . import platform_safe_zone_schema as _platform_safe_zone_schema  # noqa: E402,F401
+_platform_safe_zone_schema.register_platform_safe_zone_schema_capabilities_once()
+from . import blender_cycles_render_schema as _blender_cycles_render_schema  # noqa: E402,F401
+_blender_cycles_render_schema.register_blender_cycles_render_schema_capabilities_once()
+
+# Dance MV methodology graft (see DANCE_MV_METHODOLOGY_ATTRIBUTION.md):
+# qa.dance_music_structure_gate, qa.dance_reference_role_gate,
+# qa.dance_asset_prop_ledger_gate, qa.dance_genre_grammar_gate,
+# qa.dance_action_chain_gate, qa.dance_time_window_gate,
+# qa.dance_camera_physical_gate, qa.dance_camera_sync_gate,
+# qa.dance_transition_gate, qa.dance_h3_prompt_gate,
+# qa.dance_generation_review_gate, qa.dance_mv_pack_format_gate,
+# video.dance_segment_card_schema, video.dance_action_chain_schema,
+# video.dance_camera_shot_schema, video.dance_transition_table_schema,
+# video.dance_mv_prompt_pack_schema
+# (clean-room method only, own words; no Rev.1.4 C-chain text or
+# numbers, none invented; no article paragraphs copied; article
+# self-reported results not stated as hevi-verified; hevi camera
+# catalogues not equated with the article's 13 physical paths;
+# six-section format is the house format only; A gates are
+# discipline only, B schemas are fake contracts, executed_here
+# is false; H3 real execution and GPU inference remain separate
+# cases. A1/A2 are the music-timing and reference-role increments
+# Eian A1/A2 do not cover, not duplicates.)
+# Appended at the tail only; earlier registrations untouched.
+from . import dance_music_structure_gate as _dance_music_structure_gate  # noqa: E402,F401
+_dance_music_structure_gate.register_dance_music_structure_gate_capabilities_once()
+from . import dance_reference_role_gate as _dance_reference_role_gate  # noqa: E402,F401
+_dance_reference_role_gate.register_dance_reference_role_gate_capabilities_once()
+from . import dance_asset_prop_ledger_gate as _dance_asset_prop_ledger_gate  # noqa: E402,F401
+_dance_asset_prop_ledger_gate.register_dance_asset_prop_ledger_gate_capabilities_once()
+from . import dance_genre_grammar_gate as _dance_genre_grammar_gate  # noqa: E402,F401
+_dance_genre_grammar_gate.register_dance_genre_grammar_gate_capabilities_once()
+from . import dance_action_chain_gate as _dance_action_chain_gate  # noqa: E402,F401
+_dance_action_chain_gate.register_dance_action_chain_gate_capabilities_once()
+from . import dance_time_window_gate as _dance_time_window_gate  # noqa: E402,F401
+_dance_time_window_gate.register_dance_time_window_gate_capabilities_once()
+from . import dance_camera_physical_gate as _dance_camera_physical_gate  # noqa: E402,F401
+_dance_camera_physical_gate.register_dance_camera_physical_gate_capabilities_once()
+from . import dance_camera_sync_gate as _dance_camera_sync_gate  # noqa: E402,F401
+_dance_camera_sync_gate.register_dance_camera_sync_gate_capabilities_once()
+from . import dance_transition_gate as _dance_transition_gate  # noqa: E402,F401
+_dance_transition_gate.register_dance_transition_gate_capabilities_once()
+from . import dance_h3_prompt_gate as _dance_h3_prompt_gate  # noqa: E402,F401
+_dance_h3_prompt_gate.register_dance_h3_prompt_gate_capabilities_once()
+from . import dance_generation_review_gate as _dance_generation_review_gate  # noqa: E402,F401
+_dance_generation_review_gate.register_dance_generation_review_gate_capabilities_once()
+from . import dance_mv_pack_format_gate as _dance_mv_pack_format_gate  # noqa: E402,F401
+_dance_mv_pack_format_gate.register_dance_mv_pack_format_gate_capabilities_once()
+from . import dance_segment_card_schema as _dance_segment_card_schema  # noqa: E402,F401
+_dance_segment_card_schema.register_dance_segment_card_schema_capabilities_once()
+from . import dance_action_chain_schema as _dance_action_chain_schema  # noqa: E402,F401
+_dance_action_chain_schema.register_dance_action_chain_schema_capabilities_once()
+from . import dance_camera_shot_schema as _dance_camera_shot_schema  # noqa: E402,F401
+_dance_camera_shot_schema.register_dance_camera_shot_schema_capabilities_once()
+from . import dance_transition_table_schema as _dance_transition_table_schema  # noqa: E402,F401
+_dance_transition_table_schema.register_dance_transition_table_schema_capabilities_once()
+from . import dance_mv_prompt_pack_schema as _dance_mv_prompt_pack_schema  # noqa: E402,F401
+_dance_mv_prompt_pack_schema.register_dance_mv_prompt_pack_schema_capabilities_once()
+
+# 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
+# + version, built after every registration above so it reflects the live
+# registry. Appended at the tail only; earlier registrations untouched.
+from .manifest import build_manifest as _build_3o_manifest  # noqa: E402
+__manifest__ = _build_3o_manifest(list_capabilities())

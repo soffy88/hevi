@@ -270,6 +270,7 @@ def plan_segments(
     ``critic_blocks_ship``. Neither gate is invented when its
     input is absent: the plan then records the gate as not
     supplied, and the rendered film still has to pass it later.
+    Composes (3O SPEC 1.2): record_critic_review.
     """
     if not _is_num(model_max_sec) or float(model_max_sec) <= 0:
         raise CapabilityError(

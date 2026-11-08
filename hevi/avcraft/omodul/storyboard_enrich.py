@@ -12,7 +12,6 @@ from pathlib import Path
 
 from hevi.avcraft.obase.motion_catalog import motion_catalog_load
 from hevi.avcraft.oskill.motion import motion_search, shot_vocab_inject
-from hevi.avcraft.oskill.shotprompt import compile_shot_prompt
 
 _STATIC = {"static", "locked", "fixed", "固定", "静止", "定机位", ""}
 
@@ -50,6 +49,10 @@ def storyboard_enrich(table: dict, *, catalog: dict | None = None, manual: dict 
         row = {"shot_id": shot["id"], "picked": {"manual": man, "camera": cam_ids, "light": light_ids,
                                                   "style": style_ids}, "vocab": new["vocab"]}
         if compile:
+            # Deferred module: lazy import; without it this branch
+            # raises ModuleNotFoundError naming the deferred module.
+            from hevi.avcraft.oskill.shotprompt import compile_shot_prompt
+
             r = compile_shot_prompt(new, tbl, bible, prescreen=prescreen)
             row.update(prompt=r["prompt"], negative=r["negative"])
         rows.append(row)

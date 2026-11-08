@@ -64,7 +64,7 @@ def _parse_time(value: Any) -> dict[str, Any]:
 
 
 def check_first_segment_confirmation(plan: Any) -> dict[str, Any]:
-    """Judge one batch plan. Returns a report; never raises for a bad plan."""
+    """Judge one batch plan. Returns a report; never raises for a bad plan. Composes (3O SPEC 1.2): check_review_signoff."""
     issues: list[dict[str, Any]] = []
     if not isinstance(plan, dict):
         return {

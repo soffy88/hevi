@@ -17,5 +17,6 @@ from hevi.avcraft.obase.media import (
 )
 from hevi.avcraft.obase.motion_catalog import motion_catalog_load, motion_element_code, motion_get
 from hevi.avcraft.obase.shot_table import SHOT_SCHEMA, load_shot_table, validate_shot_table
+from hevi.avcraft.obase.timeline_io import load_timeline, save_timeline
 # vision 依赖 cv2/numpy（.venv 已装），惰性：from hevi.avcraft.obase.vision import analyze_frames, audio_energy
 # text_layer 依赖 Pillow，惰性：from hevi.avcraft.obase.text_layer import render_text_png

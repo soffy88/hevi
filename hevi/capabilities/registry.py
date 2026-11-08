@@ -52,10 +52,16 @@ __all__ = [
     "names",
     "resolve",
     "Registry",
+    "list_caps",
+    "layer_of",
+    "overwrite_history",
 ]
 
 # Canonical registry: a process-global, ordered dict keyed by capability name.
 _REGISTRY: dict[str, "Capability"] = {}
+
+# Names explicitly replaced via ``register(..., overwrite=True)`` (audit trail).
+_OVERWRITE_HISTORY: list[dict[str, Any]] = []
 
 
 @dataclass
@@ -76,6 +82,12 @@ class Capability:
     line: str = ""  # owning product line (e.g. "scene3d")
     has_media_output: bool = False
     preview_restricted: bool = False
+    # 3O layer attribution (HELIOS_3O_SPEC_v3_0 §1): one of
+    # "oprim" | "oskill" | "omodul" | "obase" | "oservi". Empty means
+    # "not yet attributed"; register() fills it from the central
+    # attribution table (layer_attribution.py) when the caller did not
+    # declare one.
+    layer: str = ""
 
     def validate_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """Validate ``params`` against ``params_schema``; return the params.
@@ -170,14 +182,41 @@ def compute_sha256(path: Path | str) -> str:
     return h.hexdigest()
 
 
+# 3O layer names (HELIOS_3O_SPEC_v3_0 §1.1). Attribution lives in
+# layer_attribution.py; this set is the only validity check.
+LAYERS: frozenset[str] = frozenset({"oprim", "oskill", "omodul", "obase", "oservi"})
+
+
+def layer_of(name: str) -> str:
+    """Return the attributed 3O layer for ``name`` ("" when unattributed)."""
+    from .layer_attribution import LAYER_ATTRIBUTION
+
+    entry = LAYER_ATTRIBUTION.get(name)
+    return entry["layer"] if entry else ""
+
+
 def register(cap: Capability, overwrite: bool = True) -> Capability:
     """Install ``cap`` into the global registry (last writer wins per name)."""
     if not cap.name:
         raise CapabilityError("capability name must be non-empty")
+    if cap.layer and cap.layer not in LAYERS:
+        raise CapabilityError(
+            f"capability {cap.name!r}: unknown 3O layer {cap.layer!r}; "
+            f"expected one of {sorted(LAYERS)}"
+        )
+    if not cap.layer:
+        cap.layer = layer_of(cap.name)
     if not overwrite and cap.name in _REGISTRY:
         return _REGISTRY[cap.name]
+    if overwrite and cap.name in _REGISTRY:
+        _OVERWRITE_HISTORY.append({"name": cap.name})
     _REGISTRY[cap.name] = cap
     return cap
+
+
+def overwrite_history() -> list[dict[str, Any]]:
+    """Names replaced via explicit ``overwrite=True`` (audit trail)."""
+    return _OVERWRITE_HISTORY.copy()
 
 
 def contains(name: str) -> bool:
@@ -214,6 +253,7 @@ def list_capabilities(
 
 # Public alias matching the contract's ``list(kind=..., aspect=...)`` signature.
 list = list_capabilities  # noqa: A001 - intentionally mirrors the contract API.
+list_caps = list_capabilities
 
 
 

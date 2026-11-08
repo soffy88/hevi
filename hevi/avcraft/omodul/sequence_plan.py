@@ -18,19 +18,15 @@ import json
 from pathlib import Path
 
 from hevi.avcraft.obase.shot_table import save_json, validate_shot_table
-from hevi.avcraft.oskill.shotprompt import (
-    apply_retake,
-    compile_shot_prompt,
-    diagnose_retake,
-    new_bible,
-    retake_budget,
-    update_continuity_bible,
-)
-
 SEQ_SCHEMA = "avcraft.sequence/v1"
 
 
 def _refresh(state: dict) -> dict:
+    # Deferred module: lazy import so the package imports without it;
+    # calling this path without oskill/shotprompt.py raises
+    # ModuleNotFoundError naming the deferred module.
+    from hevi.avcraft.oskill.shotprompt import compile_shot_prompt
+
     tbl, bible = state["table"], state["bible"]
     for s in tbl["shots"]:
         st = state["shots"][s["id"]]
@@ -47,6 +43,9 @@ def _refresh(state: dict) -> dict:
 
 
 def sequence_plan(table: dict, *, max_per_shot: int = 3, max_total: int | None = None) -> dict:
+    # Deferred module: lazy import (see _refresh).
+    from hevi.avcraft.oskill.shotprompt import new_bible
+
     errs = validate_shot_table(table)
     if errs:
         raise ValueError("; ".join(errs))
@@ -64,6 +63,14 @@ def sequence_plan(table: dict, *, max_per_shot: int = 3, max_total: int | None =
 def record_take(state: dict, shot_id: str, accepted: bool, issues: list[str] | None = None,
                 facts: dict | None = None) -> dict:
     """记录一次生成结果。接受→更新 continuity bible 并解锁后续镜头；拒绝→单变量诊断+预算判定。"""
+    # Deferred module: lazy import (see _refresh).
+    from hevi.avcraft.oskill.shotprompt import (
+        apply_retake,
+        diagnose_retake,
+        retake_budget,
+        update_continuity_bible,
+    )
+
     st = copy.deepcopy(state)
     shot_i = next(i for i, s in enumerate(st["table"]["shots"]) if s["id"] == shot_id)
     shot = st["table"]["shots"][shot_i]

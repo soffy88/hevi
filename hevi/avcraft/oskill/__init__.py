@@ -8,14 +8,10 @@ from hevi.avcraft.oskill.highlight import (
 from hevi.avcraft.oskill.moderation import moderation_prescreen
 from hevi.avcraft.oskill.motion import motion_search, motion_spec_to_ffmpeg, shot_vocab_inject, vocab_line
 from hevi.avcraft.oskill.reframe import crop_size, per_frame_x, pick_targets, smooth_crop_path
-from hevi.avcraft.oskill.shotprompt import (
-    apply_retake,
-    compile_shot_prompt,
-    diagnose_retake,
-    lock_line,
-    retake_budget,
-    update_continuity_bible,
-)
+# oskill/shotprompt.py is DEFERRED at admission (2026-11-04): its fate is
+# a separate owner decision and it stays out of this tree. Callers in
+# omodul/sequence_plan.py and omodul/storyboard_enrich.py lazy-import it,
+# so importing this package never touches the deferred module.
 from hevi.avcraft.oskill.subtitle import (
     repair_breaks,
     segment_sentences,

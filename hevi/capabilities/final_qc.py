@@ -629,6 +629,7 @@ def _apply_asr_proofreading(
     unmeasured original is left alone and the record says so. The
     recomputed measurement uses the same harness and the same 0.80
     floor as the original -- the only difference is the evidence text.
+    Composes (3O SPEC 1.2): measure_generation_consistency.
     """
     validated = _validate_asr_proofreading(proofreading)
     record: dict[str, Any] = {
@@ -763,6 +764,7 @@ def run_final_qc(
     (corrected_transcript + proofreader + timestamp + voice_correct_attested) re-reviews a
     failed ``vo_asr`` check from the corrected text as independent evidence; the original
     transcript and measurement are preserved in the report and no verdict field is edited.
+    Composes (3O SPEC 1.2): measure_generation_consistency.
     """
     media_path = Path(media_path)
     if not media_path.is_file():

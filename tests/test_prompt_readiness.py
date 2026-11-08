@@ -406,6 +406,13 @@ def test_check_h3_prompt_unnumbered_dialogue_fails() -> None:
 
 
 def test_avcraft_renderer_is_marked_legacy() -> None:
+    # shotprompt.py is DEFERRED at avcraft admission (2026-11-04, 3O
+    # Batch 4): skip while the module is absent; when present, the
+    # LEGACY marking below is what keeps it from being swept in as a
+    # live renderer.
+    pytest.importorskip(
+        "hevi.avcraft.oskill.shotprompt", reason="shotprompt deferred"
+    )
     from hevi.avcraft.oskill import shotprompt
 
     assert "LEGACY" in shotprompt.__doc__

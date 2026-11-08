@@ -88,8 +88,12 @@
 | GET | `/api/canvas/graphs/{graph_id}` | ⚠️ 兼容 · Get Graph Legacy |
 | PATCH | `/api/canvas/graphs/{graph_id}` | ⚠️ 兼容 · Update Graph Legacy |
 | POST | `/api/canvas/graphs/{graph_id}/execute` | ⚠️ 兼容 · Execute Graph Legacy |
+| POST | `/api/canvas/material-pack/edit` | Material Pack Edit Endpoint |
+| POST | `/api/canvas/material-pack/graph` | Material Pack Graph Endpoint |
+| POST | `/api/canvas/material-pack/regenerate` | Material Pack Regenerate Endpoint |
 | POST | `/api/canvas/planned-graph` | Planned Graph Endpoint |
 | POST | `/api/canvas/reference-image` | Upload Canvas Reference Image |
+| POST | `/api/canvas/templates/koubo` | Create Koubo Template |
 | POST | `/api/canvas/workflow-execute` | Workflow Execute Endpoint |
 | POST | `/api/canvas/workflow-preflight` | Workflow Preflight Endpoint |
 | POST | `/api/canvas/workflow-to-graph` | Workflow To Graph Endpoint |
@@ -97,6 +101,10 @@
 | GET | `/api/canvas/{graph_id}` | Get Graph |
 | PATCH | `/api/canvas/{graph_id}` | Update Graph |
 | POST | `/api/canvas/{graph_id}/execute` | Execute Graph |
+| PATCH | `/api/canvas/{graph_id}/nodes/{node_key}` | Patch Node |
+| POST | `/api/canvas/{graph_id}/nodes/{node_key}/execute` | Execute Node |
+| POST | `/api/canvas/{graph_id}/nodes/{node_key}/review` | Review Node Endpoint |
+| GET | `/api/canvas/{graph_id}/nodes/{node_key}/revisions` | List Node Revisions |
 
 ## capabilities
 
@@ -302,6 +310,13 @@
 | POST | `/api/incidents/{incident_id}/retry` | Retry Repair |
 | GET | `/api/incidents/{incident_id}/timeline` | Incident Timeline |
 | POST | `/api/incidents/{incident_id}/verify` | Verify Repair |
+
+## judge
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/judge/hard-check` | Hard Check |
+| POST | `/api/judge/pairwise` | Pairwise |
 
 ## lite
 

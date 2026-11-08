@@ -2,7 +2,7 @@
 
 Registers two catalogue capabilities:
 
-* ``shot.camera_movements`` — 40 selected camera movements from
+* ``shot.camera_movements`` — 46 camera movements (the full library) from
   aicameramovements.com, each in the site's four-field structure
   (Movement / Speed / Framing / End) rewritten in hevi's own wording.
   No site prompt text is copied.
@@ -108,6 +108,12 @@ _MOVEMENT_PHRASES: dict[str, tuple[str, ...]] = {
     "whip_pan_right": ("whip pan right",),
     "whip_pan_left": ("whip pan left",),
     "orbit_counterclockwise": ("counterclockwise orbit", "orbit counterclockwise"),
+    "helicopter_shot": ("helicopter shot", "helicopter"),
+    "tilt_shift": ("tilt-shift", "tilt shift"),
+    "infinite_zoom": ("infinite zoom",),
+    "earth_zoom_out": ("earth zoom out",),
+    "time_lapse": ("time-lapse", "time lapse"),
+    "pass_through_objects": ("pass-through objects", "pass-through", "pass through"),
     "orbit_clockwise": ("clockwise orbit", "orbit clockwise"),
     "reverse_tracking": ("reverse tracking", "walk-and-talk"),
     "vehicle_tracking": ("vehicle tracking",),
@@ -307,7 +313,7 @@ def register_cinematic_techniques_capabilities_once() -> list[str]:
             cpu_cost_hint=0.0,
             render=_render_movements,
             description=(
-                "40 selected camera movements (aicameramovements.com library, "
+                "46 camera movements (the full aicameramovements.com library, "
                 "own wording, Movement/Speed/Framing/End structure) plus the "
                 "one-shot-one-movement validator: validate_shot and compose "
                 "reject any shot carrying two movements."

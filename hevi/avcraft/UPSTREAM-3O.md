@@ -1,3 +1,30 @@
+# Admission disclosure (2026-11-04, 3O conformance Batch 4)
+
+This package was admitted to git from the previously untracked
+worktree directory. Admission-time state, recorded here rather than
+by rewriting the dated notes below:
+
+- `oskill/shotprompt.py` is DEFERRED and NOT in this tree: its fate is
+  a separate owner decision (its `compile_shot_prompt` is legislated
+  LEGACY by `tests/test_prompt_compiler_single_entry.py`). The
+  worktree source copy keeps the LEGACY-marked file. Callers
+  (`omodul/sequence_plan.py`, `omodul/storyboard_enrich.py`)
+  lazy-import it; those paths raise ModuleNotFoundError until the
+  decision lands. `oskill/__init__.py` does not export it.
+- `oskill/timeline.py` persistence moved: `save_timeline` /
+  `load_timeline` are implemented in `obase/timeline_io.py` and
+  re-exported from `oskill/timeline.py` (oskill owns no IO).
+- omodul envelope gap (KNOWN, not conformant to SPEC v3.0 section 6):
+  omodul functions here raise `ValueError` on bad input, return no
+  status/error envelope, and declare no `_enabled_pillars`. The
+  envelope adapter pattern lives in
+  `hevi/capabilities/omodul_contract.py` and applies when these
+  functions are registered as capabilities; until then, do not cite
+  this package as section-6-conformant.
+- `tests/test_avcraft_3o.py`, referenced in the P0 notes below, did
+  not exist at admission: no test files were admitted with this
+  package. Its 5 quick tests + 1 E2E remain unwritten in-tree.
+
 # avcraft → canonical 3O 回流记录
 
 本包为 hevi 自研，按 3O 分层组织；以下元素均为通用能力，日后可回流 `/data/soffy/projects/veya/platform/3O` 对应层。未从任何开源项目拷贝代码（仅思路，见 docs/3O_CAPABILITY_PLAN.md）。

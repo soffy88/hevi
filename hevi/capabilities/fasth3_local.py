@@ -341,6 +341,9 @@ def _probe_mp4(path: Path) -> dict[str, Any]:
 def render(params: dict, out_dir: str | Path, *, duration: float,
            aspect: str, seed: int = 0) -> CapabilityResult:
     """Render params['reference_image'] + params['prompt'] to an MP4."""
+    from hevi.capabilities.spend_brake import check_spend_approval
+
+    spend_gate = check_spend_approval(params, capability="video.fasth3_local")
     reference = params.get("reference_image", "")
     prompt = params.get("prompt", "")
     if not isinstance(reference, str) or not reference.strip():
@@ -410,6 +413,7 @@ def render(params: dict, out_dir: str | Path, *, duration: float,
         "unet": UNET_NAME, "clip": CLIP_NAME,
         "video_vae": VIDEO_VAE_NAME, "audio_vae": AUDIO_VAE_NAME,
         "elapsed_s": round(elapsed_s, 1), "peak_vram_mib": peak_mib,
+        "spend_gate": spend_gate,
         "probe": probe,
     }
     (out / "fasth3_meta.json").write_text(
@@ -458,6 +462,19 @@ def register_fasth3_local_capabilities_once() -> None:
                     },
                     "poll_timeout_s": {
                         "type": "number", "default": 3600,
+                    },
+                    "spend_approval": {
+                        "type": "object",
+                        "description": (
+                            "Optional spend-gate block: {storyboard, "
+                            "confirmed, smoke_passed, batch_size, "
+                            "estimated_unit_cost}. When supplied, the "
+                            "spend gate must approve before any key read, "
+                            "network call, or GPU work; when absent, "
+                            "spending responsibility stays caller-side and "
+                            "the result qa carries "
+                            "spend_gate_not_consulted=true."
+                        ),
                     },
                 },
                 "required": ["reference_image", "prompt"],

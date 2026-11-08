@@ -48,3 +48,44 @@ What was NOT taken (red lines, permanent):
 Effects are unverified: no generation was run against a real
 backend for this graft, the execution layer is a separate case,
 and nothing here certifies that a long relay holds its subject.
+
+## Delta2 addendum (2026-11-05; upstream HEAD 6c048d00)
+
+Second read-only review, report
+`~/workspace/hevi-vs-infinite-creation-delta2.md`. Method
+disciplines only, restated in the house's own wording and
+re-implemented from scratch as machine-checkable gates and
+fake-level contracts:
+
+- code-film category coverage (closed eleven-family list,
+  claimed totals checked against counted totals, the reviewed
+  66-style breakdown checked only when that exact shape is
+  claimed, per-style rendering claims refused)
+- custom style admission (base declaration, overridden fields,
+  source, never built-in)
+- agent runtime definition completeness (command, local
+  detection, bridge-configuration copying, accounts routed
+  through each tool itself, no credentials in configuration,
+  no skill-drafting claims)
+- reference media numbering (independent per-type numbering
+  from zero, asset ids required, image/audio/video caps)
+- voice chain discipline (voice cloning hard-intercepted
+  everywhere in a plan, authorization and fallback narration
+  declarations required)
+- external runtime configuration schema (fake contract, no
+  runtime launched, no credentials)
+- code-film generation record schema (fake contract, no
+  rendering or generation here)
+
+Recorded as unverified, never asserted: the 66 total and its
+per-category breakdown as claims about any external library;
+"automatic Skill generation" from workflow imports (the
+review found deterministic parsing only, no skill-drafting
+path); runtime takeover effectiveness; per-style rendering;
+long-relay subject consistency. The red lines above stand
+unchanged: no `clone_voice` route of any kind, no SKILL/STYLE
+text or style code, no workflow JSON, no weights, no Quark
+package, no RunningHub invite/key chain, no default proxy,
+no sample media, no referral links. MIT licence with the same
+carve-outs; H3 weight licensing still unreviewed; adult-only
+method with the minor hard-intercept unchanged.

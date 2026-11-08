@@ -36,6 +36,10 @@ from hevi.capabilities.registry import (
     compute_sha256,
     register,
 )
+from hevi.capabilities.pure_helpers import (
+    HEIGHT_CONSTANTS,
+    height_at,
+)
 
 _Registered = False
 
@@ -43,31 +47,8 @@ _Registered = False
 # the waterfall tracer (B4) and the scatter planner (B5).
 # West plateau (~10 m) falls to an eastern plain (~1 m); hills and
 # one mound break the slope. Constants are this module's own.
-HEIGHT_CONSTANTS = {
-    "plateau_height": 9.0,
-    "plateau_edge_x": -12.0,
-    "plateau_softness": 3.5,
-    "base": 1.0,
-    "hill_amp1": 2.2,
-    "hill_amp2": 1.1,
-    "mound_amp": 3.0,
-    "mound_x": 18.0,
-    "mound_z": 10.0,
-    "mound_sigma2": 180.0,
-}
 
 
-def height_at(x: float, z: float) -> float:
-    """Analytic ground height in metres (Python mirror of the JS page)."""
-    c = HEIGHT_CONSTANTS
-    plateau = c["plateau_height"] / (1.0 + math.exp((x - c["plateau_edge_x"]) / c["plateau_softness"]))
-    hills = (
-        c["hill_amp1"] * math.sin(x * 0.09 + 0.7) * math.cos(z * 0.07 + 0.3)
-        + c["hill_amp2"] * math.sin(x * 0.23) * math.sin(z * 0.19 + 1.3)
-    )
-    dx, dz = x - c["mound_x"], z - c["mound_z"]
-    mound = c["mound_amp"] * math.exp(-(dx * dx + dz * dz) / c["mound_sigma2"])
-    return c["base"] + plateau + hills + mound
 
 
 def _is_num(value: Any) -> bool:

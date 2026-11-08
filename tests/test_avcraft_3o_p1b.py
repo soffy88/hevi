@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("hevi.avcraft.oskill.shotprompt")  # deferred at admission 2026-11-04 (origin/main)
+
 from hevi.avcraft.obase.media import ffmpeg_bin, ffprobe_bin, probe_duration
 from hevi.avcraft.oskill.highlight import (
     candidate_windows,

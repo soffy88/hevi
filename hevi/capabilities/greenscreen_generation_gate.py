@@ -158,7 +158,7 @@ def check_greenscreen_generation_plan(
     reference_bindings: Any = None,
     provider_caps: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Judge one greenscreen dance generation plan against the five constraints."""
+    """Judge one greenscreen dance generation plan against the five constraints. Composes (3O SPEC 1.2): resolve_provider_caps."""
     if not isinstance(plan, dict):
         raise CapabilityError(
             "qa.greenscreen_generation_gate: generation plan must be a JSON object"
@@ -415,7 +415,7 @@ def check_greenscreen_generation_plan(
         )
         anchor_ok = False
     if effective_anchors is not None and effective_bindings is not None:
-        from hevi.capabilities.scene_reference import (
+        from hevi.capabilities.pure_helpers import (
             resolve_character_anchor,
             resolve_picture_bindings,
         )

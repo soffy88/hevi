@@ -6,6 +6,8 @@ import subprocess
 
 import pytest
 
+pytest.importorskip("hevi.avcraft.oskill.shotprompt")  # deferred at admission 2026-11-04 (origin/main)
+
 from hevi.avcraft.obase.media import ffmpeg_bin, list_streams, parse_visual_detect, probe_duration
 from hevi.avcraft.obase.shot_table import SHOT_SCHEMA, validate_shot_table
 from hevi.avcraft.oskill.shotprompt import (

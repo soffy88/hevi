@@ -24,7 +24,7 @@ Vocabulary provenance (stated here, not hidden)
 ------------------------------------------------
 * Camera movements come from hevi's own
   ``hevi.capabilities.cinematic_techniques`` data file
-  (``cinematic_data/camera_movements.json``: 40 movements, each with
+  (``cinematic_data/camera_movements.json``: 46 movements, each with
   an ``id``, a Chinese name and an English name). The compiler loads
   that table at run time, so a movement id that does not exist there
   cannot pass validation -- no movement id is invented here.
@@ -200,7 +200,7 @@ def _load_movement_table() -> dict[str, dict[str, str]]:
 
     Loaded from the same ``camera_movements.json`` that
     ``cinematic_techniques.load_movements`` reads, so the table can
-    never drift from hevi's own 40-movement list.
+    never drift from hevi's own 46-movement list.
     """
     global _MOVEMENT_TABLE, _MOVEMENT_ZH_TO_ID
     if _MOVEMENT_TABLE is not None:
@@ -1168,13 +1168,14 @@ def _validate_beat_camera(beat: dict[str, Any], label: str) -> None:
 # entry points keep their old behaviour (unknown tier recorded, bare
 # names, no file bindings) so existing fixtures keep compiling; the
 # strict entry points below are the production path and fail hard.
-# Binding/anchor validation lives in pipeline.scene_reference
-# (single implementation); this module imports it lazily so the two
-# modules never form an import cycle at load time.
+# Binding/anchor validation lives in pure_helpers (single
+# implementation, re-exported by pipeline.scene_reference); this
+# module imports it lazily so the two modules never form an import
+# cycle at load time.
 
 
 def _scene_reference_helpers() -> tuple[Any, Any, Any]:
-    from hevi.capabilities.scene_reference import (
+    from hevi.capabilities.pure_helpers import (
         canonical_frame_count,
         resolve_character_anchor,
         resolve_picture_bindings,
