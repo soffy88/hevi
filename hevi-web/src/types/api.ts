@@ -30,7 +30,7 @@ export interface CanvasNode {
 }
 
 export type CanvasNodeStatus =
-  | 'pending' | 'running' | 'ok' | 'warn' | 'fail' | 'stale' | 'locked';
+  | 'pending' | 'running' | 'ok' | 'warn' | 'fail' | 'needs_redo' | 'stale' | 'locked';
 
 export interface CanvasReview {
   result: 'pass' | 'warn' | 'fail';
@@ -40,6 +40,17 @@ export interface CanvasReview {
   review_mode?: 'llm' | 'offline_rules' | 'deterministic' | string;
   ts?: string;
   signals?: Record<string, unknown>;
+  review_sources?: string[];
+  chatgpt?: {
+    status?: 'pending' | 'done' | 'fail' | string;
+    verdict?: 'pass' | 'fail' | string;
+    issues?: string[];
+    redo_nodes?: string[];
+    reason?: string;
+    item_id?: string;
+    queued_at?: string;
+    reviewed_at?: string;
+  };
 }
 
 export interface CanvasArtifact {
@@ -83,7 +94,7 @@ export type EdgeValidation = { valid: boolean; reason?: string };
 export type TaskStatus =
   | 'pending' | 'queued' | 'claimed' | 'running' | 'completed' | 'failed'
   | 'blocked' | 'cancelled' | 'paused' | 'interrupted' | 'unknown'
-  | 'ok' | 'warn' | 'fail' | 'stale' | 'locked';
+  | 'ok' | 'warn' | 'fail' | 'needs_redo' | 'stale' | 'locked';
 
 export type DurationArchetype = 'short' | '1-5min' | '5-15min' | '15-45min' | '45min+';
 export type VideoProvider = 'wan_local' | 'veo3' | 'kling_v2' | 'hailuo' | 'ltx2_cloud' | 'wan_cloud';

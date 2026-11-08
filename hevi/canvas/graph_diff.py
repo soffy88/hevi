@@ -22,6 +22,7 @@ STATUS_RUNNING = "running"
 STATUS_OK = "ok"
 STATUS_WARN = "warn"
 STATUS_FAIL = "fail"
+STATUS_NEEDS_REDO = "needs_redo"
 STATUS_STALE = "stale"
 STATUS_LOCKED = "locked"
 

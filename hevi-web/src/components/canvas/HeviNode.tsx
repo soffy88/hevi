@@ -30,6 +30,7 @@ const STATUS_RING: Partial<Record<TaskStatus, string>> = {
   warn:      'var(--warning, oklch(0.70 0.15 80))',
   failed:    'var(--destructive)',
   fail:      'var(--destructive)',
+  needs_redo: 'oklch(0.62 0.16 45)',
   stale:     'oklch(0.62 0.02 90)',
   locked:    'oklch(0.55 0.12 240)',
   paused:    'var(--warning, oklch(0.70 0.15 80))',
@@ -46,6 +47,12 @@ export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
   const ring = data.status ? STATUS_RING[data.status] : 'transparent';
   const review = data.review ?? null;
   const artifactCount = data.artifacts?.length ?? 0;
+  const chatgpt = review?.chatgpt;
+  const reviewSource = review?.review_sources?.includes('chatgpt_queue')
+    ? (chatgpt?.status === 'pending' ? '离线规则 · ChatGPT 待审'
+      : chatgpt?.verdict === 'pass' ? '离线规则 + ChatGPT 通过'
+        : chatgpt?.status === 'fail' ? '离线规则 + ChatGPT 未通过' : '离线规则 + ChatGPT')
+    : (review?.review_mode === 'llm' ? 'LLM 审稿' : '离线规则审稿');
 
   return (
     <div
@@ -69,6 +76,7 @@ export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
         {(data.status === 'failed' || data.status === 'fail') && <span className="hevi-node__fail">✕</span>}
         {data.status === 'warn' && <span className="hevi-node__fail" style={{ color: REVIEW_COLOR.warn }}>!</span>}
         {data.status === 'stale' && <span className="hevi-node__tool">stale</span>}
+        {data.status === 'needs_redo' && <span className="hevi-node__tool" style={{ color: REVIEW_COLOR.fail }}>待重做</span>}
         {data.locked && <span className="hevi-node__tool" title="已锁定，不会重跑">🔒</span>}
         {typeof data.revision === 'number' && data.revision > 0 && (
           <span className="hevi-node__tool">v{data.revision}</span>
@@ -86,6 +94,13 @@ export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
             >
               {review.result === 'pass' ? '自检通过' : review.result === 'warn' ? '自检提醒' : '自检未通过'}
               {review.reasons?.[0] ? `：${review.reasons[0].slice(0, 40)}` : ''}
+            </div>
+          )}
+          {review && (
+            <div className="hevi-node__data-badge" title={(chatgpt?.issues ?? []).join('\n')}>
+              审稿：{reviewSource}
+              {chatgpt?.status === 'pending' ? ' · 等待审阅' : ''}
+              {chatgpt?.verdict ? ` · ${chatgpt.verdict === 'pass' ? '通过' : '未通过'}` : ''}
             </div>
           )}
           {artifactCount > 0 && (

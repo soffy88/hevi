@@ -102,6 +102,7 @@ class ExecutorService:
                     llm_reviewer=llm_reviewer,
                     llm_rewriter=llm_rewriter,
                     vision_backend=vision_backend,
+                    enqueue_review=True,
                 ),
             )
             result["node_count"] = len(nodes)

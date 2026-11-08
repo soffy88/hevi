@@ -65,6 +65,21 @@ export function NodeInspector({
                 ? ' · LLM 审稿'
                 : ''}
           </div>
+          {review.review_sources?.includes('chatgpt_queue') && (
+            <p className="hevi-inspector__ref-path">
+              审稿来源：离线规则{review.chatgpt?.status === 'pending'
+                ? ' + ChatGPT（待审）'
+                : review.chatgpt?.verdict
+                  ? ` + ChatGPT（${review.chatgpt.verdict === 'pass' ? '通过' : '未通过'}）`
+                  : ' + ChatGPT'}
+              {review.chatgpt?.reason ? `：${review.chatgpt.reason}` : ''}
+            </p>
+          )}
+          {(review.chatgpt?.issues ?? []).length > 0 && (
+            <ul className="hevi-inspector__reasons">
+              {(review.chatgpt?.issues ?? []).map((r, i) => <li key={`cg-${i}`}>[ChatGPT] {r}</li>)}
+            </ul>
+          )}
           {(review.reasons ?? []).length > 0 && (
             <ul className="hevi-inspector__reasons">
               {(review.reasons ?? []).map((r, i) => <li key={i}>{r}</li>)}

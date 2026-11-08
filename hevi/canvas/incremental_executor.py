@@ -48,6 +48,7 @@ class ExecuteOptions:
     llm_reviewer: Any = None
     llm_rewriter: Any = None
     vision_backend: Any = None
+    enqueue_review: bool = False
 
 
 @dataclass
@@ -322,6 +323,15 @@ class IncrementalExecutor:
                     "content_hash": gd.output_content_hash(output),
                 },
             }
+        if isinstance(review, dict):
+            # The deterministic verdict is always the first provider; the
+            # ChatGPT queue, when enabled, only adds a later verdict beside it.
+            try:
+                from hevi.canvas.review_queue import review_providers
+
+                review.setdefault("review_sources", review_providers())
+            except Exception:
+                review.setdefault("review_sources", ["offline_rules"])
         status = status_for_review(review)
         await self._store.save_result(
             graph_id,
@@ -333,6 +343,28 @@ class IncrementalExecutor:
             actual_cost=0.0,
             pricing_key=str((node.config or {}).get("pricing_key") or "local"),
         )
+        if opts.enqueue_review:
+            try:
+                from hevi.canvas.review_queue import enqueue_for_node, extract_sentence
+                from hevi.db.pg_pool import get_hevi_pg_pool
+
+                await enqueue_for_node(
+                    await get_hevi_pg_pool(),
+                    graph_id=graph_id,
+                    node_key=node.node_id,
+                    node_type=node.node_type,
+                    sentence_text=extract_sentence(current.model_dump(), output),
+                    output=output,
+                    review=review,
+                    node_config=current.config,
+                )
+            except Exception:
+                # A review queue outage never fails a node that already rendered.
+                import logging
+
+                logging.getLogger(__name__).exception(
+                    "canvas review queue enqueue failed for %s/%s", graph_id, node.node_id
+                )
         success = review.get("result") != "fail" and error is None
         return NodeRun(
             node_key=node.node_id,

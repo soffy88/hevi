@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import hmac
+import os
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from obase.persistence import PgPool
 from pydantic import BaseModel
 
@@ -139,6 +142,100 @@ async def get_executor_service(
     graph_svc: Annotated[GraphService, Depends(get_graph_service)],
 ) -> ExecutorService:
     return ExecutorService(graph_svc)
+
+
+# ── ChatGPT review queue (internal, token-authenticated) ─────────────────────
+# local2's MCP tools call these three routes from 127.0.0.1 / the docker
+# network.  The public thumbnail route is read-only and carries a 15-minute
+# HMAC token; it can only serve a path already recorded in a review row.
+
+
+class ReviewClaimRequest(BaseModel):
+    limit: int = 3
+
+
+class ReviewSubmitRequest(BaseModel):
+    item_id: str
+    verdict: str
+    issues: list[str] = []
+    redo_nodes: list[str] = []
+    reason: str = ""
+
+
+def _review_internal_token() -> str:
+    return os.getenv("HEVI_REVIEW_INTERNAL_TOKEN", "").strip()
+
+
+async def require_review_internal_token(
+    x_hevi_review_token: str | None = Header(default=None),
+) -> None:
+    expected = _review_internal_token()
+    if not expected:
+        raise HTTPException(status_code=503, detail="review internal token is not configured")
+    if not x_hevi_review_token or not hmac.compare_digest(x_hevi_review_token, expected):
+        raise HTTPException(status_code=401, detail="invalid review token")
+
+
+@router.post("/review/claim", dependencies=[Depends(require_review_internal_token)])
+async def review_claim(body: ReviewClaimRequest, pool: Annotated[PgPool, Depends(get_pg_pool)]) -> dict[str, Any]:
+    from hevi.canvas.review_queue import claim
+
+    items = await claim(pool, limit=body.limit)
+    return {"items": items, "count": len(items)}
+
+
+@router.post("/review/submit", dependencies=[Depends(require_review_internal_token)])
+async def review_submit(body: ReviewSubmitRequest, pool: Annotated[PgPool, Depends(get_pg_pool)]) -> dict[str, Any]:
+    from hevi.canvas.review_queue import submit
+
+    try:
+        return await submit(
+            pool,
+            item_id=body.item_id,
+            verdict=body.verdict,
+            issues=body.issues,
+            redo_nodes=body.redo_nodes,
+            reason=body.reason,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/review/status", dependencies=[Depends(require_review_internal_token)])
+async def review_status(pool: Annotated[PgPool, Depends(get_pg_pool)]) -> dict[str, Any]:
+    from hevi.canvas.review_queue import queue_status
+
+    return await queue_status(pool)
+
+
+@router.get("/review/thumb/{token}")
+async def review_thumbnail(token: str, pool: Annotated[PgPool, Depends(get_pg_pool)]) -> FileResponse:
+    """Read-only 15-minute signed link to one recorded review thumbnail."""
+    from hevi.canvas.review_queue import verify_thumb_token
+
+    parsed = verify_thumb_token(token)
+    if parsed is None:
+        raise HTTPException(status_code=404, detail="link expired or invalid")
+    item_id, index = parsed
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT thumbnails FROM canvas_review_queue WHERE id=$1", uuid.UUID(item_id)
+        )
+    if row is None:
+        raise HTTPException(status_code=404, detail="review item not found")
+    thumbs = list(row["thumbnails"] or [])
+    if index < 0 or index >= len(thumbs):
+        raise HTTPException(status_code=404, detail="thumbnail not found")
+    path = str(thumbs[index])
+    if not path.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
+        raise HTTPException(status_code=404, detail="thumbnail not found")
+    from pathlib import Path
+
+    if not Path(path).is_file():
+        raise HTTPException(status_code=404, detail="thumbnail file missing")
+    return FileResponse(path)
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
