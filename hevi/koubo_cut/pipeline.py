@@ -37,6 +37,10 @@ DEFAULT_TARGET_S = 30.0
 # softness is gone). Measured ~150 ms/frame with SwiftShader: ~135 s for 900
 # frames, inside the 5-minute budget.
 LIVLIV_RENDER_W, LIVLIV_RENDER_H = 1080, 1620
+# A 30 s clip (900 frames) at 1080x1620 takes ~4.5 min of SwiftShader render
+# inside the 2-CPU container; switch to 810x1215 (still >=720 wide, same 2:3)
+# for long clips so one render stays under the 5-minute budget.
+LIVLIV_RENDER_SAFE = (810, 1215)
 LIVLIV_MAIN_BOX = (0, 300, W, H)          # x, y, x2, y2 (1080x1620)
 LIVLIV_PIP_SIZE = (300, 450)              # 2:3 corner window during evidence
 LIVLIV_CREDIT = "AI 制作 · Characters: LivLiv (livliv.ai)"
@@ -477,6 +481,18 @@ def _audio_envelope(audio: Path, n_frames: int) -> list[float]:
         return [0.0] * n_frames
 
 
+def _livliv_render_size(nframes: int) -> tuple[int, int]:
+    """Native size for short clips, >=720-wide safe size for long ones."""
+    override = os.environ.get("HEVI_LIVLIV_RENDER_SIZE", "").strip().lower()
+    if override:
+        try:
+            w, h = override.split("x")
+            return max(720, int(w)), int(h)
+        except Exception:
+            pass
+    return (LIVLIV_RENDER_W, LIVLIV_RENDER_H) if nframes <= 720 else LIVLIV_RENDER_SAFE
+
+
 def _livliv_frame_at(frames: Path, index: int, size: tuple[int, int]) -> Image.Image | None:
     path = Path(frames) / f"frame_{index:05d}.png"
     if not path.is_file():
@@ -740,7 +756,7 @@ def run_koubo_cut(
                 while len(env) < n:
                     env.append({"t": len(env) / FPS, "mouthOpen": 0.0, "vowel": 0.0})
                 livliv_dir = out / "livliv_frames"
-                lw, lh = LIVLIV_RENDER_W, LIVLIV_RENDER_H
+                lw, lh = _livliv_render_size(len(env))
                 t0 = time.time()
                 render_frames(character_id, livliv_dir, env, fps=FPS, width=lw, height=lh)
                 livliv_frames = livliv_dir

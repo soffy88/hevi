@@ -35,8 +35,13 @@ def test_livliv_render_size_and_layout():
     from hevi.koubo_cut import pipeline
 
     assert pipeline.LIVLIV_RENDER_W >= 720
+    assert pipeline.LIVLIV_RENDER_SAFE[0] >= 720
+    for w, h in (pipeline.LIVLIV_RENDER_SAFE, (pipeline.LIVLIV_RENDER_W, pipeline.LIVLIV_RENDER_H)):
+        assert abs(w / h - 2 / 3) < 0.01
     x0, y0, x1, y1 = pipeline.LIVLIV_MAIN_BOX
     assert (x1 - x0, y1 - y0) == (pipeline.LIVLIV_RENDER_W, pipeline.LIVLIV_RENDER_H)
+    assert pipeline._livliv_render_size(600) == (pipeline.LIVLIV_RENDER_W, pipeline.LIVLIV_RENDER_H)
+    assert pipeline._livliv_render_size(900) == pipeline.LIVLIV_RENDER_SAFE
 
 
 def test_run_koubo_cut_accepts_engine_params():
