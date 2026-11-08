@@ -1,0 +1,140 @@
+{
+  "graph_id": "814d3d17-59d8-426d-ba71-e601fc1768bf",
+  "full_run": {
+    "status": "completed",
+    "elapsed_s": 21.22,
+    "ran": [
+      "script",
+      "sentences",
+      "tts",
+      "avatar",
+      "evidence",
+      "edit",
+      "subtitle",
+      "final"
+    ]
+  },
+  "subtitle_edit": {
+    "stale": [
+      "subtitle",
+      "final"
+    ],
+    "ran": [
+      "subtitle",
+      "final"
+    ],
+    "elapsed_s": 2.457,
+    "ratio": 0.116
+  },
+  "locked_test": {
+    "ran": [
+      "subtitle"
+    ],
+    "locked_skipped": [
+      "final"
+    ]
+  },
+  "nodes": [
+    {
+      "node_key": "tts",
+      "status": "ok",
+      "revision": 1,
+      "locked": false
+    },
+    {
+      "node_key": "avatar",
+      "status": "warn",
+      "revision": 1,
+      "locked": false
+    },
+    {
+      "node_key": "evidence",
+      "status": "warn",
+      "revision": 1,
+      "locked": false
+    },
+    {
+      "node_key": "script",
+      "status": "ok",
+      "revision": 1,
+      "locked": false
+    },
+    {
+      "node_key": "edit",
+      "status": "warn",
+      "revision": 1,
+      "locked": false
+    },
+    {
+      "node_key": "final",
+      "status": "locked",
+      "revision": 2,
+      "locked": true
+    },
+    {
+      "node_key": "sentences",
+      "status": "ok",
+      "revision": 1,
+      "locked": false
+    },
+    {
+      "node_key": "subtitle",
+      "status": "ok",
+      "revision": 3,
+      "locked": false
+    }
+  ],
+  "counts": {
+    "canvas_nodes": 8,
+    "canvas_edges": 7,
+    "canvas_artifacts": 17,
+    "canvas_node_costs": 11,
+    "canvas_node_revisions": 11
+  },
+  "revision_rows": [
+    [
+      "avatar",
+      1
+    ],
+    [
+      "edit",
+      1
+    ],
+    [
+      "evidence",
+      1
+    ],
+    [
+      "final",
+      1
+    ],
+    [
+      "final",
+      2
+    ],
+    [
+      "script",
+      1
+    ],
+    [
+      "sentences",
+      1
+    ],
+    [
+      "subtitle",
+      1
+    ],
+    [
+      "subtitle",
+      2
+    ],
+    [
+      "subtitle",
+      3
+    ],
+    [
+      "tts",
+      1
+    ]
+  ]
+}

@@ -132,7 +132,25 @@ export const canvasApi = {
   load:   (id: string) => authedReq<CanvasGraph>(`/api/canvas/${id}`),
   update: (id: string, patch: Partial<CanvasGraph>) => authedReq<CanvasGraph>(`/api/canvas/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   remove: (id: string) => authedReq<void>(`/api/canvas/${id}`, { method: 'DELETE' }),
-  execute:(id: string) => authedReq<{ task_id: string }>(`/api/canvas/${id}/execute`, { method: 'POST' }),
+  execute:(id: string, opts?: { scope?: 'all'|'dirty'|'selected'; selected_ids?: string[]; max_retries?: number }) =>
+    authedReq<Record<string, unknown>>(`/api/canvas/${id}/execute`, {
+      method: 'POST',
+      body: JSON.stringify({ scope: opts?.scope ?? 'dirty', selected_ids: opts?.selected_ids ?? [], max_retries: opts?.max_retries ?? 1 }),
+    }),
+  // Canvas MVP: koubo_cut 默认图(脚本→分句→TTS→头像/实拍→证据→剪辑→字幕→成片)
+  kouboTemplate: (payload: { script_text?: string; topic?: string; duration_s?: number; engine?: string; character_id?: string; out_dir?: string; plan?: Record<string, unknown> | null }) =>
+    authedReq<Record<string, unknown>>('/api/canvas/templates/koubo', { method: 'POST', body: JSON.stringify(payload) }),
+  // 单节点重做(选中节点 + 下游)
+  executeNode: (graphId: string, nodeId: string, opts?: { max_retries?: number }) =>
+    authedReq<Record<string, unknown>>(`/api/canvas/${graphId}/nodes/${encodeURIComponent(nodeId)}/execute`, {
+      method: 'POST', body: JSON.stringify({ scope: 'selected', selected_ids: [nodeId], max_retries: opts?.max_retries ?? 1 }),
+    }),
+  reviewNode: (graphId: string, nodeId: string) =>
+    authedReq<Record<string, unknown>>(`/api/canvas/${graphId}/nodes/${encodeURIComponent(nodeId)}/review`, { method: 'POST' }),
+  patchNode: (graphId: string, nodeId: string, patch: Record<string, unknown>) =>
+    authedReq<Record<string, unknown>>(`/api/canvas/${graphId}/nodes/${encodeURIComponent(nodeId)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  nodeRevisions: (graphId: string, nodeId: string) =>
+    authedReq<{ revisions: Array<Record<string, unknown>> }>(`/api/canvas/${graphId}/nodes/${encodeURIComponent(nodeId)}/revisions`),
   // SSE 进度 URL(配合 useSSEProgress)
   progressUrl: (id: string) => `${API_BASE}/api/canvas/${id}/execute/progress`,
   // 材料包 → 画布映射(后端 hevi.canvas.material_pack):输入材料包或

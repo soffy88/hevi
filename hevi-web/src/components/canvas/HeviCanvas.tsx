@@ -39,9 +39,61 @@ function CanvasInner() {
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
   const [executing, setExecuting] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [graphId, setGraphId] = useState<string | null>(null);
+  const [nodeBusy, setNodeBusy] = useState<string | null>(null);
   const packFileRef = useRef<HTMLInputElement | null>(null);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2400); };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const toFlowNodes = useCallback((graph: any) => {
+    const list = graph.nodes ?? [];
+    return list.map((n: Record<string, any>) => {
+      const nodeType = String(n.node_type) as NodeType;
+      return {
+        id: String(n.node_id),
+        type: 'hevi' as const,
+        position: (n.position as { x: number; y: number }) ?? { x: 0, y: 0 },
+        data: {
+          nodeType,
+          label: String(n.label ?? n.node_id),
+          config: (n.config as Record<string, unknown>) ?? {},
+          status: n.status as HeviNodeData['status'],
+          revision: typeof n.revision === 'number' ? n.revision : undefined,
+          locked: Boolean(n.locked),
+          review: (n.review as HeviNodeData['review']) ?? null,
+          artifacts: (n.artifacts as HeviNodeData['artifacts']) ?? [],
+        },
+      };
+    });
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const toFlowEdges = useCallback((graph: any) => {
+    return (graph.edges ?? []).map((e: Record<string, any>, i: number) => ({
+      id: String(e.edge_id ?? e.id ?? `e-${i}`),
+      source: String(e.from_node_id ?? e.source),
+      target: String(e.to_node_id ?? e.target),
+      animated: true,
+      data: { kind: e.kind, status: e.status },
+    }));
+  }, []);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const openGraph = useCallback((graph: any) => {
+    const id = String(graph.id ?? graph.graph_id ?? '');
+    setGraphId(id || null);
+    setNodes(toFlowNodes(graph) as never[]);
+    setEdges(toFlowEdges(graph) as never[]);
+  }, [setNodes, setEdges, toFlowNodes, toFlowEdges]);
+
+  const reloadGraph = useCallback(async (id: string) => {
+    if (USE_MOCK) return;
+    try {
+      const graph = await canvasApi.load(id);
+      openGraph(graph);
+    } catch { /* keep the in-memory graph */ }
+  }, [openGraph]);
 
   const onNodeClick = useCallback((_e: React.MouseEvent, node: Node) => {
     setSelectedNodeId(node.id);
@@ -63,31 +115,12 @@ function CanvasInner() {
     try {
       const pack = JSON.parse(await file.text()) as Record<string, unknown>;
       const { graph } = await canvasApi.materialPackGraph(pack);
-      const flowNodes = graph.nodes.map((n) => ({
-        id: String(n.node_id),
-        type: 'hevi' as const,
-        position: (n.position as { x: number; y: number }) ?? { x: 0, y: 0 },
-        data: {
-          nodeType: String(n.node_type) as NodeType,
-          label: String(n.label ?? n.node_id),
-          config: (n.config as Record<string, unknown>) ?? {},
-          status: n.status as HeviNodeData['status'],
-        },
-      }));
-      const flowEdges = graph.edges.map((e) => ({
-        id: String(e.edge_id),
-        source: String(e.from_node_id),
-        target: String(e.to_node_id),
-        animated: true,
-        data: { kind: e.kind, status: e.status },
-      }));
-      setNodes(flowNodes);
-      setEdges(flowEdges);
-      flash('材料包图已打开');
+      openGraph(graph);
+      flash('材料包图已打开（执行时会先保存）');
     } catch {
       flash('材料包映射失败');
     }
-  }, [setNodes, setEdges]);
+  }, [openGraph]);
 
   const onConnect = useCallback((conn: Connection) => {
     const f = nodes.find(n => n.id === conn.source);
@@ -163,8 +196,12 @@ function CanvasInner() {
     } else if (action === 'execute') {
       const node = nodes.find((n) => n.id === nodeId);
       const toolId = typeof node?.data.config?.tool_id === 'string' ? node.data.config.tool_id : '';
+      if (graphId && !USE_MOCK) {
+        void rerunNode(nodeId);
+        return;
+      }
       if (!toolId) {
-        flash('已触发节点执行(mock)');
+        flash('画布尚未保存，先点“保存”再重做节点');
         return;
       }
       setNodes((ns) => ns.map((n) => n.id === nodeId
@@ -193,7 +230,7 @@ function CanvasInner() {
           }),
       );
     }
-  }, [nodes, setNodes, setEdges]);
+  }, [nodes, setNodes, setEdges, graphId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -206,20 +243,26 @@ function CanvasInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const onSave = async () => {
-    if (USE_MOCK) { flash('画布已保存(mock)'); return; }
+  const saveGraph = async (): Promise<string | null> => {
+    if (USE_MOCK) { flash('画布已保存(mock)'); return null; }
     try {
       // 字段名必须匹配后端 oprim.CanvasNode/CanvasEdge(config/edge_id/from_node_id/
       // to_node_id),否则执行阶段的 model_validate 会静默丢配置或直接报错缺字段。
-      await canvasApi.save({ name: '未命名画布',
+      const saved = await canvasApi.save({ name: '未命名画布',
         nodes: nodes.map(n => ({
-          node_id: n.id, node_type: n.data.nodeType,
-          config: n.data.config ?? {}, upstream_ids: [],
+          node_id: n.id, node_type: n.data.nodeType, label: n.data.label ?? '',
+          config: n.data.config ?? {}, position: n.position,
         })),
-        edges: edges.map(e => ({ edge_id: e.id, from_node_id: e.source, to_node_id: e.target })) });
+        edges: edges.map(e => ({ edge_id: e.id, from_node_id: e.source, to_node_id: e.target,
+          kind: (e.data as Record<string, unknown> | undefined)?.kind ?? 'data' })) });
+      const id = String(saved.id ?? '');
+      if (id) setGraphId(id);
       flash('画布已保存');
-    } catch { flash('保存失败'); }
+      return id || null;
+    } catch { flash('保存失败'); return null; }
   };
+
+  const onSave = () => { void saveGraph(); };
 
   const onExecute = async () => {
     if (nodes.length === 0) { flash('画布为空'); return; }
@@ -235,9 +278,68 @@ function CanvasInner() {
       return;
     }
     try {
-      const { task_id } = await canvasApi.execute('current');
-      flash(`执行已启动 ${task_id}`);
-    } catch { flash('执行失败'); setExecuting(false); }
+      const id = graphId ?? await saveGraph();
+      if (!id) { setExecuting(false); return; }
+      const selected = nodes.filter((n) => n.selected).map((n) => n.id);
+      const result = await canvasApi.execute(id, {
+        scope: selected.length > 0 ? 'selected' : 'dirty',
+        selected_ids: selected,
+        max_retries: 1,
+      });
+      const ran = Array.isArray(result.ran) ? result.ran.length : 0;
+      const retries = (result.retries as Record<string, number> | undefined) ?? {};
+      const retried = Object.keys(retries).length;
+      flash(`执行 ${String(result.status ?? 'done')}：跑 ${ran} 个节点${retried ? `，自动重试 ${retried} 个` : ''}`);
+      await reloadGraph(id);
+    } catch { flash('执行失败'); } finally { setExecuting(false); }
+  };
+
+  const rerunNode = async (nodeId: string) => {
+    if (USE_MOCK) { flash('节点重做(mock)'); return; }
+    const id = graphId ?? await saveGraph();
+    if (!id) return;
+    setNodeBusy(nodeId);
+    try {
+      const result = await canvasApi.executeNode(id, nodeId, { max_retries: 1 });
+      const ran = Array.isArray(result.ran) ? result.ran.length : 0;
+      flash(`已重做 ${nodeId} 及下游 ${Math.max(0, ran - 1)} 个节点`);
+      await reloadGraph(id);
+    } catch { flash('节点重做失败'); } finally { setNodeBusy(null); }
+  };
+
+  const reviewNode = async (nodeId: string) => {
+    if (!graphId || USE_MOCK) { flash('请先保存画布'); return; }
+    setNodeBusy(nodeId);
+    try {
+      const out = await canvasApi.reviewNode(graphId, nodeId);
+      flash(`自检：${String(out.status ?? '')}`);
+      await reloadGraph(graphId);
+    } catch { flash('自检失败'); } finally { setNodeBusy(null); }
+  };
+
+  const toggleLock = async (nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!graphId) { flash('请先保存画布'); return; }
+    try {
+      await canvasApi.patchNode(graphId, nodeId, { locked: !node?.data.locked });
+      await reloadGraph(graphId);
+    } catch { flash('锁定切换失败'); }
+  };
+
+  const onLoadKoubo = async () => {
+    const topic = window.prompt('口播主题 / 脚本（留空用示例）', 'AI 视频创作的未来已来');
+    if (topic === null) return;
+    try {
+      const graph = await canvasApi.kouboTemplate({
+        topic,
+        script_text: topic,
+        duration_s: 8,
+        engine: 'livliv',
+        character_id: 'd03ft',
+      });
+      openGraph(graph);
+      flash('koubo_cut 默认图已创建：8 个节点');
+    } catch { flash('创建默认图失败'); }
   };
 
   return (
@@ -249,6 +351,7 @@ function CanvasInner() {
           <a href="/" className="hevi-canvas__home-link">← 首页</a>
           <a href="/studio/timeline" className="hevi-canvas__home-link">时间线</a>
           <button type="button" className="hevi-topbar-btn" onClick={onSave}>保存</button>
+          <button type="button" className="hevi-topbar-btn" onClick={onLoadKoubo}>新建口播默认图</button>
           <button type="button" className="hevi-topbar-btn" onClick={() => packFileRef.current?.click()}>导入材料包 JSON</button>
           <input
             ref={packFileRef}
@@ -287,6 +390,10 @@ function CanvasInner() {
             node={selectedNode}
             onChange={(patch) => updateNodeConfig(selectedNode.id, patch)}
             onError={flash}
+            onRerun={() => { void rerunNode(selectedNode.id); }}
+            onReview={() => { void reviewNode(selectedNode.id); }}
+            onToggleLock={() => { void toggleLock(selectedNode.id); }}
+            busy={nodeBusy === selectedNode.id}
           />
         )}
       </div>

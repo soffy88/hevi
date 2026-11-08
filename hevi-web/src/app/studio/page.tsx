@@ -12,6 +12,11 @@ export default function Page() {
             <p className="product-page__eyebrow">HEVI 创作空间</p>
             <h1>把一个想法，变成一支完整视频</h1>
             <p>从创意、故事和分镜开始，沿着真实生产流程完成成片。</p>
+            <p>
+              <a className="hevi-canvas__home-link" href="/canvas">
+                打开画布工作台（逐节点自检 / 单节点重做）→
+              </a>
+            </p>
           </div>
           <SimpleGenerate />
         </main>

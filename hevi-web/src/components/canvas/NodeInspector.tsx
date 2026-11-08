@@ -17,16 +17,91 @@ export interface NodeInspectorProps {
   node: Node<HeviNodeData>;
   onChange: (patch: Record<string, unknown>) => void;
   onError: (msg: string) => void;
+  onRerun?: () => void;
+  onReview?: () => void;
+  onToggleLock?: () => void;
+  busy?: boolean;
 }
 
-export function NodeInspector({ node, onChange, onError }: NodeInspectorProps) {
+export function NodeInspector({
+  node, onChange, onError, onRerun, onReview, onToggleLock, busy,
+}: NodeInspectorProps) {
   const [uploading, setUploading] = useState(false);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState('');
   const toolId = typeof node.data.config?.tool_id === 'string' ? node.data.config.tool_id : '';
-  if (node.data.nodeType !== 'video' && node.data.nodeType !== 'segment' && !toolId) return null;
+  const canInspect = node.data.nodeType === 'video'
+    || node.data.nodeType === 'segment'
+    || Boolean(toolId)
+    || Boolean(node.data.config?.koubo_step)
+    || Boolean(node.data.review)
+    || (node.data.artifacts?.length ?? 0) > 0;
+  if (!canInspect) return null;
 
   const config = node.data.config ?? {};
+  const review = node.data.review ?? null;
+  const artifacts = node.data.artifacts ?? [];
+  const general = (
+    <>
+      <div className="hevi-inspector__title">
+        {node.data.label || node.data.nodeType}
+        {typeof node.data.revision === 'number' ? ` · v${node.data.revision}` : ''}
+        {node.data.locked ? ' · 已锁定' : ''}
+      </div>
+      {review && (
+        <div
+          className="hevi-inspector__section"
+          data-review={review.result}
+          style={{ borderLeft: `4px solid ${review.result === 'pass'
+            ? 'oklch(0.62 0.18 145)' : review.result === 'warn'
+              ? 'oklch(0.70 0.15 80)' : 'var(--destructive)'}` }}
+        >
+          <div className="hevi-inspector__label">
+            自检：{review.result === 'pass' ? '通过' : review.result === 'warn' ? '提醒' : '未通过'}
+            {review.model ? `（${review.model}）` : ''}
+          </div>
+          {(review.reasons ?? []).length > 0 && (
+            <ul className="hevi-inspector__reasons">
+              {(review.reasons ?? []).map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          )}
+          {review.suggested_prompt && (
+            <p className="hevi-inspector__ref-path">建议：{review.suggested_prompt}</p>
+          )}
+        </div>
+      )}
+      {artifacts.length > 0 && (
+        <div className="hevi-inspector__label">
+          产物
+          <ul className="hevi-inspector__artifacts">
+            {artifacts.map((a, i) => (
+              <li key={`${a.path}-${i}`} title={a.path}>
+                {a.kind}: {a.path.split('/').pop()}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="hevi-inspector__actions">
+        {onRerun && (
+          <button type="button" className="hevi-topbar-btn hevi-topbar-btn--primary"
+            onClick={onRerun} disabled={busy || node.data.locked}>
+            {busy ? '重做中…' : '重做此节点及下游'}
+          </button>
+        )}
+        {onReview && (
+          <button type="button" className="hevi-topbar-btn" onClick={onReview} disabled={busy}>
+            重新自检
+          </button>
+        )}
+        {onToggleLock && (
+          <button type="button" className="hevi-topbar-btn" onClick={onToggleLock} disabled={busy}>
+            {node.data.locked ? '解锁' : '锁定'}
+          </button>
+        )}
+      </div>
+    </>
+  );
   const referenceImage = typeof config.reference_image === 'string' ? config.reference_image : '';
 
   // 材料包片段节点:可改 prompt / 负面清单 / 时长 / 参考图编号 / 缓动。
@@ -49,6 +124,7 @@ export function NodeInspector({ node, onChange, onError }: NodeInspectorProps) {
       onChange({ ...patch, material_pack_dirty: true, material_pack_review_pending: true });
     return (
       <div className="hevi-inspector" role="region" aria-label="片段属性">
+        {general}
         <div className="hevi-inspector__title">片段节点 {String(seg.material_pack_segment_id ?? '')}</div>
         {(seg.material_pack_dirty === true || seg.material_pack_review_pending === true) && (
           <p className="hevi-inspector__ref-path">已改动（dirty），待复核；下游段已标待复核</p>
@@ -154,6 +230,7 @@ export function NodeInspector({ node, onChange, onError }: NodeInspectorProps) {
 
   return (
     <div className="hevi-inspector" role="region" aria-label="节点属性">
+      {general}
       <div className="hevi-inspector__title">{toolId || '视频节点'}</div>
       {toolId && (
         <>
