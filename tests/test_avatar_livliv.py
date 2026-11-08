@@ -95,3 +95,31 @@ def test_plan_performance_uses_actual_ids():
     )
     assert (30, "surprised") in expr2
     assert any(a == "nod" for _, a in acts2)
+
+
+def test_analyze_downmixes_stereo(tmp_path):
+    """Koubo pads narration to 44.1 kHz stereo; duration must not double."""
+    import numpy as np
+    from hevi.avatar_livliv.audio import analyze
+
+    sr, seconds = 16000, 1.0
+    t = np.linspace(0, seconds, int(sr * seconds), endpoint=False)
+    mono = (0.5 * np.sin(2 * np.pi * 220 * t) * 32767).astype(np.int16)
+    stereo = np.repeat(mono[:, None], 2, axis=1).reshape(-1)
+    wav = tmp_path / "stereo.wav"
+    with wave.open(str(wav), "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(stereo.tobytes())
+    env = analyze(wav, fps=30)
+    assert len(env) == 30  # not 60 from interleaved stereo samples
+
+
+def test_render_default_is_at_least_720_wide():
+    import inspect
+    from hevi.avatar_livliv.render import render_clip
+
+    sig = inspect.signature(render_clip)
+    assert sig.parameters["width"].default >= 720
+    assert sig.parameters["height"].default >= 1080

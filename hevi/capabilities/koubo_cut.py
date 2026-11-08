@@ -44,6 +44,8 @@ def _render_koubo_cut(
     script_lines = params.get("script_lines") or []
     topic = str(params.get("topic") or "").strip()
     duration_s = float(params.get("duration_s") or duration or 30.0)
+    engine = str(params.get("engine") or "wav2lip").strip() or "wav2lip"
+    character_id = str(params.get("character_id") or "d03ft").strip() or "d03ft"
     try:
         ledger = run_koubo_cut(
             input_video=input_video if input_video else None,
@@ -53,6 +55,8 @@ def _render_koubo_cut(
             out_dir=out,
             seed=seed,
             duration_s=duration_s,
+            engine=engine,
+            character_id=character_id,
         )
     except Exception as exc:
         raise CapabilityError(f"koubo_cut.render: pipeline failed: {exc}") from exc
@@ -84,6 +88,11 @@ def register_koubo_cut_capabilities_once() -> list[str]:
                     "script_lines": {"type": "array", "description": "pre-planned narration lines"},
                     "topic": {"type": "string", "description": "topic when no script is supplied"},
                     "duration_s": {"type": "number", "description": "target duration"},
+                    "engine": {"type": "string", "enum": ["wav2lip", "livliv"],
+                               "default": "wav2lip",
+                               "description": "lip-sync engine; livliv = LivLiv 2.5D character (non-commercial, LIVLIV_CHARACTERS_ENABLED)"},
+                    "character_id": {"type": "string", "default": "d03ft",
+                                     "description": "LivLiv character id when engine=livliv"},
                 },
                 "required": [],
                 "additionalProperties": False,

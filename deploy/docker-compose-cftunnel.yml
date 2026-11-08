@@ -104,6 +104,13 @@ services:
       HEVI_TALKCRAFT_WHISPER: /models/faster-whisper-large-v3-turbo
       HEVI_NODE_BIN: /usr/bin
       HEVI_TALKCRAFT_THREADS: "2"
+      # LivLiv 2.5D avatar engine (engine=livliv / avatar_engine=livliv).
+      # Characters are non-commercial use only (see hevi/avatar_livliv/licenses);
+      # the player + characters and a Chromium with WebGL2 are mounted read-only.
+      LIVLIV_CHARACTERS_ENABLED: "true"
+      HEVI_LIVLIV_VENDOR: /livliv
+      HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
+      HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
     volumes:
       - /home/soffy/models:/models:ro
       - /home/soffy/.u2net:/u2net:ro
@@ -117,6 +124,10 @@ services:
       # 容器重建不丢进度,大盘/WebSocket 可读可下载。
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
+      # LivLiv 2.5D avatar: vendor player+characters (214MB) and a Chromium with
+      # WebGL2 (SwiftShader). Both read-only; never baked into the image.
+      - /data/soffy/vendor/livliv-player:/livliv:ro
+      - /home/soffy/.cache/ms-playwright:/pwbrowsers:ro
       # wave2: 其余 5 处主仓单文件覆盖已随代码移植进镜像而删除。仅 scene_render_avatar
       # 保留挂载:两版已实质分叉(40+ 处差异),直接去挂载会静默换掉通鉴 avatar 实现,合并另立项。
       - /home/soffy/projects/hevi/hevi/tongjian/scene_render_avatar.py:/app/hevi/tongjian/scene_render_avatar.py:ro
@@ -225,6 +236,13 @@ services:
       HEVI_TALKCRAFT_WHISPER: /models/faster-whisper-large-v3-turbo
       HEVI_NODE_BIN: /usr/bin
       HEVI_TALKCRAFT_THREADS: "2"
+      # LivLiv 2.5D avatar engine (engine=livliv / avatar_engine=livliv).
+      # Characters are non-commercial use only (see hevi/avatar_livliv/licenses);
+      # the player + characters and a Chromium with WebGL2 are mounted read-only.
+      LIVLIV_CHARACTERS_ENABLED: "true"
+      HEVI_LIVLIV_VENDOR: /livliv
+      HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
+      HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
       HEVI_ASSET_ROOT: /app/data/workspace/assets
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
     volumes:
@@ -236,6 +254,10 @@ services:
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
+      # LivLiv 2.5D avatar: vendor player+characters (214MB) and a Chromium with
+      # WebGL2 (SwiftShader). Both read-only; never baked into the image.
+      - /data/soffy/vendor/livliv-player:/livliv:ro
+      - /home/soffy/.cache/ms-playwright:/pwbrowsers:ro
       - /home/soffy/.cache/huggingface:/root/.cache/huggingface:ro
       - /data/models/huggingface:/data/models/huggingface:ro
     extra_hosts:
@@ -286,6 +308,13 @@ services:
       HEVI_TALKCRAFT_WHISPER: /models/faster-whisper-large-v3-turbo
       HEVI_NODE_BIN: /usr/bin
       HEVI_TALKCRAFT_THREADS: "2"
+      # LivLiv 2.5D avatar engine (engine=livliv / avatar_engine=livliv).
+      # Characters are non-commercial use only (see hevi/avatar_livliv/licenses);
+      # the player + characters and a Chromium with WebGL2 are mounted read-only.
+      LIVLIV_CHARACTERS_ENABLED: "true"
+      HEVI_LIVLIV_VENDOR: /livliv
+      HEVI_LIVLIV_CHROME: /pwbrowsers/chromium-1248/chrome-linux64/chrome
+      HEVI_LIVLIV_TMP: /app/.cache/hevi/livliv
       HEVI_ASSET_ROOT: /app/data/workspace/assets
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
     volumes:
@@ -293,6 +322,10 @@ services:
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
+      # LivLiv 2.5D avatar: vendor player+characters (214MB) and a Chromium with
+      # WebGL2 (SwiftShader). Both read-only; never baked into the image.
+      - /data/soffy/vendor/livliv-player:/livliv:ro
+      - /home/soffy/.cache/ms-playwright:/pwbrowsers:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

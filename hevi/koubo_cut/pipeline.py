@@ -32,10 +32,11 @@ from hevi.koubo_cut.state import new_ledger, finalize_status
 W, H = 1080, 1920
 FPS = 30
 DEFAULT_TARGET_S = 30.0
-# LivLiv renders at a 2:3 canvas (the character package's native aspect).
-# 720x1080 keeps the render under the 5-minute budget while staying >=720 wide;
-# it is composited into a 1080x1620 main-subject box in the 1080x1920 frame.
-LIVLIV_RENDER_W, LIVLIV_RENDER_H = 720, 1080
+# LivLiv renders at a 2:3 canvas (the character package's native aspect) at the
+# final main-subject size, so nothing is upscaled (the 512x912 -> 1080x1920
+# softness is gone). Measured ~150 ms/frame with SwiftShader: ~135 s for 900
+# frames, inside the 5-minute budget.
+LIVLIV_RENDER_W, LIVLIV_RENDER_H = 1080, 1620
 LIVLIV_MAIN_BOX = (0, 300, W, H)          # x, y, x2, y2 (1080x1620)
 LIVLIV_PIP_SIZE = (300, 450)              # 2:3 corner window during evidence
 LIVLIV_CREDIT = "AI 制作 · Characters: LivLiv (livliv.ai)"
@@ -142,7 +143,15 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, wi
             current = ch
     if current:
         lines.append(current)
-    return lines
+    # A line made only of punctuation reads as a stray glyph: keep it on the
+    # previous line instead of letting "。" sit alone.
+    merged: list[str] = []
+    for line in lines:
+        if merged and line and all(c in "。！？，、；：!?.,;:" for c in line):
+            merged[-1] += line
+        elif line:
+            merged.append(line)
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -473,7 +482,8 @@ def _livliv_frame_at(frames: Path, index: int, size: tuple[int, int]) -> Image.I
     if not path.is_file():
         return None
     with Image.open(path) as im:
-        return im.convert("RGBA").resize(size, Image.LANCZOS)
+        rgba = im.convert("RGBA")
+        return rgba if rgba.size == size else rgba.resize(size, Image.LANCZOS)
 
 
 def _paste_corner_pip(frame: Image.Image, img: Image.Image, x: int, y: int,
@@ -808,6 +818,7 @@ def run_koubo_cut(
         )
         if not mp4.is_file() or mp4.stat().st_size == 0:
             raise RuntimeError("ffmpeg produced no mp4")
+        _cleanup_livliv_frames(livliv_frames)
         fcpxml = _write_fcpxml(out, duration, mp4)
         ledger["output"] = str(mp4)
         ledger["fcpxml"] = str(fcpxml)
@@ -824,7 +835,18 @@ def run_koubo_cut(
         ledger["status"] = "failed"
         ledger["error"] = f"{type(exc).__name__}: {exc}"
         finalize_status(ledger, "failed")
+        try:
+            _cleanup_livliv_frames(out / "livliv_frames")
+        except Exception:
+            pass
     return ledger
+
+
+def _cleanup_livliv_frames(frames: Path | None) -> None:
+    """Frames are ~1.5 MB each; drop them once the mp4 is muxed."""
+    if frames is None or os.environ.get("HEVI_LIVLIV_KEEP_FRAMES", "").strip() in ("1", "true"):
+        return
+    shutil.rmtree(Path(frames), ignore_errors=True)
 
 
 def _cover(img: Image.Image, size: tuple[int, int]) -> Image.Image:

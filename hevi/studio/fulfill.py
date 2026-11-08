@@ -1029,6 +1029,8 @@ async def _render_koubo_cut_line(order: dict[str, Any], output_dir: Path) -> dic
     ).strip()
     script_text = str(_slot(order, "script_text") or topic or "AI视频剪辑入门").strip()
     duration = float(_slot(order, "duration_s") or 30.0)
+    livliv = _wants_livliv(order)
+    character_id = str(_slot(order, "character_id") or "d03ft")
     cap = _get_cap("koubo_cut.render")
     res = cap.render(
         {
@@ -1037,6 +1039,8 @@ async def _render_koubo_cut_line(order: dict[str, Any], output_dir: Path) -> dic
             "topic": topic,
             "input_video": str(_slot(order, "input_video") or ""),
             "duration_s": duration,
+            "engine": "livliv" if livliv else "wav2lip",
+            "character_id": character_id,
         },
         output_dir,
         duration=duration,
@@ -1057,6 +1061,9 @@ async def _render_koubo_cut_line(order: dict[str, Any], output_dir: Path) -> dic
         "artifact_manifest": manifest.model_dump(mode="json"),
         "quality": quality,
         "render_runtime": "ffmpeg",
+        "avatar_engine": "livliv" if livliv else "wav2lip",
+        **({"character_id": character_id,
+            "character_credit": "Characters: LivLiv (livliv.ai)，AI制作"} if livliv else {}),
     }
 
 

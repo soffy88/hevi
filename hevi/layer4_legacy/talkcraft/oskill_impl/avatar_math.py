@@ -96,6 +96,17 @@ def decode_yoloface_landmarks(
     return [((float(pred[5 + 3 * i, k]) - pad_x) / scale, (float(pred[6 + 3 * i, k]) - pad_y) / scale) for i in range(5)]
 
 
+def musetalk_face_box(*, face: Sequence[float], nose_y: float, w: int, h: int) -> tuple[int, int, int, int]:
+    """Face crop MuseTalk was trained on: from the 68-point landmarks it keeps the
+    jaw width and chin, and puts the top as far above the nose as the chin is
+    below it (mouth sits at ~2/3 height).  Approximated from the yoloface box
+    (width, chin) and its nose landmark.  A forehead-to-chin box instead leaves
+    the mouth too high in the 256 crop and the model barely opens it."""
+    x1, _, x2, y2 = face[:4]
+    top = nose_y - (y2 - nose_y)
+    return (max(0, round(x1)), max(0, round(top)), min(w, round(x2)), min(h, round(y2)))
+
+
 def avatar_square(*, face: Sequence[float], w: int, h: int, factor: float = 1.7) -> tuple[int, int, int]:
     """Square crop (x, y, side) around the face, framed slightly below centre."""
     x1, y1, x2, y2 = face[:4]

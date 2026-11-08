@@ -16,3 +16,42 @@ def test_register_idempotent():
     before = set(caps.names())
     assert register_koubo_cut_capabilities_once() == []
     assert set(caps.names()) == before
+
+
+def test_topic_queries_follow_narration():
+    from hevi.koubo_cut.pipeline import _topic_queries
+
+    assert _topic_queries("AI 视频创作的未来已来，镜头和剪辑交给模型")[:2] == [
+        "artificial intelligence technology",
+        "video production camera",
+    ]
+    assert _topic_queries("城市清晨的第一杯咖啡，街角的风很轻")[:1] == ["coffee cup cafe"]
+    assert _topic_queries("完全无关的一句话，没有任何可识别的主体") == []
+
+
+def test_livliv_render_size_and_layout():
+    from hevi.koubo_cut import pipeline
+
+    assert pipeline.LIVLIV_RENDER_W >= 720
+    x0, y0, x1, y1 = pipeline.LIVLIV_MAIN_BOX
+    assert (x1 - x0, y1 - y0) == (pipeline.LIVLIV_RENDER_W, pipeline.LIVLIV_RENDER_H)
+
+
+def test_run_koubo_cut_accepts_engine_params():
+    import inspect
+    from hevi.koubo_cut.pipeline import run_koubo_cut
+
+    sig = inspect.signature(run_koubo_cut)
+    assert sig.parameters["engine"].default == "wav2lip"
+    assert sig.parameters["character_id"].default == "d03ft"
+
+
+def test_wants_livliv_gating(monkeypatch):
+    from hevi.studio.fulfill import _wants_livliv
+
+    monkeypatch.setenv("LIVLIV_CHARACTERS_ENABLED", "true")
+    assert _wants_livliv({"slots": {"avatar_engine": "livliv"}}) is True
+    assert _wants_livliv({"slots": {"lip_sync_engine": "livliv"}}) is True
+    assert _wants_livliv({"slots": {"avatar_engine": "wav2lip"}}) is False
+    monkeypatch.setenv("LIVLIV_CHARACTERS_ENABLED", "false")
+    assert _wants_livliv({"slots": {"avatar_engine": "livliv"}}) is False

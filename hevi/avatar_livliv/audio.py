@@ -28,9 +28,23 @@ def analyze(audio: Path, fps: int = 30, sr: int = 16000) -> list[dict[str, float
         wav = audio
     with wave.open(str(wav), "rb") as w:
         n = w.getnframes()
+        channels = w.getnchannels()
+        width = w.getsampwidth()
         data = w.readframes(n)
         rate = w.getframerate()
-    samples = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+    dtype = {1: np.int8, 2: np.int16, 4: np.int32}.get(width, np.int16)
+    samples = np.frombuffer(data, dtype=dtype).astype(np.float32)
+    if width == 2:
+        samples /= 32768.0
+    elif width == 4:
+        samples /= 2147483648.0
+    elif width == 1:
+        samples = (samples - 128.0) / 128.0
+    if channels > 1:
+        # The koubo pipeline pads the narration to 44.1 kHz stereo before the
+        # avatar render; without this downmix the duration doubles and the
+        # mouth envelope is read over interleaved samples (lip-sync drift).
+        samples = samples.reshape(-1, channels).mean(axis=1)
     dur = len(samples) / rate
     nframes = max(1, int(math.ceil(dur * fps)))
     out = []
