@@ -41,19 +41,26 @@ def _render_koubo_cut(
     out.mkdir(parents=True, exist_ok=True)
     input_video = str(params.get("input_video") or params.get("input") or "").strip()
     script_text = str(params.get("script_text") or params.get("script") or "").strip()
+    script_lines = params.get("script_lines") or []
+    topic = str(params.get("topic") or "").strip()
+    duration_s = float(params.get("duration_s") or duration or 30.0)
     try:
         ledger = run_koubo_cut(
             input_video=input_video if input_video else None,
             script_text=script_text,
+            script_lines=script_lines,
+            topic=topic,
             out_dir=out,
             seed=seed,
+            duration_s=duration_s,
         )
     except Exception as exc:
         raise CapabilityError(f"koubo_cut.render: pipeline failed: {exc}") from exc
     status = str(ledger.get("status") or "")
     mp4 = Path(ledger.get("output") or (out / "koubo_cut.mp4"))
     if status not in ("delivered", "delivered_with_warnings") or not mp4.is_file():
-        raise CapabilityError(f"koubo_cut.render: pipeline status={status}")
+        detail = str(ledger.get("error") or "")
+        raise CapabilityError(f"koubo_cut.render: pipeline status={status} {detail}".strip())
     duration_s = _probe_duration_s(mp4) or float(ledger.get("duration_s") or 0.0)
     qa = {"status": status, "ledger": ledger}
     return CapabilityResult(mp4=str(mp4), duration_s=duration_s, sha256=compute_sha256(mp4), qa=qa)
@@ -74,6 +81,9 @@ def register_koubo_cut_capabilities_once() -> list[str]:
                 "properties": {
                     "input_video": {"type": "string", "description": "input talking-head video path"},
                     "script_text": {"type": "string", "description": "optional script"},
+                    "script_lines": {"type": "array", "description": "pre-planned narration lines"},
+                    "topic": {"type": "string", "description": "topic when no script is supplied"},
+                    "duration_s": {"type": "number", "description": "target duration"},
                 },
                 "required": [],
                 "additionalProperties": False,

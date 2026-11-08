@@ -20,11 +20,8 @@ tools:
 pipeline:
   name: collage_broll
   stages:
-    - name: metaphor
-      fn: hevi.collage_broll.metaphor:generate_metaphor
-    - name: spec
-      fn: hevi.collage_broll.spec:build_visual_spec
-    - name: render
-      fn: hevi.collage_broll.render:procedural_render
-    - name: qa
-      fn: hevi.collage_broll.qa:run_qa
+    # 语义/视觉规范在 hevi.collage_broll.capabilities 里随 render 一起生成；
+    # 产线阶段只保留异步 dispatch，交给 fulfill 的真实媒体执行器（旧同步
+    # stage 会被 PipelineManifest 拒绝，且会在 staging 期就下载 rembg 模型）。
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

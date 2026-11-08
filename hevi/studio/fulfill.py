@@ -899,8 +899,93 @@ async def _render_handdraw_line(
     }
 
 
+async def _render_collage_broll_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    """Half-tone paper-collage B-roll through the real collage capability."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    from hevi.capabilities import get as _get_cap
+
+    line_id = str(order.get("line_id") or "collage_broll")
+    sentence = str(
+        _slot(order, "sentence")
+        or _slot(order, "topic")
+        or order.get("topic")
+        or "橘猫看海"
+    ).strip()
+    duration = float(_slot(order, "duration_s") or 30.0)
+    cap = _get_cap("collage_broll.render")
+    res = cap.render(
+        {"sentence": sentence, "narration": True},
+        output_dir,
+        duration=duration,
+        aspect="9:16",
+        seed=42,
+    )
+    video = Path(res.mp4)
+    if not video.is_file() or video.stat().st_size == 0:
+        return _blocked("collage_broll 未产出视频", target="none", line_id=line_id)
+    manifest, quality = await _verified_video_manifest(
+        [(video, True, "portrait_video")], require_audio=True
+    )
+    return {
+        "status": "completed",
+        "target": "none",
+        "line_id": line_id,
+        "result_video_path": str(manifest.primary_path() or video),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "render_runtime": "ffmpeg",
+    }
+
+
+async def _render_koubo_cut_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    """Talking-head koubo cut through the real offline renderer (no browser/LLM)."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    from hevi.capabilities import get as _get_cap
+
+    line_id = str(order.get("line_id") or "koubo_cut")
+    topic = str(
+        _slot(order, "topic")
+        or _slot(order, "script_text")
+        or order.get("topic")
+        or ""
+    ).strip()
+    script_text = str(_slot(order, "script_text") or topic or "AI视频剪辑入门").strip()
+    duration = float(_slot(order, "duration_s") or 30.0)
+    cap = _get_cap("koubo_cut.render")
+    res = cap.render(
+        {
+            "script_text": script_text,
+            "script_lines": order.get("script_lines") or [],
+            "topic": topic,
+            "input_video": str(_slot(order, "input_video") or ""),
+            "duration_s": duration,
+        },
+        output_dir,
+        duration=duration,
+        aspect="9:16",
+        seed=42,
+    )
+    video = Path(res.mp4)
+    if not video.is_file() or video.stat().st_size == 0:
+        return _blocked("koubo_cut 未产出视频", target="explainer", line_id=line_id)
+    manifest, quality = await _verified_video_manifest(
+        [(video, True, "portrait_video")], require_audio=True
+    )
+    return {
+        "status": "completed",
+        "target": "explainer",
+        "line_id": line_id,
+        "result_video_path": str(manifest.primary_path() or video),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "render_runtime": "ffmpeg",
+    }
+
+
 _RENDERERS = {
     "handdraw": _render_handdraw_line,
+    "collage_broll": _render_collage_broll_line,
+    "koubo_cut": _render_koubo_cut_line,
     "localization_dub": _render_localization_line,
     "shorts_clip": _render_clip_line,
     "podcast_repurpose": _render_clip_line,

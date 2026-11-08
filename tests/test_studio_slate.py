@@ -235,3 +235,14 @@ async def test_lot_adapter_rejects_unverified_artifact_claim(tmp_path: Path) -> 
         )
     assert out["status"] == "failed"
     assert out["error"] == "FINAL_ARTIFACT_TRUTH_GATE_FAILED"
+
+
+def test_media_lines_have_renderers_and_async_stages() -> None:
+    """Guard the two production lines that used to be silently blocked."""
+    from hevi.pipeline.manifest import resolve_stage_fn
+    from hevi.studio.fulfill import _RENDERERS
+
+    assert {"collage_broll", "koubo_cut"} <= set(_RENDERERS)
+    for rec in list_recipes(refresh=True):
+        for stage in rec.pipeline.stages:
+            resolve_stage_fn(stage.fn)  # sync stage refs raise ValueError

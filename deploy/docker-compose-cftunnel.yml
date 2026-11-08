@@ -93,6 +93,8 @@ services:
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
+      U2NET_HOME: /u2net
       HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
       # talkcraft 主播线(talking_head / avatar_spokesperson 订单 renderer=talkcraft):
       # Remotion 子工程在镜像内 /app/hevi-remotion-talkcraft;Wav2Lip-GAN-96 + yoloface ONNX
@@ -104,6 +106,7 @@ services:
       HEVI_TALKCRAFT_THREADS: "2"
     volumes:
       - /home/soffy/models:/models:ro
+      - /home/soffy/.u2net:/u2net:ro
       # 零成本线 Piper 音色(zh_CN-huayan-medium / en_US-ryan-medium),宿主只读
       - ${HEVI_PIPER_VOICES_DIR:-/data/soffy/projects/hevi-zero/voices}:/opt/piper/voices:ro
       # 零成本线缓存(Pexels 素材/whisper 中间件),容器重建不丢
@@ -214,6 +217,8 @@ services:
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
+      U2NET_HOME: /u2net
       HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
       HEVI_TALKCRAFT_REMOTION: /app/hevi-remotion-talkcraft
       HEVI_TALKCRAFT_AVATAR_MODELS: /models/wav2lip
@@ -224,6 +229,7 @@ services:
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
     volumes:
       - /home/soffy/models:/models:ro
+      - /home/soffy/.u2net:/u2net:ro
       - ${HEVI_PIPER_VOICES_DIR:-/data/soffy/projects/hevi-zero/voices}:/opt/piper/voices:ro
       - hevi-zero-cache:/app/.cache/hevi/zerolines
       - /home/soffy/Wan2GP:/Wan2GP:ro
@@ -272,6 +278,8 @@ services:
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
+      # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
+      U2NET_HOME: /u2net
       HEVI_ZERO_CACHE: /app/.cache/hevi/zerolines
       HEVI_TALKCRAFT_REMOTION: /app/hevi-remotion-talkcraft
       HEVI_TALKCRAFT_AVATAR_MODELS: /models/wav2lip
@@ -281,6 +289,7 @@ services:
       HEVI_ASSET_ROOT: /app/data/workspace/assets
       EXPLAINER_CACHE_DIR: /app/output/explainer_cache
     volumes:
+      - /home/soffy/.u2net:/u2net:ro
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
