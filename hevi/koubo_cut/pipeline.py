@@ -603,7 +603,7 @@ def _render_frames(
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
             "-c:a", "aac", "-b:a", "128k", "-t", f"{duration:.3f}",
             "-metadata", "title=koubo_cut",
-            "-metadata", "comment=Characters: LivLiv (livliv.ai)，AI制作",
+            "-metadata", "comment=AI 生成 · Characters: LivLiv (livliv.ai)",
             str(output),
         ],
         stdin=subprocess.PIPE,
@@ -682,6 +682,13 @@ def _render_frames(
                 d.rounded_rectangle((50, 60, badge_w, 132), radius=20, fill=(20, 26, 36))
                 d.text((76, 76), topic_badge, font=title_font, fill=(245, 239, 224))
             d.text((W - 300, 78), "口播精剪", font=tag_font, fill=(120, 90, 60))
+            # AI 生成标识: every deliverable (not only LivLiv) carries the
+            # on-screen depth-synthesis label required by the PRC AIGC rules.
+            ai_label = "AI 生成"
+            ai_w = int(d.textlength(ai_label, font=tag_font))
+            d.rounded_rectangle((W - 60 - ai_w - 20, 132, W - 60, 180), radius=10,
+                                fill=(18, 22, 30))
+            d.text((W - 60 - ai_w - 10, 138), ai_label, font=tag_font, fill=(250, 248, 243))
             if livliv_frames is not None:
                 # AI production disclosure + character credit travels on-screen.
                 tw = int(d.textlength(LIVLIV_CREDIT, font=credit_font))

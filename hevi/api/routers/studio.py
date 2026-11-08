@@ -14,6 +14,8 @@ from pydantic import BaseModel, Field
 
 from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
+from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.quota import QuotaError, get_quota_service, requested_duration_seconds
 from hevi.studio.assets import list_assets
 from hevi.studio.conversational_edit import execute_edit
 from hevi.studio.recipes import get_recipe, launch_strict, line_availability, list_recipes
@@ -177,22 +179,48 @@ async def get_shot_cards(
 @router.post("/slates")
 async def create_slate(
     req: SlateRequest,
-    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
     if launch_strict() and line_availability(req.line_id) != "ga":
         raise HTTPException(
             status_code=403,
             detail=f"该产线（{req.line_id}）尚未开放，当前处于内测阶段",
         )
+    quota_job = ""
+    quota = None
+    if req.execute:
+        quota = get_quota_service(await get_hevi_pg_pool())
+        duration = requested_duration_seconds(
+            duration_s=req.slots.get("duration_s") or req.slots.get("target_duration_s"),
+            duration_archetype=str(req.slots.get("duration_archetype") or "") or None,
+        )
+        try:
+            quota_job = await quota.reserve(
+                str(user["id"]), kind="studio", duration_s=duration or 30
+            )
+        except QuotaError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.detail()) from exc
     slate = Slate(
         line_id=req.line_id,
         slots=req.slots,
         slate_id=req.slate_id or "",
         execute=req.execute,
     )
-    result = await run_slate(slate)
+    try:
+        result = await run_slate(slate)
+    except Exception:
+        if quota is not None:
+            await quota.release(quota_job, reason="slate_exception")
+        raise
     if result.status == "failed" and result.reason.startswith("unknown line"):
+        if quota is not None:
+            await quota.release(quota_job, reason="unknown_line")
         raise HTTPException(status_code=404, detail=result.reason)
+    if quota is not None:
+        if result.status == "completed" and result.data.get("result_video_path"):
+            await quota.complete(quota_job)
+        else:
+            await quota.release(quota_job, reason=result.reason or result.status)
     return result.to_dict()
 
 

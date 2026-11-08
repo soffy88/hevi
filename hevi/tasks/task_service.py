@@ -755,6 +755,25 @@ class TaskService:
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Create a task from the canonical ProductionRequest boundary."""
+        # S10 public beta: every submission path (not only the HTTP routers)
+        # is capped at 60 s.  This is a safety net; the routers also return a
+        # friendlier quota error before reserving a slot.
+        from hevi.quota import (
+            beta_free_enabled,
+            requested_duration_seconds,
+            resolve_max_duration_s,
+        )
+
+        if beta_free_enabled():
+            duration = requested_duration_seconds(
+                duration_s=(request.options or {}).get("target_duration_s"),
+                duration_archetype=request.duration_archetype,
+            )
+            if duration is not None and duration > resolve_max_duration_s():
+                raise ValueError(
+                    f"公测期每条成片最长 {resolve_max_duration_s()} 秒，"
+                    "请缩短时长后再试。"
+                )
         args = request.to_task_args()
         args["execution_binding"] = execution_binding(request.source).model_dump(mode="json")
         topic = str(args.pop("topic"))

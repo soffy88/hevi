@@ -21,6 +21,7 @@ executor (``create_node_executor``) and a reviewer.
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -49,6 +50,10 @@ class ExecuteOptions:
     llm_rewriter: Any = None
     vision_backend: Any = None
     enqueue_review: bool = False
+    # Nodes in the same topological layer are independent.  Rendering them in
+    # parallel is what keeps a 9-sentence koubo graph under the S10 180 s target;
+    # ``1`` keeps the old strictly sequential order for debugging.
+    parallelism: int = 0
 
 
 @dataclass
@@ -153,25 +158,34 @@ class IncrementalExecutor:
 
         runs: dict[str, NodeRun] = {}
         started = time.monotonic()
+        parallel = self._parallelism(opts)
         for layer in layers:
-            for node_key in layer:
-                if node_key not in run_set:
-                    continue
-                node = node_by_id.get(node_key)
-                if node is None:
-                    continue
-                upstream = {
-                    e.from_node_id: outputs.get(e.from_node_id)
-                    for e in edges
-                    if e.to_node_id == node_key
-                }
-                run = await self._run_node(
-                    graph_id,
-                    node,
-                    upstream,
-                    opts,
-                    outputs,
+            batch = [
+                node_by_id[key]
+                for key in layer
+                if key in run_set and node_by_id.get(key) is not None
+            ]
+            if parallel > 1 and len(batch) > 1:
+                layer_runs = await self._run_layer_parallel(
+                    graph_id, batch, edges, opts, outputs, parallel
                 )
+            else:
+                layer_runs = []
+                for node in batch:
+                    upstream = {
+                        e.from_node_id: outputs.get(e.from_node_id)
+                        for e in edges
+                        if e.to_node_id == node.node_id
+                    }
+                    run = await self._run_node(
+                        graph_id,
+                        node,
+                        upstream,
+                        opts,
+                        outputs,
+                    )
+                    layer_runs.append((node.node_id, run))
+            for node_key, run in layer_runs:
                 runs[node_key] = run
                 outputs[node_key] = run.output
                 if not run.success:
@@ -215,6 +229,44 @@ class IncrementalExecutor:
             "retries": {k: r.attempts - 1 for k, r in runs.items() if r.attempts > 1},
             "elapsed_s": elapsed,
         }
+
+    @staticmethod
+    def _parallelism(opts: ExecuteOptions) -> int:
+        if opts.parallelism > 0:
+            return max(1, opts.parallelism)
+        try:
+            return max(1, int(os.getenv("HEVI_CANVAS_PARALLEL", "3")))
+        except ValueError:
+            return 4
+
+    async def _run_layer_parallel(
+        self,
+        graph_id: str,
+        batch: list[CanvasNode],
+        edges: list[CanvasEdge],
+        opts: ExecuteOptions,
+        outputs: dict[str, Any],
+        parallelism: int,
+    ) -> list[tuple[str, NodeRun]]:
+        """Run independent nodes of one layer, preserving deterministic order."""
+        sem = asyncio.Semaphore(parallelism)
+
+        async def one(node: CanvasNode) -> tuple[str, NodeRun]:
+            # Snapshot the upstream results that already exist from earlier
+            # layers.  Nodes in the same layer never depend on each other.
+            upstream = {
+                e.from_node_id: outputs.get(e.from_node_id)
+                for e in edges
+                if e.to_node_id == node.node_id
+            }
+            async with sem:
+                run = await self._run_node(graph_id, node, upstream, opts, outputs)
+            return node.node_id, run
+
+        completed = await asyncio.gather(*(one(node) for node in batch))
+        order = {node.node_id: index for index, node in enumerate(batch)}
+        completed.sort(key=lambda item: order.get(item[0], 0))
+        return completed
 
     async def _run_node(
         self,

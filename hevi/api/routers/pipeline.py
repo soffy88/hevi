@@ -22,6 +22,7 @@ from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.production.capabilities import capability_catalog
 from hevi.production.contracts import ProductionRequest
 from hevi.provider_policy.runtime import inspect_providers
+from hevi.quota import QuotaError, get_quota_service, requested_duration_seconds
 from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.repository import TaskRepository
 from hevi.tasks.task_service import TaskService
@@ -180,6 +181,19 @@ async def generate_unified(
     options["adapter_type"] = body.adapter_type
     options["judge"] = bool(cfg.judge)
     options["judge_backend"] = cfg.judge_backend
+    quota = get_quota_service(svc.repository.pool)
+    duration = requested_duration_seconds(
+        duration_s=cfg.options.get("target_duration_s"),
+        duration_archetype=cfg.duration_archetype,
+    )
+    try:
+        quota_job = await quota.reserve(
+            str(user["id"]),
+            kind="pipeline",
+            duration_s=duration,
+        )
+    except QuotaError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail()) from exc
     try:
         task = await svc.create_production(
             ProductionRequest(
@@ -198,7 +212,9 @@ async def generate_unified(
             user_id=str(user["id"]),
         )
         task = await svc.submit_task(task["id"])
+        await quota.attach_task(quota_job, str(task["id"]))
     except InsufficientCredits as exc:
+        await quota.release(quota_job, reason="insufficient_credits")
         raise HTTPException(
             status_code=402,
             detail={
@@ -209,6 +225,7 @@ async def generate_unified(
             },
         ) from exc
     except CostLimitExceeded as exc:
+        await quota.release(quota_job, reason="cost_limit_exceeded")
         raise HTTPException(
             status_code=402,
             detail={
@@ -219,6 +236,7 @@ async def generate_unified(
             },
         ) from exc
     except ValueError as exc:
+        await quota.release(quota_job, reason="invalid_request")
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if task.get("status") != "queued":
         schedule_local_compat(background_tasks, svc, task["id"])
@@ -275,10 +293,23 @@ async def create_production(
                 "options": normalized_options,
             }
         )
+    quota = get_quota_service(svc.repository.pool)
+    duration = requested_duration_seconds(
+        duration_s=body.options.get("target_duration_s"),
+        duration_archetype=body.duration_archetype,
+    )
+    try:
+        quota_job = await quota.reserve(
+            str(user["id"]), kind="pipeline", duration_s=duration
+        )
+    except QuotaError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail()) from exc
     try:
         task = await svc.create_production(body, user_id=str(user["id"]))
         task = await svc.submit_task(task["id"])
+        await quota.attach_task(quota_job, str(task["id"]))
     except InsufficientCredits as exc:
+        await quota.release(quota_job, reason="insufficient_credits")
         raise HTTPException(
             status_code=402,
             detail={
@@ -289,6 +320,7 @@ async def create_production(
             },
         ) from exc
     except CostLimitExceeded as exc:
+        await quota.release(quota_job, reason="cost_limit_exceeded")
         raise HTTPException(
             status_code=402,
             detail={
@@ -299,6 +331,7 @@ async def create_production(
             },
         ) from exc
     except ValueError as exc:
+        await quota.release(quota_job, reason="invalid_request")
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if task.get("status") != "queued":

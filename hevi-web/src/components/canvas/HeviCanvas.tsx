@@ -23,6 +23,7 @@ import { validateEdge, NODE_META } from '@/lib/canvas-rules';
 import { canvasApi, USE_MOCK } from '@/lib/api-client';
 import type { NodeType } from '@/types/api';
 import { NodeInspector } from './NodeInspector';
+import { BetaQuota } from '../home/BetaQuota';
 import type { StudioLine, StudioTool } from './NodePalette';
 
 const nodeTypes = { hevi: HeviNode };
@@ -370,6 +371,7 @@ function CanvasInner() {
             {executing ? '执行中…' : '▷ 执行画布'}
           </button>
           <span className="hevi-topbar-hint">按 / 唤起创意辅助</span>
+          <BetaQuota />
         </div>
 
         <ReactFlow

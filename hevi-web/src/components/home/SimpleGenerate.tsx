@@ -23,23 +23,21 @@ import { enhanceIdea, splitIdeaScenes, IDEA_STYLES, type IdeaStyle } from '@/lib
 import { humanizeTaskError } from '@/lib/errorMessages';
 import { mockEstimate } from '@/lib/mock-data';
 import { Gallery } from './Gallery';
+import { BetaQuota } from './BetaQuota';
 import { ProviderSelector } from './ProviderSelector';
 import { PRESETS } from '@/lib/mock-data';
 
+// 公测期统一 60 秒以内（后端强制执行），不再暴露分钟级档位。
 const CATEGORIES: { id: GalleryCategory; label: string; durations: DurationArchetype[]; defaultAspect: AspectRatio }[] = [
-  { id: 'long_video',       label: '长视频',   durations: ['15-45min', '45min+'], defaultAspect: '16:9' },
-  { id: 'short_video',      label: '短视频',   durations: ['short', '1-5min'],    defaultAspect: '9:16' },
-  { id: 'avatar_narration', label: '头像解说', durations: ['1-5min', '5-15min'],  defaultAspect: '9:16' },
-  { id: 'animation',        label: '动画',     durations: ['1-5min', '5-15min'],  defaultAspect: '16:9' },
-  { id: 'image',            label: '图片',     durations: [],                     defaultAspect: '1:1' },
+  { id: 'long_video',       label: '长视频',   durations: ['short'], defaultAspect: '16:9' },
+  { id: 'short_video',      label: '短视频',   durations: ['short'], defaultAspect: '9:16' },
+  { id: 'avatar_narration', label: '头像解说', durations: ['short'], defaultAspect: '9:16' },
+  { id: 'animation',        label: '动画',     durations: ['short'], defaultAspect: '16:9' },
+  { id: 'image',            label: '图片',     durations: [],        defaultAspect: '1:1' },
 ];
 
 const DURATIONS: { id: DurationArchetype; label: string }[] = [
-  { id: 'short', label: '极速单片 (~10秒·连贯单镜头)' },
-  { id: '1-5min', label: '1–5 分钟 (多镜头分场景)' },
-  { id: '5-15min', label: '5–15 分钟' },
-  { id: '15-45min', label: '15–45 分钟' },
-  { id: '45min+', label: '45 分钟+' },
+  { id: 'short', label: '≤60 秒（公测统一上限）' },
 ];
 
 const QUALITIES: { id: QualityProfile; label: string }[] = [
@@ -143,7 +141,7 @@ export function SimpleGenerate() {
     setCategory(item.category);
     setTopic(item.prompt);
     const gp = item.gen_params;
-    if (gp.duration_archetype) setDuration(gp.duration_archetype);
+    setDuration('short');
     if (gp.style_preset) setStyle(gp.style_preset);
     if (gp.quality_profile) setQuality(gp.quality_profile);
     if (gp.aspect_ratio) setAspect(gp.aspect_ratio);
@@ -500,6 +498,8 @@ export function SimpleGenerate() {
             {EXECUTION_PRESETS.map(preset => <button type="button" key={preset.id} data-active={executionPreset === preset.id ? 'true' : undefined} onClick={() => setExecutionPreset(preset.id)}><strong>{preset.label}</strong><span>{preset.hint}</span></button>)}
           </div>
         </div>
+
+        <BetaQuota refreshKey={taskId} />
 
         {/* 预估 + 生成 */}
         <div className="hevi-home__footer">

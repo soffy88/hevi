@@ -19,6 +19,11 @@ class GraphService:
         self._repo = repo
         self._nodes = node_store
 
+    @property
+    def pool(self):
+        """The PostgreSQL pool backing this service (S10 quota enforcement)."""
+        return self._repo._pool
+
     async def save_graph(
         self,
         *,

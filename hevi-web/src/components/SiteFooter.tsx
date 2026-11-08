@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 /**
- * 全站页脚：只放稳定、公开的入口。法律法规页当前为草案，页面上会明确标注。
+ * 全站页脚：只放稳定、公开的入口。
  */
 export function SiteFooter() {
   return (
@@ -11,7 +11,7 @@ export function SiteFooter() {
         <Link href="/privacy">隐私政策</Link>
         <Link href="/terms">用户协议</Link>
       </nav>
-      <span className="hevi-site-footer__note">法律文本为草案，待运营方确认</span>
+      <span className="hevi-site-footer__note">© 微亚人工智能有限公司 · ceo@aiinote.com</span>
     </footer>
   );
 }

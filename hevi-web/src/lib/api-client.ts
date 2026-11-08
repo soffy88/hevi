@@ -579,6 +579,20 @@ export const galleryApi = {
     authedReq<GalleryItem>('/api/gallery', { method: 'POST', body: JSON.stringify(payload) }),
 };
 
+// ── 公测配额(§S10,需登录):今日剩余成片次数 ─────────────────────────────
+export type QuotaStatus = {
+  beta_free: boolean;
+  daily_limit: number;
+  used_today: number;
+  remaining: number;
+  max_duration_s: number;
+  max_concurrent: number;
+  active_jobs: number;
+};
+export const quotaApi = {
+  status: () => authedReq<QuotaStatus>('/api/quota/status'),
+};
+
 // ── 系列 / 风格包(§3 L2,需登录)──────────────────────
 import type { Series, SeriesCreatePayload, Episode, StylePack, StylePackCreatePayload } from '@/types/api';
 export const seriesApi = {

@@ -17,6 +17,7 @@ from hevi.canvas.graph_repository import GraphRepository
 from hevi.canvas.graph_service import GraphService
 from hevi.canvas.node_store import PgNodeStore
 from hevi.db.pg_pool import get_hevi_pg_pool
+from hevi.quota import QuotaError, get_quota_service
 
 router = APIRouter(prefix="/canvas", tags=["canvas"])
 
@@ -308,8 +309,27 @@ async def _do_execute_graph(
     from hevi.canvas.preflight import PreflightError
 
     await _load_owned_graph(graph_id, svc, user)  # owner check before spending resources
+    quota = get_quota_service(svc.pool)
+    counts_as_film = body.scope != "selected"
+    duration = body.target_duration_s
+    if duration is None:
+        graph = await svc.load_graph(graph_id) or {}
+        durations = [
+            float((node.get("config") or {}).get("duration_s") or 0)
+            for node in (graph.get("nodes_json") or [])
+        ]
+        duration = max(durations) if durations else None
     try:
-        return await exe.execute_graph(
+        quota_job = await quota.reserve(
+            str(user["id"]),
+            kind="canvas",
+            counts_as_film=counts_as_film,
+            duration_s=duration,
+        )
+    except QuotaError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail()) from exc
+    try:
+        result = await exe.execute_graph(
             graph_id,
             on_error=body.on_error,
             budget_usd=body.budget_usd,
@@ -319,11 +339,24 @@ async def _do_execute_graph(
             max_retries=max(0, int(body.max_retries)),
         )
     except ValueError as exc:
+        await quota.release(quota_job, reason="graph_not_found")
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PreflightError as exc:
+        await quota.release(quota_job, reason="preflight_failed")
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     except Exception as exc:
+        await quota.release(quota_job, reason="execute_exception")
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    ran = list(result.get("ran") or [])
+    failed = list(result.get("failed") or [])
+    delivered = result.get("status") == "completed" or (
+        result.get("status") == "partial" and bool(ran) and len(failed) < len(ran)
+    )
+    if delivered:
+        await quota.complete(quota_job)
+    else:
+        await quota.release(quota_job, reason=str(result.get("status") or "unknown"))
+    return result
 
 
 # ── Primary routes (frontend-compatible paths) ────────────────────────────────

@@ -22,6 +22,7 @@ from hevi.credits.repository import CreditRepository
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.production.artifacts import ArtifactManifest, manifest_from_task
 from hevi.production.contracts import ProductionRequest
+from hevi.quota import QuotaError, get_quota_service, requested_duration_seconds
 from hevi.tasks.dispatch import schedule_local_compat
 from hevi.tasks.progress import get_task_progress_stream
 from hevi.tasks.repository import TaskRepository
@@ -165,6 +166,17 @@ async def _create_task(
     background_tasks: BackgroundTasks,
     idempotency_key: str | None = None,
 ) -> dict[str, Any]:
+    quota = get_quota_service(svc.repository.pool)
+    try:
+        quota_job = await quota.reserve(
+            str(user["id"]),
+            kind="task",
+            duration_s=requested_duration_seconds(
+                duration_archetype=body.duration_archetype
+            ),
+        )
+    except QuotaError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail()) from exc
     try:
         # E3: expand preset → provider defaults; explicit fields still override.
         resolved = resolve_preset(
@@ -233,12 +245,14 @@ async def _create_task(
         # compatibility helper below is restricted to non-PostgreSQL local
         # adapters and never runs billable work in FastAPI BackgroundTasks.
         task = await svc.submit_task(task["id"])
+        await quota.attach_task(quota_job, str(task["id"]))
 
         if task["status"] != "queued":
             schedule_local_compat(background_tasks, svc, task["id"])
 
         return _serialize_task(task)
     except InsufficientCredits as exc:
+        await quota.release(quota_job, reason="insufficient_credits")
         raise HTTPException(
             status_code=402,
             detail={
@@ -248,7 +262,11 @@ async def _create_task(
             },
         ) from exc
     except ValueError as exc:
+        await quota.release(quota_job, reason="invalid_request")
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception:
+        await quota.release(quota_job, reason="task_create_exception")
+        raise
 
 
 @router.post("/estimate")

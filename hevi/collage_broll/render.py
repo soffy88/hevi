@@ -471,6 +471,14 @@ def procedural_render(
             dx, dy, _rot = _settle(idx, t, float(element["arrive"]))
             frame.alpha_composite(element["img"], (element["x"] + dx, element["y"] + dy))
         frame = _camera(frame, t)
+        # AI 生成标识: fixed pixel-space badge, never moved by the camera drift.
+        d = ImageDraw.Draw(frame)
+        ai_label = "AI 生成"
+        ai_font = _font(26)
+        ai_w = int(d.textlength(ai_label, font=ai_font))
+        d.rounded_rectangle((W - ai_w - 58, 42, W - 24, 88), radius=10,
+                            fill=(18, 22, 30, 235))
+        d.text((W - ai_w - 41, 50), ai_label, font=ai_font, fill=(*CREAM, 255))
         if narration:
             bar = Image.new("RGBA", (W, 118), (0, 0, 0, 205))
             frame.alpha_composite(bar, (0, H - 118))
@@ -505,7 +513,7 @@ def procedural_render(
         cmd += ["-c:a", "aac", "-b:a", "128k", "-t", f"{duration:.3f}"]
     else:
         cmd += ["-an"]
-    cmd += [str(mp4_path)]
+    cmd += ["-metadata", "comment=AI 生成 · hevi 合成", str(mp4_path)]
 
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
                             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)

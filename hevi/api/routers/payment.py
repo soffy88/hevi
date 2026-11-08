@@ -12,6 +12,7 @@ from hevi.payment.paddle_service import PaddleService
 from hevi.payment.pricing_plans import CREDIT_PLANS
 from hevi.payment.repository import OrderRepository
 from hevi.payment.webhook_handler import WebhookHandler
+from hevi.quota import beta_free_enabled
 
 router = APIRouter(prefix="/payment", tags=["payment"])
 
@@ -60,6 +61,14 @@ async def create_checkout(
     svc: Annotated[OrderService, Depends(get_order_service)],
 ) -> dict[str, str]:
     """Initialize payment and get checkout URL."""
+    if beta_free_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "beta_free",
+                "message": "公测期全部功能免费，暂未开放购买。正式收费前会提前通知。",
+            },
+        )
     try:
         url = await svc.create_checkout(
             user_id=str(user["id"]), email=user["email"], plan_id=plan_id

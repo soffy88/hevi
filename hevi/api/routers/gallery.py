@@ -49,11 +49,10 @@ async def get_gallery_service(
 
 @router.get("")
 async def list_gallery(
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-
     svc: Annotated[GalleryService, Depends(get_gallery_service)],
     category: str | None = None,
 ) -> dict[str, Any]:
+    """Public showreel (no login): the home page and /gallery read this."""
     rows = await svc.list_gallery(category=category)
     items = [_row_to_item(dict(r)) for r in rows]
     categories = list({it["category"] for it in items})
@@ -85,8 +84,6 @@ async def create_gallery_item(
 
 @router.get("/{item_id}")
 async def get_gallery_item(
-    user: Annotated[dict[str, Any], Depends(get_current_user)],
-
     item_id: str,
     svc: Annotated[GalleryService, Depends(get_gallery_service)],
 ) -> dict[str, Any]:

@@ -28,6 +28,7 @@ from hevi.api.routers.director_pipeline import router as director_pipeline_route
 from hevi.api.routers.explainer import router as explainer_router
 from hevi.api.routers.fx import router as fx_router
 from hevi.api.routers.gallery import router as gallery_router
+from hevi.api.routers.quota import router as quota_router
 from hevi.api.routers.cinematic import router as cinematic_router
 from hevi.api.routers.history_series import router as history_series_router
 from hevi.api.routers.capabilities import router as capabilities_router
@@ -227,6 +228,7 @@ app.include_router(fx_router, prefix="/api")
 app.include_router(mpt_router, prefix="/api")
 app.include_router(narrator_router, prefix="/api")
 app.include_router(gallery_router, prefix="/api")
+app.include_router(quota_router, prefix="/api")
 app.include_router(voice_studio_router, prefix="/api")
 app.include_router(voice_platform_router, prefix="/api")
 app.include_router(voice_openai_router)
