@@ -1,0 +1,22 @@
+[Unit]
+Description=HEVI host LLM proxy (Docker bridge only, OpenCode Zen free model)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=soffy
+Group=soffy
+Environment=HEVI_LLM_PROXY_HOSTS=172.17.0.1,172.20.0.1
+Environment=HEVI_LLM_PROXY_PORT=20129
+Environment=HEVI_HOST_LLM_MODEL=deepseek-v4.1-flash
+ExecStart=/usr/bin/python3 /opt/hevi-llm-proxy/host_llm_proxy.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

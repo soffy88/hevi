@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import time
 import uuid
 
 from hevi.core.config import settings
@@ -25,6 +27,10 @@ class SchedulerService:
         self.owner_id = owner_id or f"scheduler-{uuid.uuid4()}"
         self.poll_interval = poll_interval or settings.scheduler_poll_interval_s
         self._running = False
+        self._retention_interval = float(
+            os.getenv("HEVI_OUTPUT_RETENTION_INTERVAL_S", "86400")
+        )
+        self._last_retention = time.monotonic()
 
     def stop(self) -> None:
         self._running = False
@@ -47,11 +53,32 @@ class SchedulerService:
             candidate_limit=settings.scheduler_candidate_limit,
         )
 
+    async def run_retention(self) -> dict[str, object] | None:
+        """Daily output cleanup; only the elected leader runs it."""
+        if not await self.repository.acquire_leader(
+            settings.scheduler_leader_name,
+            self.owner_id,
+            lease_seconds=settings.scheduler_lease_seconds,
+        ):
+            return None
+        from hevi.scheduler.retention import purge_intermediate_outputs
+
+        try:
+            summary = await asyncio.to_thread(purge_intermediate_outputs)
+        except Exception:
+            logger.exception("output retention failed")
+            return None
+        logger.info("output retention: %s", summary.as_dict())
+        return summary.as_dict()
+
     async def run(self) -> None:
         self._running = True
         logger.info("scheduler service started owner=%s", self.owner_id)
         while self._running:
             try:
+                if time.monotonic() - self._last_retention >= self._retention_interval:
+                    await self.run_retention()
+                    self._last_retention = time.monotonic()
                 scheduled = await self.run_once()
                 if scheduled:
                     logger.info("scheduler dispatched %d task(s)", scheduled)

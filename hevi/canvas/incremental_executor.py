@@ -116,7 +116,12 @@ class IncrementalExecutor:
         opts = options or ExecuteOptions()
         nodes_json = list(graph.get("nodes_json") or graph.get("nodes") or [])
         edges_json = list(graph.get("edges_json") or graph.get("edges") or [])
-        nodes = [_node_model(n) for n in nodes_json]
+        nodes = [
+            _node_model(n).model_copy(
+                update={"config": {**(n.get("config") or {}), "graph_id": str(graph_id)}}
+            )
+            for n in nodes_json
+        ]
         edges = [CanvasEdge.model_validate(e) for e in edges_json]
         node_by_id = {n.node_id: n for n in nodes}
 

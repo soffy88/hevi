@@ -81,9 +81,18 @@ def _out_dir(node: Any) -> Path:
     cfg = _cfg(node)
     raw = str(cfg.get("out_dir") or "").strip()
     base = Path(raw) if raw else Path("output/canvas/koubo")
+    # One directory per graph: node ids repeat across graphs and a shared root
+    # let two concurrent graphs overwrite each other's media.
+    graph_id = str(cfg.get("graph_id") or cfg.get("canvas_graph_id") or "").strip()
+    if graph_id:
+        base = base / _safe_segment(graph_id)
     node_dir = base / str(node.node_id)
     node_dir.mkdir(parents=True, exist_ok=True)
     return node_dir
+
+
+def _safe_segment(value: str) -> str:
+    return "".join(ch for ch in str(value) if ch.isalnum() or ch in "-_.")[:80] or "graph"
 
 
 def _input_video(path: Path, duration: float) -> None:
@@ -355,7 +364,11 @@ def _run_segment(node: Any, upstream: dict[str, Any]) -> dict[str, Any]:
     if presenter is None:
         presenter, _mb, _mc = kp._presenter_layer()
     _p, mouth_box, mouth_center = kp._presenter_layer()
-    pip = kp._pip_image(kp._base_background())
+    # The corner avatar window must show the presenter: cropping the bare paper
+    # background produced the blank beige block users reported.
+    pip_source = kp._base_background()
+    pip_source.paste(presenter, (0, 0), presenter)
+    pip = kp._pip_image(pip_source)
     card = ""
     for item in evidence.get("evidence") or []:
         if isinstance(item, dict) and item.get("ok") and item.get("card_path"):

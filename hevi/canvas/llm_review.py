@@ -29,7 +29,6 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_FAILED_UNTIL = 0.0
 _FAIL_COOLDOWN_S = float(os.getenv("HEVI_CANVAS_LLM_COOLDOWN_S", "600"))
 _DEFAULT_TIMEOUT_S = float(os.getenv("HEVI_CANVAS_LLM_TIMEOUT_S", "25"))
 
@@ -84,23 +83,37 @@ def _run_sync(factory: Any, timeout: float) -> Any:
         return future.result(timeout=timeout)
 
 
-def _resolve() -> tuple[str, Any] | None:
-    global _FAILED_UNTIL
-    if time.monotonic() < _FAILED_UNTIL:
-        return None
-    try:
-        from hevi.providers.free_llm import resolve_free_llm
+_WORKING: list[str] = []
+_COOLDOWN: dict[str, float] = {}
 
-        channel, caller = resolve_free_llm("auto")
-        return channel, caller
+
+def _candidates() -> list[tuple[str, Any]]:
+    """Configured free channels, preferred/working channel first."""
+    try:
+        from hevi.providers.free_llm import available_channels, build_channel_caller
+
+        names = available_channels()
     except Exception as exc:
         logger.warning("canvas LLM review unavailable: %s", exc)
-        _FAILED_UNTIL = time.monotonic() + _FAIL_COOLDOWN_S
-        return None
+        return []
+    preferred = os.getenv("HEVI_CANVAS_LLM_CHANNEL", "").strip()
+    if preferred:
+        names = [preferred] + [name for name in names if name != preferred]
+    names = [name for name in _WORKING if name in names] + [
+        name for name in names if name not in _WORKING
+    ]
+    pairs: list[tuple[str, Any]] = []
+    now = time.monotonic()
+    for name in names:
+        if now < _COOLDOWN.get(name, 0.0):
+            continue
+        caller = build_channel_caller(name)
+        if caller is not None:
+            pairs.append((name, caller))
+    return pairs
 
 
 def _call(channel: str, caller: Any, prompt: str, *, max_tokens: int) -> str:
-    global _FAILED_UNTIL
     timeout = _DEFAULT_TIMEOUT_S
 
     async def factory() -> dict[str, Any]:
@@ -114,20 +127,39 @@ def _call(channel: str, caller: Any, prompt: str, *, max_tokens: int) -> str:
             timeout=timeout,
         )
 
-    try:
-        response = _run_sync(factory, timeout + 5)
-    except Exception as exc:
-        logger.warning("canvas LLM channel %s failed: %s", channel, exc)
-        _FAILED_UNTIL = time.monotonic() + _FAIL_COOLDOWN_S
-        raise
+    response = _run_sync(factory, timeout + 5)
     content = response.get("content") if isinstance(response, dict) else None
     return str(content or "")
 
 
-def _reviewer_factory(channel: str, caller: Any) -> Any:
+def _call_any(prompt: str, *, max_tokens: int) -> tuple[str, str]:
+    """Try the configured channels in order; return the first that answers."""
+    pairs = _candidates()
+    if not pairs:
+        raise RuntimeError("没有可用的免费 LLM 通道")
+    last: Exception | None = None
+    for channel, caller in pairs:
+        try:
+            content = _call(channel, caller, prompt, max_tokens=max_tokens)
+        except Exception as exc:
+            logger.warning("canvas LLM channel %s failed: %s", channel, exc)
+            _COOLDOWN[channel] = time.monotonic() + _FAIL_COOLDOWN_S
+            last = exc
+            continue
+        _WORKING[:] = [channel]
+        return channel, content
+    raise RuntimeError(f"所有免费 LLM 通道均失败：{last}")
+
+
+def _reviewer_factory(channel: str | None = None, caller: Any = None) -> Any:
     def review(text: str, cfg: dict[str, Any]) -> dict[str, Any]:
         prompt = _REVIEW_PROMPT.format(text=str(text)[:6000])
-        content = _call(channel, caller, prompt, max_tokens=600)
+        if caller is not None:
+            name = str(channel or "mock")
+            content = _call(name, caller, prompt, max_tokens=600)
+            channel_name = name
+        else:
+            channel_name, content = _call_any(prompt, max_tokens=600)
         data = _parse_json(content)
         if not data:
             # A non-JSON answer is a failed review, not a node failure.
@@ -135,7 +167,7 @@ def _reviewer_factory(channel: str, caller: Any) -> Any:
                 "result": "warn",
                 "issues": ["LLM 审稿返回非 JSON，已忽略"],
                 "suggested_prompt": "",
-                "model": f"hevi.canvas.llm_review/{channel}",
+                "model": f"hevi.canvas.llm_review/{channel_name}",
             }
         verdict = str(data.get("result") or "").lower().strip()
         if verdict not in ("pass", "warn", "fail"):
@@ -147,16 +179,19 @@ def _reviewer_factory(channel: str, caller: Any) -> Any:
             "result": verdict,
             "issues": [str(item) for item in issues][:8],
             "suggested_prompt": str(data.get("suggested_prompt") or data.get("suggestion") or ""),
-            "model": f"hevi.canvas.llm_review/{channel}",
+            "model": f"hevi.canvas.llm_review/{channel_name}",
         }
 
     return review
 
 
-def _rewriter_factory(channel: str, caller: Any) -> Any:
+def _rewriter_factory(channel: str | None = None, caller: Any = None) -> Any:
     def rewrite(text: str, suggestion: str, cfg: dict[str, Any]) -> str:
         prompt = _REWRITE_PROMPT.format(text=str(text)[:6000], suggestion=str(suggestion)[:800])
-        content = _call(channel, caller, prompt, max_tokens=1200)
+        if caller is not None:
+            content = _call(str(channel or "mock"), caller, prompt, max_tokens=1200)
+        else:
+            _channel, content = _call_any(prompt, max_tokens=1200)
         clean = content.strip()
         if clean.startswith("```"):
             clean = re.sub(r"^```[a-zA-Z]*\n?", "", clean)
@@ -168,11 +203,11 @@ def _rewriter_factory(channel: str, caller: Any) -> Any:
 
 def build() -> tuple[Any, Any, str] | None:
     """Return ``(reviewer, rewriter, channel)`` or ``None`` when unavailable."""
-    resolved = _resolve()
-    if resolved is None:
+    pairs = _candidates()
+    if not pairs:
         return None
-    channel, caller = resolved
-    return _reviewer_factory(channel, caller), _rewriter_factory(channel, caller), channel
+    channel = pairs[0][0]
+    return _reviewer_factory(), _rewriter_factory(), channel
 
 
 __all__ = ["build"]

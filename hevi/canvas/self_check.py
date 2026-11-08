@@ -20,7 +20,9 @@ node config without changing the graph topology.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import os
 import shutil
 import subprocess
 from collections.abc import Callable
@@ -159,6 +161,97 @@ def _check_text(
     }
 
 
+def _pip_window_std(path: Path, seconds: float) -> tuple[float, float, str] | None:
+    """Return ``(std, mean, frame_path)`` of the corner avatar window.
+
+    The talking-head corner window occupies x=760..1040, y=1500..1840 in the
+    1080x1920 frame (``koubo_cut.pipeline`` pastes it at ``W-320, H-420``).
+    A blank/beige window has near-zero standard deviation; a real presenter
+    (hair, skin, shirt, outline) is far from flat.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        return None
+    frame = path.parent / f".pip_probe_{int(max(0.0, seconds) * 1000)}.png"
+    proc = subprocess.run(
+        [
+            ffmpeg, "-y", "-ss", f"{max(0.0, seconds):.3f}", "-i", str(path),
+            "-frames:v", "1", str(frame),
+        ],
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    if proc.returncode != 0 or not frame.is_file():
+        return None
+    try:
+        from PIL import Image, ImageStat
+
+        with Image.open(frame) as img:
+            grey = img.convert("L")
+            w, h = grey.size
+            sx, sy = w / 1080.0, h / 1920.0
+            box = (
+                int((1080 - 320) * sx),
+                int((1920 - 420) * sy),
+                int((1080 - 20) * sx),
+                int((1920 - 20) * sy),
+            )
+            crop = grey.crop(box)
+            stat = ImageStat.Stat(crop)
+            return float(stat.stddev[0]), float(stat.mean[0]), str(frame)
+    except Exception:
+        return None
+    finally:
+        with contextlib.suppress(Exception):
+            frame.unlink(missing_ok=True)
+
+
+def _check_avatar_window(
+    path: Path, step: str, output: Any, *, duration: float | None
+) -> dict[str, Any] | None:
+    """Hard check: the corner window during evidence must contain the avatar.
+
+    A pure-colour (blank beige) window is red and triggers the normal retry.
+    Talking-head frames are skipped — there the avatar is the main subject and
+    the corner region is background by design.
+    """
+    if step not in ("segment", "edit", "edit_segments", "final"):
+        return None
+    out = output if isinstance(output, dict) else {}
+    forced = step == "segment" and bool(out.get("evidence"))
+    total = float(duration or out.get("duration_s") or 0.0)
+    if total <= 0:
+        return None
+    threshold = float(os.getenv("HEVI_CANVAS_PIP_STD_MIN", "6"))
+    evidence_mean_max = float(os.getenv("HEVI_CANVAS_EVIDENCE_MEAN_MAX", "200"))
+    samples: list[dict[str, Any]] = []
+    blank: list[float] = []
+    for frac in (0.25, 0.4, 0.5, 0.6, 0.75):
+        result = _pip_window_std(path, total * frac)
+        if result is None:
+            continue
+        std, mean, _frame = result
+        is_evidence = forced or mean < evidence_mean_max
+        samples.append({"t": round(total * frac, 2), "std": round(std, 2),
+                        "mean": round(mean, 1), "evidence": is_evidence})
+        if is_evidence and std < threshold:
+            blank.append(round(total * frac, 2))
+    if not samples:
+        return None
+    if blank:
+        return {
+            "result": FAIL,
+            "reasons": [
+                "数字人小窗区域接近纯色（空白米色块），"
+                f"std<{threshold} @ {blank[:3]}s"
+            ],
+            "suggested_prompt": "重新合成小窗区域，确保头像/数字人出现在小窗中（非纯色）。",
+            "signals": {"pip_samples": samples, "pip_std_min": threshold},
+        }
+    return {"result": PASS, "signals": {"pip_samples": samples, "pip_std_min": threshold}}
+
+
 def _check_video(node: dict[str, Any], output: Any, *, backend: Any = None) -> dict[str, Any]:
     path = _first_path(output, (".mp4", ".mov", ".webm", ".mkv"))
     if path is None:
@@ -228,6 +321,18 @@ def _check_video(node: dict[str, Any], output: Any, *, backend: Any = None) -> d
     except Exception as exc:
         result = WARN if result == PASS else result
         reasons.append(f"硬性检查未完成：{type(exc).__name__}: {exc}")
+
+    probe_duration = None
+    try:
+        probe_duration = float((signals.get("probe") or {}).get("duration") or 0) or None
+    except Exception:
+        probe_duration = None
+    pip = _check_avatar_window(path, step, output, duration=probe_duration)
+    if pip is not None:
+        signals.update(pip.get("signals") or {})
+        if pip.get("result") == FAIL:
+            result = FAIL
+            reasons.extend(pip.get("reasons") or [])
 
     try:
         from hevi.avcraft.obase.vision import analyze_frames

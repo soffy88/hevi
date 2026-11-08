@@ -65,14 +65,44 @@ class GraphService:
             updates["name"] = name
         if description is not None:
             updates["description"] = description
+        removed_nodes: list[dict[str, Any]] = []
         if nodes is not None:
+            # Dynamic topology: a script edit that changes the sentence count
+            # must add/drop the per-sentence branches, not silently keep the
+            # old count.  Locked nodes survive even if their sentence vanished.
+            current = await self._repo.get(graph_id)
+            if current is None:
+                return None
+            locked_keys: set[str] = set()
+            if self._nodes is not None:
+                states = await self._nodes.load_nodes(str(graph_id))
+                locked_keys = {key for key, state in states.items() if state.locked}
+            from hevi.canvas.topology import reconcile_koubo_topology
+
+            base_edges = edges if edges is not None else list(current.get("edges_json") or [])
+            reconciled = reconcile_koubo_topology(nodes, list(base_edges), locked_keys=locked_keys)
+            if reconciled is not None:
+                nodes = list(reconciled["nodes"])
+                edges = list(reconciled["edges"])
+                removed_set = set(reconciled["removed"])
+                removed_nodes = [
+                    node for node in current.get("nodes_json") or []
+                    if str(node.get("node_id") or "") in removed_set
+                ]
             updates["nodes_json"] = nodes
-        if edges is not None:
+            if edges is not None:
+                updates["edges_json"] = edges
+        if edges is not None and "edges_json" not in updates:
             updates["edges_json"] = edges
         if not updates:
             return await self._repo.get(graph_id)
         stored = await self._repo.update(graph_id, updates)
         if stored is not None and self._nodes is not None and (nodes is not None or edges is not None):
+            if removed_nodes:
+                from hevi.canvas.topology import archive_node_artifacts
+
+                for node in removed_nodes:
+                    archive_node_artifacts(str(graph_id), node)
             await self._nodes.sync_graph(
                 str(graph_id),
                 list(stored.get("nodes_json") or []),
