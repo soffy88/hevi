@@ -109,6 +109,32 @@ def read_subtitle_file(path: str | Path) -> list[TranscriptSegment]:
         raise TranscriptError(f"cannot read {p}: {e}") from e
 
 
+_WHISPER_CANDIDATES = (
+    "/models/faster-whisper-large-v3-turbo",
+    "/home/soffy/models/faster-whisper-large-v3-turbo",
+    "/data/soffy/models/faster-whisper-large-v3-turbo",
+)
+
+
+def _whisper_model_path() -> str:
+    """Resolve the local faster-whisper directory across host and container.
+
+    The API container mounts the model tree at ``/models`` while the host uses
+    ``/home/soffy/models``; a hard-coded host path made every transcription
+    fail inside the container.
+    """
+    from pathlib import Path as _Path
+
+    for env in ("HEVI_WHISPER_MODEL", "FASTER_WHISPER_MODEL_DIR"):
+        value = __import__("os").environ.get(env, "").strip()
+        if value and _Path(value).is_dir():
+            return value
+    for candidate in _WHISPER_CANDIDATES:
+        if _Path(candidate).is_dir():
+            return candidate
+    return _WHISPER_CANDIDATES[1]
+
+
 def _whisper_transcribe(
     video_path: Path, *, language: str | None = None
 ) -> list[TranscriptSegment]:
@@ -119,7 +145,7 @@ def _whisper_transcribe(
         raise TranscriptError(f"faster-whisper 未安装,无法兜底转写: {e}") from e
 
     try:
-        model = WhisperModel("/home/soffy/models/faster-whisper-large-v3-turbo", device="cpu", compute_type="int8")
+        model = WhisperModel(_whisper_model_path(), device="cpu", compute_type="int8")
         segments, _info = model.transcribe(str(video_path), language=language)
         out: list[TranscriptSegment] = []
         for seg in segments:
