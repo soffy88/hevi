@@ -45,3 +45,17 @@
 - **许可边界**: FSL-1.1-ALv2 明确允许 internal use；对客户提供“写代码渲染”
   能力或再分发二进制可能构成 Competing Use，须先法务评估。
 - **入库日期**: 2026-11-09（仅台账记录，无文件入库）
+## ai_drama / MiniMax H3
+
+- **来源**: MiniMax 开放平台 H3 视频生成 API；RunningHub OpenAPI H3 工作流
+- **许可证**: MiniMax H3 社区许可（排除 EU/UK/韩国/美国；商用界面标注 “MiniMax H3”）
+- **文档**: https://platform.minimaxi.com/docs/guides/video-generation ; https://www.runninghub.cn/runninghub-api-doc-cn/
+- **用途**: ai_drama 视频段 provider（有 key 时付费调用；无 key 自动 Offline）
+- **合规**: 不使用真人/明星照片或声音作参考；成片带“AI 生成”标识
+- **入库日期**: 2026-11-09
+
+## Noto Sans CJK
+
+- **来源**: https://github.com/notofonts/noto-cjk
+- **许可证**: SIL Open Font License 1.1
+- **用途**: ai_drama 字幕、游戏对话框、UI 提示与“AI 生成”标识

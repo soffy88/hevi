@@ -1,0 +1,379 @@
+{
+  "episode_no": 2,
+  "title": "别回头",
+  "style": "game_pov",
+  "aspect": "9:16",
+  "logline": "晚自习的教室，主角接到一通来电显示为自己号码的电话，电话里的自己说：别回头。",
+  "duration_target_s": 30,
+  "hook": {
+    "first_3s_conflict": "手机在自习课上亮起，来电显示是主角自己的号码"
+  },
+  "ending_suspense": "主角回头，看见另一个自己坐在后排，手机贴在耳边，屏幕显示通话中。",
+  "game_pov": {
+    "daily": "晚自习，教室只剩笔尖和翻页声",
+    "anomaly": "手机亮起，来电显示自己的号码",
+    "reversal": "接听后自己的声音说别回头；回头看见另一个自己",
+    "ui_overlays": [
+      {
+        "text": "接听电话",
+        "start_s": 8.0,
+        "end_s": 10.5,
+        "x": 60,
+        "y": 1480
+      },
+      {
+        "text": "挂断",
+        "start_s": 26.0,
+        "end_s": 28.0,
+        "x": 60,
+        "y": 1480
+      }
+    ],
+    "dialogue_box": {
+      "enabled": true,
+      "font": "Noto Sans Mono CJK SC",
+      "font_license": "SIL Open Font License 1.1"
+    }
+  },
+  "characters": [
+    {
+      "id": "me",
+      "name": "我",
+      "look": "17岁高中生，校服外套，袖子长过手腕，白色运动鞋",
+      "voice": {
+        "description": "年轻男声，压得很低，呼吸声近",
+        "piper_voice": "zh_CN-huayan-medium.onnx",
+        "pitch_semitones": 2.0
+      },
+      "render_look_en": "17-year-old Chinese high school student, short black hair, school uniform jacket with long sleeves, white sneakers"
+    }
+  ],
+  "scenes": [
+    {
+      "scene_no": 1,
+      "scene_id": "sc_01",
+      "name": "晚自习教室",
+      "int_ext": "内",
+      "day_night": "夜",
+      "header": "1 晚自习教室 [内] [夜]",
+      "location": "高中教室，后排靠窗，日光灯，课桌上摊着卷子",
+      "lighting": {
+        "direction": "顶部日光灯，窗外走廊冷光从左侧进入",
+        "hardness": "硬光",
+        "warmth": "冷色",
+        "contrast": "明暗对比强"
+      },
+      "coverage": [
+        "大全景",
+        "正打",
+        "反打"
+      ],
+      "ambience": "日光灯电流声，远处翻页",
+      "beats": [
+        {
+          "beat_id": "b01",
+          "segment_id": "seg_01",
+          "event": "日常：晚自习",
+          "emotion": "安静",
+          "sound": "日光灯电流声，笔尖划纸",
+          "staging": "我坐在后排靠窗，手在桌面，手机扣在卷子旁",
+          "action": [
+            "△笔尖停住，手机在卷子旁震了一下。"
+          ],
+          "dialogue": [],
+          "shots": [
+            {
+              "size": "大全景",
+              "mode": "pov",
+              "duration_s": 4.0,
+              "camera": "第一人称，广角，轻微手持",
+              "subject": "教室前方与课桌",
+              "action": "△我低头看卷子，右手握笔，袖口盖住半个手背",
+              "staging": "我坐在后排靠窗，视线从卷子抬向前方",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "教室后排靠窗的座位",
+                "looking": "摊开的卷子和前排同学的后背",
+                "next_move": "视线从卷子移到桌面右上角震动的手机",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              }
+            },
+            {
+              "size": "特写",
+              "mode": "pov",
+              "duration_s": 3.0,
+              "camera": "第一人称，特写，俯拍",
+              "subject": "手机屏幕",
+              "action": "△手机屏幕亮起，来电显示是我的号码",
+              "staging": "手机扣在卷子旁，屏幕朝上",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "课桌桌面",
+                "looking": "亮起的手机屏幕，来电显示是我自己的号码",
+                "next_move": "右手伸向手机，袖口先进入画面",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              }
+            }
+          ]
+        },
+        {
+          "beat_id": "b02",
+          "segment_id": "seg_02",
+          "event": "异常：来电显示自己",
+          "emotion": "不安",
+          "sound": "手机震动，日光灯电流声变大",
+          "staging": "我保持坐姿，手机在右手，屏幕朝上",
+          "action": [
+            "△屏幕上的号码又亮了一次。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "me",
+              "text": "谁拿我手机？",
+              "kind": "inner"
+            }
+          ],
+          "shots": [
+            {
+              "size": "近景",
+              "mode": "pov",
+              "duration_s": 3.5,
+              "camera": "第一人称，近景，轻微俯拍",
+              "subject": "手机与手",
+              "action": "△我的拇指悬在接听键上方，没有按下去",
+              "staging": "右手握手机，左手撑在桌沿",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "教室后排座位",
+                "looking": "手机屏幕上的接听键和自己的拇指",
+                "next_move": "拇指靠近接听键，袖子滑下去一点",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              },
+              "dialogue_index": [
+                0
+              ]
+            },
+            {
+              "size": "特写",
+              "mode": "pov",
+              "duration_s": 3.5,
+              "camera": "第一人称，特写，固定",
+              "subject": "来电界面",
+              "action": "△屏幕反光里映出我自己的下半张脸",
+              "staging": "手机举到胸前，屏幕占据画面中心",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "课桌前",
+                "looking": "屏幕反光里自己的下巴和校服领口",
+                "next_move": "拇指按下接听键，画面轻轻一晃",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              }
+            }
+          ]
+        },
+        {
+          "beat_id": "b03",
+          "segment_id": "seg_03",
+          "event": "推进：电话里的自己说别回头",
+          "emotion": "恐惧",
+          "sound": "听筒里很近的呼吸声，教室底噪被压低",
+          "staging": "我坐在原位，手机贴右耳；后排另一张桌子在画面左后方",
+          "action": [
+            "△听筒里传来我自己的呼吸。",
+            "△后排传来椅子轻响。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "me",
+              "text": "别回头。",
+              "kind": "vo"
+            }
+          ],
+          "shots": [
+            {
+              "size": "近景",
+              "mode": "pov",
+              "duration_s": 3.0,
+              "camera": "第一人称，近景，侧向",
+              "subject": "手机贴耳与手",
+              "action": "△手机贴住右耳，听筒里是贴得很近的呼吸",
+              "staging": "手机贴在右耳，右手挡住部分画面",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "教室后排座位",
+                "looking": "前方黑板边缘，耳朵里是听筒",
+                "next_move": "眼球向右后方转，肩膀绷紧",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              },
+              "dialogue_index": [
+                0
+              ]
+            },
+            {
+              "size": "中景",
+              "mode": "third_person_pass",
+              "duration_s": 3.5,
+              "camera": "第三人称，后方过肩，略俯，480度？不，固定",
+              "subject": "主角背对镜头坐在课桌前",
+              "action": "△主角背对镜头，手机贴在耳边，后排另一张桌子在画面左后",
+              "staging": "主角在前景背对镜头，座位在后排靠窗，对方位置在画面左后方空桌",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "composition": {
+                "protagonist": "前景背对镜头，坐在课桌前，手机贴右耳",
+                "other": "画面左后方空桌，椅背朝向镜头",
+                "camera": "后方过肩，略俯，中景"
+              }
+            },
+            {
+              "size": "特写",
+              "mode": "pov",
+              "duration_s": 1.5,
+              "camera": "第一人称，特写，快速甩镜",
+              "subject": "后排空桌",
+              "action": "△画面快速转向后排，一张椅子轻轻晃动",
+              "staging": "手机仍贴在耳边，视线甩向左后方",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "原地转头",
+                "looking": "左后方空桌和晃动的椅背",
+                "next_move": "视线继续向上，看到桌后坐着的人",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              }
+            }
+          ]
+        },
+        {
+          "beat_id": "b04",
+          "segment_id": "seg_04",
+          "event": "反转：后排坐着另一个我",
+          "emotion": "崩塌",
+          "sound": "听筒里的呼吸与教室底噪重合，电流声尖了一下",
+          "staging": "我在前景，另一个我坐在后排，两人之间隔着两排课桌",
+          "action": [
+            "△后排的人举起手机，屏幕亮着通话中。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "me",
+              "text": "那是……我。",
+              "kind": "inner"
+            }
+          ],
+          "shots": [
+            {
+              "size": "特写",
+              "mode": "pov",
+              "duration_s": 3.5,
+              "camera": "第一人称，特写，仰角，轻微呼吸晃动",
+              "subject": "后排人的脸与手机",
+              "action": "△后排的人和我穿一样的校服，手机贴在左耳",
+              "staging": "视线越过两排课桌，落在对方脸上",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "前排座位转身",
+                "looking": "后排另一个自己的脸和举起的手机",
+                "next_move": "视线下移到对方手机屏幕",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              },
+              "dialogue_index": [
+                0
+              ]
+            },
+            {
+              "size": "中景",
+              "mode": "third_person_pass",
+              "duration_s": 2.5,
+              "camera": "第三人称，侧面全景，平视",
+              "subject": "两个人与两排课桌",
+              "action": "△前景的我回头，后排的我坐着，两人动作镜像",
+              "staging": "我在前景回头，另一个我在后排坐着，手机贴在左耳",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "composition": {
+                "protagonist": "前景侧脸，身体转向后方",
+                "other": "后排坐着，校服相同，手机贴左耳",
+                "camera": "侧面全景，平视，两人都在画面内"
+              }
+            },
+            {
+              "size": "近景",
+              "mode": "pov",
+              "duration_s": 2.0,
+              "camera": "第一人称，近景，固定",
+              "subject": "对方手机屏幕",
+              "action": "△对方手机屏幕显示：通话中 00:07",
+              "staging": "手机屏幕占据画面中心，边缘是对方袖口",
+              "negatives": [
+                "无字幕",
+                "无文字",
+                "无logo",
+                "无水印",
+                "不要音乐"
+              ],
+              "pov": {
+                "where": "后排课桌前",
+                "looking": "对方手机上的通话计时",
+                "next_move": "画面停住，不再移动",
+                "body": "画面可见右手、校服袖口和白色运动鞋边缘"
+              }
+            }
+          ]
+        }
+      ],
+      "render_en": "high school classroom at night, rows of wooden desks, fluorescent ceiling lights, cold corridor light through the door, chalkboard at the front"
+    }
+  ]
+}

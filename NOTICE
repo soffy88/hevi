@@ -1,6 +1,5 @@
 Hevi — third-party notices
-===================
-
+============
 
 Lanshu styled explainer toolkit
 Copyright (c) cclank
@@ -33,8 +32,7 @@ native-subtitle-quote-image
   detection, strip clutter cleaning, robust font sizing, and integration with quality gates.
 
 Hevi — 第三方署名 / NOTICE
-========================
-
+=================
 本仓库的 Agent 画布操作桥（单元 C：`hevi/operations/`、HTTP `/api/ops`、
 MCP `hevi.agent.ops.*`）借鉴了 BeefTV（MIT License）的操作注册表契约设计
 （op 描述符 / 权限模式 read-only·canvas·full-access / CAS expectedRevision /
@@ -95,3 +93,14 @@ raea（Render Anything Engine）
 - 许可说明：FSL-1.1-ALv2 将“内部使用”列为允许用途；若未来向客户暴露
   raea 渲染能力或分发其二进制，须先做许可/法务评估。每个 raea 版本在发布
   2 周年后转为 Apache-2.0（以对应版本为准）。
+ai_drama / MiniMax H3
+==============- MiniMax H3 视频模型通过 MiniMax 官方 API 或 RunningHub 上的 H3 工作流调用。
+  MiniMax H3 社区许可排除 EU / UK / 韩国 / 美国；商用界面必须标注 “MiniMax H3”。
+  本线只写调用与署名，不分发模型权重。
+  官方文档: https://platform.minimaxi.com/docs/guides/video-generation
+  RunningHub 文档: https://www.runninghub.cn/runninghub-api-doc-cn/
+- 禁止使用真人或明星的照片/声音作为参考。上传入口必须提示并拦截；离线模式只用
+  本地 SD-Turbo 生成的虚构角色图与 Piper TTS 音色。
+- 字体: Noto Sans CJK / Noto Sans Mono CJK，SIL Open Font License 1.1
+  (https://openfontlicense.org/)，用于字幕、游戏对话框和“AI 生成”标识。
+- KaggleGPUProvider 只使用官方 kaggle CLI 批处理，不建公网隧道、不常驻、不挖矿。

@@ -1,0 +1,472 @@
+{
+  "episode_no": 1,
+  "title": "今天没过期",
+  "style": "anime",
+  "aspect": "9:16",
+  "logline": "深夜便利店，店员拦住每天买同一盒过期牛奶的常客，发现小票日期停在五年前。",
+  "duration_target_s": 60,
+  "hook": {
+    "first_3s_conflict": "过期牛奶被摆上柜台，顾客准时出现"
+  },
+  "ending_suspense": "周叔对着空椅子说“今天没过期”，林晚没有拆穿。",
+  "characters": [
+    {
+      "id": "lin",
+      "name": "林晚",
+      "look": "24岁便利店店员，短发，深蓝工装，胸牌磨旧，手指有冻疮",
+      "voice": {
+        "description": "年轻女声，克制、偏低，句尾收得快",
+        "piper_voice": "zh_CN-huayan-medium.onnx",
+        "pitch_semitones": -1.0
+      },
+      "render_look_en": "young Chinese woman, 24 years old, short black hair, navy blue convenience store uniform, worn name badge, tired calm eyes, natural skin"
+    },
+    {
+      "id": "zhou",
+      "name": "周叔",
+      "look": "55岁常客，灰夹克，旧呢帽，背微驼，右手总拎一个布袋",
+      "voice": {
+        "description": "沙哑男声，语速慢，尾音发虚",
+        "piper_voice": "zh_CN-huayan-medium.onnx",
+        "pitch_semitones": -4.0
+      },
+      "render_look_en": "Chinese man, 55 years old, grey jacket, old flat cap, slightly hunched shoulders, holding a cloth bag, weathered face"
+    }
+  ],
+  "scenes": [
+    {
+      "scene_no": 1,
+      "scene_id": "sc_01",
+      "name": "深夜便利店",
+      "int_ext": "内",
+      "day_night": "夜",
+      "header": "1 深夜便利店 [内] [夜]",
+      "location": "24小时便利店，冷柜、收银台、靠窗一张空椅",
+      "props": [
+        {
+          "id": "milk",
+          "name": "同一品牌牛奶盒",
+          "size_cm": 21
+        },
+        {
+          "id": "receipt",
+          "name": "旧小票",
+          "size_cm": 8
+        }
+      ],
+      "lighting": {
+        "direction": "顶部冷白灯管为主，冷柜内透蓝光，窗外路灯暖黄侧逆光",
+        "hardness": "硬光",
+        "warmth": "冷色为主，窗外一点暖",
+        "contrast": "明暗对比强"
+      },
+      "coverage": [
+        "大全景",
+        "正打",
+        "反打"
+      ],
+      "ambience": "冷柜嗡嗡声，偶尔门铃",
+      "beats": [
+        {
+          "beat_id": "b01",
+          "segment_id": "seg_01",
+          "event": "深夜日常与异常准时出现",
+          "emotion": "压抑的日常",
+          "sound": "冷柜嗡嗡声，收银机轻响",
+          "staging": "林晚在收银台后，冷柜在画面右侧，靠窗空椅在左后景",
+          "action": [
+            "△冷柜灯管闪了一下。林晚把最后一盒牛奶摆正，盒身日期朝外。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "lin",
+              "text": "又到十一点五十五。",
+              "kind": "inner"
+            }
+          ],
+          "shots": [
+            {
+              "size": "大全景",
+              "mode": "establishing",
+              "coverage": "大全景",
+              "duration_s": 4.0,
+              "camera": "固定机位，大全景，平视",
+              "subject": "便利店全貌与空椅",
+              "staging": "林晚在收银台后，冷柜在右，空椅在左后景",
+              "action": "△门铃未响，店内只有冷柜的嗡嗡声",
+              "emotion": "压抑的日常"
+            },
+            {
+              "size": "特写",
+              "mode": "insert",
+              "coverage": "大全景",
+              "duration_s": 3.0,
+              "camera": "特写，俯拍，缓慢推近",
+              "subject": "牛奶盒日期",
+              "staging": "牛奶盒在收银台上，日期朝外",
+              "action": "△盒身日期被灯管照得发白",
+              "dialogue_index": [
+                0
+              ],
+              "emotion": "压抑的日常"
+            },
+            {
+              "size": "中景",
+              "mode": "talking",
+              "coverage": "正打",
+              "duration_s": 3.0,
+              "camera": "中景，正打，平视",
+              "subject": "林晚",
+              "character_id": "lin",
+              "staging": "林晚在收银台后抬头看钟",
+              "action": "△她抬头看了一眼墙上的钟",
+              "emotion": "压抑的日常"
+            }
+          ]
+        },
+        {
+          "beat_id": "b02",
+          "segment_id": "seg_02",
+          "event": "周叔进店拿走过期牛奶，林晚拦下",
+          "emotion": "克制的对峙",
+          "sound": "门铃，脚步，冷柜门吸合",
+          "staging": "周叔从门口走到冷柜，林晚从收银台绕出半步；两人隔着冷柜门",
+          "action": [
+            "△门铃响。周叔径直走向冷柜，拿起那盒过期牛奶。",
+            "△林晚伸手按住冷柜门。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "zhou",
+              "text": "这盒，我要了。",
+              "kind": "said"
+            },
+            {
+              "speaker": "lin",
+              "text": "周叔，这盒过期了。",
+              "kind": "said"
+            }
+          ],
+          "shots": [
+            {
+              "size": "中景",
+              "mode": "action",
+              "coverage": "大全景",
+              "duration_s": 3.5,
+              "camera": "中景，平视，固定机位",
+              "subject": "周叔进门",
+              "staging": "周叔从门口走向冷柜",
+              "action": "△周叔推门进来，布袋在右手晃",
+              "emotion": "克制的对峙"
+            },
+            {
+              "size": "近景",
+              "mode": "talking",
+              "coverage": "正打",
+              "duration_s": 3.0,
+              "camera": "近景，正打，略仰",
+              "subject": "周叔拿牛奶",
+              "character_id": "zhou",
+              "staging": "周叔站在冷柜前，手已经搭在牛奶盒上",
+              "action": "△他把牛奶盒从冷柜里抽出来",
+              "dialogue_index": [
+                0
+              ],
+              "emotion": "克制的对峙"
+            },
+            {
+              "size": "中近景",
+              "mode": "talking",
+              "coverage": "反打",
+              "duration_s": 3.5,
+              "camera": "近景，反打，平视",
+              "subject": "林晚拦下",
+              "character_id": "lin",
+              "staging": "林晚在冷柜另一侧，手按住门",
+              "action": "△林晚的手先到，按住了冷柜门",
+              "dialogue_index": [
+                1
+              ],
+              "emotion": "克制的对峙"
+            }
+          ]
+        },
+        {
+          "beat_id": "b03",
+          "segment_id": "seg_03",
+          "event": "周叔坚持，林晚指出过期，周叔说出理由",
+          "emotion": "对峙加深",
+          "sound": "冷柜低鸣，塑料袋摩擦",
+          "staging": "两人隔着冷柜，周叔不松手，林晚不后退",
+          "action": [
+            "△周叔把牛奶盒往怀里带了带。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "zhou",
+              "text": "我每天都买。",
+              "kind": "said"
+            },
+            {
+              "speaker": "lin",
+              "text": "可它昨天就到期了。",
+              "kind": "said"
+            },
+            {
+              "speaker": "zhou",
+              "text": "她只喝这个牌子。",
+              "kind": "said"
+            }
+          ],
+          "shots": [
+            {
+              "size": "近景",
+              "mode": "talking",
+              "coverage": "正打",
+              "duration_s": 2.5,
+              "camera": "近景，正打，平视",
+              "subject": "周叔",
+              "character_id": "zhou",
+              "staging": "周叔把牛奶盒往怀里带",
+              "action": "△他没有看林晚，只看盒子",
+              "dialogue_index": [
+                0
+              ],
+              "emotion": "对峙加深"
+            },
+            {
+              "size": "特写",
+              "mode": "insert",
+              "coverage": "大全景",
+              "duration_s": 3.0,
+              "camera": "特写，俯拍",
+              "subject": "过期日期",
+              "staging": "牛奶盒横在两人之间",
+              "action": "△日期被指尖蹭了一下",
+              "dialogue_index": [
+                1
+              ],
+              "emotion": "对峙加深"
+            },
+            {
+              "size": "中近景",
+              "mode": "talking",
+              "coverage": "反打",
+              "duration_s": 3.0,
+              "camera": "中近景，反打，平视",
+              "subject": "周叔",
+              "character_id": "zhou",
+              "staging": "周叔抬眼，第一次看林晚",
+              "action": "△他抬眼看她，布袋在身侧收紧",
+              "dialogue_index": [
+                2
+              ],
+              "emotion": "对峙加深"
+            }
+          ]
+        },
+        {
+          "beat_id": "b04",
+          "segment_id": "seg_04",
+          "event": "林晚看见小票日期，揭示时间停住",
+          "emotion": "震动",
+          "sound": "纸张轻响，冷柜低鸣突然显得很响",
+          "staging": "林晚在收银台后看小票，周叔在台前伸手按住；两人手在台面上方",
+          "action": [
+            "△林晚从袋底抽出一张旧小票。",
+            "△周叔伸手按住小票。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "lin",
+              "text": "这张小票，日期是五年前。",
+              "kind": "inner"
+            },
+            {
+              "speaker": "zhou",
+              "text": "别看了。",
+              "kind": "said"
+            }
+          ],
+          "shots": [
+            {
+              "size": "特写",
+              "mode": "insert",
+              "coverage": "大全景",
+              "duration_s": 3.5,
+              "camera": "特写，俯拍，缓慢拉远",
+              "subject": "旧小票日期",
+              "staging": "小票在收银台上，日期朝上",
+              "action": "△小票边缘起毛，日期印着五年前",
+              "dialogue_index": [
+                0
+              ],
+              "emotion": "震动"
+            },
+            {
+              "size": "近景",
+              "mode": "talking",
+              "coverage": "正打",
+              "duration_s": 2.5,
+              "camera": "近景，正打，平视",
+              "subject": "周叔按住小票",
+              "character_id": "zhou",
+              "staging": "周叔的手从画面右侧伸入，按住小票",
+              "action": "△他的指节发白",
+              "dialogue_index": [
+                1
+              ],
+              "emotion": "震动"
+            },
+            {
+              "size": "近景",
+              "mode": "reaction",
+              "coverage": "反打",
+              "duration_s": 2.0,
+              "camera": "近景，反打，平视",
+              "subject": "林晚反应",
+              "character_id": "lin",
+              "staging": "林晚在收银台后，手停在半空",
+              "action": "△她没有抽回手",
+              "emotion": "震动"
+            }
+          ]
+        },
+        {
+          "beat_id": "b05",
+          "segment_id": "seg_05",
+          "event": "林晚把过期牛奶换成一盒新的",
+          "emotion": "决定",
+          "sound": "冷柜门开合，塑料袋窸窣",
+          "staging": "林晚在收银台后换盒，周叔在台前看着",
+          "action": [
+            "△林晚把那盒过期牛奶放到柜台下，又拿出一盒新的。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "lin",
+              "text": "今天这盒，没过期。",
+              "kind": "said"
+            },
+            {
+              "speaker": "zhou",
+              "text": "多少钱。",
+              "kind": "said"
+            }
+          ],
+          "shots": [
+            {
+              "size": "中景",
+              "mode": "talking",
+              "coverage": "正打",
+              "duration_s": 3.5,
+              "camera": "中景，正打，平视",
+              "subject": "林晚换牛奶",
+              "character_id": "lin",
+              "staging": "林晚弯腰换盒，动作很慢",
+              "action": "△她把新盒推到台面中央",
+              "dialogue_index": [
+                0
+              ],
+              "emotion": "决定"
+            },
+            {
+              "size": "特写",
+              "mode": "insert",
+              "coverage": "大全景",
+              "duration_s": 2.5,
+              "camera": "特写，俯拍",
+              "subject": "新牛奶盒",
+              "staging": "新盒在台面中央，旧盒已经不见",
+              "action": "△新盒日期朝上，今天到期",
+              "emotion": "决定"
+            },
+            {
+              "size": "近景",
+              "mode": "talking",
+              "coverage": "反打",
+              "duration_s": 2.5,
+              "camera": "近景，反打，平视",
+              "subject": "周叔",
+              "character_id": "zhou",
+              "staging": "周叔在台前，手伸向口袋",
+              "action": "△他摸出零钱，动作比刚才慢",
+              "dialogue_index": [
+                1
+              ],
+              "emotion": "决定"
+            }
+          ]
+        },
+        {
+          "beat_id": "b06",
+          "segment_id": "seg_06",
+          "event": "结尾停在空椅子与一句晚安",
+          "emotion": "余震",
+          "sound": "门铃远去，冷柜嗡嗡声回来",
+          "staging": "周叔坐到靠窗空椅旁，把牛奶放在空椅子前；林晚在收银台后看着",
+          "action": [
+            "△周叔走到靠窗的空椅旁，把牛奶放下。",
+            "△林晚站在原地，没有跟过去。"
+          ],
+          "dialogue": [
+            {
+              "speaker": "zhou",
+              "text": "今天没过期。",
+              "kind": "said"
+            },
+            {
+              "speaker": "lin",
+              "text": "他对着空椅子，说了晚安。",
+              "kind": "inner"
+            }
+          ],
+          "shots": [
+            {
+              "size": "大全景",
+              "mode": "action",
+              "coverage": "大全景",
+              "duration_s": 5.0,
+              "camera": "固定机位，大全景，平视，人物在画面左后景",
+              "subject": "周叔与空椅",
+              "staging": "周叔背对镜头走向靠窗空椅，林晚在右前景收银台后",
+              "action": "△周叔把牛奶放在空椅子前，坐下",
+              "emotion": "余震"
+            },
+            {
+              "size": "中景",
+              "mode": "talking",
+              "coverage": "正打",
+              "duration_s": 4.0,
+              "camera": "中景，正打，略俯",
+              "subject": "周叔对空椅说话",
+              "character_id": "zhou",
+              "staging": "周叔侧对镜头，空椅在他对面",
+              "action": "△他对着空椅子点了点头",
+              "dialogue_index": [
+                0
+              ],
+              "emotion": "余震"
+            },
+            {
+              "size": "近景",
+              "mode": "talking",
+              "coverage": "反打",
+              "duration_s": 5.0,
+              "camera": "近景，反打，平视，焦点在林晚眼睛",
+              "subject": "林晚看着",
+              "character_id": "lin",
+              "staging": "林晚在收银台后，手停在收银机上",
+              "action": "△她没有按键，也没有出声",
+              "dialogue_index": [
+                1
+              ],
+              "emotion": "余震"
+            }
+          ]
+        }
+      ],
+      "render_en": "24-hour convenience store interior at night, refrigerated display shelves, cashier counter, one empty chair by the window, cold fluorescent ceiling light, blue refrigerator glow, warm street light through window"
+    }
+  ]
+}

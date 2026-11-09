@@ -1,0 +1,43 @@
+id: ai_drama
+product: AI 短剧（角色开口说话）
+summary: 主题/梗概 → 剧本 → 分镜 → 资产身份板 → 视频段 → 剪辑单 → 9:16 成片；无 key 离线出片
+handoff: shortdrama
+render_runtime: ffmpeg
+slots:
+  - name: topic
+    required: false
+    description: 主题或一句话梗概（与 episode 二选一）
+  - name: episode
+    required: false
+    description: 结构化剧本 JSON（含 characters/scenes/beats）
+  - name: style
+    required: false
+    description: live_action | anime | game_pov | 3d_cg | ink
+  - name: video_provider
+    required: false
+    description: offline | runninghub_h3 | minimax_h3_api（缺 key 自动 offline）
+tools:
+  - drama.ai_script
+  - drama.ai_storyboard
+  - drama.ai_assets
+  - drama.ai_voice
+  - drama.ai_segments
+  - drama.ai_edit
+  - drama.ai_episode
+pipeline:
+  name: ai_drama
+  stages:
+    - name: script
+      fn: hevi.ai_drama.stages:stage_script
+    - name: storyboard
+      fn: hevi.ai_drama.stages:stage_storyboard
+    - name: assets
+      fn: hevi.ai_drama.stages:stage_assets
+    - name: voice
+      fn: hevi.ai_drama.stages:stage_voice
+    - name: segments
+      fn: hevi.ai_drama.stages:stage_segments
+    - name: edit
+      fn: hevi.ai_drama.stages:stage_edit
+    - name: delivery
+      fn: hevi.ai_drama.stages:stage_delivery
