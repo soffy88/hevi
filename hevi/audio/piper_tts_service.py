@@ -1,13 +1,45 @@
 import asyncio
-import os
-from pathlib import Path
 import logging
+import os
+import shutil
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-FF = '/home/soffy/.local/bin/ffmpeg'
-PIPER = '/data/soffy/projects/hevi-zero/.venv/bin/piper'
-VOICES = '/data/soffy/projects/hevi-zero/voices'
+
+def _resolve_bin(*candidates: str) -> str:
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    return candidates[-1]
+
+
+def _resolve_dir(*candidates: str) -> str:
+    for candidate in candidates:
+        if candidate and os.path.isdir(candidate):
+            return candidate
+    return candidates[-1]
+
+
+FF = _resolve_bin(
+    os.environ.get("HEVI_FFMPEG", ""),
+    shutil.which("ffmpeg") or "",
+    "/usr/bin/ffmpeg",
+    "/home/soffy/.local/bin/ffmpeg",
+)
+PIPER = _resolve_bin(
+    os.environ.get("HEVI_PIPER_BIN", ""),
+    shutil.which("piper") or "",
+    "/usr/local/bin/piper",
+    "/opt/piper/bin/piper",
+    "/data/soffy/projects/hevi-zero/.venv/bin/piper",
+)
+VOICES = _resolve_dir(
+    os.environ.get("HEVI_PIPER_VOICES_DIR", ""),
+    "/opt/piper/voices",
+    "/data/soffy/projects/hevi-zero/voices",
+)
+
 
 def piper_available() -> bool:
     return os.path.exists(PIPER)
