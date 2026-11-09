@@ -13,15 +13,15 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageFont
-
 FFMPEG = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 NOTO = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
 NOTO_MONO = "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc"
 FONT_LICENSE = "Noto Sans CJK / Noto Sans Mono CJK — SIL Open Font License 1.1"
 
 
-def _font(size: int, mono: bool = False) -> ImageFont.FreeTypeFont:
+def _font(size: int, mono: bool = False):
+    from PIL import ImageFont
+
     path = NOTO_MONO if mono else NOTO
     try:
         return ImageFont.truetype(path, size=size, index=0)
@@ -51,6 +51,8 @@ def prompt_guard(shot: dict[str, Any]) -> list[str]:
 
 def make_ui_png(text: str, out_png: Path, *, width: int = 420, height: int = 96, accent: str = "#E8E8E8") -> Path:
     """Transparent interaction prompt (e.g. 进入教室 / 接听电话)."""
+    from PIL import Image, ImageDraw
+
     out_png.parent.mkdir(parents=True, exist_ok=True)
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
