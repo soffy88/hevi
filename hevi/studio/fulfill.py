@@ -1287,7 +1287,8 @@ async def _render_scene3d_line(order: dict[str, Any], output_dir: Path) -> dict[
     from hevi.layer4_legacy.zerolines.oskill_impl.captions import build_ass, caption_events
 
     topic = str(_slot(order, "topic") or order.get("topic") or "3D 场景")
-    authored = _slot(order, "script_lines") or _slot(order, "texts") or []
+    raw_slots = order.get("slots") if isinstance(order.get("slots"), dict) else {}
+    authored = raw_slots.get("script_lines") or raw_slots.get("texts") or []
     # script.quick emits {"text": ..., "scene": ...} dicts; accept both forms.
     texts = [
         str(x.get("text") or x.get("line") or "") if isinstance(x, dict) else str(x)
