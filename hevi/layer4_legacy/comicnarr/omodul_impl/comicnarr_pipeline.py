@@ -322,6 +322,20 @@ def comic_narration_workflow(
         gen_time_s=round(total_kf_gen_sec, 2),
     )
 
+    # The diffusion pipeline is no longer needed once the frames exist.  Drop it
+    # and return the heap to the OS so a later line in the same API process does
+    # not inherit a multi-GB resident image.
+    try:
+        if hasattr(engine, "unload"):
+            engine.unload()
+        import ctypes
+        import gc
+
+        gc.collect()
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+
     # 6. Step: BGM & Audio Track Assembly with Ducking
     bgm_path = audio_dir / "bgm.wav"
     write_bgm(bgm_path, total_narr_dur + 3.0, mood=style.bgm_mood)

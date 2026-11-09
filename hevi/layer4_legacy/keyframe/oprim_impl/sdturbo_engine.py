@@ -57,6 +57,11 @@ class SDTurboCPUEngine(KeyframeEngine):
     def max_resident_mb(self) -> float:
         return 5500.0
 
+    def unload(self) -> None:
+        """Drop the CPU pipeline so a long-lived API worker returns the memory."""
+        type(self)._pipeline = None
+        self._pipeline = None
+
     def _ensure_pipeline(self) -> Any:
         if self._pipeline is not None:
             return self._pipeline
@@ -122,7 +127,7 @@ class SDTurboCPUEngine(KeyframeEngine):
             sec = time.time() - t0
 
         if output_path is None:
-            digest = hashlib.md5(f"{effective_seed}:{prompt_en}".encode("utf-8")).hexdigest()
+            digest = hashlib.md5(f"{effective_seed}:{prompt_en}".encode()).hexdigest()
             cache_dir = Path("output/keyframes")
             cache_dir.mkdir(parents=True, exist_ok=True)
             output_path = cache_dir / f"kf_{effective_seed}_{digest[:8]}.png"

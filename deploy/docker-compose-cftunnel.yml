@@ -36,7 +36,7 @@ services:
         limits:
           cpus: '4.0'
           # comic_narration loads SD-Turbo on CPU (~3-4 GB peak); 4G OOM-killed it.
-          memory: 8G
+          memory: 10G
     # GPU 直通不在基础栈中强制申请；需要 Wan2GP 本地推理时使用
     # deploy/docker-compose-cftunnel.gpu.yml 覆盖层。
     env_file:
