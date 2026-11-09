@@ -6,13 +6,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
-import json
 import logging
 import os
 import subprocess
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -20,10 +18,42 @@ from hevi.explainer.script import OralScript, ScriptSection
 
 logger = logging.getLogger(__name__)
 
-PIPER_BIN = Path("/data/soffy/projects/hevi-zero/.venv/bin/piper")
-PIPER_VOICES_DIR = Path("/data/soffy/projects/hevi-zero/voices")
-WHISPER_MODEL_DIR = Path(
-    "/data/soffy/appdata/huggingface_hub/models--Systran--faster-whisper-small/snapshots/536b0662742c02347bc0e980a01041f333bce120"
+def _first_dir(*candidates: str) -> Path:
+    for candidate in candidates:
+        if candidate and Path(candidate).is_dir():
+            return Path(candidate)
+    return Path(candidates[-1])
+
+
+def _piper_bin() -> Path:
+    explicit = os.environ.get("HEVI_PIPER_BIN", "").strip()
+    if explicit and Path(explicit).is_file():
+        return Path(explicit)
+    found = __import__("shutil").which("piper")
+    if found:
+        return Path(found)
+    for candidate in (
+        "/data/soffy/projects/hevi-zero/.venv/bin/piper",
+        "/usr/local/bin/piper",
+        "/opt/piper/bin/piper",
+    ):
+        if Path(candidate).is_file():
+            return Path(candidate)
+    return Path("/data/soffy/projects/hevi-zero/.venv/bin/piper")
+
+
+PIPER_BIN = _piper_bin()
+PIPER_VOICES_DIR = _first_dir(
+    os.environ.get("HEVI_PIPER_VOICES_DIR", ""),
+    "/opt/piper/voices",
+    "/data/soffy/projects/hevi-zero/voices",
+)
+WHISPER_MODEL_DIR = _first_dir(
+    os.environ.get("HEVI_WHISPER_MODEL", ""),
+    os.environ.get("FASTER_WHISPER_MODEL_DIR", ""),
+    "/models/faster-whisper-large-v3-turbo",
+    "/home/soffy/models/faster-whisper-large-v3-turbo",
+    "/data/soffy/appdata/huggingface_hub/models--Systran--faster-whisper-small/snapshots/536b0662742c02347bc0e980a01041f333bce120",
 )
 
 # 默认音色
