@@ -25,10 +25,12 @@ ZERO_LINES: tuple[str, ...] = (
     "podcast_repurpose",
     "reference_adapt",
     "comic_narration",
+    "documentary_montage",
+    "localization_dub",
 )
 
 #: canonical lines that intentionally keep their original implementation only
-LEGACY_ONLY_LINES: tuple[str, ...] = ("documentary_montage", "localization_dub")
+LEGACY_ONLY_LINES: tuple[str, ...] = ()
 
 ENGINES: tuple[str, ...] = ("zero", "legacy")
 
@@ -105,7 +107,7 @@ LINE_SPECS: dict[str, ZeroLineSpec] = {
         description="whisper word timestamps -> 18-32 s windows -> 9:16 blurred-fill reframe + word captions",
     ),
     "podcast_repurpose": ZeroLineSpec(
-        "podcast_repurpose", 1080, 1080, ("media_path",),
+        "podcast_repurpose", 720, 1280, ("media_path",),
         qa=QAThresholds(
             min_motion=0.5, max_dark_ratio=None,
             not_applicable_reason="audiogram uses a deliberate dark backdrop; gated by motion/static instead",
@@ -117,6 +119,15 @@ LINE_SPECS: dict[str, ZeroLineSpec] = {
         # orbital night passes in the reference are legitimately black
         qa=QAThresholds(max_black_ratio=0.35),
         description="re-structured reference segments + new narration, grade, moves, transitions",
+    ),
+    "documentary_montage": ZeroLineSpec(
+        "documentary_montage", 720, 1280, ("texts", "queries"),
+        description="archival montage: muted grade + grain, year/archive lower-thirds, slow moves",
+    ),
+    "localization_dub": ZeroLineSpec(
+        "localization_dub", 720, 1280, ("media_path",),
+        qa=QAThresholds(max_black_ratio=0.35, min_motion=0.4),
+        description="source video -> whisper transcript -> free translation -> piper dub + bilingual captions",
     ),
     "comic_narration": ZeroLineSpec(
         "comic_narration", 1080, 1920, ("topic",),
@@ -144,11 +155,17 @@ class ZeroLineRequest:
         if spec is None:
             return [f"line {self.line_id!r} has no zero-cost engine"]
         errors: list[str] = []
+        topic_source_lines = {"shorts_clip", "podcast_repurpose", "localization_dub"}
         missing = [
             name
             for name in spec.inputs
             if not getattr(self, name)
             and not (self.line_id == "comic_narration" and name == "topic" and self.texts)
+            and not (
+                self.line_id in topic_source_lines
+                and name == "media_path"
+                and (self.topic or self.texts)
+            )
         ]
         errors.extend(f"{self.line_id}: missing required input {name!r}" for name in missing)
         if "queries" in spec.inputs and self.texts and self.queries and self.line_id not in {
@@ -293,16 +310,19 @@ _LINE_SCRIPT_TEMPLATES: dict[str, list[str]] = {
         "第四格：结局出人意料。",
     ],
     "documentary_montage": [
-        "镜头记录{topic}的完整过程。",
-        "从准备到高潮，一气呵成。",
-        "每帧都是真实瞬间。",
-        "纪录片的温度，在细节里。",
+        "镜头从{topic}最早的一刻开始记录。",
+        "档案里的画面，保留了当时的光线。",
+        "现场的脚步声，比解说更接近真实。",
+        "一件物证，把时间拉回到那个瞬间。",
+        "口述的细节，补上了画面没有说出的部分。",
+        "对照不同年份的影像，变化慢慢显形。",
+        "最后留下的，是时间自己的答案。",
     ],
     "localization_dub": [
-        "This is {topic} in a new voice.",
-        "We dub and subtitle for you.",
-        "Same story, new language.",
-        "Enjoy the localized version.",
+        "这段画面，讲述的是{topic}。",
+        "我们保留原来的镜头，换上新的语言。",
+        "翻译、配音、字幕，一条时间线完成。",
+        "同一个故事，换一种声音继续。",
     ],
     "handdraw": [
         "从前有一只小家伙，第一次遇见{topic}。",
@@ -311,10 +331,13 @@ _LINE_SCRIPT_TEMPLATES: dict[str, list[str]] = {
         "故事画完，梦还没醒。",
     ],
     "scene3d": [
-        "在三维场景中，{topic}立体呈现。",
-        "镜头环绕，空间感十足。",
-        "光影变化，突出主体。",
-        "渲染完成，所见即所得。",
+        "镜头进入一个关于{topic}的三维空间。",
+        "远处的光，先勾出场景的轮廓。",
+        "镜头缓慢环绕，空间一层层展开。",
+        "主体在光里浮现，边缘带着柔和的辉光。",
+        "推近一点，材质的细节变得清楚。",
+        "景深拉开，前后关系有了呼吸。",
+        "最后停在一个稳定的构图上。",
     ],
 }
 

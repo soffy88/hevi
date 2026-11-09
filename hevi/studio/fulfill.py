@@ -1105,13 +1105,23 @@ async def _render_handdraw_line(
 ) -> dict[str, Any]:
     """Render a real path-based hand-drawn explainer video with continuous narration."""
     from hevi.layer4_legacy.handdraw.line import render_handdraw_line
+
+    # Product contract is 9:16.  The renderer defaults to landscape, so set the
+    # canvas explicitly unless the caller asked for something else.
+    if not (_slot(order, "width") or _slot(order, "height")):
+        order = {**order, "width": 1080, "height": 1920}
     res = await render_handdraw_line(order, output_dir)
-    if res.get("video_path"):
-        _conform_duration(Path(str(res["video_path"])), float(_slot(order, "duration_s") or 30.0))
+    video = Path(str(res["video_path"]))
+    _conform_duration(video, float(_slot(order, "duration_s") or 30.0))
+    manifest, quality = await _verified_video_manifest([(video, True, "handdraw")], require_audio=True)
+    if not quality.get("passed"):
+        return {"status": "failed", "target": "handdraw", "line_id": "handdraw",
+                "reason": "CANONICAL_QUALITY_GATE_FAILED", "quality": quality}
     return {
         "status": "completed",
-        "quality": {"verdict": "pass", "passed": True, "violations": []},
-        "result_video_path": res["video_path"],
+        "quality": quality,
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "result_video_path": str(manifest.primary_path() or video),
         "cover_path": res.get("cover_path"),
         "srt_path": res.get("srt_path"),
         "script_path": res.get("script_path"),
@@ -1243,14 +1253,96 @@ _RENDERERS = {
 }
 
 
+_SCENE3D_PRESET_WORDS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("星空", "宇宙", "银河", "星球", "太空", "space", "star", "galaxy", "universe", "planet"), "through_star_sea"),
+    (("麦田", "狐狸", "自然", "田野", "森林", "乡村", "wheat", "fox", "nature", "forest", "field"), "fox_in_wheat"),
+)
+
+
+def _scene3d_preset(topic: str) -> str:
+    text = (topic or "").lower()
+    for keys, preset in _SCENE3D_PRESET_WORDS:
+        if any(k in text for k in keys):
+            return preset
+    return "little_planet_orbit"
+
+
 async def _render_scene3d_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
-    """scene3d 的 Blender/Three.js 执行器不在本镜像内：明确拒绝，别静默空 reason。"""
-    del order, output_dir
-    return _blocked(
-        "scene3d 产线未在当前部署开放（缺少 3D 渲染执行器）；请改用其他产线或等待上线",
-        target="scene3d",
-        line_id="scene3d",
+    """Render a real Three.js scene on CPU (SwiftShader) with topic narration.
+
+    The 3D scene is data-driven and chosen from the topic; narration, captions
+    and BGM are layered on the rendered frames so the line meets the same
+    9:16 / 30 s / audio product contract as the other lines.
+    """
+    import dataclasses
+
+    from hevi.layer4_legacy.scene3d.schema import load_scene
+    from hevi.layer4_legacy.zerolines.omodul_impl._media import (
+        finish,
+        mix,
+        tts_lines,
+        write_bgm,
     )
+    from hevi.layer4_legacy.zerolines.oprim_impl.specs import generate_script_lines
+    from hevi.layer4_legacy.zerolines.oskill_impl.captions import build_ass, caption_events
+
+    topic = str(_slot(order, "topic") or order.get("topic") or "3D 场景")
+    authored = _slot(order, "script_lines") or _slot(order, "texts") or []
+    texts = [str(x) for x in authored]
+    if not texts:
+        texts = list(generate_script_lines(topic, lang="zh", line_id="scene3d", n=7))
+    preset = str(_slot(order, "preset") or _scene3d_preset(topic))
+    scene_json = Path(__file__).resolve().parents[1] / "layer4_legacy" / "scene3d" / "examples" / f"{preset}.json"
+    if not scene_json.is_file():
+        return _blocked(f"scene3d 预设不存在: {preset}", target="scene3d", line_id="scene3d")
+    spec = load_scene(str(scene_json))
+    spec = dataclasses.replace(spec, duration_s=30.0, fps=24, resolution=720)
+    spec.camera.aspect = "9:16"
+
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    work = out / "tmp"
+    work.mkdir(parents=True, exist_ok=True)
+
+    def _render() -> Path:
+        from hevi.layer4_legacy.scene3d.renderer import SceneRenderer
+
+        renderer = SceneRenderer(spec, work)
+        return renderer.encode(renderer.render_frames())
+
+    try:
+        silent = await asyncio.to_thread(_render)
+    except Exception as exc:  # missing browser / WebGL: readable failure, not a blank video
+        return _blocked(f"scene3d 渲染器不可用: {type(exc).__name__}: {exc}", target="scene3d", line_id="scene3d")
+
+    vo, cues = tts_lines(texts, work / "vo", lang="zh")
+    total = 30.0
+    audio = mix(vo, write_bgm(work / "bgm.wav", 31.0, "warm"), work / "mix.wav", total, -22)
+    ev = caption_events(cues)
+    title = str(_slot(order, "title") or topic)[:18]
+    if title:
+        ev.insert(0, (0.2, 3.6, "Title", r"{\fad(400,400)}" + title))
+    ass_path = work / "s.ass"
+    ass_path.write_text(build_ass(width=720, height=1280, events=ev), encoding="utf-8")
+    final = out / "scene3d.mp4"
+    finish(silent, audio, final, ass_path)
+    _conform_duration(final, float(_slot(order, "duration_s") or 30.0))
+    manifest, quality = await _verified_video_manifest([(final, True, "scene3d")], require_audio=True)
+    if not quality.get("passed"):
+        return {"status": "failed", "target": "scene3d", "line_id": "scene3d",
+                "reason": "CANONICAL_QUALITY_GATE_FAILED", "quality": quality}
+    return {
+        "status": "completed",
+        "target": "scene3d",
+        "line_id": "scene3d",
+        "result_video_path": str(manifest.primary_path() or final),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "render_runtime": "scene3d",
+        "scene_preset": preset,
+        "provenance": {"line_id": "scene3d", "engine": "scene3d", "preset": preset,
+                       "source": "procedural Three.js scene, CPU SwiftShader", "paid_api": False},
+    }
 
 
 _RENDERERS["scene3d"] = _render_scene3d_line

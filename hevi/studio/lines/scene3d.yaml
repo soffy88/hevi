@@ -5,12 +5,18 @@ summary: 数据驱动的 Three.js 镜头线 —— 漂浮小星球 / 麦田 / �
 handoff: scene3d
 render_runtime: scene3d
 slots:
+  - name: topic
+    required: true
+    description: 主题（自动选择星球/星空/麦田预设并生成旁白）
+  - name: preset
+    required: false
+    description: 可选场景预设（little_planet_orbit | through_star_sea | fox_in_wheat）
   - name: scene
-    required: true
-    description: 场景 JSON 路径（hevi/layer4_legacy/scene3d/examples/*.json）
+    required: false
+    description: 可选场景 JSON 路径（默认按主题选择）
   - name: out
-    required: true
-    description: 渲染输出目录
+    required: false
+    description: 渲染输出目录（默认工单目录）
 tools:
   - scene3d.render
   - scene3d.validate
@@ -18,13 +24,9 @@ tools:
 pipeline:
   name: scene3d
   stages:
-    - name: load
-      fn: hevi.layer4_legacy.scene3d.stages:stage_load
-    - name: render_frames
-      fn: hevi.layer4_legacy.scene3d.stages:stage_render
-    - name: encode
-      fn: hevi.layer4_legacy.scene3d.stages:stage_encode
-    - name: contact_sheet
-      fn: hevi.layer4_legacy.scene3d.stages:stage_contact_sheet
-    - name: report
-      fn: hevi.layer4_legacy.scene3d.stages:stage_report
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

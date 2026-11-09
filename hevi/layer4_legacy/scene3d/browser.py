@@ -17,7 +17,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-__all__ = ["has_chromium", "resolve_browsers_path", "chromium_available"]
+__all__ = [
+    "chromium_available",
+    "chromium_executable",
+    "has_chromium",
+    "resolve_browsers_path",
+]
 
 _CANDIDATE_BINARIES = (
     "chrome-linux64/chrome",
@@ -70,4 +75,38 @@ def resolve_browsers_path() -> str | None:
 
 def chromium_available() -> bool:
     """Public predicate for tests: is a Chromium bundle resolvable?"""
-    return resolve_browsers_path() is not None or Path("/snap/chromium/current/usr/lib/chromium-browser/chrome").is_file()
+    return chromium_executable() is not None
+
+
+def _candidate_dirs() -> list[Path]:
+    candidates: list[Path] = []
+    for env_key in ("PLAYWRIGHT_BROWSERS_PATH", "SCENE3D_PLAYWRIGHT_BROWSERS"):
+        val = os.environ.get(env_key)
+        if val:
+            candidates.append(Path(val))
+    candidates.append(Path.home() / ".cache" / "ms-playwright")
+    return candidates
+
+
+def chromium_executable(browsers_path: str | Path | None = None) -> str | None:
+    """Return the full Chromium binary in an installed Playwright bundle.
+
+    ``p.chromium.launch()`` without ``executable_path`` resolves the browser
+    build number pinned by the installed Playwright package; the host bundle
+    may be a different (compatible) build, and the deployment mounts the host
+    bundle read-only.  Passing the binary explicitly keeps the renderer working
+    in both cases.
+    """
+    dirs = [Path(browsers_path)] if browsers_path else _candidate_dirs()
+    for base in dirs:
+        if not base.is_dir():
+            continue
+        for sub in sorted(base.iterdir()):
+            if not sub.is_dir() or "chromium" not in sub.name or "headless_shell" in sub.name:
+                continue
+            for cand in ("chrome-linux64/chrome", "chrome-linux/chrome"):
+                binary = sub / cand
+                if binary.is_file():
+                    return str(binary)
+    snap = Path("/snap/chromium/current/usr/lib/chromium-browser/chrome")
+    return str(snap) if snap.is_file() else None

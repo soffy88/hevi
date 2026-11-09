@@ -13,7 +13,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from .browser import resolve_browsers_path
+from .browser import chromium_executable, resolve_browsers_path
 from .schema import SceneSpec
 from .template import build_html
 
@@ -84,6 +84,15 @@ _CHROMIUM_ARGS = [
     "--ignore-gpu-blocklist",
     "--disable-dev-shm-usage",
 ]
+
+
+def _launch(p):
+    """Launch Chromium with the host bundle when Playwright's pinned build is absent."""
+    exe = chromium_executable() or resolve_browsers_path()
+    kwargs = {"args": _CHROMIUM_ARGS}
+    if exe:
+        kwargs["executable_path"] = exe
+    return p.chromium.launch(**kwargs)
 
 
 def vendor_dir() -> Path:
@@ -177,7 +186,7 @@ class SceneRenderer:
 
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(args=_CHROMIUM_ARGS) if resolve_browsers_path() is not None else p.chromium.launch(executable_path="/snap/chromium/current/usr/lib/chromium-browser/chrome", args=_CHROMIUM_ARGS)
+                browser = _launch(p)
                 page = browser.new_page(
                     viewport={"width": self.spec.width, "height": self.spec.height},
                     device_scale_factor=1,
@@ -234,7 +243,7 @@ class SceneRenderer:
         page_url = f"http://127.0.0.1:{port}/{html_path.name}"
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(args=_CHROMIUM_ARGS) if resolve_browsers_path() is not None else p.chromium.launch(executable_path="/snap/chromium/current/usr/lib/chromium-browser/chrome", args=_CHROMIUM_ARGS)
+                browser = _launch(p)
                 page = browser.new_page(
                     viewport={"width": self.spec.width, "height": self.spec.height},
                     device_scale_factor=1,
@@ -298,7 +307,7 @@ class SceneRenderer:
 
         def _grab(page):
             page.evaluate(f"window.__setTime({t!r})")
-            b64 = page.evaluate(
+            return page.evaluate(
                 """async () => {
                   const c = document.getElementById('c');
                   return await new Promise((resolve, reject) => {
@@ -311,7 +320,6 @@ class SceneRenderer:
                   });
                 }"""
             )
-            return b64
 
         b64 = self._with_page(_grab)
         out.parent.mkdir(parents=True, exist_ok=True)

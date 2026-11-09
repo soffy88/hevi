@@ -12,7 +12,7 @@ slots:
     description: 已有转写
   - name: source
     required: false
-    description: 播客源
+    description: 播客源（可选；也可先 POST /api/studio/uploads 上传，或只给主题自动派生源片）
 tools:
   - ingest.preflight
   - watch.video

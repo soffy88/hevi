@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import mimetypes
 import os
+import uuid
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
@@ -223,6 +224,44 @@ async def create_slate(
         else:
             await quota.release(quota_job, reason=result.reason or result.status)
     return result.to_dict()
+
+
+@router.post("/uploads")
+async def upload_studio_source(
+    file: Annotated[UploadFile, File(description="源视频（拆条/播客/译制用，≤200MB）")],
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Upload a source video for the source-media lines.
+
+    Returns a container ``media_path`` that can be passed in a slate's slots
+    (``media_path``) for shorts_clip / podcast_repurpose / localization_dub.
+    """
+    del user
+    suffix = Path(file.filename or "source.mp4").suffix.lower()
+    if suffix not in {".mp4", ".mov", ".webm", ".mkv", ".m4v"}:
+        raise HTTPException(status_code=422, detail="只接受视频文件（mp4/mov/webm/mkv/m4v）")
+    root = Path(os.environ.get("HEVI_OUTPUT_ROOT", "").strip() or (Path.cwd() / "output"))
+    dest_dir = root / "uploads"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / f"{uuid.uuid4().hex}{suffix}"
+    limit = 200 * 1024 * 1024
+    size = 0
+    try:
+        with dest.open("wb") as out:
+            while chunk := await file.read(1 << 20):
+                size += len(chunk)
+                if size > limit:
+                    raise HTTPException(status_code=413, detail="源视频过大（上限 200MB）")
+                out.write(chunk)
+    except HTTPException:
+        dest.unlink(missing_ok=True)
+        raise
+    finally:
+        await file.close()
+    if size == 0:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail="空文件")
+    return {"media_path": str(dest), "bytes": size}
 
 
 _ARTIFACT_SUFFIXES = {

@@ -8,12 +8,11 @@ import json
 import os
 import shutil
 import subprocess
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import numpy as np
 import pytest
-
-from difflib import SequenceMatcher
 
 from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
     LEGACY_ONLY_LINES,
@@ -23,8 +22,16 @@ from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
     generate_script_lines,
     resolve_engine,
 )
-from hevi.layer4_legacy.zerolines.oskill_impl.audio_math import mouth_series, rms_from_pcm, synth_bgm
-from hevi.layer4_legacy.zerolines.oskill_impl.captions import build_ass, kinetic_events, kinetic_words
+from hevi.layer4_legacy.zerolines.oskill_impl.audio_math import (
+    mouth_series,
+    rms_from_pcm,
+    synth_bgm,
+)
+from hevi.layer4_legacy.zerolines.oskill_impl.captions import (
+    build_ass,
+    kinetic_events,
+    kinetic_words,
+)
 from hevi.layer4_legacy.zerolines.oskill_impl.qa import frame_stats, judge
 from hevi.layer4_legacy.zerolines.oskill_impl.shots import (
     camera_filter,
@@ -40,10 +47,12 @@ HAVE_FFMPEG = Path(FFMPEG).exists()
 
 
 # ---------------------------------------------------------------- policy
-def test_twelve_zero_lines_and_two_legacy_only() -> None:
+def test_fourteen_zero_lines_and_no_legacy_only() -> None:
+    from hevi.layer4_legacy.zerolines.oprim_impl.specs import LEGACY_ONLY_LINES
     from hevi.studio.production_catalog import CANONICAL_LINES
 
-    assert len(ZERO_LINES) == 12 and set(ZERO_LINES) == set(LINE_SPECS)
+    assert len(ZERO_LINES) == 14 and set(ZERO_LINES) == set(LINE_SPECS)
+    assert not LEGACY_ONLY_LINES
     # koubo_cut has its own (non-zero) renderer and is listed in the canonical catalog separately.
     assert set(ZERO_LINES) | set(LEGACY_ONLY_LINES) | {"koubo_cut"} == set(CANONICAL_LINES)
     assert not set(ZERO_LINES) & set(LEGACY_ONLY_LINES)
@@ -176,7 +185,7 @@ def test_workflow_blocks_on_missing_inputs_and_never_raises(tmp_path: Path) -> N
     assert rec["status"] == "blocked" and rec["cost"]["usd"] == 0.0
     out = zero_line_workflow({}, {"line_id": "shorts_clip", "media_path": str(tmp_path / "nope.mp4")}, tmp_path / "b")
     assert out["status"] == "failed" and "not found" in out["reason"]
-    assert zero_line_workflow({}, {"line_id": "localization_dub", "texts": ["x"]}, tmp_path / "c")["status"] == "blocked"
+    assert zero_line_workflow({}, {"line_id": "localization_dub"}, tmp_path / "c")["status"] == "blocked"
 
 
 def test_workflow_quality_gate_failure_is_failed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -301,7 +310,7 @@ def test_qualify_maps_host_lines_to_talkcraft_not_echomimic() -> None:
         req = ZeroLineRequest(line, texts=tuple(slots.get("script_lines", ())), queries=tuple(slots.get("queries", ())),
                               media_path=slots.get("media_path", ""), offsets=tuple(slots.get("offsets", ())))
         assert not req.validate(), (line, req.validate())
-    assert mod._slots("documentary_montage", "zero").get("engine") is None
+    assert mod._slots("koubo_cut", "zero").get("engine") is None
 
 
 @pytest.mark.slow

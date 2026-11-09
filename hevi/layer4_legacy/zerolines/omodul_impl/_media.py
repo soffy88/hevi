@@ -399,30 +399,34 @@ def _https_get(url: str, *, timeout: float, headers: dict[str, str] | None = Non
     return data
 
 
-def translate_to_english(text: str, *, timeout: float = 6.0) -> str:
-    """Free zh->en rendering of a topic for stock queries (no paid API).
+_LANG_PAIRS = {"zh": "zh-CN", "en": "en-GB"}
 
-    Cached on disk; returns "" on any error so the caller can fall back to the
-    keyword map / neutral visuals instead of failing the render.
+
+def translate_text(text: str, *, source: str = "zh", target: str = "en", timeout: float = 12.0) -> str:
+    """Free machine translation (MyMemory, no key) with an on-disk cache.
+
+    Returns "" on any error; callers keep the source line rather than inventing
+    text.  Used by the localization line for the dub + bilingual subtitles.
     """
     import html
 
     text = (text or "").strip()
     if not text:
         return ""
-    if all(ord(ch) < 128 for ch in text):
+    if source == target:
         return text
-    key = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    key = hashlib.sha256(f"{source}>{target}:{text}".encode()).hexdigest()[:16]
     cache_dir = CACHE / "translate"
     cache_dir.mkdir(parents=True, exist_ok=True)
     cached = cache_dir / f"{key}.txt"
     if cached.exists():
         return cached.read_text(encoding="utf-8").strip()
+    pair = f"{_LANG_PAIRS.get(source, source)}%7C{_LANG_PAIRS.get(target, target)}"
     try:
         url = (
             "https://api.mymemory.translated.net/get?q="
             + urllib.parse.quote(text)
-            + "&langpair=zh-CN%7Cen"
+            + f"&langpair={pair}"
         )
         data = json.loads(_https_get(url, timeout=timeout, headers={"User-Agent": "hevi-zerolines"}))
         out = html.unescape(str((data.get("responseData") or {}).get("translatedText") or "")).strip()
@@ -433,6 +437,16 @@ def translate_to_english(text: str, *, timeout: float = 6.0) -> str:
     except Exception:
         pass
     return ""
+
+
+def translate_to_english(text: str, *, timeout: float = 6.0) -> str:
+    """Free zh->en rendering of a topic for stock queries (no paid API)."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    if all(ord(ch) < 128 for ch in text):
+        return text
+    return translate_text(text, source="zh", target="en", timeout=timeout)
 
 
 def shot(src: str | Path, out: Path, d: float, W: int, H: int, *, ss: float | None = None, move: str = "push",

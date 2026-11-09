@@ -23,7 +23,6 @@ from typing import Any
 import cv2
 import numpy as np
 
-from hevi.layer4_legacy.comicnarr.oprim_impl.contracts import ComicScene, ComicScript
 from hevi.layer4_legacy.comicnarr.oprim_impl.ken_burns import (
     CAMERA_MOVES,
     build_ken_burns_filter,
@@ -158,6 +157,7 @@ def comic_narration_workflow(
             style=style,
             character_tokens=script.character_tokens,
             use_llm=llm_available,
+            subject_en=str(input_data.get("subject_en") or cfg.get("subject_en") or ""),
         )
         scene.prompt_en = prompt_en
         scene.negative_prompt = neg
@@ -190,7 +190,7 @@ def comic_narration_workflow(
 
     for idx, scene in enumerate(script.scenes):
         audio_hash = hashlib.sha256(
-            f"{tts_engine}:zh_huayan:{scene.narration}".encode("utf-8")
+            f"{tts_engine}:zh_huayan:{scene.narration}".encode()
         ).hexdigest()[:12]
         scene_audio_path = audio_dir / f"shot_{idx:02d}_{audio_hash}.wav"
 
@@ -237,8 +237,8 @@ def comic_narration_workflow(
         seed_2 = base_seed + idx * 17 + 500
 
         # Breakpoint resumption cache
-        h1 = hashlib.sha256(f"{engine_name}:{bg_source}:{seed_1}:{scene.prompt_en}".encode("utf-8")).hexdigest()[:12]
-        h2 = hashlib.sha256(f"{engine_name}:{bg_source}:{seed_2}:{scene.prompt_en}".encode("utf-8")).hexdigest()[:12]
+        h1 = hashlib.sha256(f"{engine_name}:{bg_source}:{seed_1}:{scene.prompt_en}".encode()).hexdigest()[:12]
+        h2 = hashlib.sha256(f"{engine_name}:{bg_source}:{seed_2}:{scene.prompt_en}".encode()).hexdigest()[:12]
         cand1_path = frames_dir / f"shot_{idx:02d}_cand1_{h1}.png"
         cand2_path = frames_dir / f"shot_{idx:02d}_cand2_{h2}.png"
 

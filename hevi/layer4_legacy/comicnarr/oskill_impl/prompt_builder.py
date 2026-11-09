@@ -17,7 +17,6 @@ import logging
 import os
 import re
 import urllib.request
-from typing import Any
 
 from hevi.layer4_legacy.comicnarr.oprim_impl.contracts import ComicStyle
 
@@ -124,7 +123,7 @@ def _try_llm_translate(text_zh: str, timeout_s: float = 2.0) -> str | None:
             content = data["choices"][0]["message"]["content"].strip()
             if content and len(content) > 8:
                 return content
-    except Exception as exc:  # noqa: BLE001 - free channel is best-effort
+    except Exception as exc:
         logger.debug("LLM prompt translation unavailable, using rules: %s", exc)
         _LLM_TRANSLATE_DISABLED = True
     return None
@@ -133,9 +132,8 @@ def _try_llm_translate(text_zh: str, timeout_s: float = 2.0) -> str | None:
 def _rule_translate(text_zh: str) -> list[str]:
     tokens: list[str] = []
     for pattern, eng in _COMIC_KEYWORD_MAP:
-        if pattern.search(text_zh):
-            if eng not in tokens:
-                tokens.append(eng)
+        if pattern.search(text_zh) and eng not in tokens:
+            tokens.append(eng)
     if not tokens:
         tokens.append(_GENERIC_SCENE_TOKEN)
     return tokens
@@ -155,6 +153,7 @@ def build_scene_prompt(
     style: ComicStyle,
     character_tokens: tuple[str, ...] = (),
     use_llm: bool = True,
+    subject_en: str = "",
 ) -> tuple[str, str]:
     """Build English prompt and negative prompt for a comic panel.
 
@@ -164,13 +163,17 @@ def build_scene_prompt(
 
     # 1. Translate scene description (LLM if available, deterministic rules otherwise)
     llm_en = _try_llm_translate(clean_desc) if use_llm else None
-    if llm_en:
-        scene_tokens = [llm_en]
-    else:
-        scene_tokens = _rule_translate(clean_desc)
+    scene_tokens = [llm_en] if llm_en else _rule_translate(clean_desc)
 
     # 2. Assemble components - scene first, protagonist only when featured.
-    prompt_parts: list[str] = list(scene_tokens)
+    # The rule table only covers a few story domains; an arbitrary topic would
+    # otherwise collapse to the same generic panel for every subject.  The
+    # caller may pass a translated topic as the leading visual subject.
+    prompt_parts: list[str] = []
+    subject = (subject_en or "").strip()
+    if subject:
+        prompt_parts.append(subject)
+    prompt_parts.extend(scene_tokens)
 
     if character_desc_en and _scene_features_character(clean_desc, character_tokens):
         if any(h in clean_desc for h in ("主人", "老妇", "巫婆", "官员", "周瑜")):

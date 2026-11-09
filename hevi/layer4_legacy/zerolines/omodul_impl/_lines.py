@@ -29,12 +29,19 @@ from hevi.layer4_legacy.zerolines.omodul_impl._media import (
     still_shot,
     subtitles_filter,
     topic_still,
+    translate_text,
+    tts,
     tts_lines,
     whisper_segments,
     write_bgm,
     xfade_concat,
 )
-from hevi.layer4_legacy.zerolines.oprim_impl.specs import ZeroLineRequest, spec_for
+from hevi.layer4_legacy.zerolines.oprim_impl.specs import (
+    ZeroLineRequest,
+    generate_broll_queries,
+    generate_script_lines,
+    spec_for,
+)
 from hevi.layer4_legacy.zerolines.oskill_impl import puppets
 from hevi.layer4_legacy.zerolines.oskill_impl.audio_math import mouth_series
 from hevi.layer4_legacy.zerolines.oskill_impl.captions import (
@@ -129,9 +136,18 @@ def _broll_film(req: ZeroLineRequest, tmp: Path, W: int, H: int, *, moves=None, 
                 continue
             except Exception:
                 pass  # thin Commons coverage: fall back to stock video
-        src = pexels(q, orientation=orient, min_d=4, exclude=used)
-        prov.append(_prov(src, f"shot {i + 1}"))
-        shots.append(shot(src["path"], tmp / f"s{i}.mp4", seg, W, H, move=mv, grade=grade))
+        try:
+            src = pexels(q, orientation=orient, min_d=4, exclude=used)
+            prov.append(_prov(src, f"shot {i + 1}"))
+            shots.append(shot(src["path"], tmp / f"s{i}.mp4", seg, W, H, move=mv, grade=grade))
+        except Exception:
+            # Thin/no stock for this query: keep the film on-topic with a still
+            # instead of dropping the shot or failing the whole render.
+            img = topic_still(stills_query or q, width=max(W, H), exclude=used_titles)
+            prov.append({"source": img.get("source", "topic_still"), "query": stills_query or q,
+                         "title": img.get("title", ""), "author": img.get("author", ""),
+                         "licence": img.get("licence", ""), "used_for": f"shot {i + 1}"})
+            shots.append(still_shot(img["path"], tmp / f"s{i}.mp4", seg, W, H, move=mv, grade=grade))
     film = xfade_concat(shots, tmp / "film.mp4", xd)
     audio = mix(vo, write_bgm(tmp / "bgm.wav", total + 1, mood), tmp / "mix.wav", total)
     return film, audio, cues, prov, total
@@ -396,11 +412,21 @@ def _source(req: ZeroLineRequest) -> Path:
     return p
 
 
+def _source_or_topic(req: ZeroLineRequest, tmp: Path, W: int, H: int) -> Path:
+    """Uploaded source wins; otherwise derive a narrated topic source."""
+    if req.media_path and Path(req.media_path).is_file():
+        return Path(req.media_path)
+    if req.media_path:
+        raise ZeroMediaError(f"source media not found: {req.media_path}")
+    src, _ = _synth_source(req, tmp, W, H, lines_n=14)
+    return src
+
+
 def shorts_clip(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
     tmp.mkdir(parents=True, exist_ok=True)
-    src = _source(req)
+    src = _source_or_topic(req, tmp / "src", W, H)
     lang = str(req.extras.get("source_lang") or req.lang)
     segs = whisper_segments(src, lang)
     (d / "transcript.json").write_text(json.dumps(segs, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -418,7 +444,7 @@ def shorts_clip(req: ZeroLineRequest, d: Path) -> Result:
             try:
                 from hevi.layer4_legacy.zerolines.omodul_impl._media import dur as _dur
 
-                b = min(_dur(req.media_path), a + 30.0)
+                b = min(_dur(str(src)), a + 30.0)
             except Exception:
                 pass
         ev = []
@@ -455,7 +481,7 @@ def podcast_repurpose(req: ZeroLineRequest, d: Path) -> Result:
     sp = spec_for(req.line_id)
     W, H, tmp = sp.width, sp.height, d / "tmp"
     tmp.mkdir(parents=True, exist_ok=True)
-    src = _source(req)
+    src = _source_or_topic(req, tmp / "src", W, H)
     lang = str(req.extras.get("source_lang") or req.lang)
     segs = whisper_segments(src, lang)
     (d / "transcript.json").write_text(json.dumps(segs, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -472,7 +498,7 @@ def podcast_repurpose(req: ZeroLineRequest, d: Path) -> Result:
         try:
             from hevi.layer4_legacy.zerolines.omodul_impl._media import dur as _dur
 
-            b = min(_dur(req.media_path), a + 30.0)
+            b = min(_dur(str(src)), a + 30.0)
         except Exception:
             pass
     ev = [(s["start"] - a, s["end"] - a, "Cap",
@@ -590,14 +616,142 @@ def reference_adapt(req: ZeroLineRequest, d: Path) -> Result:
             "notes": "reference re-structured: chosen segments, new narration, grade, moves, transitions, captions"}
 
 
+def documentary_montage(req: ZeroLineRequest, d: Path) -> Result:
+    sp = spec_for(req.line_id)
+    W, H, tmp = sp.width, sp.height, d / "tmp"
+    stills_query, still_every = _stills_args(req)
+    film, audio, cues, prov, _ = _broll_film(
+        req, tmp, W, H,
+        moves=("pull", "pan_r", "push", "pan_l", "pull", "push", "pan_r"),
+        grade="eq=saturation=0.62:contrast=1.06:gamma=0.98,noise=alls=7:allf=t+u",
+        mood="tense", xd=0.7,
+        stills_query=stills_query or (req.topic or ""), still_every=still_every or 1,
+    )
+    labels = list(req.labels) or ["档案 01", "影像 02", "现场 03", "物证 04", "口述 05", "年表 06", "回望 07"]
+    ev = caption_events(cues)
+    for (a, b, _), lab in zip(cues, labels, strict=False):
+        if lab:
+            ev.append((a, b, "Lower", r"{\an7\pos(64,86)\fad(250,250)\fs40\c&H00D7FF&}" + lab))
+    ev.append((0.2, cues[-1][1] if cues else 4.0, "Kicker",
+               r"{\an9\pos(654,70)\fs30\c&HE0E0E0&}ARCHIVE"))
+    if _title(req):
+        ev.insert(0, (0.2, 3.4, "Title", r"{\fad(400,400)}" + _title(req)))
+    ass = _write_ass(tmp / "dm.ass", W, H, ev)
+    final = finish(film, audio, d / f"{req.line_id}.mp4", ass)
+    return {"finals": [final], "provenance": [*prov, PIPER_PROV, BGM_PROV],
+            "notes": "archival montage: muted grade + film grain + archive lower-thirds"}
+
+
+def _synth_source(req: ZeroLineRequest, tmp: Path, W: int, H: int, *, lines_n: int = 14,
+                  lang: str | None = None) -> tuple[Path, list[str]]:
+    """Build a topic-derived source video (spoken narration + b-roll stills/video).
+
+    Used when a source-media line is asked with only a topic.  The source is a
+    real narrated clip, so the downstream whisper/dub/clip stages run on real
+    speech instead of a placeholder.
+    """
+    lang = lang or req.lang
+    topic = (req.topic or req.title or (req.texts[0] if req.texts else "")).strip()
+    if not topic:
+        raise ZeroMediaError(f"{req.line_id}: needs a media_path or a topic to derive a source")
+    first = list(generate_script_lines(topic, lang=lang, line_id="explainer", n=min(7, lines_n)))
+    rest = []
+    if len(first) < lines_n:
+        rest = list(generate_script_lines(topic, lang=lang, line_id="history_scene", n=lines_n - len(first)))
+    lines = first + rest
+    queries = list(generate_broll_queries(topic, tuple(lines), lang=lang, line_id="explainer"))
+    sub = ZeroLineRequest(line_id="explainer", texts=tuple(lines), queries=tuple(queries),
+                          topic=topic, title=req.title or topic, lang=lang)
+    stills_query, still_every = _stills_args(sub)
+    film, audio, _cues, _prov, _ = _broll_film(
+        sub, tmp, W, H, moves=("push", "pan_r", "pull", "pan_l"),
+        grade="eq=saturation=1.0:contrast=1.02", mood="warm",
+        stills_query=stills_query, still_every=still_every or 2,
+    )
+    src = tmp / "source.mp4"
+    finish(film, audio, src)
+    return src, lines
+
+
+def localization_dub(req: ZeroLineRequest, d: Path) -> Result:
+    """Dub an uploaded (or topic-derived) source into the target language."""
+    sp = spec_for(req.line_id)
+    W, H, tmp = sp.width, sp.height, d / "tmp"
+    tmp.mkdir(parents=True, exist_ok=True)
+    src_txt = Path(req.media_path) if req.media_path else None
+    if src_txt is not None and not src_txt.is_file():
+        raise ZeroMediaError(f"source media not found: {req.media_path}")
+    if src_txt is None:
+        src_txt, _lines = _synth_source(req, tmp / "src", W, H, lines_n=8)
+    source_lang = str(req.extras.get("source_lang") or req.lang or "zh")
+    target_lang = str(req.extras.get("target_lang") or ("en" if source_lang.startswith("zh") else "zh"))
+    if target_lang not in ("zh", "en"):
+        raise ZeroMediaError(f"localization_dub: unsupported target language {target_lang!r} (zh|en)")
+    segs = [s for s in whisper_segments(src_txt, source_lang) if s["start"] < 29.6]
+    if not segs:
+        raise ZeroMediaError("localization_dub: no speech found in the source")
+    dub_dir = tmp / "dub"
+    dub_dir.mkdir(parents=True, exist_ok=True)
+    parts, cues = [], []
+    for k, seg in enumerate(segs[:14]):
+        original = str(seg.get("text") or "").strip()
+        if not original:
+            continue
+        spoken = translate_text(original, source=source_lang, target=target_lang) or original
+        slot = max(1.2, min(7.0, float(seg["end"]) - float(seg["start"])))
+        p = dub_dir / f"{k:02d}.wav"
+        dur_s = tts(spoken, p, lang=target_lang, speed=1.0)
+        if dur_s > slot * 1.02:
+            dur_s = tts(spoken, p, lang=target_lang, speed=min(1.5, dur_s / slot))
+        start = max(0.0, float(seg["start"]))
+        parts.append((p, start, min(slot + 0.9, max(dur_s, 0.8))))
+        cues.append((start, min(29.9, start + min(slot, dur_s) + 0.35), spoken, original))
+    if not cues:
+        raise ZeroMediaError("localization_dub: translation produced no lines")
+    inputs, graph = [], []
+    for i, (p, start, hold) in enumerate(parts):
+        inputs += ["-i", str(p)]
+        graph.append(f"[{i}:a]atrim=0:{hold:.3f},asetpts=PTS-STARTPTS,"
+                     f"adelay={int(start * 1000)}|{int(start * 1000)}[a{i}]")
+    n = len(parts)
+    fc = ";".join(graph) + ";" + "".join(f"[a{i}]" for i in range(n)) + \
+        f"amix=inputs={n}:normalize=0,apad,atrim=0:30[a]"
+    dub_wav = tmp / "dub.wav"
+    sh([FFMPEG, "-y", "-v", "error", *inputs, "-filter_complex", fc, "-map", "[a]", "-ar", "44100", str(dub_wav)])
+    bed = tmp / "bed.wav"
+    sh([FFMPEG, "-y", "-v", "error", "-i", str(src_txt), "-vn", "-af", "apad,atrim=0:30", "-ar", "44100", str(bed)])
+    audio = mix(dub_wav, bed, tmp / "mix.wav", 30, -20)
+    video = shot(src_txt, tmp / "video.mp4", 30.0, W, H, ss=0.0, move="push",
+                 grade="eq=contrast=1.03:saturation=1.02")
+    ev = []
+    bilingual = bool(req.extras.get("bilingual", True))
+    for a, b, spoken, original in cues:
+        ev.append((a, b, "Cap", rf"{{\an5\pos({W // 2},{H - 190})\fs40\bord4}}" + spoken))
+        if bilingual:
+            ev.append((a, b, "Cap", rf"{{\an5\pos({W // 2},{H - 130})\fs26\c&HCCCCCC&}}" + original))
+    if _title(req):
+        ev.append((0.2, 4.0, "Lower", r"{\an7\pos(60,80)\fs34}" + _title(req)))
+    ass = _write_ass(tmp / "d.ass", W, H, ev)
+    final = finish(video, audio, d / f"{req.line_id}.mp4", ass)
+    return {"finals": [final],
+            "provenance": [{"source": "user-supplied source" if req.media_path else "topic-derived source",
+                            "path": str(src_txt)},
+                           {"source": "free translation (MyMemory) + piper local TTS"}],
+            "notes": f"dub {source_lang}->{target_lang}; bilingual captions; original audio kept as low bed"}
+
+
 def comic_narration(req: ZeroLineRequest, d: Path) -> Result:
     from hevi.layer4_legacy.comicnarr.omodul_impl.comicnarr_pipeline import (
         comic_narration_workflow,
     )
 
     sp = spec_for(req.line_id)
+    topic = req.topic or (req.texts[0] if req.texts else "")
+    from hevi.layer4_legacy.zerolines.omodul_impl._media import translate_to_english
+
     input_data = {
-        "topic": req.topic or (req.texts[0] if req.texts else ""),
+        "topic": topic,
+        "subject_en": translate_to_english(topic) if topic else "",
         "texts": list(req.texts),
         "style": req.extras.get("style", "guofeng_anime"),
         "subtitle_style": req.extras.get("subtitle_style", "bottom"),
@@ -628,5 +782,6 @@ def comic_narration(req: ZeroLineRequest, d: Path) -> Result:
 PRODUCERS: dict[str, Callable[[ZeroLineRequest, Path], Result]] = {
     f.__name__: f
     for f in (kinetic_promo, explainer, cinematic, director_pipeline, history_scene, character_animation,
-              talking_head, avatar_spokesperson, shorts_clip, podcast_repurpose, reference_adapt, comic_narration)
+              talking_head, avatar_spokesperson, shorts_clip, podcast_repurpose, reference_adapt, comic_narration,
+              documentary_montage, localization_dub)
 }

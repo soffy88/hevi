@@ -5,8 +5,8 @@ handoff: none
 render_runtime: ffmpeg
 slots:
   - name: media_path
-    required: true
-    description: 成片
+    required: false
+    description: 成片（可选；也可先 POST /api/studio/uploads 上传，或只给主题自动派生源片）
   - name: topic
     required: false
     description: 标题

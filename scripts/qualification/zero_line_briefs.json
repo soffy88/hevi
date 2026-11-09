@@ -202,6 +202,36 @@
         "久而久之，猫就发现推东西能吸引主人的注意。",
         "所以下一次看到猫推杯子，收起贵重物品才是正解。"
       ]
+    },
+    "documentary_montage": {
+      "title": "阿波罗登月档案",
+      "topic": "阿波罗11号登月",
+      "script_lines": [
+        "镜头从阿波罗11号升空的那一刻开始记录。",
+        "档案里的画面，保留了当时控制室的紧张。",
+        "现场的报数声，比解说更接近真实。",
+        "一枚火箭部件，把时间拉回到那个瞬间。",
+        "口述的细节，补上了画面没有说出的部分。",
+        "对照不同年份的影像，变化慢慢显形。",
+        "最后留下的，是时间自己的答案。"
+      ],
+      "queries": [
+        "apollo 11 launch archival",
+        "mission control room 1969",
+        "rocket engine close up",
+        "archive film grain",
+        "historical documentary footage",
+        "newspaper archive moon landing",
+        "lunar surface wide shot"
+      ]
+    },
+    "localization_dub": {
+      "title": "Apollo 11 中文配音版",
+      "media_path": "data/workspace/assets/open-corpus-seed/clips/nasa_KSC-20190716-MH-NAS01_0001-Return_to_the.mp4",
+      "zero_extras": {
+        "source_lang": "en",
+        "target_lang": "zh"
+      }
     }
   }
 }

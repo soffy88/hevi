@@ -27,6 +27,12 @@ DEFAULT_LAUNCH_LINES = (
     "avatar_spokesperson",
     "kinetic_promo",
     "director_pipeline",
+    # S12: hidden-line batch 2 verified at 9:16 / 30 s / audio, quality >= 4
+    "comic_narration",
+    "documentary_montage",
+    "shorts_clip",
+    "podcast_repurpose",
+    "scene3d",
 )
 
 
