@@ -35,8 +35,37 @@ def _find_bin(name: str, fallback: str) -> str:
     return fallback
 
 
-PIPER = "/data/soffy/projects/hevi-zero/.venv/bin/piper"
-PIPER_VOICE = "/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx"
+_PIPER_CANDIDATES = (
+    "/data/soffy/projects/hevi-zero/.venv/bin/piper",
+    "/opt/piper/bin/piper",
+)
+_PIPER_VOICE_CANDIDATES = (
+    "/opt/piper/voices/zh_CN-huayan-medium.onnx",
+    "/data/soffy/projects/hevi-zero/voices/zh_CN-huayan-medium.onnx",
+)
+
+
+def _piper_bin() -> str:
+    explicit = os.environ.get("HEVI_PIPER_BIN", "").strip()
+    if explicit and Path(explicit).is_file():
+        return explicit
+    found = shutil.which("piper")
+    if found:
+        return found
+    for candidate in _PIPER_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+    return _PIPER_CANDIDATES[0]
+
+
+def _piper_voice() -> str:
+    explicit = os.environ.get("HEVI_PIPER_VOICE", "").strip()
+    if explicit and Path(explicit).is_file():
+        return explicit
+    for candidate in _PIPER_VOICE_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+    return _PIPER_VOICE_CANDIDATES[1]
 FFMPEG = _find_bin("ffmpeg", "/home/soffy/.local/bin/ffmpeg")
 FFPROBE = _find_bin("ffprobe", "/home/soffy/.local/bin/ffprobe")
 
@@ -87,7 +116,7 @@ def synth_line(text: str, out_wav: Path, *, speed: float = 1.0) -> float:
     out_wav.parent.mkdir(parents=True, exist_ok=True)
     raw = out_wav.with_suffix(".raw.wav")
     proc = subprocess.run(
-        [PIPER, "-m", PIPER_VOICE, "-f", str(raw), "--length_scale", str(1 / speed), "--sentence_silence", "0.25"],
+        [_piper_bin(), "-m", _piper_voice(), "-f", str(raw), "--length_scale", str(1 / speed), "--sentence_silence", "0.25"],
         input=text,
         text=True,
         capture_output=True,
@@ -319,13 +348,24 @@ def _render_env() -> dict[str, str]:
     env = os.environ.copy()
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy"):
         env.pop(key, None)
-    env["PATH"] = f"/home/soffy/.local/bin:/home/soffy/.nvm/versions/node/v26.4.0/bin:{env.get('PATH', '')}"
+    extras = ["/home/soffy/.local/bin", "/home/soffy/.nvm/versions/node/v26.4.0/bin", "/node26/bin"]
+    binary = os.environ.get("HEVI_HYPERFRAMES_BIN", "").strip()
+    if binary:
+        extras.insert(0, str(Path(binary).parent))
+    env["PATH"] = ":".join([*extras, env.get("PATH", "")])
     env["HYPERFRAMES_RENDER_DETACHED"] = "1"
     return env
 
 
 def render_project(*, project_dir: Path, output_path: Path, fps: int = 30, quality: str = "looks", timeout_s: float = 1800.0) -> Path:
-    binary = shutil.which("hyperframes")
+    binary = os.environ.get("HEVI_HYPERFRAMES_BIN", "").strip()
+    if not binary or not Path(binary).is_file():
+        binary = shutil.which("hyperframes") or ""
+    if not binary:
+        for candidate in ("/node26/bin/hyperframes", "/home/soffy/.local/bin/hyperframes"):
+            if Path(candidate).is_file():
+                binary = candidate
+                break
     if not binary:
         raise RuntimeError("hyperframes CLI not found on PATH")
     project_dir = project_dir.resolve()

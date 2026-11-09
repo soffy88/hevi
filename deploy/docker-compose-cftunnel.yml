@@ -103,6 +103,8 @@ services:
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw,localization_dub,reference_adapt,character_animation}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
+      HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
+      HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       # S13: optional internal raea check bypass (default off; skipped when the
       # binary is absent).  Kinetic promo stays on the default engine unless
@@ -158,6 +160,8 @@ services:
       # 容器重建不丢进度,大盘/WebSocket 可读可下载。
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
+      - /home/soffy/.nvm/versions/node/v26.4.0:/node26:ro
+      - /home/soffy/.cache/hyperframes:/app/.cache/hyperframes:ro
       # LivLiv 2.5D avatar: vendor player+characters (214MB) and a Chromium with
       # WebGL2 (SwiftShader). Both read-only; never baked into the image.
       - /data/soffy/vendor/livliv-player:/livliv:ro
@@ -266,6 +270,8 @@ services:
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
+      HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
+      HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
@@ -300,6 +306,8 @@ services:
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
+      - /home/soffy/.nvm/versions/node/v26.4.0:/node26:ro
+      - /home/soffy/.cache/hyperframes:/app/.cache/hyperframes:ro
       # LivLiv 2.5D avatar: vendor player+characters (214MB) and a Chromium with
       # WebGL2 (SwiftShader). Both read-only; never baked into the image.
       - /data/soffy/vendor/livliv-player:/livliv:ro
@@ -344,6 +352,8 @@ services:
       HEVI_EXCLUSIVE_RESOURCE_CLASSES: drama_render
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
+      HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
+      HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
@@ -361,6 +371,8 @@ services:
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
+      - /home/soffy/.nvm/versions/node/v26.4.0:/node26:ro
+      - /home/soffy/.cache/hyperframes:/app/.cache/hyperframes:ro
       - /home/soffy/.cache/huggingface:/root/.cache/huggingface:ro
       - /data/models/huggingface:/data/models/huggingface:ro
     extra_hosts:
@@ -413,6 +425,8 @@ services:
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
+      HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
+      HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
@@ -443,6 +457,8 @@ services:
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data
       - /home/soffy/projects/hevi/assets:/app/assets
+      - /home/soffy/.nvm/versions/node/v26.4.0:/node26:ro
+      - /home/soffy/.cache/hyperframes:/app/.cache/hyperframes:ro
       # LivLiv 2.5D avatar: vendor player+characters (214MB) and a Chromium with
       # WebGL2 (SwiftShader). Both read-only; never baked into the image.
       - /data/soffy/vendor/livliv-player:/livliv:ro
