@@ -133,6 +133,9 @@ services:
       # comic_narration keyframes (SD-Turbo CPU) live outside the /models tree.
       HEVI_SD_TURBO_PATH: /sdmodels/models/AI-ModelScope--sd-turbo/snapshots/master
       HEVI_TAESD_PATH: /sdmodels/models/madebyollin--taesd/snapshots/master
+      # open_clip candidate scoring (host ~/models is mounted at /models, not
+      # at the hard-coded /home/soffy/models path used on the host).
+      HEVI_OPEN_CLIP_DIR: /models/open_clip
     volumes:
       - /home/soffy/models:/models:ro
       # SD-Turbo / TAESD for comic_narration (host /data/soffy/models/ms)
