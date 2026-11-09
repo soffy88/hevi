@@ -10,6 +10,9 @@ slots:
   - name: aspect_ratio
     required: false
     description: 9:16 或 16:9
+  - name: visual_style
+    required: false
+    description: 默认旁白图解 | flat_2d_anim（2D 动画）| map_route_3d（3D 地图路线）
 tools:
   - research.plan
   - script.quick

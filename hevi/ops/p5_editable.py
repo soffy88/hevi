@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import shutil
 import time
 import uuid
@@ -18,12 +17,9 @@ from pathlib import Path
 from typing import Any
 
 from hevi.ops.p5_types import (
-    AudioMixManifest,
     CaptionStyleProfile,
     ContentItem,
     EditableProjectManifest,
-    ProductionAsset,
-    VoicePerformance,
 )
 
 
@@ -83,6 +79,68 @@ def _us(seconds: float) -> int:
     """Convert seconds to microseconds."""
     return int(seconds * 1_000_000)
 
+
+
+def _srt_cues(text: str) -> list[dict[str, Any]]:
+    """Parse the common SRT subset into {start,end,text}; unknown lines ignored."""
+    import re
+
+    pattern = re.compile(
+        r"(?P<start>\d{1,2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*"
+        r"(?P<end>\d{1,2}:\d{2}:\d{2}[,.]\d{3})(?P<body>.*?)(?:\n\s*\n|\Z)",
+        re.S,
+    )
+
+    def seconds(stamp: str) -> float:
+        hh, mm, rest = stamp.replace(",", ".").split(":")
+        return int(hh) * 3600 + int(mm) * 60 + float(rest)
+
+    cues = []
+    for match in pattern.finditer(text):
+        body = " ".join(
+            line.strip() for line in match.group("body").splitlines() if line.strip()
+        )
+        if body:
+            cues.append({"start": seconds(match.group("start")),
+                         "end": seconds(match.group("end")), "text": body})
+    return cues
+
+
+def _native_text_items(mat: JianyingMaterial, start_s: float, dur_s: float,
+                       clip: dict[str, Any]) -> list[Any]:
+    from hevi.studio.jianying_native import NativeItem
+
+    path = Path(mat.path)
+    text = ""
+    try:
+        if path.suffix.lower() == ".json":
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            content = payload.get("content", payload) if isinstance(payload, dict) else {}
+            text = str(content.get("text") or content.get("caption") or "")
+        else:
+            text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        text = ""
+    cues = _srt_cues(text) if path.suffix.lower() in {".srt", ".vtt"} else []
+    scale = clip.get("scale") or {}
+    transform = clip.get("transform") or {}
+    settings = {
+        "alpha": float(clip.get("alpha") or 1.0),
+        "scale_x": float(scale.get("x") or 1.0),
+        "scale_y": float(scale.get("y") or 1.0),
+        "transform_x": float(transform.get("x") or 0.0),
+        "transform_y": float(transform.get("y") or 0.0),
+        "rotation": float(clip.get("rotation") or 0.0),
+    }
+    if cues:
+        return [
+            NativeItem(track="text", start_s=start_s + c["start"],
+                       duration_s=max(0.04, c["end"] - c["start"]),
+                       text=c["text"], transform=dict(settings))
+            for c in cues
+        ]
+    return [NativeItem(track="text", start_s=start_s, duration_s=max(0.04, dur_s),
+                       text=text or " ", transform=dict(settings))]
 
 # ── Jianying Draft Builder ─────────────────────────────────────────────
 
@@ -243,25 +301,117 @@ class JianyingDraftBuilder:
             "pitch": 1.0,
         }
 
+    def _material(self, material_id: str) -> JianyingMaterial | None:
+        return next((m for m in self.materials if m.material_id == material_id), None)
+
+    def _native_items(self) -> list[Any]:
+        from hevi.studio.jianying_native import NativeItem
+
+        items: list[NativeItem] = []
+        for track in self.tracks:
+            kind = "audio" if track.track_type == "audio" else "text" if track.track_type == "text" else "video"
+            for raw in track.segments:
+                seg = raw if isinstance(raw, dict) else asdict(raw)
+                mat = self._material(str(seg.get("material_id") or ""))
+                target = seg.get("target_timerange") or {}
+                source = seg.get("source_timerange") or {}
+                start_s = float(target.get("start") or 0) / 1_000_000
+                dur_s = float(target.get("duration") or 0) / 1_000_000
+                src_start_s = float(source.get("start") or 0) / 1_000_000
+                if not mat:
+                    continue
+                if kind == "text":
+                    items.extend(
+                        _native_text_items(mat, start_s, dur_s, seg.get("clip") or {})
+                    )
+                    continue
+                clip = seg.get("clip") or {}
+                scale = clip.get("scale") or {}
+                transform = clip.get("transform") or {}
+                items.append(
+                    NativeItem(
+                        track=kind,
+                        start_s=start_s,
+                        duration_s=max(0.04, dur_s),
+                        path=mat.path,
+                        source_start_s=src_start_s,
+                        volume=float(seg.get("volume") or 1.0),
+                        transform={
+                            "alpha": float(clip.get("alpha") or 1.0),
+                            "scale_x": float(scale.get("x") or 1.0),
+                            "scale_y": float(scale.get("y") or 1.0),
+                            "transform_x": float(transform.get("x") or 0.0),
+                            "transform_y": float(transform.get("y") or 0.0),
+                            "rotation": float(clip.get("rotation") or 0.0),
+                        },
+                    )
+                )
+        return items
+
+    def _write_text_capabilities(self) -> None:
+        """Keep parametric-text sidecars readable next to a native draft.
+
+        P5.1 records style capability in JSON sidecars.  A native draft carries
+        text inline, so the sidecars are preserved in a parallel folder and
+        indexed by element id; the projection reads them instead of guessing.
+        """
+        records: list[dict[str, Any]] = []
+        sidecar_dir = self.draft_dir / "hevi_sidecars"
+        for mat in self.materials:
+            if mat.type != "text":
+                continue
+            src = Path(mat.path)
+            if src.suffix.lower() != ".json" or not src.is_file():
+                continue
+            try:
+                payload = json.loads(src.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            sidecar_dir.mkdir(exist_ok=True)
+            dest = sidecar_dir / src.name
+            if not dest.exists():
+                shutil.copyfile(src, dest)
+            records.append(
+                {
+                    "element_id": payload.get("element_id"),
+                    "path": str(dest),
+                    "supported_fields": payload.get("supported_fields") or [],
+                    "unsupported_fields": payload.get("unsupported_fields") or [],
+                    "content": payload.get("content") or {},
+                }
+            )
+        if records:
+            (self.draft_dir / "hevi_text_capabilities.json").write_text(
+                json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+
     def save(self, canvas_width: int = 1280, canvas_height: int = 720, fps: int = 30) -> Path:
-        """Save complete draft to directory."""
-        draft_json = self.build_draft_json(canvas_width, canvas_height, fps)
-        draft_path = self.draft_dir / "draft_content.json"
-        draft_path.write_text(json.dumps(draft_json, ensure_ascii=False, indent=2), encoding="utf-8")
+        """Save a *native* JianYing Pro draft into this builder's folder."""
+        from hevi.studio.jianying_native import write_native_draft
 
+        export = write_native_draft(
+            "hevi_editable",
+            self._native_items(),
+            self.draft_dir,
+            width=canvas_width,
+            height=canvas_height,
+            fps=fps,
+            copy_media=False,
+            package_zip=False,
+            in_place=True,
+        )
+        self._write_text_capabilities()
         info = {
-            "draft_id": draft_json["draft_id"],
-            "draft_name": draft_json["draft_name"],
-            "create_time": draft_json["create_time"],
-            "update_time": draft_json["update_time"],
+            "draft_name": export.name,
             "draft_root": str(self.draft_dir),
-            "canvas_config": draft_json["canvas_config"],
-            "duration": draft_json["duration"],
-            "fps": draft_json["fps"],
+            "format": "jianying_native",
+            "duration": round(export.duration_s * 1_000_000),
+            "fps": fps,
         }
-        (self.draft_dir / "draft_info.json").write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
-
-        return self.draft_dir
+        (self.draft_dir / "draft_info.json").write_text(
+            json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return Path(export.draft_dir)
 
 
 def _sha256_file(path: Path) -> str:
@@ -350,10 +500,10 @@ def build_jianying_from_content(
 
     draft_dir = builder.save()
 
-    manifest = EditableProjectManifest(
+    return EditableProjectManifest(
         project_type="jianying",
         project_path=str(draft_dir),
-        timeline_json=json.dumps(builder.build_draft_json(), ensure_ascii=False),
+        timeline_json=str(Path(draft_dir) / "draft_content.json"),
         audio_refs=[m.path for m in builder.materials if m.type == "audio"],
         video_image_refs=[m.path for m in builder.materials if m.type in ("video", "image")],
         caption_refs=[],
@@ -369,8 +519,6 @@ def build_jianying_from_content(
         },
     )
 
-    return manifest
-
 
 def _parse_srt_to_segments(srt_path: Path, style: CaptionStyleProfile | None) -> list[JianyingSegment]:
     return []
@@ -383,8 +531,8 @@ def _us_to_s(us: int) -> float:
 # ── Validation ─────────────────────────────────────────────────────────
 
 def validate_jianying_draft(draft_dir: Path) -> tuple[bool, list[str]]:
-    """Validate Jianying draft structural integrity."""
-    errors = []
+    """Validate a native JianYing draft (or a legacy handoff plan honestly)."""
+    errors: list[str] = []
 
     draft_content = draft_dir / "draft_content.json"
     if not draft_content.exists():
@@ -397,19 +545,29 @@ def validate_jianying_draft(draft_dir: Path) -> tuple[bool, list[str]]:
         errors.append(f"draft_content.json invalid JSON: {e}")
         return False, errors
 
+    if isinstance(data.get("materials"), dict):
+        from hevi.studio.jianying_native import validate_native_draft
+
+        report = validate_native_draft(draft_dir)
+        return bool(report["valid"]), list(report["errors"])
+
     required = ["version", "draft_id", "materials", "tracks", "canvas_config", "duration", "fps"]
-    for field_name in required:
-        if field_name not in data:
-            errors.append(f"missing required field: {field_name}")
+    errors.extend(
+        f"missing required field: {field_name}"
+        for field_name in required
+        if field_name not in data
+    )
 
     for mat in data.get("materials", []):
         mat_path = Path(mat.get("path", ""))
         if mat_path and not mat_path.exists():
             errors.append(f"material file missing: {mat_path}")
 
-    for track in data.get("tracks", []):
-        if not track.get("segments"):
-            errors.append(f"track {track.get('track_id')} has no segments")
+    errors.extend(
+        f"track {track.get('track_id')} has no segments"
+        for track in data.get("tracks", [])
+        if not track.get("segments")
+    )
 
     return len(errors) == 0, errors
 
@@ -446,11 +604,11 @@ def build_capcut_from_content(item: ContentItem, output_dir: Path) -> EditablePr
 
 __all__ = [
     "JianyingDraftBuilder",
-    "JianyingTrack",
-    "JianyingSegment",
     "JianyingMaterial",
-    "build_jianying_from_content",
-    "validate_jianying_draft",
-    "validate_editable_delivery",
+    "JianyingSegment",
+    "JianyingTrack",
     "build_capcut_from_content",
+    "build_jianying_from_content",
+    "validate_editable_delivery",
+    "validate_jianying_draft",
 ]

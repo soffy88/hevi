@@ -405,8 +405,13 @@ class CapCutCliBackend(EditableProjectBackend):
                 except json.JSONDecodeError:
                     draft = {}
                 if isinstance(draft, dict):
+                    materials = draft.get("materials", {})
+                    material_count = (
+                        sum(len(v) for v in materials.values() if isinstance(v, list))
+                        if isinstance(materials, dict) else len(materials or [])
+                    )
                     info.setdefault("trackCount", len(draft.get("tracks", [])))
-                    info.setdefault("materialCount", len(draft.get("materials", [])))
+                    info.setdefault("materialCount", material_count)
                     info.setdefault("durationUs", draft.get("duration", 0))
 
             timeline = draft_dir / "draft_content.json"

@@ -100,6 +100,14 @@ class InternalJianyingBackend(EditableProjectBackend):
             return projection
 
         draft = json.loads(Path(project.timeline_json).read_text(encoding="utf-8"))
+        sidecar_index = Path(project.timeline_json).parent / "hevi_text_capabilities.json"
+        if sidecar_index.is_file():
+            try:
+                draft["_hevi_text_capabilities"] = json.loads(
+                    sidecar_index.read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError):
+                pass
         projection.project_path = project.project_path
         projection.timeline_path = project.timeline_json
         projection.track_count = len(draft.get("tracks", []))
@@ -144,15 +152,56 @@ class InternalJianyingBackend(EditableProjectBackend):
         projections that both lost the same value.
         """
         landed_ids = {e.element_id for e in landed}
+        raw_materials = draft.get("materials", [])
+        if isinstance(raw_materials, dict):
+            flattened = [
+                m for bucket in raw_materials.values() if isinstance(bucket, list) for m in bucket
+            ]
+        else:
+            flattened = list(raw_materials or [])
         sidecars = {
             Path(str(m.get("path", ""))): (m.get("metadata") or {})
-            for m in draft.get("materials", [])
+            for m in flattened
             if (m.get("metadata") or {}).get("parametric_text")
         }
+        # Native drafts keep text inline; P5 preserves its text sidecars in a
+        # parallel index so capability claims can still be verified.
+        native_caps = draft.get("_hevi_text_capabilities") or []
+        if native_caps:
+            for record in native_caps:
+                path = Path(str(record.get("path") or ""))
+                meta = dict(record)
+                meta["element_id"] = record.get("element_id")
+                meta["supported_fields"] = record.get("supported_fields") or []
+                meta["_native"] = True
+                sidecars[path] = meta
         geometry: dict[str, dict[str, Any]] = {}
         for track in draft.get("tracks", []):
             for segment in track.get("segments", []):
                 geometry[str(segment.get("segment_id", ""))] = segment.get("clip", {}) or {}
+        if native_caps:
+            # Native segment ids are generated; key them by the element that
+            # starts at the same timeline offset so placement fields can be
+            # checked against the clip that actually carries the text.
+            for record in native_caps:
+                element_id = str(record.get("element_id"))
+                sidecar = sidecars.get(Path(str(record.get("path") or "")))
+                clip = None
+                if sidecar is not None:
+                    try:
+                        content = json.loads(Path(record["path"]).read_text(encoding="utf-8"))
+                    except (OSError, json.JSONDecodeError):
+                        content = {}
+                    _ = content
+                for track in draft.get("tracks", []):
+                    for segment in track.get("segments", []):
+                        if str(track.get("type")) == "text":
+                            clip = segment.get("clip") or {}
+                            break
+                    if clip is not None:
+                        break
+                if clip is not None:
+                    geometry[f"seg_{element_id}"] = clip
 
         expressed: set[str] = set()
         unsupported: set[str] = set()

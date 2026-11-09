@@ -712,6 +712,14 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
         except Exception as exc:
             logger.warning("Research stage error: %s", exc)
 
+    # S17 explainer sub-styles: 2D animation and 3D map route.  The rendering
+    # method is already in main (hyperframes / video.map_route); this selects it
+    # per line and records the preference for the assembler.
+    visual_style = str(_slot(order, "visual_style") or order.get("visual_style") or "").strip()
+    style_config = {
+        "flat_2d_anim": {"style": "flat_2d_anim", "preferred_capability": "hyperframes"},
+        "map_route_3d": {"style": "map_route_3d", "preferred_capability": "video.map_route"},
+    }.get(visual_style, {})
     cues = [
         ExplainerCue(
             text=text,
@@ -719,7 +727,7 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
             time_estimate_s=float(item.get("time_estimate_s") or item.get("duration_s") or 5.0)
             if isinstance(item, dict)
             else 5.0,
-            visual_config={},
+            visual_config=dict(style_config),
             visual_search_query=str(item.get("visual_search_query") or "") if isinstance(item, dict) else "",
         )
         for item, text in (
@@ -785,6 +793,7 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
         "artifact_manifest": manifest.model_dump(mode="json"),
         "quality": quality,
         "render_runtime": getattr(result, "render_runtime", "remotion"),
+        **({"visual_style": visual_style, "style_config": style_config} if visual_style else {}),
     }
 
 
@@ -1301,6 +1310,11 @@ async def _render_scene3d_line(order: dict[str, Any], output_dir: Path) -> dict[
     and BGM are layered on the rendered frames so the line meets the same
     9:16 / 30 s / audio product contract as the other lines.
     """
+    raw_slots = order.get("slots") if isinstance(order.get("slots"), dict) else {}
+    engine = str(_slot(order, "engine") or raw_slots.get("engine") or "threejs").lower()
+    if engine in {"blender", "blender_cpu"}:
+        return await _render_scene3d_blender(order, output_dir)
+
     import dataclasses
 
     from hevi.layer4_legacy.scene3d.schema import load_scene
@@ -1375,6 +1389,69 @@ async def _render_scene3d_line(order: dict[str, Any], output_dir: Path) -> dict[
         "scene_preset": preset,
         "provenance": {"line_id": "scene3d", "engine": "scene3d", "preset": preset,
                        "source": "procedural Three.js scene, CPU SwiftShader", "paid_api": False},
+    }
+
+
+async def _render_scene3d_blender(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    """Optional Blender sub-line: preview 720p, final 1080p after approval."""
+    import asyncio
+
+    raw_slots = order.get("slots") if isinstance(order.get("slots"), dict) else {}
+    topic = str(_slot(order, "topic") or order.get("topic") or "3D 场景")
+    quality = str(_slot(order, "quality") or raw_slots.get("quality") or "preview").lower()
+    approved = bool(_slot(order, "approved") or raw_slots.get("approved"))
+    seconds = float(_slot(order, "duration_s") or raw_slots.get("seconds") or 2.0)
+    glb = ""
+    asset_id = str(_slot(order, "asset") or raw_slots.get("asset") or "")
+    if asset_id:
+        try:
+            from hevi.scene3d.assets_pipeline.sozai import fetch_cc0
+
+            record = await asyncio.to_thread(fetch_cc0, asset_id)
+            glb = str(record.get("path") or "")
+        except Exception as exc:
+            return _blocked(
+                f"sozai 素材不可用: {type(exc).__name__}: {exc}",
+                target="scene3d", line_id="scene3d",
+            )
+    try:
+        from hevi.scene3d.blender import render_shot
+
+        result = await asyncio.to_thread(
+            render_shot,
+            output_dir,
+            topic=topic,
+            quality=quality,
+            approved=approved,
+            seconds=min(max(seconds, 1.0), 5.0),
+            glb=glb,
+        )
+    except Exception as exc:
+        return _blocked(
+            f"scene3d Blender 渲染失败: {type(exc).__name__}: {exc}",
+            target="scene3d", line_id="scene3d",
+        )
+    manifest, qa = await _verified_video_manifest(
+        [(Path(result["video"]), True, "scene3d")], require_audio=False
+    )
+    return {
+        "status": "completed",
+        "target": "scene3d",
+        "line_id": "scene3d",
+        "result_video_path": str(manifest.primary_path() or result["video"]),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": qa,
+        "render_runtime": "scene3d_blender",
+        "scene_preset": quality,
+        "self_check": result.get("self_check"),
+        "angles": result.get("angles") or [],
+        "quota_units": result.get("quota_units"),
+        "next": result.get("next"),
+        "provenance": {
+            "line_id": "scene3d", "engine": "blender_cpu", "quality": quality,
+            "source": "headless Blender Cycles CPU, procedural route scene",
+            "paid_api": False, "approved": approved,
+        },
     }
 
 

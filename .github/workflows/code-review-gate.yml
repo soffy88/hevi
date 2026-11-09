@@ -1,0 +1,27 @@
+name: code-review-gate (optional)
+
+# Optional PR check.  It is NOT a required status check: the four probe JSON
+# files come from a reviewer agent, so this job only validates their contract.
+# Run it on demand or on PRs labelled "code-review".
+on:
+  workflow_dispatch:
+    inputs:
+      review_dir:
+        description: "directory containing probes/*.json"
+        required: false
+        default: "docs/work/active/current"
+  pull_request:
+    types: [labeled]
+
+jobs:
+  gate:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'code-review'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate probe contract (non-blocking)
+        run: python3 scripts/code_review_gate.py "${{ github.event.inputs.review_dir || 'docs/work/active/current' }}"

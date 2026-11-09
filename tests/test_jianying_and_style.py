@@ -6,7 +6,7 @@ from hevi.studio.jianying import JianyingClip, JianyingDraft, clips_from_recut, 
 from hevi.studio.style_skill import apply_style, archive_style, load_style, save_style
 
 
-def test_write_jianying_draft(tmp_path):
+def test_write_jianying_plan_is_not_a_draft(tmp_path):
     draft = JianyingDraft(
         name="demo",
         clips=[
@@ -15,11 +15,12 @@ def test_write_jianying_draft(tmp_path):
         ],
     )
     dest = write_jianying_draft(draft, tmp_path / "draft")
-    content = (dest / "draft_content.json").read_text(encoding="utf-8")
-    meta = (dest / "draft_meta_info.json").read_text(encoding="utf-8")
+    content = (dest / "plan.json").read_text(encoding="utf-8")
+    meta = (dest / "plan_meta.json").read_text(encoding="utf-8")
     assert "JianyingPro" in meta
     assert "videos" in content
     assert "texts" in content
+    assert not (dest / "draft_content.json").exists()
     assert draft.duration_s() == 2.5
 
 
@@ -52,3 +53,27 @@ def test_style_skill_roundtrip(tmp_path):
     assert plan["cuts"][0]["source"] == "new.mp4"
     assert plan["caption"]["mode"] == "bilingual_ass"
     assert "karaoke-caption-lock" in plan["recipe_cards"]
+
+
+def test_native_draft_when_library_installed(tmp_path):
+    import pytest
+    from pathlib import Path
+
+    pytest.importorskip("pyJianYingDraft")
+    from hevi.studio.jianying_native import NativeItem, validate_native_draft, write_native_draft
+
+    clip = tmp_path / "clip.mp3"
+    clip.write_bytes(b"not-real-audio")
+    # A text-only draft exercises the writer without probing media containers.
+    items = [NativeItem(track="text", start_s=0, duration_s=2, text="你好")]
+    export = write_native_draft("native-demo", items, tmp_path / "native")
+    report = validate_native_draft(export.draft_dir)
+    assert report["valid"], report["errors"]
+    assert report["stats"]["material_buckets"] >= 40
+    import zipfile
+
+    assert Path(export.draft_zip).is_file()
+    with zipfile.ZipFile(export.draft_zip) as zf:
+        names = zf.namelist()
+    assert "IMPORT_README.md" in names
+    assert any(name.endswith("draft_content.json") for name in names)

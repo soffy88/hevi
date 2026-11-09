@@ -1,8 +1,9 @@
-"""剪映专业版草稿导出 —— 对照 jianying-editor-skill / shotcraft JianYing export。
+"""剪映轨道投影 + 旧的内部交接 plan。
 
-写出 draft 目录(draft_content.json + draft_meta_info.json + materials 清单)。
-不操作剪映 UI、不自动导出 MP4。国际版 CapCut 不保证可导入;国内草稿格式随
-版本变,调用方应把这当成可编辑交接包,而不是 5.9 自动导出。
+S17 起真正的草稿由 :mod:`hevi.studio.jianying_native` 写（pyJianYingDraft，
+Apache-2.0）。这个模块只负责把 presentation / recut 投影成统一 clip 列表，
+并显式写出 ``plan.json`` / ``plan_meta.json`` —— 不再把内部 schema 冒充成
+``draft_content.json``。
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ class JianyingClip:
     track: str = "video"  # video | audio | text
     text: str = ""
     volume: float = 1.0
+    source_start_s: float = 0.0
+    keyframes: list[dict[str, Any]] = field(default_factory=list)
 
     def to_segment(self, material_id: str, timeline_start_us: int) -> dict[str, Any]:
         dur = _us(self.duration_s)
@@ -106,7 +109,7 @@ class JianyingDraft:
             "draft_root_path": "",
             "app": "JianyingPro",
             "region": "CN",
-            "note": "Hevi NLE handoff. Not CapCut International. Import in Jianying desktop.",
+            "note": "HEVI internal NLE handoff plan (not a JianYing draft). Use write_native_draft for import.",
         }
 
 
@@ -156,8 +159,14 @@ def clips_from_recut(
     captions: list[dict[str, Any]] | None = None,
     bgm: str = "",
 ) -> list[JianyingClip]:
-    """从 nle recut/clip.factory 产物抽剪映轨。"""
+    """从 nle recut/clip.factory 产物抽剪映轨。
+
+    ``start_s`` 是**时间线**位置（按轨道顺序累加），素材入点走
+    ``source_start_s``；字幕保持绝对时间线。这样原生导出不会把素材入点当
+    成片段落点。
+    """
     out: list[JianyingClip] = []
+    cursor = {"video": 0.0, "audio": 0.0}
     for clip in clips:
         if str(clip.get("action") or "keep") == "drop":
             continue
@@ -167,15 +176,20 @@ def clips_from_recut(
         track = str(clip.get("track") or "video")
         if track not in {"video", "audio", "text"}:
             track = "video"
+        dur = max(0.04, float(clip.get("duration_s") or 0.0))
+        timeline_start = float(clip.get("start_s")) if clip.get("start_s") is not None else cursor.get(track, 0.0)
         out.append(
             JianyingClip(
                 path=source,
-                start_s=float(clip.get("source_in_s") or 0.0),
-                duration_s=max(0.04, float(clip.get("duration_s") or 0.0)),
+                start_s=timeline_start,
+                duration_s=dur,
                 track=track,
                 text=str(clip.get("text") or clip.get("title") or ""),
+                source_start_s=float(clip.get("source_in_s") or 0.0),
             )
         )
+        if track in cursor:
+            cursor[track] = timeline_start + dur
     out.extend(
         JianyingClip(
             path="",
@@ -192,13 +206,56 @@ def clips_from_recut(
     return out
 
 
+def items_from_clips(clips: list[JianyingClip]) -> list[Any]:
+    """Map the shared clip projection to native writer items."""
+    from hevi.studio.jianying_native import NativeItem
+
+    return [
+        NativeItem(
+            track=clip.track if clip.track in {"video", "audio", "text"} else "video",
+            start_s=float(clip.start_s),
+            duration_s=float(clip.duration_s),
+            path=str(clip.path or ""),
+            source_start_s=float(clip.source_start_s or 0.0),
+            text=str(clip.text or ""),
+            volume=float(clip.volume),
+            keyframes=list(clip.keyframes or []),
+        )
+        for clip in clips
+    ]
+
+
+def write_native_from_draft(
+    draft: JianyingDraft,
+    dest_dir: Path,
+    *,
+    copy_media: bool = True,
+    package_zip: bool = True,
+    transitions: list[dict[str, Any]] | None = None,
+) -> Any:
+    """Write a real JianYing Pro draft from the shared clip projection."""
+    from hevi.studio.jianying_native import write_native_draft
+
+    return write_native_draft(
+        draft.name,
+        items_from_clips(draft.clips),
+        dest_dir,
+        width=draft.width,
+        height=draft.height,
+        fps=draft.fps,
+        copy_media=copy_media,
+        package_zip=package_zip,
+        transitions=transitions,
+    )
+
+
 def write_jianying_draft(
     draft: JianyingDraft,
     dest_dir: Path,
     *,
     copy_media: bool = False,
 ) -> Path:
-    """写草稿目录。copy_media=True 时把本地素材拷进 materials/。"""
+    """Write the internal handoff plan (``plan.json``), never a draft file."""
     dest = Path(dest_dir)
     dest.mkdir(parents=True, exist_ok=True)
     materials_dir = dest / "materials"
@@ -230,11 +287,11 @@ def write_jianying_draft(
             fps=draft.fps,
             clips=rewritten,
         )
-    (dest / "draft_content.json").write_text(
+    (dest / "plan.json").write_text(
         json.dumps(draft.to_content(), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    (dest / "draft_meta_info.json").write_text(
+    (dest / "plan_meta.json").write_text(
         json.dumps(draft.to_meta(), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )

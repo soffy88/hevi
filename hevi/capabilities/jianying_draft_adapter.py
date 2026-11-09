@@ -114,6 +114,11 @@ def compile_jianying_draft_contract(plan: Any) -> dict[str, Any]:
         "device_fingerprint_not_shared": True,
         "executed_here": False,
         "draft_file": None,
+        "native_writer": "hevi.studio.jianying_native.write_native_draft",
+        "native_writer_note": (
+            "Real drafts are written by the native writer (pyJianYingDraft, "
+            "Apache-2.0). This capability remains the contract/fake layer."
+        ),
     }
 
 

@@ -41,12 +41,12 @@ pipeline:
   stages:
     - name: script
       fn: hevi.ai_drama.stages:stage_script
+    - name: voice
+      fn: hevi.ai_drama.stages:stage_voice
     - name: storyboard
       fn: hevi.ai_drama.stages:stage_storyboard
     - name: assets
       fn: hevi.ai_drama.stages:stage_assets
-    - name: voice
-      fn: hevi.ai_drama.stages:stage_voice
     - name: segments
       fn: hevi.ai_drama.stages:stage_segments
     - name: edit

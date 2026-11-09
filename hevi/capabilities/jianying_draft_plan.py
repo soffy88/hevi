@@ -239,13 +239,42 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
     result = build_draft_plan(params.get("plan"))
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    native: dict[str, Any] | None = None
+    shots = ((params.get("plan") or {}).get("shots") or [])
+    from hevi.studio.jianying_native import (
+        NativeDraftUnavailable,
+        items_from_shots,
+        shots_have_media,
+        write_native_draft,
+    )
+
+    if shots_have_media(shots):
+        width, height = (1080, 1920) if result["aspect"] == "9:16" else (1920, 1080)
+        try:
+            export = write_native_draft(
+                str(result.get("title") or "hevi_draft"),
+                items_from_shots(shots),
+                out_dir / "native",
+                width=width,
+                height=height,
+                fps=30,
+            )
+            native = export.as_dict()
+            result["format"] = "jianying_native"
+            result["draft_file"] = export.draft_zip or export.draft_dir
+            result["draft_file_note"] = "Real JianYing Pro draft written with pyJianYingDraft."
+            result["draft_manifest"] = export.manifest
+        except NativeDraftUnavailable as exc:
+            result["native_error"] = str(exc)
     report = out_dir / "jianying_draft_plan.json"
     report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     return CapabilityResult(
         duration_s=0.0,
         sha256=compute_sha256(report),
         qa={"report_json": str(report), "clip_count": result["clip_count"],
-            "draft_file": None,
+            "draft_file": result.get("draft_file"),
+            "draft_zip": (native or {}).get("draft_zip"),
+            "native": native is not None,
             "library_installed": result["library_availability"]["installed"]},
     )
 

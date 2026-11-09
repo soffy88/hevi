@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+
 import pytest
 from pathlib import Path
 
@@ -26,11 +28,19 @@ from hevi.ops.p5_editable import (
 )
 
 
+def _tiny_video(path: Path) -> Path:
+    subprocess.run(
+        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+         "-f", "lavfi", "-i", "color=c=black:s=64x64:d=1:r=10",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)],
+        check=True, capture_output=True,
+    )
+    return path
+
+
 def test_jianying_builder_basic(tmp_path) -> None:
     builder = JianyingDraftBuilder(tmp_path)
-    # Create a fake video file
-    test_file = tmp_path / "test.mp4"
-    test_file.write_bytes(b"fake video")
+    test_file = _tiny_video(tmp_path / "test.mp4")
     mat_id = builder.add_video_material(test_file, "abc123")
     assert mat_id.startswith("video_")
 
@@ -51,9 +61,7 @@ def test_jianying_builder_basic(tmp_path) -> None:
 
 def test_validate_jianying_draft(tmp_path) -> None:
     builder = JianyingDraftBuilder(tmp_path)
-    # Add a fake material that exists
-    test_file = tmp_path / "test.mp4"
-    test_file.write_bytes(b"fake video")
+    test_file = _tiny_video(tmp_path / "test.mp4")
     mat_id = builder.add_video_material(test_file)
     seg = JianyingSegment(
         segment_id="seg1",

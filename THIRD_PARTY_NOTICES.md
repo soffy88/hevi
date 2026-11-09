@@ -59,3 +59,17 @@
 - **来源**: https://github.com/notofonts/noto-cjk
 - **许可证**: SIL Open Font License 1.1
 - **用途**: ai_drama 字幕、游戏对话框、UI 提示与“AI 生成”标识
+
+## pyJianYingDraft
+
+- **来源**: https://github.com/GuanYixuan/pyJianYingDraft (PyPI `pyJianYingDraft` 0.3.1)
+- **许可证**: Apache License 2.0
+- **版权**: Copyright (c) pyJianYingDraft contributors
+- **使用方式**: **仅作为 Python 运行时依赖**（`pip install pyJianYingDraft`），
+  不 vendor、不复制其源码进 hevi 仓库或闭源模块；由
+  `hevi/studio/jianying_native.py` 在服务端生成剪映专业版草稿。
+- **用途**: 导出可被剪映专业版打开的原生草稿（draft_content.json +
+  draft_meta_info.json + materials + 关键帧 + 字幕/音频轨）。
+- **许可边界**: Apache-2.0 允许商业使用与再分发；保留其 LICENSE/NOTICE。
+  未修改上游源码。
+- **入库日期**: 2026-11-09

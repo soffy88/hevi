@@ -2,7 +2,7 @@
 
 Stage order (each is one canvas node):
 
-    script -> storyboard -> assets -> voice -> segments -> edit -> delivery
+    script -> voice -> storyboard -> assets -> segments -> edit -> delivery
 
 A node writes its document, runs its own checks, and only then lets the next
 node run.  A failing node is retried by itself (``max_retries``); the rest of
@@ -111,6 +111,9 @@ class Pipeline:
         self.series = series
         self.gated = gated
         self.edit_options = dict(edit_options or {})
+        self.industrial = bool(self.edit_options.get("industrial"))
+        self.keyframe_plan: dict[str, Any] | None = None
+        self.delivery_qc: dict[str, Any] | None = None
         self.cost_gate = cost_gate
         self.consistency: dict[str, Any] | None = None
         self.cost_plan: dict[str, Any] | None = None
@@ -155,18 +158,34 @@ class Pipeline:
     def stage_storyboard(self) -> dict[str, Any]:
         provided = self.state.get("input", {}).get("storyboard")
         sb = normalize_storyboard(provided) if provided else normalize_storyboard(compile_storyboard(self.state["script"]))
+        # S17: voice comes before storyboard; durations follow the synthesized
+        # audio when it exists, so the picture is cut to the voice.
+        if self.state.get("voice_plan"):
+            fit_storyboard_to_audio(sb, self.state["voice_plan"])
         _write(self.out_dir / "storyboard.json", sb)
+        if self.industrial:
+            from .industrial import keyframe_plan
+
+            self.keyframe_plan = keyframe_plan(sb)
+            _write(self.out_dir / "keyframes.json", self.keyframe_plan)
         return {"storyboard": sb}
 
     def stage_assets(self) -> dict[str, Any]:
         assets = build_assets(self.state["script"])
         if self.series:
-            from .series import annotate_assets
+            from .series import annotate_assets, ensure_single_anchor, lock_generation_to_anchor
 
             annotate_assets(assets, self.series)
+            ensure_single_anchor(self.series)
+            lock_generation_to_anchor(assets, self.series)
         assign_shot_refs(self.state["storyboard"], assets)
         if self.do_render_images:
             render_assets(assets, self.out_dir / "assets", seed=self.seed)
+        if self.industrial:
+            from .industrial import approve_keyframes
+
+            gate = approve_keyframes(self.state["storyboard"], assets)
+            _write(self.out_dir / "keyframe_gate.json", gate)
         save_assets(assets, self.out_dir / "assets.json")
         if self.series:
             from .series import check_episode_consistency
@@ -182,6 +201,7 @@ class Pipeline:
                     card["anchor_image"] = str(img["path"])
                 if img.get("kind") == "character_portrait" and not card.get("portrait_image"):
                     card["portrait_image"] = str(img["path"])
+            lock_generation_to_anchor(assets, self.series)
             self.consistency = check_episode_consistency(
                 assets, self.series, out_dir=self.out_dir,
                 threshold=float((self.edit_options or {}).get("consistency_threshold", 0.72)),
@@ -192,8 +212,11 @@ class Pipeline:
         plan = build_voice_plan(self.state["script"], self.out_dir / "voice")
         plan = attach_references(plan, self.out_dir / "voice" / "references")
         _write(self.out_dir / "voice_plan.json", plan)
-        fit_storyboard_to_audio(self.state["storyboard"], plan)
-        _write(self.out_dir / "storyboard.json", self.state["storyboard"])
+        # Voice-first: only refit a storyboard that already exists (single-node
+        # reruns); the normal graph compiles the storyboard afterwards.
+        if self.state.get("storyboard"):
+            fit_storyboard_to_audio(self.state["storyboard"], plan)
+            _write(self.out_dir / "storyboard.json", self.state["storyboard"])
         return {"voice_plan": plan}
 
     def stage_segments(self) -> dict[str, Any]:
@@ -231,11 +254,19 @@ class Pipeline:
                 lipsync=self.lipsync, seed=self.seed, episode_id=self.episode_id,
             )
             segments = render_segments(self.state["storyboard"], shots["clips"], self.out_dir)
+        cost_estimate = None
+        if self.industrial:
+            from .industrial import estimate_cost
+
+            cost_estimate = estimate_cost(len(shots.get("clips") or shots.get("shots") or {}))
+            self.report["cost_estimate"] = cost_estimate
         _write(self.out_dir / "segments.json", {"shots": shots, "segments": segments,
                                                 "ledger": ledger.report(),
                                                 "cost_plan": self.cost_plan,
-                                                "segment_gate": self.segment_gate})
-        return {"segments": segments, "shots": shots, "ledger": ledger.report()}
+                                                "segment_gate": self.segment_gate,
+                                                "cost_estimate": cost_estimate})
+        return {"segments": segments, "shots": shots, "ledger": ledger.report(),
+                "cost_estimate": cost_estimate}
 
     def stage_edit(self) -> dict[str, Any]:
         edit = build_edit(self.state["storyboard"], self.state["script"], self.state["voice_plan"],
@@ -280,6 +311,27 @@ class Pipeline:
         else:
             result["deliverable"] = result["final"]
         result["canvas"] = str(self.out_dir / "canvas_graph.json")
+        if self.industrial:
+            from .industrial import local_gpu_plan, run_delivery_qc
+
+            consistency = self.consistency or {
+                "passed": all(
+                    bool(shot.get("keyframe_approved"))
+                    for seg in (self.state.get("storyboard") or {}).get("segments") or []
+                    for shot in seg.get("shots") or []
+                ),
+                "method": "keyframe_gate",
+            }
+            self.delivery_qc = run_delivery_qc(
+                storyboard=self.state.get("storyboard") or {},
+                assets=self.state.get("assets"),
+                voice_plan=self.state.get("voice_plan"),
+                delivery={**result, "subtitles": edit.get("subtitles") or []},
+                consistency=consistency,
+            )
+            result["delivery_qc"] = self.delivery_qc
+            result["local_gpu_plan"] = local_gpu_plan()
+            _write(self.out_dir / "delivery_qc.json", self.delivery_qc)
         _write(self.out_dir / "delivery.json", result)
         return {"delivery": result}
 
@@ -290,7 +342,12 @@ class Pipeline:
 
     def _check_storyboard(self) -> list[dict[str, Any]]:
         assets = self.state.get("assets")
-        return rules.check_storyboard(self.state["storyboard"], self.state["script"], assets)
+        out = rules.check_storyboard(self.state["storyboard"], self.state["script"], assets)
+        if self.industrial:
+            from .industrial import check_industrial_storyboard
+
+            out.extend(check_industrial_storyboard(self.state["storyboard"], self.state["script"]))
+        return out
 
     def _check_assets(self) -> list[dict[str, Any]]:
         return rules.check_assets(self.state["assets"], self.state["script"], self.state["storyboard"]) + \
@@ -309,7 +366,20 @@ class Pipeline:
         return out
 
     def _check_segments(self) -> list[dict[str, Any]]:
-        return rules.check_segments(self.state["storyboard"], self.state["assets"])
+        out = rules.check_segments(self.state["storyboard"], self.state["assets"])
+        if self.industrial:
+            from .industrial import _iter_shots
+
+            blocked = [
+                str(shot.get("shot_id")) for shot in _iter_shots(self.state["storyboard"])
+                if not shot.get("keyframe_approved")
+            ]
+            if blocked:
+                out.append(rules.finding("I-KEYFRAME", "major",
+                                         f"没有关键帧就进入视频：{blocked[:5]}", ",".join(blocked)))
+            cost = (self.report.get("cost_estimate") or {})
+            _ = cost
+        return out
 
     def _check_edit(self) -> list[dict[str, Any]]:
         edit = self.state["edit"]
@@ -348,11 +418,15 @@ class Pipeline:
             out.append(rules.finding("D-DURATION", "blocker", "成片过短"))
         if result.get("loudness", {}).get("mode") not in ("two-pass", "single-pass"):
             out.append(rules.finding("D-LOUDNESS", "major", "响度归一未执行或没有记录"))
+        qc = result.get("delivery_qc") or self.delivery_qc
+        if self.industrial and qc:
+            for name in qc.get("failed") or []:
+                out.append(rules.finding("D-QC", "major", f"交付质检未通过：{name}", name))
         return out
 
     def run(self, episode: dict[str, Any]) -> dict[str, Any]:
         self.state["input"] = episode
-        stages = ["script", "storyboard", "assets", "voice", "segments", "edit", "delivery"]
+        stages = ["script", "voice", "storyboard", "assets", "segments", "edit", "delivery"]
         _write(self.out_dir / "canvas_graph.json", canvas_graph(self.episode_id, stages))
         checks = {
             "script": self._check_script,

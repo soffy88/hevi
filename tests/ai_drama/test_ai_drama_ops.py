@@ -107,3 +107,13 @@ def test_output_requires_ai_label() -> None:
     with pytest.raises(ReferenceRejected):
         output_label({"ai_label": False})
     assert output_label({"ai_label": True, "ai_label_text": "AI 生成"}) == "AI 生成"
+
+
+def test_voice_runs_before_storyboard(tmp_path) -> None:
+    from hevi.ai_drama.pipeline import Pipeline
+
+    p = Pipeline(tmp_path / "ep", episode_id="voice-first")
+    stages = ["script", "voice", "storyboard", "assets", "segments", "edit", "delivery"]
+    p.run({"theme": "第一次约会", "style": "live_action"})
+    graph = __import__("json").loads((tmp_path / "ep" / "canvas_graph.json").read_text())
+    assert [n["label"] for n in graph["nodes"]] == stages

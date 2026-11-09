@@ -276,6 +276,7 @@ async def upload_studio_source(
 _ARTIFACT_SUFFIXES = {
     ".mp4", ".mov", ".webm", ".m4a", ".wav", ".mp3", ".srt", ".ass",
     ".jpg", ".jpeg", ".png", ".webp", ".gif", ".json", ".txt",
+    ".zip", ".fcpxml",
 }
 
 

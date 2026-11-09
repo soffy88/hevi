@@ -214,9 +214,20 @@ def draft_script_from_theme(theme: str, *, style: str = "live_action", duration_
              ]},
         ],
     }
-    return {
+    script = {
         "episode_no": 1, "title": theme[:20], "style": style, "aspect": "9:16",
         "logline": f"围绕“{theme}”的一次对峙。", "duration_target_s": duration_s,
         "hook": {"first_3s_conflict": f"{theme} 打破日常"},
         "characters": characters, "scenes": [scene],
     }
+    # S17: the first spoken line is the 2-3 s hook; rewrite the opening only.
+    from hevi.qa.hook_gate import ensure_opening_hook
+
+    first_line = scene["beats"][0]["dialogue"][0]
+    report = ensure_opening_hook(str(first_line.get("text") or ""), topic=theme)
+    if report.get("rewritten"):
+        first_line["text"] = report["text"]
+    script["hook"]["pass"] = bool(report["check"]["pass"])
+    script["hook"]["signals"] = report["check"]["signals"]
+    script["hook_rewritten"] = bool(report.get("rewritten"))
+    return script

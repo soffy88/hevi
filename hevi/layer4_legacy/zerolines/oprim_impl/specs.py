@@ -373,6 +373,17 @@ def generate_script_lines(topic: str, *, lang: str = "zh", n: int = 4, line_id: 
                 "再看一个值得记住的具体细节。",
                 "最后，给你一个可以立刻用上的结论。",
             ]
+    # S17: the first line is the 2-3 s hook.  Check it and rewrite only that
+    # line when it opens with a generic preamble or has no conflict/question.
+    try:
+        from hevi.qa.hook_gate import ensure_opening_hook
+
+        report = ensure_opening_hook(templates[0], topic=topic)
+        if report.get("rewritten"):
+            templates[0] = report["text"]
+    except Exception:
+        pass
+
     if os.environ.get("HEVI_USE_FREE_LLM_SCRIPTS") == "1":
         try:
             import asyncio

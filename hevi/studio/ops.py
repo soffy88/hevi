@@ -622,13 +622,14 @@ def ingest_rough_cut(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def nle_jianying(p: dict[str, Any]) -> dict[str, Any]:
+    """Export a real JianYing Pro draft (native writer, zip for download)."""
     from pathlib import Path
 
     from hevi.studio.jianying import (
         JianyingDraft,
         clips_from_presentation,
         clips_from_recut,
-        write_jianying_draft,
+        write_native_from_draft,
     )
 
     dest = Path(str(p.get("output_dir") or "output/nle/jianying-draft"))
@@ -643,17 +644,42 @@ def nle_jianying(p: dict[str, Any]) -> dict[str, Any]:
             bgm=str(p.get("bgm") or ""),
         )
     draft = JianyingDraft(name=str(p.get("name") or "hevi-draft"), clips=clips)
-    path = write_jianying_draft(draft, dest, copy_media=bool(p.get("copy_media")))
-    result = _ok(draft_dir=str(path), clips=len(clips), duration_s=draft.duration_s())
-    transitions = p.get("transitions")
-    if isinstance(transitions, list) and transitions:
-        from hevi.studio.jianying import write_transitions_sidecar
+    transitions = [dict(t) for t in (p.get("transitions") or []) if isinstance(t, dict)]
+    missing = sorted({str(c.path) for c in clips if c.track != "text" and c.path and not Path(c.path).is_file()})
+    if missing:
+        # A draft cannot reference media that is not on disk.  Degrade to the
+        # internal plan (explicitly labelled) instead of inventing a draft.
+        from hevi.studio.jianying import write_jianying_draft
 
-        sidecar = write_transitions_sidecar(
-            path, [dict(t) for t in transitions if isinstance(t, dict)]
+        plan_dir = write_jianying_draft(draft, dest)
+        artifact = plan_dir / "plan.json"
+        return _ok(
+            draft_dir=str(plan_dir),
+            draft_zip="",
+            format="jianying_plan",
+            native=False,
+            missing_media=missing,
+            clips=len(clips),
+            duration_s=draft.duration_s(),
+            artifacts=[{"kind": "project", "path": str(artifact)}],
         )
-        result["transitions_sidecar"] = str(sidecar)
-    return result
+    export = write_native_from_draft(
+        draft,
+        dest,
+        copy_media=True,
+        package_zip=True,
+        transitions=transitions or None,
+    )
+    artifacts = [{"kind": "project", "path": export.draft_zip or export.draft_dir}]
+    return _ok(
+        draft_dir=export.draft_dir,
+        draft_zip=export.draft_zip,
+        format="jianying_native",
+        clips=len(clips),
+        duration_s=export.duration_s,
+        manifest=export.manifest,
+        artifacts=artifacts,
+    )
 
 
 def nle_style_archive(p: dict[str, Any]) -> dict[str, Any]:

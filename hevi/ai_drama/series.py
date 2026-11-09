@@ -22,15 +22,18 @@ from typing import Any
 
 CARD_REQUIRED = (
     "name",
+    "body",
     "hair",
     "hair_part",
     "eye_color",
     "signature_detail",
     "outfit",
+    "outfits",
     "personality",
     "voice",
 )
 OUTFIT_PARTS = ("top", "bottom")
+OUTFIT_DETAIL_FIELDS = ("material", "color", "length")
 DEFAULT_THRESHOLD = 0.72
 
 
@@ -50,6 +53,11 @@ def normalize_card(card: dict[str, Any], *, index: int) -> dict[str, Any]:
     if "shoes" in out and "shoes" not in outfit:
         outfit["shoes"] = out["shoes"]
     out["outfit"] = outfit
+    # 2-3 locked outfits: the first is the default; never fabricate a second.
+    outfits = out.get("outfits")
+    if outfits is None:
+        outfits = [outfit] if outfit else []
+    out["outfits"] = [dict(o) for o in outfits if isinstance(o, dict)]
     out.setdefault("accessories", [])
     out.setdefault("personality", "")
     out.setdefault("voice", {})
@@ -78,6 +86,24 @@ def card_findings(card: dict[str, Any]) -> list[dict[str, Any]]:
                 out.append(_finding("C-CARD", "minor", "角色卡配饰为空（可以是无）", cid))
         elif not str(value or "").strip():
             out.append(_finding("C-CARD", "major", f"角色卡缺 {field}", cid))
+    outfits = card.get("outfits") or []
+    if len(outfits) < 2:
+        out.append(_finding("C-BIBLE", "major", "角色需要 2–3 套锁死服装", cid))
+    elif len(outfits) > 3:
+        out.append(_finding("C-BIBLE", "minor", "角色服装超过 3 套，跨集容易漂移", cid))
+    for pos, outfit in enumerate(outfits):
+        if not isinstance(outfit, dict):
+            out.append(_finding("C-BIBLE", "major", f"第 {pos + 1} 套服装不是对象", cid))
+            continue
+        for field in OUTFIT_DETAIL_FIELDS:
+            if not str(outfit.get(field) or "").strip():
+                out.append(_finding(
+                    "C-BIBLE", "major",
+                    f"第 {pos + 1} 套服装缺 {field}（材质/颜色/长度必须写死）", cid,
+                ))
+    voice = card.get("voice") or {}
+    if not (voice.get("tts_params") or card.get("tts_params")):
+        out.append(_finding("C-BIBLE", "major", "角色缺 TTS 参数（音色参考 + 参数）", cid))
     return out
 
 
@@ -87,6 +113,7 @@ def card_look(card: dict[str, Any]) -> str:
     accessories = card.get("accessories") or []
     acc = "、".join(str(x) for x in accessories if str(x).strip()) or "无配饰"
     parts = [
+        f"体型{card.get('body', '')}",
         f"发型{card.get('hair', '')}{card.get('hair_part', '')}",
         f"瞳色{card.get('eye_color', '')}",
         f"辨识细节：{card.get('signature_detail', '')}",
@@ -103,6 +130,7 @@ def card_prompt_tokens(card: dict[str, Any]) -> list[str]:
     outfit = card.get("outfit") or {}
     accessories = [str(x) for x in (card.get("accessories") or []) if str(x).strip()]
     tokens = [
+        str(card.get("body") or ""),
         str(card.get("hair") or ""),
         str(card.get("hair_part") or ""),
         str(card.get("eye_color") or ""),
@@ -136,6 +164,9 @@ def create_series(
         "style": style,
         "languages": languages or ["zh"],
         "cast": cards,
+        # fixed scene descriptions are part of the bible; prompts are
+        # concatenated from them, never re-described per episode.
+        "scene_bible": {},
         "episodes": [],
         "created_at": _now(),
         "updated_at": _now(),
@@ -152,6 +183,36 @@ def save_series(series: dict[str, Any], out_dir: str | Path) -> Path:
     path.write_text(json.dumps(series, ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "character_sheet.md").write_text(character_sheet_markdown(series), encoding="utf-8")
     return path
+
+
+def set_scene_bible(series: dict[str, Any], name: str, description: dict[str, Any]) -> dict[str, Any]:
+    series.setdefault("scene_bible", {})[name] = {
+        "description": str(description.get("description") or ""),
+        "lighting": str(description.get("lighting") or ""),
+        "props": list(description.get("props") or []),
+        "render_en": str(description.get("render_en") or ""),
+    }
+    return series
+
+
+def scene_bible_findings(script: dict[str, Any], series: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every scene must match a fixed bible entry (no per-episode rewriting)."""
+    out: list[dict[str, Any]] = []
+    bible = series.get("scene_bible") or {}
+    for scene in script.get("scenes") or []:
+        name = str(scene.get("name") or scene.get("location") or "")
+        entry = bible.get(name)
+        if entry is None:
+            out.append(_finding("C-SCENE", "major", f"场景 {name} 不在系列场景圣经里", name))
+            continue
+        if entry.get("render_en") and str(scene.get("render_en") or "") != entry["render_en"]:
+            # Inject the locked description instead of letting the episode drift.
+            scene["render_en"] = entry["render_en"]
+        if entry.get("lighting") and str((scene.get("lighting") or {}).get("description") or "") not in {
+            "", entry["lighting"]
+        }:
+            out.append(_finding("C-SCENE", "minor", f"场景 {name} 光向与圣经不一致", name))
+    return out
 
 
 def load_series(out_dir: str | Path) -> dict[str, Any]:
@@ -231,6 +292,8 @@ def series_findings(script: dict[str, Any], series: dict[str, Any]) -> list[dict
     for char in script.get("characters") or []:
         if not char.get("character_card"):
             out.append(_finding("C-CAST", "major", f"角色 {char.get('id')} 没有注入角色卡", str(char.get("id"))))  # noqa: PERF401
+    if series.get("scene_bible"):
+        out.extend(scene_bible_findings(script, series))
     return out
 
 
@@ -375,3 +438,127 @@ def check_episode_consistency(
 def add_episode(series: dict[str, Any], episode: dict[str, Any]) -> dict[str, Any]:
     series.setdefault("episodes", []).append(episode)
     return series
+
+
+def ensure_single_anchor(series: dict[str, Any]) -> dict[str, Any]:
+    """Exactly one anchor image per character; later images reference it."""
+    for card in series.get("cast") or []:
+        anchor = str(card.get("anchor_image") or "").strip()
+        if not anchor:
+            continue
+        card["anchor_image"] = anchor
+        # A identity board is the anchor.  If a portrait was stored first,
+        # keep that as the anchor instead of silently switching mid-series.
+        if not str(card.get("portrait_image") or "").strip():
+            card["portrait_image"] = anchor
+    return series
+
+
+def lock_generation_to_anchor(assets: dict[str, Any], series: dict[str, Any]) -> dict[str, Any]:
+    """Make every expression/angle/portrait generation reference the anchor.
+
+    The first identity image is the anchor; it is generated from text.  Every
+    other character image must carry ``anchor_reference`` and an explicit
+    "以锚图为唯一形象参考" clause, so a downstream engine cannot quietly redraw
+    the face from the text prompt alone.
+    """
+    cards = cast_by_id(series)
+    for img in assets.get("images") or []:
+        cid = str(img.get("character_id") or "")
+        card = cards.get(cid)
+        if card is None:
+            continue
+        anchor = str(card.get("anchor_image") or "").strip()
+        if not anchor:
+            continue
+        img["anchor_reference"] = anchor
+        prefix = "以锚图为唯一形象参考，保持同一张脸、同一发型、同一套服装："
+        if img.get("kind") == "character_identity" and str(img.get("path") or "") == anchor:
+            continue
+        prompt = str(img.get("prompt") or "")
+        if prefix not in prompt:
+            img["prompt"] = f"{prefix}{prompt}"
+        render = str(img.get("render_prompt") or "")
+        anchor_clause = "use the anchor image as the only identity reference, same face, same hair, same outfit"
+        if anchor_clause not in render:
+            img["render_prompt"] = f"{render}, {anchor_clause}" if render else anchor_clause
+    return assets
+
+
+def makeup_shot_prompt(card: dict[str, Any]) -> dict[str, str]:
+    """定妆照: flat light, pure colour background, front/full/3-4 side."""
+    look = card_look(card)
+    return {
+        "kind": "makeup_shot",
+        "character_id": str(card.get("id")),
+        "shots": "正脸、全身、3/4 侧脸",
+        "prompt": (
+            f"定妆照：{look}。平光，纯色背景（浅灰或白），正脸、全身、3/4 侧脸三张，"
+            "不要阴影造型，不要滤镜，同一张脸。"
+        ),
+        "render_prompt": (
+            f"{_look_en(card)}, makeup test, flat even lighting, plain seamless background, "
+            "front face, full body, three-quarter profile, no dramatic shadow, same face"
+        ),
+        "checks": ["flat_light", "plain_background", "front_full_three_quarter", "same_face_7_of_10"],
+    }
+
+
+def check_makeup_shot(image_path: str | Path, card: dict[str, Any]) -> dict[str, Any]:
+    """Deterministic, offline checks for a 定妆照 image.
+
+    It measures what can be measured without a face model: file present, plain
+    background (corner brightness uniformity), flat light (low highlight
+    variance), and that the card's fixed tokens are present in the card (the
+    prompt side is checked by ``prompt_missing_fields``).  Face identity across
+    10 draws is handled by :func:`select_consistent_draws`.
+    """
+    from PIL import Image, ImageStat
+
+    errors: list[str] = []
+    path = Path(image_path)
+    if not path.is_file():
+        return {"passed": False, "errors": ["image missing"], "metrics": {}}
+    img = Image.open(path).convert("RGB")
+    w, h = img.size
+    if w < 256 or h < 256:
+        errors.append(f"image too small: {w}x{h}")
+    gray = img.convert("L")
+    corners = [
+        gray.crop((0, 0, w // 6, h // 6)),
+        gray.crop((w - w // 6, 0, w, h // 6)),
+        gray.crop((0, h - h // 6, w // 6, h)),
+        gray.crop((w - w // 6, h - h // 6, w, h)),
+    ]
+    means = [ImageStat.Stat(c).mean[0] for c in corners]
+    spread = max(means) - min(means)
+    if spread > 18:
+        errors.append(f"background is not plain/flat (corner brightness spread {spread:.1f})")
+    highlight = ImageStat.Stat(gray).stddev[0]
+    if highlight > 110:
+        errors.append(f"lighting is not flat (global contrast {highlight:.1f})")
+    if not str(card.get("anchor_image") or "").strip():
+        errors.append("card has no anchor image")
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "metrics": {"width": w, "height": h, "corner_spread": round(spread, 2),
+                    "contrast": round(highlight, 2)},
+    }
+
+
+def select_consistent_draws(
+    scores: list[float], *, draws: int = 10, need: int = 7, threshold: float = DEFAULT_THRESHOLD
+) -> dict[str, Any]:
+    """The 10-draw / 7-same-face rule, over anchor similarity scores."""
+    kept = [s for s in scores if float(s) >= threshold]
+    passed = len(scores) >= draws and len(kept) >= need
+    return {
+        "passed": passed,
+        "draws": len(scores),
+        "required_draws": draws,
+        "same_face": len(kept),
+        "required_same_face": need,
+        "threshold": threshold,
+        "kept": kept,
+    }

@@ -465,6 +465,40 @@ def build_layered_draft(
     # JSON lives inside it under the canonical P5 filename.
     draft_dir = Path(builder.save(canvas_width=canvas_width, canvas_height=canvas_height, fps=fps))
     timeline = draft_dir / "draft_content.json"
+
+    # The native writer assigns its own material ids; re-key the element index
+    # to those ids by media path so the layer validator sees real references.
+    try:
+        draft = json.loads(timeline.read_text(encoding="utf-8"))
+        raw = draft.get("materials", {})
+        records = (
+            [m for bucket in raw.values() if isinstance(bucket, list) for m in bucket]
+            if isinstance(raw, dict) else list(raw or [])
+        )
+        path_to_id: dict[str, str] = {}
+        text_ids = [
+            str(record.get("id") or "") for record in records
+            if str(record.get("type") or "") in {"text", "subtitle"}
+        ]
+        for record in records:
+            path = str(record.get("path") or "")
+            mid = str(record.get("id") or "")
+            if path and mid:
+                path_to_id.setdefault(path, mid)
+        text_cursor = 0
+        for element_id, builder_id in list(manifest.element_index.items()):
+            mat = builder._material(builder_id)
+            if not mat:
+                continue
+            native_id = path_to_id.get(str(mat.path))
+            if not native_id and mat.type == "text" and text_ids:
+                native_id = text_ids[min(text_cursor, len(text_ids) - 1)]
+                text_cursor += 1
+            if native_id:
+                manifest.element_index[element_id] = native_id
+    except (OSError, json.JSONDecodeError):
+        pass
+
     duration_s = max(
         (element.end_ms for element in manifest.elements()), default=0
     ) / 1000.0
@@ -546,14 +580,19 @@ def validate_layered_project(project: LayeredEditableProject) -> tuple[bool, lis
         return False, ["LAYER_MANIFEST_MISSING"]
 
     draft = json.loads(Path(project.timeline_json).read_text(encoding="utf-8"))
-    # The builder copies each source into the draft's materials/ directory under a
-    # new material_id, so resolution is by material_id, not by original path.
+    # Native drafts store materials as buckets keyed by kind; the legacy plan
+    # used a list.  Normalise both to {id: record} so the layer checks stay one
+    # contract.
+    raw_materials = draft.get("materials", {})
+    if isinstance(raw_materials, dict):
+        flattened = [m for bucket in raw_materials.values() if isinstance(bucket, list) for m in bucket]
+    else:
+        flattened = list(raw_materials or [])
     draft_materials = {
-        str(m.get("material_id", "")): m for m in draft.get("materials", []) if m.get("material_id")
+        str(m.get("id", m.get("material_id", ""))): m for m in flattened
+        if m.get("id") or m.get("material_id")
     }
-    draft_paths = {
-        str(m.get("path", "")) for m in draft.get("materials", []) if m.get("path")
-    }
+    draft_paths = {str(m.get("path", "")) for m in flattened if m.get("path")}
 
     for element in manifest.elements():
         allowed = SEMANTIC_ROLES.get(element.layer, ())
@@ -575,7 +614,11 @@ def validate_layered_project(project: LayeredEditableProject) -> tuple[bool, lis
             errors.append(f"BROKEN_REFERENCE:{element.element_id}:material_{material_id}_absent")
             continue
         material_path = str(material.get("path", ""))
-        if not material_path or material_path not in draft_paths or not Path(material_path).exists():
+        material_type = str(material.get("type") or "")
+        if material_type in {"text", "subtitle"} and not material_path:
+            # Native text is inline in the material record; there is no file.
+            pass
+        elif not material_path or material_path not in draft_paths or not Path(material_path).exists():
             errors.append(f"BROKEN_REFERENCE:{element.element_id}:{material_path}")
         if material.get("metadata", {}).get("parametric_text"):
             errors.extend(_validate_parametric_text(element, material, material_path))

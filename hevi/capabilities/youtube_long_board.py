@@ -262,11 +262,43 @@ def _render(params: dict[str, Any], out_dir: Path, *, duration: float, aspect: s
         name = "jianying_draft_long_plan.json"
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    native = None
+    if name == "jianying_draft_long_plan.json":
+        shots = list(result.get("shots") or [])
+        from hevi.studio.jianying_native import (
+            NativeDraftUnavailable,
+            items_from_shots,
+            shots_have_media,
+            write_native_draft,
+        )
+
+        if shots_have_media(shots):
+            try:
+                export = write_native_draft(
+                    str(result.get("title") or "hevi_long_draft"),
+                    items_from_shots([
+                        {**s, "start_sec": s.get("start_sec", 0),
+                         "end_sec": float(s.get("start_sec", 0)) + float(s.get("duration_sec", 0))}
+                        for s in shots
+                    ]),
+                    out_dir / "native",
+                    width=result.get("width") or 1920,
+                    height=result.get("height") or 1080,
+                    fps=result.get("fps") or 30,
+                )
+                native = export.as_dict()
+                result["draft_file"] = export.draft_zip or export.draft_dir
+                result["status"] = "native_draft_written"
+                result["note"] = "Real JianYing Pro draft written with pyJianYingDraft."
+            except NativeDraftUnavailable as exc:
+                result["native_error"] = str(exc)
     report = out_dir / name
     report.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     return CapabilityResult(
         duration_s=0.0, sha256=compute_sha256(report),
-        qa={"report_json": str(report), "format_label": "解说长片"},
+        qa={"report_json": str(report), "format_label": "解说长片",
+            "native": native is not None,
+            "draft_zip": (native or {}).get("draft_zip")},
     )
 
 

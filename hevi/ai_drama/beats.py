@@ -43,6 +43,13 @@ def build_beats(
     pov = bool(idea.get("pov") if pov is None else pov)
     genre = str(idea.get("genre") or "daily_anomaly")
     hook = _f(idea.get("hook_first_2s")) or "日常里第一秒就不对劲"
+    # S17: hook is the 0-2 s frame. Rewrite only this opening if it has no
+    # conflict/question/strongest image.
+    from hevi.qa.hook_gate import ensure_opening_hook
+
+    hook_report = ensure_opening_hook(hook, topic=str(idea.get("one_sentence") or ""))
+    if hook_report.get("rewritten"):
+        hook = hook_report["text"]
 
     if genre == "tsundere":
         lines = [

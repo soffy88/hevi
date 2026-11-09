@@ -517,6 +517,28 @@ def assemble(edit: dict[str, Any], out_dir: Path, *, burn_subtitles: bool = True
         ),
         encoding="utf-8",
     )
+    probe: dict[str, Any] = {}
+    try:
+        import json as _json
+
+        out = subprocess.run(
+            [FFPROBE, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=avg_frame_rate,width,height,color_transfer",
+             "-of", "json", str(final)],
+            capture_output=True, text=True, check=False,
+        )
+        stream = ((_json.loads(out.stdout or "{}").get("streams") or [{}])[0])
+        rate = str(stream.get("avg_frame_rate") or "0/1")
+        num, _, den = rate.partition("/")
+        fps = round(float(num) / float(den or 1), 3) if float(den or 1) else 0
+        probe = {
+            "fps": fps,
+            "width": stream.get("width"),
+            "height": stream.get("height"),
+            "color_transfer": stream.get("color_transfer") or "unspecified",
+        }
+    except Exception:
+        probe = {}
     return {
         "final": str(final),
         "audio": str(audio_path),
@@ -525,4 +547,5 @@ def assemble(edit: dict[str, Any], out_dir: Path, *, burn_subtitles: bool = True
         "video": str(video),
         "loudness": audio_info,
         "duration_s": float(edit.get("duration_s") or 0),
+        "probe": probe,
     }

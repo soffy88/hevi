@@ -8,6 +8,29 @@ from typing import Any
 from hevi.studio.tools import invoke_tool
 
 
+def _apply_opening_hook(
+    lines: list[dict[str, Any]], topic: str
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """Check the first line and rewrite only that opening when it fails."""
+    from hevi.qa.hook_gate import ensure_opening_hook
+
+    if not lines:
+        return lines, None
+    first = dict(lines[0]) if isinstance(lines[0], dict) else {"text": str(lines[0])}
+    text = str(first.get("text") or first.get("sentence_text") or "")
+    report = ensure_opening_hook(text, topic=topic)
+    if report.get("rewritten"):
+        first["text"] = report["text"]
+    first["hook_gate"] = {
+        "pass": report["check"]["pass"],
+        "rewritten": bool(report.get("rewritten")),
+        "signals": report["check"]["signals"],
+        "issues": [i["code"] for i in report["check"]["issues"]],
+    }
+    out = [first, *lines[1:]]
+    return out, first["hook_gate"]
+
+
 async def stage_intake(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
     topic = str(data.get("topic") or data.get("source_text") or data.get("manuscript") or "")
     remember = await invoke_tool(
@@ -75,9 +98,11 @@ async def stage_score(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
 
 
 async def stage_script(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
+    topic = str(data.get("topic") or "")
     if data.get("script_lines"):
-        return {"script_lines": data["script_lines"]}
-    if not str(data.get("topic") or "").strip():
+        lines, hook = _apply_opening_hook(list(data["script_lines"]), topic)
+        return {"script_lines": lines, "hook_gate": hook}
+    if not topic.strip():
         return {"script_lines": [], "script_status": "skipped"}
     result = await invoke_tool(
         "script.quick",
@@ -87,9 +112,11 @@ async def stage_script(data: dict[str, Any], _ctx: Any) -> dict[str, Any]:
             "max_lines": data.get("max_lines"),
         },
     )
+    lines, hook = _apply_opening_hook(result.payload.get("script_lines") or [], topic)
     return {
-        "script_lines": result.payload.get("script_lines") or [],
+        "script_lines": lines,
         "script_status": result.status,
+        "hook_gate": hook,
     }
 
 

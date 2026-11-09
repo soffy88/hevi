@@ -17,6 +17,18 @@ slots:
   - name: out
     required: false
     description: 渲染输出目录（默认工单目录）
+  - name: engine
+    required: false
+    description: threejs（默认）| blender（可选 Blender CPU 子线）
+  - name: quality
+    required: false
+    description: preview（720p，默认）| final（1080p，需 approved=true）
+  - name: approved
+    required: false
+    description: 看过 720p 预览后置 true，才允许渲染 1080p
+  - name: asset
+    required: false
+    description: sozai 资产 id（仅自动采用 CC0，写入 CREDITS）
 tools:
   - scene3d.render
   - scene3d.validate
