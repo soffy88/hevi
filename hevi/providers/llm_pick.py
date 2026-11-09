@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-# qwen_cloud 是结构化长文本的 canonical provider；TeamoRouter 的 Grok/Pi
-# 作为 fallback，local 只在云端 provider 未注册时兜底。default 仍由 provider
-# registration policy 单独决定(当前可配置为 local)，不应改变显式 resolver 顺序。
+# S19: OpenCode Zen (opencode-go/deepseek-v4.1-flash) is the text-LLM primary;
+# qwen_cloud/TeamoRouter/NIM/local stay as fallbacks. ``default`` remains the
+# last resort, decided separately by provider registration policy.
 TEXT_LLM_ORDER: tuple[str, ...] = (
+    "opencode",
     "qwen_cloud",
     "grok",
     "pi",
     "teamo_free",
     "teamo",
-    "opencode",
     "nim",
     "local",
     "default",

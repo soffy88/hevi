@@ -5,9 +5,9 @@
 DashScope（`qwen_cloud`）。
 
 通道优先级（`auto`）：
-  1. ``omniroute_free``  本机 omniroute（:20128，只选标 free 的模型）
+  1. ``opencode``        OpenCode Zen（OPENCODE_API_KEY，文本 LLM 首选）
   2. ``nim``             NVIDIA NIM 免费层（HEVI_NIM_KEYS / 密钥池）
-  3. ``opencode``        OpenCode 免费模型（OPENCODE_API_KEY）
+  3. ``omniroute_free``  本机 omniroute / host bridge 代理（只选标 free 的模型）
   4. ``teamo_free``      TeamoRouter 免费福利模型（TEAMOROUTER_API_KEY）
   5. ``ollama``          本机 ollama（离线兜底，质量差）
   6. ``default``         仓库既有 default（可能是本地 adapter；最后兜底）
@@ -25,6 +25,8 @@ import asyncio
 import json
 import logging
 import os
+import uuid
+from collections.abc import Callable
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -34,9 +36,9 @@ logger = logging.getLogger(__name__)
 # 头，teamo TCP 不通，ollama 可但慢。故 auto 首选 NIM；``default`` 放最后（可能被部署
 # 配成付费端点，短剧规划默认不选它）。
 FREE_CHANNEL_ORDER: tuple[str, ...] = (
+    "opencode",
     "nim",
     "omniroute_free",
-    "opencode",
     "teamo_free",
     "ollama",
     "default",
@@ -48,6 +50,20 @@ _OLLAMA_DEFAULT_BASE = "http://127.0.0.1:11434/v1"
 _OLLAMA_DEFAULT_MODEL = "llama3.2:3b"
 
 
+_RETRY_STATUS = {429, 500, 502, 503, 504}
+_MAX_ATTEMPTS = 3
+
+
+def _retry_delay(attempt: int, retry_after: str | None = None) -> float:
+    """Bounded exponential backoff, honouring Retry-After when present."""
+    if retry_after:
+        try:
+            return min(8.0, max(0.0, float(retry_after)))
+        except ValueError:
+            pass
+    return min(8.0, 0.5 * (2 ** (attempt - 1)))
+
+
 def _openai_compatible_caller(
     *,
     channel: str,
@@ -56,8 +72,13 @@ def _openai_compatible_caller(
     api_key: str = "",
     timeout: float = 120.0,
     temperature: float | None = None,
+    extra_headers: Callable[[], dict[str, str]] | None = None,
 ) -> Any:
-    """构造一个 OpenAI 兼容 chat/completions 的 async caller。"""
+    """构造一个 OpenAI 兼容 chat/completions 的 async caller。
+
+    429/5xx 与连接超时最多重试 3 次（有界退避，尊重 Retry-After）。``extra_headers``
+    每次调用重新生成，用于 OpenCode 的 per-task User-Agent / x-opencode-session。
+    """
 
     async def _call(
         *,
@@ -81,23 +102,44 @@ def _openai_compatible_caller(
         temp = temperature_override if temperature_override is not None else temperature
         if temp is not None:
             payload["temperature"] = temp
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
         url = f"{base_url.rstrip('/')}/chat/completions"
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(url, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
+
+        data: dict[str, Any] | None = None
+        last_exc: Exception | None = None
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            headers = {"Content-Type": "application/json"}
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+            if extra_headers is not None:
+                headers.update(extra_headers())
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.post(url, headers=headers, json=payload)
+                if resp.status_code in _RETRY_STATUS and attempt < _MAX_ATTEMPTS:
+                    await asyncio.sleep(
+                        _retry_delay(attempt, resp.headers.get("retry-after"))
+                    )
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                break
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                last_exc = exc
+                if attempt >= _MAX_ATTEMPTS:
+                    raise
+                await asyncio.sleep(_retry_delay(attempt))
+        if data is None:
+            raise RuntimeError(f"{channel}: request failed: {last_exc}")
         choices = data.get("choices") or []
         if not choices:
             raise RuntimeError(f"{channel}: response missing choices")
         message = choices[0].get("message") or {}
         content = message.get("content")
         if not content:
-            content = message.get("reasoning") or ""
-        if not content:
-            raise RuntimeError(f"{channel}: empty content")
+            # Never return the hidden reasoning text as the answer: JSON callers
+            # would misparse it. Treat it as a channel failure and let the next
+            # channel/retry take over.
+            raise RuntimeError(f"{channel}: empty content (hidden reasoning only)")
         return {"content": str(content)}
 
     return _call
@@ -148,12 +190,20 @@ def _build_opencode() -> Any | None:
     if not key:
         return None
     base = os.getenv("OPENCODE_BASE_URL", "https://api.opencode.ai/v1").strip()
+
+    def _headers() -> dict[str, str]:
+        return {
+            "User-Agent": os.getenv("OPENCODE_USER_AGENT", "hevi/1.0 (opencode-go)"),
+            "x-opencode-session": uuid.uuid4().hex,
+        }
+
     return _openai_compatible_caller(
         channel="opencode",
         base_url=base,
-        model=os.getenv("OPENCODE_MODEL", "hy3"),
+        model=os.getenv("OPENCODE_MODEL", "deepseek-v4.1-flash"),
         api_key=key,
-        timeout=float(os.getenv("OPENCODE_TIMEOUT_S", "120")),
+        timeout=min(float(os.getenv("OPENCODE_TIMEOUT_S", "120")), 300.0),
+        extra_headers=_headers,
     )
 
 

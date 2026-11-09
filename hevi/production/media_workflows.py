@@ -225,7 +225,7 @@ async def _translate(
 
     if provider_name in {"auto", "llm_translate"}:
         try:
-            translated = await _translate_with_hevi_llm(
+            translated, llm_channel = await _translate_with_hevi_llm(
                 source,
                 target_language=target,
                 glossary=glossary,
@@ -233,7 +233,7 @@ async def _translate(
             return (
                 _coerce_translation(translated, source),
                 "hevi_llm",
-                {"provider": "hevi_llm", "fallback": False},
+                {"provider": "hevi_llm", "channel": llm_channel, "fallback": False},
             )
         except Exception as exc:
             if provider_name == "llm_translate" and str(config.get("offline_fallback", "1")).lower() in {
@@ -300,66 +300,110 @@ def _offline_translate(
     )
 
 
+def _text_llm_candidates() -> list[tuple[str, Any]]:
+    """Registered text-LLM providers in priority order (opencode first)."""
+    from obase.provider_registry import ProviderRegistry
+
+    try:
+        from hevi.providers.llm_pick import TEXT_LLM_ORDER
+    except Exception:  # pragma: no cover - import guard
+        return []
+    registry = ProviderRegistry.get()
+    pairs: list[tuple[str, Any]] = []
+    for name in TEXT_LLM_ORDER:
+        try:
+            llm = registry.llm(name)
+        except Exception:
+            continue
+        if llm is not None:
+            pairs.append((name, llm))
+    return pairs
+
+
 async def _translate_with_hevi_llm(
     source: list[TranscriptSegment],
     *,
     target_language: str,
     glossary: dict[str, str],
-) -> list[str]:
-    """Use HEVI's registered LLM without adding a second provider stack."""
+) -> tuple[list[str], str]:
+    """Translate with the ordered HEVI text LLMs; first usable channel wins.
 
-    from obase.provider_registry import ProviderRegistry
+    S19: opencode (opencode-go) is the primary text LLM.  Every other registered
+    channel is a fallback before the offline Argos MT fallback in ``_translate``.
+    Returns ``(translated_lines, channel_name)``.
+    """
 
-    # Prefer the project's ordered text-LLM resolver (qwen_cloud -> grok -> ...
-    # -> local) over a weak free translator.  ``default`` is only the last
-    # fallback when the resolver is empty.
-    try:
-        from hevi.providers.llm_pick import resolve_text_llm
-
-        llm = resolve_text_llm()
-    except Exception:
-        llm = None
-    if llm is None:
-        try:
-            llm = ProviderRegistry.get().llm("default")
-        except Exception as exc:
-            raise RuntimeError(
-                "HEVI text LLM is unavailable; inject translator or configure a provider"
-            ) from exc
+    candidates = _text_llm_candidates()
+    if not candidates:
+        raise RuntimeError(
+            "HEVI text LLM is unavailable; inject translator or configure a provider"
+        )
     terms = "\n".join(f"- {key} -> {value}" for key, value in glossary.items())
     cps = 9.0 if str(target_language).lower().startswith("en") else 7.0
-    budget = []
-    for index, item in enumerate(source):
-        duration = max(0.5, float(item.end) - float(item.start))
-        budget.append(f"{index} [max {int(duration * cps)} chars]")
-    prompt = (
-        f"Translate each numbered subtitle line to {target_language}. Return JSON only, "
-        f"with string keys 0 through {len(source) - 1}; preserve names, meaning and tone. "
-        "Respect each line's length budget so dubbing and subtitles fit the time slot.\n"
-        + (f"Terminology:\n{terms}\n" if terms else "")
-        + "Length budget:\n" + "\n".join(budget) + "\n"
-        + "\n".join(f"{index}: {item.text}" for index, item in enumerate(source))
-    )
-    response: Any = llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
-    if inspect.isawaitable(response):
-        response = await response
-    content = response.get("content") if isinstance(response, dict) else str(response)
-    if isinstance(content, list):
-        content = "".join(str(item.get("text") or "") for item in content if isinstance(item, dict))
-    raw = str(content or "").strip()
-    match = re.search(r"\{.*\}", raw, re.DOTALL)
-    if match is None:
-        raise RuntimeError("HEVI default LLM returned no JSON translation object")
-    try:
-        payload = json.loads(match.group(0))
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("HEVI default LLM returned invalid translation JSON") from exc
-    if not isinstance(payload, dict):
-        raise RuntimeError("HEVI default LLM translation must be a JSON object")
-    translated = [str(payload.get(str(index)) or "").strip() for index in range(len(source))]
-    if any(not item for item in translated):
-        raise RuntimeError("HEVI default LLM returned incomplete translation lines")
-    return translated
+    # Reasoning models spend completion tokens on hidden reasoning before the
+    # JSON.  Batching keeps each request small enough to finish and gives the
+    # per-call budget room for reasoning + answers (S19).
+    chunk_size = 8
+    translated: list[str] = []
+    used_channels: list[str] = []
+    errors: list[str] = []
+    for start in range(0, len(source), chunk_size):
+        batch = source[start : start + chunk_size]
+        budget = [
+            f"{index} [max {int(max(0.5, float(item.end) - float(item.start)) * cps)} chars]"
+            for index, item in enumerate(batch)
+        ]
+        prompt = (
+            f"Translate each numbered subtitle line to {target_language}. Return JSON only, "
+            f"with string keys 0 through {len(batch) - 1}; preserve names, meaning and tone. "
+            "Respect each line's length budget so dubbing and subtitles fit the time slot.\n"
+            + (f"Terminology:\n{terms}\n" if terms else "")
+            + "Length budget:\n" + "\n".join(budget) + "\n"
+            + "\n".join(f"{index}: {item.text}" for index, item in enumerate(batch))
+        )
+        chunk_lines: list[str] | None = None
+        for name, llm in candidates:
+            try:
+                response: Any = llm(
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=16_000,
+                )
+                if inspect.isawaitable(response):
+                    response = await response
+                content = (
+                    response.get("content") if isinstance(response, dict) else str(response)
+                )
+                if isinstance(content, list):
+                    content = "".join(
+                        str(item.get("text") or "")
+                        for item in content
+                        if isinstance(item, dict)
+                    )
+                raw = str(content or "").strip()
+                match = re.search(r"\{.*\}", raw, re.DOTALL)
+                if match is None:
+                    raise RuntimeError("no JSON translation object")
+                payload = json.loads(match.group(0))
+                if not isinstance(payload, dict):
+                    raise RuntimeError("translation must be a JSON object")
+                lines = [
+                    str(payload.get(str(index)) or "").strip() for index in range(len(batch))
+                ]
+                if any(not item for item in lines):
+                    raise RuntimeError("incomplete translation lines")
+                chunk_lines = lines
+                used_channels.append(name)
+                break
+            except Exception as exc:
+                errors.append(f"{name}: {type(exc).__name__}: {exc}"[:200])
+                continue
+        if chunk_lines is None:
+            raise RuntimeError(
+                "all HEVI text LLM channels failed: " + " | ".join(errors[-6:])
+            )
+        translated.extend(chunk_lines)
+    channel = "+".join(sorted(set(used_channels)))
+    return translated, channel
 
 
 async def _burn_subtitles(

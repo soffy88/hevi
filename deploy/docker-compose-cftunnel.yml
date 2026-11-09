@@ -65,7 +65,7 @@ services:
       # The proxy listens on the Docker bridge only; see deploy/llm-proxy/.
       OMNIROUTE_BASE_URL: http://host.docker.internal:20129/v1
       OMNIROUTE_MODEL: deepseek-v4.1-flash
-      HEVI_CANVAS_LLM_CHANNEL: omniroute_free
+      HEVI_CANVAS_LLM_CHANNEL: opencode
       HEVI_CANVAS_LLM_TIMEOUT_S: "60"
       # 共享 RTX 3080 上另有租户常占 ~2.4GiB,不加这个 sdxl_local 关键帧 VAE decode 峰值会
       # CUDA OOM(2026-07-16 实证:加此 env 后本地出图/img2img 才成)。缺它 → engine=local
@@ -102,6 +102,12 @@ services:
       # (Piper TTS + Pexels 免费素材 + PIL + faster-whisper),订单槽 engine 仍可显式覆盖。
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw,localization_dub,reference_adapt,character_animation}
+      # S19: OpenCode Zen text LLM (opencode-go). Key comes from
+      # /root/hevi-cftunnel.env via --env-file; never logged or committed.
+      OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-https://opencode.ai/zen/go/v1}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-deepseek-v4.1-flash}
+      OPENCODE_TIMEOUT_S: ${OPENCODE_TIMEOUT_S:-600}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
       HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}
@@ -262,13 +268,19 @@ services:
       OLLAMA_MODEL: llama3.2:3b
       OMNIROUTE_BASE_URL: http://host.docker.internal:20129/v1
       OMNIROUTE_MODEL: deepseek-v4.1-flash
-      HEVI_CANVAS_LLM_CHANNEL: omniroute_free
+      HEVI_CANVAS_LLM_CHANNEL: opencode
       HEVI_CANVAS_LLM_TIMEOUT_S: "60"
       HEVI_EXPLAINER_TTS_PROVIDER: piper
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      # S19: OpenCode Zen text LLM (opencode-go). Key comes from
+      # /root/hevi-cftunnel.env via --env-file; never logged or committed.
+      OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-https://opencode.ai/zen/go/v1}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-deepseek-v4.1-flash}
+      OPENCODE_TIMEOUT_S: ${OPENCODE_TIMEOUT_S:-600}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
       HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}
@@ -351,6 +363,12 @@ services:
       HEVI_RENDER_MODE: drama
       HEVI_EXCLUSIVE_RESOURCE_CLASSES: drama_render
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      # S19: OpenCode Zen text LLM (opencode-go). Key comes from
+      # /root/hevi-cftunnel.env via --env-file; never logged or committed.
+      OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-https://opencode.ai/zen/go/v1}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-deepseek-v4.1-flash}
+      OPENCODE_TIMEOUT_S: ${OPENCODE_TIMEOUT_S:-600}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
       HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}
@@ -410,7 +428,7 @@ services:
       OLLAMA_MODEL: llama3.2:3b
       OMNIROUTE_BASE_URL: http://host.docker.internal:20129/v1
       OMNIROUTE_MODEL: deepseek-v4.1-flash
-      HEVI_CANVAS_LLM_CHANNEL: omniroute_free
+      HEVI_CANVAS_LLM_CHANNEL: opencode
       HEVI_CANVAS_LLM_TIMEOUT_S: "60"
       HEVI_EXPLAINER_TTS_PROVIDER: piper
       # Daily output retention (scheduler only): intermediates 7d, finals 30d.
@@ -424,6 +442,12 @@ services:
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      # S19: OpenCode Zen text LLM (opencode-go). Key comes from
+      # /root/hevi-cftunnel.env via --env-file; never logged or committed.
+      OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-https://opencode.ai/zen/go/v1}
+      OPENCODE_API_KEY: ${OPENCODE_API_KEY:-}
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-deepseek-v4.1-flash}
+      OPENCODE_TIMEOUT_S: ${OPENCODE_TIMEOUT_S:-600}
       HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_HYPERFRAMES_BIN: ${HEVI_HYPERFRAMES_BIN:-/node26/bin/hyperframes}
       HEVI_PIPER_VOICE: ${HEVI_PIPER_VOICE:-/opt/piper/voices/zh_CN-huayan-medium.onnx}

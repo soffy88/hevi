@@ -11,6 +11,10 @@ chat/completions 协议, 端点与模型全部环境变量驱动:
 
 注册为 llm("opencode"); research._default_llm() 优先取它。未配置 key 时
 静默跳过, 回落 NIM/default —— 替换可逆, 不破坏既有研究链路。
+
+OpenCode Zen gateway requires ``User-Agent`` (else Cloudflare 1010) and
+``x-opencode-session`` (else 400 MissingSessionID); one uuid per task.
+429/5xx are retried by the shared reliability wrapper (idempotent=True).
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import uuid
 from typing import Any
 
 from hevi.providers.reliability import (
@@ -30,11 +35,21 @@ from hevi.providers.reliability import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://api.opencode.ai/v1"
-DEFAULT_MODEL = "hy3"
+DEFAULT_MODEL = "deepseek-v4.1-flash"
+_USER_AGENT = "hevi/1.0 (opencode-go)"
 
 
 def _api_key() -> str:
     return os.getenv("OPENCODE_API_KEY", "").strip()
+
+
+def _task_headers(api_key: str, session: str) -> dict[str, str]:
+    """Headers the Zen gateway requires; uuid is per task (one per call)."""
+    return {
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": _USER_AGENT,
+        "x-opencode-session": session,
+    }
 
 
 def _make_opencode_caller(
@@ -76,20 +91,28 @@ def _make_opencode_caller(
         if temperature is not None:
             payload["temperature"] = temperature
 
+        # One task = one session id; reused across the wrapper's retries so the
+        # upstream treats 429/5xx retries as the same task.
+        session = uuid.uuid4().hex
         loop = asyncio.get_event_loop()
 
         def _blocking() -> str:
-            timeout_s = min(max(float(timeout), 1.0), 60.0)
+            # Reasoning models can exceed 60s before emitting the final JSON,
+            # so calls asking for more than 120s opt into the long bound
+            # (read 180s / total 300s); retries share the same deadline.
+            timeout_s = min(max(float(timeout), 1.0), 300.0)
+            long_call = timeout_s > 120.0
             wrapper = ProviderExecutionWrapper(
                 "opencode",
                 model,
                 config=ReliabilityConfig(
                     timeout=TimeoutPolicy(
                         connect_s=min(5.0, timeout_s),
-                        read_s=timeout_s,
+                        read_s=min(180.0 if long_call else 60.0, timeout_s),
                         write_s=min(10.0, timeout_s),
                         pool_s=min(5.0, timeout_s),
                         total_s=timeout_s,
+                        allow_long=long_call,
                     ),
                     max_concurrency=4,
                     rate_limit=RateLimitPolicy(requests_per_minute=60.0, burst=4),
@@ -98,7 +121,7 @@ def _make_opencode_caller(
             result = wrapper.request_json_sync(
                 "POST",
                 f"{base_url.rstrip('/')}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
+                headers=_task_headers(api_key, session),
                 json_body=payload,
                 idempotent=True,
                 output_token_budget=int(payload["max_tokens"]),
@@ -110,10 +133,12 @@ def _make_opencode_caller(
             message = choices[0].get("message") or {}
             content = message.get("content")
             if not content:
-                # 推理模型(reasoning): content 可能为 null, 回退 reasoning 字段。
-                content = message.get("reasoning") or ""
-            if not content:
-                raise RuntimeError("OpenCode 返回空 content")
+                # Reasoning models can spend the whole completion budget on
+                # hidden reasoning and return null content.  Do NOT return the
+                # reasoning text as the answer: JSON callers would parse it.
+                raise RuntimeError(
+                    "OpenCode 返回空 content(推理用尽 max_tokens? 提高预算后重试)"
+                )
             return str(content)
 
         text = await loop.run_in_executor(None, _blocking)
@@ -141,11 +166,19 @@ def register_opencode_llm() -> None:
         timeout=float(os.getenv("OPENCODE_TIMEOUT_S", "60")),
     )
     # opencode 失败(端点不可用/HTTP/非 JSON)→ 自动回退 NIM(若已注册)。
-    try:
-        nim = ProviderRegistry.get().llm("nim")
-        caller = _with_fallback(caller, nim, model=os.getenv("OPENCODE_MODEL", DEFAULT_MODEL))
-    except Exception:
-        pass
+    # OPENCODE_DISABLE_FALLBACK=1 用于验证/排障，确保成功确实来自 opencode。
+    disable_fallback = os.getenv("OPENCODE_DISABLE_FALLBACK", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if not disable_fallback:
+        try:
+            nim = ProviderRegistry.get().llm("nim")
+            caller = _with_fallback(caller, nim, model=os.getenv("OPENCODE_MODEL", DEFAULT_MODEL))
+        except Exception:
+            pass
     ProviderRegistry.register("llm", "opencode", caller, replace=True)
     logger.info(
         "OpenCode LLM registered: %s @ %s (fallback=nim 就绪)",

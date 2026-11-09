@@ -141,11 +141,28 @@ class Pipeline:
         data = self.state.get("input", {})
         if data.get("script"):
             script = normalize_script(data["script"])
+            script_source = "supplied"
         elif data.get("scenes") and data.get("characters"):
             script = normalize_script(data)
+            script_source = "supplied"
         else:
-            script = normalize_script(draft_script_from_theme(str(data.get("theme") or "一个日常里的异常"),
-                                                              style=str(data.get("style") or "live_action")))
+            theme = str(data.get("theme") or "一个日常里的异常")
+            style = str(data.get("style") or "live_action")
+            script = normalize_script(draft_script_from_theme(theme, style=style))
+            script_source = "deterministic"
+            # S19: the four opening dialogue lines come from the text LLM when
+            # one answers; the deterministic scaffold is the fallback.
+            try:
+                from .llm_script import apply_to_script, draft_creative
+
+                lines, channel = draft_creative(theme, style)
+                if lines:
+                    script = apply_to_script(script, lines)
+                    script_source = f"llm:{channel}"
+            except Exception as exc:
+                self.report["script_llm_error"] = f"{type(exc).__name__}: {exc}"[:300]
+        self.state["script_source"] = script_source
+        self.report["script_source"] = script_source
         if self.series:
             from .series import inject_cast, series_findings
 

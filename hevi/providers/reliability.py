@@ -78,6 +78,10 @@ class TimeoutPolicy:
     write_s: float = 10.0
     pool_s: float = 5.0
     total_s: float = 60.0
+    # Explicit opt-in for long single-shot text generation (reasoning models
+    # need more than the default 60s read before their final JSON).  It must be
+    # requested by the adapter; the default stays fail-closed.
+    allow_long: bool = False
 
     def __post_init__(self) -> None:
         values = (self.connect_s, self.read_s, self.write_s, self.pool_s, self.total_s)
@@ -86,9 +90,11 @@ class TimeoutPolicy:
         # Keep configuration from silently turning a retrying request into a
         # multi-minute request.  Operators can raise this only by changing
         # the code-level policy and its qualification tests.
-        if self.connect_s > 15 or self.read_s > 60 or self.write_s > 30 or self.pool_s > 15:
+        read_cap = 180.0 if self.allow_long else 60.0
+        total_cap = 300.0 if self.allow_long else 120.0
+        if self.connect_s > 15 or self.read_s > read_cap or self.write_s > 30 or self.pool_s > 15:
             raise ValueError("provider phase timeout exceeds RC5 safety bound")
-        if self.total_s > 120:
+        if self.total_s > total_cap:
             raise ValueError("provider total timeout exceeds RC5 safety bound")
 
     @property

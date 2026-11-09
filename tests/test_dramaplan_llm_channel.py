@@ -48,9 +48,9 @@ def test_available_channels_and_build(monkeypatch):
     assert build_channel_caller("unknown") is None
 
 
-def test_channel_order_puts_nim_first_and_never_paid():
-    # 免费通道优先序：NIM 实测最稳，排第一；不含任何付费端点名。
-    assert FREE_CHANNEL_ORDER[0] == "nim"
+def test_channel_order_puts_opencode_first_and_never_paid():
+    # S19: OpenCode Zen 是文本 LLM 首选，其余免费通道回落；不含任何付费端点名。
+    assert FREE_CHANNEL_ORDER[0] == "opencode"
     assert "qwen_cloud" not in FREE_CHANNEL_ORDER
     assert FREE_CHANNEL_ORDER[-1] == "default"
 

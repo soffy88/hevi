@@ -680,7 +680,7 @@ async def _llm_research(topic_or_url: str, target_duration: str = "1-3") -> dict
     if _should_chunk(target_duration):
         return await _llm_research_chunked(llm, topic_or_url, target_duration)
     return await _llm_json(
-        llm, _build_research_prompt(topic_or_url, target_duration), max_tokens=8_000
+        llm, _build_research_prompt(topic_or_url, target_duration), max_tokens=16_000
     )
 
 
@@ -893,7 +893,7 @@ async def _llm_research_chunked(
     )
     # Step A 的 JSON 很大(4-5 章 × 深度扩写),token 上限给足 8000,
     # 并把 chapters 放在 JSON 末尾:截断只损失可抢救的扩写,不损失 versions。
-    outline_raw = await _llm_json(llm, outline_prompt, max_tokens=8_000)
+    outline_raw = await _llm_json(llm, outline_prompt, max_tokens=16_000)
     try:
         outline = ExplainerOutline.model_validate(_coerce_outline(outline_raw, topic_or_url))
     except Exception as exc:
@@ -927,12 +927,12 @@ async def _llm_research_chunked(
                 chapter_max,
                 chapter_count,
             )
-            chapter_raw = await _llm_json(llm, chapter_prompt, max_tokens=4_000)
+            chapter_raw = await _llm_json(llm, chapter_prompt, max_tokens=8_000)
             chapter_cues = chapter_raw.get("cues")
             if not isinstance(chapter_cues, list):
                 # 空数组也重试一次:单章生成失败不应浪费整支视频。
                 if not chapter_cues:
-                    chapter_raw = await _llm_json(llm, chapter_prompt, max_tokens=4_000)
+                    chapter_raw = await _llm_json(llm, chapter_prompt, max_tokens=8_000)
                     chapter_cues = chapter_raw.get("cues")
                 if not isinstance(chapter_cues, list):
                     raise ExplainerCapabilityError(
