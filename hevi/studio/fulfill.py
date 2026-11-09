@@ -321,6 +321,59 @@ def _media_duration(path: str) -> float:
         return 0.0
 
 
+def _conform_portrait(
+    path: Path, width: int = 1080, height: int = 1920, *, cinematic: bool = False
+) -> None:
+    """Crop-and-scale any source into the product's 1080x1920 frame.
+
+    Short-form delivery is vertical.  A landscape interview (or a landscape
+    explainer/character stage) is centre-cropped to 9:16 before it is scaled up,
+    which is what the other GA lines already produce; the crop keeps the subject
+    centred instead of letterboxing the film into a small strip.
+
+    ``cinematic`` adds a slow, tightening vignette.  Fixed-camera interviews are
+    otherwise a still image for the whole clip; the vignette gives the dub a
+    graded, non-frozen look without inventing content.
+    """
+    import shutil
+    import subprocess
+
+    if not path.is_file():
+        return
+    ffprobe = shutil.which("ffprobe") or "ffprobe"
+    ffmpeg = shutil.which("ffmpeg") or "ffmpeg"
+    try:
+        out = subprocess.check_output(
+            [ffprobe, "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height", "-of", "csv=p=0", str(path)],
+            text=True, timeout=20, stderr=subprocess.DEVNULL,
+        ).strip()
+        current_w, current_h = (int(part) for part in out.split(",")[:2])
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return
+    if current_w == width and current_h == height and not cinematic:
+        return
+    chain = (
+        f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},setsar=1"
+    )
+    if cinematic:
+        chain += ",vignette=angle='PI/8+0.010*t'"
+    tmp = path.with_suffix(".portrait.mp4")
+    try:
+        subprocess.run(
+            [ffmpeg, "-y", "-v", "error", "-i", str(path), "-filter_complex",
+             f"[0:v]{chain}[v]",
+             "-map", "[v]", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast",
+             "-crf", "20", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", str(tmp)],
+            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        if tmp.is_file() and tmp.stat().st_size > 0:
+            tmp.replace(path)
+    except (OSError, subprocess.SubprocessError):
+        tmp.unlink(missing_ok=True)
+
+
 def _conform_duration(path: Path, target: float = 30.0, tol: float = 3.0) -> None:
     """Hold or trim a clip into the product's 30 s ±3 s window.
 
@@ -821,7 +874,13 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
         if src_dur > 31:
             trimmed = Path(output_dir) / "source_30s.mp4"
             Path(output_dir).mkdir(parents=True, exist_ok=True)
-            subprocess.run([ffmpeg_bin, "-y", "-v", "error", "-i", str(srcp), "-t", "30", "-c", "copy", str(trimmed)], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Re-encode instead of stream-copy: the public source clips are
+            # Ogg/WebM and a copy into an MP4 container silently produced a
+            # zero-byte file for Theora sources.
+            subprocess.run([ffmpeg_bin, "-y", "-v", "error", "-i", str(srcp), "-t", "30",
+                            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                            "-c:a", "aac", "-b:a", "128k", str(trimmed)],
+                           check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             source = str(trimmed)
             segs = _slot(order, "segments") or _slot(order, "transcript_segments") or []
             if segs:
@@ -839,7 +898,7 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
     config = {
         "target_language": _slot(order, "lang") or _slot(order, "target_language") or "zh-CN",
         "source_language": _slot(order, "source_language") or "auto",
-        "translation_provider": _slot(order, "translation_provider") or "llm_translate",
+        "translation_provider": _slot(order, "translation_provider") or "auto",
         "bilingual": bool(_slot(order, "bilingual", True)),
         "dub": bool(_slot(order, "dub", False)),
         "keep_bed": bool(_slot(order, "keep_bed", False)),
@@ -858,6 +917,7 @@ async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> 
     )
     primary = manifest.primary_path()
     if primary is not None:
+        _conform_portrait(Path(str(primary)), cinematic=True)
         _conform_duration(Path(str(primary)), float(_slot(order, "duration_s") or 30.0))
     _, quality = await _verified_video_manifest(
         [(primary, True, "localized_video")] if primary is not None else [],
@@ -1017,24 +1077,28 @@ async def _render_character_animation_line(
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "character_animation.mp4"
 
-    default_lines = [
-        "这是一段由动作捕捉数据驱动的角色动画。",
-        "画面里的小人，每一根骨头都在动。",
-        "它先走几步。",
-        "然后原地踏步，活动一下。",
-        "接着跑起来。",
-        "它挥挥手，打个招呼。",
-        "再转个圈，跳起舞来。",
-        "最后跳一下，稳稳落地。",
-        "所有动作都来自卡内基梅隆大学的公开动作捕捉数据库。",
-    ]
-    lines = [str(x) for x in (order.get("narration_lines") or default_lines)]
-    clips = list(order.get("mocap_clips") or [
+    topic = str(_slot(order, "topic") or order.get("topic") or "角色动画")
+    # Topic-driven narration: the per-line template injects ``{topic}`` into the
+    # first beat, so three different themes no longer share one fixed demo script.
+    if order.get("narration_lines"):
+        lines = [str(x) for x in order["narration_lines"]]
+    else:
+        from hevi.layer4_legacy.zerolines.oprim_impl.specs import generate_script_lines
+
+        lines = list(generate_script_lines(topic, line_id="character_animation", n=7))
+    clip_pool = [
         "walk", "march", "run", "wave", "dance_spin", "dance_glide", "jump", "sit", "twist",
-    ])
-    captions = list(order.get("captions") or [
+    ]
+    caption_pool = [
         "走两步", "原地踏步", "跑起来", "挥挥手", "转个圈", "跳起舞", "跳一下", "坐下来", "扭一扭",
-    ])
+    ]
+    # Rotate the motion programme by a stable hash of the topic so each theme
+    # gets a different opening beat while still covering the same mocap clips.
+    import hashlib
+
+    offset = int(hashlib.sha256(topic.encode("utf-8")).hexdigest()[:8], 16) % len(clip_pool)
+    clips = list(order.get("mocap_clips") or (clip_pool[offset:] + clip_pool[:offset]))
+    captions = list(order.get("captions") or (caption_pool[offset:] + caption_pool[:offset]))
     count = min(len(lines), len(clips))
     program = [
         Segment(clip=clips[i], duration=2.6, caption=captions[i] if i < len(captions) else "")
@@ -1045,7 +1109,7 @@ async def _render_character_animation_line(
         output_path=path,
         segments=program,
         narration_lines=lines[:count],
-        title=str(order.get("title") or "SVG 角色动画 · CMU 动作捕捉"),
+        title=str(order.get("title") or f"{topic} · SVG 角色动画"),
         quality=str(order.get("quality") or "looks"),
         fps=int(order.get("fps") or 30),
     )
@@ -1055,6 +1119,7 @@ async def _render_character_animation_line(
             target="character_animation",
             line_id=str(order.get("line_id") or ""),
         )
+    _conform_portrait(path)
     manifest, quality = await _verified_video_manifest([(path, True, "character_animation")])
     return {
         "status": "completed",

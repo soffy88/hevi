@@ -191,13 +191,13 @@ async def _translate(
     *,
     config: dict[str, Any],
     input_data: dict[str, Any],
-) -> tuple[list[TranscriptSegment], str]:
+) -> tuple[list[TranscriptSegment], str, dict[str, Any]]:
     """视频字幕段级译制（TranscriptSegment 逐段翻译，后端 voicepro_translate）；
     文档级长文翻译（整篇文本→双语对照文档）走 hevi/capabilities/longtranslate.py
     的 text.translate_long，两者勿混用。"""
     explicit = input_data.get("translated_segments") or input_data.get("translated")
     if explicit:
-        return _coerce_translation(explicit, source), "supplied"
+        return _coerce_translation(explicit, source), "supplied", {"provider": "supplied"}
 
     translator = input_data.get("translator") or config.get("translator")
     target = str(config.get("target_language") or "zh-CN")
@@ -212,29 +212,60 @@ async def _translate(
             translated = translator([item.text for item in source], target)
         if inspect.isawaitable(translated):
             translated = await translated
-        return _coerce_translation(translated, source), "injected"
+        return _coerce_translation(translated, source), "injected", {"provider": "injected"}
 
     # The project-side 3O translation skill composes its public translation
     # primitives.  Provider SDKs remain optional and failures are surfaced.
     from hevi.layer4_legacy.voicepro_translate.oskill_impl import skill_batch_translate
     from hevi.voicepro_translate.schemas import TranslateProvider
 
-    provider_name = str(config.get("translation_provider") or "llm_translate")
+    provider_name = str(config.get("translation_provider") or "auto")
+    glossary = config.get("glossary") or {}
+    source_language = str(config.get("source_language") or "auto")
+
+    if provider_name in {"auto", "llm_translate"}:
+        try:
+            translated = await _translate_with_hevi_llm(
+                source,
+                target_language=target,
+                glossary=glossary,
+            )
+            return (
+                _coerce_translation(translated, source),
+                "hevi_llm",
+                {"provider": "hevi_llm", "fallback": False},
+            )
+        except Exception as exc:
+            if provider_name == "llm_translate" and str(config.get("offline_fallback", "1")).lower() in {
+                "0", "false", "no", "off"
+            }:
+                raise
+            offline = _offline_translate(
+                source,
+                target_language=target,
+                source_language=source_language,
+                glossary=glossary,
+            )
+            return (
+                _coerce_translation(offline["translated"], source),
+                str(offline["provider"]),
+                {
+                    "provider": offline["provider"],
+                    "fallback": True,
+                    "llm_error": f"{type(exc).__name__}: {exc}"[:400],
+                    "self_check": offline["check"],
+                    "back_translation": offline.get("back_translation"),
+                },
+            )
+
     try:
         provider = TranslateProvider(provider_name)
     except ValueError as exc:
         raise ValueError(f"unsupported translation provider: {provider_name}") from exc
-    if provider is TranslateProvider.LLM_TRANSLATE:
-        translated = await _translate_with_hevi_llm(
-            source,
-            target_language=target,
-            glossary=config.get("glossary") or {},
-        )
-        return _coerce_translation(translated, source), "hevi_llm"
     results = await skill_batch_translate(
         [item.text for item in source],
         provider=provider,
-        source_lang=str(config.get("source_language") or "auto"),
+        source_lang=source_language,
         target_lang=target,
     )
     translated = []
@@ -243,7 +274,30 @@ async def _translate(
         if not text or bool(getattr(item, "kept_original", False)):
             raise RuntimeError(f"translation provider returned no translation at index {index}")
         translated.append(text)
-    return _coerce_translation(translated, source), provider_name
+    return _coerce_translation(translated, source), provider_name, {"provider": provider_name}
+
+
+def _offline_translate(
+    source: list[TranscriptSegment],
+    *,
+    target_language: str,
+    source_language: str,
+    glossary: dict[str, str],
+) -> dict[str, Any]:
+    """Free local fallback: Argos/OpenNMT CTranslate2 + glossary + back-check."""
+    from hevi.translation.offline_mt import translate_with_check
+
+    src = "auto" if source_language.strip().lower() in {"", "auto", "automatic"} else source_language
+    if src == "auto":
+        # The installed Argos packages are en<->zh; use the target to pick the
+        # other side rather than guessing from the script.
+        src = "en" if str(target_language).lower().startswith("zh") else "zh"
+    return translate_with_check(
+        [item.text for item in source],
+        from_lang=src,
+        to_lang=target_language,
+        glossary=glossary,
+    )
 
 
 async def _translate_with_hevi_llm(
@@ -474,9 +528,16 @@ async def video_localization_workflow(
         record("transcribe", segments=len(source))
 
         await _notify(on_step, "translate", 30.0)
-        target = await _translate(source, config=cfg, input_data=data)
-        translated, translation_provider = target
-        record("translate", segments=len(translated), provider=translation_provider)
+        translated, translation_provider, translation_meta = await _translate(
+            source, config=cfg, input_data=data
+        )
+        record(
+            "translate",
+            segments=len(translated),
+            provider=translation_provider,
+            **({"self_check": translation_meta.get("self_check")} if translation_meta.get("self_check") else {}),
+            **({"llm_error": translation_meta.get("llm_error")} if translation_meta.get("llm_error") else {}),
+        )
 
         await _notify(on_step, "subtitles", 50.0)
         source_srt = _write_srt(output_dir / "source.srt", source)
@@ -544,6 +605,9 @@ async def video_localization_workflow(
             "source_segments": len(source),
             "translated_segments": len(translated),
             "translation_provider": translation_provider,
+            "translation_self_check": translation_meta.get("self_check"),
+            "translation_back_translation": translation_meta.get("back_translation"),
+            "translation_llm_error": translation_meta.get("llm_error"),
             "dubbed": dubbed_audio is not None,
             "bilingual": bool(cfg.get("bilingual", True)),
             "decision_trail": trail,

@@ -23,6 +23,7 @@ STAGE_TOOLS: dict[str, str] = {
 }
 
 SERIES_TOOLS = (
+    "drama.style_cards",
     "drama.series_create",
     "drama.series_topics",
     "drama.series_beats",
@@ -127,6 +128,20 @@ async def run_canvas_tool(tool_id: str, payload: dict[str, Any], upstream: dict[
             "series_dir": series_dir,
         }
 
+    if tool_id == "drama.style_cards":
+        from .style_cards import list_style_cards
+
+        cards = list_style_cards()
+        return {
+            "status": "ok",
+            "tool_id": tool_id,
+            "style_cards": cards,
+            "output": json.dumps(
+                [{"id": c["id"], "name": c["name"], "available": c["available"]} for c in cards],
+                ensure_ascii=False,
+            ),
+        }
+
     if tool_id == "drama.series_create":
         from .series import create_series, save_series
 
@@ -138,6 +153,7 @@ async def run_canvas_tool(tool_id: str, payload: dict[str, Any], upstream: dict[
                 cast=list(merged.get("cast") or series.get("cast") or []),
                 out_dir=series_dir,
                 style=str(merged.get("style") or "anime"),
+                style_card=str(merged.get("style_card") or ""),
             )
         else:
             save_series(series, series_dir)

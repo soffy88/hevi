@@ -101,7 +101,8 @@ services:
       # 零成本线引擎(docs/ZEROLINES.md):11 条 zero 线默认走 CPU 本地管线
       # (Piper TTS + Pexels 免费素材 + PIL + faster-whisper),订单槽 engine 仍可显式覆盖。
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw,localization_dub,reference_adapt,character_animation}
+      HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       # S13: optional internal raea check bypass (default off; skipped when the
       # binary is absent).  Kinetic promo stays on the default engine unless
@@ -263,7 +264,8 @@ services:
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
@@ -340,7 +342,8 @@ services:
       HEVI_WORKER_RESOURCE_CLASS: drama_render
       HEVI_RENDER_MODE: drama
       HEVI_EXCLUSIVE_RESOURCE_CLASSES: drama_render
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
@@ -408,7 +411,8 @@ services:
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      HEVI_OFFLINE_MT_DIR: ${HEVI_OFFLINE_MT_DIR:-/models/argos}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices

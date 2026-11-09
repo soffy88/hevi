@@ -198,6 +198,15 @@ _HTML = """<!doctype html>
       window.SEGMENTS = __SEGMENTS__;
       (function () {
         var CX = 960, GROUND = 940, SCALE = 690;
+        var PALETTES = [
+          ["#fbf8f2", "#efe7d8", "#e4d9c5"],
+          ["#f6f1ff", "#e6dcf5", "#d8c9e8"],
+          ["#f2fbf6", "#dcefe2", "#c9e0d2"],
+          ["#fff7f0", "#f4e3d2", "#e8cfb7"],
+          ["#f0f8ff", "#d9e9f6", "#c3d8ea"]
+        ];
+        var root = document.getElementById("root");
+        var lastPalette = -1;
         var figure = document.getElementById("figure");
         var bones = Array.prototype.slice.call(document.querySelectorAll("line[data-a]"));
         var head = document.getElementById("head");
@@ -230,6 +239,14 @@ _HTML = """<!doctype html>
         var lastCaption = null;
         function renderAt(t) {
           var p = poseAt(t), frame = p.frame;
+          // Each segment gets its own pastel stage so a vertical cut has clear
+          // visual variety instead of one static backdrop for the whole film.
+          if (p.index !== lastPalette) {
+            var pal = PALETTES[p.index % PALETTES.length];
+            root.style.background = "radial-gradient(120% 90% at 50% 12%, " +
+              pal[0] + " 0%, " + pal[1] + " 62%, " + pal[2] + " 100%)";
+            lastPalette = p.index;
+          }
           var drift = 0, acc = 0;
           for (var i = 0; i < p.index; i++) { acc += window.SEGMENTS[i].duration; drift += window.SEGMENTS[i].drift * window.SEGMENTS[i].duration; }
           drift += p.seg.drift * Math.max(0, t - acc);

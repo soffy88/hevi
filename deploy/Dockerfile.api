@@ -114,6 +114,9 @@ RUN --network=none cd hevi-remotion \
 ARG S16_BUILD_REV=dev
 RUN echo "s16 source rev: ${S16_BUILD_REV}"
 COPY --chown=hevi:hevi hevi/ ./hevi/
+# runtime assets: CMU mocap clips (character_animation), scene3d examples,
+# generated style-card covers and makeup references.
+COPY --chown=hevi:hevi assets/ ./assets/
 
 # earshot CLI (audio.earshot_gate / storyfilm narration mastering):
 # vendored model-free earshot package (MIT, Leonxlnx/earshot 0.3.0)

@@ -241,12 +241,12 @@ def render_storyboard_cpu_fallback(
     root.mkdir(parents=True, exist_ok=True)
     result = {
         "portrait": _render_one(
-            width=540, height=960, output=output_dir / "portrait.mp4", frame_dir=root / "portrait",
+            width=1080, height=1920, output=output_dir / "portrait.mp4", frame_dir=root / "portrait",
             audio_paths=paths, audio_offsets=offsets, audio_duration=total_duration,
             cover_title=topic, cue_texts=cues, cue_durations=durations,
         ),
         "landscape": _render_one(
-            width=960, height=540, output=output_dir / "landscape.mp4", frame_dir=root / "landscape",
+            width=1920, height=1080, output=output_dir / "landscape.mp4", frame_dir=root / "landscape",
             audio_paths=paths, audio_offsets=offsets, audio_duration=total_duration,
             cover_title=topic, cue_texts=cues, cue_durations=durations,
         ),

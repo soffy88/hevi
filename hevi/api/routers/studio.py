@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import mimetypes
 import os
 import uuid
@@ -758,6 +759,28 @@ async def pull_studio_assets(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"pull failed: {exc}") from exc
     return result.to_dict()
+
+
+@router.get("/style-cards")
+async def get_style_cards(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """Built-in ai_drama style cards (cover + flat-light makeup reference).
+
+    Images are inlined as data URLs so the picker works without a static mount.
+    """
+    from hevi.ai_drama.style_cards import list_style_cards
+
+    cards = list_style_cards()
+    for card in cards:
+        for kind in ("cover", "makeup"):
+            path = Path(str(card.get(f"{kind}_path") or ""))
+            data_url = ""
+            if path.is_file():
+                encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+                data_url = f"data:image/jpeg;base64,{encoded}"
+            card[f"{kind}_data_url"] = data_url
+    return {"style_cards": cards, "total": len(cards)}
 
 
 @router.get("/assets")

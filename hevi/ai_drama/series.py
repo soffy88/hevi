@@ -151,6 +151,7 @@ def create_series(
     cast: list[dict[str, Any]],
     out_dir: str | Path,
     style: str = "anime",
+    style_card: str = "",
     languages: list[str] | None = None,
     series_id: str | None = None,
 ) -> dict[str, Any]:
@@ -171,6 +172,10 @@ def create_series(
         "created_at": _now(),
         "updated_at": _now(),
     }
+    if style_card:
+        from .style_cards import apply_style_card
+
+        apply_style_card(series, style_card)
     save_series(series, out)
     return series
 
@@ -225,6 +230,14 @@ def load_series(out_dir: str | Path) -> dict[str, Any]:
 def character_sheet_markdown(series: dict[str, Any]) -> str:
     lines = [f"# {series.get('title', '未命名系列')}", "", f"- 类型：{series.get('genre', '')}",
              f"- 画风：{series.get('style', '')}", ""]
+    if series.get("style_card"):
+        lines += [
+            f"- 风格卡：{series.get('style_card_name') or series.get('style_card')}（{series.get('style_card')}）",
+            f"- 风格提示词：{series.get('style_prompt', '')}",
+            f"- 封面：{series.get('style_cover') or '（未生成）'}",
+            f"- 平光定妆参考：{series.get('style_makeup_reference') or '（未生成）'}",
+            "",
+        ]
     for card in series.get("cast") or []:
         lines += [f"## {card.get('name')}（{card.get('id')}）", "",
                   f"- 形象：{card_look(card)}",
@@ -248,6 +261,13 @@ def inject_cast(script: dict[str, Any], series: dict[str, Any]) -> dict[str, Any
     by_name = {str(c.get("name")): c for c in series.get("cast") or []}
     out["series_id"] = series.get("series_id")
     out.setdefault("style", series.get("style") or "anime")
+    for key in (
+        "style_card", "style_card_name", "style_prompt", "style_prompt_zh",
+        "style_negative", "style_palette", "style_lighting", "style_cover",
+        "style_makeup_reference",
+    ):
+        if series.get(key):
+            out[key] = series[key]
     used: set[str] = set()
     for char in out.get("characters") or []:
         cid = str(char.get("id"))
@@ -284,6 +304,9 @@ def _look_en(card: dict[str, Any]) -> str:
 
 def series_findings(script: dict[str, Any], series: dict[str, Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
+    from .style_cards import style_card_findings
+
+    out.extend(style_card_findings(series))
     for card in series.get("cast") or []:
         out.extend(card_findings(card))
     missing = script.get("cast_missing_from_script") or []
@@ -485,20 +508,27 @@ def lock_generation_to_anchor(assets: dict[str, Any], series: dict[str, Any]) ->
     return assets
 
 
-def makeup_shot_prompt(card: dict[str, Any]) -> dict[str, str]:
+def makeup_shot_prompt(
+    card: dict[str, Any], style_card: dict[str, Any] | None = None
+) -> dict[str, str]:
     """定妆照: flat light, pure colour background, front/full/3-4 side."""
     look = card_look(card)
+    style_line = ""
+    style_en = ""
+    if style_card:
+        style_line = f"画风：{style_card.get('style_prompt_zh') or style_card.get('name', '')}。"
+        style_en = f", {style_card.get('style_prompt', '')}"
     return {
         "kind": "makeup_shot",
         "character_id": str(card.get("id")),
         "shots": "正脸、全身、3/4 侧脸",
         "prompt": (
-            f"定妆照：{look}。平光，纯色背景（浅灰或白），正脸、全身、3/4 侧脸三张，"
-            "不要阴影造型，不要滤镜，同一张脸。"
+            f"定妆照：{look}。{style_line}平光，纯色背景（浅灰或白），"
+            "正脸、全身、3/4 侧脸三张，不要阴影造型，不要滤镜，同一张脸。"
         ),
         "render_prompt": (
             f"{_look_en(card)}, makeup test, flat even lighting, plain seamless background, "
-            "front face, full body, three-quarter profile, no dramatic shadow, same face"
+            f"front face, full body, three-quarter profile, no dramatic shadow, same face{style_en}"
         ),
         "checks": ["flat_light", "plain_background", "front_full_three_quarter", "same_face_7_of_10"],
     }

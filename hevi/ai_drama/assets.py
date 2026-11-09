@@ -39,7 +39,9 @@ def _scene_coverage(scene: dict[str, Any]) -> list[str]:
 def build_assets(script: dict[str, Any]) -> dict[str, Any]:
     """Build the image list from the script.  No pixels are rendered here."""
     style = str(script.get("style") or "live_action")
-    tokens = STYLE_TOKENS.get(style, STYLE_TOKENS["live_action"])
+    tokens = str(script.get("style_prompt") or "").strip() or STYLE_TOKENS.get(
+        style, STYLE_TOKENS["live_action"]
+    )
     images: list[dict[str, Any]] = []
     n = 0
 
@@ -140,7 +142,13 @@ def build_assets(script: dict[str, Any]) -> dict[str, Any]:
                 width=512, height=512,
                 usage=f"场景 {sid} 的道具 {pname}；用于插入镜头。",
             )
-    return {"images": images, "style": style, "aspect": script.get("aspect", "9:16")}
+    return {
+        "images": images,
+        "style": style,
+        "style_prompt": str(script.get("style_prompt") or ""),
+        "style_makeup_reference": str(script.get("style_makeup_reference") or ""),
+        "aspect": script.get("aspect", "9:16"),
+    }
 
 
 def assign_shot_refs(storyboard: dict[str, Any], assets: dict[str, Any]) -> None:

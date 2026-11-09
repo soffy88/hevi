@@ -35,6 +35,10 @@ DEFAULT_LAUNCH_LINES = (
     "scene3d",
     # S16: handdraw general-audience black-box 4.87/5 -> GA whitelist.
     "handdraw",
+    # S18: three internal lines cleared the 3-theme black-box (avg >= 4).
+    "localization_dub",
+    "reference_adapt",
+    "character_animation",
 )
 
 
