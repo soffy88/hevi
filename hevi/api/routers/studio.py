@@ -138,7 +138,11 @@ async def create_video_feedback(
 async def get_studio_lines(
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
+    from hevi.auth.dependencies import can_view_internal_lines
+
     lines = [r.to_dict() for r in list_recipes()]
+    if not can_view_internal_lines(_user):
+        lines = [line for line in lines if line.get("availability") != "internal"]
     return {"lines": lines, "total": len(lines)}
 
 
@@ -150,7 +154,12 @@ async def get_studio_line(
     rec = get_recipe(line_id)
     if rec is None:
         raise HTTPException(status_code=404, detail=f"unknown line: {line_id}")
-    return rec.to_dict()
+    from hevi.auth.dependencies import can_view_internal_lines
+
+    payload = rec.to_dict()
+    if payload.get("availability") == "internal" and not can_view_internal_lines(_user):
+        raise HTTPException(status_code=404, detail=f"unknown line: {line_id}")
+    return payload
 
 
 @router.get("/motion/shot-cards")

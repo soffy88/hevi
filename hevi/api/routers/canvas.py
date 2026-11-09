@@ -309,6 +309,20 @@ async def _do_execute_graph(
     from hevi.canvas.preflight import PreflightError
 
     await _load_owned_graph(graph_id, svc, user)  # owner check before spending resources
+    graph_for_gate = await svc.load_graph(graph_id) or {}
+    from hevi.auth.dependencies import can_view_internal_lines
+
+    if not can_view_internal_lines(user):
+        internal = {
+            str((node.get("config") or {}).get("tool_id") or "")
+            for node in (graph_for_gate.get("nodes_json") or [])
+        }
+        blocked = sorted(t for t in internal if t.startswith("drama."))
+        if blocked:
+            raise HTTPException(
+                status_code=403,
+                detail=f"该产线尚未开放（内测）：{', '.join(blocked)}",
+            )
     quota = get_quota_service(svc.pool)
     counts_as_film = body.scope != "selected"
     duration = body.target_duration_s

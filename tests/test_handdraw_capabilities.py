@@ -379,16 +379,18 @@ def test_four_preschool_topics_generate_distinct_narration_and_reject_adult_topi
     assert len(set(audio_hashes)) == 4, audio_hashes
     with pytest.raises(UnsupportedKidsTopicError, match="不适合"):
         select_kids_storyboard("复利效应与巴菲特")
-    with pytest.raises(UnsupportedKidsTopicError, match="暂不支持"):
+    with pytest.raises(UnsupportedKidsTopicError, match="不适合"):
         select_kids_storyboard("小猫学会量子金融")
-    with pytest.raises(CapabilityError, match="不适合"):
-        caps.get("handdraw.full").render(
-            {"topic": "复利效应与巴菲特", "aspect": "16:9", "style_id": "17", "hand_preset": "navy"},
-            tmp_path / "adult-topic-rejected",
-            duration=2.0,
-            aspect="16:9",
-            seed=1,
-        )
+    # S16: an adult topic no longer falls into the kids template; it renders a
+    # general-audience storyboard instead (the kids selector still rejects it).
+    general = caps.get("handdraw.full").render(
+        {"topic": "复利效应与巴菲特", "aspect": "16:9", "style_id": "17", "hand_preset": "navy"},
+        tmp_path / "adult-topic-general",
+        duration=2.0,
+        aspect="16:9",
+        seed=1,
+    )
+    assert general.qa.get("audience") == "general"
 
 
 def test_kids_gate_fails_closed_when_preview_audio_measurements_are_missing() -> None:

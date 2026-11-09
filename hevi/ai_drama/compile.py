@@ -100,11 +100,24 @@ def compile_storyboard(script: dict[str, Any], *, max_shot_s: float = 8.0) -> di
                 shot.setdefault("lighting", _scene_light(scene))
                 shot.setdefault("emotion", beat.get("emotion", "neutral"))
                 shot.setdefault("sound", beat.get("sound") or scene.get("ambience") or "环境底噪")
+                shot.setdefault("sfx", beat.get("sfx") or "")
                 if "dialogue_index" in plan:
                     shot["dialogue"] = _dialogue_for(beat, plan.get("dialogue_index"))
                 else:
                     shot.setdefault("dialogue", [])
                 shot.setdefault("negatives", ["无字幕", "无文字", "无logo", "无水印", "不要音乐"])
+                pov = script.get("pov") or {}
+                if pov:
+                    shot["pov"] = True
+                    for term in ("不露脸", "无正脸"):
+                        if term not in shot["negatives"]:
+                            shot["negatives"].append(term)
+                    body = "（主角视角：画面边缘只可见主角的手、袖子和鞋，主角不露脸）"
+                    if not any(term in str(shot.get("action")) for term in ("手", "袖", "鞋")):
+                        shot["action"] = f"{shot.get('action', '')}{body}"
+                    if str(shot.get("character_id")) == str(pov.get("viewer")):
+                        shot["character_id"] = None
+                        shot["mode"] = "pov"
                 if prev_end:
                     shot.setdefault("continues_from", prev_end)
                 shot["duration_s"] = round(min(max_shot_s, max(0.5, float(shot.get("duration_s") or 2.5))), 2)
@@ -120,6 +133,20 @@ def compile_storyboard(script: dict[str, Any], *, max_shot_s: float = 8.0) -> di
                     "duration_s": 1.6, "continues_from": prev_end,
                 })
                 shots.append(reaction)
+            pov = script.get("pov") or {}
+            if pov:
+                viewer = str(pov.get("viewer") or "")
+                body = "（主角视角：画面边缘只可见主角的手、袖子和鞋，主角不露脸）"
+                for shot in shots:
+                    shot["pov"] = True
+                    for term in ("不露脸", "无正脸"):
+                        if term not in shot.setdefault("negatives", []):
+                            shot["negatives"].append(term)
+                    if not any(term in str(shot.get("action")) for term in ("手", "袖", "鞋")):
+                        shot["action"] = f"{shot.get('action', '')}{body}"
+                    if viewer and str(shot.get("character_id")) == viewer:
+                        shot["character_id"] = None
+                        shot["mode"] = "pov"
             if len(shots) > 4:
                 # split into consecutive segments of at most 4 shots
                 for chunk_start in range(0, len(shots), 4):

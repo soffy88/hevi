@@ -26,6 +26,24 @@ def _admin_user_ids() -> set[str]:
     return {part.strip() for part in raw.split(",") if part.strip()}
 
 
+def internal_line_allowlist() -> set[str]:
+    """Extra users allowed to see internal Studio lines (ids or emails)."""
+    import os
+
+    raw = os.getenv("HEVI_INTERNAL_LINE_ALLOWLIST", "")
+    return {part.strip() for part in raw.split(",") if part.strip()}
+
+
+def can_view_internal_lines(user: dict[str, Any] | None) -> bool:
+    """Admins and the explicit allowlist may see/execute internal lines."""
+    if not user:
+        return False
+    identity = {str(user.get("id") or ""), str(user.get("email") or "")}
+    if identity & _admin_user_ids():
+        return True
+    return bool(identity & internal_line_allowlist())
+
+
 async def get_user_repository(
     pool: Annotated[PgPool, Depends(get_hevi_pg_pool)],
 ) -> UserRepository:

@@ -16,14 +16,26 @@ slots:
   - name: video_provider
     required: false
     description: offline | runninghub_h3 | minimax_h3_api（缺 key 自动 offline）
+  - name: series_dir
+    required: false
+    description: 系列目录（含 series.json）；缺省在 output/ai_drama/series 建立
+  - name: pov
+    required: false
+    description: POV=观众即男主，只露手/袖子/鞋，永不露脸
+  - name: translate_to
+    required: false
+    description: 第二语言字幕（如 en / ja）；用已注册 LLM 翻译
 tools:
-  - drama.ai_script
-  - drama.ai_storyboard
-  - drama.ai_assets
-  - drama.ai_voice
-  - drama.ai_segments
-  - drama.ai_edit
-  - drama.ai_episode
+  - drama.series_topics
+  - drama.series_beats
+  - drama.stage_script
+  - drama.stage_storyboard
+  - drama.stage_assets
+  - drama.stage_voice
+  - drama.stage_segments
+  - drama.stage_edit
+  - drama.stage_publish
+  - drama.series_review
 pipeline:
   name: ai_drama
   stages:
@@ -39,5 +51,5 @@ pipeline:
       fn: hevi.ai_drama.stages:stage_segments
     - name: edit
       fn: hevi.ai_drama.stages:stage_edit
-    - name: delivery
+    - name: publish
       fn: hevi.ai_drama.stages:stage_delivery

@@ -1,0 +1,40 @@
+# hevi drama render worker — a dedicated image/service for heavy offline rendering.
+#
+# The API image stays the general image.  This image is built on top of it and
+# asserts the offline render stack (numpy / Pillow / CPU torch / diffusers / av /
+# ffmpeg) is present, then only claims tasks whose resource_class is
+# ``drama_render`` (the generic hevi-worker excludes that class).
+#
+# Build order: build hevi-api first, then this image:
+#   docker compose ... build hevi-api
+#   docker compose ... build hevi-render-worker
+#
+# No model weights are baked in; SD-Turbo / Wav2Lip models are mounted read-only
+# at runtime exactly as the worker mounts them.
+
+ARG HEVI_RENDER_BASE_IMAGE=hevi-cftunnel-hevi-api:latest
+FROM ${HEVI_RENDER_BASE_IMAGE}
+
+USER root
+
+RUN /app/.venv/bin/python - <<'PY'
+import av
+import diffusers
+import numpy
+import PIL
+import torch
+
+assert torch.__version__.endswith("+cpu") or "cpu" in torch.__version__, torch.__version__
+print("render deps:", numpy.__version__, PIL.__version__, torch.__version__,
+      diffusers.__version__, av.__version__)
+PY
+
+RUN command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null
+
+ENV HEVI_RENDER_MODE=drama \
+    HEVI_WORKER_RESOURCE_CLASS=drama_render \
+    AI_DRAMA_LIPSYNC=1
+
+USER hevi
+
+CMD ["python", "-m", "hevi.ai_drama.render_worker_entrypoint"]

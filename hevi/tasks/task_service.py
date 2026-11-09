@@ -1426,6 +1426,14 @@ class TaskService:
             "created_at": datetime.now(UTC).replace(tzinfo=None),
             "updated_at": datetime.now(UTC).replace(tzinfo=None),
         }
+        if str(data.get("resource_class") or "any") == "any":
+            from hevi.ai_drama.render_worker import DRAMA_LINES, DRAMA_RENDER_CLASS, drama_line_of
+
+            line_id = drama_line_of({"line_id": kwargs.get("line_id"),
+                                     "options": kwargs.get("options") or kwargs,
+                                     "slots": kwargs.get("slots") or {}})
+            if line_id in DRAMA_LINES:
+                data["resource_class"] = DRAMA_RENDER_CLASS
         try:
             created = await self.repository.create_task(data)
             if kwargs.get("production_id"):

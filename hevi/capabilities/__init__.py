@@ -1886,8 +1886,10 @@ _dance_mv_prompt_pack_schema.register_dance_mv_prompt_pack_schema_capabilities_o
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
 from .manifest import build_manifest as _build_3o_manifest  # noqa: E402
+from hevi.ai_drama.capabilities import register_ai_drama_capabilities_once
+register_ai_drama_capabilities_once()
+
 __manifest__ = _build_3o_manifest(list_capabilities())
 
 # ai_drama line (script -> storyboard -> assets -> segments -> edit)
-from hevi.ai_drama.capabilities import register_ai_drama_capabilities_once
-register_ai_drama_capabilities_once()
+

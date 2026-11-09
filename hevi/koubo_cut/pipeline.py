@@ -13,6 +13,7 @@ the presenter.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
@@ -282,10 +283,8 @@ def _tts(text: str, out_path: Path) -> Path | None:
     except Exception:
         return None
     finally:
-        try:
+        with contextlib.suppress(OSError):
             os.remove(raw)
-        except OSError:
-            pass
 
 
 def _silence(duration: float, out_path: Path) -> Path:
@@ -624,13 +623,22 @@ def _render_frames(
             t = fi / FPS
             ev = next(((st, en, path) for st, en, path in evidence if st <= t < en), None)
             if ev is not None:
-                frame = evidence_imgs[ev[2]].copy()
+                # A held screenshot is never a frozen frame: a slow pan/zoom
+                # keeps every 3-second window moving for the frozen check.
+                src = evidence_imgs[ev[2]]
+                zoom = 1.03
+                zw, zh = int(W * zoom), int(H * zoom)
+                scaled = src.resize((zw, zh), Image.LANCZOS)
+                ox = max(0, min(zw - W, int((zw - W) / 2 + 22 * math.sin(2 * math.pi * t / 6.0))))
+                oy = max(0, min(zh - H, int((zh - H) / 2 + 16 * math.cos(2 * math.pi * t / 7.0))))
+                frame = scaled.crop((ox, oy, ox + W, oy + H))
+                pip_breathe = int(6 * math.sin(2 * math.pi * t / 4.0))
                 if livliv_frames is not None:
                     pip_img = _livliv_frame_at(livliv_frames, fi, LIVLIV_PIP_SIZE)
                     if pip_img is not None:
-                        _paste_corner_pip(frame, pip_img, pip_x, pip_y, LIVLIV_PIP_SIZE)
+                        _paste_corner_pip(frame, pip_img, pip_x, pip_y + pip_breathe, LIVLIV_PIP_SIZE)
                 else:
-                    frame.paste(pip, (W - 320, H - 420), pip)
+                    frame.paste(pip, (W - 320, H - 420 + pip_breathe), pip)
             else:
                 breathe = int(8 * math.sin(2 * math.pi * t / 5.0))
                 frame = base.copy()
@@ -929,10 +937,8 @@ def run_koubo_cut(
         ledger["status"] = "failed"
         ledger["error"] = f"{type(exc).__name__}: {exc}"
         finalize_status(ledger, "failed")
-        try:
+        with contextlib.suppress(Exception):
             _cleanup_livliv_frames(out / "livliv_frames")
-        except Exception:
-            pass
     return ledger
 
 
@@ -988,9 +994,8 @@ _ASCII_WORD = re.compile(r"[A-Za-z][A-Za-z0-9\-]{2,}")
 def _topic_queries(text: str) -> list[str]:
     queries: list[str] = []
     for keys, query in _TOPIC_QUERIES:
-        if any(k in text for k in keys):
-            if query not in queries:
-                queries.append(query)
+        if any(k in text for k in keys) and query not in queries:
+            queries.append(query)
     # English narration: use its own content words as the query.
     for word in _ASCII_WORD.findall(text):
         low = word.lower()

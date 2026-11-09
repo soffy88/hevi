@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -9,6 +10,22 @@ from hevi.core.config import settings
 from hevi.execution import ResourceSnapshot, Scheduler, SchedulingDecision, SchedulingRequest
 from hevi.tasks.attempt_repository import AttemptRepository
 from hevi.tasks.state_machine import validate_task_transition
+
+EXCLUSIVE_RESOURCE_ENV = "HEVI_EXCLUSIVE_RESOURCE_CLASSES"
+DEFAULT_EXCLUSIVE_RESOURCE_CLASSES = ("drama_render",)
+
+
+def exclusive_resource_classes() -> tuple[str, ...]:
+    """Resource classes a generic ``any`` worker must not steal.
+
+    The drama render worker claims ``drama_render`` tasks; keeping them out of
+    the generic pool is what makes the dedicated render image/service a real
+    boundary rather than a suggestion.
+    """
+    raw = os.environ.get(EXCLUSIVE_RESOURCE_ENV, "").strip()
+    if not raw:
+        return DEFAULT_EXCLUSIVE_RESOURCE_CLASSES
+    return tuple(part.strip() for part in raw.split(",") if part.strip())
 
 
 class TaskRepository:
@@ -255,7 +272,11 @@ class TaskRepository:
                 SELECT * FROM video_tasks
                 WHERE status = 'queued'
                   AND (available_at IS NULL OR available_at <= NOW())
-                  AND ($1 = 'any' OR resource_class IN ('any', $1))
+                  AND CASE
+                        WHEN $1 = 'any' THEN resource_class <> ALL($3::text[])
+                        WHEN $1 = ANY($3::text[]) THEN resource_class = $1
+                        ELSE resource_class IN ('any', $1) AND resource_class <> ALL($3::text[])
+                      END
                   AND ($2::integer IS NULL OR required_vram_mb <= $2)
                   {scheduled_clause}
                 ORDER BY """
@@ -274,6 +295,7 @@ class TaskRepository:
                 """,
                 resource_class,
                 available_vram_mb,
+                list(exclusive_resource_classes()),
             )
             if not rows:
                 return None

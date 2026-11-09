@@ -256,20 +256,37 @@ async def _translate_with_hevi_llm(
 
     from obase.provider_registry import ProviderRegistry
 
+    # Prefer the project's ordered text-LLM resolver (qwen_cloud -> grok -> ...
+    # -> local) over a weak free translator.  ``default`` is only the last
+    # fallback when the resolver is empty.
     try:
-        llm = ProviderRegistry.get().llm("default")
-    except Exception as exc:
-        raise RuntimeError(
-            "HEVI default LLM is unavailable; inject translator or configure a provider"
-        ) from exc
+        from hevi.providers.llm_pick import resolve_text_llm
+
+        llm = resolve_text_llm()
+    except Exception:
+        llm = None
+    if llm is None:
+        try:
+            llm = ProviderRegistry.get().llm("default")
+        except Exception as exc:
+            raise RuntimeError(
+                "HEVI text LLM is unavailable; inject translator or configure a provider"
+            ) from exc
     terms = "\n".join(f"- {key} -> {value}" for key, value in glossary.items())
+    cps = 9.0 if str(target_language).lower().startswith("en") else 7.0
+    budget = []
+    for index, item in enumerate(source):
+        duration = max(0.5, float(item.end) - float(item.start))
+        budget.append(f"{index} [max {int(duration * cps)} chars]")
     prompt = (
         f"Translate each numbered subtitle line to {target_language}. Return JSON only, "
-        f"with string keys 0 through {len(source) - 1}; preserve names and meaning.\n"
+        f"with string keys 0 through {len(source) - 1}; preserve names, meaning and tone. "
+        "Respect each line's length budget so dubbing and subtitles fit the time slot.\n"
         + (f"Terminology:\n{terms}\n" if terms else "")
+        + "Length budget:\n" + "\n".join(budget) + "\n"
         + "\n".join(f"{index}: {item.text}" for index, item in enumerate(source))
     )
-    response: Any = llm(messages=[{"role": "user", "content": prompt}], max_tokens=2048)
+    response: Any = llm(messages=[{"role": "user", "content": prompt}], max_tokens=4096)
     if inspect.isawaitable(response):
         response = await response
     content = response.get("content") if isinstance(response, dict) else str(response)

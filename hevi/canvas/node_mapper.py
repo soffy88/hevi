@@ -237,6 +237,12 @@ def create_node_executor() -> Callable[..., Any]:
             return await run_koubo_node(node, upstream_outputs)
         tool_id = (node.config or {}).get("tool_id")
         if tool_id:
+            from hevi.ai_drama.canvas_nodes import ALL_TOOLS
+
+            if str(tool_id) in ALL_TOOLS:
+                from hevi.ai_drama.canvas_nodes import run_canvas_tool
+
+                return await run_canvas_tool(str(tool_id), dict(node.config or {}), upstream_outputs)
             from hevi.studio.tools import invoke_tool
 
             payload = dict(node.config or {})

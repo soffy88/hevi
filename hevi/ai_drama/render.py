@@ -70,6 +70,8 @@ def render_shots(
     lipsync: bool | None = None,
     seed: int = 42,
     episode_id: str = "",
+    only_shots: set[str] | None = None,
+    skip_existing: bool = False,
 ) -> dict[str, Any]:
     assert_generated_assets(assets)
     provider, status = select_provider(ledger, prefer=prefer_provider)
@@ -82,6 +84,18 @@ def render_shots(
     results: dict[str, Any] = {"provider": provider.name, "providers": status, "clips": {}, "meta": {}}
     for shot in iter_shots(storyboard):
         sid = str(shot.get("shot_id"))
+        if only_shots is not None and sid not in only_shots:
+            existing = clips_dir / f"{sid}.mp4"
+            if existing.is_file() and existing.stat().st_size > 0:
+                results["clips"][sid] = str(existing)
+                results["meta"][sid] = {"provider": "reused"}
+            continue
+        if skip_existing:
+            existing = clips_dir / f"{sid}.mp4"
+            if existing.is_file() and existing.stat().st_size > 0:
+                results["clips"][sid] = str(existing)
+                results["meta"][sid] = {"provider": "reused"}
+                continue
         image = _pick_image(shot, asset_paths, assets)
         audio = shot_audio(shot, voice_plan, audio_dir)
         if audio is None:

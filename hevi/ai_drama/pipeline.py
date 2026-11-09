@@ -94,6 +94,10 @@ class Pipeline:
         max_retries: int = 1,
         render_images: bool = True,
         lipsync: bool | None = None,
+        series: dict[str, Any] | None = None,
+        gated: bool = False,
+        edit_options: dict[str, Any] | None = None,
+        cost_gate: bool = True,
     ) -> None:
         self.out_dir = Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
@@ -104,6 +108,13 @@ class Pipeline:
         self.max_retries = max_retries
         self.do_render_images = render_images
         self.lipsync = lipsync
+        self.series = series
+        self.gated = gated
+        self.edit_options = dict(edit_options or {})
+        self.cost_gate = cost_gate
+        self.consistency: dict[str, Any] | None = None
+        self.cost_plan: dict[str, Any] | None = None
+        self.segment_gate: dict[str, Any] | None = None
         self.state: dict[str, Any] = {"episode_id": episode_id}
         self.report: dict[str, Any] = {"episode_id": episode_id, "nodes": {}, "line": "ai_drama"}
 
@@ -132,6 +143,11 @@ class Pipeline:
         else:
             script = normalize_script(draft_script_from_theme(str(data.get("theme") or "一个日常里的异常"),
                                                               style=str(data.get("style") or "live_action")))
+        if self.series:
+            from .series import inject_cast, series_findings
+
+            script = inject_cast(script, self.series)
+            self.state["series_findings"] = series_findings(script, self.series)
         _write(self.out_dir / "script.json", script)
         (self.out_dir / "screenplay.md").write_text(screenplay_markdown(script), encoding="utf-8")
         return {"script": script}
@@ -144,10 +160,32 @@ class Pipeline:
 
     def stage_assets(self) -> dict[str, Any]:
         assets = build_assets(self.state["script"])
+        if self.series:
+            from .series import annotate_assets
+
+            annotate_assets(assets, self.series)
         assign_shot_refs(self.state["storyboard"], assets)
         if self.do_render_images:
             render_assets(assets, self.out_dir / "assets", seed=self.seed)
         save_assets(assets, self.out_dir / "assets.json")
+        if self.series:
+            from .series import check_episode_consistency
+
+            # Episode 1 establishes the series anchor from its own rendered
+            # identity/portrait; later episodes are compared with that anchor.
+            cards = {str(c.get("id")): c for c in self.series.get("cast") or []}
+            for img in assets.get("images") or []:
+                card = cards.get(str(img.get("character_id") or ""))
+                if card is None or not img.get("path"):
+                    continue
+                if img.get("kind") == "character_identity" and not card.get("anchor_image"):
+                    card["anchor_image"] = str(img["path"])
+                if img.get("kind") == "character_portrait" and not card.get("portrait_image"):
+                    card["portrait_image"] = str(img["path"])
+            self.consistency = check_episode_consistency(
+                assets, self.series, out_dir=self.out_dir,
+                threshold=float((self.edit_options or {}).get("consistency_threshold", 0.72)),
+            )
         return {"assets": assets, "asset_paths": {img["ref"]: img.get("path", "") for img in assets["images"]}}
 
     def stage_voice(self) -> dict[str, Any]:
@@ -160,14 +198,43 @@ class Pipeline:
 
     def stage_segments(self) -> dict[str, Any]:
         ledger = CreditLedger(self.out_dir / "credit_ledger.jsonl", episode_id=self.episode_id, cap_cny=self.cap)
-        shots = render_shots(
-            self.state["storyboard"], self.state["script"], self.state["assets"], self.state["asset_paths"],
-            self.state["voice_plan"], self.out_dir, ledger=ledger, prefer_provider=self.prefer_provider,
-            lipsync=self.lipsync, seed=self.seed, episode_id=self.episode_id,
-        )
-        segments = render_segments(self.state["storyboard"], shots["clips"], self.out_dir)
+        if self.cost_gate:
+            from .cost_gate import approve_plan, build_plan
+            from .providers import select_provider
+
+            provider, _ = select_provider(ledger, prefer=self.prefer_provider)
+            self.cost_plan = approve_plan(
+                build_plan(self.state["storyboard"], self.state["script"], provider=provider.name,
+                           ledger=ledger),
+                ledger=ledger,
+            )
+            _write(self.out_dir / "cost_plan.json", self.cost_plan)
+            if not self.cost_plan["gate"]["allowed"]:
+                raise RuntimeError(self.cost_plan["gate"]["reason"])
+        if self.gated and self.series:
+            from .segment_gate import render_segments_gated
+
+            result = render_segments_gated(
+                self.state["storyboard"], self.state["script"], self.state["assets"], self.state["asset_paths"],
+                self.state["voice_plan"], self.out_dir, ledger=ledger,
+                prefer_provider=self.prefer_provider, lipsync=self.lipsync, seed=self.seed,
+                episode_id=self.episode_id, series=self.series,
+                redo_attempts=int(self.edit_options.get("redo_attempts", 1)),
+            )
+            self.segment_gate = result["gate"]
+            shots = result["shots"]
+            segments = result["segments"]
+        else:
+            shots = render_shots(
+                self.state["storyboard"], self.state["script"], self.state["assets"], self.state["asset_paths"],
+                self.state["voice_plan"], self.out_dir, ledger=ledger, prefer_provider=self.prefer_provider,
+                lipsync=self.lipsync, seed=self.seed, episode_id=self.episode_id,
+            )
+            segments = render_segments(self.state["storyboard"], shots["clips"], self.out_dir)
         _write(self.out_dir / "segments.json", {"shots": shots, "segments": segments,
-                                                "ledger": ledger.report()})
+                                                "ledger": ledger.report(),
+                                                "cost_plan": self.cost_plan,
+                                                "segment_gate": self.segment_gate})
         return {"segments": segments, "shots": shots, "ledger": ledger.report()}
 
     def stage_edit(self) -> dict[str, Any]:
@@ -179,15 +246,34 @@ class Pipeline:
                     from .game_pov import make_ui_png
                     ui["png"] = str(make_ui_png(str(ui.get("text") or "继续"),
                                                 self.out_dir / "ui" / f"ui_{i}.png"))
+        target = self.edit_options.get("translate_to")
+        if target:
+            from .i18n import apply_bilingual, write_srt
+
+            apply_bilingual(edit, str(target), llm=self.edit_options.get("llm"),
+                            glossary=self.edit_options.get("glossary") or {})
+            write_srt(edit, self.out_dir / f"subtitles_{target}.srt", lang="secondary")
+        if self.edit_options.get("bgm"):
+            edit["bgm"] = dict(self.edit_options["bgm"])
+            edit["bgm_allowed"] = True
         _write(self.out_dir / "edit_list.json", edit)
         export_fcpxml(edit, self.out_dir / "timeline.fcpxml")
         export_jianying_plan(edit, self.out_dir / "jianying_plan.json")
         return {"edit": edit}
 
     def stage_delivery(self) -> dict[str, Any]:
-        result = assemble(self.state["edit"], self.out_dir)
+        import copy
+
+        edit = copy.deepcopy(self.state["edit"])
+        if self.edit_options.get("trim"):
+            from .edit import trim_silent_edges
+
+            edit = trim_silent_edges(edit)
+            _write(self.out_dir / "edit_list_trimmed.json", edit)
+        result = assemble(edit, self.out_dir)
+        result["trim"] = edit.get("trim")
         if self.state["script"].get("style") == "game_pov":
-            game = apply_game_pov_post(Path(result["final"]), self.state["edit"],
+            game = apply_game_pov_post(Path(result["final"]), edit,
                                        self.out_dir / "final_game_pov.mp4", dialogue_box=True)
             result["game_pov"] = game
             result["deliverable"] = str(Path(result["final"]).with_name("final_game_pov.mp4"))
@@ -198,7 +284,9 @@ class Pipeline:
         return {"delivery": result}
 
     def _check_script(self) -> list[dict[str, Any]]:
-        return rules.check_script(self.state["script"])
+        out = rules.check_script(self.state["script"])
+        out.extend(self.state.get("series_findings") or [])
+        return out
 
     def _check_storyboard(self) -> list[dict[str, Any]]:
         assets = self.state.get("assets")
@@ -287,6 +375,10 @@ class Pipeline:
         for stage in stages:
             self.run_node(stage, fns[stage], checks[stage])
         self.report["delivery"] = self.state["delivery"]
+        self.report["cost_plan"] = self.cost_plan
+        self.report["segment_gate"] = self.segment_gate
+        self.report["consistency"] = self.consistency
+        self.report["series_id"] = (self.series or {}).get("series_id")
         self.report["passed"] = True
         _write(self.out_dir / "pipeline_report.json", self.report)
         return self.report

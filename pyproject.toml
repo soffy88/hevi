@@ -132,6 +132,10 @@ ignore = ["E501", "RUF001", "RUF002", "RUF003"]
 "hevi/*/oprim/__init__.py" = ["E501", "B904", "F401", "F811", "F841", "PERF401", "RET504", "RUF022"]
 "hevi/*/schemas.py" = ["E501", "UP042"]
 "hevi/*/__init__.py" = ["E501", "F401", "F811", "RUF022"]
+# Capability aggregator: hundreds of import-side registration lines are kept in
+# registration order; sorting them would change side-effect order, and the
+# paired `# noqa: F401` directives become redundant under the rule above.
+"hevi/capabilities/__init__.py" = ["I001", "E402", "RUF100"]
 
 [tool.mypy]
 strict = true

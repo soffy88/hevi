@@ -100,7 +100,7 @@ services:
       # 零成本线引擎(docs/ZEROLINES.md):11 条 zero 线默认走 CPU 本地管线
       # (Piper TTS + Pexels 免费素材 + PIL + faster-whisper),订单槽 engine 仍可显式覆盖。
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       # S13: optional internal raea check bypass (default off; skipped when the
       # binary is absent).  Kinetic promo stays on the default engine unless
@@ -262,7 +262,7 @@ services:
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
@@ -316,6 +316,58 @@ services:
       retries: 3
       start_period: 30s
 
+  hevi-render-worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.render
+      args:
+        HEVI_RENDER_BASE_IMAGE: hevi-cftunnel-hevi-api:latest
+    image: hevi-cftunnel-hevi-render:latest
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      REDIS_URL: redis://hevi-redis:6379/0
+      DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
+      MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for production}
+      MINIO_BUCKET: ${MINIO_BUCKET:-hevi-assets}
+      APP_ENV: production
+      HEVI_WORKER_RESOURCE_CLASS: drama_render
+      HEVI_RENDER_MODE: drama
+      HEVI_EXCLUSIVE_RESOURCE_CLASSES: drama_render
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw}
+      HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
+      HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
+      HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      HEVI_TALKCRAFT_AVATAR_MODELS: /models/wav2lip
+      HEVI_ASSET_ROOT: /app/data/workspace/assets
+      HEVI_OUTPUT_ROOT: /app/output
+      AI_DRAMA_LIPSYNC: "1"
+      AI_DRAMA_BUDGET_CNY: ${AI_DRAMA_BUDGET_CNY:-30}
+    volumes:
+      - /home/soffy/models:/models:ro
+      - ${HEVI_PIPER_VOICES_DIR:-/data/soffy/projects/hevi-zero/voices}:/opt/piper/voices:ro
+      - /home/soffy/projects/hevi/output:/app/output
+      - /home/soffy/projects/hevi/data:/app/data
+      - /home/soffy/projects/hevi/assets:/app/assets
+      - /home/soffy/.cache/huggingface:/root/.cache/huggingface:ro
+      - /data/models/huggingface:/data/models/huggingface:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      hevi-redis:
+        condition: service_healthy
+    command: ["python", "-m", "hevi.ai_drama.render_worker_entrypoint"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0 if 'render_worker_entrypoint' in open('/proc/1/cmdline','rb').read().decode(errors='ignore') else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   hevi-scheduler:
     image: hevi-cftunnel-hevi-api:latest
     restart: unless-stopped
@@ -351,7 +403,7 @@ services:
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices

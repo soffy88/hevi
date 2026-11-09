@@ -99,6 +99,7 @@ def build_edit(
             "clip": (clip_paths or {}).get(str(shot.get("shot_id"))) or shot.get("image") or "",
             "dialogue": [dict(line) for line in shot.get("dialogue") or []],
             "mode": shot.get("mode", "talking"),
+            "sfx": str(shot.get("sfx") or ""),
         }
         items.append(item)
         line_cursor = cursor + 0.15
@@ -139,6 +140,10 @@ def build_edit(
     if script_lines != sub_lines:
         raise ValueError("剪辑字幕与剧本不一致（逐字对齐检查失败）")
 
+    sfx_cues = [
+        {"t": round(float(item.get("start_s") or 0), 3), "name": str(item.get("sfx")), "gain": 0.8}
+        for item in items if str(item.get("sfx") or "").strip()
+    ]
     edit = {
         "episode_no": storyboard.get("episode_no", 1),
         "title": storyboard.get("title", script.get("title", "")),
@@ -150,8 +155,9 @@ def build_edit(
         "reaction_overlays": overlays,
         "layers": ["dialogue", "sfx", "music"],
         "loudness": {"target_lufs": -14.0, "true_peak": -1.5, "lra": 11},
-        "bgm": None,
-        "bgm_allowed": False,
+        "sfx_cues": sfx_cues,
+        "bgm": script.get("bgm"),
+        "bgm_allowed": bool(script.get("bgm_allowed", bool(script.get("bgm")))),
         "ending_suspense": str(
             script.get("ending_suspense")
             or (script.get("scenes") or [{}])[-1].get("beats", [{}])[-1].get("event", "")
@@ -184,6 +190,7 @@ def write_ass(edit: dict[str, Any], out_path: Path, *, width: int = 1080, height
         "Style: Inner,Noto Sans CJK SC,54,&H0066D1FF,&H0066D1FF,&H00101010,&H80000000,0,1,0,0,100,100,0,0,1,4,2,2,60,60,150,1",
         "Style: VO,Noto Sans CJK SC,54,&H00FFD38F,&H00FFD38F,&H0010202B,&H80000000,0,0,0,0,100,100,0,0,1,4,2,2,60,60,150,1",
         "Style: AI,Noto Sans CJK SC,30,&H00E0E0E0,&H00E0E0E0,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,0,3,0,0,40,1",
+        "Style: Secondary,Noto Sans CJK SC,42,&H00EAF4FF,&H00EAF4FF,&H00101010,&H80000000,0,0,0,0,100,100,0,0,1,3,1,2,60,60,150,1",
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
@@ -191,6 +198,9 @@ def write_ass(edit: dict[str, Any], out_path: Path, *, width: int = 1080, height
     style_for = {"said": "Said", "inner": "Inner", "vo": "VO"}
     for row in edit.get("subtitles") or []:
         text = str(row.get("text") or "").replace("\n", r"\N")
+        secondary = str(row.get("secondary") or "").replace("\n", r"\N")
+        if secondary:
+            text = f"{text}\\N{{\\rSecondary}}{secondary}"
         lines.append(
             f"Dialogue: 0,{_ass_time(float(row['start_s']))},{_ass_time(float(row['end_s']))},"
             f"{style_for.get(str(row.get('kind')), 'Said')},,0,0,0,,{text}"
@@ -362,13 +372,133 @@ def _loudnorm(src: Path, dst: Path, *, target: float = -14.0, tp: float = -1.5) 
             "corrected_i": measured_i, "after_log_tail": probe.stderr[-600:]}
 
 
+def _make_ding(work: Path) -> Path:
+    out = work / "sfx_ding.wav"
+    if not out.is_file():
+        subprocess.run(
+            [FFMPEG, "-y", "-v", "error", "-f", "lavfi", "-i",
+             "sine=frequency=1320:duration=0.26,afade=t=out:st=0.02:d=0.24,volume=0.7",
+             "-ar", "48000", "-ac", "2", str(out)],
+            check=True,
+        )
+    return out
+
+
+def _build_sfx_track(edit: dict[str, Any], total: float, work: Path) -> Path | None:
+    cues = [c for c in edit.get("sfx_cues") or [] if 0 <= float(c.get("t") or 0) < total]
+    if not cues:
+        return None
+    ding = _make_ding(work)
+    labels = ["[0:a]"]
+    filters = []
+    for i, cue in enumerate(cues):
+        delay = round(float(cue.get("t") or 0) * 1000)
+        gain = float(cue.get("gain") or 0.8)
+        filters.append(f"[0:a]adelay={delay}|{delay},volume={gain:.2f}[sfx{i}]")
+        labels.append(f"[sfx{i}]")
+    filt = ";".join([*filters, "".join(labels) + f"amix=inputs={len(labels)}:normalize=0:duration=longest[out]"])
+    out = work / "sfx.wav"
+    subprocess.run(
+        [FFMPEG, "-y", "-v", "error", "-i", str(ding), "-filter_complex", filt, "-map", "[out]",
+         "-t", f"{total:.3f}", "-ar", "48000", "-ac", "2", str(out)],
+        check=True,
+    )
+    return out
+
+
+def _build_bgm_track(edit: dict[str, Any], total: float, work: Path) -> Path | None:
+    bgm = edit.get("bgm") or {}
+    path = str(bgm.get("path") or "")
+    if not path or not Path(path).is_file():
+        return None
+    climax = float(bgm.get("climax_s") or 0.0)
+    target = float(bgm.get("target_s") or max(0.0, total * 0.35))
+    offset = max(0.0, climax - target)
+    delay_ms = max(0, round((target - climax) * 1000))
+    volume = float(bgm.get("volume") or 0.18)
+    out = work / "bgm.wav"
+    filters = [f"atrim=start={offset:.3f},asetpts=PTS-STARTPTS", "volume=" + f"{volume:.3f}",
+               "afade=t=in:st=0:d=0.6"]
+    if delay_ms:
+        filters.append(f"adelay={delay_ms}|{delay_ms}")
+    subprocess.run(
+        [FFMPEG, "-y", "-v", "error", "-stream_loop", "-1", "-i", str(path), "-af", ",".join(filters),
+         "-t", f"{total:.3f}", "-ar", "48000", "-ac", "2", str(out)],
+        check=True,
+    )
+    return out
+
+
+def _mix_tracks(dialogue: Path, sfx: Path | None, bgm: Path | None, total: float, work: Path) -> Path:
+    inputs = [dialogue]
+    labels = ["[0:a]"]
+    filters = []
+    if sfx is not None:
+        inputs.append(sfx)
+        labels.append(f"[{len(inputs) - 1}:a]")
+    if bgm is not None:
+        inputs.append(bgm)
+        # Duck the music under the dialogue rather than raising it.
+        filters.append(f"[{len(inputs) - 1}:a]volume=1.0[bgmduck]")
+        labels.append("[bgmduck]")
+    filt = ";".join([*filters, "".join(labels) + f"amix=inputs={len(labels)}:normalize=0:duration=longest[out]"])
+    out = work / "mix.wav"
+    cmd = [FFMPEG, "-y", "-v", "error"]
+    for path in inputs:
+        cmd += ["-i", str(path)]
+    cmd += ["-filter_complex", filt, "-map", "[out]", "-t", f"{total:.3f}", "-ar", "48000", "-ac", "2", str(out)]
+    subprocess.run(cmd, check=True)
+    return out
+
+
+def trim_silent_edges(edit: dict[str, Any]) -> dict[str, Any]:
+    """Drop leading/trailing shots with no dialogue; shift the remaining timeline."""
+    items = list(edit.get("items") or [])
+    if len(items) <= 1:
+        return edit
+    head = 0
+    while head < len(items) - 1 and not items[head].get("dialogue") and str(items[head].get("mode")) in (
+        "action", "establishing", "insert"
+    ):
+        head += 1
+    tail = len(items)
+    while tail - 1 > head and not items[tail - 1].get("dialogue") and str(items[tail - 1].get("mode")) in (
+        "action", "establishing", "insert"
+    ):
+        tail -= 1
+    if head == 0 and tail == len(items):
+        return edit
+    removed_head = float(items[head].get("start_s") or 0)
+    removed_tail = float(items[-1].get("end_s") or 0) - float(items[tail - 1].get("end_s") or 0)
+    kept = items[head:tail]
+    shift = removed_head
+    for item in kept:
+        item["start_s"] = round(max(0.0, float(item.get("start_s") or 0) - shift), 3)
+        item["end_s"] = round(max(0.0, float(item.get("end_s") or 0) - shift), 3)
+    kept_ids = {str(item.get("shot_id")) for item in kept}
+    edit["items"] = kept
+    edit["subtitles"] = [
+        {**row, "start_s": round(max(0.0, float(row.get("start_s") or 0) - shift), 3),
+         "end_s": round(max(0.0, float(row.get("end_s") or 0) - shift), 3)}
+        for row in edit.get("subtitles") or [] if str(row.get("shot_id")) in kept_ids
+    ]
+    edit["duration_s"] = round(sum(float(item.get("duration_s") or 0) for item in kept), 3)
+    edit["trim"] = {"removed_head_s": round(removed_head, 3), "removed_tail_s": round(removed_tail, 3),
+                    "kept_shots": len(kept)}
+    return edit
+
+
 def assemble(edit: dict[str, Any], out_dir: Path, *, burn_subtitles: bool = True) -> dict[str, Any]:
     work = out_dir / "assemble"
     work.mkdir(parents=True, exist_ok=True)
     video = _concat_video(edit.get("items") or [], work / "video.mp4", work)
     audio_raw, _ = _build_dialogue_track(edit, work / "dialogue_raw.wav", work)
+    total = float(edit.get("duration_s") or 0)
+    sfx = _build_sfx_track(edit, total, work)
+    bgm = _build_bgm_track(edit, total, work)
+    mixed = _mix_tracks(audio_raw, sfx, bgm, total, work) if (sfx or bgm) else audio_raw
     audio_path = work / "dialogue.wav"
-    audio_info = _loudnorm(audio_raw, audio_path,
+    audio_info = _loudnorm(mixed, audio_path,
                            target=float((edit.get("loudness") or {}).get("target_lufs", -14)),
                            tp=float((edit.get("loudness") or {}).get("true_peak", -1.5)))
     ass = write_ass(edit, work / "final.ass")

@@ -126,10 +126,30 @@ STANDARD_TOPIC_STORYBOARDS: dict[str, dict[str, Any]] = {
 }
 
 
-def _match_topic_spec(topic: str) -> dict[str, Any]:
-    """Route every Studio handdraw topic to a preschool-safe storyboard template."""
+def _match_topic_spec(topic: str, audience: str = "auto") -> dict[str, Any]:
+    """Route a topic to the kids template only when it is a child topic.
+
+    An arbitrary adult topic no longer falls into the preschool story template:
+    it gets a neutral general storyboard instead.
+    """
+    from hevi.layer4_legacy.handdraw.general_storyboards import (
+        build_general_storyboard,
+        is_kids_topic,
+    )
     from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
 
+    use_kids = audience == "kids" or (audience == "auto" and is_kids_topic(topic))
+    if not use_kids:
+        spec = build_general_storyboard(topic)
+        return {
+            "title": spec["title"],
+            "style_id": "17",
+            "hand_preset": "navy",
+            "theme": spec["theme"],
+            "stages": spec["stages"],
+            "pages": spec["pages"],
+            "audience": "general",
+        }
     spec = select_kids_storyboard(topic)
     return {
         "title": spec["title"],
@@ -154,7 +174,11 @@ async def render_handdraw_line(
     if seed is None:
         import time as _t
         seed = int(_t.time() * 1000) % (2 ** 31)
-    spec = _match_topic_spec(topic)
+    audience = str(order.get("audience") or "auto").strip().lower()
+    if audience not in {"auto", "kids", "general"}:
+        raise ValueError(f"unsupported audience: {audience}")
+    spec = _match_topic_spec(topic, audience)
+    is_general = spec.get("audience") == "general"
     if style_id not in {"1", "8", "10", "17"}:
         raise ValueError(f"unsupported style_id: {style_id}")
     if hand_preset not in {"navy", "pen-only"}:
@@ -170,14 +194,15 @@ async def render_handdraw_line(
     if (canvas_w, canvas_h) not in {(1920, 1080), (1080, 1920)}:
         raise ValueError("handdraw canvas must be 1920x1080 or 1080x1920")
     layout = compute_canvas_layout(canvas_w, canvas_h)
-    safety = validate_kids_script(
-        topic,
-        spec["pages"],
-        aspect="16:9" if canvas_w >= canvas_h else "9:16",
-        caption_font_size=layout.caption_font_size,
-    )
-    if not safety["passed"]:
-        raise ValueError(f"KIDS_ANIME_DIRECTION gate failed before rendering: {safety['checks']}")
+    if not is_general:
+        safety = validate_kids_script(
+            topic,
+            spec["pages"],
+            aspect="16:9" if canvas_w >= canvas_h else "9:16",
+            caption_font_size=layout.caption_font_size,
+        )
+        if not safety["passed"]:
+            raise ValueError(f"KIDS_ANIME_DIRECTION gate failed before rendering: {safety['checks']}")
 
     result = render_handdraw_pipeline(
         job_id=job_id,
@@ -189,10 +214,13 @@ async def render_handdraw_line(
         hand_preset=final_hand,
         seed=int(seed),
         preview_duration=30.0,
+        audience="general" if is_general else "kids",
     )
 
     try:
-        import os, subprocess, time
+        import os
+        import subprocess
+        import time
         src = Path(result["video_path"])
         tmp = src.with_suffix(".tmp.mp4")
         subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(src), "-c", "copy",

@@ -156,6 +156,18 @@ def check_script(script: dict[str, Any], *, target_s: float | None = None) -> li
         for key, label in (("daily", "日常"), ("anomaly", "异常"), ("reversal", "反转")):
             if not str(spine.get(key) or "").strip():
                 out.append(_fail("S-GAME-POV", f"game_pov 剧本缺{label}", key))
+
+    pov = script.get("pov")
+    if pov:
+        viewer = str(pov.get("viewer") or "")
+        if viewer not in chars:
+            out.append(_fail("S-POV", "POV 视角男主不在角色表", viewer))
+        body = str(pov.get("body") or "")
+        if not any(term in body for term in POV_BODY):
+            out.append(_fail("S-POV", "POV 必须写明只露手/袖子/鞋", viewer))
+        for line in dialogue:
+            if str(line.get("speaker")) == viewer and str(line.get("kind")) != "inner":
+                out.append(_major("S-POV-LINE", "POV 男主的台词应是内心独白（观众即男主）", viewer))  # noqa: PERF401
     return out
 
 
@@ -250,6 +262,20 @@ def check_storyboard(
                     for shot in iter_shots(storyboard) for line in shot.get("dialogue") or []]
         if script_lines != sb_lines:
             out.append(_fail("B-VERBATIM", "分镜台词必须与剧本逐字一致且顺序一致"))
+
+    pov = (script or {}).get("pov")
+    if pov:
+        viewer = str(pov.get("viewer") or "")
+        for shot in iter_shots(storyboard):
+            sid = str(shot.get("shot_id"))
+            body = " ".join(str(shot.get(k) or "") for k in ("action", "staging", "subject"))
+            if not any(term in body for term in POV_BODY):
+                out.append(_fail("B-POV-BODY", "POV 镜头必须只露手/袖子/鞋", sid))
+            neg = " ".join(str(x) for x in shot.get("negatives") or [])
+            if not any(term in neg for term in ("不露脸", "无正脸", "看不到主角的脸")):
+                out.append(_major("B-POV-NEG", "POV 镜头否定约束要写不露脸", sid))
+            if viewer and str(shot.get("character_id")) == viewer and str(shot.get("mode")) == "talking":
+                out.append(_fail("B-POV-FACE", "POV 男主不能有正脸说话镜头", sid))
 
     if assets is not None:
         known = ref_index(assets)

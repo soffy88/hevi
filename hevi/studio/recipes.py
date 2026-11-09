@@ -33,6 +33,8 @@ DEFAULT_LAUNCH_LINES = (
     "shorts_clip",
     "podcast_repurpose",
     "scene3d",
+    # S16: handdraw general-audience black-box 4.87/5 -> GA whitelist.
+    "handdraw",
 )
 
 

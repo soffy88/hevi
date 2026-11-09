@@ -52,8 +52,13 @@ def _render_handdraw(
     stroke_style: str = "legacy",
     rough_roughness: float = 2.0,
     rough_bowing: float = 2.0,
+    audience: str = "auto",
 ) -> CapabilityResult:
-    """Render a topic-grounded preschool video or an exact-duration preview."""
+    """Render a kids or general-audience handdraw video (exact duration preview)."""
+    from hevi.layer4_legacy.handdraw.general_storyboards import (
+        build_general_storyboard,
+        is_kids_topic,
+    )
     from hevi.layer4_legacy.handdraw.kids_storyboards import select_kids_storyboard
     from hevi.layer4_legacy.handdraw.pipeline import render_handdraw_pipeline
 
@@ -66,7 +71,13 @@ def _render_handdraw(
     if stroke_style not in ("legacy", "rough"):
         raise CapabilityError(f"unsupported stroke_style: {stroke_style}")
 
-    spec = select_kids_storyboard(topic)
+    use_kids = audience == "kids" or (audience == "auto" and is_kids_topic(topic))
+    if use_kids:
+        spec = select_kids_storyboard(topic)
+        resolved_audience = "kids"
+    else:
+        spec = build_general_storyboard(topic)
+        resolved_audience = "general"
     if not 0 <= float(duration) <= 3:
         raise CapabilityError("duration must be 0 for a full delivery or between 0 and 3 seconds for preview")
     # The unified capability contract interprets a positive duration as a partial
@@ -85,6 +96,7 @@ def _render_handdraw(
         stroke_style=stroke_style,
         rough_roughness=rough_roughness,
         rough_bowing=rough_bowing,
+        audience=resolved_audience,
     )
 
     mp4 = Path(result["video_path"])
@@ -108,6 +120,7 @@ def _render_handdraw(
             "srt": str(srt),
             "verification": result["verification_path"],
             "kids_safety_report": result.get("kids_safety_path"),
+            "audience": resolved_audience,
             "preview": bool(duration > 0),
         },
     )
@@ -126,6 +139,7 @@ def _render_canvas(
     stroke_style: str = "legacy",
     rough_roughness: float = 2.0,
     rough_bowing: float = 2.0,
+    audience: str = "auto",
 ) -> CapabilityResult:
     if not topic or not str(topic).strip():
         raise CapabilityError("handdraw capability requires a non-empty 'topic'")
@@ -145,6 +159,7 @@ def _render_canvas(
             stroke_style=stroke_style,
             rough_roughness=rough_roughness,
             rough_bowing=rough_bowing,
+            audience=audience,
         )
     except UnsupportedKidsTopicError as exc:
         raise CapabilityError(str(exc)) from exc
@@ -164,6 +179,7 @@ _PARAMS = {
         "style_id": {"type": "string", "enum": list(SUPPORTED_STYLES)},
         "hand_preset": {"type": "string", "enum": list(SUPPORTED_HANDS)},
         "stroke_style": {"type": "string", "enum": ["legacy", "rough"]},
+        "audience": {"type": "string", "enum": ["auto", "kids", "general"]},
         "rough_roughness": {"type": "number", "minimum": 0, "maximum": 25},
         "rough_bowing": {"type": "number", "minimum": 0, "maximum": 25},
     },
@@ -189,8 +205,9 @@ def _register() -> None:
                 stroke_style=str((params or {}).get("stroke_style") or "legacy"),
                 rough_roughness=float((params or {}).get("rough_roughness") if (params or {}).get("rough_roughness") is not None else 2.0),
                 rough_bowing=float((params or {}).get("rough_bowing") if (params or {}).get("rough_bowing") is not None else 2.0),
+                audience=str((params or {}).get("audience") or "auto"),
             ),
-            description="幼儿向手绘动画；正 duration 为精确时长预览，0 为完整交付。可选 stroke_style='rough' 启用 rough 式手绘描边（双描+抖动，默认 legacy 不变）。",
+            description="手绘讲解动画（幼儿主题走幼儿模板，任意主题走通用讲解）；正 duration 为精确时长预览，0 为完整交付。可选 stroke_style='rough' 启用 rough 式手绘描边（双描+抖动，默认 legacy 不变）。",
         )
     )
     register(

@@ -82,3 +82,13 @@ def test_attach_to_quality(tmp_path: Path, monkeypatch) -> None:
     result = {"result_video_path": str(video), "quality": {"passed": True, "checks": {}}}
     out = raea_check.attach_to_quality(result)
     assert out["quality"]["checks"]["raea_check"]["checked"] is True
+
+
+def test_dark_blotching_is_downgraded_not_blocking() -> None:
+    issues = [{"rule": "blotching", "p": "P1", "says": "blocky near-black"}]
+    out, changed = raea_check.reclassify_dark_blotching(issues, mean_luma=18.0)
+    assert changed == 1
+    assert out[0]["p"] == "P2" and out[0]["dark_scene_downgrade"] is True
+    bright, changed_bright = raea_check.reclassify_dark_blotching(
+        [{"rule": "blotching", "p": "P1"}], mean_luma=120.0)
+    assert changed_bright == 0 and bright[0]["p"] == "P1"

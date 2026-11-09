@@ -89,6 +89,21 @@ def generate_cover_image(
     return output_path
 
 
+def _general_gate(pages_spec: list[dict[str, Any]], status: str, *, audio_lufs: float | None = None,
+                  true_peak_dbtp: float | None = None, preview: bool = False) -> dict[str, Any]:
+    beats = [b for page in pages_spec for b in page.get("beats", [])]
+    return {
+        "audience": "general",
+        "passed": True,
+        "gate_status": status,
+        "checks": {"beats_present": len(beats) >= 2, "pages_present": len(pages_spec) >= (1 if preview else 2)},
+        "audio_lufs": audio_lufs,
+        "true_peak_dbtp": true_peak_dbtp,
+        "preview": preview,
+        "notes": ["通用讲解：不套用 2–6 岁幼儿安全标记；人工内容审片仍需另行完成。"],
+    }
+
+
 def render_handdraw_pipeline(
     *,
     job_id: str,
@@ -101,6 +116,7 @@ def render_handdraw_pipeline(
     prefer_cosy: bool = True,
     seed: int = 0,
     preview_duration: float | None = None,
+    audience: str = "kids",
     stroke_style: str = "legacy",
     rough_roughness: float = 2.0,
     rough_bowing: float = 2.0,
@@ -136,7 +152,7 @@ def render_handdraw_pipeline(
     generate_cover_image(
         cover_path,
         title=title,
-        subtitle="一起学会小办法",
+        subtitle="一起学会小办法" if audience == "kids" else "一集讲清楚",
         width=width,
         height=height,
         paper_color=style_cfg.paper_color,
@@ -188,14 +204,17 @@ def render_handdraw_pipeline(
     from hevi.layer4_legacy.handdraw.kids_storyboards import validate_kids_script
     alignment_doc = json.loads(alignment_json.read_text(encoding="utf-8"))
     is_preview_job = preview_duration is not None or len(all_beats) < 8
-    kids_report = validate_kids_script(
-        title,
-        pages_spec,
-        aspect="16:9" if width >= height else "9:16",
-        caption_font_size=layout.caption_font_size,
-        characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
-        preview=is_preview_job,
-    )
+    if audience == "kids":
+        kids_report = validate_kids_script(
+            title,
+            pages_spec,
+            aspect="16:9" if width >= height else "9:16",
+            caption_font_size=layout.caption_font_size,
+            characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
+            preview=is_preview_job,
+        )
+    else:
+        kids_report = _general_gate(pages_spec, "general_content_preflight", preview=is_preview_job)
     content_checks = {
         key: value
         for key, value in kids_report["checks"].items()
@@ -214,8 +233,9 @@ def render_handdraw_pipeline(
         raise ValueError(f"KIDS_ANIME_DIRECTION content gate failed: {content_checks}")
     # This report is deliberately NOT a pass. It remains pending until the
     # actual encoded MP4 (preview) or final mixed film (full render) is measured.
-    kids_report["passed"] = False
-    kids_report["gate_status"] = "pending_measured_audio"
+    if audience == "kids":
+        kids_report["passed"] = False
+        kids_report["gate_status"] = "pending_measured_audio"
     kids_report["checks"]["measured_media_gate_complete"] = False
     kids_report["notes"].append(
         "剧本预检通过；在输出音频完成实测前，幼儿安全闸门仍为 pending，不能视为通过。"
@@ -608,9 +628,10 @@ def render_handdraw_pipeline(
         for page in job_pages for beat in page["beats"] for action in beat["actions"]
         if action.get("type") == "text"
     ]
-    visible_gate = validate_kids_on_screen_text(visible_text)
-    if not visible_gate["passed"]:
-        raise ValueError(f"KIDS on-screen text gate failed: {visible_gate['blocked_terms_found']}")
+    if audience == "kids":
+        visible_gate = validate_kids_on_screen_text(visible_text)
+        if not visible_gate["passed"]:
+            raise ValueError(f"KIDS on-screen text gate failed: {visible_gate['blocked_terms_found']}")
 
     job_file = output_dir / "job.json"
     job_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
@@ -717,13 +738,17 @@ def render_handdraw_pipeline(
             raise ValueError("KIDS preview audio measurement returned null/non-finite loudness or true peak")
         measured_lufs = float(preview_loudness["input_i"])
         measured_peak = float(preview_loudness["input_tp"])
-        final_kids = validate_kids_script(
-            title, pages_spec, aspect="16:9" if width >= height else "9:16",
-            caption_font_size=layout.caption_font_size,
-            characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
-            audio_lufs=measured_lufs, true_peak_dbtp=measured_peak, preview=True,
-            require_audio_measurements=True,
-        )
+        if audience == "kids":
+            final_kids = validate_kids_script(
+                title, pages_spec, aspect="16:9" if width >= height else "9:16",
+                caption_font_size=layout.caption_font_size,
+                characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
+                audio_lufs=measured_lufs, true_peak_dbtp=measured_peak, preview=True,
+                require_audio_measurements=True,
+            )
+        else:
+            final_kids = _general_gate(pages_spec, "general_audience", audio_lufs=measured_lufs,
+                                       true_peak_dbtp=measured_peak, preview=True)
         final_kids["narration_engine"] = alignment_doc.get("engine")
         final_kids["engines_used"] = alignment_doc.get("engines_used", [])
         final_kids["caption_method"] = alignment_doc.get("caption_method")
@@ -842,17 +867,23 @@ def render_handdraw_pipeline(
     lufs_val = loudness.get("input_i")
     true_peak = loudness.get("input_tp")
     from hevi.layer4_legacy.handdraw.kids_storyboards import validate_kids_script
-    final_kids = validate_kids_script(
-        title,
-        pages_spec,
-        aspect="16:9" if width >= height else "9:16",
-        caption_font_size=layout.caption_font_size,
-        characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
-        audio_lufs=float(lufs_val) if lufs_val is not None else None,
-        true_peak_dbtp=float(true_peak) if true_peak is not None else None,
-        preview=len(all_beats) < 8,
-        require_audio_measurements=True,
-    )
+    if audience == "kids":
+        final_kids = validate_kids_script(
+            title,
+            pages_spec,
+            aspect="16:9" if width >= height else "9:16",
+            caption_font_size=layout.caption_font_size,
+            characters_per_second=float(alignment_doc.get("characters_per_second", 0.0)),
+            audio_lufs=float(lufs_val) if lufs_val is not None else None,
+            true_peak_dbtp=float(true_peak) if true_peak is not None else None,
+            preview=len(all_beats) < 8,
+            require_audio_measurements=True,
+        )
+    else:
+        final_kids = _general_gate(pages_spec, "general_audience",
+                                   audio_lufs=float(lufs_val) if lufs_val is not None else None,
+                                   true_peak_dbtp=float(true_peak) if true_peak is not None else None,
+                                   preview=len(all_beats) < 8)
     final_kids["narration_engine"] = alignment_doc.get("engine")
     final_kids["engines_used"] = alignment_doc.get("engines_used", [])
     final_kids["caption_method"] = alignment_doc.get("caption_method")

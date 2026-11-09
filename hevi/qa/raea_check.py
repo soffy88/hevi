@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_RAEA_BIN = Path("/opt/raea/bin/raea")
 DEFAULT_TIMEOUT_S = 60.0
+DEFAULT_DARK_LUMA = 42.0
 _TRUE = {"1", "true", "yes", "on"}
 
 
@@ -63,6 +64,50 @@ def _summarise(issues: list[dict[str, Any]], passed: list[Any]) -> dict[str, Any
         "passed": len(passed),
         "blocking": sum(by_level.get(level, 0) for level in ("P0", "P1")),
     }
+
+
+def _mean_luma(video: Path, *, frames: int = 3) -> float | None:
+    """Average 0-255 luma of a few frames; None when ffmpeg cannot read it."""
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-v", "error", "-i", str(video), "-vf", "scale=32:32,format=gray",
+             "-frames:v", str(frames), "-f", "rawvideo", "-"],
+            capture_output=True, timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0 or not proc.stdout:
+        return None
+    data = proc.stdout
+    return sum(data) / len(data)
+
+
+def reclassify_dark_blotching(
+    issues: list[dict[str, Any]], *, mean_luma: float | None, dark_luma: float = DEFAULT_DARK_LUMA
+) -> tuple[list[dict[str, Any]], int]:
+    """Downgrade ``blotching`` P1 findings on a dark master to P2 advisory.
+
+    Deep shadows and cinematic grades trigger the blotching heuristic without a
+    real defect (S13 measured this on 11/30 historical films).  The finding is
+    kept, with the dark master recorded, and no longer counts as blocking.
+    """
+    if mean_luma is None or mean_luma >= dark_luma:
+        return issues, 0
+    changed = 0
+    out = []
+    for issue in issues:
+        if not isinstance(issue, dict):
+            out.append(issue)
+            continue
+        rule = str(issue.get("rule") or "").lower()
+        level = str(issue.get("p") or issue.get("priority") or "")
+        if "blotch" in rule and level in ("P1", "1"):
+            issue = {**issue, "p": "P2", "priority": "P2",
+                     "dark_scene_downgrade": True,
+                     "note": f"深色母版（平均亮度 {mean_luma:.1f}）blotching 误报，降为 P2 提示"}
+            changed += 1
+        out.append(issue)
+    return out, changed
 
 
 def run_raea_check(video_path: str | Path, *, timeout_s: float = DEFAULT_TIMEOUT_S) -> dict[str, Any]:
@@ -129,10 +174,14 @@ def run_raea_check(video_path: str | Path, *, timeout_s: float = DEFAULT_TIMEOUT
             return evidence
         issues = payload.get("issues") if isinstance(payload.get("issues"), list) else []
         passed = payload.get("passed") if isinstance(payload.get("passed"), list) else []
+        luma = _mean_luma(video)
+        issues, downgraded = reclassify_dark_blotching(issues, mean_luma=luma)
         evidence.update(
             {
                 "status": "ok",
                 "checked": True,
+                "mean_luma": None if luma is None else round(luma, 2),
+                "dark_blotching_downgraded": downgraded,
                 "issues": issues[:60],
                 "passed_checks": passed[:30],
                 "summary": _summarise(issues, passed),

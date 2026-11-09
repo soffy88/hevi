@@ -667,9 +667,51 @@ def _register_defaults() -> None:
         _asset_bind,
     )
     _register_kit_tools()
+    _register_ai_drama_tools()
     from hevi.studio.catalog import register_catalog
 
     register_catalog()
+
+
+def _register_ai_drama_tools() -> None:
+    """Expose the ai_drama stage/series nodes as Studio tools.
+
+    Canvas dispatch for these ids goes through
+    ``hevi.ai_drama.canvas_nodes.run_canvas_tool`` so upstream documents are
+    threaded; this registration makes them listable and callable from the tool
+    palette too.
+    """
+    from hevi.ai_drama.canvas_nodes import ALL_TOOLS
+
+    summaries = {
+        "drama.series_create": ("asset", "建立系列固定 cast 与角色卡"),
+        "drama.series_topics": ("script", "3 个 15–20s 点子 + 前 2 秒钩子 + 推荐"),
+        "drama.series_beats": ("script", "约 5 拍节拍脚本（可只改一拍、支持 POV）"),
+        "drama.series_episode": ("video", "系列单集：选题→节拍→闸门→成片"),
+        "drama.series_review": ("script", "各集播放量 → 最好类型 → 下一集 3 个点子"),
+        "drama.stage_script": ("script", "drama 节点：剧本"),
+        "drama.stage_storyboard": ("script", "drama 节点：分镜"),
+        "drama.stage_assets": ("asset", "drama 节点：资产身份板/场景/道具"),
+        "drama.stage_voice": ("audio", "drama 节点：固定音色与参考"),
+        "drama.stage_segments": ("video", "drama 节点：视频段（成本闸门）"),
+        "drama.stage_edit": ("script", "drama 节点：剪辑单/多语字幕/BGM/音效"),
+        "drama.stage_publish": ("video", "drama 节点：9:16 成片"),
+    }
+
+    def _make(tool_id: str) -> Handler:
+        async def _run(payload: dict[str, Any]) -> dict[str, Any]:
+            from hevi.ai_drama.canvas_nodes import run_canvas_tool
+
+            return await run_canvas_tool(tool_id, payload, {})
+
+        return _run
+
+    for tool_id in ALL_TOOLS:
+        kind, summary = summaries.get(tool_id, ("script", "drama 节点"))
+        register_tool(
+            ToolSpec(tool_id, kind, summary, ("topic", "series_dir", "out_dir"), ("output", "ai_drama_state")),
+            _make(tool_id),
+        )
 
 
 _register_defaults()
