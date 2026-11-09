@@ -129,8 +129,13 @@ services:
       # mounted at /pwbrowsers (read-only). The pinned build may differ, so the
       # renderer launches that binary explicitly.
       SCENE3D_PLAYWRIGHT_BROWSERS: /pwbrowsers
+      # comic_narration keyframes (SD-Turbo CPU) live outside the /models tree.
+      HEVI_SD_TURBO_PATH: /models/ms/models/AI-ModelScope--sd-turbo/snapshots/master
+      HEVI_TAESD_PATH: /models/ms/models/madebyollin--taesd/snapshots/master
     volumes:
       - /home/soffy/models:/models:ro
+      # SD-Turbo / TAESD for comic_narration (host /data/soffy/models/ms)
+      - /data/soffy/models/ms:/models/ms:ro
       - /home/soffy/.u2net:/u2net:ro
       # 零成本线 Piper 音色(zh_CN-huayan-medium / en_US-ryan-medium),宿主只读
       - ${HEVI_PIPER_VOICES_DIR:-/data/soffy/projects/hevi-zero/voices}:/opt/piper/voices:ro
