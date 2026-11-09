@@ -2,8 +2,9 @@
 
 11 canonical Studio lines can render through this engine instead of their
 original GPU/provider path (``engine="zero"`` on the order, or deployment-wide
-``HEVI_LINE_ENGINE=zero``).  documentary_montage and localization_dub keep
-their original implementation.
+``HEVI_LINE_ENGINE=zero``).  character_animation, reference_adapt and
+localization_dub are legacy-only: their placeholder zero producers were not the
+product and always route to the original renderer.
 """
 
 from hevi.layer4_legacy.zerolines.oprim_impl.specs import (

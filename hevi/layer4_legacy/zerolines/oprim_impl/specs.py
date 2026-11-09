@@ -11,26 +11,30 @@ import os
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-#: the 12 canonical Studio lines that have a zero-cost (CPU, no paid API) engine
+#: canonical Studio lines that have a zero-cost (CPU, no paid API) engine
 ZERO_LINES: tuple[str, ...] = (
     "kinetic_promo",
     "explainer",
     "cinematic",
     "director_pipeline",
     "history_scene",
-    "character_animation",
     "talking_head",
     "avatar_spokesperson",
     "shorts_clip",
     "podcast_repurpose",
-    "reference_adapt",
     "comic_narration",
     "documentary_montage",
-    "localization_dub",
 )
 
-#: canonical lines that intentionally keep their original implementation only
-LEGACY_ONLY_LINES: tuple[str, ...] = ()
+#: canonical lines that intentionally keep their original implementation only.
+#: S18: localization_dub needs real translation + dubbing, reference_adapt and
+#: character_animation are topic-driven media lines; the placeholder zero
+#: producers (MyMemory / fixed caveman / stock loop) are not the product.
+LEGACY_ONLY_LINES: tuple[str, ...] = (
+    "character_animation",
+    "reference_adapt",
+    "localization_dub",
+)
 
 ENGINES: tuple[str, ...] = ("zero", "legacy")
 
@@ -204,6 +208,8 @@ def resolve_engine(*, line_id: str, slot_engine: Any = None, env_engine: Any = N
     chosen = str(raw).strip().lower() if raw not in (None, "") else "legacy"
     if chosen not in ENGINES:
         raise ValueError(f"unknown line engine {chosen!r}; expected one of {ENGINES}")
+    if line_id in LEGACY_ONLY_LINES:
+        return "legacy"
     if line_id not in ZERO_LINES:
         return "legacy"
     return chosen

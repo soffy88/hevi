@@ -47,12 +47,12 @@ HAVE_FFMPEG = Path(FFMPEG).exists()
 
 
 # ---------------------------------------------------------------- policy
-def test_fourteen_zero_lines_and_no_legacy_only() -> None:
+def test_zero_lines_and_legacy_only_split() -> None:
     from hevi.layer4_legacy.zerolines.oprim_impl.specs import LEGACY_ONLY_LINES
     from hevi.studio.production_catalog import CANONICAL_LINES
 
-    assert len(ZERO_LINES) == 14 and set(ZERO_LINES) == set(LINE_SPECS)
-    assert not LEGACY_ONLY_LINES
+    assert len(ZERO_LINES) == 11 and len(LEGACY_ONLY_LINES) == 3
+    assert set(LINE_SPECS) == set(ZERO_LINES) | set(LEGACY_ONLY_LINES)
     # koubo_cut has its own (non-zero) renderer and is listed in the canonical catalog separately.
     assert set(ZERO_LINES) | set(LEGACY_ONLY_LINES) | {"koubo_cut"} == set(CANONICAL_LINES)
     assert not set(ZERO_LINES) & set(LEGACY_ONLY_LINES)
@@ -301,7 +301,7 @@ def test_qualify_maps_host_lines_to_talkcraft_not_echomimic() -> None:
         assert mod._slots(line, "legacy", "talkcraft")["renderer"] == "talkcraft"
         assert mod._slots(line, "zero", "zero")["engine"] == "zero"
     briefs = json.loads(mod.ZERO_BRIEFS.read_text())["lines"]
-    assert set(briefs) == set(ZERO_LINES)
+    assert set(briefs) == set(ZERO_LINES) | set(LEGACY_ONLY_LINES)
     for line in ZERO_LINES:
         if line in ("talking_head", "avatar_spokesperson"):
             continue
