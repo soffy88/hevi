@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -18,8 +19,8 @@ from typing import Any
 
 FFMPEG = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 FFPROBE = shutil.which("ffprobe") or "/usr/bin/ffprobe"
-PIPER = "/data/soffy/projects/hevi-zero/.venv/bin/piper"
-VOICE_DIR = Path("/data/soffy/projects/hevi-zero/voices")
+PIPER = os.environ.get("HEVI_PIPER_BIN") or "/data/soffy/projects/hevi-zero/.venv/bin/piper"
+VOICE_DIR = Path(os.environ.get("HEVI_PIPER_VOICES_DIR") or "/data/soffy/projects/hevi-zero/voices")
 PIPER_VOICES = {
     "zh_CN-huayan-medium.onnx": VOICE_DIR / "zh_CN-huayan-medium.onnx",
     "zh_CN-huayan-x_low.onnx": VOICE_DIR / "zh_CN-huayan-x_low.onnx",

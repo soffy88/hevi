@@ -342,6 +342,8 @@ services:
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      HEVI_PIPER_BIN: /opt/piper/bin/piper
+      HEVI_PIPER_VOICES_DIR: /opt/piper/voices
       HEVI_TALKCRAFT_AVATAR_MODELS: /models/wav2lip
       HEVI_ASSET_ROOT: /app/data/workspace/assets
       HEVI_OUTPUT_ROOT: /app/output
@@ -349,6 +351,7 @@ services:
       AI_DRAMA_BUDGET_CNY: ${AI_DRAMA_BUDGET_CNY:-30}
     volumes:
       - /home/soffy/models:/models:ro
+      - /data/soffy/models:/data/soffy/models:ro
       - ${HEVI_PIPER_VOICES_DIR:-/data/soffy/projects/hevi-zero/voices}:/opt/piper/voices:ro
       - /home/soffy/projects/hevi/output:/app/output
       - /home/soffy/projects/hevi/data:/app/data
