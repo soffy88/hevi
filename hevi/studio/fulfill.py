@@ -1288,7 +1288,12 @@ async def _render_scene3d_line(order: dict[str, Any], output_dir: Path) -> dict[
 
     topic = str(_slot(order, "topic") or order.get("topic") or "3D 场景")
     authored = _slot(order, "script_lines") or _slot(order, "texts") or []
-    texts = [str(x) for x in authored]
+    # script.quick emits {"text": ..., "scene": ...} dicts; accept both forms.
+    texts = [
+        str(x.get("text") or x.get("line") or "") if isinstance(x, dict) else str(x)
+        for x in authored
+    ]
+    texts = [t for t in texts if t.strip()]
     if not texts:
         texts = list(generate_script_lines(topic, lang="zh", line_id="scene3d", n=7))
     preset = str(_slot(order, "preset") or _scene3d_preset(topic))
