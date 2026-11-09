@@ -28,6 +28,7 @@ services:
       additional_contexts:
         talkcraft_browser: ${HEVI_TALKCRAFT_BROWSER_DIR:-/data/soffy/projects/vendor/video-talkcraft/runtime/node_modules/.remotion}
       args:
+        S16_BUILD_REV: ${S16_BUILD_REV:-dev}
         NPM_REGISTRY: ${HEVI_NPM_REGISTRY:-https://registry.npmmirror.com}
     restart: unless-stopped
     # v9.1: 纯控制节点资源限制(防内存泄漏拖垮宿主)。GPU 不由本栈分配。
