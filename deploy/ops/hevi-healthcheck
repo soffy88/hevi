@@ -108,6 +108,7 @@ append_alert() {
 prev_llm_fails="$(state_get llm_fails)"
 prev_llm_fails="${prev_llm_fails:-0}"
 llm_fails="$prev_llm_fails"
+llm_detail=""
 if [ "$LLM_ENABLED" = "1" ]; then
   llm_out="$(timeout "$LLM_PROBE_TIMEOUT" docker exec "$LLM_CONTAINER" \
     /app/.venv/bin/python -m hevi.providers.llm_health \
@@ -118,7 +119,10 @@ if [ "$LLM_ENABLED" = "1" ]; then
     llm_fails=$((prev_llm_fails + 1))
   fi
   if [ "$llm_fails" -ge "$LLM_FAIL_THRESHOLD" ]; then
-    fails+=("llm ${LLM_CHANNEL} -> consecutive ${llm_fails} failures (${llm_out:-probe error})")
+    # Keep the fingerprint stable across repeats: the changing counter/json
+    # goes into the alert body only, never into the dedupe key.
+    fails+=("llm ${LLM_CHANNEL} -> probe failed")
+    llm_detail="consecutive ${llm_fails} failures: ${llm_out:-probe error}"
   fi
 fi
 
@@ -145,21 +149,28 @@ if [ "${#fails[@]}" -eq 0 ]; then
     # 恢复不清除 fingerprint/时间：同一故障 1 小时内再次出现仍算同一故障，不重复告警。
     state_write ok "$prev_fp" "$prev_alert_ts" "$now" "$llm_fails"
     printf '%s\n' "$line" >&2
+  else
+    # S19: persist the LLM consecutive-failure counter on every clean run,
+    # otherwise it never accumulates while everything else is healthy.
+    state_write ok "$prev_fp" "$prev_alert_ts" "$prev_recovery_ts" "$llm_fails"
   fi
   exit 0
 fi
 
 body="$(printf '%s\n' "${fails[@]}")"
+[ -n "$llm_detail" ] && body+=$'\n'"  llm: $llm_detail"
 fingerprint="$(printf '%s\n' "${fails[@]}" | sort | sha256sum | cut -d' ' -f1)"
 
 if [ "$prev_fp" = "$fingerprint" ] \
    && [ -n "$prev_alert_ts" ] && [ $(( now - prev_alert_ts )) -lt "$DEDUPE_S" ]; then
   # 同一故障仍在持续且距上次告警不足窗口：静默，只保持非零退出供 systemd 记录。
+  state_write fail "$fingerprint" "$prev_alert_ts" "$prev_recovery_ts" "$llm_fails"
   exit 1
 fi
 
 line="$ts hevi-healthcheck FAIL"
 for f in "${fails[@]}"; do line+=$'\n'"  - $f"; done
+[ -n "$llm_detail" ] && line+=$'\n'"  llm: $llm_detail"
 block="$(printf '## %s\n\n```\n%s\n```\n\n' "$ts" "$body")"
 append_alert "$block" "$line"
 
