@@ -30,7 +30,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-import httpx
 
 from .base import VideoRequest, VideoResult
 
@@ -90,6 +89,8 @@ class MiniMaxH3APIProvider:
         return content
 
     def render(self, req: VideoRequest) -> VideoResult:
+        import httpx
+
         key = os.environ.get("MINIMAX_API_KEY", "").strip()
         if not key:
             raise MiniMaxConfigError("MINIMAX_API_KEY 未设置")

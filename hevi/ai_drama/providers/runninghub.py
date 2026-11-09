@@ -23,7 +23,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-import httpx
 
 from .base import VideoRequest, VideoResult
 
@@ -98,6 +97,8 @@ class RunningHubH3Provider:
         return str(name)
 
     def render(self, req: VideoRequest) -> VideoResult:
+        import httpx
+
         key, workflow, mapping = self._config()
         images = list(req.reference_images)[:MAX_IMAGES]
         audios = list(req.reference_audio)[:MAX_AUDIO]
