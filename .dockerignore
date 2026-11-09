@@ -13,6 +13,8 @@ output/
 !services/gen_engine/assets/voice_refs/*.wav
 *.jpg
 *.png
+# S18: built-in style cards ship as jpg assets in the api image
+!assets/style_cards/*.jpg
 !hevi/
 hevi-web/node_modules/
 hevi-web/.next/
