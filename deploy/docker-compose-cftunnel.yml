@@ -321,6 +321,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.render
       args:
+        S16_BUILD_REV: ${S16_BUILD_REV:-dev}
         HEVI_RENDER_BASE_IMAGE: hevi-cftunnel-hevi-api:latest
     image: hevi-cftunnel-hevi-render:latest
     restart: unless-stopped

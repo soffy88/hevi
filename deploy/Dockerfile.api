@@ -109,6 +109,10 @@ COPY --from=talkcraft_browser . ./hevi-remotion/node_modules/.remotion/
 RUN --network=none cd hevi-remotion \
     && npx --no-install remotion browser ensure \
     && chown -R hevi:hevi node_modules/.remotion
+# S16: explicit source revision doubles as build provenance and a cache buster
+# for the source layer (BuildKit otherwise reuses a stale hevi/ layer).
+ARG S16_BUILD_REV=dev
+RUN echo "s16 source rev: ${S16_BUILD_REV}"
 COPY --chown=hevi:hevi hevi/ ./hevi/
 
 # earshot CLI (audio.earshot_gate / storyfilm narration mastering):
