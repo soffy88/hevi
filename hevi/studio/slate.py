@@ -178,7 +178,6 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
 
 async def execute_lot_task(task: dict[str, Any], pool: Any = None) -> dict[str, Any]:
     """TaskService adapter:config_json.line_id + slots → 跑产线工单。"""
-    del pool
     cfg = task.get("config_json") or {}
     options = cfg.get("options") or cfg
     line_id = str(options.get("line_id") or cfg.get("line_id") or "")
@@ -204,6 +203,23 @@ async def execute_lot_task(task: dict[str, Any], pool: Any = None) -> dict[str, 
     video = str(result.data.get("result_video_path") or "")
     manifest = result.data.get("artifact_manifest")
     ok = result.status == "completed" and bool(video) and bool(manifest)
+    quality = result.data.get("quality") or {}
+    check = (quality.get("checks") or {}).get("raea_check") or {}
+    if ok and check.get("checked"):
+        from hevi.qa.raea_check import enqueue_task_review
+
+        try:
+            await enqueue_task_review(
+                pool,
+                task_id=str(task.get("id") or ""),
+                line_id=line_id,
+                video_path=video,
+                check=check,
+            )
+        except Exception:  # advisory queue; never fail a delivered task
+            import logging
+
+            logging.getLogger(__name__).exception("raea check queue enqueue failed")
     return {
         "status": "completed" if ok else "failed",
         "error": result.reason or (result.data.get("fulfill") or {}).get("reason") or None,
@@ -211,7 +227,7 @@ async def execute_lot_task(task: dict[str, Any], pool: Any = None) -> dict[str, 
         "config_json": {
             **cfg,
             "artifact_manifest": manifest,
-            "quality": result.data.get("quality"),
+            "quality": quality,
         },
         "production_order": result.production_order,
         "slate": result.to_dict(),

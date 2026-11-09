@@ -84,3 +84,14 @@ Sweety Handdraw Video
 
 **未**使用手册中需付费 API 的部分（Tripo / GPT 等），全书价格与积分结论不抄。
 小王子角色模型按上游口径（形象权未清）不随包分发，我们也没有使用。
+
+raea（Render Anything Engine）
+- 来源：https://github.com/shinyobjectz/raea（当前 FSL-1.1-ALv2）
+- 用途：仅作为 hevi 服务器内部、可开关的**可选**成片质检（`raea check`）与
+  kinetic_promo A/B 试点渲染器；不向用户提供 raea 本身、TSX/HTML 编辑器或渲染 API。
+- 分发边界：仓库与镜像**不含** raea 源码或二进制。运行时从固定路径
+  `/opt/raea/bin/raea` 或环境变量 `HEVI_RAEA_BIN` 读取；缺失时自动跳过。
+  未修改 raea 代码。默认 `HEVI_RAEA_CHECK=0`、`HEVI_KINETIC_ENGINE=default`。
+- 许可说明：FSL-1.1-ALv2 将“内部使用”列为允许用途；若未来向客户暴露
+  raea 渲染能力或分发其二进制，须先做许可/法务评估。每个 raea 版本在发布
+  2 周年后转为 Apache-2.0（以对应版本为准）。

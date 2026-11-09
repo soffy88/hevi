@@ -102,6 +102,11 @@ services:
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
       HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d}
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
+      # S13: optional internal raea check bypass (default off; skipped when the
+      # binary is absent).  Kinetic promo stays on the default engine unless
+      # explicitly switched for an A/B (no automatic switch).
+      HEVI_RAEA_CHECK: ${HEVI_RAEA_CHECK:-0}
+      HEVI_KINETIC_ENGINE: ${HEVI_KINETIC_ENGINE:-default}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo

@@ -31,3 +31,17 @@
 - **用途**: 2.5D 角色口型/表演离线渲染器 (Playwright + Chromium 软件 GL)
 - **入库日期**: 2026-11-07
 - **备注**: vendor 只读引用 `/data/soffy/vendor/livliv-player`，不进 hevi git；hevi 内仅构建产物与许可证文件。
+
+## raea (Render Anything Engine)
+
+- **来源**: https://github.com/shinyobjectz/raea (FSL-1.1-ALv2)
+- **许可证**: Functional Source License, Version 1.1, ALv2 Future License
+- **入库方式**: **不 vendor、不入库**。hevi 仅在服务器内部按需调用本地安装的
+  `raea` CLI；运行时从固定路径 `/opt/raea/bin/raea` 或 `HEVI_RAEA_BIN` 读取，
+  缺失则自动跳过。未修改 raea 源码，未分发其二进制。
+- **用途**: 可选成片质检旁路（`HEVI_RAEA_CHECK`，默认 0）与 kinetic_promo
+  内部 A/B 模板（`HEVI_KINETIC_ENGINE=raea`，默认 default）。不向用户暴露
+  raea CLI/API/TSX/HTML 编辑或渲染能力。
+- **许可边界**: FSL-1.1-ALv2 明确允许 internal use；对客户提供“写代码渲染”
+  能力或再分发二进制可能构成 Competing Use，须先法务评估。
+- **入库日期**: 2026-11-09（仅台账记录，无文件入库）

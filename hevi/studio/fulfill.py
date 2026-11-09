@@ -209,6 +209,20 @@ async def _verified_video_manifest(
 ) -> tuple[ArtifactManifest, dict[str, Any]]:
     """Build a local manifest and apply the final media delivery gate."""
 
+    # S13: every finished film is mastered to -14 LUFS / -1.5 dBTP *before*
+    # the manifest hash is taken.  Two-pass loudnorm, video stream copied; a
+    # missing audio stream is reported and never fails the render.
+    from hevi.qa.loudness import normalize_video_loudness
+
+    loudness_reports: list[dict[str, Any]] = []
+    for path, _primary, _role in paths:
+        try:
+            loudness_reports.append(await asyncio.to_thread(normalize_video_loudness, path))
+        except Exception as exc:  # normalisation is a gate, not a render blocker
+            loudness_reports.append(
+                {"path": str(path), "normalized": False, "reason": f"{type(exc).__name__}: {exc}"}
+            )
+
     manifest = ArtifactManifest(
         artifacts=[
             Artifact.from_path(
@@ -259,8 +273,17 @@ async def _verified_video_manifest(
         "verdict": "pass" if passed else "fail",
         "passed": passed,
         "violations": violations,
-        "checks": {"media_quality_reports": quality_reports},
+        "checks": {
+            "media_quality_reports": quality_reports,
+            "loudness": loudness_reports,
+        },
     }
+
+
+def _kinetic_engine() -> str:
+    """``HEVI_KINETIC_ENGINE``: ``raea`` opts into the internal raea template."""
+    raw = os.getenv("HEVI_KINETIC_ENGINE", "default").strip().lower()
+    return "raea" if raw == "raea" else "default"
 
 
 def _wants_talkcraft_host(order: dict[str, Any]) -> bool:
@@ -506,6 +529,10 @@ def _engine_switch(line_id: str, legacy: Any) -> Any:
     async def render(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
         if line_id in {"talking_head", "avatar_spokesperson"} and _wants_talkcraft_host(order):
             return await legacy(order, output_dir)  # explicit photoreal talkcraft host wins
+        if line_id == "kinetic_promo" and _kinetic_engine() == "raea":
+            from hevi.qa.raea_promo import render_raea_promo
+
+            return await render_raea_promo(order, output_dir)
         if _line_engine(order) == "zero":
             return await _render_zero_line(order, output_dir)
         return await legacy(order, output_dir)
@@ -1417,6 +1444,16 @@ def _enforce_final_contract(result: dict[str, Any], *, line_id: str) -> dict[str
     return result
 
 
+async def _finalize_result(result: dict[str, Any], *, line_id: str) -> dict[str, Any]:
+    """Fail-closed contract, then the optional raea check bypass (never blocking)."""
+    result = _enforce_final_contract(result, line_id=line_id)
+    if result.get("status") == "completed":
+        from hevi.qa.raea_check import attach_to_quality
+
+        await asyncio.to_thread(attach_to_quality, result)
+    return result
+
+
 async def fulfill_order(
     order: dict[str, Any],
     *,
@@ -1486,8 +1523,8 @@ async def fulfill_order(
                 result["retry_evidence"] = retry_evidence.to_dict()
                 if line_id == "kinetic_promo" and result.get("status") == "completed":
                     _persist_hyperframes_evidence(dest, order, result)
-                return _enforce_final_contract(result, line_id=line_id)
-            return _enforce_final_contract(await renderer(order, dest), line_id=line_id)
+                return await _finalize_result(result, line_id=line_id)
+            return await _finalize_result(await renderer(order, dest), line_id=line_id)
         except (ArtifactVerificationError, FileNotFoundError, ValueError) as exc:
             return _blocked(str(exc), target=target, line_id=line_id)
         except Exception as exc:

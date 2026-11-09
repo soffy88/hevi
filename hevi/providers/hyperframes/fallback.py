@@ -87,25 +87,48 @@ def render_fallback_composition(
 
         clips = [HyperClip(0.0, 3.0, comp.title or "HEVI", kind="title")]
 
+    # The fallback used to write one identical frame per clip, so a 9 s card
+    # was reported by raea check as frozen.  Every frame now carries a slow
+    # push-in plus a travelling accent bar and a per-card fade, so a card never
+    # holds still while its clip plays.
     index = 0
     for clip in clips:
         frames = max(int(clip.duration_s * rate), 1)
-        img = Image.new("RGB", (w, h), bg)
-        draw = ImageDraw.Draw(img)
-        draw.rectangle((0, 0, 16, h), fill=accent)
         font = title_font if clip.kind == "title" else body_font
         text = _wrap(clip.text, 14 if clip.kind == "title" else 18)
-        bbox = draw.multiline_textbbox((0, 0), text, font=font, align="center")
+        # Base card at 1.18x so the push-in has real pixels to sample from.
+        bw, bh = int(w * 1.18), int(h * 1.18)
+        base = Image.new("RGB", (bw, bh), bg)
+        bdraw = ImageDraw.Draw(base)
+        bdraw.rectangle((0, 0, int(18 * 1.18), bh), fill=accent)
+        bbox = bdraw.multiline_textbbox((0, 0), text, font=font, align="center")
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        draw.multiline_text(
-            ((w - tw) / 2, (h - th) / 2),
+        bdraw.multiline_text(
+            ((bw - tw) / 2, (bh - th) / 2),
             text,
             fill=fg,
             font=font,
             align="center",
         )
-        for _ in range(frames):
-            img.save(work / f"f{index:05d}.png")
+        for local in range(frames):
+            progress = local / max(frames - 1, 1)
+            zoom = 1.10 + 0.07 * progress
+            crop_w, crop_h = int(bw / zoom), int(bh / zoom)
+            pan_x = int((bw - crop_w) * (0.25 + 0.5 * progress))
+            pan_y = int((bh - crop_h) * 0.5)
+            frame = base.crop((pan_x, pan_y, pan_x + crop_w, pan_y + crop_h)).resize(
+                (w, h), Image.LANCZOS
+            )
+            draw = ImageDraw.Draw(frame)
+            # travelling accent bar: at least a few visible pixels move each frame
+            bar_w = int(w * 0.22)
+            bar_x = int((w - bar_w) * progress)
+            draw.rectangle((bar_x, h - 10, bar_x + bar_w, h - 2), fill=accent)
+            draw.rectangle((0, 0, int(16 * (1 - progress)) + 2, h), fill=accent)
+            fade = min(progress / 0.08, (1.0 - progress) / 0.08, 1.0)
+            if fade < 1.0:
+                frame = Image.blend(Image.new("RGB", (w, h), (0, 0, 0)), frame, max(0.0, fade))
+            frame.save(work / f"f{index:05d}.png")
             index += 1
 
     if index == 0:
