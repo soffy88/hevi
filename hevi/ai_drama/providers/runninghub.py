@@ -23,7 +23,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-
 from .base import VideoRequest, VideoResult
 
 API = os.environ.get("RUNNINGHUB_API_BASE", "https://www.runninghub.cn")
@@ -78,7 +77,7 @@ class RunningHubH3Provider:
         except RunningHubConfigError as exc:
             return False, str(exc)
 
-    def _upload(self, key: str, path: Path, client: httpx.Client) -> str:
+    def _upload(self, key: str, path: Path, client: Any) -> str:
         with path.open("rb") as fh:
             r = client.post(
                 UPLOAD,

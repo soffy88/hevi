@@ -30,7 +30,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-
 from .base import VideoRequest, VideoResult
 
 BASE = os.environ.get("MINIMAX_API_BASE", "https://api.minimax.cn")
