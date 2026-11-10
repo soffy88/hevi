@@ -493,7 +493,7 @@ async def generalist_plan(
         )
     try:
         return fn(**req.payload)
-    except TypeError as exc:
+    except (TypeError, KeyError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=f"payload mismatch: {exc}") from exc
 
 
