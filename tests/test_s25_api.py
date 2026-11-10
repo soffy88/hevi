@@ -148,3 +148,40 @@ def test_mcp_read_only_and_rate_limit_helpers() -> None:
         mcp_mount._MCP_LIMIT = old
         mcp_mount._MCP_HITS.pop("s25-ratelimit", None)
         mcp_mount._MCP_HITS.pop("s25-ratelimit-2", None)
+
+
+def test_save_paths_use_graph_service(s25_client: TestClient, monkeypatch) -> None:
+    from hevi.api.routers import canvas_s25
+
+    class FakeService:
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        async def save_graph(self, **kwargs):
+            self.calls.append(kwargs)
+            return {"id": "fake-graph"}
+
+    fake = FakeService()
+
+    async def _fake():
+        return fake
+
+    monkeypatch.setattr(canvas_s25, "_graph_service", _fake)
+    plan = s25_client.post(
+        "/api/canvas/s25/plan",
+        json={"prompt": "用 30 秒讲清楚什么是复利", "format": "explainer"},
+    ).json()["plan"]
+    applied = s25_client.post(
+        "/api/canvas/s25/plan/apply",
+        json={"plan": plan, "confirm_token": plan["confirm_token"], "save": True},
+    )
+    assert applied.status_code == 201, applied.text
+    assert applied.json()["graph_id"] == "fake-graph"
+    assert fake.calls and fake.calls[-1]["user_id"] == "s25-test"
+    tpl = s25_client.get("/api/canvas/s25/templates").json()["templates"][0]
+    out = s25_client.post(
+        f"/api/canvas/s25/templates/{tpl['id']}/apply",
+        json={"values": {}, "version": tpl["current_version"], "save": True},
+    )
+    assert out.status_code == 200, out.text
+    assert out.json()["graph_id"] == "fake-graph"

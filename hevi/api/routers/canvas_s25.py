@@ -15,11 +15,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from hevi.api.rate_limit import rate_limit
-from hevi.api.routers.canvas import (
-    _do_get_graph,
-    _load_owned_graph,
-    get_graph_service,
-)
+from hevi.api.routers.canvas import _do_get_graph, _load_owned_graph
 from hevi.auth.dependencies import get_current_user
 from hevi.canvas import (
     agent_build,
@@ -34,6 +30,17 @@ from hevi.canvas import (
 )
 
 router = APIRouter(prefix="/canvas/s25", tags=["canvas-s25"])
+
+
+async def _graph_service():
+    """按需创建 GraphService：save=False / 纯计算接口不碰数据库。"""
+    from hevi.canvas.graph_repository import GraphRepository
+    from hevi.canvas.graph_service import GraphService
+    from hevi.canvas.node_store import PgNodeStore
+    from hevi.db.pg_pool import get_hevi_pg_pool
+
+    pool = await get_hevi_pg_pool()
+    return GraphService(GraphRepository(pool), node_store=PgNodeStore(pool))
 
 _MAX_UPLOAD = 24 * 1024 * 1024
 _ALLOWED_UPLOAD_SUFFIX = {".png", ".jpg", ".jpeg", ".webp", ".mp4", ".mov", ".mp3", ".wav"}
@@ -159,7 +166,7 @@ async def apply_plan(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not body.save:
         return {"saved": False, **payload}
-    svc = await get_graph_service()
+    svc = await _graph_service()
     saved = await svc.save_graph(
         name=payload["name"],
         description=payload["description"],
@@ -195,7 +202,7 @@ async def estimate(
 ) -> dict[str, Any]:
     graph = body.graph
     if graph is None and body.graph_id:
-        svc = await get_graph_service()
+        svc = await _graph_service()
         graph = await _load_owned_graph(body.graph_id, svc, user)
     if graph is None:
         raise HTTPException(status_code=422, detail="需要 graph 或 graph_id")
@@ -337,7 +344,7 @@ async def apply_template(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not body.save:
         return {"saved": False, **applied}
-    svc = await get_graph_service()
+    svc = await _graph_service()
     saved = await svc.save_graph(
         name=body.name or f"{applied['template_name']} v{applied['template_version']}",
         description=f"由模板 {template_id} v{applied['template_version']} 创建",
@@ -374,7 +381,7 @@ async def export_backup(
     graph_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
-    svc = await get_graph_service()
+    svc = await _graph_service()
     graph = await _do_get_graph(graph_id, svc, user)
     return await asyncio.to_thread(
         backup_s25.export_backup,
@@ -407,7 +414,7 @@ async def import_backup(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if not body.save:
         return {"saved": False, **payload}
-    svc = await get_graph_service()
+    svc = await _graph_service()
     saved = await svc.save_graph(
         name=payload["name"],
         description=payload["description"],
@@ -448,7 +455,7 @@ async def diagnostics(
     graph_id: str,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
-    svc = await get_graph_service()
+    svc = await _graph_service()
     graph = await _do_get_graph(graph_id, svc, user)
     annotated = diagnostics_s25.annotate_graph(graph)
     problems = [n for n in annotated["nodes"] if n.get("diagnostic")]
