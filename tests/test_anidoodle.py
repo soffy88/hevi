@@ -12,6 +12,16 @@ from hevi.anidoodle import (
     list_styles,
     recommend_style,
 )
+from hevi.anidoodle.engine import engine_dir, node_binary
+
+
+def _engine_ready() -> bool:
+    try:
+        node_binary()
+    except AnidoodleError:
+        return False
+    engine = engine_dir()
+    return (engine / "node_modules" / "playwright-core").is_dir()
 
 
 def test_catalog_has_32_styles_and_media_groups() -> None:
@@ -78,6 +88,7 @@ def test_capabilities_registered() -> None:
         assert name in names
 
 
+@pytest.mark.skipif(not _engine_ready(), reason="anidoodle Node deps/browser not installed")
 def test_engine_probe_reports_node_and_browser() -> None:
     from hevi.anidoodle import engine_info
 
