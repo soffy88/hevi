@@ -212,7 +212,7 @@ async def draw_clip(
         )
         payload: dict[str, Any] = {**result, "file": _public(result["path"])}
         if req.gates:
-            gate = await asyncio.to_thread(run_gate, result["film"], result["path"], True)
+            gate = await asyncio.to_thread(run_gate, result["film"], result["path"], drawing=True)
             verify = await asyncio.to_thread(run_verify_export, result["path"])
             payload["gate"] = {
                 key: gate[key]
@@ -315,7 +315,7 @@ async def gate(
     if not path.is_file():
         raise HTTPException(status_code=404, detail=f"no such file: {path}")
     try:
-        gate_report = await asyncio.to_thread(run_gate, req.film, path, req.drawing)
+        gate_report = await asyncio.to_thread(run_gate, req.film, path, drawing=req.drawing)
         verify = await asyncio.to_thread(run_verify_export, path)
     except Exception as exc:
         raise _error(exc) from exc
