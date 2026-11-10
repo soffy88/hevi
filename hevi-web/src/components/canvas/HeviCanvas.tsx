@@ -159,12 +159,16 @@ function CanvasInner() {
   const applyLine = useCallback((line: StudioLine) => {
     const tools = line.tools.slice(0, 10);
     const ids = tools.map(() => newId());
+    // 产线工具节点承载 tool_id，节点类型只决定连线合法性。按
+    // script→audio→video→text 的合法环顺序取类型，避免把一串
+    // script→script 连起来（后端 EDGE_MATRIX 判 422）。
+    const chainTypes: NodeType[] = ['script', 'audio', 'video', 'text'];
     setNodes(tools.map((toolId, i) => ({
       id: ids[i]!,
       type: 'hevi' as const,
       position: { x: 80 + i * 200, y: 160 },
       data: {
-        nodeType: 'script' as NodeType,
+        nodeType: chainTypes[i % chainTypes.length]!,
         label: toolId,
         config: { tool_id: toolId, content: line.product, topic: line.product },
       },
@@ -292,7 +296,7 @@ function CanvasInner() {
       const retried = Object.keys(retries).length;
       flash(`执行 ${String(result.status ?? 'done')}：跑 ${ran} 个节点${retried ? `，自动重试 ${retried} 个` : ''}`);
       await reloadGraph(id);
-    } catch { flash('执行失败'); } finally { setExecuting(false); }
+    } catch (err) { flash(err instanceof Error ? err.message : '执行失败'); } finally { setExecuting(false); }
   };
 
   const rerunNode = async (nodeId: string) => {
@@ -305,7 +309,7 @@ function CanvasInner() {
       const ran = Array.isArray(result.ran) ? result.ran.length : 0;
       flash(`已重做 ${nodeId} 及下游 ${Math.max(0, ran - 1)} 个节点`);
       await reloadGraph(id);
-    } catch { flash('节点重做失败'); } finally { setNodeBusy(null); }
+    } catch (err) { flash(err instanceof Error ? err.message : '节点重做失败'); } finally { setNodeBusy(null); }
   };
 
   const reviewNode = async (nodeId: string) => {
@@ -315,7 +319,7 @@ function CanvasInner() {
       const out = await canvasApi.reviewNode(graphId, nodeId);
       flash(`自检：${String(out.status ?? '')}`);
       await reloadGraph(graphId);
-    } catch { flash('自检失败'); } finally { setNodeBusy(null); }
+    } catch (err) { flash(err instanceof Error ? err.message : '自检失败'); } finally { setNodeBusy(null); }
   };
 
   const toggleLock = async (nodeId: string) => {

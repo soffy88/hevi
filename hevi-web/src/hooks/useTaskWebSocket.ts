@@ -57,9 +57,18 @@ export interface TaskWebSocketState<T extends RealtimeTaskLike> {
 
 function resolveWsUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_WS_URL;
-  if (explicit) return explicit;
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${window.location.host}${WS_PATH}`;
+  const base = explicit || `${proto}//${window.location.host}${WS_PATH}`;
+  // 浏览器 WebSocket 不能带 Authorization 头，后端只认 ?token=。
+  // 不追加 token 会被 1008 拒绝（握手 403），实时进度退化为轮询。
+  let token: string | null = null;
+  try {
+    token = typeof window === 'undefined' ? null : window.localStorage.getItem('hevi_token');
+  } catch {
+    token = null;
+  }
+  if (!token) return base;
+  return `${base}${base.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
 }
 
 export function useTaskWebSocket<T extends RealtimeTaskLike>(

@@ -584,8 +584,28 @@ def review_node(
     """Return the review dict written back to ``Node.review``."""
     node_type = str(node.get("node_type") or "text")
     step = str((node.get("config") or {}).get("koubo_step") or "")
+    tool_id = str((node.get("config") or {}).get("tool_id") or "")
     model = "hevi.canvas.self_check/offline-rules"
     review_mode = "deterministic"
+    if tool_id and not step:
+        # Studio tool node: the tool's own result is the evidence.  The config
+        # only carries the tool input (topic/content), so media/text rules would
+        # judge the input object instead of the output and fail every line.
+        result = dict(output) if isinstance(output, dict) else {}
+        tool_status = str(result.get("status") or "")
+        reason = str(result.get("reason") or "")
+        verdict = PASS if tool_status in ("ok", "pass", "completed") else (
+            WARN if tool_status in ("warn", "blocked") else FAIL
+        )
+        return {
+            "result": verdict,
+            "reasons": [reason] if reason and verdict != PASS else [],
+            "suggested_prompt": "",
+            "signals": {"tool_id": tool_id, "tool_status": tool_status},
+            "model": "hevi.canvas.self_check/tool-result",
+            "review_mode": "deterministic",
+            "ts": _ts(),
+        }
     if step == "subtitle":
         payload = _check_subtitle(node, output, llm_reviewer=llm_reviewer)
         review_mode = str(payload.get("review_mode") or "offline_rules")

@@ -274,7 +274,7 @@ services:
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw,localization_dub,reference_adapt,character_animation}
       # S19: OpenCode Zen text LLM (opencode-go). Key comes from
       # /root/hevi-cftunnel.env via --env-file; never logged or committed.
       OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-https://opencode.ai/zen/go/v1}
@@ -362,7 +362,7 @@ services:
       HEVI_WORKER_RESOURCE_CLASS: drama_render
       HEVI_RENDER_MODE: drama
       HEVI_EXCLUSIVE_RESOURCE_CLASSES: drama_render
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw,localization_dub,reference_adapt,character_animation}
       # S19: OpenCode Zen text LLM (opencode-go). Key comes from
       # /root/hevi-cftunnel.env via --env-file; never logged or committed.
       OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-https://opencode.ai/zen/go/v1}
@@ -441,7 +441,7 @@ services:
       HEVI_AUDIO_PROVIDER: piper
       TALKING_FACE_ENGINE: generic
       HEVI_LINE_ENGINE: ${HEVI_LINE_ENGINE:-zero}
-      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,handdraw,localization_dub,reference_adapt,character_animation}
+      HEVI_LAUNCH_LINES: ${HEVI_LAUNCH_LINES:-collage_broll,koubo_cut,explainer,talking_head,history_scene,cinematic,avatar_spokesperson,kinetic_promo,director_pipeline,comic_narration,documentary_montage,shorts_clip,podcast_repurpose,scene3d,handdraw,localization_dub,reference_adapt,character_animation}
       # S19: OpenCode Zen text LLM (opencode-go). Key comes from
       # /root/hevi-cftunnel.env via --env-file; never logged or committed.
       OPENCODE_BASE_URL: ${OPENCODE_BASE_URL:-https://opencode.ai/zen/go/v1}
