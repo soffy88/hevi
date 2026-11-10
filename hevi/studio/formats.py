@@ -107,6 +107,11 @@ FORMATS: tuple[Format, ...] = (
                 "逐镜分镜与导演控制，制作更重", {"render_style": "cinematic"},
             ),
             SubStyle(
+                "short_film", "电影感短片（5–8 分钟）", "ai_drama",
+                "戏剧游戏 + 7 步结构 + 一次收束；先在剧本层解决可拍性",
+                {"style": "live_action", "story_mode": "short_film"}, gated=True,
+            ),
+            SubStyle(
                 "cutaway_3d", "3D 剖面建造", "scene3d",
                 "一个物件经 5–7 轮失败→改进变成完整剖面，真实资产优先",
                 {"render_style": "scene3d", "s23_style": "cutaway_3d"},
@@ -164,6 +169,11 @@ FORMATS: tuple[Format, ...] = (
                 "director", "分镜精修", "director_pipeline",
                 "逐镜分镜与导演控制，制作更重", {"render_style": "cinematic"},
             ),
+            SubStyle(
+                "short_film", "电影感短片（5–8 分钟）", "ai_drama",
+                "戏剧游戏 + 7 步结构 + 一次收束；先在剧本层解决可拍性",
+                {"style": "live_action", "story_mode": "short_film"}, gated=True,
+            ),
         ),
     ),
     Format(
@@ -182,6 +192,11 @@ FORMATS: tuple[Format, ...] = (
             SubStyle(
                 "light", "漫画解说（轻量）", "comic_narration",
                 "静态漫画 + 旁白，制作更快",
+            ),
+            SubStyle(
+                "anime_short_film", "动漫短片（5–8 分钟）", "ai_drama",
+                "戏剧游戏 + 7 步结构 + 一次收束；先在剧本层解决可拍性",
+                {"style": "anime", "story_mode": "short_film"}, gated=True,
             ),
         ),
     ),

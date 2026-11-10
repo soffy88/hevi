@@ -399,6 +399,52 @@ def screenshot_render(p: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+
+def script_short_drama_plan(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.scriptcraft.shortdrama import plan_short_drama
+
+    plan = plan_short_drama(
+        topic=str(p.get("topic") or ""),
+        genre=str(p.get("genre") or ""),
+        route=str(p.get("route") or ""),
+        episodes=int(p.get("episodes") or 10),
+        episode_seconds=int(p.get("episode_seconds") or 95),
+        confirm=bool(p.get("confirm")),
+    )
+    return _ok(plan=plan)
+
+
+def script_short_film_plan(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.scriptcraft.shortfilm import build_short_film
+
+    plan = build_short_film(
+        topic=str(p.get("topic") or ""),
+        genre=str(p.get("genre") or ""),
+        duration_s=int(p.get("duration_s") or 360),
+        confirm=bool(p.get("confirm")),
+    )
+    return _ok(plan=plan)
+
+
+def script_doctor(p: dict[str, Any]) -> dict[str, Any]:
+    from hevi.scriptcraft.characters import check_characters
+    from hevi.scriptcraft.filmability import check_filmability
+    from hevi.scriptcraft.review import review_document
+
+    document = p.get("document") if isinstance(p.get("document"), dict) else {}
+    mode = str(p.get("mode") or "short_drama")
+    filmability = check_filmability(document)
+    review = review_document(document, mode=mode, filmability=filmability)
+    cast = check_characters(document.get("characters") or [])
+    return _ok(
+        filmability=filmability,
+        review=review,
+        cast=cast,
+        passed=filmability["passed"] and review["summary"]["passed"] and not any(
+            f["severity"] == "must" for f in cast
+        ),
+    )
+
 def shortdrama_review(p: dict[str, Any]) -> dict[str, Any]:
     from hevi.director.pipeline_schemas import Screenplay
     from hevi.shortdrama.screenwriter import review_screenplay
@@ -1379,6 +1425,9 @@ OPS: dict[str, Any] = {
     "screenshot_create": screenshot_create,
     "screenshot_render": screenshot_render,
     "shortdrama_review": shortdrama_review,
+    "script_short_drama_plan": script_short_drama_plan,
+    "script_short_film_plan": script_short_film_plan,
+    "script_doctor": script_doctor,
     "nle_project": nle_project,
     "aspect_fit": aspect_fit,
     "pick_best": pick_best,

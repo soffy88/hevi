@@ -422,6 +422,13 @@ export const studioApi = {
   s24Compliance: (body: { voice_id?: string; cloned?: boolean; rights_basis?: string; confirmed?: boolean; media_path?: string }) =>
     authedReq<Record<string, unknown>>('/api/studio/s24/compliance', { method: 'POST', body: JSON.stringify(body) }),
   s24Themes: () => authedReq<{ themes: Array<Record<string, unknown>>; total: number }>('/api/studio/s24/themes'),
+
+  scriptBlacklist: () => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/name-blacklist'),
+  scriptPremise: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/premise', { method: 'POST', body: JSON.stringify(body) }),
+  scriptShortDrama: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/short-drama/plan', { method: 'POST', body: JSON.stringify(body) }),
+  scriptShortFilm: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/short-film/plan', { method: 'POST', body: JSON.stringify(body) }),
+  scriptReview: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/review', { method: 'POST', body: JSON.stringify(body) }),
+  scriptFilmability: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/filmability', { method: 'POST', body: JSON.stringify(body) }),
   craftLedger: (limit = 200) => authedReq<{ rows: number; plans: number; total_seconds: number; total_cny: number; by_route: Array<Record<string, unknown>>; by_model: Array<Record<string, unknown>>; recent: Array<Record<string, unknown>> }>(`/api/studio/craft/ledger?limit=${limit}`),
   craftLicenseAudit: () => authedReq<{ entries: Array<Record<string, unknown>>; high_risk: string[]; not_clearly_commercial: string[]; policy: string; note: string }>('/api/studio/craft/license-audit'),
   craftSeriesTemplates: (format = 'explainer') => authedReq<{ templates: Array<Record<string, unknown>>; total: number }>(`/api/studio/craft/series-templates?format=${format}`),

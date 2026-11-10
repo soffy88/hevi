@@ -210,6 +210,31 @@ CATALOG: list[Row] = [
         ("output_path",),
         "screenshot_render",
     ),
+
+    _row(
+        "script.short_drama_plan",
+        "script",
+        "短剧：总盘/10集大纲/第1集节拍+剧本/审稿",
+        ("topic", "genre", "confirm"),
+        ("plan",),
+        "script_short_drama_plan",
+    ),
+    _row(
+        "script.short_film_plan",
+        "script",
+        "短片：总盘/分场/剧本/审稿",
+        ("topic", "genre", "confirm"),
+        ("plan",),
+        "script_short_film_plan",
+    ),
+    _row(
+        "script.doctor",
+        "script",
+        "剧本门诊：立项/人物/因果/可拍/三轮审稿",
+        ("document", "mode"),
+        ("premise", "filmability", "review"),
+        "script_doctor",
+    ),
     _row(
         "script.shortdrama_review",
         "script",

@@ -17,6 +17,7 @@ import { isAuthenticated, logout } from '@/lib/auth-store';
 const NAV = [
   { href: '/', label: '创作' },
   { href: '/studio', label: '工作室' },
+  { href: '/script-doctor', label: '剧本门诊' },
   { href: '/video-intelligence', label: '视频智能' },
   { href: '/workspace', label: '工作台' },
   { href: '/projects', label: '项目' },

@@ -348,6 +348,56 @@ class CraftReviewRequest(BaseModel):
     allow_llm: bool = False
 
 
+class ScriptPremiseRequest(BaseModel):
+    topic: str = ""
+    text: str = ""
+    slots: dict[str, Any] = Field(default_factory=dict)
+    questions: dict[str, Any] = Field(default_factory=dict)
+    mode: str | None = None
+
+
+class ScriptCharactersRequest(BaseModel):
+    characters: list[dict[str, Any]] = Field(default_factory=list)
+    style: str = "live_action"
+
+
+class ScriptCausalityRequest(BaseModel):
+    events: list[dict[str, Any] | str] = Field(default_factory=list)
+
+
+class ScriptFilmabilityRequest(BaseModel):
+    script: dict[str, Any] = Field(default_factory=dict)
+
+
+class ScriptDramaPlanRequest(BaseModel):
+    topic: str = ""
+    genre: str = ""
+    route: str = ""
+    episodes: int = 10
+    episode_seconds: int = 95
+    confirm: bool = False
+
+
+class ScriptFilmPlanRequest(BaseModel):
+    topic: str = ""
+    genre: str = ""
+    duration_s: int = 360
+    confirm: bool = False
+
+
+class ScriptReviewRequest(BaseModel):
+    document: dict[str, Any] = Field(default_factory=dict)
+    mode: str = "short_drama"
+    stage: str = ""
+    filmability: dict[str, Any] | None = None
+
+
+class ScriptReviewApplyRequest(BaseModel):
+    document: dict[str, Any] = Field(default_factory=dict)
+    review: dict[str, Any] = Field(default_factory=dict)
+    selected_ids: list[str] = Field(default_factory=list)
+
+
 class GeneralistPlanRequest(BaseModel):
     kind: str
     payload: dict[str, Any] = Field(default_factory=dict)
@@ -553,6 +603,126 @@ async def craft_series_templates(
 ) -> dict[str, Any]:
     items = craft_s22.series_templates(format)
     return {"templates": items, "total": len(items)}
+
+
+
+
+@router.get("/scriptcraft/name-blacklist")
+async def scriptcraft_name_blacklist(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.scriptcraft.names import load_blacklist
+
+    data = load_blacklist()
+    return {"blacklist": data, "total": len(data["names"])}
+
+
+@router.post("/scriptcraft/premise")
+async def scriptcraft_premise(
+    req: ScriptPremiseRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.scriptcraft.premise import evaluate_premise, parse_premise_text
+
+    slots = dict(req.slots)
+    if req.text and not slots:
+        slots = parse_premise_text(req.text)
+    return evaluate_premise(
+        topic=req.topic, slots=slots, questions=req.questions, mode=req.mode
+    )
+
+
+@router.post("/scriptcraft/characters")
+async def scriptcraft_characters(
+    req: ScriptCharactersRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.scriptcraft.characters import build_cast_card, check_characters
+
+    findings = check_characters(req.characters)
+    return {
+        "passed": not any(f["severity"] == "must" for f in findings),
+        "findings": findings,
+        "cast_cards": [
+            build_cast_card(c, index=i + 1, style=req.style)
+            for i, c in enumerate(req.characters)
+        ],
+    }
+
+
+@router.post("/scriptcraft/causality")
+async def scriptcraft_causality(
+    req: ScriptCausalityRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.scriptcraft.causality import check_causality
+
+    return check_causality(req.events)
+
+
+@router.post("/scriptcraft/filmability")
+async def scriptcraft_filmability(
+    req: ScriptFilmabilityRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.scriptcraft.filmability import check_filmability
+
+    return check_filmability(req.script)
+
+
+@router.post("/scriptcraft/short-drama/plan")
+async def scriptcraft_short_drama_plan(
+    req: ScriptDramaPlanRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    if not req.topic.strip():
+        raise HTTPException(status_code=422, detail="请先写一句主题或梗概")
+    from hevi.scriptcraft.shortdrama import plan_short_drama
+
+    return plan_short_drama(
+        topic=req.topic,
+        genre=req.genre,
+        route=req.route,
+        episodes=req.episodes,
+        episode_seconds=req.episode_seconds,
+        confirm=req.confirm,
+    )
+
+
+@router.post("/scriptcraft/short-film/plan")
+async def scriptcraft_short_film_plan(
+    req: ScriptFilmPlanRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    if not req.topic.strip():
+        raise HTTPException(status_code=422, detail="请先写一句主题或梗概")
+    from hevi.scriptcraft.shortfilm import build_short_film
+
+    return build_short_film(
+        topic=req.topic, duration_s=req.duration_s, genre=req.genre, confirm=req.confirm
+    )
+
+
+@router.post("/scriptcraft/review")
+async def scriptcraft_review(
+    req: ScriptReviewRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.scriptcraft.review import review_document
+
+    return review_document(
+        req.document, mode=req.mode, stage=req.stage, filmability=req.filmability
+    )
+
+
+@router.post("/scriptcraft/review/apply")
+async def scriptcraft_review_apply(
+    req: ScriptReviewApplyRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    from hevi.scriptcraft.review import apply_selected
+
+    return apply_selected(req.document, req.review, req.selected_ids)
 
 
 @router.get("/generalist/catalog")
