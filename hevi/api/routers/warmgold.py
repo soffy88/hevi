@@ -159,7 +159,9 @@ def render_warm_gold(
         )
     job_id = uuid.uuid4().hex[:12]
     _job_dir(job_id).mkdir(parents=True, exist_ok=True)
-    _write_status(job_id, {"status": "queued", "job_id": job_id, "owner": user.get("id") or ""})
+    _write_status(
+        job_id, {"status": "queued", "job_id": job_id, "owner": str(user.get("id") or "")}
+    )
     background.add_task(_run_render_job, job_id, req.script, req.music_path, req.voice, req.fps)
     return {"job_id": job_id, "status": "queued", "checks": checks["metrics"]}
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -270,5 +271,26 @@ def test_api_parts_check_and_template() -> None:
 
         render_resp = client.post("/api/explainer/warmgold/render", json={"script": bad})
         assert render_resp.status_code == 422
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_render_endpoint_serializes_uuid_owner(monkeypatch, tmp_path: Path) -> None:
+    from hevi.api.routers import warmgold as wg_api
+
+    monkeypatch.setattr(wg_api, "JOB_ROOT", tmp_path / "jobs")
+    monkeypatch.setattr(wg_api, "_run_render_job", lambda *args, **kwargs: None)
+    user_id = uuid.uuid4()
+    app.dependency_overrides[get_current_user] = lambda: {"id": user_id}
+    try:
+        client = TestClient(app)
+        script = template.build_10s("越着急，越看不清")
+        r = client.post("/api/explainer/warmgold/render", json={"script": script, "voice": False})
+        assert r.status_code == 202, r.text
+        job_id = r.json()["job_id"]
+        status = json.loads(
+            (tmp_path / "jobs" / job_id / "status.json").read_text(encoding="utf-8")
+        )
+        assert status["owner"] == str(user_id)
     finally:
         app.dependency_overrides.pop(get_current_user, None)
