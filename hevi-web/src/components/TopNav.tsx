@@ -15,7 +15,8 @@ import { useEffect, useState } from 'react';
 import { isAuthenticated, logout } from '@/lib/auth-store';
 
 const NAV = [
-  { href: '/studio', label: '创作' },
+  { href: '/', label: '创作' },
+  { href: '/studio', label: '工作室' },
   { href: '/video-intelligence', label: '视频智能' },
   { href: '/workspace', label: '工作台' },
   { href: '/projects', label: '项目' },
@@ -40,7 +41,7 @@ export function TopNav() {
 
   return (
     <header className="hevi-topnav">
-      <Link href="/studio" className="hevi-topnav__logo">HEVI</Link>
+      <Link href="/" className="hevi-topnav__logo">HEVI</Link>
 
       {/* 桌面端导航 */}
       <nav className="hevi-topnav__links hevi-topnav__links--desktop">
