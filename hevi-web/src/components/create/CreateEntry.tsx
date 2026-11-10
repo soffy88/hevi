@@ -46,7 +46,6 @@ export function CreateEntry() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const prevAutoRef = useRef<string | null>(null);
 
   const selected = useMemo(
     () => formats.find((item) => item.id === formatId) ?? formats[0],
@@ -86,15 +85,18 @@ export function CreateEntry() {
     setStyleId(preferred?.id ?? '');
   }, [selected]);
 
-  const track = useCallback((event: FormatEvent, detail?: Record<string, unknown>) => {
-    if (USE_MOCK) return;
-    void studioApi.recordFormatEvent({
-      event,
-      format: formatId === 'auto' ? 'auto' : formatId,
-      style: selectedStyle?.id ?? '',
-      detail,
-    }).catch(() => undefined);
-  }, [formatId, selectedStyle]);
+  const track = useCallback(
+    (event: FormatEvent, detail?: Record<string, unknown>, format?: string, style?: string) => {
+      if (USE_MOCK) return;
+      void studioApi.recordFormatEvent({
+        event,
+        format: format ?? (formatId === 'auto' ? 'auto' : formatId),
+        style: style ?? selectedStyle?.id ?? '',
+        detail,
+      }).catch(() => undefined);
+    },
+    [formatId, selectedStyle],
+  );
 
   const chooseFormat = (item: StudioFormat) => {
     if (!item.available) {
@@ -104,19 +106,22 @@ export function CreateEntry() {
       }
       return;
     }
-    if (prevAutoRef.current && prevAutoRef.current !== item.id) {
+    const nextStyle = item.available_styles.includes(item.default_style)
+      ? item.default_style
+      : item.available_styles[0] ?? '';
+    if (formatId === 'auto' && item.id !== 'auto') {
       void studioApi.recordFormatEvent({
-        event: 'auto_changed', format: item.id, detail: { from: prevAutoRef.current, to: item.id },
+        event: 'auto_changed',
+        format: item.id,
+        style: nextStyle,
+        detail: { from: 'auto', to: item.id },
       }).catch(() => undefined);
-      prevAutoRef.current = null;
-    } else if (formatId === 'auto' && item.id !== 'auto') {
-      prevAutoRef.current = 'auto';
     }
     setError('');
     setResult(null);
     setPlan(null);
     setFormatId(item.id);
-    track('format_selected');
+    track('format_selected', undefined, item.id, nextStyle);
   };
 
   const onDrop = async (event: React.DragEvent) => {
