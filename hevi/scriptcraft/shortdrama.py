@@ -807,6 +807,7 @@ def plan_short_drama(
         "place": blueprint["place"],
         "secret": blueprint["secret"],
         "power": blueprint["power"],
+        "pow": blueprint["power"],
     }
     characters = derive_characters(topic, blueprint)
     premise_questions = {

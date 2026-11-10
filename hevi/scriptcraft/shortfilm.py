@@ -433,7 +433,7 @@ def build_short_film(
     )
     master = {
         "title": topic,
-        "door": f"一个{template['place']}里的普通人，必须在{template['deadline']}前{template['want']}，否则会永远失去最后一次把话说清的机会。",
+        "door": f"一个{template['place']}里的普通人，必须{template['want']}，否则会永远失去最后一次把话说清的机会。",
         "genre": template["genre"],
         "lead": lead,
         "opponent": opponent,

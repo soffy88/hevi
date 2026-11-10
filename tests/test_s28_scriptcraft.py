@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -125,6 +127,8 @@ def test_short_drama_plan_passes_checks_and_ai_drama_rules(topic: str, genre: st
     assert len(plan["episode_outline"]) == 10
     assert 5 <= len(plan["ep1_beat_sheet"]) <= 8
     assert plan["review"]["summary"]["must"] == 0
+    rendered = str(plan["master_plan"]) + str(plan["episode_outline"]) + str(plan["ep1_beat_sheet"])
+    assert not re.search(r"\{[a-z_]+\}", rendered)
 
     script = normalize_script(plan["script"])
     blockers = [
@@ -148,6 +152,8 @@ def test_short_film_passes_and_is_closed(topic: str, genre: str) -> None:
     assert plan["master_plan"]["motif"]["count"] == 3
     assert plan["master_plan"]["ending"]
     assert plan["review"]["summary"]["must"] == 0
+    rendered = str(plan["master_plan"]) + str(plan["scenes"])
+    assert not re.search(r"\{[a-z_]+\}", rendered)
     assert len(plan["scenes"]) >= 7
     assert all(s["step"] for s in plan["scenes"])
 
