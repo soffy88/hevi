@@ -7,6 +7,16 @@
 > This file tracks *what's true now*, not design. Specs live in `docs/specs/`.
 > P10 Creative Direction Runtime: gate ladder + specs in `docs/p10/` (see P10 pointer below).
 
+## S28 剧本层（2026-11-10）
+
+`hevi/scriptcraft/`：立项四槽 + 6 问、人物卡/姓名黑名单、因果链、AI 可拍自检、
+短剧（总盘→10 集大纲→第 1 集节拍/剧本）与短片（戏剧游戏→7 步→2–3 反转→母题×3）、
+三轮审稿（编剧/场记/制作）和「只改勾选项」。API `/api/studio/scriptcraft/*`，
+Studio 工具 `script.short_drama_plan` / `script.short_film_plan` / `script.doctor`，
+页面 `/script-doctor`。RunningHub 成本文案改为「积分；以平台页面为准」。
+验证：`tests/test_s28_scriptcraft.py` 12 passed；黑盒 4/4 计划通过、必改 0；
+ai_drama 离线 sample 59.0s / 1080×1920 / −13.4 LUFS / passed。线上 `:20261111c`。
+
 ## HEVI_REAL_VIDEO_ACCEPTED (2026-10-05)
 
 One real video, produced end to end through the production chain, verified V0–V3,
