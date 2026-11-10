@@ -196,7 +196,7 @@ export function CreateEntry() {
         shots: plan.shots as unknown as Array<Record<string, unknown>>,
         facts: parseFacts(factsText),
         skipped_gates: gateSkips,
-        allow_llm: false,
+        allow_llm: true,
       });
       setReview(data);
     } catch (err) {
