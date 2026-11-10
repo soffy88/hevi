@@ -265,24 +265,30 @@ window.__seek(0);
 
 
 def _chromium_executable() -> str | None:
-    explicit = os.environ.get("HEVI_CHROMIUM", "").strip()
-    if explicit and Path(explicit).is_file():
-        return explicit
-    root = (
-        Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", ""))
-        if os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
-        else Path.home() / ".cache" / "ms-playwright"
-    )
-    if not root.is_dir():
-        return None
-    candidates = sorted(
-        root.glob("chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell"),
-        reverse=True,
-    )
-    candidates += sorted(root.glob("chromium-*/chrome-linux/chrome"), reverse=True)
-    for candidate in candidates:
-        if candidate.is_file():
-            return str(candidate)
+    for env_key in ("HEVI_CHROMIUM", "HEVI_LIVLIV_CHROME"):
+        explicit = os.environ.get(env_key, "").strip()
+        if explicit and Path(explicit).is_file():
+            return explicit
+    roots: list[Path] = []
+    for env_key in ("PLAYWRIGHT_BROWSERS_PATH", "SCENE3D_PLAYWRIGHT_BROWSERS"):
+        value = os.environ.get(env_key, "").strip()
+        if value:
+            roots.append(Path(value))
+    roots += [Path.home() / ".cache" / "ms-playwright", Path("/pwbrowsers")]
+    for root in roots:
+        if not root.is_dir():
+            continue
+        candidates = sorted(
+            root.glob(
+                "chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell"
+            ),
+            reverse=True,
+        )
+        candidates += sorted(root.glob("chromium-*/chrome-linux64/chrome"), reverse=True)
+        candidates += sorted(root.glob("chromium-*/chrome-linux/chrome"), reverse=True)
+        for candidate in candidates:
+            if candidate.is_file():
+                return str(candidate)
     return None
 
 
