@@ -88,8 +88,11 @@ def test_format_events_metrics(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     format_events.record_event("render_completed", user_id="u1", format_id="history_scene")
     data = format_events.metrics()
     assert data["totals"]["selections"] == 1
+    assert data["totals"]["auto_changed"] == 1
     assert data["totals"]["storyboard_edits"] == 3
     assert data["totals"]["completion_rate"] == 1.0
+    # one event must not be counted twice (target + source)
+    assert sum(row["auto_changed"] for row in data["formats"]) == 1
     rows = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
     assert rows["event"] == "format_selected"
 

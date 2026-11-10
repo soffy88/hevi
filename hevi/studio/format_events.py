@@ -98,10 +98,10 @@ def metrics() -> dict[str, Any]:
         if event == "format_selected":
             bucket["selected"] += 1
         elif event == "auto_changed":
+            # Count once, against the format the user switched *to*.  The
+            # source (usually "auto") is kept in detail.from for analysis,
+            # not incremented here or the aggregate would double count.
             bucket["auto_changed"] += 1
-            detail = row.get("detail") or {}
-            if detail.get("from"):
-                per_format[str(detail["from"])]["auto_changed"] += 1
         elif event == "storyboard_edited":
             bucket["storyboard_edits"] += int((row.get("detail") or {}).get("count") or 1)
         elif event == "render_started":
