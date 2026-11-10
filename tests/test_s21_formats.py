@@ -73,6 +73,23 @@ def test_ai_drama_is_gated_by_default_and_can_be_opened(
     assert gate_open("ai_drama")[0] is True
 
 
+def test_digital_human_auto_routes_on_face_image() -> None:
+    plain = resolve_format(format_id="digital_human", style_id="auto", line_id=None, slots={"topic": "x"})
+    assert plain["line_id"] == "talking_head"
+    with_face = resolve_format(
+        format_id="digital_human", style_id="auto", line_id=None,
+        slots={"topic": "x", "image_path": "/tmp/face.png"},
+    )
+    assert with_face["line_id"] == "avatar_spokesperson"
+
+
+def test_live_drama_offers_cinematic_and_director_styles() -> None:
+    styles = {style.id: style.line_id for style in FORMAT_BY_ID["live_drama"].styles}
+    assert styles["live_action"] == "ai_drama"
+    assert styles["cinematic"] == "cinematic"
+    assert styles["director"] == "director_pipeline"
+
+
 def test_material_format_only_after_upload() -> None:
     assert "material_cut" not in {f["id"] for f in list_formats()}
     assert "material_cut" in {f["id"] for f in list_formats(has_media=True)}

@@ -141,6 +141,14 @@ FORMATS: tuple[Format, ...] = (
                 "剧集圣经 + 分镜表自检 + 先图后视频",
                 {"style": "live_action"}, gated=True,
             ),
+            SubStyle(
+                "cinematic", "电影质感", "cinematic",
+                "电影感镜头与调色，节奏更慢", {"render_style": "cinematic"},
+            ),
+            SubStyle(
+                "director", "分镜精修", "director_pipeline",
+                "逐镜分镜与导演控制，制作更重", {"render_style": "cinematic"},
+            ),
         ),
     ),
     Format(
@@ -331,11 +339,18 @@ def resolve_format(
         style = next((s for s in fmt.styles if s.id == style_key), None)
     if style is None:
         style = fmt.default
+    line_id = style.line_id
+    # 数字人口播的“自动”按有没有形象图路由，只路由一次。
+    if fmt.id == "digital_human" and style.id == "auto":
+        has_face = any(
+            merged.get(key) for key in ("image_path", "avatar_image", "presenter_id")
+        )
+        line_id = "avatar_spokesperson" if has_face else "talking_head"
     merged.update(style.slots)
     return {
         "format": fmt.id,
         "style": style.id,
-        "line_id": style.line_id,
+        "line_id": line_id,
         "slots": merged,
         "gated": bool(style.gated),
         "reason": "",
