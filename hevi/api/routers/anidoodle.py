@@ -221,6 +221,18 @@ async def draw_clip(
             payload["verify_export"] = {
                 key: verify[key] for key in ("ok", "verdict", "passed_count", "failures")
             }
+        elif req.gates:
+            payload["gate"] = {
+                "ok": None,
+                "verdict": "preview_scale_not_gated",
+                "failures": [],
+                "note": "dead air is measured on the delivered 1080-wide file; render at scale 1 to gate it",
+            }
+            payload["verify_export"] = {
+                "ok": None,
+                "verdict": "preview_scale_not_gated",
+                "failures": [],
+            }
     except Exception as exc:
         raise _error(exc) from exc
     return payload
