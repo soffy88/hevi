@@ -26,6 +26,17 @@ STYLE_TOKENS = {
     "ink": "Chinese ink wash painting, rice paper texture, restrained palette",
 }
 
+# S21: character sheets used to hard-code anime tokens for every style, which
+# made the offline SD-Turbo keyframes look like anime even in ``live_action``.
+# Only the anime style gets those tokens now; everything else relies on its own
+# style token (or the style card) so 写实 and 风格卡 are not overridden.
+ANIME_FILL = "colorful anime illustration, cel shading, "
+PORTRAIT_NOUN = {"anime": "anime bust"}
+
+
+def _style_fill(style: str) -> str:
+    return ANIME_FILL if style == "anime" else ""
+
 
 def _character_ids(script: dict[str, Any]) -> list[dict[str, Any]]:
     return [c for c in script.get("characters") or [] if c.get("id")]
@@ -68,7 +79,7 @@ def build_assets(script: dict[str, Any]) -> dict[str, Any]:
             render_prompt=(
                 f"{look_en}, character turnaround sheet, front view, side view, back view, three full body views, "
                 f"expression sheet, calm surprised sad smiling, pure white background, full body including shoes, "
-                f"same outfit, consistent character design, colorful anime illustration, {tokens}"
+                f"same outfit, consistent character design, {_style_fill(style)}{tokens}"
             ),
             width=512, height=512,
             usage=f"角色 {cid} 的身份板；用于所有含该角色的镜头，锁定脸、发型、服装、鞋。",
@@ -82,8 +93,8 @@ def build_assets(script: dict[str, Any]) -> dict[str, Any]:
                 "表情中性，用于口型镜头与正反打。"
             ),
             render_prompt=(
-                f"{look_en}, anime bust, one character only, single head, centered, neutral expression, "
-                f"soft even light, pure white background, colorful anime illustration, cel shading, {tokens}"
+                f"{look_en}, {PORTRAIT_NOUN.get(style, 'bust portrait')}, one character only, single head, centered, "
+                f"neutral expression, soft even light, pure white background, {_style_fill(style)}{tokens}"
             ),
             width=512, height=512,
             usage=f"角色 {cid} 的口型/近景镜头；与身份板同一张脸。",

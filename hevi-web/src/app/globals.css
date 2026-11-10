@@ -2188,3 +2188,64 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
     width: 100%; max-width: 100%; margin: 8px auto 0; padding: 0 0 40px;
   }
 }
+
+/* ── S21 出品形式入口 ───────────────────────────────────────────── */
+.product-page--create { padding-top: 28px; }
+.create-entry { max-width: 1120px; margin: 0 auto; }
+.create-entry__hero { margin-bottom: 20px; }
+.create-entry__eyebrow { margin: 0 0 6px; color: var(--primary); font-size: 12px; font-weight: 850; letter-spacing: .08em; }
+.create-entry__hero h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); letter-spacing: -.035em; }
+.create-entry__sub { margin: 10px 0 0; color: var(--muted-foreground); line-height: 1.6; max-width: 760px; }
+.create-entry__input { border: 1px solid var(--border, #d0d5dd); border-radius: 18px; padding: 14px; background: var(--card, #fff); box-shadow: 0 12px 30px rgba(15, 23, 42, .06); }
+.create-entry__input textarea { width: 100%; border: 0; outline: 0; resize: vertical; font: inherit; font-size: 17px; line-height: 1.6; background: transparent; color: inherit; }
+.create-entry__input-actions { display: flex; align-items: center; gap: 12px; padding-top: 8px; border-top: 1px dashed var(--border, #e4e7ec); }
+.create-entry__ghost { border: 1px solid var(--border, #d0d5dd); background: transparent; color: inherit; border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+.create-entry__ghost:hover { background: var(--accent, #f2f4f7); }
+.create-entry__media { font-size: 13px; color: var(--primary); }
+.create-entry__formats { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; margin: 22px 0 14px; }
+.create-entry__card { position: relative; display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 10px; border: 1px solid var(--border, #e4e7ec); border-radius: 16px; background: var(--card, #fff); cursor: pointer; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; overflow: hidden; }
+.create-entry__card:hover { transform: translateY(-2px); border-color: var(--primary); box-shadow: 0 14px 26px rgba(15, 23, 42, .10); }
+.create-entry__card.is-active { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 30%, transparent); }
+.create-entry__card.is-gated { opacity: .55; cursor: not-allowed; }
+.create-entry__card-media { display: block; height: 92px; border-radius: 10px; overflow: hidden; background: linear-gradient(135deg, #111827, #374151); }
+.create-entry__card-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.create-entry__card-poster { display: grid; place-items: center; height: 100%; color: #f9fafb; font-size: 22px; font-weight: 800; letter-spacing: .1em; }
+.create-entry__card-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
+.create-entry__card-title em { font-style: normal; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; background: #fef3c7; color: #92400e; }
+.create-entry__card-summary { font-size: 12px; color: var(--muted-foreground); line-height: 1.45; }
+.create-entry__card-example { font-size: 11px; color: var(--muted-foreground); opacity: .8; }
+.create-entry__styles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 16px; }
+.create-entry__label { font-size: 12px; font-weight: 800; color: var(--muted-foreground); letter-spacing: .04em; }
+.create-entry__chip { border: 1px solid var(--border, #d0d5dd); background: transparent; color: inherit; border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.create-entry__chip.is-active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.create-entry__chip.is-gated { opacity: .5; cursor: not-allowed; }
+.create-entry__actions { display: flex; align-items: center; gap: 14px; margin: 8px 0 20px; }
+.create-entry__primary { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; padding: 11px 22px; background: var(--primary); color: #fff; font-weight: 800; font-size: 15px; cursor: pointer; text-decoration: none; }
+.create-entry__primary:disabled { opacity: .55; cursor: progress; }
+.create-entry__hint { font-size: 12px; color: var(--muted-foreground); }
+.create-entry__notice { margin: 10px 0; padding: 10px 14px; border-radius: 10px; font-size: 13px; }
+.create-entry__notice.is-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.create-entry__plan { border: 1px solid var(--border, #e4e7ec); border-radius: 18px; padding: 16px; background: var(--card, #fff); margin-bottom: 20px; }
+.create-entry__plan header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.create-entry__plan h2 { margin: 2px 0 0; font-size: 20px; }
+.create-entry__script { display: block; margin-bottom: 14px; }
+.create-entry__script span { display: block; font-size: 12px; font-weight: 800; color: var(--muted-foreground); margin-bottom: 6px; }
+.create-entry__script textarea { width: 100%; border: 1px solid var(--border, #d0d5dd); border-radius: 10px; padding: 10px 12px; font: inherit; line-height: 1.6; resize: vertical; background: transparent; color: inherit; }
+.create-entry__shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.create-entry__shot { border: 1px solid var(--border, #e4e7ec); border-radius: 12px; padding: 10px 12px; background: var(--accent, #f8fafc); }
+.create-entry__shot-index { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 800; margin-bottom: 6px; }
+.create-entry__shot strong { display: block; font-size: 13px; }
+.create-entry__shot p { margin: 4px 0; font-size: 13px; line-height: 1.5; }
+.create-entry__shot small { color: var(--muted-foreground); font-size: 11px; line-height: 1.45; display: block; }
+.create-entry__result { border: 1px solid var(--border, #e4e7ec); border-radius: 18px; padding: 16px; background: var(--card, #fff); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.create-entry__result h2 { margin: 0; font-size: 18px; width: 100%; }
+@media (max-width: 640px) {
+  .create-entry__formats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .create-entry__card-media { height: 72px; }
+  .create-entry__plan header { flex-direction: column; }
+}
+
+/* 画布节点库按出品形式分组 */
+.hevi-palette__group { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 6px; }
+.hevi-palette__group-title { font-size: 11px; font-weight: 800; color: var(--muted-foreground); letter-spacing: .06em; padding: 2px 4px; }
+.hevi-palette__btn.is-gated { opacity: .5; cursor: not-allowed; }

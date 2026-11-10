@@ -1,0 +1,33 @@
+{
+  "ai_drama": {
+    "open": true,
+    "reason": "S21 黑盒通过：写实 5.0 / 动漫 5.0（离线 SD-Turbo）",
+    "styles": {
+      "live_action": {
+        "themes": 3,
+        "real_files": 3,
+        "average_score": 5.0,
+        "all_exist": true,
+        "pass": true,
+        "scores": [
+          5.0,
+          5.0,
+          5.0
+        ]
+      },
+      "anime": {
+        "themes": 3,
+        "real_files": 3,
+        "average_score": 5.0,
+        "all_exist": true,
+        "pass": true,
+        "scores": [
+          5.0,
+          5.0,
+          5.0
+        ]
+      }
+    },
+    "updated_at": "2026-11-10T02:49:34Z"
+  }
+}

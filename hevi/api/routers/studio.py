@@ -19,8 +19,15 @@ from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.quota import QuotaError, get_quota_service, requested_duration_seconds
+from hevi.studio import format_events
 from hevi.studio.assets import list_assets
 from hevi.studio.conversational_edit import execute_edit
+from hevi.studio.formats import (
+    MATERIAL_FORMAT_ID,
+    gate_open,
+    list_formats,
+    resolve_format,
+)
 from hevi.studio.recipes import get_recipe, launch_strict, line_availability, list_recipes
 from hevi.studio.slate import Slate, run_slate
 from hevi.studio.timeline import (
@@ -40,10 +47,20 @@ router = APIRouter(prefix="/studio", tags=["studio"])
 
 
 class SlateRequest(BaseModel):
-    line_id: str
+    # S21：用户入口先选“出品形式”；旧调用方仍可只传 line_id。
+    line_id: str | None = None
+    format: str | None = None
+    style: str | None = None
     slots: dict[str, Any] = Field(default_factory=dict)
     slate_id: str | None = None
     execute: bool = False
+
+
+class FormatEventRequest(BaseModel):
+    event: str
+    format: str = ""
+    style: str = ""
+    detail: dict[str, Any] = Field(default_factory=dict)
 
 
 class ToolInvokeRequest(BaseModel):
@@ -135,6 +152,141 @@ async def create_video_feedback(
     return RevisionFeedback(**req.model_dump()).model_dump(mode="json")
 
 
+@router.get("/formats")
+async def get_studio_formats(
+    has_media: bool = False,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """首页“出品形式”卡片。内部 line id 不出现，只给形式与子风格。"""
+    from hevi.auth.dependencies import can_view_internal_lines
+
+    admin = can_view_internal_lines(_user)
+    items = list_formats(admin=admin, has_media=has_media)
+    return {
+        "formats": items,
+        "total": len(items),
+        "ai_drama_gate": {"open": gate_open("ai_drama")[0], "reason": gate_open("ai_drama")[1]},
+    }
+
+
+class FormatPlanRequest(BaseModel):
+    format: str | None = None
+    style: str | None = None
+    line_id: str | None = None
+    topic: str = ""
+    slots: dict[str, Any] = Field(default_factory=dict)
+
+
+_FORMAT_STYLE_PROMPTS = {
+    "history_scene": "historical documentary still, period-accurate costume and architecture, cinematic light",
+    "digital_human": "clean presenter portrait, soft studio light, chest-up framing",
+    "live_drama": "photorealistic cinematic still, natural skin, shallow depth of field",
+    "comic_drama": "anime key visual, clean line art, cel shading",
+    "animation": "stylized 2D animation keyframe, clear silhouette",
+    "explainer": "minimal editorial illustration, bold shapes, generous negative space",
+    MATERIAL_FORMAT_ID: "documentary b-roll still, natural texture",
+}
+
+
+@router.post("/formats/plan")
+async def plan_format(
+    req: FormatPlanRequest,
+    user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """选形式后先在画布出脚本 + 分镜（文字/关键帧提示），确认后再渲染。"""
+    from hevi.auth.dependencies import can_view_internal_lines
+
+    admin = can_view_internal_lines(user)
+    try:
+        plan = resolve_format(
+            format_id=req.format,
+            style_id=req.style,
+            line_id=req.line_id,
+            slots={**req.slots, "topic": req.topic or req.slots.get("topic") or ""},
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if plan["gated"] and not admin and not gate_open("ai_drama")[0]:
+        raise HTTPException(
+            status_code=403,
+            detail=f"该出品形式即将开放：{gate_open('ai_drama')[1]}",
+        )
+    topic = str(req.topic or plan["slots"].get("topic") or "").strip()
+    if not topic:
+        raise HTTPException(status_code=422, detail="请先写一句主题或梗概")
+
+    lines: list[str] = []
+    title = topic[:40]
+    try:
+        from hevi.studio.tools import invoke_tool
+
+        result = await invoke_tool("script.quick", {"topic": topic, "max_lines": 6})
+        payload = result.payload or {}
+        raw_lines = payload.get("script_lines") or []
+        if isinstance(raw_lines, list):
+            lines = [str(item.get("text") if isinstance(item, dict) else item) for item in raw_lines if item]
+        title = str(payload.get("title") or title)
+    except Exception:
+        lines = []
+    if not lines:
+        parts = [part.strip() for part in topic.replace("。", "\n").replace("，", "\n").splitlines() if part.strip()]
+        lines = (parts or [topic])[:6]
+
+    style_key = str(plan.get("style") or "")
+    style_prompt = _FORMAT_STYLE_PROMPTS.get(str(plan.get("format") or ""), "cinematic still")
+    if str(plan.get("format") or "") == "comic_drama" and style_key == "light":
+        style_prompt = "static comic panel, halftone texture, speech bubbles reserved"
+    shots = [
+        {
+            "index": i + 1,
+            "label": f"镜头 {i + 1}",
+            "line": line,
+            "keyframe_prompt": f"{style_prompt}. {line}",
+            "duration_s": 5,
+        }
+        for i, line in enumerate(lines[:6])
+    ]
+    return {
+        "format": plan["format"],
+        "style": style_key,
+        "line_id": plan["line_id"],
+        "title": title,
+        "script": {"title": title, "lines": lines},
+        "shots": shots,
+        "requires_confirm": True,
+    }
+
+
+@router.post("/format-events")
+async def record_format_event(
+    req: FormatEventRequest,
+    user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    try:
+        format_events.record_event(
+            req.event,
+            user_id=str((user or {}).get("id") or ""),
+            format_id=req.format,
+            style=req.style,
+            detail=req.detail,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+@router.get("/format-metrics")
+async def get_format_metrics(
+    user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """管理后台：形式选择、自动被改选、分镜修改、完成率。"""
+    from hevi.auth.dependencies import can_view_internal_lines
+
+    if not can_view_internal_lines(user):
+        raise HTTPException(status_code=403, detail="仅管理员可查看形式埋点")
+    return format_events.metrics()
+
+
 @router.get("/lines")
 async def get_studio_lines(
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
@@ -193,18 +345,51 @@ async def create_slate(
     req: SlateRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
-    if launch_strict() and line_availability(req.line_id) != "ga":
+    from hevi.auth.dependencies import can_view_internal_lines
+
+    admin = can_view_internal_lines(user)
+    try:
+        plan = resolve_format(
+            format_id=req.format,
+            style_id=req.style,
+            line_id=req.line_id,
+            slots=req.slots,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    line_id = str(plan["line_id"])
+    slots = dict(plan["slots"])
+    # 质量门：门没开的 ai_drama 形式对普通用户显示“即将开放”，不报错。
+    if plan["gated"] and not admin and not gate_open("ai_drama")[0]:
         raise HTTPException(
             status_code=403,
-            detail=f"该产线（{req.line_id}）尚未开放，当前处于内测阶段",
+            detail=f"该出品形式即将开放：{gate_open('ai_drama')[1]}",
+        )
+    if launch_strict() and line_availability(line_id) != "ga" and not admin:
+        if line_id == "ai_drama" and gate_open("ai_drama")[0]:
+            pass
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="该出品形式即将开放，当前处于内测阶段",
+            )
+    fmt_id = str(plan.get("format") or "")
+    style_id = str(plan.get("style") or "")
+    if req.format:
+        format_events.record_event(
+            "format_selected",
+            user_id=str(user["id"]),
+            format_id=fmt_id if req.format != "auto" else "auto",
+            style=style_id,
+            detail={"auto_guess": slots.get("format_auto_guess")},
         )
     quota_job = ""
     quota = None
     if req.execute:
         quota = get_quota_service(await get_hevi_pg_pool())
         duration = requested_duration_seconds(
-            duration_s=req.slots.get("duration_s") or req.slots.get("target_duration_s"),
-            duration_archetype=str(req.slots.get("duration_archetype") or "") or None,
+            duration_s=slots.get("duration_s") or slots.get("target_duration_s"),
+            duration_archetype=str(slots.get("duration_archetype") or "") or None,
         )
         try:
             quota_job = await quota.reserve(
@@ -213,11 +398,18 @@ async def create_slate(
         except QuotaError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail()) from exc
     slate = Slate(
-        line_id=req.line_id,
-        slots=req.slots,
+        line_id=line_id,
+        slots=slots,
         slate_id=req.slate_id or "",
         execute=req.execute,
     )
+    if req.execute:
+        format_events.record_event(
+            "render_started",
+            user_id=str(user["id"]),
+            format_id=fmt_id,
+            style=style_id,
+        )
     try:
         result = await run_slate(slate)
     except Exception:
@@ -233,7 +425,18 @@ async def create_slate(
             await quota.complete(quota_job)
         else:
             await quota.release(quota_job, reason=result.reason or result.status)
-    return result.to_dict()
+    if req.execute:
+        format_events.record_event(
+            "render_completed",
+            user_id=str(user["id"]),
+            format_id=fmt_id,
+            style=style_id,
+            detail={"status": result.status},
+        )
+    payload = result.to_dict()
+    payload["format"] = fmt_id
+    payload["style"] = style_id
+    return payload
 
 
 @router.post("/uploads")

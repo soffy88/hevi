@@ -56,6 +56,8 @@ lint_after.txt
 *.wav
 # S10: official showcase clips ship with the web image (small, AI-labelled)
 !hevi-web/public/showcase/*.mp4
+# S21: format cards carry a 3s sample clip each
+!hevi-web/public/showcase/**/*.mp4
 # cosy-ref-v1: 仓库内置 CosyVoice 默认参考音(Apache-2.0, 见 services/gen_engine/assets/voice_refs/README.md)
 !services/gen_engine/assets/voice_refs/*.wav
 output/*

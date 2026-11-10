@@ -175,9 +175,38 @@ export function artifactDownloadUrl(path: string): string {
   return `${API_BASE}/api/studio/artifacts/download?${q.toString()}`;
 }
 
+export type StudioFormatStyle = {
+  id: string; label: string; hint: string; line_id: string; gated: boolean;
+};
+export type StudioFormat = {
+  id: string; label: string; summary: string; example: string;
+  sample_video: string | null; needs_media: boolean; gated: boolean;
+  default_style: string; styles: StudioFormatStyle[];
+  available: boolean; available_styles: string[]; gated_reason?: string;
+};
+export type FormatPlan = {
+  format: string; style: string; line_id: string; title: string;
+  script: { title: string; lines: string[] };
+  shots: { index: number; label: string; line: string; keyframe_prompt: string; duration_s: number }[];
+  requires_confirm: boolean;
+};
+
 export const studioApi = {
   tools: () => authedReq<{ tools: { id: string; kind: string; summary: string }[]; total: number }>('/api/studio/tools'),
   lines: () => authedReq<{ lines: { id: string; product: string; summary: string; tools: string[]; render_runtime?: string; availability?: 'ga' | 'internal' }[]; total: number }>('/api/studio/lines'),
+  formats: (hasMedia = false) => authedReq<{ formats: StudioFormat[]; total: number; ai_drama_gate: { open: boolean; reason: string } }>(`/api/studio/formats${hasMedia ? '?has_media=true' : ''}`),
+  planFormat: (body: { format?: string; style?: string; topic: string; slots?: Record<string, unknown> }) =>
+    authedReq<FormatPlan>('/api/studio/formats/plan', { method: 'POST', body: JSON.stringify(body) }),
+  createFormatSlate: (body: { format?: string; style?: string; line_id?: string; slots?: Record<string, unknown>; execute?: boolean }) =>
+    authedReq<Record<string, unknown>>('/api/studio/slates', { method: 'POST', body: JSON.stringify({ execute: true, ...body }) }),
+  recordFormatEvent: (body: { event: string; format?: string; style?: string; detail?: Record<string, unknown> }) =>
+    authedReq<{ ok: boolean }>('/api/studio/format-events', { method: 'POST', body: JSON.stringify(body) }),
+  formatMetrics: () => authedReq<{ total_events: number; totals: Record<string, unknown>; formats: Array<Record<string, unknown>> }>('/api/studio/format-metrics'),
+  uploadSource: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return authedFormReq<{ media_path: string; bytes: number }>('/api/studio/uploads', form);
+  },
   shotCards: (category?: string, search?: string) => {
     const q = new URLSearchParams(); if (category) q.set('category', category); if (search) q.set('search', search);
     return authedReq<{ cards: Array<Record<string, unknown>>; total: number; index: Record<string, string[]> }>(`/api/studio/motion/shot-cards${q.toString() ? `?${q}` : ''}`);

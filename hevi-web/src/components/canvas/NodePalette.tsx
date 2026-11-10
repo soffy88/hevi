@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import type { NodeType } from '@/types/api';
 import { NODE_META } from '@/lib/canvas-rules';
-import { studioApi, USE_MOCK } from '@/lib/api-client';
+import { studioApi, USE_MOCK, type StudioFormat } from '@/lib/api-client';
 
 const TYPES: NodeType[] = ['text', 'image', 'video', 'audio', 'script', 'segment', 'asset'];
 
@@ -30,6 +30,7 @@ export function NodePalette({
 }) {
   const [tools, setTools] = useState<StudioTool[]>([]);
   const [lines, setLines] = useState<StudioLine[]>([]);
+  const [formats, setFormats] = useState<StudioFormat[]>([]);
   const [q, setQ] = useState('');
   const [kind, setKind] = useState('');
   const [showInternal, setShowInternal] = useState(false);
@@ -38,6 +39,7 @@ export function NodePalette({
     if (USE_MOCK) return;
     studioApi.tools().then((r) => setTools(r.tools)).catch(() => setTools([]));
     studioApi.lines().then((r) => setLines(r.lines)).catch(() => setLines([]));
+    studioApi.formats().then((r) => setFormats(r.formats)).catch(() => setFormats([]));
   }, []);
 
   const kinds = Array.from(new Set(tools.map((t) => t.kind))).sort();
@@ -67,7 +69,7 @@ export function NodePalette({
       })}
 
       <div className="hevi-palette__label">
-        产线
+        按出品形式
         <label className="hevi-palette__internal-toggle" title="显示尚未开放的内测产线">
           <input
             type="checkbox"
@@ -77,7 +79,7 @@ export function NodePalette({
           显示内测
         </label>
       </div>
-      {lines
+      {formats.length === 0 && lines
         .filter((line) => showInternal || line.availability !== 'internal')
         .map((line) => (
           <button
@@ -93,6 +95,43 @@ export function NodePalette({
             )}
           </button>
         ))}
+      {formats.map((format) => {
+        const styles = format.styles.filter((style) => format.available_styles.includes(style.id));
+        if (!styles.length) {
+          return (
+            <button
+              key={format.id}
+              type="button"
+              className="hevi-palette__btn hevi-palette__btn--line is-gated"
+              title={format.gated_reason || '即将开放'}
+              disabled
+            >
+              {format.label}
+              <span className="hevi-palette__badge">即将开放</span>
+            </button>
+          );
+        }
+        return (
+          <div key={format.id} className="hevi-palette__group">
+            <div className="hevi-palette__group-title">{format.label}</div>
+            {styles.map((style) => {
+              const line = lines.find((item) => item.id === style.line_id);
+              if (!line) return null;
+              return (
+                <button
+                  key={`${format.id}-${style.id}`}
+                  type="button"
+                  className="hevi-palette__btn hevi-palette__btn--line"
+                  title={style.hint || line.summary}
+                  onClick={() => onApplyLine?.({ ...line, product: `${format.label} · ${style.label}` })}
+                >
+                  {style.label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
 
       <div className="hevi-palette__label">工具 {tools.length || ''}</div>
       <input
