@@ -85,6 +85,7 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
     ("rate_limit", re.compile(r"\b429\b|rate[ _-]?limit|too many requests|限流|并发", re.I)),
     ("timeout", re.compile(r"timeout|timed out|readtimeout|deadline exceeded|超时", re.I)),
     ("network", re.compile(r"connection (reset|refused|aborted)|ssl|dns|proxy|network is unreachable|网络|代理", re.I)),
+    ("config", re.compile(r"unknown (video |image |audio )?provider|unknown tool|model not found|not supported by (the )?provider|未知.*(渠道|模型|工具)", re.I)),
     ("upstream", re.compile(r"\b5\d\d\b|internal server error|bad gateway|service unavailable|upstream|上游", re.I)),
     ("parameter", re.compile(r"\b400\b|\b422\b|invalid (parameter|argument|value)|validation error|unsupported|参数|不支持", re.I)),
     ("media", re.compile(r"no such file|file not found|not found.*(media|image|video|audio)|cannot identify image|素材|文件不存在|解码失败", re.I)),

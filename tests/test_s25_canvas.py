@@ -175,6 +175,7 @@ def test_backup_rejects_illegal_edges() -> None:
         ("insufficient credit balance", "quota"),
         ("no such file: /data/x.png", "media"),
         ("502 Bad Gateway from provider", "upstream"),
+        ("ValueError: Unknown video provider: no_such_provider", "config"),
         ("ValueError: something odd", "unknown"),
     ],
 )
