@@ -5,7 +5,7 @@
  * See: hevi-web/src/lib/runtime-config.ts
  */
 import type {
-  CanvasGraph, CanvasNode, CanvasEdge,
+  CanvasGraph, CanvasNode, CanvasEdge, NodeType,
   LongVideoTaskReq, TaskInfo, TaskShot, CostEstimateRes,
   CreativeCapability, Subject, SubjectKind,
   AuthRes, AuthUser, CreditsBalance,
@@ -166,6 +166,144 @@ export const canvasApi = {
     form.append('file', file);
     return authedFormReq<{ path: string }>('/api/canvas/reference-image', form);
   },
+};
+
+// ── S25 画布增强（对话建画布 / 模板版本 / 报价 / 备份 / 报错 / 素材 / 技能） ──
+export type CanvasPlanNode = {
+  key: string; node_type: NodeType; label: string;
+  config: Record<string, unknown>; position: { x: number; y: number };
+};
+export type CanvasPlanEdge = { edge_id: string; from: string; to: string; kind: string };
+export type CanvasPlanEstimateRow = {
+  key?: string; node_id?: string; node_type: string; kind: string;
+  model?: string; seconds?: number; cny: number; priced: boolean;
+};
+export type CanvasPlanEstimate = {
+  currency: string; per_node: CanvasPlanEstimateRow[];
+  unpriced: Array<{ key?: string; node_id?: string; reason: string }>;
+  total_cny: number; priced_nodes: number; unpriced_nodes: number; source: string;
+};
+export type CanvasPlanStep = { id: string; label: string; status: string; node_keys: string[] };
+export type CanvasPlan = {
+  schema: string; goal: string; format: string; style: string; line_id: string;
+  gated: boolean; aspect: string; lines: string[];
+  shots: Array<{ index: number; line: string; prompt: string; duration_s: number; route?: string; model?: string }>;
+  narration: string; provider: string; nodes: CanvasPlanNode[]; edges: CanvasPlanEdge[];
+  steps: CanvasPlanStep[]; questions: Array<{ id: string; question: string; answer: string }>;
+  estimate: CanvasPlanEstimate;
+  numbers: { nodes: number; edges: number; shots: number; seconds: number };
+  requires_confirm: boolean; confirm_token: string;
+};
+export type CanvasPlanSummary = {
+  goal: string; format: string; style: string;
+  numbers: CanvasPlan['numbers']; steps: CanvasPlanStep[];
+  questions: CanvasPlan['questions']; total_cny: number; unpriced_nodes: number;
+  requires_confirm: boolean; confirm_token: string;
+};
+export type CanvasTemplate = {
+  id: string; name: string; format: string; style: string;
+  current_version?: number; version?: number; updated_at?: string; created_at?: string;
+  builtin?: boolean; example?: string;
+  stats?: { nodes: number; edges: number };
+  slots?: Array<{ key: string; label: string; kind: string; node_id: string; field: string }>;
+};
+export type CanvasDiagnostic = {
+  category: string; title: string; detail: string; action: string;
+  retryable: boolean; raw: string;
+  retry: { kind: string; max_attempts: number };
+};
+
+export const canvasS25Api = {
+  plan: (body: {
+    prompt: string; format?: string; style?: string; line_id?: string;
+    slots?: Record<string, unknown>; lines?: string[]; seconds?: number;
+    provider?: string; narration?: string; aspect?: string;
+    structural_only?: boolean; use_llm?: boolean;
+  }) => authedReq<{ plan: CanvasPlan; summary: CanvasPlanSummary; script_source: string }>(
+    '/api/canvas/s25/plan', { method: 'POST', body: JSON.stringify(body) },
+  ),
+  patchPlan: (plan: CanvasPlan, node_key: string, patch: Record<string, unknown>) =>
+    authedReq<{ plan: CanvasPlan; summary: CanvasPlanSummary }>(
+      '/api/canvas/s25/plan/patch', { method: 'POST', body: JSON.stringify({ plan, node_key, patch }) },
+    ),
+  applyPlan: (body: {
+    plan: CanvasPlan; confirm_token: string; name?: string;
+    selected_nodes?: string[]; save?: boolean;
+  }) => authedReq<Record<string, unknown>>(
+    '/api/canvas/s25/plan/apply', { method: 'POST', body: JSON.stringify(body) },
+  ),
+  estimate: (body: { graph?: Record<string, unknown>; graph_id?: string; plan_id?: string; format?: string; style?: string }) =>
+    authedReq<CanvasPlanEstimate & { quote: string; ledger?: Record<string, unknown> | null }>(
+      '/api/canvas/s25/estimate', { method: 'POST', body: JSON.stringify(body) },
+    ),
+  templates: (format?: string) =>
+    authedReq<{ templates: CanvasTemplate[]; total: number }>(
+      `/api/canvas/s25/templates${format ? `?format=${encodeURIComponent(format)}` : ''}`,
+    ),
+  template: (id: string, version?: number) =>
+    authedReq<{ template: CanvasTemplate; graph: { nodes: CanvasPlanNode[]; edges: CanvasPlanEdge[] } }>(
+      `/api/canvas/s25/templates/${encodeURIComponent(id)}${version ? `?version=${version}` : ''}`,
+    ),
+  createTemplate: (body: { id: string; name: string; graph: Record<string, unknown>; format?: string; style?: string; note?: string }) =>
+    authedReq<{ template: CanvasTemplate }>('/api/canvas/s25/templates', { method: 'POST', body: JSON.stringify(body) }),
+  publishVersion: (id: string, body: { graph: Record<string, unknown>; note?: string; name?: string }) =>
+    authedReq<{ template: CanvasTemplate }>(`/api/canvas/s25/templates/${encodeURIComponent(id)}/versions`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  diffVersions: (id: string, from: number, to: number) =>
+    authedReq<Record<string, unknown>>(
+      `/api/canvas/s25/templates/${encodeURIComponent(id)}/diff?from_version=${from}&to_version=${to}`,
+    ),
+  applyTemplate: (id: string, body: { values?: Record<string, unknown>; version?: number; save?: boolean; name?: string }) =>
+    authedReq<Record<string, unknown>>(`/api/canvas/s25/templates/${encodeURIComponent(id)}/apply`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  backup: (graphId: string) =>
+    authedReq<Record<string, unknown>>(`/api/canvas/s25/backup?graph_id=${encodeURIComponent(graphId)}`),
+  verifyBackup: (payload: Record<string, unknown>, strict_media = false) =>
+    authedReq<{ ok: boolean; findings: Array<{ level: string; code: string; message: string }>; stats: Record<string, number>; checksum_ok: boolean }>(
+      '/api/canvas/s25/backup/verify', { method: 'POST', body: JSON.stringify({ payload, strict_media }) },
+    ),
+  importBackup: (body: { payload: Record<string, unknown>; allow_checksum_mismatch?: boolean; strict_media?: boolean; save?: boolean }) =>
+    authedReq<Record<string, unknown>>('/api/canvas/s25/backup/import', { method: 'POST', body: JSON.stringify(body) }),
+  diagnostics: (graphId: string) =>
+    authedReq<{ graph_id: string; nodes: Array<Record<string, unknown>>; problems: number; diagnostics: Record<string, CanvasDiagnostic> }>(
+      `/api/canvas/s25/diagnostics/${encodeURIComponent(graphId)}`,
+    ),
+  explain: (body: { error?: string; node_type?: string; config?: Record<string, unknown>; review?: Record<string, unknown> | null }) =>
+    authedReq<CanvasDiagnostic>('/api/canvas/s25/diagnostics/explain', { method: 'POST', body: JSON.stringify(body) }),
+  materialCapabilities: () =>
+    authedReq<Record<string, { available: boolean; cost?: string; note?: string; reason?: string; mode?: string }>>(
+      '/api/canvas/s25/material/capabilities',
+    ),
+  materialOp: (file: File, op: 'crop' | 'split_grid' | 'annotate' | 'inpaint', params: Record<string, unknown>) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('op', op);
+    form.append('params', JSON.stringify(params));
+    return authedFormReq<Record<string, unknown>>('/api/canvas/s25/material/op', form);
+  },
+  skills: (includeDisabled = true) =>
+    authedReq<{ skills: Array<{ id: string; title: string; summary: string; version: number; sha256: string; tags: string[]; enabled: boolean }> }>(
+      `/api/canvas/s25/skills?include_disabled=${includeDisabled}`,
+    ),
+  skill: (id: string, version?: number) =>
+    authedReq<{ id: string; title: string; content: string; version: number; sha256: string; versions: Array<Record<string, unknown>> }>(
+      `/api/canvas/s25/skills/${encodeURIComponent(id)}${version ? `?version=${version}` : ''}`,
+    ),
+  toggleSkill: (id: string, enabled: boolean) =>
+    authedReq<{ id: string; enabled: boolean }>(`/api/canvas/s25/skills/${encodeURIComponent(id)}/toggle`, {
+      method: 'POST', body: JSON.stringify({ enabled }),
+    }),
+  library: (kind?: string, q = '') =>
+    authedReq<{ items: Array<Record<string, unknown>>; total: number }>(
+      `/api/canvas/s25/library?${new URLSearchParams({ ...(kind ? { kind } : {}), ...(q ? { q } : {}) }).toString()}`,
+    ),
+  addLibrary: (body: Record<string, unknown>) =>
+    authedReq<{ item: Record<string, unknown> }>('/api/canvas/s25/library', { method: 'POST', body: JSON.stringify(body) }),
+  removeLibrary: (id: string) =>
+    authedReq<{ removed: boolean }>(`/api/canvas/s25/library/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  pluginContract: () => authedReq<Record<string, unknown>>('/api/canvas/s25/plugin-contract'),
 };
 
 /** 产线/画布产物下载：浏览器 <a>/<video> 无法带 Authorization，token 走查询参数。 */

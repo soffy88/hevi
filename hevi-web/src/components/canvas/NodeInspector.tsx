@@ -48,6 +48,22 @@ export function NodeInspector({
         {typeof node.data.revision === 'number' ? ` · v${node.data.revision}` : ''}
         {node.data.locked ? ' · 已锁定' : ''}
       </div>
+      {node.data.diagnostic && (
+        <div className="hevi-inspector__section" data-review="fail">
+          <div className="hevi-inspector__label">
+            失败原因：{node.data.diagnostic.title}
+            {node.data.diagnostic.retryable ? ' · 可重试' : ' · 处理后再试'}
+          </div>
+          <p className="hevi-inspector__ref-path">{node.data.diagnostic.detail}</p>
+          <p className="hevi-inspector__ref-path">建议：{node.data.diagnostic.action}</p>
+          {onRerun && (
+            <button type="button" className="hevi-topbar-btn"
+              onClick={onRerun} disabled={busy}>
+              {busy ? '重做中…' : '一键重试'}
+            </button>
+          )}
+        </div>
+      )}
       {review && (
         <div
           className="hevi-inspector__section"

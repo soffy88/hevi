@@ -2285,3 +2285,86 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .hevi-palette__group { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 6px; }
 .hevi-palette__group-title { font-size: 11px; font-weight: 800; color: var(--muted-foreground); letter-spacing: .06em; padding: 2px 4px; }
 .hevi-palette__btn.is-gated { opacity: .5; cursor: not-allowed; }
+
+/* ── S25：对话建画布面板 / 报价 / 失败归因 ─────────────────────────────── */
+.hevi-topbar-btn--ghost {
+  background: transparent;
+  color: var(--muted-foreground, #667085);
+  border-style: dashed;
+}
+.hevi-node__data-badge--diag {
+  color: var(--destructive, #d92d20);
+}
+.hevi-agent {
+  position: absolute;
+  top: 56px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 8;
+  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  box-shadow: 0 18px 48px rgba(16, 24, 40, 0.18);
+  overflow: hidden;
+}
+.hevi-agent__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+}
+.hevi-agent__tabs { display: flex; gap: 6px; }
+.hevi-agent__tabs button {
+  padding: 5px 10px; border-radius: 7px; border: 1px solid transparent;
+  background: transparent; cursor: pointer; font-size: 13px;
+}
+.hevi-agent__tabs button[data-active="true"] {
+  border-color: var(--border); background: var(--muted, #f2f4f7);
+  font-weight: 600;
+}
+.hevi-agent__close {
+  border: none; background: transparent; font-size: 20px; line-height: 1;
+  cursor: pointer; color: var(--muted-foreground, #667085);
+}
+.hevi-agent__body { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.hevi-agent__label { font-size: 12px; color: var(--muted-foreground, #667085); }
+.hevi-agent__input, .hevi-agent__edit textarea, .hevi-agent__edit input, .hevi-agent__select {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px; background: var(--background, #fff);
+  color: inherit; resize: vertical;
+}
+.hevi-agent__row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hevi-agent__select { flex: 1; min-width: 180px; }
+.hevi-agent__check { font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.hevi-agent__error { color: var(--destructive, #d92d20); font-size: 12px; margin: 0; }
+.hevi-agent__plan { display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--border); padding-top: 10px; }
+.hevi-agent__plan-head { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.hevi-agent__plan-head span { color: var(--muted-foreground, #667085); font-size: 12px; }
+.hevi-agent__numbers { font-size: 12px; color: var(--muted-foreground, #667085); }
+.hevi-agent__cost { font-size: 13px; }
+.hevi-agent__muted { color: var(--muted-foreground, #667085); font-size: 12px; }
+.hevi-agent__steps { display: flex; flex-direction: column; gap: 4px; }
+.hevi-agent__step { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.hevi-agent__step .hevi-agent__muted { margin-left: auto; }
+.hevi-agent__dot {
+  width: 8px; height: 8px; border-radius: 999px; background: var(--border);
+}
+.hevi-agent__step[data-done="true"] .hevi-agent__dot { background: var(--success, #12b76a); }
+.hevi-agent__questions, .hevi-agent__nodes { font-size: 12px; }
+.hevi-agent__questions ul, .hevi-agent__nodes ul { margin: 6px 0 0; padding-left: 16px; }
+.hevi-agent__node-row { display: flex; gap: 8px; align-items: center; }
+.hevi-agent__node-label { flex: 1; }
+.hevi-agent__link { border: none; background: transparent; color: var(--primary, #175cd3); cursor: pointer; font-size: 12px; }
+.hevi-agent__edit { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+.hevi-agent__done { font-size: 12px; color: var(--success, #027a48); }
+.hevi-agent__templates { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.hevi-agent__templates li {
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.hevi-agent__template-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.hevi-agent__template-meta { font-size: 12px; color: var(--muted-foreground, #667085); }
+@media (max-width: 640px) {
+  .hevi-agent { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 68vh; }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "two-shot-storyboard",
+  "title": "双镜头文字分镜",
+  "summary": "一句话 → 两镜文字分镜（时长/画面/声音/待确认），不调用生成",
+  "tags": [
+    "分镜",
+    "短视频"
+  ],
+  "version": 1,
+  "versions": [
+    {
+      "version": 1,
+      "file": "versions/v1.md",
+      "sha256": "7cd1407686276981a5443eb0cae0116c3ff8542db4ddc255ed2788042f88eda8"
+    }
+  ],
+  "sha256": "7cd1407686276981a5443eb0cae0116c3ff8542db4ddc255ed2788042f88eda8"
+}

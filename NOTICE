@@ -112,3 +112,14 @@ article2media (threerocks)
   one-draft-many-outputs export, article block ledger, translation checks in
   localization_dub, voice tiers and AIGC labelling. No SKILL prose, template,
   engine code, sample content, theme or font was copied.
+
+BeefTV (glanderness/BeefTV)
+- 来源：https://github.com/glanderness/BeefTV（BeefTV Source Available License 1.0）
+- 边界：**净室研究**。只读其 README / CHANGELOG / docs 的公开说明用于能力对标；
+  未 clone、未复制代码/图片/文案/提示词/模板，仓库与镜像不含 BeefTV 任何内容。
+- 实现：`hevi/canvas/agent_build.py`、`pricing_s25.py`、`backup_s25.py`、
+  `diagnostics_s25.py`、`templates_s25.py`、`material_ops_s25.py`、
+  `skills_s25.py`、`library_s25.py`、`plugin_contract_s25.py` 全部自写。
+- 合规：BeefTV 许可证禁止商业转售、套壳、收费部署与向第三方提供托管能力；
+  hevi 是托管在线服务，因此不引入其任何 Covered Material。若未来需要复用，
+  必须先取得书面授权并做法务评审。

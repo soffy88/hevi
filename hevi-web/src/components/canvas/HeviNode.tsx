@@ -20,6 +20,11 @@ export interface HeviNodeData {
   locked?: boolean;
   review?: CanvasReview | null;
   artifacts?: CanvasArtifact[];
+  // S25：失败节点的可读归因（标题/说明/是否可重试），由 /canvas/s25/diagnostics 回填。
+  diagnostic?: {
+    category: string; title: string; detail: string; action: string;
+    retryable: boolean; raw: string;
+  };
 }
 
 const STATUS_RING: Partial<Record<TaskStatus, string>> = {
@@ -101,6 +106,13 @@ export function HeviNode({ data, selected }: NodeProps<HeviNodeData>) {
               审稿：{reviewSource}
               {chatgpt?.status === 'pending' ? ' · 等待审阅' : ''}
               {chatgpt?.verdict ? ` · ${chatgpt.verdict === 'pass' ? '通过' : '未通过'}` : ''}
+            </div>
+          )}
+          {data.diagnostic && (
+            <div className="hevi-node__data-badge hevi-node__data-badge--diag"
+              title={`${data.diagnostic.detail}\n${data.diagnostic.action}`}>
+              {data.diagnostic.title}
+              {data.diagnostic.retryable ? ' · 可重试' : ' · 需处理'}
             </div>
           )}
           {artifactCount > 0 && (

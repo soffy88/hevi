@@ -102,3 +102,20 @@
 - **入库日期**: 2026-11-10
 - **备注**: 示例内容与上游字体另有版权，未带入；不接 VoxCPM2/mlx（Apple Silicon）；
   不读浏览器 cookie；不批量抓取；不新增付费服务。
+
+---
+
+## BeefTV (glanderness/BeefTV)
+
+- **来源**: https://github.com/glanderness/BeefTV
+- **许可证**: BeefTV Source Available License 1.0（非 OSI 开源；禁止商业转售/套壳/
+  收费部署/向第三方提供托管，未经书面授权）
+- **用途**: **只做能力对标**（无限画布、对话建画布、模板版本、报价、备份、MCP、
+  素材加工等），不复制其代码、图片、文案、提示词、模板或设计资源。
+- **实现**: `hevi/canvas/agent_build.py`、`pricing_s25.py`、`backup_s25.py`、
+  `diagnostics_s25.py`、`templates_s25.py`、`material_ops_s25.py`、
+  `skills_s25.py`、`library_s25.py`、`plugin_contract_s25.py`，以及
+  `hevi/api/routers/canvas_s25.py` 与本仓库自写前端组件。
+- **入库日期**: 2026-11-10
+- **备注**: README 中的赞助商广告「ll2.cn 提供 MiniMax-H3 0.05 元/秒」未经核实，
+  未接入、未报价、未宣传。

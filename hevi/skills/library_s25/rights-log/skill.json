@@ -1,0 +1,18 @@
+{
+  "id": "rights-log",
+  "title": "素材清单与授权记录",
+  "summary": "按用途整理画面/声音/字体/模板，逐项标风险与缺口",
+  "tags": [
+    "合规",
+    "授权"
+  ],
+  "version": 1,
+  "versions": [
+    {
+      "version": 1,
+      "file": "versions/v1.md",
+      "sha256": "95324280abc3ad1e1fb5aa0144f5252a18ccebd574974f5fd10f5a78e54ee8d7"
+    }
+  ],
+  "sha256": "95324280abc3ad1e1fb5aa0144f5252a18ccebd574974f5fd10f5a78e54ee8d7"
+}

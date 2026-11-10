@@ -1,0 +1,18 @@
+{
+  "id": "interview-outline",
+  "title": "采访提纲",
+  "summary": "三问 + 条件追问 + 补拍 + 授权记录，防诱导与素材风险",
+  "tags": [
+    "采访",
+    "纪实"
+  ],
+  "version": 1,
+  "versions": [
+    {
+      "version": 1,
+      "file": "versions/v1.md",
+      "sha256": "42f9cdd77617c9a4dd49735b3206aa7abfd5ea8af6db2d094dd5fb8960ddc314"
+    }
+  ],
+  "sha256": "42f9cdd77617c9a4dd49735b3206aa7abfd5ea8af6db2d094dd5fb8960ddc314"
+}

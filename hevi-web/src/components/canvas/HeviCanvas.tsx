@@ -15,12 +15,13 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { HeviNode, type HeviNodeData } from './HeviNode';
 import { NodePalette } from './NodePalette';
+import { CanvasAgentPanel } from './CanvasAgentPanel';
 import { NodeContextMenu, type ContextMenuState } from './NodeContextMenu';
 import { SubjectLibrary } from '../panels/SubjectLibrary';
 import { CreativePanel } from '../panels/CreativePanel';
 import { AssetLibrary } from '../panels/AssetLibrary';
 import { validateEdge, NODE_META } from '@/lib/canvas-rules';
-import { canvasApi, USE_MOCK } from '@/lib/api-client';
+import { canvasApi, canvasS25Api, USE_MOCK } from '@/lib/api-client';
 import type { NodeType } from '@/types/api';
 import { NodeInspector } from './NodeInspector';
 import { BetaQuota } from '../home/BetaQuota';
@@ -45,6 +46,12 @@ function CanvasInner() {
   const [graphId, setGraphId] = useState<string | null>(null);
   const [nodeBusy, setNodeBusy] = useState<string | null>(null);
   const packFileRef = useRef<HTMLInputElement | null>(null);
+  // S25：对话建画布 / 备份 / 报价 / 失败归因
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [estimate, setEstimate] = useState<{ total: number; quote: string } | null>(null);
+  const [diagnostics, setDiagnostics] = useState<Record<string, HeviNodeData['diagnostic']>>({});
+  const backupFileRef = useRef<HTMLInputElement | null>(null);
+  const nodesRef = useRef<typeof nodes>([]);
 
   const flash = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 2400); };
 
@@ -77,7 +84,7 @@ function CanvasInner() {
       id: String(e.edge_id ?? e.id ?? `e-${i}`),
       source: String(e.from_node_id ?? e.source),
       target: String(e.to_node_id ?? e.target),
-      animated: true,
+      animated: false,
       data: { kind: e.kind, status: e.status },
     }));
   }, []);
@@ -95,8 +102,49 @@ function CanvasInner() {
     try {
       const graph = await canvasApi.load(id);
       openGraph(graph);
+      window.localStorage.setItem(LAST_GRAPH_KEY, id);
     } catch { /* keep the in-memory graph */ }
   }, [openGraph]);
+
+  // S25：报价随“内容”变化重算（拖动位置不触发），失败归因在打开/执行后拉取。
+  nodesRef.current = nodes;
+  const estimateKey = nodes
+    .map((n) => `${n.id}:${n.data.nodeType}:${JSON.stringify(n.data.config ?? {})}`)
+    .join('|');
+  useEffect(() => {
+    if (USE_MOCK) { setEstimate(null); return; }
+    if (!nodesRef.current.length) { setEstimate(null); return; }
+    const timer = window.setTimeout(() => {
+      const graph = {
+        nodes: nodesRef.current.map((n) => ({
+          node_id: n.id, node_type: n.data.nodeType, config: n.data.config ?? {},
+        })),
+      };
+      void canvasS25Api.estimate({ graph })
+        .then((r) => setEstimate({ total: r.total_cny, quote: r.quote }))
+        .catch(() => setEstimate(null));
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [estimateKey]);
+
+  useEffect(() => {
+    if (!Object.keys(diagnostics).length) return;
+    setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, diagnostic: diagnostics[n.id] } })));
+  }, [diagnostics, setNodes]);
+
+  const refreshDiagnostics = useCallback(async (id: string) => {
+    if (USE_MOCK) return;
+    try {
+      const report = await canvasS25Api.diagnostics(id);
+      setDiagnostics(report.diagnostics as Record<string, HeviNodeData['diagnostic']>);
+    } catch {
+      setDiagnostics({});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (graphId) void refreshDiagnostics(graphId);
+  }, [graphId, refreshDiagnostics]);
 
   // 打开/保存一张图后重新 fitView：否则节点会落在侧栏或画布可视区之外，
   // 出现“看得见却点不到”（palette 拦截 pointer events）。
@@ -151,7 +199,7 @@ function CanvasInner() {
     if (!f || !t) return;
     const r = validateEdge(f.data.nodeType, t.data.nodeType);
     if (!r.valid) { flash(r.reason ?? '非法连接'); return; }
-    setEdges(eds => addEdge({ ...conn, animated: true }, eds));
+    setEdges(eds => addEdge({ ...conn, animated: false }, eds));
   }, [nodes, setEdges]);
 
   const addNode = useCallback((type: NodeType) => {
@@ -199,7 +247,7 @@ function CanvasInner() {
       id: `e-${ids[i]}-${id}`,
       source: ids[i]!,
       target: id,
-      animated: true,
+      animated: false,
     })));
     flash(`已展开产线 ${line.product}`);
   }, [setNodes, setEdges]);
@@ -318,6 +366,7 @@ function CanvasInner() {
       const retried = Object.keys(retries).length;
       flash(`执行 ${String(result.status ?? 'done')}：跑 ${ran} 个节点${retried ? `，自动重试 ${retried} 个` : ''}`);
       await reloadGraph(id);
+      await refreshDiagnostics(id);
     } catch (err) { flash(err instanceof Error ? err.message : '执行失败'); } finally { setExecuting(false); }
   };
 
@@ -331,6 +380,7 @@ function CanvasInner() {
       const ran = Array.isArray(result.ran) ? result.ran.length : 0;
       flash(`已重做 ${nodeId} 及下游 ${Math.max(0, ran - 1)} 个节点`);
       await reloadGraph(id);
+      await refreshDiagnostics(id);
     } catch (err) { flash(err instanceof Error ? err.message : '节点重做失败'); } finally { setNodeBusy(null); }
   };
 
@@ -351,6 +401,37 @@ function CanvasInner() {
       await canvasApi.patchNode(graphId, nodeId, { locked: !node?.data.locked });
       await reloadGraph(graphId);
     } catch { flash('锁定切换失败'); }
+  };
+
+  const exportBackup = async () => {
+    if (!graphId) { flash('先保存画布，再导出备份'); return; }
+    try {
+      const payload = await canvasS25Api.backup(graphId);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hevi-canvas-${graphId.slice(0, 8)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      const stats = payload.stats as { nodes?: number; media_missing?: number } | undefined;
+      flash(`已导出备份：${stats?.nodes ?? 0} 节点${stats?.media_missing ? `，${stats.media_missing} 个素材缺失` : ''}`);
+    } catch (err) {
+      flash(err instanceof Error ? err.message : '导出失败');
+    }
+  };
+
+  const importBackupFile = async (file: File) => {
+    try {
+      const payload = JSON.parse(await file.text()) as Record<string, unknown>;
+      const out = await canvasS25Api.importBackup({ payload, save: true });
+      const gid = String(out.graph_id ?? '');
+      if (!gid) throw new Error('后端没有返回 graph_id');
+      await reloadGraph(gid);
+      flash(`已导入备份：${String((out.numbers as { nodes?: number } | undefined)?.nodes ?? 0)} 节点`);
+    } catch (err) {
+      flash(err instanceof Error ? err.message : '导入失败（不是 S25 备份或校验不通过）');
+    }
   };
 
   const onLoadKoubo = async () => {
@@ -379,6 +460,28 @@ function CanvasInner() {
           <a href="/" className="hevi-canvas__home-link">← 首页</a>
           <a href="/studio/timeline" className="hevi-canvas__home-link">时间线</a>
           <button type="button" className="hevi-topbar-btn" onClick={onSave}>保存</button>
+          <button type="button" className="hevi-topbar-btn" onClick={() => setAgentOpen(true)}>
+            对话建画布
+          </button>
+          {estimate && (
+            <button type="button" className="hevi-topbar-btn hevi-topbar-btn--ghost"
+              title={estimate.quote} onClick={() => flash(estimate.quote)}>
+              预估 ¥{estimate.total.toFixed(2)}
+            </button>
+          )}
+          <button type="button" className="hevi-topbar-btn" onClick={() => void exportBackup()}>导出备份</button>
+          <button type="button" className="hevi-topbar-btn" onClick={() => backupFileRef.current?.click()}>导入备份</button>
+          <input
+            ref={backupFileRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) void importBackupFile(file);
+            }}
+          />
           <button type="button" className="hevi-topbar-btn" onClick={onLoadKoubo}>新建口播默认图</button>
           <button type="button" className="hevi-topbar-btn" onClick={() => packFileRef.current?.click()}>导入材料包 JSON</button>
           <input
@@ -406,6 +509,10 @@ function CanvasInner() {
           onConnect={onConnect} onNodeContextMenu={onNodeContextMenu}
           onNodeClick={onNodeClick} onPaneClick={onPaneClick}
           nodeTypes={nodeTypes} fitView
+          onlyRenderVisibleElements
+          elevateNodesOnSelect={false}
+          defaultEdgeOptions={{ animated: false }}
+          minZoom={0.1}
           proOptions={{ hideAttribution: true }}>
           <Background gap={16} size={1} />
           <Controls />
@@ -426,6 +533,13 @@ function CanvasInner() {
           />
         )}
       </div>
+
+      <CanvasAgentPanel
+        open={agentOpen}
+        onClose={() => setAgentOpen(false)}
+        onCreated={(id) => { void reloadGraph(id); }}
+        onFlash={flash}
+      />
 
       <div className="hevi-sidebar">
         <div className="hevi-sidebar__switch">

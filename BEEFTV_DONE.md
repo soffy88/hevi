@@ -19,3 +19,14 @@ We evaluated whether BeefTV adds value to `hevi` (an AI talking-head / short vid
 - BeefTV source code remains under its original source-available license, restricting commercial/external service usage.
 
 BEEFTV DONE
+
+## S25 update (2026-11-10)
+
+This earlier note only decided "do not integrate". S25 re-did the comparison as a
+**clean-room, documentation-only study** (README/CHANGELOG/docs; no clone, no code,
+no images, no prompts) and implemented hevi-owned equivalents for the product gaps:
+conversational canvas building, versioned workflow templates, pre-generation cost
+estimate, canvas backup/import, readable node failures, offline material ops,
+versioned text skills, a private asset library, an internal plugin contract, and
+MCP rate-limit/read-only hardening. See `S25_STUDY.md`, `docs/S25_CANVAS.md`,
+`NOTICE` and `THIRD_PARTY_NOTICES.md`. No BeefTV Covered Material is used.
