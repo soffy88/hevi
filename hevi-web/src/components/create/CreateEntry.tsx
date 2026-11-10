@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth-store';
-import { studioApi, USE_MOCK, type FormatPlan, type StudioFormat } from '@/lib/api-client';
+import { studioApi, USE_MOCK, type CraftIssue, type FormatPlan, type StudioFormat } from '@/lib/api-client';
 
 type FormatEvent = 'format_selected' | 'auto_changed' | 'storyboard_edited' | 'gated_click';
 
@@ -42,9 +42,13 @@ export function CreateEntry() {
   const [plan, setPlan] = useState<FormatPlan | null>(null);
   const [scriptText, setScriptText] = useState('');
   const [edits, setEdits] = useState(0);
-  const [busy, setBusy] = useState<'' | 'plan' | 'render' | 'upload'>('');
+  const [busy, setBusy] = useState<'' | 'plan' | 'render' | 'upload' | 'review'>('');
   const [error, setError] = useState('');
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [factsText, setFactsText] = useState('');
+  const [gateSkips, setGateSkips] = useState<string[]>([]);
+  const [seriesTemplate, setSeriesTemplate] = useState('');
+  const [review, setReview] = useState<{ mode: string; issues: CraftIssue[]; keep_half_text?: string[]; llm_error?: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const selected = useMemo(
@@ -150,6 +154,58 @@ export function CreateEntry() {
     }
   };
 
+  const parseFacts = (raw: string) =>
+    raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split(/[|｜]/);
+        return { claim: (parts[0] || '').trim(), source: parts.slice(1).join('|').trim() };
+      });
+
+  const skipGate = (gateId: string) => {
+    if (!plan?.craft) return;
+    const nextSkips = gateSkips.includes(gateId) ? gateSkips : [...gateSkips, gateId];
+    setGateSkips(nextSkips);
+    setPlan({
+      ...plan,
+      craft: {
+        ...plan.craft,
+        gates: plan.craft.gates.map((gate) =>
+          gate.id === gateId ? { ...gate, status: 'skipped', detail: '熟练用户一键跳过；审稿记录会保留。' } : gate,
+        ),
+      },
+    });
+    if (!USE_MOCK) {
+      void studioApi.craftEvent({
+        event: 'gate_skip', plan_id: plan.craft.plan_id, format: plan.craft.format, style: plan.craft.style, gate: gateId,
+      }).catch(() => undefined);
+    }
+  };
+
+  const runReview = async () => {
+    if (!plan) return;
+    setBusy('review');
+    setError('');
+    try {
+      const data = await studioApi.craftReview({
+        target: 'script',
+        topic: plan.title || topic.trim(),
+        lines: scriptText.split('\n').map((line) => line.trim()).filter(Boolean),
+        shots: plan.shots as unknown as Array<Record<string, unknown>>,
+        facts: parseFacts(factsText),
+        skipped_gates: gateSkips,
+        allow_llm: false,
+      });
+      setReview(data);
+    } catch (err) {
+      setError(formatError(err));
+    } finally {
+      setBusy('');
+    }
+  };
+
   const makePlan = async () => {
     if (!topic.trim()) { setError('先写一句主题或梗概'); return; }
     setBusy('plan');
@@ -165,10 +221,16 @@ export function CreateEntry() {
           ...(imagePath ? { image_path: imagePath } : {}),
         },
       };
-      const next = await studioApi.planFormat(body);
+      const next = await studioApi.planFormat({
+        ...body,
+        facts: parseFacts(factsText),
+        skip_gates: gateSkips,
+        series_template: seriesTemplate || undefined,
+      });
       setPlan(next);
       setScriptText(next.script.lines.join('\n'));
       setEdits(0);
+      setReview(null);
     } catch (err) {
       setError(formatError(err));
     } finally {
@@ -298,6 +360,20 @@ export function CreateEntry() {
         </section>
       )}
 
+      <section className="create-entry__facts">
+        <label className="create-entry__label" htmlFor="craft-facts">
+          事实与出处（每行一条：事实｜出处；数字没有出处会被自检标红，查不到就删）
+        </label>
+        <textarea
+          id="craft-facts"
+          value={factsText}
+          onChange={(e) => setFactsText(e.target.value)}
+          placeholder="例如：蓝光波长约 450 纳米｜物理教材第 3 章"
+          rows={2}
+        />
+        <small>公测期零付费：这些出处只用于自检，不会联网核对。</small>
+      </section>
+
       {error && <div className="create-entry__notice is-error" role="alert">{error}</div>}
 
       <section className="create-entry__actions">
@@ -327,15 +403,155 @@ export function CreateEntry() {
             />
           </label>
           <div className="create-entry__shots">
-            {plan.shots.map((shot) => (
-              <article key={shot.index} className="create-entry__shot">
-                <span className="create-entry__shot-index">{shot.index}</span>
-                <strong>{shot.label}</strong>
-                <p>{shot.line}</p>
-                <small>{shot.duration_s}s · 关键帧：{shot.keyframe_prompt}</small>
-              </article>
-            ))}
+            {plan.shots.map((shot) => {
+              const craftShot = plan.craft?.shots.find((item) => item.index === shot.index);
+              return (
+                <article key={shot.index} className="create-entry__shot">
+                  <span className="create-entry__shot-index">{shot.index}</span>
+                  <strong>{shot.label}</strong>
+                  <p>{shot.line}</p>
+                  <small>{shot.duration_s}s · 关键帧：{shot.keyframe_prompt}</small>
+                  {craftShot && (
+                    <div className="create-entry__shot-route">
+                      <span data-route={craftShot.route}>{craftShot.route_label}</span>
+                      <em>{craftShot.model || '本地'} · ¥{craftShot.cost_cny.toFixed(2)} · 约 {craftShot.render_s_est}s</em>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
+
+          {plan.craft && (
+            <div className="create-entry__craft">
+              <div className="create-entry__craft-budget">
+                <strong>{plan.craft.budget.quote}</strong>
+                <small>{plan.craft.budget.disclaimer}</small>
+              </div>
+
+              {plan.craft.series_templates.length > 0 && (
+                <div className="create-entry__craft-row">
+                  <span className="create-entry__label">栏目模板</span>
+                  {plan.craft.series_templates.map((template) => {
+                    const id = String(template.id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={`create-entry__chip${seriesTemplate === id ? ' is-active' : ''}`}
+                        onClick={() => setSeriesTemplate(id)}
+                        title={String(template.speedup || '')}
+                      >
+                        {String(template.label || id)}
+                      </button>
+                    );
+                  })}
+                  {seriesTemplate && <small>重新生成计划后套用；只换标题、比喻、标签。</small>}
+                </div>
+              )}
+
+              <div className="create-entry__craft-block">
+                <p className="create-entry__label">阶段闸门（可一键跳过，跳过会进审稿记录）</p>
+                <ol className="create-entry__gates">
+                  {plan.craft.gates.map((gate) => (
+                    <li key={gate.id} data-status={gate.status}>
+                      <div>
+                        <strong>{gate.label}</strong>
+                        <small>{gate.require}</small>
+                        {gate.status === 'skipped' && <em>已跳过</em>}
+                        {gate.status === 'done' && <em>已完成</em>}
+                      </div>
+                      {gate.skippable && gate.status === 'pending' && (
+                        <button type="button" className="create-entry__ghost" onClick={() => skipGate(gate.id)}>
+                          跳过
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div className="create-entry__craft-block">
+                <p className="create-entry__label">
+                  规则自检 · 红 {plan.craft.rules.counts.fail} / 黄 {plan.craft.rules.counts.warn}
+                </p>
+                <p className="create-entry__craft-policy">{plan.craft.rules.text_policy}</p>
+                {plan.craft.rules.issues.length === 0
+                  ? <small>没有发现问题。</small>
+                  : (
+                    <ul className="create-entry__issues">
+                      {plan.craft.rules.issues.map((issue, index) => (
+                        <li key={`${issue.rule}-${index}`} data-level={issue.level}>
+                          <span>{issue.level === 'fail' ? '红' : issue.level === 'warn' ? '黄' : '提示'}</span>
+                          {issue.message}
+                          {issue.fix && <em> → {issue.fix}</em>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+              </div>
+
+              <div className="create-entry__craft-grid">
+                <div className="create-entry__craft-block">
+                  <p className="create-entry__label">声音</p>
+                  <small>
+                    {plan.craft.sound.strategy === 'music_first_beat_cut' ? '先定整首配乐，再按拍点剪' : '旁白先行，配乐避让'}
+                    · {plan.craft.sound.bpm} BPM · 前 1 秒必须有声 · 淡出到黑场 · 无 BGM 版
+                  </small>
+                  <ul>
+                    {plan.craft.sound.checks.map((check) => (
+                      <li key={check.id}>{check.label}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="create-entry__craft-block">
+                  <p className="create-entry__label">标题 3 候选</p>
+                  <ul>
+                    {plan.craft.titles.map((title) => (
+                      <li key={title.title}><strong>{title.title}</strong><small>{title.gain}</small></li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="create-entry__craft-block">
+                <p className="create-entry__label">封面（单独生成，不截帧）</p>
+                <small>{plan.craft.cover.prompt}</small>
+              </div>
+
+              <div className="create-entry__craft-block">
+                <p className="create-entry__label">许可风险</p>
+                <small>{plan.craft.license.policy}</small>
+                <div className="create-entry__craft-row">
+                  {plan.craft.license.high_risk.map((item) => (
+                    <span key={item} className="create-entry__risk">{item}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="create-entry__craft-row">
+                <button type="button" className="create-entry__ghost" onClick={runReview} disabled={busy !== ''}>
+                  {busy === 'review' ? '独立审稿中…' : '独立审稿（只列问题）'}
+                </button>
+                {review && <small>{review.mode === 'llm' ? 'LLM 独立审稿' : '离线规则审稿'}{review.llm_error ? ` · ${review.llm_error}` : ''}</small>}
+              </div>
+              {review && (
+                <div className="create-entry__craft-block">
+                  <ul className="create-entry__issues">
+                    {review.issues.length === 0 && <li data-level="info"><span>提示</span>没有发现问题。</li>}
+                    {review.issues.map((issue, index) => (
+                      <li key={`review-${index}`} data-level={issue.dimension === 'fact' ? 'fail' : 'warn'}>
+                        <span>{issue.dimension || '问题'}</span>{issue.message}{issue.fix && <em> → {issue.fix}</em>}
+                      </li>
+                    ))}
+                  </ul>
+                  {review.keep_half_text && review.keep_half_text.length > 0 && (
+                    <small>只能留一半时，保留：{review.keep_half_text.join(' / ')}</small>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 

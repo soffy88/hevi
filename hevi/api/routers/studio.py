@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import mimetypes
 import os
 import uuid
@@ -19,7 +20,7 @@ from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.quota import QuotaError, get_quota_service, requested_duration_seconds
-from hevi.studio import format_events
+from hevi.studio import craft_ledger, craft_s22, format_events
 from hevi.studio.assets import list_assets
 from hevi.studio.conversational_edit import execute_edit
 from hevi.studio.formats import (
@@ -175,6 +176,11 @@ class FormatPlanRequest(BaseModel):
     line_id: str | None = None
     topic: str = ""
     slots: dict[str, Any] = Field(default_factory=dict)
+    # S22：事实出处、跳过闸门、栏目模板；都不传时按默认生成。
+    facts: list[dict[str, Any]] = Field(default_factory=list)
+    skip_gates: list[str] = Field(default_factory=list)
+    brief: dict[str, Any] | None = None
+    series_template: str | None = None
 
 
 _FORMAT_STYLE_PROMPTS = {
@@ -246,6 +252,21 @@ async def plan_format(
         }
         for i, line in enumerate(lines[:6])
     ]
+    craft_plan = craft_s22.build_craft_plan(
+        format_id=str(plan["format"]),
+        style_id=style_key,
+        topic=topic,
+        lines=lines,
+        shots=shots,
+        slots={**plan.get("slots", {}), **req.slots},
+        facts=req.facts,
+        skip_gates=req.skip_gates,
+        brief=req.brief,
+        series_template_id=req.series_template,
+    )
+    with contextlib.suppress(Exception):
+        # 账本写失败不该挡住出片计划；后台会少一行报价。
+        craft_ledger.record_plan(craft_plan)
     return {
         "format": plan["format"],
         "style": style_key,
@@ -253,6 +274,7 @@ async def plan_format(
         "title": title,
         "script": {"title": title, "lines": lines},
         "shots": shots,
+        "craft": craft_plan,
         "requires_confirm": True,
     }
 
@@ -285,6 +307,156 @@ async def get_format_metrics(
     if not can_view_internal_lines(user):
         raise HTTPException(status_code=403, detail="仅管理员可查看形式埋点")
     return format_events.metrics()
+
+
+class CraftPlanRequest(BaseModel):
+    format: str = "explainer"
+    style: str = ""
+    topic: str = ""
+    lines: list[str] = Field(default_factory=list)
+    shots: list[dict[str, Any]] = Field(default_factory=list)
+    slots: dict[str, Any] = Field(default_factory=dict)
+    facts: list[dict[str, Any]] = Field(default_factory=list)
+    skip_gates: list[str] = Field(default_factory=list)
+    brief: dict[str, Any] | None = None
+    series_template: str | None = None
+
+
+class CraftReviewRequest(BaseModel):
+    target: str = "script"
+    topic: str = ""
+    lines: list[str] = Field(default_factory=list)
+    shots: list[dict[str, Any]] = Field(default_factory=list)
+    facts: list[dict[str, Any]] = Field(default_factory=list)
+    skipped_gates: list[str] = Field(default_factory=list)
+    qc: dict[str, Any] = Field(default_factory=dict)
+    allow_llm: bool = False
+
+
+class CraftEventRequest(BaseModel):
+    event: str
+    plan_id: str = ""
+    format: str = ""
+    style: str = ""
+    gate: str = ""
+    route: str = ""
+    model: str = ""
+    seconds: float = 0
+    cny: float = 0
+    detail: dict[str, Any] = Field(default_factory=dict)
+
+
+def _require_admin(user: dict[str, Any] | None) -> None:
+    from hevi.auth.dependencies import can_view_internal_lines
+
+    if not can_view_internal_lines(user):
+        raise HTTPException(status_code=403, detail="仅管理员可查看")
+
+
+@router.post("/craft/plan")
+async def craft_plan(
+    req: CraftPlanRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S22：给任意脚本/分镜补镜头路线、报价、闸门、自检、声音与标题。"""
+    lines = [str(line) for line in req.lines if str(line).strip()]
+    if not lines and req.topic:
+        lines = [req.topic]
+    shots = req.shots or [
+        {
+            "index": i + 1,
+            "line": line,
+            "keyframe_prompt": line,
+            "duration_s": 5,
+        }
+        for i, line in enumerate(lines)
+    ]
+    plan = craft_s22.build_craft_plan(
+        format_id=req.format,
+        style_id=req.style,
+        topic=req.topic or (lines[0] if lines else ""),
+        lines=lines,
+        shots=shots,
+        slots=req.slots,
+        facts=req.facts,
+        skip_gates=req.skip_gates,
+        brief=req.brief,
+        series_template_id=req.series_template,
+    )
+    with contextlib.suppress(Exception):
+        craft_ledger.record_plan(plan)
+    return plan
+
+
+@router.post("/craft/review")
+async def craft_review(
+    req: CraftReviewRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """独立审稿：脚本或成片；只列问题。默认离线规则，不产生付费调用。"""
+    if req.target == "film":
+        return craft_s22.review_film_offline(req.qc)
+    if req.target != "script":
+        raise HTTPException(status_code=422, detail="target 只能是 script 或 film")
+    return await craft_s22.review_script(
+        topic=req.topic,
+        lines=req.lines,
+        shots=req.shots,
+        facts=req.facts,
+        skipped_gates=req.skipped_gates,
+        allow_llm=req.allow_llm,
+    )
+
+
+@router.get("/craft/license-audit")
+async def craft_license_audit(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    return craft_s22.license_audit()
+
+
+@router.get("/craft/ledger")
+async def craft_cost_ledger(
+    limit: int = 200,
+    user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """管理后台：成本账本（时间 / 镜头 / 模型 / 秒数 / 金额）。"""
+    _require_admin(user)
+    return craft_ledger.summary(limit=max(1, min(limit, 2000)))
+
+
+@router.post("/craft/events")
+async def craft_event(
+    req: CraftEventRequest,
+    user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """闸门跳过/完成、渲染完成等事件写入同一本账。"""
+    row = craft_ledger.record(
+        {
+            "kind": req.event or "event",
+            "plan_id": req.plan_id,
+            "format": req.format,
+            "style": req.style,
+            "shot": int(req.detail.get("shot") or 0),
+            "route": req.route,
+            "model": req.model,
+            "seconds": req.seconds,
+            "cny": req.cny,
+            "status": str(req.detail.get("status") or "logged"),
+            "note": f"gate={req.gate}" if req.gate else "",
+            "user_id": str((user or {}).get("id") or ""),
+        }
+    )
+    return {"ok": True, "row": row}
+
+
+@router.get("/craft/series-templates")
+async def craft_series_templates(
+    format: str = "explainer",
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    items = craft_s22.series_templates(format)
+    return {"templates": items, "total": len(items)}
 
 
 @router.get("/lines")

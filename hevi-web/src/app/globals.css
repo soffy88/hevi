@@ -2239,6 +2239,42 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 .create-entry__shot small { color: var(--muted-foreground); font-size: 11px; line-height: 1.45; display: block; }
 .create-entry__result { border: 1px solid var(--border, #e4e7ec); border-radius: 18px; padding: 16px; background: var(--card, #fff); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .create-entry__result h2 { margin: 0; font-size: 18px; width: 100%; }
+.create-entry__facts { display: grid; gap: 6px; margin: 14px 0; }
+.create-entry__facts textarea { width: 100%; border: 1px solid var(--border, #d0d5dd); border-radius: 10px; padding: 9px 12px; font: inherit; font-size: 13px; line-height: 1.5; resize: vertical; background: transparent; color: inherit; }
+.create-entry__facts small { color: var(--muted-foreground); font-size: 11px; }
+.create-entry__shot-route { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.create-entry__shot-route span { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: #eef4ff; color: #1d4ed8; }
+.create-entry__shot-route span[data-route="blender"] { background: #f5f0ff; color: #6d28d9; }
+.create-entry__shot-route span[data-route="generation"] { background: #fff1f0; color: #b91c1c; }
+.create-entry__shot-route span[data-route="user_media"] { background: #ecfdf5; color: #047857; }
+.create-entry__shot-route span[data-route="mixed"] { background: #fdf6e3; color: #92400e; }
+.create-entry__shot-route em { font-size: 10px; color: var(--muted-foreground); font-style: normal; }
+.create-entry__craft { margin-top: 16px; border-top: 1px dashed var(--border, #e4e7ec); padding-top: 14px; display: grid; gap: 14px; }
+.create-entry__craft-budget { border-radius: 12px; background: #0f172a; color: #f8fafc; padding: 12px 14px; display: grid; gap: 4px; }
+.create-entry__craft-budget strong { font-size: 15px; }
+.create-entry__craft-budget small { color: #cbd5e1; font-size: 11px; line-height: 1.45; }
+.create-entry__craft-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.create-entry__craft-row small { color: var(--muted-foreground); font-size: 11px; }
+.create-entry__craft-block { border: 1px solid var(--border, #e4e7ec); border-radius: 12px; padding: 10px 12px; background: var(--accent, #f8fafc); display: grid; gap: 6px; }
+.create-entry__craft-block ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 12px; line-height: 1.45; }
+.create-entry__craft-block li small { display: block; color: var(--muted-foreground); font-size: 11px; }
+.create-entry__craft-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.create-entry__craft-policy { margin: 0; font-size: 12px; color: var(--muted-foreground); }
+.create-entry__gates { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.create-entry__gates li { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border, #e4e7ec); border-radius: 10px; padding: 8px 10px; background: var(--card, #fff); }
+.create-entry__gates li[data-status="skipped"] { opacity: .62; }
+.create-entry__gates li[data-status="done"] { border-color: #86efac; background: #f0fdf4; }
+.create-entry__gates strong { display: block; font-size: 13px; }
+.create-entry__gates small { display: block; color: var(--muted-foreground); font-size: 11px; line-height: 1.4; }
+.create-entry__gates em { font-style: normal; font-size: 10px; font-weight: 800; color: var(--primary); }
+.create-entry__issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-size: 12px; line-height: 1.45; }
+.create-entry__issues li { border-left: 3px solid #cbd5e1; padding-left: 8px; }
+.create-entry__issues li[data-level="fail"] { border-color: #ef4444; }
+.create-entry__issues li[data-level="warn"] { border-color: #f59e0b; }
+.create-entry__issues li > span { font-weight: 800; margin-right: 6px; font-size: 10px; text-transform: uppercase; }
+.create-entry__issues em { font-style: normal; color: var(--muted-foreground); }
+.create-entry__risk { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: #fef2f2; color: #991b1b; }
+
 @media (max-width: 640px) {
   .create-entry__formats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .create-entry__card-media { height: 72px; }

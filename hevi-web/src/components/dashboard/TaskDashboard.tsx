@@ -16,6 +16,7 @@ import { useTaskWebSocket } from '@/hooks/useTaskWebSocket';
 import { TaskRow } from '@/components/dashboard/TaskRow';
 import { StatsSkeleton, TaskStats } from '@/components/dashboard/TaskStats';
 import { FormatMetricsPanel } from '@/components/dashboard/FormatMetricsPanel';
+import { CraftLedgerPanel } from '@/components/dashboard/CraftLedgerPanel';
 import type { DashboardTask, TaskInfo } from '@/types/api';
 
 function toDashboardTask(task: TaskInfo): DashboardTask {
@@ -114,6 +115,7 @@ export function TaskDashboard() {
         : <div className="ex-v6__restore is-offline">⟳ 实时通道{ws.reconnecting ? '重连中' : '未连接'}，将自动恢复</div>}
 
       <FormatMetricsPanel />
+      <CraftLedgerPanel />
       {loading ? <StatsSkeleton /> : <TaskStats total={total} counts={counts} />}
 
       <div className="tdash__filters" role="tablist" aria-label="状态过滤">

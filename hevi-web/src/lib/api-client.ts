@@ -184,10 +184,38 @@ export type StudioFormat = {
   default_style: string; styles: StudioFormatStyle[];
   available: boolean; available_styles: string[]; gated_reason?: string;
 };
+export type CraftShot = {
+  index: number; line: string; keyframe_prompt?: string;
+  route: 'code' | 'blender' | 'generation' | 'user_media' | 'mixed' | string;
+  route_label: string; model: string; duration_s: number;
+  cost_cny: number; offline_cost_cny: number; render_s_est: number; why: string; note: string;
+};
+export type CraftGate = {
+  id: string; label: string; require: string; skippable: boolean;
+  status: 'pending' | 'done' | 'skipped' | string; detail: string;
+  evidence: Record<string, unknown>; acted_at?: string;
+};
+export type CraftIssue = { level?: string; rule?: string; shot?: number; message: string; fix?: string; dimension?: string };
+export type CraftPlan = {
+  plan_id: string; format: string; style: string;
+  brief: { topic: string; audience: string; payoff: string; quotable: string; ready: boolean; questions: string[] };
+  gates: CraftGate[];
+  shots: CraftShot[];
+  budget: { currency: string; shots: number; total_seconds: number; total_render_s_est: number; total_cny: number; per_route: Record<string, number>; quote: string; disclaimer: string };
+  rules: { ok: boolean; issues: CraftIssue[]; counts: Record<string, number>; prompt_fixes: Array<{ shot: number; changes: string[]; prompt: string }>; text_policy: string; preview: Record<string, unknown> };
+  sound: { strategy: string; bpm: number; beat_period_s: number; total_s: number; cut_points_s: number[]; first_frame: Record<string, unknown>; fade_out: Record<string, unknown>; no_bgm_export: Record<string, unknown>; tts_roundtrip: Record<string, unknown>; checks: Array<{ id: string; label: string; state: string }> };
+  titles: Array<{ title: string; gain: string; why: string }>;
+  cover: { separate_generation: boolean; not_frame_grab: boolean; prompt: string; palette: string[]; rules: string[] };
+  series_templates: Array<Record<string, unknown>>;
+  series_template: Record<string, unknown> | null;
+  license: { high_risk: string[]; not_clearly_commercial: string[]; policy: string };
+  review: { mode: string; issues: CraftIssue[] };
+};
 export type FormatPlan = {
   format: string; style: string; line_id: string; title: string;
   script: { title: string; lines: string[] };
   shots: { index: number; label: string; line: string; keyframe_prompt: string; duration_s: number }[];
+  craft?: CraftPlan;
   requires_confirm: boolean;
 };
 
@@ -195,8 +223,17 @@ export const studioApi = {
   tools: () => authedReq<{ tools: { id: string; kind: string; summary: string }[]; total: number }>('/api/studio/tools'),
   lines: () => authedReq<{ lines: { id: string; product: string; summary: string; tools: string[]; render_runtime?: string; availability?: 'ga' | 'internal' }[]; total: number }>('/api/studio/lines'),
   formats: (hasMedia = false) => authedReq<{ formats: StudioFormat[]; total: number; ai_drama_gate: { open: boolean; reason: string } }>(`/api/studio/formats${hasMedia ? '?has_media=true' : ''}`),
-  planFormat: (body: { format?: string; style?: string; topic: string; slots?: Record<string, unknown> }) =>
+  planFormat: (body: { format?: string; style?: string; topic: string; slots?: Record<string, unknown>; facts?: Array<Record<string, unknown>>; skip_gates?: string[]; brief?: Record<string, unknown>; series_template?: string }) =>
     authedReq<FormatPlan>('/api/studio/formats/plan', { method: 'POST', body: JSON.stringify(body) }),
+  craftPlan: (body: { format: string; style?: string; topic: string; lines: string[]; shots?: Array<Record<string, unknown>>; slots?: Record<string, unknown>; facts?: Array<Record<string, unknown>>; skip_gates?: string[]; brief?: Record<string, unknown>; series_template?: string }) =>
+    authedReq<CraftPlan>('/api/studio/craft/plan', { method: 'POST', body: JSON.stringify(body) }),
+  craftReview: (body: { target: 'script' | 'film'; topic?: string; lines?: string[]; shots?: Array<Record<string, unknown>>; facts?: Array<Record<string, unknown>>; skipped_gates?: string[]; qc?: Record<string, unknown>; allow_llm?: boolean }) =>
+    authedReq<{ mode: string; model: string; issues: CraftIssue[]; keep_half?: number[]; cut_half?: number[]; keep_half_text?: string[]; counts?: Record<string, number>; llm_error?: string }>('/api/studio/craft/review', { method: 'POST', body: JSON.stringify(body) }),
+  craftLedger: (limit = 200) => authedReq<{ rows: number; plans: number; total_seconds: number; total_cny: number; by_route: Array<Record<string, unknown>>; by_model: Array<Record<string, unknown>>; recent: Array<Record<string, unknown>> }>(`/api/studio/craft/ledger?limit=${limit}`),
+  craftLicenseAudit: () => authedReq<{ entries: Array<Record<string, unknown>>; high_risk: string[]; not_clearly_commercial: string[]; policy: string; note: string }>('/api/studio/craft/license-audit'),
+  craftSeriesTemplates: (format = 'explainer') => authedReq<{ templates: Array<Record<string, unknown>>; total: number }>(`/api/studio/craft/series-templates?format=${format}`),
+  craftEvent: (body: { event: string; plan_id?: string; format?: string; style?: string; gate?: string; route?: string; model?: string; seconds?: number; cny?: number; detail?: Record<string, unknown> }) =>
+    authedReq<{ ok: boolean }>('/api/studio/craft/events', { method: 'POST', body: JSON.stringify(body) }),
   createFormatSlate: (body: { format?: string; style?: string; line_id?: string; slots?: Record<string, unknown>; execute?: boolean }) =>
     authedReq<Record<string, unknown>>('/api/studio/slates', { method: 'POST', body: JSON.stringify({ execute: true, ...body }) }),
   recordFormatEvent: (body: { event: string; format?: string; style?: string; detail?: Record<string, unknown> }) =>
