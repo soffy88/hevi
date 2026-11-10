@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -596,6 +597,9 @@ def self_check(
 # 独立审稿
 # ---------------------------------------------------------------------------
 
+_LLM_REVIEW_COOLDOWN_S = float(os.getenv("HEVI_CRAFT_REVIEW_COOLDOWN_S", "600"))
+_LLM_COOLDOWN_UNTIL = 0.0
+
 _REVIEW_SYSTEM = (
     "你是独立审稿人，不参与写作。只输出严格 JSON；只列问题，不夸、不总结、不改写全文。"
 )
@@ -757,7 +761,7 @@ def review_script_offline(
     }
 
 
-def _review_sync(prompt: str, *, timeout: float = 30.0) -> tuple[str, str]:
+def _review_sync(prompt: str, *, timeout: float = 20.0) -> tuple[str, str]:
     from hevi.providers.free_llm import available_channels, build_channel_caller
 
     names = available_channels()
@@ -838,8 +842,11 @@ async def review_script(
         facts=facts,
         skipped_gates=skipped_gates,
     )
+    global _LLM_COOLDOWN_UNTIL
     if not allow_llm:
         return baseline
+    if time.monotonic() < _LLM_COOLDOWN_UNTIL:
+        return {**baseline, "llm_error": "LLM 通道冷却中，本次用离线规则"}
     prompt = _REVIEW_PROMPT.format(
         topic=topic,
         facts=json.dumps(facts or [], ensure_ascii=False)[:2000],
