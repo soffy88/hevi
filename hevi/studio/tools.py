@@ -141,18 +141,21 @@ async def _research_brief(payload: dict[str, Any]) -> dict[str, Any]:
     caller = payload.get("caller")
     if caller is None:
         from hevi.providers.llm_pick import resolve_text_llm
+
         llm_fn = resolve_text_llm()
         if llm_fn is not None:
+
             class Adapter:
                 async def call(self, system: str, prompt: str, temperature: float = 0.2) -> str:
                     res = await llm_fn(
                         messages=[
                             {"role": "system", "content": system},
-                            {"role": "user", "content": prompt}
+                            {"role": "user", "content": prompt},
                         ],
-                        temperature=temperature
+                        temperature=temperature,
                     )
                     return res["content"]
+
             caller = Adapter()
 
     if caller is None:
@@ -349,7 +352,9 @@ async def _warmgold_beat_check(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(script, dict) or not script.get("shots"):
         return {"status": "blocked", "reason": "需要逐拍脚本（shots）"}
     beat_data = beats.build_beats(script, music_path=payload.get("music_path") or None)
-    result = scriptcheck.check_script(script, beat_data, music_present=bool(payload.get("music_path")))
+    result = scriptcheck.check_script(
+        script, beat_data, music_present=bool(payload.get("music_path"))
+    )
     return {"status": "ok" if result["pass"] else "blocked", **result}
 
 
@@ -855,9 +860,144 @@ def _register_defaults() -> None:
     )
     _register_kit_tools()
     _register_ai_drama_tools()
+    _register_anidoodle_tools()
     from hevi.studio.catalog import register_catalog
 
     register_catalog()
+
+
+def _register_anidoodle_tools() -> None:
+    """S29: code-drawn styles, drawing-process clips, code music and gates.
+
+    Each is its own node, so a failed still does not throw away a clip and a
+    failed music check does not block a picture. The handlers are thin wrappers
+    over ``hevi.anidoodle`` and fail closed with the engine's message.
+    """
+
+    async def _styles(payload: dict[str, Any]) -> dict[str, Any]:
+        import asyncio
+
+        from hevi.anidoodle import (
+            families,
+            list_styles,
+            recommend_style,
+            validation_for,
+        )
+
+        topic = str(payload.get("topic") or "")
+        intent = str(payload.get("intent") or "")
+        return {
+            "styles": [{**style.to_dict(), **validation_for(style.id)} for style in list_styles()],
+            "families": families(),
+            "recommendation": (
+                await asyncio.to_thread(recommend_style, topic, intent=intent)
+                if topic or intent
+                else None
+            ),
+        }
+
+    async def _still(payload: dict[str, Any]) -> dict[str, Any]:
+        import asyncio
+
+        from hevi.anidoodle import render_still
+
+        return await asyncio.to_thread(
+            render_still,
+            str(payload.get("style_id") or ""),
+            frame=payload.get("frame"),
+            scale=float(payload.get("scale") or 1.0),
+        )
+
+    async def _draw(payload: dict[str, Any]) -> dict[str, Any]:
+        import asyncio
+
+        from hevi.anidoodle import render_draw_clip
+
+        return await asyncio.to_thread(
+            render_draw_clip,
+            str(payload.get("style_id") or ""),
+            poster_frame=payload.get("poster_frame"),
+            scale=float(payload.get("scale") or 1.0),
+        )
+
+    async def _music(payload: dict[str, Any]) -> dict[str, Any]:
+        import asyncio
+
+        from hevi.anidoodle import compose_bgm
+
+        return await asyncio.to_thread(
+            compose_bgm,
+            style=str(payload.get("style") or "lofiElectronic"),
+            mood=str(payload.get("mood") or ""),
+            key=str(payload.get("key") or ""),
+            bpm=int(payload.get("bpm") or 0),
+            bars=int(payload.get("bars") or 12),
+            seed=int(payload.get("seed") or 29),
+            fmt=str(payload.get("format") or "mp3"),
+        )
+
+    async def _gate(payload: dict[str, Any]) -> dict[str, Any]:
+        import asyncio
+
+        from hevi.anidoodle import run_gate, run_verify_export
+
+        mp4 = str(payload.get("mp4") or "")
+        gate = await asyncio.to_thread(
+            run_gate, str(payload.get("film") or ""), mp4, bool(payload.get("drawing", True))
+        )
+        verify = await asyncio.to_thread(run_verify_export, mp4)
+        return {"gate": gate, "verify_export": verify}
+
+    register_tool(
+        ToolSpec(
+            "anidoodle.styles",
+            "style",
+            "anidoodle 32 种代码手绘风格；按主题/用途推荐并给理由",
+            ("topic", "intent"),
+            ("styles", "families", "recommendation"),
+        ),
+        _styles,
+    )
+    register_tool(
+        ToolSpec(
+            "anidoodle.still",
+            "render",
+            "anidoodle 成图节点：一种风格的一张完成稿（PNG，可复现）",
+            ("style_id", "frame", "scale"),
+            ("path", "md5", "reproducible"),
+        ),
+        _still,
+    )
+    register_tool(
+        ToolSpec(
+            "anidoodle.draw_clip",
+            "render",
+            "anidoodle 绘制过程片节点：线稿→铺色→细节，末帧=成图；独立 gate/verify",
+            ("style_id", "poster_frame", "scale"),
+            ("path", "determinism", "gate", "verify_export"),
+        ),
+        _draw,
+    )
+    register_tool(
+        ToolSpec(
+            "anidoodle.music",
+            "audio",
+            "anidoodle 代码作曲节点：无录音、无音色包；自检调式/响度/掩蔽/分轨/novelty",
+            ("style", "mood", "bars", "seed"),
+            ("path", "check"),
+        ),
+        _music,
+    )
+    register_tool(
+        ToolSpec(
+            "anidoodle.gate",
+            "qa",
+            "anidoodle 成片自检：确定性、死空镜、音画/峰值/文字裁切",
+            ("film", "mp4", "drawing"),
+            ("gate", "verify_export"),
+        ),
+        _gate,
+    )
 
 
 def _register_ai_drama_tools() -> None:
@@ -896,7 +1036,13 @@ def _register_ai_drama_tools() -> None:
     for tool_id in ALL_TOOLS:
         kind, summary = summaries.get(tool_id, ("script", "drama 节点"))
         register_tool(
-            ToolSpec(tool_id, kind, summary, ("topic", "series_dir", "out_dir"), ("output", "ai_drama_state")),
+            ToolSpec(
+                tool_id,
+                kind,
+                summary,
+                ("topic", "series_dir", "out_dir"),
+                ("output", "ai_drama_state"),
+            ),
             _make(tool_id),
         )
 

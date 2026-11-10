@@ -31,3 +31,9 @@ test_*.py
 repro_*.py
 step3_*.log
 .veya/
+
+# anidoodle: the image installs its own Node deps
+third_party/anidoodle/engine/node_modules/
+third_party/anidoodle/engine/.cache/
+third_party/anidoodle/engine/out/
+third_party/anidoodle/engine/dist/

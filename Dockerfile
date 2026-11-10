@@ -52,6 +52,16 @@ COPY hevi-remotion/package.json hevi-remotion/package-lock.json ./hevi-remotion/
 RUN cd hevi-remotion && npm ci --omit=dev --no-audit --no-fund
 COPY hevi-remotion/ ./hevi-remotion/
 
+# anidoodle (S29): the vendored code-drawn style engine and its Node deps.
+# Remotion backend intentionally omitted; rendering uses playwright-core.
+COPY third_party/anidoodle/engine/package.json third_party/anidoodle/engine/package-lock.json ./third_party/anidoodle/engine/
+RUN cd third_party/anidoodle/engine && npm ci --omit=optional --no-audit --no-fund
+COPY third_party/anidoodle/ ./third_party/anidoodle/
+RUN mkdir -p third_party/anidoodle/engine/node_modules/.remotion \
+    && ln -sfn /app/hevi-remotion/node_modules/.remotion/chrome-headless-shell \
+       third_party/anidoodle/engine/node_modules/.remotion/chrome-headless-shell \
+    && chown -R hevi:hevi third_party/anidoodle
+
 COPY alembic.ini ./
 
 # Runtime must not execute the API as root.

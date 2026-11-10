@@ -1882,6 +1882,9 @@ _dance_transition_table_schema.register_dance_transition_table_schema_capabiliti
 from . import dance_mv_prompt_pack_schema as _dance_mv_prompt_pack_schema  # noqa: E402,F401
 _dance_mv_prompt_pack_schema.register_dance_mv_prompt_pack_schema_capabilities_once()
 
+from . import anidoodle as _anidoodle  # noqa: E402,F401
+_anidoodle.register_anidoodle_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

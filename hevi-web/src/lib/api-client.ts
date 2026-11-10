@@ -405,6 +405,15 @@ export type FormatPlan = {
   requires_confirm: boolean;
 };
 
+/** Fetch an authenticated media/file endpoint as a Blob (for <img>/<video> object URLs). */
+export async function authedBlob(path: string): Promise<Blob> {
+  if (!authToken) throw new Error('NOT_AUTHENTICATED');
+  const res = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${authToken}` } });
+  if (res.status === 401) { fireUnauthorized(); throw new Error('401 Unauthorized'); }
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.blob();
+}
+
 export const studioApi = {
   tools: () => authedReq<{ tools: { id: string; kind: string; summary: string }[]; total: number }>('/api/studio/tools'),
   lines: () => authedReq<{ lines: { id: string; product: string; summary: string; tools: string[]; render_runtime?: string; availability?: 'ga' | 'internal' }[]; total: number }>('/api/studio/lines'),
@@ -429,6 +438,15 @@ export const studioApi = {
   scriptShortFilm: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/short-film/plan', { method: 'POST', body: JSON.stringify(body) }),
   scriptReview: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/review', { method: 'POST', body: JSON.stringify(body) }),
   scriptFilmability: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/studio/scriptcraft/filmability', { method: 'POST', body: JSON.stringify(body) }),
+
+  anidoodleStyles: (topic = '', intent = '') =>
+    authedReq<Record<string, unknown>>(`/api/anidoodle/styles?topic=${encodeURIComponent(topic)}&intent=${encodeURIComponent(intent)}`),
+  anidoodleEngine: () => authedReq<Record<string, unknown>>('/api/anidoodle/engine'),
+  anidoodleRecommend: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/anidoodle/recommend', { method: 'POST', body: JSON.stringify(body) }),
+  anidoodleStill: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/anidoodle/still', { method: 'POST', body: JSON.stringify(body) }),
+  anidoodleGallery: (scale = 0.5) => authedReq<Record<string, unknown>>(`/api/anidoodle/gallery?scale=${scale}`, { method: 'POST' }),
+  anidoodleDraw: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/anidoodle/draw-clip', { method: 'POST', body: JSON.stringify(body) }),
+  anidoodleMusic: (body: Record<string, unknown>) => authedReq<Record<string, unknown>>('/api/anidoodle/music', { method: 'POST', body: JSON.stringify(body) }),
   craftLedger: (limit = 200) => authedReq<{ rows: number; plans: number; total_seconds: number; total_cny: number; by_route: Array<Record<string, unknown>>; by_model: Array<Record<string, unknown>>; recent: Array<Record<string, unknown>> }>(`/api/studio/craft/ledger?limit=${limit}`),
   craftLicenseAudit: () => authedReq<{ entries: Array<Record<string, unknown>>; high_risk: string[]; not_clearly_commercial: string[]; policy: string; note: string }>('/api/studio/craft/license-audit'),
   craftSeriesTemplates: (format = 'explainer') => authedReq<{ templates: Array<Record<string, unknown>>; total: number }>(`/api/studio/craft/series-templates?format=${format}`),

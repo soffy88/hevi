@@ -11,6 +11,22 @@
 | POST | `/api/ops/{name}` | Execute Op |
 | POST | `/api/ops/{name}/confirm` | ⚠️ 兼容 · Confirm Proposal |
 
+## anidoodle
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/anidoodle/bgm` | Bgm |
+| POST | `/api/anidoodle/draw-clip` | Draw Clip |
+| GET | `/api/anidoodle/engine` | Engine |
+| GET | `/api/anidoodle/file` | File |
+| POST | `/api/anidoodle/gallery` | Gallery |
+| POST | `/api/anidoodle/gate` | Gate |
+| POST | `/api/anidoodle/music` | Music |
+| POST | `/api/anidoodle/partial` | Partial |
+| POST | `/api/anidoodle/recommend` | Recommend |
+| POST | `/api/anidoodle/still` | Still |
+| GET | `/api/anidoodle/styles` | Styles |
+
 ## audio_library
 
 | 方法 | 路径 | 说明 |
@@ -93,6 +109,10 @@
 | POST | `/api/canvas/material-pack/regenerate` | Material Pack Regenerate Endpoint |
 | POST | `/api/canvas/planned-graph` | Planned Graph Endpoint |
 | POST | `/api/canvas/reference-image` | Upload Canvas Reference Image |
+| POST | `/api/canvas/review/claim` | Review Claim |
+| GET | `/api/canvas/review/status` | Review Status |
+| POST | `/api/canvas/review/submit` | Review Submit |
+| GET | `/api/canvas/review/thumb/{token}` | Review Thumbnail |
 | POST | `/api/canvas/templates/koubo` | Create Koubo Template |
 | POST | `/api/canvas/workflow-execute` | Workflow Execute Endpoint |
 | POST | `/api/canvas/workflow-preflight` | Workflow Preflight Endpoint |
@@ -105,6 +125,36 @@
 | POST | `/api/canvas/{graph_id}/nodes/{node_key}/execute` | Execute Node |
 | POST | `/api/canvas/{graph_id}/nodes/{node_key}/review` | Review Node Endpoint |
 | GET | `/api/canvas/{graph_id}/nodes/{node_key}/revisions` | List Node Revisions |
+| POST | `/api/canvas/{graph_id}/style-lock` | Apply Style Lock |
+
+## canvas-s25
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/canvas/s25/backup` | Export Backup |
+| POST | `/api/canvas/s25/backup/import` | Import Backup |
+| POST | `/api/canvas/s25/backup/verify` | Verify Backup |
+| POST | `/api/canvas/s25/diagnostics/explain` | Explain |
+| GET | `/api/canvas/s25/diagnostics/{graph_id}` | Diagnostics |
+| POST | `/api/canvas/s25/estimate` | Estimate |
+| GET | `/api/canvas/s25/library` | List Library |
+| POST | `/api/canvas/s25/library` | Add Library |
+| DELETE | `/api/canvas/s25/library/{item_id}` | Remove Library |
+| GET | `/api/canvas/s25/material/capabilities` | Material Capabilities |
+| POST | `/api/canvas/s25/material/op` | Material Op |
+| POST | `/api/canvas/s25/plan` | Plan |
+| POST | `/api/canvas/s25/plan/apply` | Apply Plan |
+| POST | `/api/canvas/s25/plan/patch` | Patch Plan |
+| GET | `/api/canvas/s25/plugin-contract` | Plugin Contract |
+| GET | `/api/canvas/s25/skills` | List Skills |
+| GET | `/api/canvas/s25/skills/{skill_id}` | Get Skill |
+| POST | `/api/canvas/s25/skills/{skill_id}/toggle` | Toggle Skill |
+| GET | `/api/canvas/s25/templates` | List Templates |
+| POST | `/api/canvas/s25/templates` | Create Template |
+| GET | `/api/canvas/s25/templates/{template_id}` | Get Template |
+| POST | `/api/canvas/s25/templates/{template_id}/apply` | Apply Template |
+| GET | `/api/canvas/s25/templates/{template_id}/diff` | Diff Template Versions |
+| POST | `/api/canvas/s25/templates/{template_id}/versions` | Publish Version |
 
 ## capabilities
 
@@ -469,6 +519,12 @@
 | GET | `/api/providers/presets/{name}` | Get Provider Preset |
 | GET | `/api/providers/status` | Provider Status |
 
+## quota
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/quota/status` | Quota Status |
+
 ## screenshot-studio
 
 | 方法 | 路径 | 说明 |
@@ -556,13 +612,26 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
+| GET | `/api/studio/artifacts/download` | Download Studio Artifact |
 | GET | `/api/studio/assets` | Get Studio Assets |
 | POST | `/api/studio/assets/pull` | Pull Studio Assets |
+| POST | `/api/studio/craft/events` | Craft Event |
+| GET | `/api/studio/craft/ledger` | Craft Cost Ledger |
+| GET | `/api/studio/craft/license-audit` | Craft License Audit |
+| POST | `/api/studio/craft/plan` | Craft Plan |
+| POST | `/api/studio/craft/review` | Craft Review |
+| GET | `/api/studio/craft/series-templates` | Craft Series Templates |
 | GET | `/api/studio/daily/calendars` | Get Daily Calendars |
 | POST | `/api/studio/daily/calendars` | Post Daily Calendar |
 | POST | `/api/studio/daily/calendars/{calendar_id}/topics` | Post Daily Topics |
 | GET | `/api/studio/daily/jobs` | Get Daily Jobs |
 | POST | `/api/studio/daily/tick` | Post Daily Tick |
+| POST | `/api/studio/format-events` | Record Format Event |
+| GET | `/api/studio/format-metrics` | Get Format Metrics |
+| GET | `/api/studio/formats` | Get Studio Formats |
+| POST | `/api/studio/formats/plan` | Plan Format |
+| GET | `/api/studio/generalist/catalog` | Generalist Catalog |
+| POST | `/api/studio/generalist/plan` | Generalist Plan |
 | GET | `/api/studio/lines` | Get Studio Lines |
 | GET | `/api/studio/lines/{line_id}` | Get Studio Line |
 | GET | `/api/studio/motion/shot-cards` | Get Shot Cards |
@@ -572,7 +641,25 @@
 | GET | `/api/studio/nle/projects/{project_id}/revisions` | Get Nle Revisions |
 | POST | `/api/studio/nle/projects/{project_id}/timelines/{timeline_id}` | Attach Nle Timeline |
 | GET | `/api/studio/packs` | Get Studio Packs |
+| POST | `/api/studio/s24/article` | S24 Article |
+| POST | `/api/studio/s24/compliance` | S24 Compliance |
+| POST | `/api/studio/s24/export-pack` | S24 Export Pack |
+| GET | `/api/studio/s24/fonts` | S24 Fonts |
+| POST | `/api/studio/s24/localize-check` | S24 Localize Check |
+| POST | `/api/studio/s24/review` | S24 Review |
+| GET | `/api/studio/s24/themes` | S24 Themes |
+| POST | `/api/studio/s24/word-sync` | S24 Word Sync |
+| POST | `/api/studio/scriptcraft/causality` | Scriptcraft Causality |
+| POST | `/api/studio/scriptcraft/characters` | Scriptcraft Characters |
+| POST | `/api/studio/scriptcraft/filmability` | Scriptcraft Filmability |
+| GET | `/api/studio/scriptcraft/name-blacklist` | Scriptcraft Name Blacklist |
+| POST | `/api/studio/scriptcraft/premise` | Scriptcraft Premise |
+| POST | `/api/studio/scriptcraft/review` | Scriptcraft Review |
+| POST | `/api/studio/scriptcraft/review/apply` | Scriptcraft Review Apply |
+| POST | `/api/studio/scriptcraft/short-drama/plan` | Scriptcraft Short Drama Plan |
+| POST | `/api/studio/scriptcraft/short-film/plan` | Scriptcraft Short Film Plan |
 | POST | `/api/studio/slates` | Create Slate |
+| GET | `/api/studio/style-cards` | Get Style Cards |
 | GET | `/api/studio/timelines` | Get Timelines |
 | POST | `/api/studio/timelines` | Create Timeline |
 | GET | `/api/studio/timelines/{timeline_id}` | Get One Timeline |
@@ -581,6 +668,7 @@
 | POST | `/api/studio/timelines/{timeline_id}/export` | Export One Timeline |
 | GET | `/api/studio/tools` | Get Studio Tools |
 | POST | `/api/studio/tools/{tool_id}` | Invoke Studio Tool |
+| POST | `/api/studio/uploads` | Upload Studio Source |
 | GET | `/api/studio/veya/capabilities` | Get Veya Capabilities |
 | GET | `/api/studio/veya/jobs/{job_id}` | Get Veya Job |
 | POST | `/api/studio/veya/produce` | Post Veya Produce |
@@ -643,6 +731,29 @@
 | POST | `/api/studio/tasks/{task_id}/cancel` | Cancel Domain Task |
 | POST | `/api/studio/tasks/{task_id}/retry` | Retry Domain Task |
 | GET | `/api/studio/templates/policies` | List Workbench Template Policies |
+
+## style-library
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/style-library/article/plan` | Article Plan |
+| POST | `/api/style-library/article/render` | Article Render |
+| GET | `/api/style-library/attribution.json` | Attribution Json |
+| GET | `/api/style-library/colors/{color_id}` | Color Detail |
+| POST | `/api/style-library/cover/plan` | Cover Plan |
+| POST | `/api/style-library/cover/render` | Cover Render |
+| POST | `/api/style-library/drift-check` | Drift Check |
+| POST | `/api/style-library/layout-plan` | Layout Plan |
+| GET | `/api/style-library/layouts/{layout_id}` | Layout Detail |
+| POST | `/api/style-library/lock` | Lock |
+| GET | `/api/style-library/meta` | Meta |
+| GET | `/api/style-library/palette/{color_id}` | Palette |
+| GET | `/api/style-library/preview/{style_id}.svg` | Preview |
+| GET | `/api/style-library/recommend` | Recommend |
+| GET | `/api/style-library/search` | Search |
+| GET | `/api/style-library/selector` | Selector |
+| GET | `/api/style-library/styles/{style_id}` | Style Detail |
+| POST | `/api/style-library/warmgold-script` | Warmgold Script |
 
 ## style-packs
 
@@ -808,3 +919,17 @@
 | POST | `/api/voice-studio/tts/compare` | Compare Tts |
 | GET | `/api/voice-studio/tts/engines` | List Engines |
 | POST | `/api/voice-studio/tts/synthesize` | Synthesize |
+
+## warmgold
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/explainer/warmgold/check` | Check Script |
+| GET | `/api/explainer/warmgold/jobs/{job_id}` | Get Job |
+| GET | `/api/explainer/warmgold/memory/{column}` | Get Memory |
+| POST | `/api/explainer/warmgold/memory/{column}/quote` | Add Memory Quote |
+| POST | `/api/explainer/warmgold/memory/{column}/rule` | Add Memory Rule |
+| GET | `/api/explainer/warmgold/parts` | List Parts |
+| POST | `/api/explainer/warmgold/reference` | Reference Breakdown |
+| POST | `/api/explainer/warmgold/render` | Render Warm Gold |
+| POST | `/api/explainer/warmgold/template10` | Template 10S |

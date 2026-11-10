@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 load_dotenv()  # 标准: 在所有本地 import 之前
 
 from hevi.api.mcp_mount import mount_mcp
+from hevi.api.routers.anidoodle import router as anidoodle_router
 from hevi.api.routers.audio_library import router as audio_router
 from hevi.api.routers.auth import router as auth_router
 from hevi.api.routers.authorities import router as authorities_router
@@ -220,6 +221,7 @@ app.include_router(audio_router, prefix="/api")
 app.include_router(series_router, prefix="/api")
 app.include_router(style_router, prefix="/api")
 app.include_router(style_library_router, prefix="/api")
+app.include_router(anidoodle_router, prefix="/api")
 app.include_router(director_router, prefix="/api")
 app.include_router(director_pipeline_router, prefix="/api")
 app.include_router(tongjian_router, prefix="/api")

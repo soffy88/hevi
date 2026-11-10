@@ -1,5 +1,18 @@
 # 第三方许可台账
 
+## anidoodle
+
+- **来源**: https://github.com/alexgreensh/anidoodle（v0.10.1，Apache-2.0）
+- **版权**: Copyright 2026 Alex Greenshpun
+- **完整许可证文本**: `third_party/anidoodle/LICENSE`
+- **上游通知**: `third_party/anidoodle/NOTICE`（含可选音色包的 VCSL CC0 与 OpenAIR CC BY 4.0 条目；HEVI 不下载该 373 MB 包）
+- **用途**: 32 种代码手绘风格、绘制过程片、代码作曲、确定性渲染。
+- **入库日期**: 2026-11-10
+- **修改**: engine 源码未改；HEVI 在 `hevi/anidoodle/` 写封装（Node 调用、风格目录、缓存、门禁），
+  并新增 `hevi/anidoodle/drawing_deadair.mjs`（按上游 `meta.kind:"drawing"` 的既有 0.02% 死空镜标准读取像素）。
+- **边界**: 不使用 Remotion 后端；不下载可选音色包；上游示例片、README 图片/音频与 launch 片素材不作为 HEVI 示例或默认内容。
+- **署名位置**: 本文件、仓库根 `NOTICE`、`/anidoodle` 页面底部、`/acknowledgements` 页、风格选择器页头。
+
 ## archify
 
 - **来源**: `third_party/archify/` (tt-a1i/archify v3.0.1, MIT)

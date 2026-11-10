@@ -138,3 +138,17 @@ BeefTV (glanderness/BeefTV)
 - 合规：BeefTV 许可证禁止商业转售、套壳、收费部署与向第三方提供托管能力；
   hevi 是托管在线服务，因此不引入其任何 Covered Material。若未来需要复用，
   必须先取得书面授权并做法务评审。
+
+anidoodle (Alex Greenshpun)
+- Source: https://github.com/alexgreensh/anidoodle (v0.10.1)
+- License: Apache License 2.0 (see third_party/anidoodle/LICENSE)
+- Copyright 2026 Alex Greenshpun
+- Vendored engine: third_party/anidoodle/engine. Engine source is unmodified;
+  HEVI's wrapper is hevi/anidoodle/ and the drawing-profile dead-air reader is
+  hevi/anidoodle/drawing_deadair.mjs. Rendering uses playwright-core with the
+  Chromium already in the image; the Remotion adapter is not installed and the
+  optional 373 MB sound pack is not downloaded.
+- Upstream NOTICE (third_party/anidoodle/NOTICE) carries the optional sound
+  pack's VCSL CC0 and OpenAIR CC BY 4.0 attributions.
+- Attribution appears in NOTICE, THIRD_PARTY_NOTICES.md, the /anidoodle style
+  picker, and the /acknowledgements page.

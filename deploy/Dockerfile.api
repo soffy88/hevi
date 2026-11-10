@@ -113,6 +113,17 @@ RUN --network=none cd hevi-remotion \
 # for the source layer (BuildKit otherwise reuses a stale hevi/ layer).
 ARG S16_BUILD_REV=dev
 RUN echo "s16 source rev: ${S16_BUILD_REV}"
+# anidoodle (S29): code-drawn styles, drawing-process films and code music.
+# npm ci --omit=optional deliberately skips the Remotion adapter (S26 licence
+# decision); rendering uses playwright-core with the Chromium already in the image.
+COPY third_party/anidoodle/engine/package.json third_party/anidoodle/engine/package-lock.json ./third_party/anidoodle/engine/
+RUN cd third_party/anidoodle/engine && npm ci --omit=optional --no-audit --no-fund
+COPY third_party/anidoodle/ ./third_party/anidoodle/
+RUN mkdir -p third_party/anidoodle/engine/node_modules/.remotion \
+    && ln -sfn /app/hevi-remotion/node_modules/.remotion/chrome-headless-shell \
+       third_party/anidoodle/engine/node_modules/.remotion/chrome-headless-shell \
+    && chown -R hevi:hevi third_party/anidoodle
+
 COPY --chown=hevi:hevi hevi/ ./hevi/
 # runtime assets: CMU mocap clips (character_animation), scene3d examples,
 # generated style-card covers and makeup references.

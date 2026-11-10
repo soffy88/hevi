@@ -2,6 +2,13 @@ export const metadata = { title: '致谢与第三方署名 · HEVI' };
 
 const ITEMS = [
   {
+    name: 'anidoodle',
+    author: 'Alex Greenshpun',
+    url: 'https://github.com/alexgreensh/anidoodle',
+    license: 'Apache License 2.0',
+    note: '32 种代码手绘风格、绘制过程片、代码作曲与确定性渲染。HEVI 内置引擎（third_party/anidoodle），保留 LICENSE/NOTICE；使用 playwright 后端，不装 Remotion 适配器、不下载可选音色包。引擎源码未改，HEVI 的封装与新增的死空镜读取在 hevi/anidoodle/。',
+  },
+  {
     name: 'handraw-style',
     author: 'yang0',
     url: 'https://github.com/yang0/handraw-style',
