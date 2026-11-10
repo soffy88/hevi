@@ -102,6 +102,20 @@ async def _canonical_video(task: dict[str, Any]) -> Path:
     return await materialize_artifact(manifest, kind="video", preferred_artifact_id=preferred)
 
 
+def _owner_id(user: dict[str, Any]) -> str:
+    return str(user.get("id") or "")
+
+
+def _owned(task: dict[str, Any] | None, user: dict[str, Any]) -> dict[str, Any] | None:
+    """Fail closed: a task without a matching owner is indistinguishable from missing."""
+    if task is None:
+        return None
+    owner = task.get("user_id")
+    if owner is None:
+        return None
+    return task if str(owner) == _owner_id(user) else None
+
+
 def _all_rows() -> list[TaskRun]:
     from sqlmodel import text as _text
 
@@ -121,7 +135,7 @@ async def list_tasks(
 ) -> dict[str, Any]:
     """任务列表:created_at 倒序 + 可选 status 过滤 + 分页;附带全量状态计数。"""
     if isinstance(pool, PgPool):
-        tasks = await TaskRepository(pool).list_tasks(limit=200)
+        tasks = await TaskRepository(pool).list_tasks(limit=200, user_id=_owner_id(user))
         counts = {s: sum(1 for task in tasks if task.get("status") == s) for s in _ALL_STATUSES}
         counts["total"] = len(tasks)
         if status:
@@ -158,6 +172,7 @@ async def get_task(
             task = await TaskRepository(pool).get_task(uuid.UUID(task_id))
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="非法 task_id") from exc
+        task = _owned(task, user)
         if task is None:
             raise HTTPException(status_code=404, detail="task 不存在")
         return _canonical_task_to_dict(task)
@@ -182,6 +197,7 @@ async def serve_task_output(
             task = await TaskRepository(pool).get_task(uuid.UUID(task_id))
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="非法 task_id") from exc
+        task = _owned(task, user)
         if task is None:
             raise HTTPException(status_code=404, detail="task 不存在")
         video = await _canonical_video(task)

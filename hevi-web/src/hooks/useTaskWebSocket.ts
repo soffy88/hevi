@@ -84,6 +84,7 @@ export function useTaskWebSocket<T extends RealtimeTaskLike>(
   const backoffRef = useRef(0);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const closedByCleanup = useRef(false);
+  const latestIdsRef = useRef<string[]>(initialTasks.map(item => item.task_id));
 
   /** WS 广播 → 就地融合:命中行替换(新引用), 新 task_id 插到队首。 */
   const applyUpdate = useCallback((payload: TaskUpdatePayload) => {
@@ -119,6 +120,15 @@ export function useTaskWebSocket<T extends RealtimeTaskLike>(
       return [fresh, ...previous];
     });
   }, []);
+
+  const idSignature = tasks.map(item => item.task_id).join(',');
+  useEffect(() => {
+    latestIdsRef.current = idSignature ? idSignature.split(',') : [];
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: 'subscribe', resource_ids: latestIdsRef.current }));
+    }
+  }, [idSignature]);
 
   /** 权威 REST 快照替换(过滤/翻页后调用), 同时清空广播回放表。 */
   const seedTasks = useCallback((next: T[]) => {
@@ -165,6 +175,8 @@ export function useTaskWebSocket<T extends RealtimeTaskLike>(
         setConnected(true);
         setReconnecting(false);
         clearHeartbeat();
+        // 后端按订阅投递；不订阅就拿不到自己的进度，也不会收到别人的任务。
+        socket.send(JSON.stringify({ type: 'subscribe', resource_ids: latestIdsRef.current }));
         heartbeatRef.current = setInterval(() => {
           if (socketRef.current?.readyState === WebSocket.OPEN) {
             socketRef.current.send('ping');

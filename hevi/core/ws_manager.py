@@ -62,7 +62,10 @@ class ConnectionManager:
         async with self._lock:
             alive: list[_Connection] = []
             for item in self._connections:
-                if item.resource_ids and resource_id and resource_id not in item.resource_ids:
+                # Fail closed: a client that has not subscribed to this
+                # resource never receives it.  Task payloads are per-user
+                # data; broadcasting to every anonymous socket leaks them.
+                if resource_id and resource_id not in item.resource_ids:
                     alive.append(item)
                     continue
                 try:
