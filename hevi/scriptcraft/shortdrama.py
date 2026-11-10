@@ -30,7 +30,7 @@ BLUEPRINTS: dict[str, dict[str, Any]] = {
         "prop": "原始合同",
         "secret": "当年签字的人不是她，真正的受益人一直藏在幕后",
         "place": "发布会后台",
-        "power": "能把每一份文件的细节记到页码",
+        "power": "记得每一份文件的页码和签名顺序",
         "sell": "被夺走一切的人，在最后一天把证据缝进了婚纱",
         "hook_action": "{lead}把婚纱内衬撕开，取出缝在里面的{prop}，放在窗口。",
         "plight_action": "{lead}把离婚协议推到窗口，工作人员拿起印章。",
@@ -46,7 +46,7 @@ BLUEPRINTS: dict[str, dict[str, Any]] = {
             "{lead}假装妥协，在签约前要求公开对质",
             "对质现场播放录音，{villain}第一次失态",
             "录音被判剪辑，{lead}反而背上伪造证据的指控",
-            "{lead}用{pow}核对页码，找到被抽走的那一页",
+            "{lead}按记忆里的页码核对，找到被抽走的那一页",
             "{villain}抛出{secret}，想把{lead}的身世一起毁掉",
             "{lead}把原始文件和签到表一起投到大屏，{villain}当场被带走",
         ],
@@ -207,7 +207,7 @@ BLUEPRINTS: dict[str, dict[str, Any]] = {
             "{ally}被调走，{lead}失去唯一证人",
             "{lead}在电梯里遇到审计，但只来得及说一句",
             "审计进场，{villain}把责任推给{lead}",
-            "{lead}用{pow}还原修改时间线",
+            "{lead}按修改记录还原时间线",
             "{villain}删掉后台日志，{lead}拿出离线备份",
             "老板要求当天给结论，{lead}只有十分钟",
             "{lead}在汇报会上把假数据换回真的，{villain}当场被停职",
@@ -313,7 +313,7 @@ BLUEPRINTS: dict[str, dict[str, Any]] = {
             "{villain}拿出欠条，要求当天结清",
             "{lead}发现欠条背面的名字不是自己的",
             "{ally}承认当年替人签过字",
-            "{lead}用{pow}对上三年前的日期",
+            "{lead}按记忆里的日期对上三年前",
             "{villain}改口，说欠条只是复印件",
             "{lead}找到原件，发现金额被人改过",
             "{villain}说出{secret}，把责任推给不在场的人",
@@ -807,7 +807,6 @@ def plan_short_drama(
         "place": blueprint["place"],
         "secret": blueprint["secret"],
         "power": blueprint["power"],
-        "pow": blueprint["power"],
     }
     characters = derive_characters(topic, blueprint)
     premise_questions = {
