@@ -8,7 +8,7 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import ReactFlow, {
   Background, Controls, MiniMap,
-  addEdge, useNodesState, useEdgesState,
+  addEdge, useNodesState, useEdgesState, useReactFlow,
   type Connection, type Node,
   ReactFlowProvider,
 } from 'reactflow';
@@ -34,6 +34,7 @@ const LAST_GRAPH_KEY = 'hevi.canvas.last_graph';
 type SidePanel = 'subjects' | 'creative' | 'assets';
 
 function CanvasInner() {
+  const rf = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<HeviNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [toast, setToast] = useState<string | null>(null);
@@ -96,6 +97,16 @@ function CanvasInner() {
       openGraph(graph);
     } catch { /* keep the in-memory graph */ }
   }, [openGraph]);
+
+  // 打开/保存一张图后重新 fitView：否则节点会落在侧栏或画布可视区之外，
+  // 出现“看得见却点不到”（palette 拦截 pointer events）。
+  useEffect(() => {
+    if (!graphId) return;
+    const timer = window.setTimeout(() => {
+      void rf.fitView({ padding: 0.2, duration: 0 });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [graphId, rf]);
 
   // 刷新恢复：保存时记住 graph id，重新进入画布时打开最近一次保存的图。
   useEffect(() => {
