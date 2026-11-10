@@ -101,7 +101,7 @@ def families() -> list[dict[str, object]]:
     return [
         {
             "family": name,
-            "styles": [style.to_dict() for style in grouped[name]],
+            "styles": [{**style.to_dict(), **validation_for(style.id)} for style in grouped[name]],
         }
         for name in names
     ]
