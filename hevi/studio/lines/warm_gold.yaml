@@ -1,0 +1,39 @@
+id: warm_gold
+product: 知识讲解
+summary: 一句话 → 逐拍脚本/自检 → 暖黑金图解逐帧渲染（HTML/SVG + ffmpeg）
+handoff: explainer
+render_runtime: html
+slots:
+  - name: topic
+    required: true
+    description: 一个反直觉道理
+  - name: aspect_ratio
+    required: false
+    description: 9:16（默认）
+  - name: visual_style
+    required: false
+    description: warm_gold
+tools:
+  - research.plan
+  - script.quick
+  - explainer.beat_check
+  - explainer.warmgold_render
+  - explainer.reference_breakdown
+  - audio.bgm_plan
+  - delivery.preview
+  - asset.bind
+pipeline:
+  name: warm_gold
+  stages:
+    - name: intake
+      fn: hevi.studio.stages:stage_intake
+    - name: research
+      fn: hevi.studio.stages:stage_research
+    - name: script
+      fn: hevi.studio.stages:stage_script
+    - name: edit_plan
+      fn: hevi.studio.stages:stage_edit_plan
+    - name: timeline
+      fn: hevi.studio.stages:stage_timeline
+    - name: dispatch
+      fn: hevi.studio.stages:stage_dispatch

@@ -1,0 +1,45 @@
+{
+  "id": "warm_gold_diagram",
+  "name": "暖黑金图解",
+  "description": "近黑暖棕底、象牙白字、香槟金细线；暗朱红只用于威胁/负面。",
+  "palette": {
+    "background": "#120E0B",
+    "background_soft": "#1B1510",
+    "panel": "#201812",
+    "ivory": "#F2E8D5",
+    "ivory_dim": "#B9AC96",
+    "gold": "#C8A96A",
+    "gold_bright": "#E4CB92",
+    "danger": "#7A2E2A",
+    "past": "#6B5B45"
+  },
+  "lighting": "低照度暖光；正在发生的元素最亮，发生过的暗一档，无关的最暗。",
+  "rules": [
+    "正在发生最亮，发生过暗一档，无关最暗；过去元素自动淡出。",
+    "香槟金只画线/刻度/连接，不铺大面积色块。",
+    "暗朱红只用于威胁、损失、负面结果。",
+    "一屏一个重点；大字不超过 6 字/秒，小字不超过 7 字/秒。",
+    "数字必须带出处或标「示意」。"
+  ],
+  "typography": {
+    "big_font": "\"Noto Serif CJK SC\", \"Noto Serif CJK TC\", serif",
+    "small_font": "\"Noto Sans CJK SC\", \"Noto Sans CJK TC\", \"WenQuanYi Zen Hei\", sans-serif",
+    "big_size_px": 92,
+    "small_size_px": 44,
+    "big_max_chars_per_sec": 6,
+    "small_max_chars_per_sec": 7
+  },
+  "safety": {
+    "top": 150,
+    "bottom": 380,
+    "right": 140,
+    "left": 60,
+    "width": 1080,
+    "height": 1920
+  },
+  "music": "只用用户上传（声明授权）或 hevi 已有可商用曲库。",
+  "fonts_license": "SIL OFL 1.1 (Noto Serif/Sans CJK)",
+  "cover": "warm_gold_cover.jpg",
+  "makeup": "warm_gold_makeup.jpg",
+  "parts_manifest": "warm_gold_parts.json"
+}

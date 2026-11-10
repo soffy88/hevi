@@ -210,6 +210,11 @@ FORMATS: tuple[Format, ...] = (
         default_style="standard",
         styles=(
             SubStyle("standard", "标准讲解", "explainer", "观点 + 证据 + 动效"),
+            SubStyle(
+                "warm_gold", "暖黑金图解", "warm_gold",
+                "近黑暖棕底 + 象牙白 + 香槟金细线；一句话讲清一个反直觉道理",
+                {"render_style": "warm_gold", "s26_style": "warm_gold"},
+            ),
             SubStyle("kinetic", "动效标题", "kinetic_promo", "强节奏的文字与图形"),
             SubStyle(
                 "scene3d", "3D 演示", "scene3d",

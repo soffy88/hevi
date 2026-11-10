@@ -27,6 +27,7 @@ from hevi.api.routers.dashboard import router as dashboard_router
 from hevi.api.routers.director import router as director_router
 from hevi.api.routers.director_pipeline import router as director_pipeline_router
 from hevi.api.routers.explainer import router as explainer_router
+from hevi.api.routers.warmgold import router as warmgold_router
 from hevi.api.routers.fx import router as fx_router
 from hevi.api.routers.gallery import router as gallery_router
 from hevi.api.routers.quota import router as quota_router
@@ -226,6 +227,7 @@ app.include_router(shortdrama_router, prefix="/api")
 app.include_router(shortdrama_writer_router, prefix="/api")
 app.include_router(huobao_router, prefix="/api")
 app.include_router(explainer_router, prefix="/api")
+app.include_router(warmgold_router, prefix="/api")
 app.include_router(fx_router, prefix="/api")
 app.include_router(mpt_router, prefix="/api")
 app.include_router(narrator_router, prefix="/api")

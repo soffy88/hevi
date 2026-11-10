@@ -321,6 +321,60 @@ async def _video_agent_run(payload: dict[str, Any]) -> dict[str, Any]:
     return await video_agent_transaction(payload, payload, output_dir)
 
 
+async def _warmgold_reference(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.explainer.warmgold import reference
+
+    if not payload.get("rights_declared"):
+        return {"status": "blocked", "reason": "需要声明对参考素材拥有权利"}
+    work = Path("data/warmgold_reference") / (str(payload.get("run_id") or "canvas"))
+    report = reference.decompose(payload, work)
+    json_path, html_path = reference.write_report(report, work)
+    return {
+        "status": "ok",
+        "report": report,
+        "json_path": str(json_path),
+        "html_path": str(html_path),
+        "warnings": report.get("warnings") or [],
+    }
+
+
+async def _warmgold_beat_check(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.explainer.warmgold import beats, scriptcheck
+
+    script = payload.get("script") or payload.get("content")
+    if isinstance(script, str):
+        import json as _json
+
+        script = _json.loads(script)
+    if not isinstance(script, dict) or not script.get("shots"):
+        return {"status": "blocked", "reason": "需要逐拍脚本（shots）"}
+    beat_data = beats.build_beats(script, music_path=payload.get("music_path") or None)
+    result = scriptcheck.check_script(script, beat_data, music_present=bool(payload.get("music_path")))
+    return {"status": "ok" if result["pass"] else "blocked", **result}
+
+
+async def _warmgold_render(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.explainer.warmgold import render
+
+    script = payload.get("script") or payload.get("content")
+    if isinstance(script, str):
+        import json as _json
+
+        script = _json.loads(script)
+    if not isinstance(script, dict) or not script.get("shots"):
+        return {"status": "blocked", "reason": "需要逐拍脚本（shots）"}
+    run_id = str(payload.get("run_id") or "canvas")
+    out = Path("output/warmgold") / f"{run_id}.mp4"
+    report = render.render(
+        script,
+        out,
+        workdir=Path("output/warmgold") / f"work_{run_id}",
+        music_path=payload.get("music_path") or None,
+        voice=bool(payload.get("voice", True)),
+    )
+    return {"status": "ok" if report.ok else "blocked", **report.to_dict()}
+
+
 async def _script_quick(payload: dict[str, Any]) -> dict[str, Any]:
     from hevi.quick.service import QuickVideoConfig, plan_quick
 
@@ -665,6 +719,36 @@ def _register_defaults() -> None:
     register_tool(
         ToolSpec("asset.bind", "asset", "登记跨产线资产引用", ("kind", "label"), ("asset",)),
         _asset_bind,
+    )
+    register_tool(
+        ToolSpec(
+            "explainer.reference_breakdown",
+            "watch",
+            "参考片 → 互动比例/爆点卡/信息差/心理链/原句禁用清单（需声明权利）",
+            ("video_path", "interactions", "transcript", "rights_declared"),
+            ("report", "json_path", "html_path"),
+        ),
+        _warmgold_reference,
+    )
+    register_tool(
+        ToolSpec(
+            "explainer.beat_check",
+            "script",
+            "暖黑金逐拍脚本自检（17 条规则）",
+            ("script", "music_path"),
+            ("pass", "issues", "metrics"),
+        ),
+        _warmgold_beat_check,
+    )
+    register_tool(
+        ToolSpec(
+            "explainer.warmgold_render",
+            "render",
+            "暖黑金图解逐帧渲染（HTML/SVG + ffmpeg，不用 Remotion）",
+            ("script", "music_path", "voice"),
+            ("video_path", "report"),
+        ),
+        _warmgold_render,
     )
     _register_kit_tools()
     _register_ai_drama_tools()

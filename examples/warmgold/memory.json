@@ -1,0 +1,140 @@
+{
+  "schema": "hevi.warmgold.script/1",
+  "topic": "为什么越努力记，忘得越快",
+  "bpm": 103.36,
+  "music": {
+    "path": "assets/audio/bgm/stock/output001.mp3",
+    "bpm": 103.36
+  },
+  "anchor": {
+    "object": "便利贴",
+    "daily": true
+  },
+  "opening": {
+    "personal_detail": "你把明天要背的内容写在便利贴上，贴在桌角",
+    "has_you": true
+  },
+  "shots": [
+    {
+      "id": "s1",
+      "role": "problem",
+      "beats": 6,
+      "visual": "cum_jump",
+      "params": {},
+      "big": "背得越狠，忘得越快",
+      "small": "不是你记性差",
+      "narration": "你有没有过这种时候：考前一夜背完，第二天全忘了。",
+      "focus": "问题",
+      "sfx": "ding"
+    },
+    {
+      "id": "s2",
+      "role": "example",
+      "beats": 14,
+      "visual": "dual_curves",
+      "params": {
+        "seed": 19
+      },
+      "big": "同一份内容",
+      "small": "只改复习间隔",
+      "narration": "同样的总时长，集中突击和间隔复习，两条曲线越走越开。",
+      "focus": "一个例子",
+      "sfx": "pop",
+      "example": {
+        "visible_reading": "间隔复习",
+        "invisible_change": "复习间隔被拉开",
+        "jump_moment": "第三次复习后差距拉开",
+        "supports_theme": true
+      }
+    },
+    {
+      "id": "s3",
+      "role": "mechanism",
+      "beats": 12,
+      "visual": "cum_jump",
+      "params": {},
+      "big": "遗忘不是匀速",
+      "small": "先快后慢，越到后面越平",
+      "narration": "遗忘曲线先陡后平，不是匀速掉。",
+      "focus": "一个重点",
+      "sfx": ""
+    },
+    {
+      "id": "s4",
+      "role": "mechanism",
+      "beats": 12,
+      "visual": "timeline",
+      "params": {
+        "labels": [
+          "学完",
+          "1 天",
+          "1 周"
+        ]
+      },
+      "big": "第一次复习最关键",
+      "small": "在曲线变平之前拦一下",
+      "narration": "第一次复习要赶在曲线变平之前。",
+      "focus": "一个重点",
+      "sfx": "ding"
+    },
+    {
+      "id": "s5",
+      "role": "result",
+      "beats": 12,
+      "visual": "gauge",
+      "params": {
+        "base": 0.5,
+        "span": 0.8,
+        "seed": 7
+      },
+      "big": "间隔不是越长越好",
+      "small": "拉到忘了再复习，等于重学",
+      "narration": "间隔也不是越长越好，忘了再复习等于重学。",
+      "focus": "一个结果",
+      "sfx": ""
+    },
+    {
+      "id": "s6",
+      "role": "turn",
+      "beats": 10,
+      "visual": "fork",
+      "params": {
+        "labels": [
+          "一次背完",
+          "分三次"
+        ]
+      },
+      "big": "总时长不变",
+      "small": "只改分配方式",
+      "narration": "总时长不变，只改分配。",
+      "focus": "一个转折",
+      "sfx": ""
+    },
+    {
+      "id": "s7",
+      "role": "ending",
+      "beats": 12,
+      "visual": "dual_curves",
+      "params": {
+        "seed": 19
+      },
+      "big": "把便利贴分三次",
+      "small": "间隔复习，比一次背完更稳",
+      "narration": "回到那张便利贴：分三次，比一次背完更稳。",
+      "focus": "回收开头",
+      "sfx": "chime"
+    }
+  ],
+  "ending": {
+    "recall_object": "便利贴",
+    "cta": "comment",
+    "cta_text": "你上次背东西，是一次背完的吗？",
+    "recovers_opening": true
+  },
+  "numbers": [],
+  "low_point_bar": 5,
+  "payoff_bar": 15,
+  "low_point_shot": "s2",
+  "payoff_shot": "s7",
+  "target_seconds": 45
+}

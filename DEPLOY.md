@@ -45,6 +45,18 @@ docker compose ... up -d --no-deps --force-recreate hevi-api hevi-worker hevi-sc
 - APP_ENV=production 下弱密码会拒绝启动；数据库和 MinIO 凭据已在 2026-10-11 换成强密码（旧 `.env` 备份为 `.env.bak-20261011`）。
 - 发布 worktree 的 `main` 由提交方推送 `origin/main` 后再 `fetch`；**不接受从脏工作树构建**。
 
+
+## main 与 worktree 规则（S26 起）
+
+- `main` 只作为提交源，指向 `origin/main`；**不要求**在主仓库工作树里 checkout。
+  主仓库 `/data/soffy/projects/hevi` 常年 detached，另一些 worktree 可能占用分支。
+- 发布前校验：`git -C /data/soffy/projects/hevi fetch origin &&
+  test "$(git -C /data/soffy/projects/hevi rev-parse main)" = "$(git -C /data/soffy/projects/hevi rev-parse origin/main)"`。
+- 旧 worktree `/data/soffy/wt/hevi-merge-atlas` 有未提交改动，已原样保留，分支改名为
+  `archive/main-stale-20261111`（staged/unstaged patch 存
+  `/data/soffy/projects/seq-1108/verify_s26/main_stale_*.patch`）。
+- 新的功能分支从 `origin/main` 起；合并顺序：分支 → `main`（fast-forward）→ `origin/main` → 发布 worktree fetch。
+
 ## 已废弃
 `hevi/deploy/docker-compose-{dev,live,prod}.yml`、`docker-compose-release-overlay.yml`、手动 `docker run` 的 `hevi-vnext-*`。
 2026-10-11 下线前的数据备份在 `/data/soffy/backups/hevi-20261011/`。

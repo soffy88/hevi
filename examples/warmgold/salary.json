@@ -1,0 +1,154 @@
+{
+  "schema": "hevi.warmgold.script/1",
+  "topic": "平均工资涨了，为什么你更穷",
+  "bpm": 103.36,
+  "music": {
+    "path": "assets/audio/bgm/stock/output001.mp3",
+    "bpm": 103.36
+  },
+  "anchor": {
+    "object": "工资条",
+    "daily": true
+  },
+  "opening": {
+    "personal_detail": "你月底打开工资条，数字和上个月一模一样",
+    "has_you": true
+  },
+  "shots": [
+    {
+      "id": "s1",
+      "role": "problem",
+      "beats": 6,
+      "visual": "gauge",
+      "params": {
+        "base": 0.5,
+        "span": 0.8,
+        "seed": 3
+      },
+      "big": "平均工资又涨了",
+      "small": "你的工资条却没动",
+      "narration": "你有没有发现，新闻里的平均工资涨了，你的工资条却没动。",
+      "focus": "问题",
+      "sfx": "ding"
+    },
+    {
+      "id": "s2",
+      "role": "example",
+      "beats": 14,
+      "visual": "distribution_shift",
+      "params": {
+        "seed": 17
+      },
+      "big": "平均数被一个人拉高",
+      "small": "中位数还在原地",
+      "narration": "看这张分布：右边多一个人，平均数就跳了，中位数几乎不动。",
+      "focus": "一个例子",
+      "sfx": "pop",
+      "example": {
+        "visible_reading": "中位数 0.42，平均数 0.51",
+        "invisible_change": "分布右侧被拉长",
+        "jump_moment": "加入极端值后才跳",
+        "supports_theme": true
+      }
+    },
+    {
+      "id": "s3",
+      "role": "mechanism",
+      "beats": 12,
+      "visual": "timeline",
+      "params": {
+        "labels": [
+          "多数人",
+          "少数人",
+          "平均"
+        ]
+      },
+      "big": "平均不是中间",
+      "small": "它被每一个数影响，尤其是最大的那个",
+      "narration": "平均数是把所有数加起来，它会被最大的那个数拽走。",
+      "focus": "一个重点",
+      "sfx": ""
+    },
+    {
+      "id": "s4",
+      "role": "mechanism",
+      "beats": 12,
+      "visual": "balance",
+      "params": {
+        "left": 0.5,
+        "right": 0.9
+      },
+      "big": "同一条工资条",
+      "small": "看平均还是看中位，结论相反",
+      "narration": "同一张工资条，换个看法，结论就反了。",
+      "focus": "一个重点",
+      "sfx": "ding"
+    },
+    {
+      "id": "s5",
+      "role": "result",
+      "beats": 12,
+      "visual": "distribution_shift",
+      "params": {
+        "seed": 17
+      },
+      "big": "你站在中位数",
+      "small": "平均数在你看不见的右边",
+      "narration": "大多数人在中位数附近，平均数在右边很远的地方。",
+      "focus": "一个结果",
+      "sfx": ""
+    },
+    {
+      "id": "s6",
+      "role": "turn",
+      "beats": 10,
+      "visual": "fork",
+      "params": {
+        "labels": [
+          "只盯平均",
+          "看分布"
+        ]
+      },
+      "big": "不是你不努力",
+      "small": "是你看的平均数不描述你",
+      "narration": "问题不在努力，在你用的那个数不描述你。",
+      "focus": "一个转折",
+      "sfx": ""
+    },
+    {
+      "id": "s7",
+      "role": "ending",
+      "beats": 12,
+      "visual": "distribution_shift",
+      "params": {
+        "seed": 17
+      },
+      "big": "先看中位数",
+      "small": "看中位数 0.42，你上次注意过吗？",
+      "narration": "下次看到平均工资，先找中位数。",
+      "focus": "回收开头",
+      "sfx": "chime"
+    }
+  ],
+  "ending": {
+    "recall_object": "工资条",
+    "cta": "comment",
+    "cta_text": "你上次看工资新闻，注意过中位数吗？",
+    "recovers_opening": true
+  },
+  "numbers": [
+    {
+      "value": "0.42",
+      "source": "示意"
+    },
+    {
+      "value": "0.51",
+      "source": "示意"
+    }
+  ],
+  "low_point_bar": 5,
+  "payoff_bar": 15,
+  "low_point_shot": "s2",
+  "payoff_shot": "s7",
+  "target_seconds": 45
+}

@@ -1,0 +1,146 @@
+{
+  "schema": "hevi.warmgold.script/1",
+  "topic": "为什么排队时你这条总是最慢",
+  "bpm": 103.36,
+  "music": {
+    "path": "assets/audio/bgm/stock/output001.mp3",
+    "bpm": 103.36
+  },
+  "anchor": {
+    "object": "超市收银台",
+    "daily": true
+  },
+  "opening": {
+    "personal_detail": "你拎着两袋菜，站在收银台前，三条队都在动",
+    "has_you": true
+  },
+  "shots": [
+    {
+      "id": "s1",
+      "role": "problem",
+      "beats": 6,
+      "visual": "queue_lanes",
+      "params": {
+        "lane": 1,
+        "seed": 13
+      },
+      "big": "你这条又最慢",
+      "small": "不是运气，是你看不见另外两条",
+      "narration": "你有没有过这种时候：三条队，你偏偏选了最慢的那条。",
+      "focus": "问题",
+      "sfx": "ding"
+    },
+    {
+      "id": "s2",
+      "role": "example",
+      "beats": 14,
+      "visual": "queue_lanes",
+      "params": {
+        "lane": 1,
+        "seed": 13
+      },
+      "big": "这次你排第二慢",
+      "small": "三条队里，至少一条比你快：三分之二",
+      "narration": "先看一次模拟：三个人同时开始结账，你站中间那条。",
+      "focus": "一个例子",
+      "sfx": "pop",
+      "example": {
+        "visible_reading": "你排第二慢",
+        "invisible_change": "每条队的服务时间都是随机的",
+        "jump_moment": "三条队同时开始时才看得出",
+        "supports_theme": true
+      }
+    },
+    {
+      "id": "s3",
+      "role": "mechanism",
+      "beats": 12,
+      "visual": "timeline",
+      "params": {
+        "labels": [
+          "你只看见自己",
+          "别人的队动了",
+          "你觉得选错了"
+        ]
+      },
+      "big": "你只看得见自己",
+      "small": "别人的队一动，你就觉得选错了",
+      "narration": "问题不在队，在你看得见什么。",
+      "focus": "一个重点",
+      "sfx": ""
+    },
+    {
+      "id": "s4",
+      "role": "mechanism",
+      "beats": 12,
+      "visual": "sampling_box",
+      "params": {
+        "seed": 5
+      },
+      "big": "样本只有一条队",
+      "small": "你每天只抽一次样，却拿它当规律",
+      "narration": "你每天只站在一条队里，却把这一次当成全部。",
+      "focus": "一个重点",
+      "sfx": ""
+    },
+    {
+      "id": "s5",
+      "role": "mechanism",
+      "beats": 12,
+      "visual": "balance",
+      "params": {
+        "left": 0.33,
+        "right": 0.67
+      },
+      "big": "换成三条都看",
+      "small": "三分之二的概率，至少有别人比你快",
+      "narration": "如果三条都看，答案就变成：至少一条比你快，概率是三分之二。",
+      "focus": "一个重点",
+      "sfx": "ding"
+    },
+    {
+      "id": "s6",
+      "role": "turn",
+      "beats": 10,
+      "visual": "fork",
+      "params": {
+        "labels": [
+          "怪运气",
+          "只改看的方式"
+        ]
+      },
+      "big": "不是队的问题",
+      "small": "是你抽样太窄",
+      "narration": "所以下次别急着怪运气，先看三条队。",
+      "focus": "一个转折",
+      "sfx": ""
+    },
+    {
+      "id": "s7",
+      "role": "ending",
+      "beats": 12,
+      "visual": "queue_lanes",
+      "params": {
+        "lane": 1,
+        "seed": 13
+      },
+      "big": "下次先看三条",
+      "small": "你最近一次排错队，是在哪个收银台？",
+      "narration": "回到收银台：先扫一眼三条队，再站。",
+      "focus": "回收开头",
+      "sfx": "chime"
+    }
+  ],
+  "ending": {
+    "recall_object": "超市收银台",
+    "cta": "comment",
+    "cta_text": "你最近一次排错队，是在哪个收银台？",
+    "recovers_opening": true
+  },
+  "numbers": [],
+  "low_point_bar": 5,
+  "payoff_bar": 15,
+  "low_point_shot": "s2",
+  "payoff_shot": "s7",
+  "target_seconds": 45
+}
