@@ -65,6 +65,12 @@ CATEGORIES: dict[str, dict[str, Any]] = {
         "action": "重新上传或换成同类型的可用素材后再重试。",
         "retryable": False,
     },
+    "provider": {
+        "title": "渠道 / 模型不可用",
+        "detail": "节点指定的渠道或模型不在当前可用清单里（拼错、已下线或未配置）。",
+        "action": "换一个可用渠道/模型，或到“模型服务”重新保存后再试。",
+        "retryable": False,
+    },
     "config": {
         "title": "节点配置缺失",
         "detail": "节点缺少必填字段（提示词、时长、工具 id 等）。",
@@ -85,7 +91,7 @@ _RULES: list[tuple[str, re.Pattern[str]]] = [
     ("rate_limit", re.compile(r"\b429\b|rate[ _-]?limit|too many requests|限流|并发", re.I)),
     ("timeout", re.compile(r"timeout|timed out|readtimeout|deadline exceeded|超时", re.I)),
     ("network", re.compile(r"connection (reset|refused|aborted)|ssl|dns|proxy|network is unreachable|网络|代理", re.I)),
-    ("config", re.compile(r"unknown (video |image |audio )?provider|unknown tool|model not found|not supported by (the )?provider|未知.*(渠道|模型|工具)", re.I)),
+    ("provider", re.compile(r"unknown (video |image |audio )?provider|unknown tool|model not found|not supported by (the )?provider|未知.*(渠道|模型|工具)", re.I)),
     ("upstream", re.compile(r"\b5\d\d\b|internal server error|bad gateway|service unavailable|upstream|上游", re.I)),
     ("parameter", re.compile(r"\b400\b|\b422\b|invalid (parameter|argument|value)|validation error|unsupported|参数|不支持", re.I)),
     ("media", re.compile(r"no such file|file not found|not found.*(media|image|video|audio)|cannot identify image|素材|文件不存在|解码失败", re.I)),
