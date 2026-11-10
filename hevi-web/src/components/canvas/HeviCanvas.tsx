@@ -29,6 +29,7 @@ import type { StudioLine, StudioTool } from './NodePalette';
 const nodeTypes = { hevi: HeviNode };
 let idCounter = 0;
 const newId = () => `node-${++idCounter}-${Date.now().toString(36)}`;
+const LAST_GRAPH_KEY = 'hevi.canvas.last_graph';
 
 type SidePanel = 'subjects' | 'creative' | 'assets';
 
@@ -94,6 +95,16 @@ function CanvasInner() {
       const graph = await canvasApi.load(id);
       openGraph(graph);
     } catch { /* keep the in-memory graph */ }
+  }, [openGraph]);
+
+  // 刷新恢复：保存时记住 graph id，重新进入画布时打开最近一次保存的图。
+  useEffect(() => {
+    if (USE_MOCK) return;
+    const last = window.localStorage.getItem(LAST_GRAPH_KEY);
+    if (!last) return;
+    void canvasApi.load(last).then(openGraph).catch(() => {
+      window.localStorage.removeItem(LAST_GRAPH_KEY);
+    });
   }, [openGraph]);
 
   const onNodeClick = useCallback((_e: React.MouseEvent, node: Node) => {
@@ -261,7 +272,7 @@ function CanvasInner() {
         edges: edges.map(e => ({ edge_id: e.id, from_node_id: e.source, to_node_id: e.target,
           kind: (e.data as Record<string, unknown> | undefined)?.kind ?? 'data' })) });
       const id = String(saved.id ?? '');
-      if (id) setGraphId(id);
+      if (id) { setGraphId(id); window.localStorage.setItem(LAST_GRAPH_KEY, id); }
       flash('画布已保存');
       return id || null;
     } catch { flash('保存失败'); return null; }
