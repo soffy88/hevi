@@ -27,10 +27,18 @@ class RecommendRequest(BaseModel):
     avoid: list[str] = Field(default_factory=list)
 
 
+class TextBox(BaseModel):
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+
+
 class StillRequest(BaseModel):
     style_id: str = Field(min_length=1)
     frame: int | None = Field(default=None, ge=0)
     scale: float = Field(default=1.0, gt=0, le=2)
+    text_boxes: list[TextBox] = Field(default_factory=list)
 
 
 class DrawRequest(BaseModel):
@@ -38,6 +46,7 @@ class DrawRequest(BaseModel):
     poster_frame: int | None = Field(default=None, ge=0)
     scale: float = Field(default=1.0, gt=0, le=2)
     gates: bool = True
+    text_boxes: list[TextBox] = Field(default_factory=list)
 
 
 class MusicRequest(BaseModel):
@@ -169,7 +178,7 @@ async def still(
     req: StillRequest,
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
-    from hevi.anidoodle import render_still
+    from hevi.anidoodle import check_safe_area, render_still
 
     _require_public(req.style_id, _user)
     try:
@@ -178,7 +187,12 @@ async def still(
         )
     except Exception as exc:
         raise _error(exc) from exc
-    return {**result, "file": _public(result["path"])}
+    safe = check_safe_area(
+        [box.model_dump() for box in req.text_boxes],
+        width=int(result["width"]),
+        height=int(result["height"]),
+    )
+    return {**result, "safe_area": safe, "file": _public(result["path"])}
 
 
 @router.post("/gallery")
@@ -200,7 +214,12 @@ async def draw_clip(
     req: DrawRequest,
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
 ) -> dict[str, Any]:
-    from hevi.anidoodle import render_draw_clip, run_gate, run_verify_export
+    from hevi.anidoodle import (
+        check_safe_area,
+        render_draw_clip,
+        run_gate,
+        run_verify_export,
+    )
 
     _require_public(req.style_id, _user)
     try:
@@ -233,6 +252,11 @@ async def draw_clip(
                 "verdict": "preview_scale_not_gated",
                 "failures": [],
             }
+        payload["safe_area"] = check_safe_area(
+            [box.model_dump() for box in req.text_boxes],
+            width=int(result["width"]),
+            height=int(result["height"]),
+        )
     except Exception as exc:
         raise _error(exc) from exc
     return payload
