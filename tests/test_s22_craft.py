@@ -307,3 +307,23 @@ def test_format_plan_endpoint_attaches_craft_block(
     assert len(result["craft"]["gates"]) == 6
     assert len(result["craft"]["titles"]) == 3
     assert (tmp_path / "ledger.jsonl").is_file()
+
+
+def test_scaffold_numbering_is_not_treated_as_a_fact() -> None:
+    plan = craft_s22.build_craft_plan(
+        format_id="explainer",
+        style_id="standard",
+        topic="测试",
+        lines=["第 1 个关键点：先看结论。", "第 2 个关键点：再看证据。"],
+        shots=_shots("chart", "chart"),
+    )
+    assert not any(issue["rule"] == "fact_source" for issue in plan["rules"]["issues"])
+
+    plan = craft_s22.build_craft_plan(
+        format_id="explainer",
+        style_id="standard",
+        topic="测试",
+        lines=["72 法则说十年翻倍。"],
+        shots=_shots("chart"),
+    )
+    assert any(issue["rule"] == "fact_source" for issue in plan["rules"]["issues"])

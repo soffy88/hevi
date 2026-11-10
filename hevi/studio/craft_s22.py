@@ -437,8 +437,27 @@ def _chart_types(text: str) -> list[str]:
     return found
 
 
+_SCAFFOLD_NUM = re.compile(r"(?:第\s*\d+\s*个关键点|第\s*[一二三四五六七八九十]+\s*个关键点)")
+
+
 def _unsourced_numbers(line: str, facts: list[dict[str, Any]]) -> list[str]:
-    tokens = [m.group(0).strip() for m in _NUM_TOKEN.finditer(line or "")]
+    """只把“像事实”的数字算数：1 位数和“第 1 个”这类 Scaffold 编号不算。"""
+    text = _SCAFFOLD_NUM.sub("", line or "")
+    tokens: list[str] = []
+    for match in _NUM_TOKEN.finditer(text):
+        token = match.group(0).strip()
+        digits = re.match(r"\d+", token)
+        if not digits:
+            continue
+        bare = digits.group(0)
+        # “第 1 个/第 2 条”是编号，不是事实。
+        prefix = text[: match.start()].rstrip()
+        if prefix.endswith("第") and len(bare) <= 2:
+            continue
+        # 1 位数没有单位时多半是编号；2 位以上（72 法则/80 亿/2024）都要出处。
+        if len(bare) < 2 and not re.search(r"[%％年月日亿万千百倍米人元岁秒次个]", token):
+            continue
+        tokens.append(token)
     if not tokens:
         return []
     haystack = " ".join(
@@ -1367,8 +1386,16 @@ def title_candidates(topic: str, lines: list[str] | None = None) -> list[dict[st
     topic = (topic or "这条视频").strip().rstrip("。！？!?")
     core = topic[:24]
     lines = lines or []
-    payoff = next((line for line in lines if _NUM_TOKEN.search(line)), "")
-    middle = payoff[:18] if payoff else "一个反直觉的答案"
+    payoff = next(
+        (
+            line
+            for line in lines
+            if _NUM_TOKEN.search(line)
+            and not any(bad in line for bad in ("关键点", "评论区", "接下来", "最后一点"))
+        ),
+        "",
+    )
+    middle = payoff[:18].strip("，。；:： ") if payoff else "一个反直觉的答案"
     return [
         {
             "title": f"看完这条，你会明白{core}",
