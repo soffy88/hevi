@@ -761,7 +761,7 @@ def review_script_offline(
     }
 
 
-def _review_sync(prompt: str, *, timeout: float = 20.0) -> tuple[str, str]:
+def _review_sync(prompt: str, *, timeout: float = 12.0) -> tuple[str, str]:
     from hevi.providers.free_llm import available_channels, build_channel_caller
 
     names = available_channels()
@@ -787,7 +787,11 @@ def _review_sync(prompt: str, *, timeout: float = 20.0) -> tuple[str, str]:
             return pool.submit(lambda: asyncio.run(run())).result(timeout=timeout + 5)
 
     last: Exception | None = None
-    for name in names:
+    deadline = time.monotonic() + 25.0
+    for name in names[:2]:  # 最多试两个通道，总预算 25 秒，避免审稿按钮卡住
+        remaining = deadline - time.monotonic()
+        if remaining <= 1.0:
+            break
         caller = build_channel_caller(name)
         if caller is None:
             continue
