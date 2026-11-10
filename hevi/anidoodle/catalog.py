@@ -125,10 +125,10 @@ PUBLIC_SCORES: dict[str, int] = {
 # Measured failures: the drawing holds a still frame longer than the engine's
 # documented drawing pause.  Kept for admin review, never advertised.
 ADMIN_ONLY: dict[str, str] = {
-    "isometric": "production Chromium: drawing dead-air window 433-464 (gate 12/13)",
-    "halftone": "passed gates but 156.4 s for a 14 s clip (11.2x realtime); admin only for load",
-    "ranunculus": "drawing dead air: 46-frame still window 388-434",
-    "woodcut": "drawing dead air window failed the gate",
+    "isometric": "生产 Chromium 下 433–464 帧死空镜（门禁 12/13）",
+    "halftone": "门禁通过，但 14 秒片渲染 156.4 秒（11.2× 实时），按负载仅管理员",
+    "ranunculus": "绘制档死空镜：388–434 帧停 46 帧",
+    "woodcut": "绘制档死空镜未过门禁",
 }
 
 
@@ -139,7 +139,7 @@ def validation_for(style_id: str) -> dict[str, object]:
         return {
             "status": "public",
             "score": PUBLIC_SCORES[style_id],
-            "reason": "gate pass (drawing profile) + verify-export pass + human score >= 4",
+            "reason": "确定性门禁（绘制档）与导出校验通过 · 人工评分 ≥ 4",
         }
     if style_id in ADMIN_ONLY:
         return {
@@ -150,7 +150,7 @@ def validation_for(style_id: str) -> dict[str, object]:
     return {
         "status": "admin",
         "score": 0,
-        "reason": "not black-box accepted in S29; visible to admins only",
+        "reason": "S29 未做黑盒验收，仅管理员可见",
     }
 
 

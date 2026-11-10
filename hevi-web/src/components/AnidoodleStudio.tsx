@@ -153,9 +153,9 @@ export function AnidoodleStudio() {
           32 种用手绘语法写出来的风格：每一种都在代码里按该媒介的顺序画，成图与绘制过程同源、可复现。
           这是「代码绘制」，与 handraw-style 的「生图提示风格」是两套库。
         </p>
-        {text(attribution.engine) ? (
+        {text(attribution.node) ? (
           <p className="text-xs text-neutral-500">
-            引擎 {text(attribution.engine)} · Node {num(attribution.node_major)} · {text(attribution.browser)}
+            代码绘制引擎已就绪 · Node {num(attribution.node_major)} · Chromium（playwright 后端）
           </p>
         ) : null}
       </header>
