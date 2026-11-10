@@ -10,6 +10,7 @@ export function SiteFooter() {
       <nav aria-label="法律与政策">
         <Link href="/privacy">隐私政策</Link>
         <Link href="/terms">用户协议</Link>
+        <Link href="/acknowledgements">致谢</Link>
       </nav>
       <span className="hevi-site-footer__note">© 微亚人工智能有限公司 · ceo@aiinote.com</span>
     </footer>

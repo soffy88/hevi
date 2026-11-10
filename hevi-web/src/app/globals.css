@@ -2368,3 +2368,29 @@ a.hevi-gallery-card:hover { border-color: var(--primary); }
 @media (max-width: 640px) {
   .hevi-agent { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 68vh; }
 }
+
+/* S27 style library */
+.product-page--styles { max-width: 1240px; margin: 0 auto; padding: 24px 18px 64px; }
+.style-lib__bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 8px; }
+.style-lib__bar > * { flex: 1 1 180px; min-width: 0; padding: 11px 12px; border-radius: 10px;
+  border: 1px solid oklch(0.32 0.02 80); background: oklch(0.18 0.015 70); color: inherit; font-size: 15px; }
+.style-lib__hint { color: oklch(0.72 0.02 80); font-size: 13px; margin: 8px 0; }
+.style-lib__error { color: oklch(0.68 0.18 25); font-size: 13px; }
+.style-lib__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+.style-lib__card { display: flex; flex-direction: column; text-align: left; padding: 8px; border-radius: 12px;
+  border: 1px solid oklch(0.30 0.02 80); background: oklch(0.17 0.012 70); color: inherit; cursor: pointer; min-width: 0; }
+.style-lib__card.is-selected { border-color: oklch(0.76 0.12 85); box-shadow: 0 0 0 1px oklch(0.76 0.12 85); }
+.style-lib__card img { width: 100%; height: auto; border-radius: 8px; display: block; }
+.style-lib__id { font-weight: 700; font-size: 13px; margin-top: 6px; }
+.style-lib__id small { color: oklch(0.68 0.02 80); font-weight: 400; }
+.style-lib__name { font-size: 12px; color: oklch(0.82 0.02 80); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.style-lib__uses { font-size: 11px; color: oklch(0.66 0.02 80); }
+.style-lib__credit { font-size: 11px; color: oklch(0.62 0.04 60); margin-top: 2px; }
+.style-lib__more { margin: 16px auto 0; display: block; padding: 10px 18px; border-radius: 999px;
+  border: 1px solid oklch(0.55 0.05 80); background: transparent; color: inherit; cursor: pointer; }
+.style-lib__attr { margin-top: 22px; font-size: 12px; color: oklch(0.70 0.02 80); }
+.style-lib__attr a { color: oklch(0.80 0.10 85); }
+@media (max-width: 520px) {
+  .style-lib__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-page--styles { padding: 16px 10px 48px; }
+}

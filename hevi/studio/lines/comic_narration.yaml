@@ -9,7 +9,13 @@ slots:
     description: 解说主题或故事片段
   - name: style
     required: false
-    description: 漫画风格模板 (guofeng_anime | comic_color | manga_bw)
+    description: 漫画风格模板 (guofeng_anime | comic_color | manga_bw) 或 handraw-style 编号
+  - name: handraw_style_id
+    required: false
+    description: 风格库编号（FA-001…FI-034），优先于 style
+  - name: theme_color_id
+    required: false
+    description: 风格库主题色（C-01…C-36）
   - name: subtitle_style
     required: false
     description: 字幕形式 (bottom | bubble)

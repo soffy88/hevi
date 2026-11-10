@@ -1,0 +1,738 @@
+{
+ "FA-001": {
+  "generation_name": "Playful Deadpan Doodle",
+  "traits": "松散黑线、怪萌人物、少量点色、白底、日常吐槽与尴尬幽默；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FA-008": {
+  "generation_name": "Nervous Urban Notebook Cartoon",
+  "traits": "神经质手绘、歪斜线条、手写文字、都市焦虑式喜剧；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FA-009": {
+  "generation_name": "Raw Zine Diary Cartoon",
+  "traits": "粗糙手帐、Zine 感、手写字、原始情绪、反精致；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；保留纸纹、颗粒、套印或手工媒介的不完美，强化独立出版物的触感。"
+ },
+ "FA-010": {
+  "generation_name": "Geometric Literary Deadpan",
+  "traits": "极小几何人物、极简场景、文学/科技梗、冷面幽默；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FA-011": {
+  "generation_name": "Deliberately Bad Absurd Doodle",
+  "traits": "故意画坏、粗糙黑线、幼稚造型、荒诞文字、强 meme 感；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FA-012": {
+  "generation_name": "Minimal Visual-Pun Editorial",
+  "traits": "极简概念设计、物体重解释、视觉双关、脑洞型构图；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FA-013": {
+  "generation_name": "Bold Flat Everyday Satire",
+  "traits": "粗黑轮廓、扁平色块、现代人物、互联网生活讽刺；以醒目外轮廓和大形组织人物，五官少而有力，动作通过肩胯与手脚方向直接传达；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FA-014": {
+  "generation_name": "Handwritten British Anti-Inspiration Cartoon",
+  "traits": "随手钢笔、手写字、恶趣味、英式反鸡汤幽默；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FA-015": {
+  "generation_name": "Soft Relationship Editorial Line Art",
+  "traits": "极简人物线稿、人与关系、柔和色块、生活型社论；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；配色控制在柔和低刺激色域，用少量点色区分层次，背景保持轻和干净。"
+ },
+ "FA-016": {
+  "generation_name": "Raw Emotional Internet Doodle",
+  "traits": "粗糙黑线、极简人体、心理情绪、自嘲式互联网漫画；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；保留纸纹、颗粒、套印或手工媒介的不完美，强化独立出版物的触感。"
+ },
+ "FA-017": {
+  "generation_name": "Black-and-White Reaction Diary Cartoon",
+  "traits": "黑白简线、圆眼反应表情、松散黑发、日常衣着；人物常与小动物或生活物件并置，依靠简单轮廓和大面积留白塑造轻松的生活漫画感。"
+ },
+ "FA-018": {
+  "generation_name": "Minimal Deadpan Dialogue Cartoon",
+  "traits": "极简圆头人物、面无表情、简单动物、灰蓝与米色小色块；人物和动物以干净轮廓置于白底中，靠冷淡姿态和微小关系制造荒诞幽默。"
+ },
+ "FA-019": {
+  "generation_name": "Explosive Webcomic Exaggeration",
+  "traits": "粗黑线、夸张圆眼、张大嘴、头发和四肢大幅甩动；人物常与动物同框，以强烈动作、巨大表情和少量灰黑色块形成爆发式网络漫画效果。"
+ },
+ "FA-020": {
+  "generation_name": "Low-Fi Frenzy Cartoon",
+  "traits": "粗糙鼠绘感、黑色乱发、极端大眼大嘴、粉色大色块、单人失控动作；保留低保真数字涂画的不规整轮廓和直接粗粝的互联网幽默。"
+ },
+ "FA-021": {
+  "generation_name": "Watercolor Handwritten Life Notes",
+  "traits": "极简女性人物、细黑线、细长四肢、柔和水彩点染；以红色心形等单一物件承载生活情绪，画面保持白底、留白和轻微纸张质感。"
+ },
+ "FA-022": {
+  "generation_name": "Flat Everyday Women Lifestyle",
+  "traits": "蓬松手绘线稿、质朴低饱和粉彩色块平涂、松弛生活速写感、克制留白与温暖呼吸感。"
+ },
+ "FA-023": {
+  "generation_name": "Warm Minimal Female Line Cartoon",
+  "traits": "极简黑色钢笔细线、克制几何平涂、少量高饱和暖色点睛、大面积纯净留白背景、亲密松弛的图形速写感。"
+ },
+ "FA-024": {
+  "generation_name": "Geometric Fashion Deadpan",
+  "traits": "夸张大头、松散黑色短线、冷面人物、横条纹上衣、灰黑与浅色块；人物比例故意不协调，依靠简化脸部和粗略纹理形成时尚而疏离的幽默感。"
+ },
+ "FA-025": {
+  "generation_name": "One-Panel Absurd Social Cartoon",
+  "traits": "单格漫画、极简黑线、细长人物与动物并置、荒诞社会情境；人物和动物以克制的姿态和少量灰绿色块呈现一本正经的反逻辑幽默。"
+ },
+ "FA-026": {
+  "generation_name": "Dense Silent Physical Comedy",
+  "traits": "密集小动物和小人物、粗黑线、夸张鼻子与张嘴大笑、四肢向外伸展；画面充满无字肢体喜剧和拥挤的动作信息。"
+ },
+ "FA-027": {
+  "generation_name": "Underground Crosshatched Grotesque Cartoon",
+  "traits": "黑色密排线、粗重轮廓、坐姿人物、夸张而不修饰的人体比例；皮肤、头发和衣物依靠密集交叉排线塑造，带有地下漫画的粗粝与怪诞。"
+ },
+ "FA-028": {
+  "generation_name": "Retro Detached American Comic",
+  "traits": "黑色齐肩直发、方形眼镜、条纹上衣与绿色外套、冷静平涂色块；人物正面站立、表情疏离，画面具有复古美式成人漫画的克制感。"
+ },
+ "FA-029": {
+  "generation_name": "Geometric Diagrammatic Narrative",
+  "traits": "几何精密线条、孤立小人物、公交站牌与城市方块、信息图式留白；人物和环境由规整矩形与细线组成，色彩克制，叙事像一张安静的城市图表。"
+ },
+ "FA-030": {
+  "generation_name": "Clean Urban Solitude Comic",
+  "traits": "清晰细线、年轻亚洲女性半身像、深色外套、低饱和肤色与黑发；人物侧身回望，表情安静克制，背景留白，呈现都市观察和轻微疏离。"
+ },
+ "FA-031": {
+  "generation_name": "High-Contrast Black-White Memoir Cartoon",
+  "traits": "黑白高对比、粗黑剪影、盘坐女性、简化五官、大片纯黑服装；人物姿态直接而静止，依靠白色脸部和黑色轮廓形成克制的回忆录漫画感。"
+ },
+ "FA-032": {
+  "generation_name": "Loose French Improvised Ink",
+  "traits": "松散即兴法式墨线、轻微抖动与手绘停顿笔触、少量暖色水彩晕染点缀、俏皮略带怪诞的插画张力。"
+ },
+ "FA-034": {
+  "generation_name": "Elastic Sunday Strip",
+  "traits": "松散弹性墨线、夸张儿童表情、强肢体动作、少量透明水彩；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；上色保留透明叠染、柔软边缘和纸纹，允许轻微颜色不均与留白。"
+ },
+ "FA-035": {
+  "generation_name": "Bold Pop Satire Cartoon",
+  "traits": "粗黑轮廓、圆凸大眼、扁平人物、极少阴影、成人讽刺；以醒目外轮廓和大形组织人物，五官少而有力，动作通过肩胯与手脚方向直接传达；配色使用少量高纯度撞色和平涂，让人物剪影和服装保持强图形对比。"
+ },
+ "FA-037": {
+  "generation_name": "Chic Urban Editorial Motion Character",
+  "traits": "现代都市时尚编辑插画风、优雅舒展的动态剪影、松弛大方的服饰垂坠感、哑光粉彩与柔和铅笔微颗粒纹理、暖色提亮撞色、兼具高级时尚感与动画角色设计的清爽气质。"
+ },
+ "FA-038": {
+  "generation_name": "Minimalist Poetic Sempé Ink Doodle",
+  "traits": "极简法式诗意水墨线描风、桑贝式松弛写意小人与萌宠、大面积纯净留白、质朴手绘墨水笔触、治愈松弛的都市童心与生活小哲思。"
+ },
+ "FB-001": {
+  "generation_name": "Loose Ink-and-Wash Storybook",
+  "traits": "抖动墨线、松散水彩、四肢夸张、动作极灵、快速速写感。"
+ },
+ "FB-009": {
+  "generation_name": "Quirky Ink-and-Watercolor Tale",
+  "traits": "怪趣人物、墨线、水彩、不规则比例、现代童话；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；上色保留透明叠染、柔软边缘和纸纹，允许轻微颜色不均与留白。"
+ },
+ "FB-010": {
+  "generation_name": "Minimal Poetic Picturebook Doodle",
+  "traits": "极简人物、手写感、松散涂色、诗意荒诞；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FB-011": {
+  "generation_name": "Bold Geometric Picturebook",
+  "traits": "几何块面、极简轮廓、高饱和色、强剪影；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；配色使用少量高纯度撞色和平涂，让人物剪影和服装保持强图形对比。"
+ },
+ "FB-012": {
+  "generation_name": "Muted Deadpan Picturebook",
+  "traits": "极简动物、半闭眼、低饱和、Deadpan 冷幽默；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；配色控制在柔和低刺激色域，用少量点色区分层次，背景保持轻和干净。"
+ },
+ "FB-013": {
+  "generation_name": "Folk-Line Decorative Storybook",
+  "traits": "民俗线描、复古配色、植物纹样、奇异群像；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FB-014": {
+  "generation_name": "Dreamlike Surreal Storybook",
+  "traits": "柔和手绘笔触、轻微超现实人物、低饱和梦境配色、安静叙事气质；人物轮廓简洁清楚，比例略诗意变形，表情克制偏沉静，留出白底与空间感，避免过于指向单一作者的独特怪脸机制。"
+ },
+ "FB-015": {
+  "generation_name": "Layered Vintage Storybook Collage",
+  "traits": "分层拼贴质感、复古纸张肌理、手工剪贴与印刷颗粒感并存；人物由大形与贴纸般色块构成，造型怪趣但易读，配色温暖克制，强调材料感与旧书气息，避免复现某个固定童书角色。"
+ },
+ "FB-016": {
+  "generation_name": "Expressive Character Sketch Cartoon",
+  "traits": "速写式手绘线条、夸张但亲切的人物表演、清楚外轮廓与鲜明性格；脸部结构简化，眉眼嘴主导情绪，动作有动画草图般弹性和节奏，适合做高人格角色，避免过度逼近具体作者角色设计。"
+ },
+ "FB-019": {
+  "generation_name": "Geometric European Clear-Line Figure",
+  "traits": "几何化清线人物、现代主义图形秩序、简洁建筑感服装与姿态；以圆方弧线组织角色，平涂色块干净，表情直接而克制，整体更偏欧洲平面设计人物感，避免过强的单一作者指纹。"
+ },
+ "FB-031": {
+  "generation_name": "Whimsical & Poetic Storybook Watercolor",
+  "traits": "绘本插画风、大面积纯净留白与空灵通透构图、童真童趣与细腻温情、淡雅水彩晕染与柔和手绘线条、治愈诗意的绘本故事感。"
+ },
+ "FB-035": {
+  "generation_name": "Expressive Ink & Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-036": {
+  "generation_name": "Minimal Animal Cartoon Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-037": {
+  "generation_name": "Warm Daily Life Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-038": {
+  "generation_name": "Whimsical Crayon & Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-039": {
+  "generation_name": "Wild Lush Botanical Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-040": {
+  "generation_name": "Cozy Kitchen & Nature Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-041": {
+  "generation_name": "Textured Paper Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-042": {
+  "generation_name": "Luminous Wildlife Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-043": {
+  "generation_name": "Bold Acrylic Cinematic Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-044": {
+  "generation_name": "Expressive Border Charcoal & Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-045": {
+  "generation_name": "Textured Acrylic & Charcoal Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-046": {
+  "generation_name": "Luminous Atmospheric Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-047": {
+  "generation_name": "Poetic Pencil & Gouache Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-048": {
+  "generation_name": "Ornate Gothic Whimsical Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-049": {
+  "generation_name": "Vintage Chinese Ink & Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-050": {
+  "generation_name": "Minimal Geometric Cut-Paper Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-051": {
+  "generation_name": "Warm Forest Animals Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-052": {
+  "generation_name": "Whimsical Collage Paper-Cut Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-053": {
+  "generation_name": "Bustling Wimmelbuch Line & Wash Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-054": {
+  "generation_name": "Philosophical Collage & Chalk Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-055": {
+  "generation_name": "Intricate Stippled Map & Fantasy Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-056": {
+  "generation_name": "Ornate Flemish Baroque Gouache Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-057": {
+  "generation_name": "Gothic Romantic Gouache Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-058": {
+  "generation_name": "Cozy Gouache & Colored Pencil Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-059": {
+  "generation_name": "Gentle Forest Animal Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-060": {
+  "generation_name": "Playful Childlike Pencil & Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-061": {
+  "generation_name": "Bold Geometric Midcentury Graphic Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-062": {
+  "generation_name": "Poetic Minimal Ink & Botanical Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-063": {
+  "generation_name": "Luminous Atmospheric Water & Nature Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-064": {
+  "generation_name": "Deep Ocean Sunlit Watercolor Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-065": {
+  "generation_name": "Traditional Chinese Folk Warm Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FB-066": {
+  "generation_name": "Cozy Domestic Life & Floral Gouache Storybook",
+  "traits": "温情绘本叙事；柔和手绘线条、透明水彩、纸张纹理与大面积留白。"
+ },
+ "FC-001": {
+  "generation_name": "Chaotic Color Doodle Crowd",
+  "traits": "现代平面插画；几何大形、有限平涂色、干净构图与轻微颗粒。"
+ },
+ "FC-002": {
+  "generation_name": "Pop Magazine Doodle Overlay",
+  "traits": "卡通嘴眼、杂志涂鸦覆盖、Pop 色彩、朋克恶搞；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；配色使用少量高纯度撞色和平涂，让人物剪影和服装保持强图形对比。"
+ },
+ "FC-003": {
+  "generation_name": "Retro Geometric City Cartoon",
+  "traits": "几何人物、复古城市、高饱和平涂、70s–80s 商业卡通感；人物以圆、方、弧线等大形构成，五官图标化，比例强调图形辨识而非写实解剖；配色使用少量高纯度撞色和平涂，让人物剪影和服装保持强图形对比。"
+ },
+ "FC-004": {
+  "generation_name": "Minimal Bold-Color Fashion Geometry",
+  "traits": "极简几何、大块高饱和色、女性时尚人物；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；配色使用少量高纯度撞色和平涂，让人物剪影和服装保持强图形对比。"
+ },
+ "FC-005": {
+  "generation_name": "High-Contrast Negative-Space Figure",
+  "traits": "极简剪影、正负形、高对比色、强视觉切割；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；主要依靠黑白关系和大面积留白塑形，表情集中在眼神、眉形与嘴形变化。"
+ },
+ "FC-006": {
+  "generation_name": "Negative-Space Visual-Pun Graphic",
+  "traits": "负空间、双重图像、极少颜色、视觉双关；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FC-012": {
+  "generation_name": "Bold Retro Advertising Cartoon",
+  "traits": "粗线、复古广告、怪趣人物、Push Pin 气质。"
+ },
+ "FC-019": {
+  "generation_name": "Punk Ink-and-Text Editorial",
+  "traits": "黑墨速写、朋克线稿、文字并置、粗粝社论；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FC-020": {
+  "generation_name": "Grotesque Classical-Comic Portrait",
+  "traits": "扭曲五官、怪表情、古典人物与漫画混合；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FC-027": {
+  "generation_name": "Cinematic Grainy Flat-Shape Illustration",
+  "traits": "电影感极简色块、颗粒、强光影、远近层次；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；保留纸纹、颗粒、套印或手工媒介的不完美，强化独立出版物的触感。"
+ },
+ "FC-028": {
+  "generation_name": "Retro Silkscreen Geometric Figure",
+  "traits": "复古丝网印刷、厚重几何色层、旧书颗粒；人物以圆、方、弧线等大形构成，五官图标化，比例强调图形辨识而非写实解剖；保留纸纹、颗粒、套印或手工媒介的不完美，强化独立出版物的触感。"
+ },
+ "FD-001": {
+  "generation_name": "Dynamic East-Asian Ink Editorial",
+  "traits": "流动墨线、东方笔意、强动作、现代 Editorial；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FD-002": {
+  "generation_name": "Quiet Low-Saturation Japanese Editorial",
+  "traits": "安静平面人物、低饱和、留白、日系现代社论；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；配色控制在柔和低刺激色域，用少量点色区分层次，背景保持轻和干净。"
+ },
+ "FD-003": {
+  "generation_name": "Minimal Fashion Line Figure",
+  "traits": "极简黑线、时尚人物、无阴影、大白底；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FD-004": {
+  "generation_name": "Cool Minimal Black-and-White Figure",
+  "traits": "黑白线稿、极简脸、无表情、清冷日常；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；主要依靠黑白关系和大面积留白塑形，表情集中在眼神、眉形与嘴形变化。"
+ },
+ "FD-010": {
+  "generation_name": "Rebellious Big-Head Deadpan Figure",
+  "traits": "大头冷脸、叛逆眼神、极少背景、怪可爱；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FD-011": {
+  "generation_name": "80s Clean-Line Urban Pop Girl",
+  "traits": "清线都市少女、80s 时尚、大块留白、Pop 色；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；配色使用少量高纯度撞色和平涂，让人物剪影和服装保持强图形对比。"
+ },
+ "FD-012": {
+  "generation_name": "Ornate Strange Botanical Ink",
+  "traits": "精密钢笔、奇异动植物、古典怪萌、细节密集；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-013": {
+  "generation_name": "Fashion Diary Sketch Girl",
+  "traits": "纸上手绘笔压与不齐整线条节奏、现代生活手账速写风、利落平面剪影与自然松弛造型、低饱和轻盈色彩点缀。"
+ },
+ "FD-014": {
+  "generation_name": "Loose Deadpan Everyday Sketch",
+  "traits": "脱力人物、松散线条、生活吐槽；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FD-015": {
+  "generation_name": "Yuru-Surreal Minimal Everyday Cartoon",
+  "traits": "ゆるシュール、极简人物、反逻辑日常；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-016": {
+  "generation_name": "Notebook Lifestyle Doodle",
+  "traits": "手帐式小人物、小物罗列、文字注记、生活记录；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-017": {
+  "generation_name": "Cute Essay-Manga Everyday",
+  "traits": "可爱 Essay Manga、生活与职场小剧场；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-018": {
+  "generation_name": "Rough Gag-Manga Reaction",
+  "traits": "粗糙搞笑漫画、强 reaction、夸张情绪；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FD-019": {
+  "generation_name": "Clean Young-Lifestyle Manga Line",
+  "traits": "清秀线稿、年轻女性、轻宅生活感；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FD-020": {
+  "generation_name": "Friendly Girl-Diary Cartoon",
+  "traits": "女生日常博客漫画、简单可亲、生活感；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FD-021": {
+  "generation_name": "Minimal Absurd Short-Gag Cartoon",
+  "traits": "荒诞短漫画、冷笑话、极简小人物；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FD-022": {
+  "generation_name": "Warm Slightly-Strange Everyday Line",
+  "traits": "温暖线条、轻怪角色、小众生活气质；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-023": {
+  "generation_name": "Fast Family-Essay Sketch",
+  "traits": "家庭 Essay、快速线稿、日常观察；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-024": {
+  "generation_name": "Minimal Quirky Motion Character",
+  "traits": "极简古怪人物、图形化、短动画式节奏；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-025": {
+  "generation_name": "Elegant Sparse-Line Girl",
+  "traits": "极少极轻钢笔线条、修长克制造型比例、利落平面剪影对比、大面积呼吸感留白空间、优雅空灵的现代日系审美。"
+ },
+ "FD-026": {
+  "generation_name": "Delicate Emotional Female Line",
+  "traits": "纤细人物线稿、女性情绪、长线条发丝；线条轻细并保留呼吸感，人物比例偏修长，眉眼与嘴角的小变化承担主要表情；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FD-027": {
+  "generation_name": "Pop-Culture Minimal Figure",
+  "traits": "简化人物、Pop Culture、年轻轻时尚；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；配色使用少量高纯度撞色和平涂，让人物剪影和服装保持强图形对比。"
+ },
+ "FD-028": {
+  "generation_name": "Modern Editorial Female Line",
+  "traits": "现代都市插画线稿、利落流畅钢笔线条、克制几何剪影、大面积呼吸感留白、优雅独立的现代视觉语言。"
+ },
+ "FD-029": {
+  "generation_name": "Soft Magazine Line-and-Wash",
+  "traits": "细线 + 淡水彩、生活方式、日系杂志感；线条轻细并保留呼吸感，人物比例偏修长，眉眼与嘴角的小变化承担主要表情；上色保留透明叠染、柔软边缘和纸纹，允许轻微颜色不均与留白。"
+ },
+ "FD-030": {
+  "generation_name": "Minimal Daily-Life Girl Line",
+  "traits": "极简女生日常、细线、低干扰构图；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FD-031": {
+  "generation_name": "Transparent Watercolor Magazine Figure",
+  "traits": "简线人物、透明水彩、干净女性杂志感；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；上色保留透明叠染、柔软边缘和纸纹，允许轻微颜色不均与留白。"
+ },
+ "FD-032": {
+  "generation_name": "Playful Marker Fairytale Character",
+  "traits": "彩色马克笔、奇想小物、轻童话人物；以醒目外轮廓和大形组织人物，五官少而有力，动作通过肩胯与手脚方向直接传达；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FD-033": {
+  "generation_name": "Loose Pop Advertising Girl",
+  "traits": "现代广告波普风、极简图形化几何造型、高纯度平面撞色平涂、强对比剪影轮廓、幽默夸张的造型张力。"
+ },
+ "FD-034": {
+  "generation_name": "Transparent Emotional Youth Illustration",
+  "traits": "青春情绪、透明色、MV 感、线条流动；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；上色保留透明叠染、柔软边缘和纸纹，允许轻微颜色不均与留白。"
+ },
+ "FD-035": {
+  "generation_name": "Warm Lifestyle Magazine Figure",
+  "traits": "温暖人物、轻线稿、生活杂志氛围；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；保留纸纹、颗粒、套印或手工媒介的不完美，强化独立出版物的触感。"
+ },
+ "FD-036": {
+  "generation_name": "Soft Empathy Social Comic",
+  "traits": "柔软人物、共感型短漫画、社交媒体情绪；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；配色控制在柔和低刺激色域，用少量点色区分层次，背景保持轻和干净。"
+ },
+ "FD-037": {
+  "generation_name": "High-Saturation Gen-Z Fashion Girl",
+  "traits": "高饱和度潮流波普平面插画、Z世代图形化色块、利落硬边轮廓线、纯色大块平涂与强烈色相对比。"
+ },
+ "FD-038": {
+  "generation_name": "Soft Dreamy Animated Illustration",
+  "traits": "柔和幻想、轻动画感、梦境人物；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；配色控制在柔和低刺激色域，用少量点色区分层次，背景保持轻和干净。"
+ },
+ "FD-039": {
+  "generation_name": "Pastel Yami-Kawaii Girly",
+  "traits": "Pastel Girly、梦幻、Yami-kawaii、低对比；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FD-040": {
+  "generation_name": "Tokyo Street Graphic Girl",
+  "traits": "现代日系图形插画、利落几何色块拼接、清晰剪影节奏、潮流冷暖撞色平涂、极简平面装饰感。"
+ },
+ "FD-041": {
+  "generation_name": "Mystic Fashion Character Graphic",
+  "traits": "神秘冷艳的暗调与荧光高对比色彩、利落锐利的图形化剪影、平涂色块与细黑轮廓线融合、时尚平面张力。"
+ },
+ "FE-001": {
+  "generation_name": "Gentle Nature Dreambook Illustration",
+  "traits": "温柔手绘、人与自然、植物动物、梦境色彩；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-002": {
+  "generation_name": "Minimal Black-White Visual-Pun Cartoon",
+  "traits": "黑白极简、视觉双关、几笔成梗、无对白冷幽默；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；主要依靠黑白关系和大面积留白塑形，表情集中在眼神、眉形与嘴形变化。"
+ },
+ "FE-003": {
+  "generation_name": "Elongated New-Chinese Minimal Figure",
+  "traits": "修长人物、无脸或弱五官、新中式、古典生活；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-004": {
+  "generation_name": "Dense East-Asian Fantasy Editorial",
+  "traits": "高密度东方构图、丰富线条、奇幻 Editorial；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-005": {
+  "generation_name": "Seasonal Travel Watercolor Diary",
+  "traits": "柔和水彩、季节与旅行、自然、治愈留白；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；上色保留透明叠染、柔软边缘和纸纹，允许轻微颜色不均与留白。"
+ },
+ "FE-006": {
+  "generation_name": "Blue-Orange Grainy Chinese Editorial",
+  "traits": "蓝橙撞色、颗粒色块、中国现代社论；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-007": {
+  "generation_name": "Cinematic Saturated Story Illustration",
+  "traits": "强色彩、电影感场景、故事性人物；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-008": {
+  "generation_name": "Modern New-Guofeng Flat-Line Illustration",
+  "traits": "新国风、流畅线条、黄橙蓝绿、传统元素现代化；人物以圆、方、弧线等大形构成，五官图标化，比例强调图形辨识而非写实解剖；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-010": {
+  "generation_name": "Ornate Flowing Eastern Fantasy Figure",
+  "traits": "飘逸人物、东方幻想、蓝绿橙红、装饰性强；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-011": {
+  "generation_name": "Soft Chinese Watercolor Atmosphere",
+  "traits": "柔和水彩、中国元素、朦胧光线；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；上色保留透明叠染、柔软边缘和纸纹，允许轻微颜色不均与留白。"
+ },
+ "FE-012": {
+  "generation_name": "Contemporary Chinese Cultural Editorial",
+  "traits": "传统文化现代编辑化、干净构图、当代中国气质；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-013": {
+  "generation_name": "Freehand Ink-Wash Ancient Figure",
+  "traits": "写意水墨枯笔飞白、透明水色叠染与宣纸晕染肌理、大开大合的潇洒运笔气韵、大面积空灵留白布局。"
+ },
+ "FE-014": {
+  "generation_name": "Wild Ink Eastern Weirdness",
+  "traits": "野生墨线、水墨怪人、东方妖异、极强作者手感；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-015": {
+  "generation_name": "Elegant Soft Ink Ancient Figure",
+  "traits": "清雅水墨、古风人物、柔和情绪；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；配色控制在柔和低刺激色域，用少量点色区分层次，背景保持轻和干净。"
+ },
+ "FE-016": {
+  "generation_name": "Refined Eastern Line-Art Character",
+  "traits": "精致手绘线稿、东方人物、清雅漫画感；线条轻细并保留呼吸感，人物比例偏修长，眉眼与嘴角的小变化承担主要表情；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-017": {
+  "generation_name": "Modern Eastern Fantasy Character",
+  "traits": "新国风人物、东方奇幻、现代角色设计；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-018": {
+  "generation_name": "Elegant Historical Manga Line",
+  "traits": "清雅漫画线稿、古风青年、细腻叙事；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；线条带书写性与留白意识，衣褶、发丝和姿势顺势流动，东方感来自形与节奏。"
+ },
+ "FE-019": {
+  "generation_name": "Ornate Dark-Fantasy Figure",
+  "traits": "华丽人物、暗黑幻想、装饰细节、唯美系；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-020": {
+  "generation_name": "Mythic Bestiary Ink Character",
+  "traits": "山海经异兽、传统笔意、现代怪物设计；保留明显手绘笔压、停顿与轻微不齐整感，让轮廓产生真实纸上绘制的节奏；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-021": {
+  "generation_name": "Blue-Gray Dream Narrative Figure",
+  "traits": "蓝灰梦境、孤独人物、绘本叙事；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-022": {
+  "generation_name": "Expressive Girl-Life Internet Comic",
+  "traits": "女生生活漫画、夸张表情、网络吐槽；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FE-023": {
+  "generation_name": "Minimal Youth Emotion Comic",
+  "traits": "极简青年日常、社交情绪、轻漫画；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-024": {
+  "generation_name": "Poetic Urban Dreambook Illustration",
+  "traits": "彩色手绘、诗意都市、童话超现实、孤独感；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-025": {
+  "generation_name": "Minimal Adult Relationship Satire",
+  "traits": "极简成人漫画、都市男女、关系讽刺；脸部与服装主动做减法，依靠清楚轮廓、眼口和少量关键形状建立人物辨识度；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FE-026": {
+  "generation_name": "Delicate Eastern Female Comic",
+  "traits": "东方女性漫画、细腻线条、古典氛围；线条轻细并保留呼吸感，人物比例偏修长，眉眼与嘴角的小变化承担主要表情；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FE-027": {
+  "generation_name": "Dreamy Youth Picturebook Color",
+  "traits": "绘本色彩、梦境、青春情绪、柔和人物；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；配色控制在柔和低刺激色域，用少量点色区分层次，背景保持轻和干净。"
+ },
+ "FE-028": {
+  "generation_name": "Internet Girl-Life Story Comic",
+  "traits": "网络少女漫画、清晰情绪、生活叙事；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；人物姿态松弛自然，服装靠清楚剪影体现时尚感，避免模板化甜美脸。"
+ },
+ "FE-029": {
+  "generation_name": "Fast-Paced Chinese Meme Comic",
+  "traits": "中文互联网梗漫画、表情强、节奏快；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情偏冷脸、尴尬或突然夸张，姿态要有明确喜剧节奏，避免统一的可爱微笑。"
+ },
+ "FE-030": {
+  "generation_name": "Free-Line Urban Youth Comic",
+  "traits": "青春手绘、自由线条、城市青年；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-031": {
+  "generation_name": "Contemporary Urban-Tech Character Illustration",
+  "traits": "当代商业人物、都市/科技、清晰平面语言；人物轮廓优先于细节堆砌，脸型、头身比例与手脚形状要形成清楚而独立的视觉语言；表情与肢体动作要服从该风格的人格机制，避免回落为统一的标准Q版表情。"
+ },
+ "FE-032": {
+  "generation_name": "Delicate Youth Narrative Comic",
+  "traits": "偏写实的人物比例与青春群像；细腻线稿，水彩、水墨与版画经验融入彩色画面；重视光线、环境与人物情绪，画面清爽但不是“大头萌系日常”。"
+ },
+ "FE-033": {
+  "generation_name": "Dreamy Emotional Picturebook Comic",
+  "traits": "清新温暖而带淡淡忧伤；色彩承担情绪表达，现实场景与幻想意象交织；人物和空间具有绘本式象征性，文字与画面共同完成叙事。"
+ },
+ "FE-034": {
+  "generation_name": "Classical Chinese Fine-Line Manga",
+  "traits": "细密、灵秀的线条和人物塑造；古典服饰、建筑与自然背景考究；人物情绪含蓄，擅长历史与古风长篇叙事，不宜简化为“古风美女插画”。"
+ },
+ "FE-035": {
+  "generation_name": "Faceless New-Chinese Figure Illustration",
+  "traits": "标志性的“无脸古装群像”；以发型、服装、轮廓、动作和环境传达身份与情绪；人物多修长、弱化五官，强调衣袂节奏、光影和电影感构图，追求“无脸有魂”。"
+ },
+ "FE-036": {
+  "generation_name": "Chinese Pet Deadpan Cartoon",
+  "traits": "新国风冷幽默萌系手绘、纸上手绘墨线停顿笔压、透明国画水色叠染与纸纹肌理、留白透气、诙谐解构的轻中式日常趣味。"
+ },
+ "FE-037": {
+  "generation_name": "Philosophical Minimal Dog Cartoon",
+  "traits": "极简哲学手绘风、大面积空灵纸面留白、极简线条勾勒孤立主体、少量暖色平涂点缀、微小与空旷对比构图、充满冷幽默与现代哲思寓言感。"
+ },
+ "FE-038": {
+  "generation_name": "Minimal Visual-Pun Cartoon",
+  "traits": "寥寥几笔、黑白或极少色彩、大留白；把日常物件、人物和动物重新组合形成视觉双关；逻辑清晰但结果荒诞，常用无字或极少文字制造“看懂后一笑”的瞬间。"
+ },
+ "FE-039": {
+  "generation_name": "Conceptual Eastern Film Poster Design",
+  "traits": "以电影核心概念为先，而非固定画法；擅长“减法”、视觉隐喻与大尺度留白，常借鉴水墨、书法、传统图形与东方空间意识；摄影、插画、字体、图形会随项目变化。"
+ },
+ "FE-040": {
+  "generation_name": "Digital Chinese Gongbi Fantasy",
+  "traits": "用数位板和数字笔刷模拟中国画皴、擦、点、染；重视白描、工笔人物、衣纹和结构；题材常取古典文学、志怪、神话与历史，具有严谨线描和数字水墨结合的特征。"
+ },
+ "FE-041": {
+  "generation_name": "Contemporary Chinese Ink Picturebook",
+  "traits": "中国水墨的线条与墨色为核心，但叙事结构现代；造型简练、灵动、略带拙趣与怪趣；把传统神祇、民俗和东方哲学转换成儿童可以进入的日常童话。"
+ },
+ "FE-042": {
+  "generation_name": "Wild Chinese Ink Fantasy Comic",
+  "traits": "铅笔、毛笔、墨水、水彩与有质感纸张并用；墨线狂放、干湿与飞白明显，静态细节与强烈动作并存；常见少年侠客、山林、妖怪与志怪幻想，气质野、孤独而自由。"
+ },
+ "FE-043": {
+  "generation_name": "Hong Kong Urban Female Comic Illustration",
+  "traits": "强烈的女性主体意识与身体表现；人物自信、性感但不以媚态为核心；水彩、漫画线条、时装与香港都市经验交织，构图自由且有当代独立漫画气质。"
+ },
+ "FE-044": {
+  "generation_name": "Gentle Seasonal Nature Illustration",
+  "traits": "长期围绕四季、自然、旅行和日常生活；人物常缩小在更大的环境中，强调人与自然的关系；色彩柔和明亮、笔触松弛，画面带梦境感、季节光线和安静的孤独感。"
+ },
+ "FE-045": {
+  "generation_name": "Warm Nostalgic Everyday Picturebook",
+  "traits": "作者自述关键词为“温暖、感动、记录”；常以80后成长记忆、家庭、友情与生活阶段为内容；画面偏日记和绘本叙事，柔和温暖，偶尔进入荒诞或黑白想象。"
+ },
+ "FE-046": {
+  "generation_name": "Realistic Absurdist Webcomic",
+  "traits": "基础造型相对写实，人物面部和肢体却高度表演化；夸张表情、无厘头台词、鬼畜式节奏和电影分镜制造喜剧反差；作者常自拍表情作为绘画参考。"
+ },
+ "FE-047": {
+  "generation_name": "Beijing Hutong Watercolor Graphic Novel",
+  "traits": "全水彩手绘、明快色彩、轻松线条与流畅分镜；擅长老北京胡同、街坊日常与儿童视角，把现实生活和轻度奇幻自然融合，空间细节丰富但整体温暖轻盈。"
+ },
+ "FE-060": {
+  "generation_name": "Minimal Ink Cartoon Style",
+  "traits": "白底中国式极简手绘漫画；黑色毛笔/软头笔快速勾画；线条松散粗粝、粗细变化明显、略带断笔与手绘抖动；人物高度概括、比例略夸张、造型笨拙有趣；场景只保留最必要的物件与动作；大面积留白；黑色线稿为主体；脸颊、衣服或小道具加入少量红黄绿局部平涂；中国写意人物画与老式讽刺漫画的味道"
+ },
+ "FF-006": {
+  "generation_name": "Deadpan Stylized 3D Urban Character",
+  "traits": "现代风格化3D黏土/胶体角色雕刻、略带厌世与冷幽默的死鱼眼夸张神态、独特的拉长头部与夸张下颌剪影、哑光微雕质感、生动诙谐的都市通勤者小剧场。"
+ },
+ "FG-006": {
+  "generation_name": "Stylized Cinematic Action-Comedy Character",
+  "traits": "风格化大块面剪影动画插画风、夸张强壮的胡子大叔与市井风情、干练几何块面平涂与微颗粒光影、充满动势与幽默张力的街头角色原画。"
+ },
+ "FG-012": {
+  "generation_name": "Bleach Manga Style",
+  "traits": "动画赛璐璐；干净线稿、平涂色块、鲜明角色设计。"
+ },
+ "FG-013": {
+  "generation_name": "Chainsaw Man Manga Style",
+  "traits": "动画赛璐璐；干净线稿、平涂色块、鲜明角色设计。"
+ },
+ "FG-014": {
+  "generation_name": "Jujutsu Kaisen Manga Style",
+  "traits": "动画赛璐璐；干净线稿、平涂色块、鲜明角色设计。"
+ },
+ "FG-015": {
+  "generation_name": "Naruto Manga Style",
+  "traits": "动画赛璐璐；干净线稿、平涂色块、鲜明角色设计。"
+ },
+ "FG-016": {
+  "generation_name": "One Piece Manga Style",
+  "traits": "动画赛璐璐；干净线稿、平涂色块、鲜明角色设计。"
+ },
+ "FG-024": {
+  "generation_name": "Your Name Anime",
+  "traits": "动画赛璐璐；干净线稿、平涂色块、鲜明角色设计。"
+ },
+ "FI-016": {
+  "generation_name": "Cinematic Staged Narrative Portrait Photography",
+  "traits": "美国电影感置景与叙事肖像摄影大师"
+ },
+ "FI-020": {
+  "generation_name": "Saturated Soulful Humanist Cultural Portrait",
+  "traits": "美国国家地理人文摄影大师，代表作：《阿富汗少女》"
+ },
+ "FI-021": {
+  "generation_name": "Saturated Direct-Flash Satirical Everyday Documentary",
+  "traits": "英国高饱和直闪讽刺日常纪实摄影大师，玛格南图片社成员"
+ },
+ "FI-022": {
+  "generation_name": "Twilight Cinematic Mystery Staged Photography",
+  "traits": "美国电影级大型置景戏剧摄影大师，代表作：《黄昏》《玫瑰之下》"
+ },
+ "FI-025": {
+  "generation_name": "Grainy High-Contrast Noir Street Photography",
+  "traits": "日本粗颗粒高反差黑白街头摄影大师，代表作：《野犬》《新宿》"
+ },
+ "FI-026": {
+  "generation_name": "Monumental Scale Repetitive Geometric Architecture Photography",
+  "traits": "德国超大画幅上帝视角几何秩序摄影大师，代表作：《莱茵河二号》《99美分》"
+ },
+ "FI-027": {
+  "generation_name": "Pastel Symmetry & Retro Whimsical Cinematic Aesthetic",
+  "traits": "美国对称美学与马卡龙色调电影导演，代表作：《布达佩斯大饭店》《月升王国》"
+ },
+ "FI-028": {
+  "generation_name": "Hong Kong Retro Neon Glow Atmospheric Cinematic Mood",
+  "traits": "中国香港复古港风与霓虹光影电影导演，代表作：《花样年华》《重庆森林》《堕落天使》"
+ },
+ "FI-030": {
+  "generation_name": "Desaturated Moody Green-Toned Precision Thriller Cinema",
+  "traits": "美国低饱和冷调心理悬疑电影导演，代表作：《七宗罪》《搏击俱乐部》《消失的爱人》"
+ }
+}

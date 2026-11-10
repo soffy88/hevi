@@ -15,11 +15,11 @@ import hevi.capabilities as caps
 from hevi.capabilities.errors import CapabilityError
 from hevi.image import handraw_style as hs
 
-FI001_ZH = "风格名称：Apple Minimalist Tech Product Commercial Photography。主题：银色无线头戴耳机。参考作者/风格名称：Apple / 苹果。"
-FI001_EN = "Style name: Apple Minimalist Tech Product Commercial Photography. Theme: 银色无线头戴耳机. Reference author/style name: Apple / 苹果."
-FI001_COLOR_ZH = "风格名称：Apple Minimalist Tech Product Commercial Photography。主题色：克莱因蓝（Klein Blue）。主题：银色无线头戴耳机。参考作者/风格名称：Apple / 苹果。"
-FI027_TEXT_ZH = "风格名称：Wes Anderson Pastel Symmetry & Retro Whimsical Cinematic Aesthetic。主题：山间小镇的老式缆车站。参考作者/风格名称：Wes Anderson / 韦斯·安德森。【如果主题直白包含画面元素那就按主题出图，文案由你来升华，但是不要直接描述画面。 如果主题比较概念化，那么文案和主题尽量保持一致，如果文案较长由你提炼，由你先设计画面隐喻（人类和非人类都行）再出图   。    文字参与构图，图文一体】"
-SC001_FA001_ZH = "图型：上文下图社媒卡。主题：秋天的第一杯奶茶。排版要求：小红书社媒卡。排版采用上文下图结构：上方集中放置主题文字和简短补充文案，下方放置完整主图或场景图。上下内容保持清晰的阅读顺序，图文关系自然，整体构图简洁。风格名称：Playful Deadpan Doodle。参考作者/风格名称：Gemma Correll。【如果主题直白包含画面元素那就按主题出图，文案由你来升华，但是不要直接描述画面。 如果主题比较概念化，那么文案和主题尽量保持一致，如果文案较长由你提炼，由你先设计画面隐喻（人类和非人类都行）再出图   。    文字参与构图，图文一体】"
+FI001_ZH = "风格名称：Apple Minimalist Tech Product Commercial Photography。主题：银色无线头戴耳机。参考风格名称：Apple / 苹果。"
+FI001_EN = "Style name: Apple Minimalist Tech Product Commercial Photography. Theme: 银色无线头戴耳机. Reference style name: Apple / 苹果."
+FI001_COLOR_ZH = "风格名称：Apple Minimalist Tech Product Commercial Photography。主题色：克莱因蓝（Klein Blue）。主题：银色无线头戴耳机。参考风格名称：Apple / 苹果。"
+FI027_TEXT_ZH = "风格名称：Pastel Symmetry & Retro Whimsical Cinematic Aesthetic。主题：山间小镇的老式缆车站。（参考作者按去名政策隐去，仅保留风格特征）【如果主题直白包含画面元素那就按主题出图，文案由你来升华，但是不要直接描述画面。 如果主题比较概念化，那么文案和主题尽量保持一致，如果文案较长由你提炼，由你先设计画面隐喻（人类和非人类都行）再出图   。    文字参与构图，图文一体】"
+SC001_FA001_ZH = "图型：上文下图社媒卡。主题：秋天的第一杯奶茶。排版要求：小红书社媒卡。排版采用上文下图结构：上方集中放置主题文字和简短补充文案，下方放置完整主图或场景图。上下内容保持清晰的阅读顺序，图文关系自然，整体构图简洁。风格名称：Playful Deadpan Doodle。（参考作者按去名政策隐去，仅保留风格特征）【如果主题直白包含画面元素那就按主题出图，文案由你来升华，但是不要直接描述画面。 如果主题比较概念化，那么文案和主题尽量保持一致，如果文案较长由你提炼，由你先设计画面隐喻（人类和非人类都行）再出图   。    文字参与构图，图文一体】"
 
 
 def test_handraw_capabilities_registered_and_listable() -> None:
@@ -41,14 +41,15 @@ def test_handraw_describe_has_params_schema() -> None:
 
 
 def test_index_counts_and_key_entries() -> None:
-    assert hs.counts() == {"styles": 365, "layouts": 167, "colors": 36, "tones": 16}
+    assert hs.counts() == {"styles": 370, "layouts": 170, "colors": 36, "tones": 16, "styles_removed_credit": 184}
     fi001 = hs.get_style("FI-001")
     assert fi001["generation_name"] == (
         "Apple Minimalist Tech Product Commercial Photography"
     )
     assert fi001["legacy_number"] == "332"
     fi027 = hs.get_style("FI-027")
-    assert fi027["reference"] == "Wes Anderson / 韦斯·安德森"
+    assert fi027["credit_removed"] is True
+    assert fi027["reference"] == ""
     # Legacy numbers and sloppy ids resolve to the same entry.
     assert hs.get_style("332")["id"] == "FI-001"
     assert hs.get_style("fi-027")["id"] == "FI-027"
@@ -58,22 +59,23 @@ def test_catalogue_render_counts_and_filters(tmp_path: Path) -> None:
     cap = caps.get("image.handraw_styles")
     result = cap.render_safe({}, tmp_path, duration=1.0, aspect="16:9", seed=1)
     assert result.qa["counts"] == {
-        "styles": 365,
-        "layouts": 167,
+        "styles": 370,
+        "layouts": 170,
         "colors": 36,
         "tones": 16,
+        "styles_removed_credit": 184,
     }
     payload = json.loads(Path(result.qa["catalogue_json"]).read_text(encoding="utf-8"))
     assert payload["returned"] == {
-        "styles": 365,
-        "layouts": 167,
+        "styles": 370,
+        "layouts": 170,
         "colors": 36,
         "tones": 16,
     }
     assert "yang0" in payload["attribution"]
 
     result = cap.render_safe(
-        {"section": "styles", "query": "Wes Anderson"},
+        {"section": "styles", "query": "FI-027"},
         tmp_path / "q",
         duration=1.0,
         aspect="16:9",

@@ -52,6 +52,7 @@ from hevi.api.routers.shortdrama_writer import router as shortdrama_writer_route
 from hevi.api.routers.stickdir import router as stickdir_router
 from hevi.api.routers.stickdir import router as stickdir_router
 from hevi.api.routers.style import router as style_router
+from hevi.api.routers.style_library import router as style_library_router
 from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.studio_v2 import router as studio_v2_router
 from hevi.api.routers.production_intelligence import router as production_intelligence_router
@@ -218,6 +219,7 @@ app.include_router(templates_router, prefix="/api")
 app.include_router(audio_router, prefix="/api")
 app.include_router(series_router, prefix="/api")
 app.include_router(style_router, prefix="/api")
+app.include_router(style_library_router, prefix="/api")
 app.include_router(director_router, prefix="/api")
 app.include_router(director_pipeline_router, prefix="/api")
 app.include_router(tongjian_router, prefix="/api")

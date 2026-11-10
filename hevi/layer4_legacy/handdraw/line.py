@@ -179,7 +179,9 @@ async def render_handdraw_line(
         raise ValueError(f"unsupported audience: {audience}")
     spec = _match_topic_spec(topic, audience)
     is_general = spec.get("audience") == "general"
-    if style_id not in {"1", "8", "10", "17"}:
+    import re as _re
+
+    if style_id not in {"1", "8", "10", "17"} and not _re.match(r"^[A-F]{2}-\d{3}$", str(style_id).upper()):
         raise ValueError(f"unsupported style_id: {style_id}")
     if hand_preset not in {"navy", "pen-only"}:
         raise ValueError(f"unsupported hand_preset: {hand_preset}")
@@ -215,6 +217,8 @@ async def render_handdraw_line(
         seed=int(seed),
         preview_duration=30.0,
         audience="general" if is_general else "kids",
+        library_style_id=style_id if style_id not in {"1", "8", "10", "17"} else None,
+        theme_color_id=str(order.get("theme_color_id") or "C-27"),
     )
 
     try:

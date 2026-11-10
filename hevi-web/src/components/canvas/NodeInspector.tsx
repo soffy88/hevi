@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import type { Node } from 'reactflow';
 import type { HeviNodeData } from './HeviNode';
-import { artifactDownloadUrl, canvasApi } from '@/lib/api-client';
+import { artifactDownloadUrl, canvasApi, styleLibraryApi, type StyleBrief } from '@/lib/api-client';
 
 export interface NodeInspectorProps {
   node: Node<HeviNodeData>;
@@ -21,12 +21,20 @@ export interface NodeInspectorProps {
   onReview?: () => void;
   onToggleLock?: () => void;
   busy?: boolean;
+  graphId?: string | null;
+  onStyleLocked?: () => void;
 }
 
 export function NodeInspector({
-  node, onChange, onError, onRerun, onReview, onToggleLock, busy,
+  node, onChange, onError, onRerun, onReview, onToggleLock, busy, graphId, onStyleLocked,
 }: NodeInspectorProps) {
   const [uploading, setUploading] = useState(false);
+  const [styleQuery, setStyleQuery] = useState('');
+  const [styleRows, setStyleRows] = useState<StyleBrief[]>([]);
+  const [styleColor, setStyleColor] = useState(
+    typeof node.data.config?.theme_color_id === 'string' ? String(node.data.config.theme_color_id) : 'C-27',
+  );
+  const [styleBusy, setStyleBusy] = useState(false);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState('');
   const toolId = typeof node.data.config?.tool_id === 'string' ? node.data.config.tool_id : '';
@@ -274,6 +282,64 @@ export function NodeInspector({
   return (
     <div className="hevi-inspector" role="region" aria-label="节点属性">
       {general}
+      <div className="hevi-inspector__section">
+        <div className="hevi-inspector__label">画风与主题色（风格库 370 种）</div>
+        <div className="hevi-inspector__ref-set">
+          <input
+            className="hevi-inspector__textarea"
+            style={{ minHeight: 38, padding: '8px 10px' }}
+            value={styleQuery}
+            placeholder="搜编号 / 名称（如 FA-001、水墨）"
+            onChange={async (e) => {
+              const q = e.target.value;
+              setStyleQuery(q);
+              try {
+                const out = await styleLibraryApi.search(q, '', '', 8, 0);
+                setStyleRows(out.styles ?? []);
+              } catch { /* keep the previous list */ }
+            }}
+          />
+          <input
+            className="hevi-inspector__textarea"
+            style={{ minHeight: 38, padding: '8px 10px', maxWidth: 96 }}
+            value={styleColor}
+            aria-label="主题色编号"
+            onChange={(e) => setStyleColor(e.target.value.toUpperCase())}
+          />
+        </div>
+        {styleRows.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            {styleRows.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className="hevi-topbar-btn"
+                disabled={styleBusy || !graphId}
+                title={s.name}
+                onClick={async () => {
+                  if (!graphId) { onError('先保存画布，再换风格'); return; }
+                  setStyleBusy(true);
+                  try {
+                    const out = await canvasApi.styleLock(graphId, s.id, styleColor || 'C-27');
+                    onChange({ style_id: s.id, handraw_style_id: s.id, theme_color_id: styleColor || 'C-27' });
+                    onStyleLocked?.();
+                    onError(`已切到 ${s.id}，重做 ${out.affected.length} 个受影响节点`);
+                  } catch (e) {
+                    onError(e instanceof Error ? e.message : '换风格失败');
+                  } finally {
+                    setStyleBusy(false);
+                  }
+                }}
+              >
+                {s.id}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="hevi-inspector__ref-path">
+          只重做视觉节点及其下游；文字/脚本节点保持不变。风格库来自 yang0/handraw-style。
+        </p>
+      </div>
       <div className="hevi-inspector__title">{toolId || '视频节点'}</div>
       {toolId && (
         <>

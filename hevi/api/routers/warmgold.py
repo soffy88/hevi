@@ -32,6 +32,8 @@ class CheckRequest(BaseModel):
     script: dict[str, Any]
     music_path: str | None = None
     beats: dict[str, Any] | None = None
+    theme_color_id: str | None = None
+    layout_id: str | None = None
 
 
 class RenderRequest(BaseModel):
@@ -39,6 +41,8 @@ class RenderRequest(BaseModel):
     music_path: str | None = None
     voice: bool = True
     fps: int = 24
+    theme_color_id: str | None = None
+    layout_id: str | None = None
 
 
 class MemoryQuoteRequest(BaseModel):
@@ -121,18 +125,31 @@ def reference_breakdown(
     }
 
 
+def _themed(script: dict[str, Any], theme_color_id: str | None, layout_id: str | None) -> dict[str, Any]:
+    if not theme_color_id and not layout_id:
+        return script
+    from hevi.style_library.integrations import warmgold_script
+
+    return warmgold_script(
+        script,
+        theme_color_id=theme_color_id or "C-27",
+        layout_id=layout_id or "IG-003",
+    )
+
+
 @router.post("/check")
 def check_script(
     req: CheckRequest,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
+    script = _themed(req.script, req.theme_color_id, req.layout_id)
     try:
         beat_data = req.beats or beats_mod.build_beats(
-            req.script, music_path=req.music_path or None
+            script, music_path=req.music_path or None
         )
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    result = scriptcheck.check_script(req.script, beat_data, music_present=bool(req.music_path))
+    result = scriptcheck.check_script(script, beat_data, music_present=bool(req.music_path))
     result["beats"] = {
         "source": beat_data.get("source"),
         "bpm": beat_data.get("bpm"),
@@ -148,11 +165,12 @@ def render_warm_gold(
     background: BackgroundTasks,
     user: Annotated[dict[str, Any], Depends(get_current_user)],
 ) -> dict[str, Any]:
+    script = _themed(req.script, req.theme_color_id, req.layout_id)
     try:
-        beat_data = beats_mod.build_beats(req.script, music_path=req.music_path or None)
+        beat_data = beats_mod.build_beats(script, music_path=req.music_path or None)
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    checks = scriptcheck.check_script(req.script, beat_data, music_present=bool(req.music_path))
+    checks = scriptcheck.check_script(script, beat_data, music_present=bool(req.music_path))
     if not checks["pass"]:
         raise HTTPException(
             status_code=422, detail={"message": "脚本自检未通过", "issues": checks["issues"]}
@@ -162,7 +180,7 @@ def render_warm_gold(
     _write_status(
         job_id, {"status": "queued", "job_id": job_id, "owner": str(user.get("id") or "")}
     )
-    background.add_task(_run_render_job, job_id, req.script, req.music_path, req.voice, req.fps)
+    background.add_task(_run_render_job, job_id, script, req.music_path, req.voice, req.fps)
     return {"job_id": job_id, "status": "queued", "checks": checks["metrics"]}
 
 

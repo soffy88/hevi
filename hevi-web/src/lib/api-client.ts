@@ -166,6 +166,35 @@ export const canvasApi = {
     form.append('file', file);
     return authedFormReq<{ path: string }>('/api/canvas/reference-image', form);
   },
+  // S27: switch style/theme colour; only affected visual nodes+downstream are stale.
+  styleLock: (graphId: string, styleId: string, themeColorId: string, nodeKeys: string[] = []) =>
+    authedReq<{ affected: string[]; locked: Record<string, string>; reason: string }>(
+      `/api/canvas/${graphId}/style-lock`,
+      { method: 'POST', body: JSON.stringify({ style_id: styleId, theme_color_id: themeColorId, node_keys: nodeKeys }) },
+    ),
+};
+
+// ── S27 风格库（handraw-style；只读接口免登录） ──
+export type StyleBrief = {
+  id: string; legacy_number: string; name: string; category: string;
+  group: string; use_cases: string[]; traits: string; credit: string;
+  credit_removed: boolean; preview: string;
+};
+export const styleLibraryApi = {
+  meta: () => req<Record<string, unknown>>('/api/style-library/meta'),
+  search: (q = '', category = '', useCase = '', limit = 60, offset = 0) => {
+    const p = new URLSearchParams({ q, category, use_case: useCase, limit: String(limit), offset: String(offset) });
+    return req<{ total: number; returned: number; styles?: StyleBrief[] }>(`/api/style-library/search?${p.toString()}`);
+  },
+  recommend: (topic = '', mood = '', platform = '') => {
+    const p = new URLSearchParams({ topic, mood, platform });
+    return req<{ style: StyleBrief; theme_color: Record<string, unknown>; reason: string; locked: Record<string, string> }>(`/api/style-library/recommend?${p.toString()}`);
+  },
+  color: (id: string) => req<{ color: Record<string, unknown>; palette: Record<string, string> }>(`/api/style-library/colors/${encodeURIComponent(id)}`),
+  previewUrl: (id: string) => `${API_BASE}/api/style-library/preview/${encodeURIComponent(id)}.svg`,
+  selectorUrl: () => `${API_BASE}/api/style-library/selector`,
+  lock: (graphId: string, styleId: string, themeColorId: string) =>
+    canvasApi.styleLock(graphId, styleId, themeColorId),
 };
 
 // ── S25 画布增强（对话建画布 / 模板版本 / 报价 / 备份 / 报错 / 素材 / 技能） ──

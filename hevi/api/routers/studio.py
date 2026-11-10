@@ -1439,14 +1439,16 @@ async def pull_studio_assets(
 @router.get("/style-cards")
 async def get_style_cards(
     _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+    include_library: bool = True,
 ) -> dict[str, Any]:
-    """Built-in ai_drama style cards (cover + flat-light makeup reference).
+    """ai_drama style cards: 8 self-made cards + the handraw-style library.
 
     Images are inlined as data URLs so the picker works without a static mount.
+    Library cards have no copied preview; they are prompt/data cards only.
     """
-    from hevi.ai_drama.style_cards import list_style_cards
+    from hevi.ai_drama.style_cards import list_all_style_cards
 
-    cards = list_style_cards()
+    cards = list_all_style_cards(include_library=include_library)
     for card in cards:
         for kind in ("cover", "makeup"):
             path = Path(str(card.get(f"{kind}_path") or ""))

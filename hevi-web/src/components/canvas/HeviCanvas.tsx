@@ -530,6 +530,8 @@ function CanvasInner() {
             onReview={() => { void reviewNode(selectedNode.id); }}
             onToggleLock={() => { void toggleLock(selectedNode.id); }}
             busy={nodeBusy === selectedNode.id}
+            graphId={graphId}
+            onStyleLocked={() => { if (graphId) void reloadGraph(graphId); }}
           />
         )}
       </div>

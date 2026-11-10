@@ -9,7 +9,10 @@ slots:
     description: 讲解主题或文章全文
   - name: style_id
     required: false
-    description: 手绘风格编号（1极简黑白线条，8水墨写意，10淡彩速写，17墨线绘本）
+    description: 手绘风格编号（1极简黑白线条，8水墨写意，10淡彩速写，17墨线绘本，或风格库 FA-001…FI-034）
+  - name: theme_color_id
+    required: false
+    description: 风格库主题色（C-01…C-36），整片色彩锁定
   - name: hand_preset
     required: false
     description: 手部预设（navy深蓝袖马克笔，pen-only仅画笔）

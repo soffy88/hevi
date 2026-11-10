@@ -375,6 +375,69 @@ async def _warmgold_render(payload: dict[str, Any]) -> dict[str, Any]:
     return {"status": "ok" if report.ok else "blocked", **report.to_dict()}
 
 
+async def _style_search(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.style_library import catalog
+
+    section = str(payload.get("section") or "styles")
+    try:
+        return catalog.search(
+            section,
+            query=str(payload.get("query") or payload.get("q") or ""),
+            category=str(payload.get("category") or ""),
+            use_case=str(payload.get("use_case") or ""),
+            limit=int(payload.get("limit") or 60),
+            offset=int(payload.get("offset") or 0),
+        )
+    except catalog.StyleLibraryError as exc:
+        return {"status": "blocked", "reason": str(exc)}
+
+
+async def _style_recommend(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.style_library import catalog
+
+    return catalog.recommend(
+        str(payload.get("topic") or ""),
+        mood=str(payload.get("mood") or ""),
+        platform=str(payload.get("platform") or ""),
+        style_hint=str(payload.get("style_hint") or ""),
+    )
+
+
+async def _cover_build(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.style_library import cover
+
+    plan = cover.plan_cover(
+        payload.get("source") or payload,
+        style_id=str(payload.get("style_id") or "FA-039"),
+        theme_color_id=str(payload.get("theme_color_id") or "C-27"),
+        layout_id=str(payload.get("layout_id") or "SC-016"),
+        title=str(payload.get("title") or ""),
+    )
+    run_id = str(payload.get("run_id") or "canvas")
+    out = Path("output/style_library/covers") / run_id
+    manifest = cover.render_covers(plan, out, sizes=payload.get("sizes") or ["9:16", "3:4", "16:9"])
+    return {"status": "ok" if manifest["ok"] else "blocked", **manifest}
+
+
+async def _article_illustrate(payload: dict[str, Any]) -> dict[str, Any]:
+    from hevi.style_library import article
+
+    markdown = str(payload.get("markdown") or payload.get("content") or "")
+    if not markdown.strip():
+        return {"status": "blocked", "reason": "需要 article markdown"}
+    run_id = str(payload.get("run_id") or "canvas")
+    out = Path("output/style_library/articles") / run_id
+    manifest = article.export_article(
+        markdown,
+        out,
+        style_id=str(payload.get("style_id") or "FA-001"),
+        theme_color_id=str(payload.get("theme_color_id") or "C-05"),
+        points=int(payload.get("points") or 3),
+        title=str(payload.get("title") or ""),
+    )
+    return {"status": "ok", **manifest}
+
+
 async def _script_quick(payload: dict[str, Any]) -> dict[str, Any]:
     from hevi.quick.service import QuickVideoConfig, plan_quick
 
@@ -749,6 +812,46 @@ def _register_defaults() -> None:
             ("video_path", "report"),
         ),
         _warmgold_render,
+    )
+    register_tool(
+        ToolSpec(
+            "style.search",
+            "style",
+            "风格库检索（370 风格 / 170 排版 / 36 主题色）",
+            ("query", "section", "category", "use_case"),
+            ("styles", "layouts", "colors"),
+        ),
+        _style_search,
+    )
+    register_tool(
+        ToolSpec(
+            "style.recommend",
+            "style",
+            "按主题情绪自动推荐风格+主题色+版式，并给一句理由",
+            ("topic", "mood", "platform"),
+            ("style", "theme_color", "layout", "reason"),
+        ),
+        _style_recommend,
+    )
+    register_tool(
+        ToolSpec(
+            "cover.build",
+            "render",
+            "封面节点：摘要/受众/视觉隐喻 → 9:16 / 3:4 / 16:9 文字层封面",
+            ("source", "style_id", "theme_color_id", "layout_id", "title"),
+            ("covers", "checks", "plan"),
+        ),
+        _cover_build,
+    )
+    register_tool(
+        ToolSpec(
+            "article.illustrate",
+            "render",
+            "长文配图规划：2–5 个点位、单风格单色、Markdown/公众号 HTML",
+            ("markdown", "style_id", "theme_color_id", "points"),
+            ("markdown", "wechat_html", "images", "plan"),
+        ),
+        _article_illustrate,
     )
     _register_kit_tools()
     _register_ai_drama_tools()

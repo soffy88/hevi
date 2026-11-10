@@ -174,7 +174,7 @@ def get_style_card(card_id: str) -> dict[str, Any] | None:
 
 def apply_style_card(series: dict[str, Any], card_id: str) -> dict[str, Any]:
     """Attach one card to a series.  Unknown ids raise; nothing is invented."""
-    card = get_style_card(card_id)
+    card = get_any_style_card(card_id)
     if card is None:
         raise KeyError(f"unknown style card: {card_id!r}")
     series["style_card"] = card["id"]
@@ -223,3 +223,47 @@ __all__ = [
     "style_card_findings",
     "style_prompt_for",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Library merge (S27)
+# ---------------------------------------------------------------------------
+
+
+def library_style_cards() -> list[dict[str, Any]]:
+    """The handraw-style catalogue as ai_drama cards.
+
+    The 8 built-in self-made cards stay the default (they have local cover and
+    makeup references).  Library cards are additive: id ``hw_<STYLE-ID>``,
+    no copied preview image, and a prompt built from the library style name and
+    category.  Duplicates by normalised generation name are dropped.
+    """
+    from hevi.style_library.integrations import ai_drama_library_cards
+
+    builtin_names = {str(card.get("name") or "").strip().lower() for card in STYLE_CARDS}
+    out: list[dict[str, Any]] = []
+    for card in ai_drama_library_cards():
+        name = str(card.get("name") or "").strip().lower()
+        if name and name in builtin_names:
+            continue
+        out.append(card)
+    return out
+
+
+def list_all_style_cards(*, include_library: bool = True) -> list[dict[str, Any]]:
+    cards = list_style_cards()
+    if include_library:
+        cards.extend(library_style_cards())
+    return cards
+
+
+def get_any_style_card(card_id: str) -> dict[str, Any] | None:
+    card = get_style_card(card_id)
+    if card is not None:
+        return card
+    text = str(card_id or "").strip()
+    if text.startswith("hw_"):
+        for card in library_style_cards():
+            if card["id"] == text:
+                return card
+    return None

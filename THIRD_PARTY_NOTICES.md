@@ -105,6 +105,20 @@
 
 ---
 
+## handraw-style (yang0/handraw-style)
+
+- **来源**: https://github.com/yang0/handraw-style
+- **作者**: yang0
+- **许可证**: MIT License with Attribution Requirement（允许商用，须在文档、
+  产品说明或界面中保留作者与仓库链接）
+- **使用内容**: 370 种视觉风格、170 种排版图型、36 种主题色的结构化数据
+  （编号、名称、类别、特征、适用场景），未使用其 images/ 示例图。
+- **去名**: 在世或无法确认的在世艺术家真名按政策隐去，只保留风格特征；
+  184 个条目，178 个唯一参考名。策略哈希见
+  `hevi/image/handraw_data/credit_policy.json`。
+- **署名**: `NOTICE`、`/acknowledgements`、风格选择器页脚、
+  `assets/style_library/ATTRIBUTION.md`。
+
 ## BeefTV (glanderness/BeefTV)
 
 - **来源**: https://github.com/glanderness/BeefTV

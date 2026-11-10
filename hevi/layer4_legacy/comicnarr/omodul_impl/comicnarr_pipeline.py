@@ -94,6 +94,22 @@ def comic_narration_workflow(
         raw_texts = [raw_texts]
     style_name = str(input_data.get("style") or cfg.get("style") or DEFAULT_STYLE)
     style = get_style_template(style_name)
+    library_style_id = str(
+        input_data.get("handraw_style_id")
+        or input_data.get("style_id")
+        or cfg.get("handraw_style_id")
+        or ""
+    ).strip()
+    theme_color_id = str(
+        input_data.get("theme_color_id") or cfg.get("theme_color_id") or "C-27"
+    ).strip()
+    style_lock: dict[str, Any] | None = None
+    if library_style_id:
+        from hevi.style_library.integrations import comic_style
+
+        style = comic_style(library_style_id, theme_color_id)
+        style_name = style.name
+        style_lock = {"style_id": library_style_id, "theme_color_id": theme_color_id}
     subtitle_style = str(input_data.get("subtitle_style") or cfg.get("subtitle_style") or "bottom")
     use_bubble = subtitle_style == "bubble"
 
@@ -107,6 +123,15 @@ def comic_narration_workflow(
     )
     if engine_name == "zero":
         engine_name = "sdturbo_cpu"
+    if library_style_id:
+        try:
+            from hevi.layer4_legacy.keyframe.oprim_impl.registry import get_engine
+
+            engine_obj = get_engine(engine_name)
+            if hasattr(engine_obj, "configure"):
+                engine_obj.configure(style_id=library_style_id, theme_color_id=theme_color_id)
+        except Exception:
+            pass
 
     bg_source = str(
         input_data.get("background_source")
@@ -702,6 +727,7 @@ def comic_narration_workflow(
         "llm_channel": script_channel,
         "llm_probe": llm_probe,
         "tts_channel": f"{tts_engine}_zh_huayan",
+        "style_lock": style_lock,
     }
     qa_path = out_dir / "qa.json"
     qa_path.write_text(json.dumps(qa_report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -715,6 +741,7 @@ def comic_narration_workflow(
         "style": style.name,
         "style_presets_module": "hevi.layer4_legacy.keyframe.oprim_impl.style_presets",
         "style_postprocess": style.postprocess,
+        "style_lock": style_lock,
         "total_wall_sec": round(wall_sec, 2),
         "keyframe_gen_sec": round(total_kf_gen_sec, 2),
         "peak_rss_mb": round(rss_mb, 1),

@@ -120,6 +120,8 @@ def render_handdraw_pipeline(
     stroke_style: str = "legacy",
     rough_roughness: float = 2.0,
     rough_bowing: float = 2.0,
+    library_style_id: str | None = None,
+    theme_color_id: str | None = None,
 ) -> dict[str, Any]:
     """Complete end-to-end handdraw production pipeline.
 
@@ -138,7 +140,9 @@ def render_handdraw_pipeline(
     ):
         raise ValueError("preview_duration must be within (0, 120] seconds")
     layout = compute_canvas_layout(width, height)
-    style_cfg = get_style_config(style_id)
+    if library_style_id:
+        style_id = str(library_style_id)
+    style_cfg = get_style_config(style_id, theme_color_id=theme_color_id)
 
     # 1. Inputs directory structure
     inputs_dir = output_dir / "inputs"
@@ -175,6 +179,7 @@ def render_handdraw_pipeline(
             stroke_style=stroke_style,
             rough_roughness=rough_roughness,
             rough_bowing=rough_bowing,
+            theme_color_id=theme_color_id,
         )
         illustration_meta_map[scene_key] = {
             **meta,

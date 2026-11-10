@@ -1092,12 +1092,30 @@ THEMES: dict[str, dict[str, Any]] = {
 DEFAULT_THEMES = ("editorial", "signal")
 
 
+def library_theme(color_id: str) -> dict[str, Any]:
+    """S27: a S24 palette driven by one handraw-style theme colour."""
+    from hevi.style_library import catalog
+
+    pal = catalog.theme_palette(color_id)
+    return {
+        "id": f"library_{pal['id']}", "label": f"风格库 · {pal['name']}",
+        "bg": pal["background"], "fg": pal["ivory"], "accent": pal["accent"],
+        "muted": pal["ivory_dim"], "panel": pal["panel"],
+        "font": "Noto Sans CJK SC", "subtitle_size": 54, "subtitle_bottom": 12,
+        "library_color_id": pal["id"], "hex": pal["hex"],
+    }
+
+
 def resolve_theme(theme: str | dict[str, Any] | None) -> dict[str, Any]:
     if isinstance(theme, dict):
+        if theme.get("library_color_id"):
+            return library_theme(str(theme["library_color_id"]))
         merged = dict(THEMES["editorial"])
         merged.update(theme)
         return merged
     key = str(theme or "editorial")
+    if re.match(r"^C-\d{1,2}$", key):
+        return library_theme(key)
     return dict(THEMES.get(key, THEMES["editorial"]))
 
 
@@ -1149,36 +1167,55 @@ def _wrap_text(draw: Any, text: str, font: Any, max_width: int) -> list[str]:
     return lines
 
 
+_LAYOUT_STYLE: dict[str, dict[str, Any]] = {
+    "SC-016": {"title": 88, "rule": 0, "bullet": 0, "body": 38, "lead": 120},
+    "SC-007": {"title": 70, "rule": 0, "bullet": 0, "body": 44, "lead": 180, "quote": True},
+    "SC-024": {"title": 66, "rule": 1, "bullet": 1, "body": 34, "lead": 220},
+    "SC-001": {"title": 74, "rule": 1, "bullet": 1, "body": 36, "lead": 120, "band": True},
+    "IG-008": {"title": 66, "rule": 1, "bullet": 1, "body": 34, "lead": 140, "steps": True},
+    "IG-009": {"title": 66, "rule": 1, "bullet": 1, "body": 34, "lead": 140, "timeline": True},
+}
+
+
 def _draw_card(
     theme: dict[str, Any], *, events: list[dict[str, Any]], footer: str, width: int = 1080,
-    height: int = 1440,
+    height: int = 1440, layout_id: str = "",
 ) -> Any:
     from PIL import Image, ImageDraw
 
+    ls = _LAYOUT_STYLE.get(layout_id, {})
     img = Image.new("RGB", (width, height), _hex(theme["bg"]))
     draw = ImageDraw.Draw(img)
+    if ls.get("band"):
+        draw.rectangle([0, 0, width, 210], fill=_hex(theme["panel"]))
+    if layout_id.startswith("IG-"):
+        draw.rectangle([0, 0, 16, height], fill=_hex(theme["accent"]))
     draw.rectangle([0, 0, width, 18], fill=_hex(theme["accent"]))
-    y = 120
+    y = int(ls.get("lead", 120))
     for event in events:
         kind = event.get("kind")
         if kind == "kicker":
             draw.text((90, y), event["text"], font=_font(30), fill=_hex(theme["accent"]))
             y += 58
         elif kind == "title":
-            for line in _wrap_text(draw, event["text"], _font(74, bold=True), width - 180)[:4]:
-                draw.text((90, y), line, font=_font(74, bold=True), fill=_hex(theme["fg"]))
-                y += 96
+            tsize = int(ls.get("title", 74))
+            for line in _wrap_text(draw, event["text"], _font(tsize, bold=True), width - 180)[:4]:
+                draw.text((90, y), line, font=_font(tsize, bold=True), fill=_hex(theme["fg"]))
+                y += int(tsize * 1.3)
             y += 20
         elif kind == "rule":
-            draw.rectangle([90, y, 250, y + 8], fill=_hex(theme["accent"]))
+            if ls.get("rule", 1):
+                draw.rectangle([90, y, 250, y + 8], fill=_hex(theme["accent"]))
             y += 36
         elif kind == "body":
-            for line in _wrap_text(draw, event["text"], _font(36), width - 180):
-                draw.text((90, y), line, font=_font(36), fill=_hex(theme["fg"]))
-                y += 58
+            bsize = int(ls.get("body", 36))
+            for line in _wrap_text(draw, event["text"], _font(bsize), width - 180):
+                draw.text((90, y), line, font=_font(bsize), fill=_hex(theme["fg"]))
+                y += int(bsize * 1.6)
             y += 18
         elif kind == "bullet":
-            draw.ellipse([92, y + 18, 112, y + 38], fill=_hex(theme["accent"]))
+            if ls.get("bullet", 1):
+                draw.ellipse([92, y + 18, 112, y + 38], fill=_hex(theme["accent"]))
             for line in _wrap_text(draw, event["text"], _font(34), width - 240):
                 draw.text((136, y), line, font=_font(34), fill=_hex(theme["fg"]))
                 y += 54
@@ -1227,6 +1264,7 @@ def export_text_pack(
     author: str = "",
     source_blocks: list[dict[str, Any]] | None = None,
     ratio: str = "3:4",
+    layout_id: str = "",
 ) -> dict[str, Any]:
     """一稿多发：3:4 卡片组 + 发帖文案 + 公众号内联 HTML + 长图。
 
@@ -1236,6 +1274,12 @@ def export_text_pack(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     palette = resolve_theme(theme)
+    layout = None
+    catalog = None
+    if layout_id:
+        from hevi.style_library import catalog as _catalog
+        catalog = _catalog
+        layout = catalog.get_layout(layout_id)
     css = theme_css(palette)
     (out / "theme.css").write_text(css["css"] + "\n", encoding="utf-8")
     (out / "theme.json").write_text(json.dumps(css, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -1260,7 +1304,7 @@ def export_text_pack(
         {"kind": "title", "text": title},
         {"kind": "rule"},
         {"kind": "body", "text": f"{len(items)} 节要点，读完带走一个结论。"},
-    ], footer=footer)
+    ], footer=footer, layout_id=layout_id)
     cover_path = cards_dir / "card-01.png"
     cover.save(cover_path)
     card_paths = [cover_path]
@@ -1274,7 +1318,7 @@ def export_text_pack(
             *[{"kind": "bullet", "text": bullet} for bullet in (item.get("bullets") or [])[:2] if bullet != item["text"]],
         ]
         path = cards_dir / f"card-{index:02d}.png"
-        _draw_card(palette, events=events, footer=footer).save(path)
+        _draw_card(palette, events=events, footer=footer, layout_id=layout_id).save(path)
         card_paths.append(path)
 
     long_events: list[dict[str, Any]] = [{"kind": "kicker", "text": "长图 · 一稿多发"}, {"kind": "title", "text": title}, {"kind": "rule"}]
@@ -1285,7 +1329,7 @@ def export_text_pack(
         long_events.extend({"kind": "bullet", "text": bullet} for bullet in (item.get("bullets") or []))
         long_events.append({"kind": "spacer", "size": 40})
     long_height = _estimate_long_height(long_events)
-    long_img = _draw_card(palette, events=long_events, footer=footer, width=1080, height=long_height)
+    long_img = _draw_card(palette, events=long_events, footer=footer, width=1080, height=long_height, layout_id=layout_id)
     long_path = out / "long-image.png"
     long_img.save(long_path)
 
@@ -1370,6 +1414,9 @@ def export_text_pack(
         "wechat_external_refs": 0,
         "ledger_check": ledger_check,
         "subtitle_style": css["subtitle_style"],
+        "layout": layout,
+        "library_color_id": palette.get("library_color_id", ""),
+        "attribution": (catalog.ATTRIBUTION if catalog is not None else ""),
     }
     _write_json(out / "pack.json", manifest)
     return manifest

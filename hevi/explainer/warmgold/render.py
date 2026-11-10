@@ -79,11 +79,28 @@ class RenderReport:
         }
 
 
-def _svg(items: list[dict[str, Any]]) -> str:
+def _color_map(palette: dict[str, Any]) -> dict[str, str]:
+    return {
+        "background": palette["background"],
+        "bg": palette["background"],
+        "panel": palette["panel"],
+        "ivory": palette["ivory"],
+        "ivory_dim": palette["ivory_dim"],
+        "gold": palette["gold"],
+        "gold_bright": palette["gold_bright"],
+        "danger": palette["danger"],
+        "past": palette["past"],
+        "none": "none",
+    }
+
+
+def _svg(items: list[dict[str, Any]], palette: dict[str, Any] | None = None) -> str:
+    P = palette or PALETTE
+    C = _color_map(P)
     out: list[str] = []
     for it in items:
         kind = it.get("k")
-        color = COLOR.get(str(it.get("f") or "gold"), str(it.get("f") or PALETTE["gold"]))
+        color = C.get(str(it.get("f") or "gold"), str(it.get("f") or P["gold"]))
         opacity = float(it.get("o", 1.0))
         if kind == "c":
             out.append(
@@ -100,7 +117,7 @@ def _svg(items: list[dict[str, Any]]) -> str:
         elif kind == "r":
             stroke = it.get("s") or ""
             stroke_attr = (
-                f' stroke="{COLOR.get(str(stroke), PALETTE["gold"])}" stroke-width="2"'
+                f' stroke="{C.get(str(stroke), P["gold"])}" stroke-width="2"'
                 if stroke
                 else ""
             )
@@ -199,7 +216,13 @@ def _frame_plan(beat_data: dict[str, Any], fps: int) -> list[dict[str, Any]]:
     return plan
 
 
-def build_frame_html(plan: list[dict[str, Any]]) -> str:
+def build_frame_html(
+    plan: list[dict[str, Any]],
+    palette: dict[str, Any] | None = None,
+    *,
+    label: str = "暖黑金图解 · WARM GOLD",
+) -> str:
+    P = palette or PALETTE
     scenes: list[list[Any]] = []
     for frame in plan:
         span = frame["span"]
@@ -212,7 +235,7 @@ def build_frame_html(plan: list[dict[str, Any]]) -> str:
             items = [
                 it for it in items if not (it.get("k") == "t" and float(it.get("y") or 0) > 0.85)
             ]
-        svg = _svg(items)
+        svg = _svg(items, P)
         readout = _esc(str(payload.get("readout") or ""))
         sim = _esc(str(payload.get("sim_note") or ""))
         big = _esc(str(span.get("big") or ""))
@@ -221,29 +244,29 @@ def build_frame_html(plan: list[dict[str, Any]]) -> str:
     data = json.dumps(scenes, ensure_ascii=False)
     return f"""<!doctype html><html lang="zh"><head><meta charset="utf-8"><style>
 *{{margin:0;padding:0;box-sizing:border-box}}
-html,body{{width:1080px;height:1920px;overflow:hidden;background:{PALETTE["background"]}}}
-body{{font-family:{style.FONT_SMALL};color:{PALETTE["ivory"]}}}
+html,body{{width:1080px;height:1920px;overflow:hidden;background:{P["background"]}}}
+body{{font-family:{style.FONT_SMALL};color:{P["ivory"]}}}
 #root{{position:relative;width:1080px;height:1920px;background:
- radial-gradient(1100px 900px at 68% 12%, #241A13 0%, #150F0B 46%, #0F0B08 100%)}}
+ radial-gradient(1100px 900px at 68% 12%, {P["panel"]} 0%, {P["background_soft"]} 46%, {P["background"]} 100%)}}
 .grain{{position:absolute;inset:0;opacity:.05;background-image:
  repeating-linear-gradient(0deg,rgba(255,255,255,.22) 0 1px,transparent 1px 4px)}}
-.hair{{position:absolute;left:80px;right:220px;height:1px;background:{PALETTE["gold"]};opacity:.22}}
+.hair{{position:absolute;left:80px;right:220px;height:1px;background:{P["gold"]};opacity:.22}}
 #big{{position:absolute;top:176px;left:70px;width:940px;text-align:center;font-family:{style.FONT_BIG};
- font-weight:600;color:{PALETTE["ivory"]};line-height:1.14;letter-spacing:.01em;white-space:pre-line}}
+ font-weight:600;color:{P["ivory"]};line-height:1.14;letter-spacing:.01em;white-space:pre-line}}
 #stage{{position:absolute;top:486px;left:60px;width:900px;height:760px}}
 #stage svg{{width:900px;height:760px;display:block}}
 #small{{position:absolute;top:1286px;left:84px;width:912px;text-align:center;font-size:44px;
- line-height:1.35;color:{PALETTE["ivory_dim"]};font-weight:400;white-space:pre-line}}
+ line-height:1.35;color:{P["ivory_dim"]};font-weight:400;white-space:pre-line}}
 #readout{{position:absolute;top:486px;left:80px;font-family:{style.FONT_SMALL};font-size:40px;
- color:{PALETTE["gold_bright"]};letter-spacing:.04em}}
-#sim{{position:absolute;top:1436px;left:84px;font-size:24px;color:{PALETTE["past"]};letter-spacing:.08em}}
-#foot{{position:absolute;top:1500px;left:80px;right:220px;height:1px;background:{PALETTE["gold"]};opacity:.16}}
-#mark{{position:absolute;top:1524px;left:84px;font-size:22px;color:{PALETTE["past"]};letter-spacing:.14em}}
+ color:{P["gold_bright"]};letter-spacing:.04em}}
+#sim{{position:absolute;top:1436px;left:84px;font-size:24px;color:{P["past"]};letter-spacing:.08em}}
+#foot{{position:absolute;top:1500px;left:80px;right:220px;height:1px;background:{P["gold"]};opacity:.16}}
+#mark{{position:absolute;top:1524px;left:84px;font-size:22px;color:{P["past"]};letter-spacing:.14em}}
 </style></head><body><div id="root">
 <div class="grain"></div><div class="hair"></div>
 <div id="big"></div><div id="stage"></div><div id="readout"></div>
 <div id="small"></div><div id="sim"></div><div id="foot"></div>
-<div id="mark">暖黑金图解 · WARM GOLD</div>
+<div id="mark">{_esc(label)}</div>
 </div><script id="scenes" type="application/json">{data}</script><script>
 const S = JSON.parse(document.getElementById('scenes').textContent);
 const big = document.getElementById('big'), small = document.getElementById('small');
@@ -689,6 +712,11 @@ def render(
     fixes: list[dict[str, Any]] | None = None,
 ) -> RenderReport:
     started = time.time()
+    theme_palette = script.get("palette") if isinstance(script.get("palette"), dict) else None
+    theme_label = "暖黑金图解 · WARM GOLD"
+    if theme_palette:
+        color = script.get("theme_color") or {}
+        theme_label = f"知识讲解 · {color.get('name_zh', theme_palette.get('name', ''))} · {script.get('layout_id', '')}".strip(" ·")
     work = Path(workdir)
     work.mkdir(parents=True, exist_ok=True)
     out = Path(out_mp4)
@@ -734,7 +762,7 @@ def render(
             seen.add(sid)
             event_indices.append(frame["i"])
     still_dir = work / "stills"
-    pw, browser, page = _launch_page(build_frame_html(plan))
+    pw, browser, page = _launch_page(build_frame_html(plan, theme_palette, label=theme_label))
     try:
         _capture(page, event_indices, still_dir, plan)
     finally:
@@ -757,7 +785,7 @@ def render(
     frames_dir = work / "frames"
     if frames_dir.exists():
         shutil.rmtree(frames_dir)
-    pw, browser, page = _launch_page(build_frame_html(plan))
+    pw, browser, page = _launch_page(build_frame_html(plan, theme_palette, label=theme_label))
     try:
         _capture(page, list(range(len(plan))), frames_dir, plan)
     finally:
@@ -830,7 +858,7 @@ def render(
                 pdir = work / f"patch_{start:.2f}"
                 if pdir.exists():
                     shutil.rmtree(pdir)
-                pw2, browser2, page2 = _launch_page(build_frame_html(new_plan))
+                pw2, browser2, page2 = _launch_page(build_frame_html(new_plan, theme_palette, label=theme_label))
                 try:
                     _capture(page2, [f["i"] for f in part_frames], pdir, new_plan)
                 finally:

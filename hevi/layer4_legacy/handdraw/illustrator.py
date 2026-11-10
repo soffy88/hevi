@@ -53,7 +53,7 @@ class _Recipe:
     def __init__(self, cfg: HanddrawStyleConfig, rng: random.Random) -> None:
         self.cfg = cfg
         self.rng = rng
-        self.sid = cfg.style_id
+        self.sid = cfg.base_recipe or cfg.style_id
         self.ink = _hex_to_rgb(cfg.ink_color)
         self.accent = _hex_to_rgb(cfg.accent_color)
         self.marker = _hex_to_rgb(cfg.marker_color)
@@ -895,7 +895,7 @@ def _render_scene(
             if not isinstance(_value, (int, float)) or isinstance(_value, bool) \
                     or not math.isfinite(float(_value)) or float(_value) < 0:
                 raise ValueError(f"{_name} must be a finite number >= 0, got {_value!r}")
-    rng = random.Random(f"{scene_key}:{cfg.style_id}:v2:{int(seed)}")
+    rng = random.Random(f"{scene_key}:{cfg.base_recipe or cfg.style_id}:v2:{int(seed)}")
     recipe = _Recipe(cfg, rng)
     spec = ILLUSTRATION_BUILDERS[scene_key]()
 
@@ -911,7 +911,7 @@ def _render_scene(
         scaled_shapes.append(item)
     # Style 10 intentionally uses a smaller, airy vignette composition. The
     # watercolor sketch needs a larger quiet-paper margin than the other recipes.
-    composition_scale = {"1": 1.0, "8": 0.90, "10": 0.72, "17": 0.82}[cfg.style_id]
+    composition_scale = {"1": 1.0, "8": 0.90, "10": 0.72, "17": 0.82}[cfg.base_recipe or cfg.style_id]
     if composition_scale < 1.0:
         cx, cy = big[0] / 2, big[1] / 2
         size_factor = composition_scale
@@ -982,7 +982,7 @@ def _render_scene(
     # stroke_style="rough" swaps only how outlines/decor are stamped.
     ink_mask = np.zeros((big[1], big[0]), dtype=bool)
     if stroke_style == "rough":
-        base_seed = int(seed) * 10007 + zlib.crc32(f"{scene_key}:{cfg.style_id}".encode())
+        base_seed = int(seed) * 10007 + zlib.crc32(f"{scene_key}:{cfg.base_recipe or cfg.style_id}".encode())
         r_rough = min(50.0, float(rough_roughness) * scale)
         r_bow = min(50.0, float(rough_bowing) * scale)
         for shape_idx, shape in enumerate(scaled_shapes):
@@ -1050,7 +1050,7 @@ def _render_scene(
         composed.alpha_composite(Image.fromarray(ink_rgba))
 
     # 3. Style 8: a red seal stamp as the signature accent.
-    if cfg.style_id == "8":
+    if (cfg.base_recipe or cfg.style_id) == "8":
         seal = Image.new("RGBA", big, (0, 0, 0, 0))
         draw = ImageDraw.Draw(seal)
         s = int(52 * scale)
@@ -1091,6 +1091,7 @@ def build_scene_illustration(
     stroke_style: str = "legacy",
     rough_roughness: float = 2.0,
     rough_bowing: float = 2.0,
+    theme_color_id: str | None = None,
 ) -> dict[str, Any]:
     """Generate a transparent, style-differentiated illustration plus part metadata.
 
@@ -1105,7 +1106,7 @@ def build_scene_illustration(
         raise ValueError(
             f"Unknown scene key '{scene_key}'. Supported: {sorted(ILLUSTRATION_BUILDERS)}"
         )
-    cfg = get_style_config(style_id)
+    cfg = get_style_config(style_id, theme_color_id=theme_color_id)
     image, parts = _render_scene(
         scene_key, cfg, size, seed=seed,
         stroke_style=stroke_style, rough_roughness=rough_roughness, rough_bowing=rough_bowing,
@@ -1119,5 +1120,8 @@ def build_scene_illustration(
         "height": image.height,
         "parts": parts,
         "style_id": cfg.style_id,
+        "base_recipe": cfg.base_recipe or cfg.style_id,
+        "library_id": cfg.library_id,
+        "theme_color_id": cfg.theme_color_id,
         "stroke_style": stroke_style,
     }

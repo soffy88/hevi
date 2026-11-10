@@ -33,10 +33,30 @@ native-subtitle-quote-image
 
 Hevi — 第三方署名 / NOTICE
 =================
+Handraw-style（手绘风格与排版图型提示词库）
+- 上游：https://github.com/yang0/handraw-style（作者 yang0）
+- 许可：MIT License with Attribution Requirement（全文见
+  hevi/image/handraw_data/LICENSE 与 assets/style_library/LICENSE）
+- 使用范围：370 种视觉风格、170 种排版图型、36 种主题色的结构化数据
+  （编号、名称、类别、特征描述、适用场景）；运行时索引
+  `hevi/image/handraw_data/handraw_index.json`，产品资产镜像
+  `assets/style_library/`。
+- 署名位置：本 NOTICE、站点「致谢」页（/acknowledgements）、
+  风格选择器页脚与 `assets/style_library/ATTRIBUTION.md`。
+- 去名政策：参考作者为在世或无法确认的在世艺术家/插画师真名时，
+  HEVI 只保留风格特征与作品/机构/描述性标签，不保留人名；
+  策略以 SHA-256 哈希存于 `handraw_data/credit_policy.json`。
+  共去名 184 个风格条目（178 个唯一参考名）。
+- 样图：不使用上游 images/ 下的示例图；选择器与封面预览均由 HEVI
+  自绘（SVG / PIL），不复制其人物、构图或文字。
+- 未引入其二维码、社群、飞书链接；未调用 gpt-image-2 或任何付费生图
+  接口做预览。
+
+
 本仓库的 Agent 画布操作桥（单元 C：`hevi/operations/`、HTTP `/api/ops`、
 MCP `hevi.agent.ops.*`）在早期（S25 之前）只做了**契约级参考**：op 描述符 /
 权限模式 read-only·canvas·full-access / CAS expectedRevision / opId 幂等重放 /
-付费生成 propose 三段式「提议—确认—执行」。参考时其公开材料标注为 MIT。
+付费生成 propose 三段式「提议—确认—执行」。其早期对外材料曾被误标为 MIT；该标注不适用于其 v2.2 及以后版本。
 
 S25 复核确认：BeefTV 自 v2.2 起为 **BeefTV Source Available License 1.0**
 （禁止商业转售、套壳、收费部署与向第三方提供托管能力），与早期标注不一致。

@@ -24,6 +24,19 @@ _REGISTRY: dict[str, type[KeyframeEngine] | KeyframeEngine] = {
 }
 
 
+def _register_library_engine() -> None:
+    """S27: CPU-only library-aware engine (optional import, fail-soft)."""
+    try:
+        from hevi.style_library.keyframe_engine import HandrawLibraryEngine
+
+        _REGISTRY.setdefault("handraw_cpu", HandrawLibraryEngine)
+    except Exception:  # pragma: no cover - optional dependency boundary
+        return
+
+
+_register_library_engine()
+
+
 def register_engine(name: str, *, engine: type[KeyframeEngine] | KeyframeEngine) -> None:
     """Register a custom keyframe engine."""
     _REGISTRY[name] = engine

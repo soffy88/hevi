@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from obase.persistence import PgPool
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from hevi.api.rate_limit import rate_limit
 from hevi.auth.dependencies import get_current_user
@@ -767,6 +767,12 @@ class NodePatchRequest(BaseModel):
     locked: bool | None = None
 
 
+class StyleLockRequest(BaseModel):
+    style_id: str
+    theme_color_id: str = "C-27"
+    node_keys: list[str] = Field(default_factory=list)
+
+
 @router.post("/templates/koubo", status_code=201)
 async def create_koubo_template(
     body: KouboTemplateRequest,
@@ -826,6 +832,42 @@ async def list_node_revisions(
     await _node_state_or_404(svc, graph_id, node_key)
     rows = await svc.node_store.list_revisions(graph_id, node_key)  # type: ignore[union-attr]
     return {"graph_id": graph_id, "node_id": node_key, "revisions": rows}
+
+
+@router.post("/{graph_id}/style-lock")
+async def apply_style_lock(
+    graph_id: str,
+    body: StyleLockRequest,
+    user: Annotated[dict[str, Any], Depends(get_current_user)],
+    svc: Annotated[GraphService, Depends(get_graph_service)],
+) -> dict[str, Any]:
+    """Switch the film's style/theme colour and mark only affected nodes stale.
+
+    Text-only nodes keep their config.  ``update_graph`` marks each changed node
+    and its downstream stale, so the next execute(scope="dirty") re-runs only
+    the affected branch — not the whole canvas.
+    """
+    from hevi.style_library.integrations import apply_style_to_nodes
+
+    graph = await _load_owned_graph(graph_id, svc, user)
+    result = apply_style_to_nodes(
+        list(graph.get("nodes_json", []) or []),
+        style_id=body.style_id,
+        theme_color_id=body.theme_color_id,
+        node_keys=body.node_keys or None,
+    )
+    if not result["affected"]:
+        raise HTTPException(status_code=422, detail="没有可应用风格的视觉节点")
+    updated = await svc.update_graph(graph_id, nodes=result["nodes"])
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Graph not found")
+    return {
+        "graph_id": graph_id,
+        "affected": result["affected"],
+        "locked": result["locked"],
+        "reason": result["reason"],
+        "attribution": result["attribution"],
+    }
 
 
 @router.patch("/{graph_id}/nodes/{node_key}")

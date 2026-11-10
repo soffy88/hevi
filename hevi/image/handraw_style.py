@@ -98,7 +98,7 @@ def get_style(raw: str) -> dict[str, Any]:
                 return style
     raise HandrawStyleError(
         f"unknown handraw style id: {raw!r} (use a listed id like FI-001 "
-        "or a legacy number 001-365)"
+        "or a legacy number 001-370)"
     )
 
 
@@ -189,6 +189,8 @@ def assemble_prompt(
     layout = get_layout(layout_id) if layout_id else None
     color = get_color(color_id) if color_id else None
     traits = style["prompt_traits"]
+    style_label = str(style.get("reference") or "").strip()
+    credit_note = "" if style_label else "（参考作者按去名政策隐去，仅保留风格特征）"
     is_ecommerce = bool(
         layout and (layout["category"] == "ecommerce" or layout["id"].startswith("EC-"))
     )
@@ -206,12 +208,17 @@ def assemble_prompt(
         en_parts.append(f"Theme: {theme}.")
         zh_parts.append(f"排版要求：{layout['prompt_zh']}")
         en_parts.append(f"Layout instructions: {layout['prompt_en']}")
-        zh_parts.append(
-            f"风格名称：{style['generation_name']}。参考作者/风格名称：{style['reference']}。"
-        )
-        en_parts.append(
-            f"Style name: {style['generation_name']}. Reference author/style name: {style['reference']}."
-        )
+        if style_label:
+            zh_parts.append(f"风格名称：{style['generation_name']}。参考风格名称：{style_label}。")
+            en_parts.append(
+                f"Style name: {style['generation_name']}. Reference style name: {style_label}."
+            )
+        else:
+            zh_parts.append(f"风格名称：{style['generation_name']}。{credit_note}")
+            en_parts.append(
+                f"Style name: {style['generation_name']}. Reference author omitted by credit policy; "
+                "use the core traits only."
+            )
         if traits:
             zh_parts.append(f"核心风格特征：{traits}。")
             en_parts.append(f"Core style traits: {traits}.")
@@ -226,17 +233,27 @@ def assemble_prompt(
         traits_zh = f"核心风格特征：{traits}。" if traits else ""
         traits_en = f" Core style traits: {traits}." if traits else ""
         tail = suffix if effective_mode == "text" else ""
+        ref_zh = (
+            f"参考风格名称：{style_label}。" if style_label else credit_note
+        )
+        ref_en = (
+            f" Reference style name: {style_label}."
+            if style_label
+            else " Reference author omitted by credit policy; use the core traits only."
+        )
         prompt_zh = (
             f"风格名称：{style['generation_name']}。{color_zh}主题：{theme}。"
-            f"参考作者/风格名称：{style['reference']}。{traits_zh}{tail}"
+            f"{ref_zh}{traits_zh}{tail}"
         )
         prompt_en = (
             f"Style name: {style['generation_name']}.{color_en} Theme: {theme}."
-            f" Reference author/style name: {style['reference']}.{traits_en}{tail}"
+            f"{ref_en}{traits_en}{tail}"
         )
 
     return {
         "style": style,
+        "style_label": style_label,
+        "credit_removed": bool(style.get("credit_removed")),
         "layout": layout,
         "color": color,
         "mode": effective_mode,
