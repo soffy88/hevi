@@ -727,8 +727,27 @@ def montage_queries(p: dict[str, Any]) -> dict[str, Any]:
 
 
 def character_beats(p: dict[str, Any]) -> dict[str, Any]:
+    """角色动作节拍 + S23 动作规则/接触自检。
+
+    ``beats`` 传字符串列表时保持旧契约；传动作字典列表时额外跑
+    ``check_character_motion``。``contacts`` 存在时跑 ``check_contact_and_slip``。
+    """
+    from hevi.studio.generalist_s23 import (
+        MOTION_RULES,
+        check_character_motion,
+        check_contact_and_slip,
+    )
+
     text = str(p.get("text") or "")
-    return _ok(beats=["trigger", "peak", "aftermath"] if text else [])
+    raw_beats = p.get("beats")
+    beats = raw_beats if raw_beats else (["trigger", "peak", "aftermath"] if text else [])
+    payload: dict[str, Any] = {"beats": beats, "motion_rules": dict(MOTION_RULES)}
+    structured = [item for item in beats if isinstance(item, dict)]
+    if structured and len(structured) == len(beats):
+        payload["motion_check"] = check_character_motion(structured)
+    if p.get("contacts"):
+        payload["contact_check"] = check_contact_and_slip(p["contacts"])
+    return _ok(**payload)
 
 
 def batch_rank(p: dict[str, Any]) -> dict[str, Any]:

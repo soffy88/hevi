@@ -266,3 +266,24 @@ def test_new_styles_route_to_blender_or_code() -> None:
     assert classify_route(format_id="history_scene", style_id="cutaway_3d", line="水磨") == "blender"
     assert classify_route(format_id="history_scene", style_id="world_3d", line="汴河") == "blender"
     assert classify_route(format_id="explainer", style_id="editorial_2d", line="丝路") == "code"
+
+
+def test_character_beats_tool_runs_motion_and_contact_checks() -> None:
+    from hevi.studio.ops import character_beats
+
+    result = character_beats({
+        "beats": [
+            {"part": "head", "kind": "move", "start_frame": 10, "end_frame": 20, "group": "turn"},
+            {"part": "torso", "kind": "move", "start_frame": 15, "end_frame": 24, "group": "turn"},
+        ],
+        "contacts": [
+            {"frame": 0, "part": "foot_left", "x": 0.3, "y": 0.0, "planted": True},
+        ],
+    })
+    assert result["beats"]
+    assert result["motion_check"]["ok"] is True
+    assert result["contact_check"]["ok"] is True
+    assert "head_leads_body_frames" in result["motion_rules"]
+    legacy = character_beats({"text": "走路"})
+    assert legacy["beats"] == ["trigger", "peak", "aftermath"]
+    assert "motion_check" not in legacy
