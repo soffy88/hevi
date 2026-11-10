@@ -116,7 +116,6 @@ PUBLIC_SCORES: dict[str, int] = {
     "lighthouse": 5,
     "blueprint": 4,
     "moonPhases": 4,
-    "isometric": 4,
     "flatVector": 4,
     "storybook": 4,
     "pixelArt": 4,
@@ -126,6 +125,7 @@ PUBLIC_SCORES: dict[str, int] = {
 # Measured failures: the drawing holds a still frame longer than the engine's
 # documented drawing pause.  Kept for admin review, never advertised.
 ADMIN_ONLY: dict[str, str] = {
+    "isometric": "production Chromium: drawing dead-air window 433-464 (gate 12/13)",
     "halftone": "passed gates but 156.4 s for a 14 s clip (11.2x realtime); admin only for load",
     "ranunculus": "drawing dead air: 46-frame still window 388-434",
     "woodcut": "drawing dead air window failed the gate",

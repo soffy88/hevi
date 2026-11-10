@@ -211,7 +211,7 @@ async def draw_clip(
             scale=req.scale,
         )
         payload: dict[str, Any] = {**result, "file": _public(result["path"])}
-        if req.gates:
+        if req.gates and req.scale == 1.0:
             gate = await asyncio.to_thread(run_gate, result["film"], result["path"], drawing=True)
             verify = await asyncio.to_thread(run_verify_export, result["path"])
             payload["gate"] = {

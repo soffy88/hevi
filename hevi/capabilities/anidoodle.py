@@ -104,8 +104,17 @@ def _render_draw_cap(params: dict[str, Any], out_dir: Path, **_: Any) -> Capabil
         target = _copy_artifact(result["path"], out_dir, Path(result["path"]).name)
     except (AnidoodleError, KeyError, TypeError) as exc:
         raise CapabilityError(f"anidoodle.draw_clip: {exc}") from exc
-    gate = run_gate(result["film"], str(target), drawing=True)
-    verify = run_verify_export(str(target))
+    scale = float(params.get("scale") or 1.0)
+    if scale == 1.0:
+        gate = run_gate(result["film"], str(target), drawing=True)
+        verify = run_verify_export(str(target))
+        gate_row = {
+            k: gate[k] for k in ("ok", "verdict", "passed_count", "failures", "dead_air_profile")
+        }
+        verify_row = {k: verify[k] for k in ("ok", "verdict", "passed_count", "failures")}
+    else:
+        gate_row = {"ok": None, "verdict": "preview_scale_not_gated", "failures": []}
+        verify_row = {"ok": None, "verdict": "preview_scale_not_gated", "failures": []}
     return CapabilityResult(
         mp4=str(target),
         duration_s=float(result["duration_s"]),
@@ -113,11 +122,8 @@ def _render_draw_cap(params: dict[str, Any], out_dir: Path, **_: Any) -> Capabil
         qa={
             **result,
             "path": str(target),
-            "gate": {
-                k: gate[k]
-                for k in ("ok", "verdict", "passed_count", "failures", "dead_air_profile")
-            },
-            "verify_export": {k: verify[k] for k in ("ok", "verdict", "passed_count", "failures")},
+            "gate": gate_row,
+            "verify_export": verify_row,
             "attribution": "anidoodle / Alex Greenshpun (Apache-2.0)",
         },
     )
