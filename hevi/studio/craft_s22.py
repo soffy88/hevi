@@ -123,7 +123,11 @@ def classify_route(
     text = f"{line} {prompt}"
     if format_id == "material_cut" or has_user_media:
         return "user_media"
-    if style_id == "scene3d" or any(word in text for word in _3D_WORDS):
+    if style_id == "editorial_2d":
+        return "code"
+    if style_id in {"scene3d", "cutaway_3d", "world_3d"} or any(
+        word in text for word in _3D_WORDS
+    ):
         return "blender"
     if format_id in {"live_drama", "comic_drama"}:
         return "generation"

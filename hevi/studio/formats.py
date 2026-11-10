@@ -106,6 +106,21 @@ FORMATS: tuple[Format, ...] = (
                 "director", "分镜精修", "director_pipeline",
                 "逐镜分镜与导演控制，制作更重", {"render_style": "cinematic"},
             ),
+            SubStyle(
+                "cutaway_3d", "3D 剖面建造", "scene3d",
+                "一个物件经 5–7 轮失败→改进变成完整剖面，真实资产优先",
+                {"render_style": "scene3d", "s23_style": "cutaway_3d"},
+            ),
+            SubStyle(
+                "world_3d", "3D 时代场景", "scene3d",
+                "按年代考据搭出可走进去的世界，环境声先铺",
+                {"render_style": "scene3d", "s23_style": "world_3d"},
+            ),
+            SubStyle(
+                "editorial_2d", "2D 编辑部", "explainer",
+                "地图路线 + 真实比例时间轴 + 纸张/半色调/撕纸",
+                {"render_style": "motion_graphics", "s23_style": "editorial_2d"},
+            ),
         ),
     ),
     Format(
@@ -200,6 +215,11 @@ FORMATS: tuple[Format, ...] = (
                 "scene3d", "3D 演示", "scene3d",
                 "产品拆解、地图路线、场景复原", {"render_style": "scene3d"},
             ),
+            SubStyle(
+                "editorial_2d", "2D 编辑部", "explainer",
+                "地图路线 + 真实比例时间轴 + 档案拼贴",
+                {"render_style": "motion_graphics", "s23_style": "editorial_2d"},
+            ),
         ),
     ),
     Format(
@@ -211,11 +231,19 @@ FORMATS: tuple[Format, ...] = (
         default_style="shorts",
         needs_media=True,
         styles=(
-            SubStyle("shorts", "拆条切片", "shorts_clip", "长视频 → 多条短视频"),
+            SubStyle(
+                "shorts", "拆条切片", "shorts_clip",
+                "长视频 → 多条短视频（钩子/卡点/字幕安全区/平台导出）",
+                {"s23_shorts_spec": True},
+            ),
             SubStyle("koubo", "口播精剪", "koubo_cut", "去停顿、加字幕"),
             SubStyle("podcast", "播客切片", "podcast_repurpose", "音频 / 播客 → 视频"),
             SubStyle("dub", "译制配音", "localization_dub", "翻译 + 配音 + 双语字幕"),
-            SubStyle("reference", "参考片改编", "reference_adapt", "按参考片结构重做"),
+            SubStyle(
+                "reference", "参考片改编", "reference_adapt",
+                "看片（帧表/切点/声谱/转写）→ 翻拍配方 → 按结构重做",
+                {"s23_watch_recipe": True},
+            ),
             SubStyle("collage", "拼贴 B-roll", "collage_broll", "半调纸拼贴空镜"),
         ),
     ),

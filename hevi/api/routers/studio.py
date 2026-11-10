@@ -20,7 +20,7 @@ from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.quota import QuotaError, get_quota_service, requested_duration_seconds
-from hevi.studio import craft_ledger, craft_s22, format_events
+from hevi.studio import craft_ledger, craft_s22, format_events, generalist_s23
 from hevi.studio.assets import list_assets
 from hevi.studio.conversational_edit import execute_edit
 from hevi.studio.formats import (
@@ -267,6 +267,12 @@ async def plan_format(
     with contextlib.suppress(Exception):
         # 账本写失败不该挡住出片计划；后台会少一行报价。
         craft_ledger.record_plan(craft_plan)
+    generalist = generalist_s23.plan_for(
+        str(plan["format"]),
+        style_key,
+        topic=topic,
+        slots={**plan.get("slots", {}), **req.slots},
+    )
     return {
         "format": plan["format"],
         "style": style_key,
@@ -275,6 +281,7 @@ async def plan_format(
         "script": {"title": title, "lines": lines},
         "shots": shots,
         "craft": craft_plan,
+        "generalist": generalist,
         "requires_confirm": True,
     }
 
@@ -331,6 +338,11 @@ class CraftReviewRequest(BaseModel):
     skipped_gates: list[str] = Field(default_factory=list)
     qc: dict[str, Any] = Field(default_factory=dict)
     allow_llm: bool = False
+
+
+class GeneralistPlanRequest(BaseModel):
+    kind: str
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class CraftEventRequest(BaseModel):
@@ -457,6 +469,32 @@ async def craft_series_templates(
 ) -> dict[str, Any]:
     items = craft_s22.series_templates(format)
     return {"templates": items, "total": len(items)}
+
+
+@router.get("/generalist/catalog")
+async def generalist_catalog(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S23：2D/3D 工作方法与自检能力清单。"""
+    return generalist_s23.catalog()
+
+
+@router.post("/generalist/plan")
+async def generalist_plan(
+    req: GeneralistPlanRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S23：生成计划或跑一项自检；只做本地计算，不渲染、不付费。"""
+    fn = generalist_s23.KINDS.get(req.kind)
+    if fn is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"unknown kind: {req.kind}; valid: {sorted(generalist_s23.KINDS)}",
+        )
+    try:
+        return fn(**req.payload)
+    except TypeError as exc:
+        raise HTTPException(status_code=422, detail=f"payload mismatch: {exc}") from exc
 
 
 @router.get("/lines")

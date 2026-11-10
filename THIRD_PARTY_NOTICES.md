@@ -73,3 +73,17 @@
 - **许可边界**: Apache-2.0 允许商业使用与再分发；保留其 LICENSE/NOTICE。
   未修改上游源码。
 - **入库日期**: 2026-11-09
+
+## creator-generalist (codepawl)
+
+- **来源**: https://github.com/codepawl/creator-generalist (MIT)
+- **许可证**: MIT License
+- **版权**: Copyright (c) 2026 CodePawl
+- **完整许可证文本**: `third_party/creator-generalist/LICENSE`
+- **用途**: **只重述方法**，不复制 SKILL 文本/模板/引擎代码。吸收 3D 剖面与时代场景、
+  2D 编辑部（地图/真实比例时间轴/档案拼贴）、角色动作规则与穿模/滑步检查、
+  手机外放与遮蔽/同步检查、看片翻拍配方、Shorts 剪辑规范；
+  实现见 `hevi/studio/generalist_s23.py`，详情见 `CREATOR_GENERALIST_ATTRIBUTION.md`。
+- **入库日期**: 2026-11-10
+- **备注**: 不调用 ElevenLabs / HunyuanVideo-Foley / Google Flow；不新增付费，
+  不新增运行时依赖，不自动下载资产。
