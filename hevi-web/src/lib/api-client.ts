@@ -211,11 +211,30 @@ export type CraftPlan = {
   license: { high_risk: string[]; not_clearly_commercial: string[]; policy: string };
   review: { mode: string; issues: CraftIssue[] };
 };
+export type S24ReviewCheck = {
+  id: string; label: string; status: 'pass' | 'warn' | 'fail' | 'pending';
+  measured: unknown; limit: unknown; detail: string; fix: string; node: string;
+};
+export type S24Review = {
+  schema: string; pass: boolean; counts: Record<string, number>; checks: S24ReviewCheck[];
+  retry: Array<{ node: string; reason: string; action: string }>; summary: string;
+  artifacts?: { review_json: string; overview_png: string; downloads: Array<{ path: string; download: string }> };
+};
+export type S24Repurpose = {
+  delivery_review?: { hard_limits?: Record<string, number>; nodes?: Array<Record<string, unknown>> };
+  word_sync?: Record<string, unknown>;
+  export_options?: Array<{ id: string; label: string }>;
+  theme?: { id: string; label: string; css: string };
+  article?: Record<string, unknown>;
+  localization?: Record<string, unknown>;
+  compliance?: Record<string, unknown>;
+};
 export type FormatPlan = {
   format: string; style: string; line_id: string; title: string;
   script: { title: string; lines: string[] };
   shots: { index: number; label: string; line: string; keyframe_prompt: string; duration_s: number }[];
   craft?: CraftPlan;
+  repurpose?: S24Repurpose;
   requires_confirm: boolean;
 };
 
@@ -229,6 +248,13 @@ export const studioApi = {
     authedReq<CraftPlan>('/api/studio/craft/plan', { method: 'POST', body: JSON.stringify(body) }),
   craftReview: (body: { target: 'script' | 'film'; topic?: string; lines?: string[]; shots?: Array<Record<string, unknown>>; facts?: Array<Record<string, unknown>>; skipped_gates?: string[]; qc?: Record<string, unknown>; allow_llm?: boolean }) =>
     authedReq<{ mode: string; model: string; issues: CraftIssue[]; keep_half?: number[]; cut_half?: number[]; keep_half_text?: string[]; counts?: Record<string, number>; llm_error?: string }>('/api/studio/craft/review', { method: 'POST', body: JSON.stringify(body) }),
+  s24Review: (body: { media_path: string; narration?: Array<Record<string, unknown>>; cues?: Array<Record<string, unknown>>; subtitle_plan?: Record<string, unknown>; frame_check?: boolean; out_dir?: string }) =>
+    authedReq<S24Review>('/api/studio/s24/review', { method: 'POST', body: JSON.stringify(body) }),
+  s24ExportPack: (body: { title: string; sections: Array<Record<string, unknown>>; theme?: string; author?: string; ratio?: string; out_dir?: string }) =>
+    authedReq<{ schema: string; paths: Record<string, unknown>; downloads?: Array<{ path: string; download: string }>; caption?: string }>('/api/studio/s24/export-pack', { method: 'POST', body: JSON.stringify(body) }),
+  s24Compliance: (body: { voice_id?: string; cloned?: boolean; rights_basis?: string; confirmed?: boolean; media_path?: string }) =>
+    authedReq<Record<string, unknown>>('/api/studio/s24/compliance', { method: 'POST', body: JSON.stringify(body) }),
+  s24Themes: () => authedReq<{ themes: Array<Record<string, unknown>>; total: number }>('/api/studio/s24/themes'),
   craftLedger: (limit = 200) => authedReq<{ rows: number; plans: number; total_seconds: number; total_cny: number; by_route: Array<Record<string, unknown>>; by_model: Array<Record<string, unknown>>; recent: Array<Record<string, unknown>> }>(`/api/studio/craft/ledger?limit=${limit}`),
   craftLicenseAudit: () => authedReq<{ entries: Array<Record<string, unknown>>; high_risk: string[]; not_clearly_commercial: string[]; policy: string; note: string }>('/api/studio/craft/license-audit'),
   craftSeriesTemplates: (format = 'explainer') => authedReq<{ templates: Array<Record<string, unknown>>; total: number }>(`/api/studio/craft/series-templates?format=${format}`),

@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isAuthenticated } from '@/lib/auth-store';
-import { studioApi, USE_MOCK, type CraftIssue, type FormatPlan, type StudioFormat } from '@/lib/api-client';
+import { artifactDownloadUrl, studioApi, USE_MOCK, type CraftIssue, type FormatPlan, type S24Review, type StudioFormat } from '@/lib/api-client';
 
 type FormatEvent = 'format_selected' | 'auto_changed' | 'storyboard_edited' | 'gated_click';
 
@@ -49,6 +49,10 @@ export function CreateEntry() {
   const [gateSkips, setGateSkips] = useState<string[]>([]);
   const [seriesTemplate, setSeriesTemplate] = useState('');
   const [review, setReview] = useState<{ mode: string; issues: CraftIssue[]; keep_half_text?: string[]; llm_error?: string } | null>(null);
+  const [exportAfterRender, setExportAfterRender] = useState(true);
+  const [hardReview, setHardReview] = useState<S24Review | null>(null);
+  const [exportPack, setExportPack] = useState<{ paths: Record<string, unknown>; downloads?: Array<{ path: string; download: string }> } | null>(null);
+  const [exportError, setExportError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const selected = useMemo(
@@ -206,6 +210,42 @@ export function CreateEntry() {
     }
   };
 
+  const runHardReview = async (media: string, cues: Array<Record<string, unknown>>, narration: Array<Record<string, unknown>>) => {
+    setBusy('review');
+    setExportError('');
+    try {
+      const data = await studioApi.s24Review({
+        media_path: media,
+        cues,
+        narration,
+        subtitle_plan: { hard_cut: true },
+      });
+      setHardReview(data);
+    } catch (err) {
+      setExportError(formatError(err));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const runExportPack = async () => {
+    if (!plan) return;
+    setExportError('');
+    try {
+      const data = await studioApi.s24ExportPack({
+        title: plan.title || topic.trim(),
+        sections: plan.script.lines.map((line, index) => ({
+          heading: `要点 ${index + 1}`,
+          body: line,
+        })),
+        theme: plan.repurpose?.theme?.id,
+      });
+      setExportPack(data);
+    } catch (err) {
+      setExportError(formatError(err));
+    }
+  };
+
   const makePlan = async () => {
     if (!topic.trim()) { setError('先写一句主题或梗概'); return; }
     setBusy('plan');
@@ -255,6 +295,26 @@ export function CreateEntry() {
         },
       });
       setResult(output);
+      const media = String(
+        (output as { data?: { result_video_path?: unknown } })?.data?.result_video_path
+        ?? (output as { result_video_path?: unknown })?.result_video_path
+        ?? '',
+      );
+      if (media && plan) {
+        const cues: Array<Record<string, unknown>> = [];
+        let cursor = 0;
+        for (const shot of plan.shots) {
+          cues.push({ start: cursor, end: cursor + shot.duration_s, text: shot.line });
+          cursor += shot.duration_s;
+        }
+        const narration = plan.shots.map((shot, index) => ({
+          text: shot.line,
+          start: cues[index].start,
+          end: cues[index].end,
+        }));
+        void runHardReview(media, cues, narration);
+        if (exportAfterRender) void runExportPack();
+      }
     } catch (err) {
       setError(formatError(err));
     } finally {
@@ -529,6 +589,32 @@ export function CreateEntry() {
                 </div>
               </div>
 
+              {plan.repurpose && (
+                <div className="create-entry__craft-block">
+                  <p className="create-entry__label">交付硬指标（成片审片，失败重做该节点）</p>
+                  <small>
+                    首句 ≤5 秒且 ≤19 字 · 首个画面 ≤2.5 秒 · 静止 ≤5 秒 · 旁白 4.5 字/秒（单句 ≤5.2）
+                    · 字幕单行 ≤13 字、停留 ≥0.55 秒 · -14 LUFS
+                  </small>
+                  <label className="create-entry__craft-row" style={{ alignItems: 'center', gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={exportAfterRender}
+                      onChange={(event) => setExportAfterRender(event.target.checked)}
+                    />
+                    <span>
+                      同时导出图文：小红书 3:4 卡片组 + 发帖文案 · 公众号内联 HTML（base64 图，一键复制）· 长图
+                    </span>
+                  </label>
+                  <small>
+                    字级同步：数字滚动/清单/对比/金句按 whisper 实测字级时间戳出现；生成图不放字，文字全部 HTML/CSS 叠加。
+                  </small>
+                  <small>
+                    合规：{String((plan.repurpose.compliance as { aigc?: { label?: string } } | undefined)?.aigc?.label || 'AI生成')} 标识写入首帧与 MP4 元数据；字体只用 OFL/可商用。
+                  </small>
+                </div>
+              )}
+
               <div className="create-entry__craft-row">
                 <button type="button" className="create-entry__ghost" onClick={runReview} disabled={busy !== ''}>
                   {busy === 'review' ? '独立审稿中…' : '独立审稿（只列问题）'}
@@ -561,6 +647,59 @@ export function CreateEntry() {
           {downloadUrl
             ? <a className="create-entry__primary" href={downloadUrl} download>下载成片</a>
             : <p>任务已提交。可到「项目」查看进度；完成后再下载。</p>}
+          <div className="create-entry__craft-row">
+            <button type="button" className="create-entry__ghost" onClick={runExportPack} disabled={!plan || busy !== ''}>
+              同时导出图文（卡片 / 公众号 / 长图）
+            </button>
+            {exportError && <small>{exportError}</small>}
+          </div>
+          {exportPack && (
+            <div className="create-entry__craft-block">
+              <p className="create-entry__label">图文已生成</p>
+              <ul>
+                <li>
+                  <a href={artifactDownloadUrl(String(exportPack.paths.wechat_html))} target="_blank" rel="noreferrer">
+                    公众号 HTML（base64 图，一键复制）
+                  </a>
+                </li>
+                <li><a href={artifactDownloadUrl(String(exportPack.paths.long_image))} target="_blank" rel="noreferrer">长图</a></li>
+                <li><a href={artifactDownloadUrl(String(exportPack.paths.caption))} target="_blank" rel="noreferrer">发帖文案</a></li>
+                <li>
+                  卡片：
+                  {(exportPack.paths.cards as string[] | undefined)?.map((path) => (
+                    <a key={path} href={artifactDownloadUrl(path)} target="_blank" rel="noreferrer" style={{ marginRight: 8 }}>
+                      {path.split('/').pop()}
+                    </a>
+                  ))}
+                </li>
+              </ul>
+            </div>
+          )}
+          {hardReview && (
+            <div className="create-entry__craft-block">
+              <p className="create-entry__label">
+                审片：{hardReview.pass ? '通过' : '需重做'} · {hardReview.summary}
+              </p>
+              {hardReview.artifacts?.overview_png && (
+                <img
+                  src={artifactDownloadUrl(hardReview.artifacts.overview_png)}
+                  alt="审片总览"
+                  style={{ width: '100%', maxWidth: 420, borderRadius: 12, marginTop: 8 }}
+                />
+              )}
+              <ul className="create-entry__issues">
+                {hardReview.checks.filter((item) => item.status !== 'pass').map((item) => (
+                  <li key={item.id} data-level={item.status === 'fail' ? 'fail' : 'warn'}>
+                    <span>{item.status === 'fail' ? '红' : item.status === 'warn' ? '黄' : '待测'}</span>
+                    {item.label}{item.fix && <em> → {item.fix}</em>}
+                  </li>
+                ))}
+              </ul>
+              {hardReview.retry.length > 0 && (
+                <small>重做：{hardReview.retry.map((item) => `${item.node}（${item.action}）`).join('；')}</small>
+              )}
+            </div>
+          )}
           <a className="create-entry__ghost" href="/canvas">在画布中查看/改单格 →</a>
         </section>
       )}

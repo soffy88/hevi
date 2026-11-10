@@ -104,3 +104,11 @@ ai_drama / MiniMax H3
 - 字体: Noto Sans CJK / Noto Sans Mono CJK，SIL Open Font License 1.1
   (https://openfontlicense.org/)，用于字幕、游戏对话框和“AI 生成”标识。
 - KaggleGPUProvider 只使用官方 kaggle CLI 批处理，不建公网隧道、不常驻、不挖矿。
+
+article2media (threerocks)
+- Source: https://github.com/threerocks/article2media
+- License: MIT (see third_party/article2media/LICENSE)
+- Method intake only: delivery review hard limits, word-level sync overlays,
+  one-draft-many-outputs export, article block ledger, translation checks in
+  localization_dub, voice tiers and AIGC labelling. No SKILL prose, template,
+  engine code, sample content, theme or font was copied.

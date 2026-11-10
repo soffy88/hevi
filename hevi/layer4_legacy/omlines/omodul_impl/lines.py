@@ -746,6 +746,16 @@ def _localization_dub(slots=None, output_dir=OUT):
                     '-map', '0:v', '-map', '1:a', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20',
                     '-c:a', 'aac', '-shortest', final], check=True, stderr=subprocess.DEVNULL)
 
+    from hevi.studio.repurpose_s24 import check_localization
+
+    source_blocks = [str(item.get('text') or '') for item in segs]
+    loc_check = check_localization(source_blocks, translated_texts,
+                                   source_lang=str(slots.get('lang') or 'en'), target_lang='zh')
+    with open(f'{d}/localization_check.json', 'w') as handle:
+        json.dump(loc_check, handle, ensure_ascii=False, indent=2)
+    if loc_check.get('number_loss') and slots.get('strict_localization'):
+        raise RuntimeError(f"localization check failed: {loc_check['number_loss']}")
+
     prov = [
         {'source': f'supplied source video ({src_key})', 'path': src, 'segment_s': [0.0, total]},
         {'source': 'faster-whisper large-v3-turbo (local CPU) automatic speech recognition'},
@@ -753,10 +763,12 @@ def _localization_dub(slots=None, output_dir=OUT):
         {'source': 'piper zh_CN-huayan (local ONNX TTS) voice dubbing with timeline alignment'},
     ]
     report = {'line': line, 'topic': topic, 'source': src, 'translated_segments': translated_texts,
-              'translators': sorted(providers), 'segments': segs}
+              'translators': sorted(providers), 'segments': segs, 'localization_check': loc_check}
     json.dump(report, open(f'{d}/video_localization_report.json', 'w'), ensure_ascii=False, indent=2)
-    return save(d, line, final, prov, notes='real speech transcription, free translation, TTS dubbing aligned to timeline',
-                extra={'topic': topic, 'script': translated_texts, 'inputs': {'topic': topic, src_key: src}})
+    check_note = 'translation check ok' if loc_check.get('ok') else f"translation check: {loc_check.get('counts')}"
+    return save(d, line, final, prov, notes=f'real speech transcription, free translation, TTS dubbing aligned to timeline; {check_note}',
+                extra={'topic': topic, 'script': translated_texts, 'localization_check': loc_check,
+                       'inputs': {'topic': topic, src_key: src}})
 
 
 LINES = {f.__name__.lstrip("_"): f for f in [_kinetic_promo, _explainer, _cinematic, _director_pipeline, _history_scene,

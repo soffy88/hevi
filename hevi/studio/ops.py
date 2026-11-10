@@ -986,6 +986,44 @@ def craft_knowledge(p: dict[str, Any]) -> dict[str, Any]:
     return _ok(stage=key, title=title, files=files, text=text, chars=len(text))
 
 
+def s24_review(p: dict[str, Any]) -> dict[str, Any]:
+    """S24 成片硬指标审片：返回 review.json；失败项带重做节点。"""
+    from hevi.studio.repurpose_s24 import review_delivery
+
+    media = p.get("media_path") or p.get("input_path") or p.get("video_path")
+    if not media:
+        return _fail("media_path required")
+    try:
+        review = review_delivery(
+            media,
+            narration=p.get("narration") or [],
+            cues=p.get("cues") or [],
+            subtitle_plan=p.get("subtitle_plan") or {},
+            frame_check=bool(p.get("frame_check", True)),
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        return _fail(str(exc))
+    return _ok(review=review)
+
+
+def s24_word_sync(p: dict[str, Any]) -> dict[str, Any]:
+    """S24 字级同步：whisper 实测时间戳 + HTML/CSS 叠加计划。"""
+    from hevi.studio.repurpose_s24 import word_sync_plan
+
+    try:
+        plan = word_sync_plan(
+            audio_path=p.get("audio_path"),
+            transcript=str(p.get("transcript") or ""),
+            words=p.get("words") or [],
+            shots=p.get("shots") or [],
+            theme=p.get("theme"),
+            out_dir=p.get("out_dir"),
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        return _fail(str(exc))
+    return _ok(**plan)
+
+
 def delivery_promise(p: dict[str, Any]) -> dict[str, Any]:
     from hevi.production.delivery_promise import classify_from_brief
 
@@ -1390,6 +1428,8 @@ OPS: dict[str, Any] = {
     "craft_site": craft_site,
     "craft_shot_prompt": craft_shot_prompt,
     "craft_knowledge": craft_knowledge,
+    "s24_review": s24_review,
+    "s24_word_sync": s24_word_sync,
     "delivery_promise": delivery_promise,
     "delivery_validate": delivery_validate,
     "verdict_scene_pacing": verdict_scene_pacing,

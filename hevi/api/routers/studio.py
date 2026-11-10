@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import json
 import mimetypes
 import os
 import uuid
@@ -20,7 +21,7 @@ from hevi.auth.dependencies import get_current_user
 from hevi.auth.jwt_handler import decode_access_token
 from hevi.db.pg_pool import get_hevi_pg_pool
 from hevi.quota import QuotaError, get_quota_service, requested_duration_seconds
-from hevi.studio import craft_ledger, craft_s22, format_events, generalist_s23
+from hevi.studio import craft_ledger, craft_s22, format_events, generalist_s23, repurpose_s24
 from hevi.studio.assets import list_assets
 from hevi.studio.conversational_edit import execute_edit
 from hevi.studio.formats import (
@@ -273,6 +274,12 @@ async def plan_format(
         topic=topic,
         slots={**plan.get("slots", {}), **req.slots},
     )
+    repurpose = repurpose_s24.plan_repurpose(
+        format_id=str(plan["format"]),
+        topic=topic,
+        lines=lines,
+        slots={**plan.get("slots", {}), **req.slots},
+    )
     return {
         "format": plan["format"],
         "style": style_key,
@@ -282,6 +289,7 @@ async def plan_format(
         "shots": shots,
         "craft": craft_plan,
         "generalist": generalist,
+        "repurpose": repurpose,
         "requires_confirm": True,
     }
 
@@ -343,6 +351,59 @@ class CraftReviewRequest(BaseModel):
 class GeneralistPlanRequest(BaseModel):
     kind: str
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class S24ReviewRequest(BaseModel):
+    media_path: str = Field(min_length=1)
+    narration: list[dict[str, Any]] = Field(default_factory=list)
+    cues: list[dict[str, Any]] = Field(default_factory=list)
+    subtitle_plan: dict[str, Any] = Field(default_factory=dict)
+    out_dir: str | None = None
+    frame_check: bool = True
+
+
+class S24WordSyncRequest(BaseModel):
+    audio_path: str | None = None
+    transcript: str = ""
+    words: list[dict[str, Any]] = Field(default_factory=list)
+    shots: list[dict[str, Any]] = Field(default_factory=list)
+    theme: str | None = None
+    out_dir: str | None = None
+
+
+class S24ExportPackRequest(BaseModel):
+    title: str = Field(min_length=1)
+    sections: list[dict[str, Any]] = Field(default_factory=list)
+    theme: str | None = None
+    author: str = ""
+    ratio: str = "3:4"
+    out_dir: str | None = None
+    source_blocks: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class S24ArticleRequest(BaseModel):
+    source: str = Field(min_length=1)
+    out_dir: str | None = None
+    title: str = ""
+    author: str = ""
+    allow_network: bool = True
+
+
+class S24LocalizeRequest(BaseModel):
+    source_blocks: list[str] = Field(default_factory=list)
+    translated_blocks: list[str] = Field(default_factory=list)
+    source_lang: str = ""
+    target_lang: str = ""
+
+
+class S24ComplianceRequest(BaseModel):
+    voice_id: str = ""
+    cloned: bool = False
+    rights_basis: str = ""
+    confirmed: bool = False
+    media_path: str | None = None
+    out_path: str | None = None
+    label: str = "AI生成"
 
 
 class CraftEventRequest(BaseModel):
@@ -407,7 +468,30 @@ async def craft_review(
 ) -> dict[str, Any]:
     """独立审稿：脚本或成片；只列问题。默认离线规则，不产生付费调用。"""
     if req.target == "film":
-        return craft_s22.review_film_offline(req.qc)
+        review = craft_s22.review_film_offline(req.qc)
+        media = (req.qc or {}).get("media_path") or (req.qc or {}).get("input_path")
+        if media:
+            try:
+                hard = repurpose_s24.review_delivery(
+                    media,
+                    narration=(req.qc or {}).get("narration") or [],
+                    cues=(req.qc or {}).get("cues") or [],
+                    subtitle_plan=(req.qc or {}).get("subtitle_plan") or {},
+                )
+            except (FileNotFoundError, ValueError) as exc:
+                review["hard_review"] = {"status": "unavailable", "reason": str(exc)}
+            else:
+                out = _s24_output("review", (req.qc or {}).get("out_dir"))
+                review_path = out / "review.json"
+                review_path.write_text(json.dumps(hard, ensure_ascii=False, indent=2), encoding="utf-8")
+                overview = repurpose_s24.render_review_overview(hard, out / "review-overview.png")
+                hard["artifacts"] = {
+                    "review_json": str(review_path),
+                    "overview_png": str(overview),
+                    "downloads": _s24_urls([str(review_path), str(overview)]),
+                }
+                review["hard_review"] = hard
+        return review
     if req.target != "script":
         raise HTTPException(status_code=422, detail="target 只能是 script 或 film")
     return await craft_s22.review_script(
@@ -495,6 +579,184 @@ async def generalist_plan(
         return fn(**req.payload)
     except (TypeError, KeyError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=f"payload mismatch: {exc}") from exc
+
+
+def _s24_output(sub: str, out_dir: str | None, *, suffix: str = "") -> Path:
+    root = Path(os.environ.get("HEVI_OUTPUT_ROOT", "").strip() or (Path.cwd() / "output"))
+    base = Path(out_dir) if out_dir else root / "s24" / f"{sub}-{uuid.uuid4().hex[:10]}"
+    base.mkdir(parents=True, exist_ok=True)
+    if suffix and not base.name.endswith(suffix):
+        base = base / suffix
+        base.mkdir(parents=True, exist_ok=True)
+    return base
+
+
+def _s24_urls(paths: list[str]) -> list[dict[str, str]]:
+    return [{"path": path, "download": f"/api/studio/artifacts/download?path={quote(path)}"} for path in paths]
+
+
+@router.post("/s24/review")
+async def s24_review(
+    req: S24ReviewRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S24：口播/讲解成片硬指标审片；写 review.json 与审片总览图。"""
+    try:
+        review = repurpose_s24.review_delivery(
+            req.media_path,
+            narration=req.narration,
+            cues=req.cues,
+            subtitle_plan=req.subtitle_plan,
+            frame_check=req.frame_check,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    out = _s24_output("review", req.out_dir)
+    review_path = out / "review.json"
+    review_path.write_text(json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
+    overview = repurpose_s24.render_review_overview(review, out / "review-overview.png")
+    review["artifacts"] = {
+        "review_json": str(review_path),
+        "overview_png": str(overview),
+        "downloads": _s24_urls([str(review_path), str(overview)]),
+    }
+    return review
+
+
+@router.post("/s24/word-sync")
+async def s24_word_sync(
+    req: S24WordSyncRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S24：whisper 字级时间戳 → 数字/清单/对比/金句的出现时刻（HTML/CSS 叠加）。"""
+    out = _s24_output("word-sync", req.out_dir)
+    try:
+        plan = repurpose_s24.word_sync_plan(
+            audio_path=req.audio_path,
+            transcript=req.transcript,
+            words=req.words,
+            shots=req.shots,
+            theme=req.theme,
+            out_dir=out,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    plan["artifacts"] = _s24_urls([str(out / "word_sync.json"), str(out / "word_sync.html")])
+    return plan
+
+
+@router.post("/s24/export-pack")
+async def s24_export_pack(
+    req: S24ExportPackRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S24：一稿多发 —— 卡片组 + 发帖文案 + 公众号 HTML + 长图。"""
+    out = _s24_output("export", req.out_dir)
+    manifest = repurpose_s24.export_text_pack(
+        title=req.title,
+        sections=req.sections,
+        out_dir=out,
+        theme=req.theme,
+        author=req.author,
+        source_blocks=req.source_blocks,
+        ratio=req.ratio,
+    )
+    manifest["downloads"] = _s24_urls([
+        manifest["paths"]["wechat_html"],
+        manifest["paths"]["long_image"],
+        manifest["paths"]["caption"],
+        *manifest["paths"]["cards"],
+    ])
+    return manifest
+
+
+@router.post("/s24/article")
+async def s24_article(
+    req: S24ArticleRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S24：网页/公众号/Markdown → article.md + 原文块 SHA-256 账本。"""
+    out = _s24_output("article", req.out_dir)
+    try:
+        result = repurpose_s24.ingest_article(
+            req.source, out, title=req.title, author=req.author, allow_network=req.allow_network,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (ValueError, OSError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    result["downloads"] = _s24_urls([result["article_md"], result["ledger"]["path"], str(out / "meta.json")])
+    return result
+
+
+@router.post("/s24/localize-check")
+async def s24_localize_check(
+    req: S24LocalizeRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S24：翻译校验 —— 块数、漏译、数字丢失（localization_dub 同款）。"""
+    return repurpose_s24.check_localization(
+        req.source_blocks,
+        req.translated_blocks,
+        source_lang=req.source_lang,
+        target_lang=req.target_lang,
+    )
+
+
+@router.post("/s24/compliance")
+async def s24_compliance(
+    req: S24ComplianceRequest,
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """S24：音色分层 + 字体许可 + 首帧/元数据 AIGC 标识。"""
+    voice = None
+    if req.voice_id:
+        try:
+            voice = repurpose_s24.check_voice_tier(
+                req.voice_id,
+                cloned=req.cloned,
+                rights_basis=req.rights_basis,
+                confirmed=req.confirmed,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    aigc = None
+    if req.media_path:
+        out = req.out_path or str(_s24_output("aigc", None) / "aigc.mp4")
+        try:
+            aigc = repurpose_s24.stamp_aigc(req.media_path, out, label=req.label)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        aigc["download"] = f"/api/studio/artifacts/download?path={quote(aigc['media'])}"
+    return {
+        "voice": voice,
+        "voice_tiers": [dict(item) for item in repurpose_s24.VOICE_TIERS],
+        "fonts": repurpose_s24.font_licenses(),
+        "aigc": aigc,
+        "label": req.label,
+    }
+
+
+@router.get("/s24/themes")
+async def s24_themes(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    items = []
+    for key in repurpose_s24.THEMES:
+        css = repurpose_s24.theme_css(key)
+        items.append({"id": key, "label": css["theme"]["label"], "css": css["css"], "subtitle_style": css["subtitle_style"]})
+    return {"themes": items, "total": len(items)}
+
+
+@router.get("/s24/fonts")
+async def s24_fonts(
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    return repurpose_s24.font_licenses()
 
 
 @router.get("/lines")
@@ -690,7 +952,7 @@ async def upload_studio_source(
 _ARTIFACT_SUFFIXES = {
     ".mp4", ".mov", ".webm", ".m4a", ".wav", ".mp3", ".srt", ".ass",
     ".jpg", ".jpeg", ".png", ".webp", ".gif", ".json", ".txt",
-    ".zip", ".fcpxml",
+    ".zip", ".fcpxml", ".html", ".css", ".md",
 }
 
 

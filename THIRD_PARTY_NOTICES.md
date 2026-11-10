@@ -87,3 +87,18 @@
 - **入库日期**: 2026-11-10
 - **备注**: 不调用 ElevenLabs / HunyuanVideo-Foley / Google Flow；不新增付费，
   不新增运行时依赖，不自动下载资产。
+
+## article2media (threerocks)
+
+- **来源**: https://github.com/threerocks/article2media (MIT)
+- **许可证**: MIT License
+- **版权**: Copyright (c) 2026 LeiLiu
+- **完整许可证文本**: `third_party/article2media/LICENSE`
+- **用途**: **只重述方法**，不复制 SKILL 文本/模板/引擎代码/示例内容/主题/字体。
+  吸收口播成片硬指标审片、whisper 字级同步镜头、一稿多发（3:4 卡片 + 公众号内联
+  HTML + 长图）、文章块 SHA-256 账本、翻译校验并入 localization_dub、音色分层与
+  AIGC 标识；实现见 `hevi/studio/repurpose_s24.py`，详情见
+  `ARTICLE2MEDIA_ATTRIBUTION.md`。
+- **入库日期**: 2026-11-10
+- **备注**: 示例内容与上游字体另有版权，未带入；不接 VoxCPM2/mlx（Apple Silicon）；
+  不读浏览器 cookie；不批量抓取；不新增付费服务。
