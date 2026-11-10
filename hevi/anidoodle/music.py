@@ -162,6 +162,11 @@ def compose_bgm(
         raise AnidoodleError("fmt must be mp3 or wav")
     tpl = TEMPLATES[style]
     use_mood = mood or tpl["mood"]
+    if key and key != tpl["key"]:
+        raise AnidoodleError(
+            f"template {style} is written in {tpl['key']}; "
+            "leave key blank or add a transposed template first"
+        )
     use_key = key or tpl["key"]
     use_bpm = int(bpm or tpl["bpm"])
     progression = tpl["progressions"][seed % len(tpl["progressions"])]
