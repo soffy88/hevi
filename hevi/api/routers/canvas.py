@@ -916,9 +916,19 @@ async def review_node_endpoint(
 
     await _load_owned_graph(graph_id, svc, user)
     state = await _node_state_or_404(svc, graph_id, node_key)
+    # “重新自检”必须与执行期同一套判据：配置了文本 LLM 通道时真走 LLM，
+    # 不能再退化成离线规则（否则界面显示“离线规则审稿”而用户以为已过 LLM）。
+    built = None
+    try:
+        from hevi.canvas import llm_review
+
+        built = llm_review.build()
+    except Exception:
+        built = None
     review = review_node(
         {"node_type": state.node_type, "config": state.config},
         state.output,
+        llm_reviewer=built[0] if built is not None else None,
     )
     await svc.node_store.set_status(  # type: ignore[union-attr]
         graph_id, node_key, status_for_review(review), review=review
