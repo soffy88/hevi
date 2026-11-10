@@ -317,3 +317,49 @@ def test_plugin_contract() -> None:
     with pytest.raises(plugin_contract_s25.PluginContractError):
         plugin_contract_s25.validate_manifest({**manifest, "permissions": ["paid_generation"]})
     assert plugin_contract_s25.contract_doc()["status"] == "internal_only"
+
+
+async def test_pg_node_store_bulk_sync(monkeypatch) -> None:
+    import uuid
+    from contextlib import asynccontextmanager
+
+    from hevi.canvas import node_store as ns
+
+    calls: list[tuple[str, int]] = []
+
+    class Conn:
+        async def executemany(self, sql, rows):
+            calls.append((sql.split()[0] + " " + sql.split()[1], len(rows)))
+
+        async def fetch(self, sql, *params):
+            return []
+
+    class Pool:
+        @asynccontextmanager
+        async def acquire(self):
+            yield Conn()
+
+    store = ns.PgNodeStore(Pool())
+
+    async def _empty(*args, **kwargs):
+        return {}
+
+    monkeypatch.setattr(store, "load_nodes", _empty)
+
+    async def _rows(*args, **kwargs):
+        return [{"id": uuid.uuid4(), "node_key": f"n{i}"} for i in range(500)]
+
+    monkeypatch.setattr(ns, "query", _rows)
+    nodes = [
+        {"node_id": f"n{i}", "node_type": "text", "config": {"content": str(i)},
+         "position": {"x": i, "y": 0}} for i in range(500)
+    ]
+    edges = [
+        {"edge_id": f"e{i}", "from_node_id": f"n{i}", "to_node_id": f"n{i+1}", "kind": "data"}
+        for i in range(499)
+    ]
+    out = await store.sync_graph(str(uuid.uuid4()), nodes, edges)
+    assert out["nodes"] == 500
+    inserts = [c for c in calls if c[0].startswith("INSERT")]
+    assert inserts and inserts[0][1] == 500
+    assert any(c[1] == 499 for c in inserts)
