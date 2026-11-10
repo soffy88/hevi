@@ -319,6 +319,22 @@ def test_plugin_contract() -> None:
     assert plugin_contract_s25.contract_doc()["status"] == "internal_only"
 
 
+def test_node_store_parses_jsonb_text() -> None:
+    from hevi.canvas.node_store import PgNodeStore
+
+    state = PgNodeStore._state_from_row(
+        {
+            "node_key": "n", "node_type": "image", "label": "N",
+            "config": '{"prompt":"x"}', "position": '{"x":1}', "input_refs": "[]",
+            "status": "pending", "revision": 0, "locked": False,
+            "review": '{"result":"pass"}', "output": '{"kind":"image"}',
+        }
+    )
+    assert state.config == {"prompt": "x"}
+    assert state.position == {"x": 1} and state.input_refs == []
+    assert state.review == {"result": "pass"} and state.output == {"kind": "image"}
+
+
 async def test_pg_node_store_bulk_sync(monkeypatch) -> None:
     import uuid
     from contextlib import asynccontextmanager

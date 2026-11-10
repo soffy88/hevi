@@ -763,19 +763,31 @@ class PgNodeStore:
         return NodeState(
             node_key=str(row["node_key"]),
             node_type=str(row["node_type"]),
-            config=row.get("config") or {},
+            config=_json_field(row.get("config"), {}),
             label=str(row.get("label") or ""),
-            position=row.get("position") or {},
-            input_refs=row.get("input_refs") or [],
+            position=_json_field(row.get("position"), {}),
+            input_refs=_json_field(row.get("input_refs"), []),
             status=str(row.get("status") or gd.STATUS_PENDING),
             revision=int(row.get("revision") or 0),
             locked=bool(row.get("locked")),
-            review=row.get("review"),
-            output=row.get("output"),
+            review=_json_field(row.get("review"), None),
+            output=_json_field(row.get("output"), None),
             artifact_id=str(row["artifact_id"]) if row.get("artifact_id") else None,
             estimated_cost=float(row.get("estimated_cost") or 0),
             actual_cost=float(row.get("actual_cost") or 0),
         )
+
+
+def _json_field(value: Any, default: Any) -> Any:
+    """asyncpg returns jsonb as text on raw connections; accept both forms."""
+    if value is None:
+        return default
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return default
+    return value
 
 
 def _artifact_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -787,6 +799,6 @@ def _artifact_row(row: dict[str, Any]) -> dict[str, Any]:
         "digest": row.get("digest"),
         "mime": row.get("mime"),
         "size_bytes": row.get("size_bytes"),
-        "meta": row.get("meta") or {},
+        "meta": _json_field(row.get("meta"), {}),
         "created_at": str(row.get("created_at") or ""),
     }
