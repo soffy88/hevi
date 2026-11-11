@@ -1885,6 +1885,36 @@ _dance_mv_prompt_pack_schema.register_dance_mv_prompt_pack_schema_capabilities_o
 from . import anidoodle as _anidoodle  # noqa: E402,F401
 _anidoodle.register_anidoodle_capabilities_once()
 
+# sand3d graft (see SAND3D_ATTRIBUTION.md): programmatic CAD
+# modeling vocabulary, six-format export, joints, prompt pack,
+# determinism, IFC honesty, dataset attribution (A1-A7) and
+# five fake contract schemas (B1-B5). Execution layer (py3.13 +
+# bpy 5.2) is a separate work item; nothing here runs Blender.
+from . import sand3d_modeling_vocabulary_gate as _sand3d_modeling_vocabulary_gate  # noqa: E402,F401
+_sand3d_modeling_vocabulary_gate.register_sand3d_modeling_vocabulary_gate_capabilities_once()
+from . import sand3d_export_format_gate as _sand3d_export_format_gate  # noqa: E402,F401
+_sand3d_export_format_gate.register_sand3d_export_format_gate_capabilities_once()
+from . import sand3d_joint_gate as _sand3d_joint_gate  # noqa: E402,F401
+_sand3d_joint_gate.register_sand3d_joint_gate_capabilities_once()
+from . import sand3d_prompt_pack_gate as _sand3d_prompt_pack_gate  # noqa: E402,F401
+_sand3d_prompt_pack_gate.register_sand3d_prompt_pack_gate_capabilities_once()
+from . import sand3d_determinism_gate as _sand3d_determinism_gate  # noqa: E402,F401
+_sand3d_determinism_gate.register_sand3d_determinism_gate_capabilities_once()
+from . import sand3d_ifc_honesty_gate as _sand3d_ifc_honesty_gate  # noqa: E402,F401
+_sand3d_ifc_honesty_gate.register_sand3d_ifc_honesty_gate_capabilities_once()
+from . import sand3d_dataset_attribution_gate as _sand3d_dataset_attribution_gate  # noqa: E402,F401
+_sand3d_dataset_attribution_gate.register_sand3d_dataset_attribution_gate_capabilities_once()
+from . import sand3d_program_schema as _sand3d_program_schema  # noqa: E402,F401
+_sand3d_program_schema.register_sand3d_program_schema_capabilities_once()
+from . import sand3d_export_schema as _sand3d_export_schema  # noqa: E402,F401
+_sand3d_export_schema.register_sand3d_export_schema_capabilities_once()
+from . import sand3d_urdf_joint_schema as _sand3d_urdf_joint_schema  # noqa: E402,F401
+_sand3d_urdf_joint_schema.register_sand3d_urdf_joint_schema_capabilities_once()
+from . import sand3d_ifc_export_schema as _sand3d_ifc_export_schema  # noqa: E402,F401
+_sand3d_ifc_export_schema.register_sand3d_ifc_export_schema_capabilities_once()
+from . import sand3d_dataset_card_schema as _sand3d_dataset_card_schema  # noqa: E402,F401
+_sand3d_dataset_card_schema.register_sand3d_dataset_card_schema_capabilities_once()
+
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

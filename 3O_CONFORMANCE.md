@@ -498,3 +498,34 @@ stay canonical, `layer` is the only new axis.
   (529 entries); the conformance scope count in
   `tests/test_3o_conformance.py` was updated to 529. No renames; the rename/alias migration plan
   is unchanged.
+
+
+## sand3d graft (2026-11-11, main HEAD 41f24e6b)
+
+12 capabilities (7 oskill discipline gates A1-A7: modeling
+vocabulary, six-format export, joints, prompt pack,
+determinism, IFC honesty, dataset attribution; 5 obase fake
+contracts B1-B5: program schema, export schema, URDF joint
+schema, IFC export schema, dataset card schema), landing on
+top of the dance MV graft. Method restated in own words; no
+upstream code, program text, example material, or demo video
+copied; author self-reported numbers (token saving factor,
+3,600-token API size, 38-line washing machine) not stated as
+hevi-verified; determinism is program-to-mesh digest only,
+never byte-identical export files. Version pinned to sand3d
+1.6.3. Execution layer (py3.13 + bpy 5.2) is a separate work
+item: hevi runs Blender 4.2.17 LTS with a Python 3.14.4 venv,
+so nothing here runs Blender. Layer attribution JSON and the
+generated table were extended through
+`scripts/ci/gen_layer_attribution.py` from the shared JSON
+(556 entries). The shared JSON was 15 entries behind the
+repo table at the time (scene3d.generic, koubo_cut.render,
+3 collage_broll, 11 ai_drama entries were in the table but
+not in the JSON); those 15 were recovered verbatim from
+the HEAD table into the JSON before regenerating, so the
+JSON is now the true single source again. the conformance scope count in
+`tests/test_3o_conformance.py` was updated to 561 (live
+non-test registry; 5 anidoodle capabilities remain
+unattributed, a pre-existing gap, so the attribution
+coverage tests still fail exactly as at baseline). No
+renames; the rename/alias migration plan is unchanged.
