@@ -151,6 +151,11 @@ services:
       # open_clip candidate scoring (host ~/models is mounted at /models, not
       # at the hard-coded /home/soffy/models path used on the host).
       HEVI_OPEN_CLIP_DIR: /models/open_clip
+      # S30: the optional 374 MB anidoodle sound pack (VCSL CC0 + OpenAIR CC BY
+      # 4.0) is a host install, never baked into the image; mounted read-only
+      # below.  Absent or unmounted -> /music falls back to code instruments.
+      ANIDOODLE_SOUNDS: /anidoodle-sounds
+      HEVI_ANIDOODLE_SOUNDS: /anidoodle-sounds
     volumes:
       - /home/soffy/models:/models:ro
       # SD-Turbo / TAESD for comic_narration (host /data/soffy/models/ms)
@@ -183,6 +188,9 @@ services:
       # 让容器内 sdxl_local 关键帧引擎(engine="local")能加载模型在 GPU 上出锁脸/摆姿势
       # 关键帧——不挂则 engine=local 找不到权重、退回云端 edit(免费额度墙)→ canon。
       - /data/models/huggingface:/data/models/huggingface:ro
+      # S30: anidoodle sound pack, host-installed and read-only.  Container paths
+      # and licences are recorded in DEPLOY.md.
+      - /data/soffy/projects/anidoodle-sounds:/anidoodle-sounds:ro
     ports:
       - "8201:8000"
     extra_hosts:
@@ -254,6 +262,9 @@ services:
         required: false
     environment:
       REDIS_URL: redis://hevi-redis:6379/0
+      # S30: same read-only sound pack as the API (absent -> code instruments).
+      ANIDOODLE_SOUNDS: /anidoodle-sounds
+      HEVI_ANIDOODLE_SOUNDS: /anidoodle-sounds
       DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
       MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
@@ -326,6 +337,9 @@ services:
       - /home/soffy/.cache/ms-playwright:/pwbrowsers:ro
       - /home/soffy/.cache/huggingface:/root/.cache/huggingface:ro
       - /data/models/huggingface:/data/models/huggingface:ro
+      # S30: anidoodle sound pack, host-installed and read-only.  Container paths
+      # and licences are recorded in DEPLOY.md.
+      - /data/soffy/projects/anidoodle-sounds:/anidoodle-sounds:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -353,6 +367,9 @@ services:
         required: false
     environment:
       REDIS_URL: redis://hevi-redis:6379/0
+      # S30: same read-only sound pack as the API (absent -> code instruments).
+      ANIDOODLE_SOUNDS: /anidoodle-sounds
+      HEVI_ANIDOODLE_SOUNDS: /anidoodle-sounds
       DATABASE_URL: ${CFTUNNEL_DATABASE_URL:?CFTUNNEL_DATABASE_URL is required for production}
       MINIO_ENDPOINT: ${CFTUNNEL_MINIO_ENDPOINT:-host.docker.internal:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for production}
@@ -393,6 +410,9 @@ services:
       - /home/soffy/.cache/hyperframes:/app/.cache/hyperframes:ro
       - /home/soffy/.cache/huggingface:/root/.cache/huggingface:ro
       - /data/models/huggingface:/data/models/huggingface:ro
+      # S30: anidoodle sound pack, host-installed and read-only.  Container paths
+      # and licences are recorded in DEPLOY.md.
+      - /data/soffy/projects/anidoodle-sounds:/anidoodle-sounds:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

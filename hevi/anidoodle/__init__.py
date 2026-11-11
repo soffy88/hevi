@@ -8,6 +8,7 @@ says which precondition failed.
 
 from __future__ import annotations
 
+from . import soundpack
 from .bgm import compose_for_duration
 from .catalog import (
     StyleInfo,
@@ -45,5 +46,6 @@ __all__ = [
     "render_still",
     "run_gate",
     "run_verify_export",
+    "soundpack",
     "validation_for",
 ]

@@ -1,9 +1,12 @@
-"""Code-composed BGM from anidoodle's music engine.
+"""BGM from anidoodle's music engine: written as data, played by code or pack.
 
-Nothing here is a recording and nothing is downloaded: the score is written as
-data (a Material), composed by the engine and synthesized in code.  The
-``music.mjs check`` verdict (key/mode, loudness, masking, stems, novelty) is
-returned with the file, so a caller can refuse a bed that fails a guard.
+The score is always composed from a Material written here.  The voices are code
+synthesized by default; when the optional sound pack is installed (S30) the
+same notes are played by the recorded VCSL instruments instead, and a missing
+bank silently leaves that slot on its code-built instrument, so a pack that is
+absent, partial or stale never blocks a render.  The ``music.mjs check`` verdict
+(key/mode, loudness, masking, stems, novelty) is returned with the file, so a
+caller can refuse a bed that fails a guard.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from . import soundpack
 from .engine import (
     AnidoodleError,
     engine_dir,
@@ -139,27 +143,45 @@ def _motifs(key: str, mode: str, seed: int) -> dict[str, str]:
     return sets[seed % len(sets)]
 
 
-def compose_bgm(
-    *,
-    style: str = "lofiElectronic",
-    mood: str = "",
-    key: str = "",
-    bpm: int = 0,
-    bars: int = 12,
-    seed: int = 29,
-    fmt: str = "mp3",
-) -> dict[str, Any]:
-    """Compose, render and check a code-written bed."""
+def _voice_credits(text: str) -> list[str]:
+    """Split the engine's voice line into credits.
 
-    if style not in TEMPLATES:
-        raise AnidoodleError(
-            f"no validated code-music template for {style}; "
-            f"validated: {', '.join(sorted(TEMPLATES))}"
-        )
-    if bars < 6 or bars > 96:
-        raise AnidoodleError("bars must be between 6 and 96")
-    if fmt not in {"mp3", "wav"}:
-        raise AnidoodleError("fmt must be mp3 or wav")
+    "chords (piano), lead (marimba, sparse, max shift 3 semitones)" splits on
+    commas outside the parentheses.  Code-only renders say "none", which is not
+    a recorded voice and must not be reported as one.
+    """
+
+    out: list[str] = []
+    depth = 0
+    current = ""
+    for ch in text:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            if current.strip():
+                out.append(current.strip())
+            current = ""
+        else:
+            current += ch
+    if current.strip():
+        out.append(current.strip())
+    return [item for item in out if item.strip().lower() not in {"", "none"}]
+
+
+def _material(
+    style: str,
+    *,
+    mood: str,
+    key: str,
+    bpm: int,
+    bars: int,
+    seed: int,
+    sound: str,
+) -> tuple[dict[str, Any], bool]:
+    """The written score: same notes whether or not the sound pack is installed."""
+
     tpl = TEMPLATES[style]
     use_mood = mood or tpl["mood"]
     if key and key != tpl["key"]:
@@ -207,9 +229,16 @@ def compose_bgm(
             **({} if tpl["drums"] else {"groove": None}),
         },
     ]
+    recorded = sound != "code"
+    if recorded:
+        counter = soundpack.counter_line(style)
+        if counter:
+            for section in sections:
+                if section["kind"] in {"groove", "hook"}:
+                    section["counter"] = counter
     material = {
         "style": style,
-        "title": f"hevi code bed ({style})",
+        "title": f"hevi bed ({style})",
         "seed": int(seed),
         "mood": use_mood,
         "bpm": use_bpm,
@@ -220,11 +249,19 @@ def compose_bgm(
         "chords": chords,
         "motifs": motifs,
         "grooves": ({"main": {"family": tpl["groove"]}} if tpl["groove"] else {}),
-        "levels": {"lead": 3, "chords": 1.5},
+        # A recorded piano under a recorded lead masks more than the code pad
+        # did: the measured fix (S30) is +2 dB on the lead, -3.5 dB on the
+        # chords.  Code mode keeps the S29 levels.
+        "levels": (soundpack.recorded_levels(style) if recorded else {"lead": 3, "chords": 1.5}),
         "sections": sections,
     }
+    if recorded:
+        material["voices"] = soundpack.voices_for(style)
 
-    job = _job_dir()
+    return material, recorded
+
+
+def _write_score(job: Path, material: dict[str, Any]) -> Path:
     score = job / "score.ts"
     compose_path = engine_dir() / "src" / "canvas-core" / "music" / "compose.ts"
     score.write_text(
@@ -236,16 +273,103 @@ def compose_bgm(
         + " as Material;\nexport const score = () => composePiece(M);\n",
         encoding="utf-8",
     )
+    return score
+
+
+def write_score(
+    *,
+    style: str = "lofiElectronic",
+    mood: str = "",
+    key: str = "",
+    bpm: int = 0,
+    bars: int = 12,
+    seed: int = 29,
+    sound: str = "auto",
+) -> dict[str, Any]:
+    """Write the score module without rendering it (A/B takes, see tools/listen.mjs)."""
+
+    if style not in TEMPLATES:
+        raise AnidoodleError(f"no validated code-music template for {style}")
+    if bars < 6 or bars > 96:
+        raise AnidoodleError("bars must be between 6 and 96")
+    if sound not in {"auto", "pack", "code"}:
+        raise AnidoodleError("sound must be auto, pack or code")
+    material, recorded = _material(
+        style, mood=mood, key=key, bpm=bpm, bars=bars, seed=seed, sound=sound
+    )
+    job = _job_dir()
+    score = _write_score(job, material)
+    return {
+        "style": style,
+        "path": str(score),
+        "job": str(job),
+        "material": material,
+        "recorded": recorded,
+    }
+
+
+def compose_bgm(
+    *,
+    style: str = "lofiElectronic",
+    mood: str = "",
+    key: str = "",
+    bpm: int = 0,
+    bars: int = 12,
+    seed: int = 29,
+    fmt: str = "mp3",
+    sound: str = "auto",
+) -> dict[str, Any]:
+    """Compose, render and check a written bed.
+
+    ``sound``: ``auto`` plays the recorded pack when it is installed and falls
+    back to code instruments per slot when it is not; ``pack`` asks for it and
+    says so when it had to fall back; ``code`` reproduces the S29 code-only
+    arrangement exactly.
+    """
+
+    if style not in TEMPLATES:
+        raise AnidoodleError(
+            f"no validated code-music template for {style}; "
+            f"validated: {', '.join(sorted(TEMPLATES))}"
+        )
+    if bars < 6 or bars > 96:
+        raise AnidoodleError("bars must be between 6 and 96")
+    if fmt not in {"mp3", "wav"}:
+        raise AnidoodleError("fmt must be mp3 or wav")
+    if sound not in {"auto", "pack", "code"}:
+        raise AnidoodleError("sound must be auto, pack or code")
+    if sound != "code" and style not in soundpack.RECORDED_VOICES:
+        sound = "code"
+    material, recorded = _material(
+        style, mood=mood, key=key, bpm=bpm, bars=bars, seed=seed, sound=sound
+    )
+    use_mood = str(material["mood"])
+    use_key = str(material["key"])
+    use_bpm = int(material["bpm"])
+
+    job = _job_dir()
+    score = _write_score(job, material)
     out = job / f"bed.{fmt}"
+    # auto/pack asked for recordings: with the pack absent the same score renders
+    # on every slot's code instrument, and the result says so.
+    env = soundpack.render_env() if recorded else {}
+    if env:
+        # A worker pool re-decodes every bank in each worker: 4 workers held 7 GB
+        # and thrashed the host (measured 2026-11-11).  One voice at a time keeps
+        # the decoded pack at ~1-2 GB; the engine's own decode is the slow part.
+        env["ANIDOODLE_THREADS"] = "1"
     render = run_node(
         ["tools/music.mjs", "render", f"{score}#score", str(out)],
         timeout=1800,
+        env=env or None,
     )
     if render.returncode != 0 or not out.is_file():
         raise AnidoodleError(
             "music render failed: " + ((render.stderr or render.stdout or "")[-1600:])
         )
-    check = run_node(["tools/music.mjs", "check", f"{score}#score"], timeout=1800)
+    check = run_node(
+        ["tools/music.mjs", "check", f"{score}#score"], timeout=1800, env=env or None
+    )
     check_text = (check.stdout or "") + ("\n" + check.stderr if check.stderr else "")
     check_log = job / "music-check.log"
     check_log.write_text(check_text, encoding="utf-8")
@@ -260,6 +384,22 @@ def compose_bgm(
     sections_out = [
         line.strip() for line in check_text.splitlines() if line.strip().startswith("ARC ")
     ]
+    voices_line = ""
+    for line in (render.stdout or "").splitlines():
+        if line.strip().startswith("voices"):
+            voices_line = line.strip()
+    recorded_voices: list[str] = []
+    modeled_voices: list[str] = []
+    match = re.search(r"recordings:\s*(.*?);\s*modeled:\s*(.*)$", voices_line)
+    if match:
+        recorded_voices = _voice_credits(match.group(1))
+        modeled_voices = _voice_credits(match.group(2))
+    pack = soundpack.pack_status() if recorded else {"installed": False}
+    fallback_reason = ""
+    if recorded and not pack.get("installed"):
+        fallback_reason = "sound pack not installed; every slot used its code instrument"
+    elif recorded and pack.get("installed") and not recorded_voices:
+        fallback_reason = "no requested bank was used by the written parts"
     return {
         "style": style,
         "mood": use_mood,
@@ -284,5 +424,19 @@ def compose_bgm(
             "log": str(check_log),
             "log_tail": check_text[-3000:],
         },
-        "note": "synthesized in code; no recordings, no optional sound pack",
+        "sound": {
+            "requested": sound,
+            "used": "pack" if recorded_voices else "code",
+            "pack_installed": bool(pack.get("installed")),
+            "pack_root": pack.get("root", ""),
+            "recordings": recorded_voices,
+            "modeled": modeled_voices,
+            "fallback_reason": fallback_reason,
+        },
+        "note": (
+            "recorded VCSL instruments where the pack supplies them, code "
+            "instruments elsewhere; same written score in both modes"
+            if recorded_voices
+            else "synthesized in code; no recordings"
+        ),
     }

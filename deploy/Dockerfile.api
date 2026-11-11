@@ -114,15 +114,23 @@ RUN --network=none cd hevi-remotion \
 ARG S16_BUILD_REV=dev
 RUN echo "s16 source rev: ${S16_BUILD_REV}"
 # anidoodle (S29): code-drawn styles, drawing-process films and code music.
-# npm ci --omit=optional deliberately skips the Remotion adapter (S26 licence
-# decision); rendering uses playwright-core with the Chromium already in the image.
+# npm ci --omit=optional does not install the Remotion adapter's packages.
+# S30: the adapter is an option, and it reuses the packages this image already
+# built with (hevi-remotion, 4.0.486) instead of a second install: the engine's
+# node_modules gets links, the way scripts/link-anidoodle-remotion.sh does on a
+# host.  The probe reports the exact versions and CANNOT RUN if a link is gone.
 COPY third_party/anidoodle/engine/package.json third_party/anidoodle/engine/package-lock.json ./third_party/anidoodle/engine/
 RUN cd third_party/anidoodle/engine && npm ci --omit=optional --no-audit --no-fund
 COPY third_party/anidoodle/ ./third_party/anidoodle/
-RUN mkdir -p third_party/anidoodle/engine/node_modules/.remotion \
-    && ln -sfn /app/hevi-remotion/node_modules/.remotion/chrome-headless-shell \
-       third_party/anidoodle/engine/node_modules/.remotion/chrome-headless-shell \
-    && chown -R hevi:hevi third_party/anidoodle
+RUN cd third_party/anidoodle/engine/node_modules \
+    && mkdir -p @remotion \
+    && ln -sfn /app/hevi-remotion/node_modules/remotion remotion \
+    && ln -sfn /app/hevi-remotion/node_modules/react react \
+    && ln -sfn /app/hevi-remotion/node_modules/react-dom react-dom \
+    && ln -sfn /app/hevi-remotion/node_modules/@remotion/bundler @remotion/bundler \
+    && ln -sfn /app/hevi-remotion/node_modules/@remotion/renderer @remotion/renderer \
+    && ln -sfn /app/hevi-remotion/node_modules/.remotion .remotion \
+    && chown -R hevi:hevi /app/third_party/anidoodle
 
 COPY --chown=hevi:hevi hevi/ ./hevi/
 # runtime assets: CMU mocap clips (character_animation), scene3d examples,

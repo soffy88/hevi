@@ -72,10 +72,12 @@ export const open = async (film, opts = {}) => {
   const data = await loadFilm(film);
   const serveUrl = await bundleFor(film, bundle);
   const comps = await getCompositions(serveUrl);
-  const composition = comps.find((c) => c.id === data.meta.title);
+  // HEVI S30: the component registers the fixed id "film" (Remotion ids cannot
+  // carry a prose title).  One film per bundle, so there is nothing to confuse.
+  const composition = comps.find((c) => c.id === "film");
   // The composition is not trusted to agree with the film: if Remotion is about to render a
   // different length or a different size, that is a silent wrong answer, so it is an error here.
-  if (!composition) throw new Error(`remotion: the bundle has no composition '${data.meta.title}' (found: ${comps.map((c) => c.id).join(", ") || "none"})`);
+  if (!composition) throw new Error(`remotion: the bundle has no composition 'film' (found: ${comps.map((c) => c.id).join(", ") || "none"})`);
   if (composition.durationInFrames !== data.meta.durationFrames) throw new Error(`remotion: composition is ${composition.durationInFrames} frames, the film is ${data.meta.durationFrames}`);
   if (composition.width !== data.meta.W || composition.height !== data.meta.H) throw new Error(`remotion: composition is ${composition.width}x${composition.height}, the film is ${data.meta.W}x${data.meta.H}`);
 

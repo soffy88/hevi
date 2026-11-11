@@ -24,6 +24,7 @@
 | POST | `/api/anidoodle/music` | Music |
 | POST | `/api/anidoodle/partial` | Partial |
 | POST | `/api/anidoodle/recommend` | Recommend |
+| GET | `/api/anidoodle/sounds` | Sounds |
 | POST | `/api/anidoodle/still` | Still |
 | GET | `/api/anidoodle/styles` | Styles |
 

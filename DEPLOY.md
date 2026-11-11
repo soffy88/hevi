@@ -57,6 +57,36 @@ docker compose ... up -d --no-deps --force-recreate hevi-api hevi-worker hevi-sc
   `/data/soffy/projects/seq-1108/verify_s26/main_stale_*.patch`）。
 - 新的功能分支从 `origin/main` 起；合并顺序：分支 → `main`（fast-forward）→ `origin/main` → 发布 worktree fetch。
 
+## 可选音色包（S30）
+
+anidoodle 的录制音色包是一个 **374 MB 的独立下载**，不进 git、不进镜像，宿主机装好后
+只读挂载进容器；不挂载时所有作曲模板自动回退纯代码乐器，不会阻塞渲染。
+
+```bash
+# 安装（一次；官方工具会校验每个 FLAC 的 sha256）
+cd /data/soffy/projects/hevi/third_party/anidoodle/engine
+node tools/soundfetch.mjs get all --out /data/soffy/projects/anidoodle-sounds
+node -e "const m=require('/data/soffy/projects/anidoodle-sounds/manifest.json');console.log(Object.keys(m.instruments),Object.keys(m.rooms))"
+
+# 宿主直接核验（467 个文件；也可 GET /api/anidoodle/sounds?verify=true）
+.venv/bin/python -c "from hevi.anidoodle import soundpack; print(soundpack.pack_status(verify=True)['verify'])"
+```
+
+- 挂载：`deploy/docker-compose-cftunnel.yml` 给 `hevi-api` / `hevi-worker` /
+  `hevi-render-worker` 加了 `- /data/soffy/projects/anidoodle-sounds:/anidoodle-sounds:ro`，
+  并设 `ANIDOODLE_SOUNDS` / `HEVI_ANIDOODLE_SOUNDS=/anidoodle-sounds`。
+  容器内路径 `/anidoodle-sounds`，只读。
+- 许可：8 个乐器全部 **VCSL CC0 1.0**（公有领域，可商用、可再分发，无需署名）；
+  3 个 room 为 **OpenAIR / University of York CC BY 4.0**（可商用，发布时需署名，
+  署名文本见 `NOTICE` 与 `hevi.anidoodle.soundpack.CREDIT`）。包内没有非商用或
+  禁止再分发的条目；`/api/anidoodle/sounds` 的 `withheld` 列表为空，非 CC0 的
+  乐器会被列出且永不出声。
+- 回退：`sound=auto`（默认）逐槽位用包、缺哪个槽位就退回该槽位的代码乐器；
+  `sound=code` 完全复现 S29 纯代码编排；`sound=pack` 要求用包并在结果里报告回退原因。
+  响应里的 `sound.recordings / modeled / fallback_reason` 写明实际用了什么。
+- 资源：解码后的包按 1 个 worker（`ANIDOODLE_THREADS=1`）控制在约 1–2 GB；
+  4 worker 曾把宿主吃到 7 GB 并抖动（2026-11-11 实测）。
+
 ## 已废弃
 `hevi/deploy/docker-compose-{dev,live,prod}.yml`、`docker-compose-release-overlay.yml`、手动 `docker run` 的 `hevi-vnext-*`。
 2026-10-11 下线前的数据备份在 `/data/soffy/backups/hevi-20261011/`。

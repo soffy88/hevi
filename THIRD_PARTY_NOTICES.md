@@ -5,12 +5,19 @@
 - **来源**: https://github.com/alexgreensh/anidoodle（v0.10.1，Apache-2.0）
 - **版权**: Copyright 2026 Alex Greenshpun
 - **完整许可证文本**: `third_party/anidoodle/LICENSE`
-- **上游通知**: `third_party/anidoodle/NOTICE`（含可选音色包的 VCSL CC0 与 OpenAIR CC BY 4.0 条目；HEVI 不下载该 373 MB 包）
+- **上游通知**: `third_party/anidoodle/NOTICE`（含可选音色包的 VCSL CC0 与 OpenAIR CC BY 4.0 条目）
 - **用途**: 32 种代码手绘风格、绘制过程片、代码作曲、确定性渲染。
 - **入库日期**: 2026-11-10
-- **修改**: engine 源码未改；HEVI 在 `hevi/anidoodle/` 写封装（Node 调用、风格目录、缓存、门禁），
+- **修改**: HEVI 在 `hevi/anidoodle/` 写封装（Node 调用、风格目录、缓存、门禁），
   并新增 `hevi/anidoodle/drawing_deadair.mjs`（按上游 `meta.kind:"drawing"` 的既有 0.02% 死空镜标准读取像素）。
-- **边界**: 不使用 Remotion 后端；不下载可选音色包；上游示例片、README 图片/音频与 launch 片素材不作为 HEVI 示例或默认内容。
+   vendored Remotion 适配器有两行补丁（`tools/adapters/remotion.mjs`、`remotion/canvas.tsx`）：
+   上游用影片的中文长标题当 Remotion composition id，Remotion 只接受字母数字/`-`；改用固定 id `film`，其余未改。
+- **可选音色包（S30）**: 374 MB，宿主 `/data/soffy/projects/anidoodle-sounds`，只读挂载到容器 `/anidoodle-sounds`；
+   不进仓库、不进镜像。8 个乐器为 **VCSL CC0 1.0**（公有领域，可商用、可再分发，无需署名）；
+   3 个 room 为 **OpenAIR / University of York CC BY 4.0**（可商用，需署名，署名文本见 `NOTICE`）。
+   包内无非商用/禁止再分发条目；缺包时逐槽位回退代码乐器。
+- **边界**: Remotion 后端为可选项，复用仓库既有 Remotion 4.0.486（`hevi-remotion`）链接，不新增重复依赖；
+   上游示例片、README 图片/音频与 launch 片素材不作为 HEVI 示例或默认内容。
 - **署名位置**: 本文件、仓库根 `NOTICE`、`/anidoodle` 页面底部、`/acknowledgements` 页、风格选择器页头。
 
 ## archify

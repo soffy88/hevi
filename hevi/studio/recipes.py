@@ -12,7 +12,17 @@ from pydantic import BaseModel, Field, field_validator
 from hevi.pipeline.manifest import PipelineManifest
 
 LINES_DIR = Path(__file__).resolve().parent / "lines"
-SUPPORTED_RENDER_RUNTIMES = ("remotion", "hyperframes", "ffmpeg", "handdraw", "zero", "scene3d")
+# ``html`` is warm_gold's own path: hevi/explainer/warmgold draws HTML/CSS/SVG
+# per frame with Playwright and encodes with ffmpeg (no Remotion, no HyperFrames).
+SUPPORTED_RENDER_RUNTIMES = (
+    "remotion",
+    "hyperframes",
+    "ffmpeg",
+    "handdraw",
+    "zero",
+    "scene3d",
+    "html",
+)
 
 # 首发线白名单（S9）。只有这些线对外可见/可下单；其余标 internal（内测）。
 # 后端可切换：HEVI_LAUNCH_LINES="a,b,c"；HEVI_LAUNCH_STRICT=1 时非白名单线直接拒绝。

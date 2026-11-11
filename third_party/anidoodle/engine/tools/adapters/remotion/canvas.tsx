@@ -59,9 +59,12 @@ export const FilmCanvas: React.FC<{ film: Film; scale?: number }> = ({ film, sca
 // a function. The entry file is generated per film, so closing over one is free.
 export const rootFor = (film: Film, scale = 1): React.FC => {
   const One: React.FC = () => <FilmCanvas film={film} scale={scale} />;
+  // HEVI S30: a Remotion composition id may hold only a-z A-Z 0-9 CJK and "-",
+  // and film titles are prose ("Lighthouse at sunset · the print, drum by drum").
+  // One film per bundle, so the id is fixed and the adapter looks for the same one.
   return () => (
     <Composition
-      id={film.meta.title}
+      id="film"
       component={One}
       durationInFrames={film.meta.durationFrames}
       fps={film.meta.fps}

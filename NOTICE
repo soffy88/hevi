@@ -143,12 +143,40 @@ anidoodle (Alex Greenshpun)
 - Source: https://github.com/alexgreensh/anidoodle (v0.10.1)
 - License: Apache License 2.0 (see third_party/anidoodle/LICENSE)
 - Copyright 2026 Alex Greenshpun
-- Vendored engine: third_party/anidoodle/engine. Engine source is unmodified;
-  HEVI's wrapper is hevi/anidoodle/ and the drawing-profile dead-air reader is
-  hevi/anidoodle/drawing_deadair.mjs. Rendering uses playwright-core with the
-  Chromium already in the image; the Remotion adapter is not installed and the
-  optional 373 MB sound pack is not downloaded.
-- Upstream NOTICE (third_party/anidoodle/NOTICE) carries the optional sound
-  pack's VCSL CC0 and OpenAIR CC BY 4.0 attributions.
+- Vendored engine: third_party/anidoodle/engine. HEVI's wrapper is
+  hevi/anidoodle/ and the drawing-profile dead-air reader is
+  hevi/anidoodle/drawing_deadair.mjs. Two files of the vendored Remotion adapter
+  carry a two-line HEVI patch (tools/adapters/remotion.mjs and its canvas.tsx):
+  upstream names the composition after the film's prose title, which Remotion
+  rejects; HEVI uses the fixed id "film" and looks for the same id. Everything
+  else in the engine is unmodified.
+- Rendering uses playwright-core with the Chromium already in the image. The
+  Remotion backend (S30) is optional and reuses the repository's existing
+  Remotion 4.0.486 install (hevi-remotion) by linking its packages into the
+  engine's node_modules; a second copy is not installed and the adapter reports
+  "not linked" rather than downloading anything when the link is absent.
+- Optional sound pack (S30): 374 MB, installed on the host at
+  /data/soffy/projects/anidoodle-sounds and mounted read-only at
+  /anidoodle-sounds in the API/worker/render containers. It is not in this
+  repository and not in the image; every render re-checks the manifest. Its
+  licences, read from the pack's LICENSES.md and manifest.json:
+    * instruments - VCSL (Versilian Community Sample Library,
+      https://github.com/sgossner/VCSL), CC0 1.0 Universal (public domain):
+      piano, upright piano, concert harp, marimba, vibraphone, glockenspiel,
+      tubular bells, timpani. Commercial use and redistribution allowed; no
+      attribution required.
+    * rooms - OpenAIR, Audio Lab, University of York
+      (https://www.openair.hosted.york.ac.uk/), CC BY 4.0: Arthur Sykes Rymer
+      Auditorium, Jack Lyons Concert Hall, Genesis 6 Studio live room.
+      Commercial use allowed; the credit line below is required wherever a film
+      that used a room is published.
+      "Recorded impulse responses from OpenAIR, the Open Acoustic Impulse
+      Response library, Audio Lab, University of York
+      (https://www.openair.hosted.york.ac.uk/), licensed CC BY 4.0."
+  No instrument or room in the pack is non-commercial or no-redistribution.
+  The pack is optional: without it every score falls back to the engine's code
+  instruments, and the music response reports what was actually used.
+  Upstream NOTICE (third_party/anidoodle/NOTICE) carries the same VCSL/OpenAIR
+  attributions.
 - Attribution appears in NOTICE, THIRD_PARTY_NOTICES.md, the /anidoodle style
   picker, and the /acknowledgements page.

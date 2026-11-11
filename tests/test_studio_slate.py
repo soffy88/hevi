@@ -47,11 +47,9 @@ def test_twelve_production_lines_loaded() -> None:
         assert rec.tools, rec.id
         assert rec.render_runtime in SUPPORTED_RENDER_RUNTIMES
         assert rec.pipeline.stages
-        if rec.id == "scene3d":
-            # Scene3D renders its own artifact; report is its terminal stage.
-            assert rec.pipeline.stages[-1].name == "report"
-        else:
-            assert rec.pipeline.stages[-1].name in {"dispatch", "publish"}
+        # Every line ends by dispatching its work order (the renderer is chosen
+        # from the recipe's render_runtime), or by publishing its own artifact.
+        assert rec.pipeline.stages[-1].name in {"dispatch", "publish"}
 
 
 def test_parse_recipe_rejects_unknown_handoff() -> None:
@@ -80,6 +78,7 @@ async def test_history_scene_slate_schedules_tongjian(tmp_path: Path) -> None:
         Slate(
             line_id="history_scene",
             slots={
+                "topic": "三家分晋",
                 "source_text": "智伯请地于韩康子",
                 "source_name": "三家分晋",
                 "memory_store": store,
@@ -94,10 +93,12 @@ async def test_history_scene_slate_schedules_tongjian(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_director_pipeline_requires_manuscript() -> None:
-    result = await run_slate(Slate(line_id="director_pipeline", slots={"topic": "不够"}))
-    assert result.status == "blocked"
-    assert "manuscript" in result.missing
+async def test_director_pipeline_schedules_from_topic_only() -> None:
+    # S12 made the directing line topic-only ("只给主题即可出片"); a manuscript is
+    # an optional upgrade, not a precondition.
+    result = await run_slate(Slate(line_id="director_pipeline", slots={"topic": "三家分晋"}))
+    assert result.status == "scheduled"
+    assert result.production_order["target"] == "shortdrama"
 
 
 @pytest.mark.asyncio
@@ -113,6 +114,7 @@ async def test_explainer_and_reference_and_shorts(tmp_path: Path) -> None:
         Slate(
             line_id="reference_adapt",
             slots={
+                "topic": "盐路为什么是税",
                 "transcript": "先讲钩子再讲盐路。",
                 "duration_s": 30,
                 "memory_store": store,

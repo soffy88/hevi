@@ -57,6 +57,7 @@ class MusicRequest(BaseModel):
     bars: int = Field(default=12, ge=6, le=96)
     seed: int = Field(default=29, ge=0)
     format: str = "mp3"
+    sound: str = Field(default="auto", pattern="^(auto|pack|code)$")
 
 
 class BgmRequest(BaseModel):
@@ -66,6 +67,7 @@ class BgmRequest(BaseModel):
     key: str = ""
     seed: int = Field(default=29, ge=0)
     target_lufs: float = Field(default=-14.0, ge=-30, le=-8)
+    sound: str = Field(default="auto", pattern="^(auto|pack|code)$")
 
 
 class PartialRequest(BaseModel):
@@ -262,6 +264,21 @@ async def draw_clip(
     return payload
 
 
+@router.get("/sounds")
+async def sounds(
+    verify: bool = Query(default=False),
+    _user: Annotated[dict[str, Any] | None, Depends(get_current_user)] = None,
+) -> dict[str, Any]:
+    """The optional sound pack: installed?, what it holds, what its licence allows."""
+
+    from hevi.anidoodle import soundpack
+
+    try:
+        return soundpack.pack_status(verify=verify)
+    except Exception as exc:
+        raise _error(exc) from exc
+
+
 @router.post("/music")
 async def music(
     req: MusicRequest,
@@ -279,6 +296,7 @@ async def music(
             bars=req.bars,
             seed=req.seed,
             fmt=req.format,
+            sound=req.sound,
         )
     except Exception as exc:
         raise _error(exc) from exc
@@ -301,6 +319,7 @@ async def bgm(
             key=req.key,
             seed=req.seed,
             target_lufs=req.target_lufs,
+            sound=req.sound,
         )
     except Exception as exc:
         raise _error(exc) from exc

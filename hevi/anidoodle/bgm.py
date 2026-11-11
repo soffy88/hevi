@@ -42,13 +42,16 @@ def compose_for_duration(
     key: str = "",
     seed: int = 29,
     target_lufs: float = -14.0,
+    sound: str = "auto",
 ) -> dict[str, Any]:
     """Compose a bed that covers ``duration_s`` and master it for delivery."""
 
     if duration_s <= 0 or duration_s > 900:
         raise AnidoodleError("duration_s must be between 0 and 900")
     bars = max(6, min(96, math.ceil((duration_s + 2.0) / _bar_seconds(style))))
-    composed = compose_bgm(style=style, mood=mood, key=key, bars=bars, seed=seed, fmt="wav")
+    composed = compose_bgm(
+        style=style, mood=mood, key=key, bars=bars, seed=seed, fmt="wav", sound=sound
+    )
     source = Path(composed["path"])
     job = source.parent
     cut = job / "bed-cut.wav"
@@ -106,5 +109,5 @@ def compose_for_duration(
         "target_lufs": target_lufs,
         "loudness": measured,
         "normalized_to_target": normalized,
-        "note": "code-composed bed, cut with fades and mastered for delivery; no recordings",
+        "note": "written bed, cut with fades and mastered for delivery",
     }
