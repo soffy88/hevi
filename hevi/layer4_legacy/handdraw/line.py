@@ -223,11 +223,13 @@ async def render_handdraw_line(
 
     try:
         import os
+        import shutil
         import subprocess
         import time
         src = Path(result["video_path"])
         tmp = src.with_suffix(".tmp.mp4")
-        subprocess.run(["/home/soffy/.local/bin/ffmpeg", "-y", "-v", "error", "-i", str(src), "-c", "copy",
+        ffmpeg_bin = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
+        subprocess.run([ffmpeg_bin, "-y", "-v", "error", "-i", str(src), "-c", "copy",
                         "-metadata", "comment=run-" + str(time.time()), "-movflags", "+faststart", str(tmp)],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         os.replace(tmp, src)

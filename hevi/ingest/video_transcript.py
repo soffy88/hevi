@@ -135,10 +135,34 @@ def _whisper_model_path() -> str:
     return _WHISPER_CANDIDATES[1]
 
 
+def _has_audio_stream(video_path: Path) -> bool:
+    """True when the media carries an audio track.
+
+    faster-whisper raises a bare ``IndexError: tuple index out of range`` on a
+    source without audio; the caller must be able to say so in words.
+    """
+    import json as _json
+    import shutil as _shutil
+    import subprocess as _subprocess
+
+    ffprobe = _shutil.which("ffprobe") or "/usr/bin/ffprobe"
+    try:
+        out = _subprocess.check_output(
+            [ffprobe, "-v", "error", "-show_entries", "stream=codec_type", "-of", "json", str(video_path)],
+            text=True,
+        )
+        streams = _json.loads(out).get("streams") or []
+    except Exception:
+        return True  # 探测失败时不拦；让下游按自己的方式报错
+    return any(str(s.get("codec_type")) == "audio" for s in streams)
+
+
 def _whisper_transcribe(
     video_path: Path, *, language: str | None = None
 ) -> list[TranscriptSegment]:
     """faster-whisper 兜底:直接对本地音/视频转写。"""
+    if not _has_audio_stream(video_path):
+        raise TranscriptError(f"源视频没有音频轨，无法转写: {video_path}")
     try:
         from faster_whisper import WhisperModel
     except ImportError as e:  # pragma: no cover - env guard

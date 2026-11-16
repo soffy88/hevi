@@ -119,6 +119,11 @@ services:
       HEVI_KINETIC_ENGINE: ${HEVI_KINETIC_ENGINE:-default}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      # S30E: ai_drama 的配音在 API/worker 容器内合成(渲染 worker 早已有这两个变量)。
+      # 缺了它们,hevi/ai_drama/voice.py 会去找只存在于宿主机的路径而报
+      # "piper 音色缺失",真人短剧/漫剧整条线出不了片。
+      HEVI_PIPER_BIN: /opt/piper/bin/piper
+      HEVI_PIPER_VOICES_DIR: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
       FASTER_WHISPER_MODEL_DIR: /models/faster-whisper-large-v3-turbo
       # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
@@ -298,6 +303,11 @@ services:
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      # S30E: ai_drama 的配音在 API/worker 容器内合成(渲染 worker 早已有这两个变量)。
+      # 缺了它们,hevi/ai_drama/voice.py 会去找只存在于宿主机的路径而报
+      # "piper 音色缺失",真人短剧/漫剧整条线出不了片。
+      HEVI_PIPER_BIN: /opt/piper/bin/piper
+      HEVI_PIPER_VOICES_DIR: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
       FASTER_WHISPER_MODEL_DIR: /models/faster-whisper-large-v3-turbo
       # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria
@@ -474,6 +484,11 @@ services:
       HEVI_LAUNCH_STRICT: ${HEVI_LAUNCH_STRICT:-1}
       HEVI_TALKCRAFT_PIPER: /opt/piper/bin/piper
       HEVI_TALKCRAFT_VOICES: /opt/piper/voices
+      # S30E: ai_drama 的配音在 API/worker 容器内合成(渲染 worker 早已有这两个变量)。
+      # 缺了它们,hevi/ai_drama/voice.py 会去找只存在于宿主机的路径而报
+      # "piper 音色缺失",真人短剧/漫剧整条线出不了片。
+      HEVI_PIPER_BIN: /opt/piper/bin/piper
+      HEVI_PIPER_VOICES_DIR: /opt/piper/voices
       HEVI_WHISPER_MODEL: /models/faster-whisper-large-v3-turbo
       FASTER_WHISPER_MODEL_DIR: /models/faster-whisper-large-v3-turbo
       # rembg/koubo 素材抠图用宿主已有的 u2net.onnx(176MB),只读挂载,禁止运行期下载 1GB bria

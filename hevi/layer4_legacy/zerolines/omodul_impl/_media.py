@@ -521,7 +521,26 @@ def rms_envelope(wav: Path, fps: int) -> np.ndarray:
 _WHISPER_CACHE: dict[str, Any] = {}
 
 
+def has_audio_stream(src: str | Path) -> bool:
+    """True when the media carries an audio track.
+
+    faster-whisper raises a bare ``IndexError: tuple index out of range`` on a
+    source without audio; the caller must be able to say so in words.
+    """
+    try:
+        out = subprocess.check_output(
+            [FFPROBE, "-v", "error", "-show_entries", "stream=codec_type", "-of", "json", str(src)],
+            text=True,
+        )
+        streams = json.loads(out).get("streams") or []
+    except Exception:
+        return True  # 探测失败时不拦；让下游按自己的方式报错
+    return any(str(s.get("codec_type")) == "audio" for s in streams)
+
+
 def whisper_segments(src: str | Path, lang: str) -> list[dict[str, Any]]:
+    if not has_audio_stream(src):
+        raise ZeroMediaError(f"源素材没有音频轨，无法转写: {src}")
     try:
         model_ref = resolve_whisper_model(required=True)
     except FileNotFoundError as exc:

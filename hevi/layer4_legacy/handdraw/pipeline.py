@@ -27,8 +27,8 @@ from hevi.layer4_legacy.handdraw.tts import build_narration_master, sha256_file
 
 logger = logging.getLogger(__name__)
 
-FFMPEG = "/home/soffy/.local/bin/ffmpeg"
-FFPROBE = "/home/soffy/.local/bin/ffprobe"
+FFMPEG = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
+FFPROBE = shutil.which("ffprobe") or "/usr/bin/ffprobe"
 FONT_PATH = "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
 
 
@@ -692,7 +692,10 @@ def render_handdraw_pipeline(
         # inherit the full-film mix measurement or treat a missing value as PASS.
         import os
         import tempfile
-        temp_root = Path(os.environ.get("TMPDIR", "/data/soffy/projects/hevi-handdraw/.tmp")).resolve()
+        # 容器里没有宿主机那条路径，且容器用户无权在 / 下建目录；退回系统临时目录。
+        temp_root = Path(
+            os.environ.get("TMPDIR") or tempfile.gettempdir() or "/tmp"
+        ).resolve()
         temp_root.mkdir(parents=True, exist_ok=True)
         pre_loud = subprocess.run([
             FFMPEG, "-hide_banner", "-i", str(video_path),

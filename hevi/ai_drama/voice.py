@@ -19,8 +19,48 @@ from typing import Any
 
 FFMPEG = shutil.which("ffmpeg") or "/usr/bin/ffmpeg"
 FFPROBE = shutil.which("ffprobe") or "/usr/bin/ffprobe"
-PIPER = os.environ.get("HEVI_PIPER_BIN") or "/data/soffy/projects/hevi-zero/.venv/bin/piper"
-VOICE_DIR = Path(os.environ.get("HEVI_PIPER_VOICES_DIR") or "/data/soffy/projects/hevi-zero/voices")
+
+# Container-first, same convention as hevi/explainer/voice.py: the deployment
+# mounts Piper at /opt/piper and exports HEVI_PIPER_BIN / HEVI_PIPER_VOICES_DIR
+# only on the render worker, so the API container (which runs the ai_drama
+# pipeline inline) otherwise resolved the host-only paths and failed with
+# "piper 音色缺失" before any video could be produced.
+_PIPER_CANDIDATES = (
+    "/opt/piper/bin/piper",
+    "/data/soffy/projects/hevi-zero/.venv/bin/piper",
+    "/usr/local/bin/piper",
+)
+_VOICE_DIR_CANDIDATES = (
+    "/opt/piper/voices",
+    "/data/soffy/projects/hevi-zero/voices",
+)
+
+
+def _piper_bin() -> str:
+    explicit = os.environ.get("HEVI_PIPER_BIN", "").strip()
+    if explicit and Path(explicit).is_file():
+        return explicit
+    found = shutil.which("piper")
+    if found:
+        return found
+    for candidate in _PIPER_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+    return _PIPER_CANDIDATES[0]
+
+
+def _voice_dir() -> Path:
+    explicit = os.environ.get("HEVI_PIPER_VOICES_DIR", "").strip()
+    if explicit and Path(explicit).is_dir():
+        return Path(explicit)
+    for candidate in _VOICE_DIR_CANDIDATES:
+        if Path(candidate).is_dir():
+            return Path(candidate)
+    return Path(_VOICE_DIR_CANDIDATES[0])
+
+
+PIPER = _piper_bin()
+VOICE_DIR = _voice_dir()
 PIPER_VOICES = {
     "zh_CN-huayan-medium.onnx": VOICE_DIR / "zh_CN-huayan-medium.onnx",
     "zh_CN-huayan-x_low.onnx": VOICE_DIR / "zh_CN-huayan-x_low.onnx",

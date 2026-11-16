@@ -850,6 +850,151 @@ async def _render_explainer_line(order: dict[str, Any], output_dir: Path) -> dic
     }
 
 
+def _warm_gold_fit(text: str, *, size_px: int, max_chars: int) -> str:
+    """Trim screen text until it fits the warm-gold safe area and reading speed."""
+    from hevi.explainer.warmgold import style as warmgold_style
+
+    out = (text or "").strip()
+    while out and (
+        len(out) > max_chars or not warmgold_style.text_fits(out, size_px)
+    ):
+        out = out[:-1]
+    return out
+
+
+def _warm_gold_script(order: dict[str, Any], texts: list[str]) -> dict[str, Any]:
+    """Turn a studio plan into a warm-gold per-beat script.
+
+    warm_gold ships its own script schema (``hevi.warmgold.script/1``) and its
+    own self-check; the product's 10 s template is the only shape that is known
+    to pass that check, so the plan's narration lines are poured into the
+    template's shots and the screen text is trimmed to the warm-gold safe area.
+    """
+    import re
+
+    from hevi.explainer.warmgold import template as warmgold_template
+
+    topic = str(
+        _slot(order, "topic") or order.get("source_text") or order.get("manuscript") or ""
+    ).strip()
+    sentence = topic or (texts[0] if texts else "")
+    script = warmgold_template.build_10s(sentence)
+    script["topic"] = sentence or script.get("topic") or ""
+
+    typography = {"big_size_px": 92, "small_size_px": 44}
+    try:
+        from hevi.explainer.warmgold import style as warmgold_style
+
+        typography = {
+            "big_size_px": int(warmgold_style.STYLE_CARD["typography"]["big_size_px"]),
+            "small_size_px": int(warmgold_style.STYLE_CARD["typography"]["small_size_px"]),
+        }
+    except Exception:  # pragma: no cover - style card is optional
+        pass
+
+    bpm = float(script.get("bpm") or 120.0)
+    beat_s = 60.0 / bpm
+    narrations = [text for text in texts if text.strip()] or [script["topic"]]
+    shots = script.get("shots") or []
+    for index, shot in enumerate(shots):
+        # The plan usually has more lines than the template has shots; the last
+        # line carries the takeaway, so the closing shot always reads it.
+        pick = narrations[index] if index < len(narrations) else narrations[-1]
+        shot["narration"] = pick
+        duration = max(0.4, int(shot.get("beats") or 1) * beat_s)
+        shot["big"] = _warm_gold_fit(
+            sentence,
+            size_px=typography["big_size_px"],
+            max_chars=max(4, int(6 * duration)),
+        )
+        shot["small"] = _warm_gold_fit(
+            sentence,
+            size_px=typography["small_size_px"],
+            max_chars=max(6, int(7 * duration)),
+        )
+
+    # S10: the opening must carry a personal detail with 「你」.
+    first = shots[0] if shots else {}
+    if "你" not in f"{first.get('big') or ''} {first.get('narration') or ''}":
+        first["narration"] = "你有没有想过，" + str(first.get("narration") or sentence)
+
+    # S15: every number on screen needs a declared source.
+    numbers: list[dict[str, str]] = []
+    for shot in shots:
+        screen = f"{shot.get('big') or ''} {shot.get('small') or ''}"
+        for token in re.findall(r"[0-9][0-9.,]*", screen):
+            if not any(item.get("value") == token for item in numbers):
+                numbers.append({"value": token, "source": "用户提供"})
+    if numbers:
+        script["numbers"] = numbers
+    return script
+
+
+async def _render_warm_gold_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
+    """Render the 暖黑金图解 line into a portrait MP4.
+
+    The line has its own renderer (``hevi.explainer.warmgold``: HTML/SVG frames
+    shot with Chromium, encoded with ffmpeg) but the studio production order
+    had no executor registered, so "暖黑金图解" could never deliver a film.
+    """
+    from hevi.explainer.warmgold import render as warmgold_render
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    line_id = str(order.get("line_id") or "warm_gold")
+    texts = _texts_from_order(order)
+    if not texts:
+        return _blocked(
+            "暖黑金图解需要主题或脚本文本", target="explainer", line_id=line_id
+        )
+
+    script = _warm_gold_script(order, texts)
+    out = output_dir / "warm_gold.mp4"
+    music_path = str(_slot(order, "music_path") or "") or None
+    try:
+        report = await asyncio.to_thread(
+            warmgold_render.render,
+            script,
+            str(out),
+            workdir=str(output_dir / "warm_gold_work"),
+            music_path=music_path,
+            voice=True,
+            fps=24,
+        )
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "target": "explainer",
+            "line_id": line_id,
+            "reason": f"暖黑金渲染失败: {exc}",
+        }
+    if not report.ok or not Path(str(report.out or out)).is_file():
+        issues = [
+            str(item.get("message") or item)
+            for item in (report.issues or [])
+            if isinstance(item, dict)
+        ] or ["暖黑金渲染没有产出成片"]
+        return {
+            "status": "failed",
+            "target": "explainer",
+            "line_id": line_id,
+            "reason": "暖黑金渲染未通过自检: " + "; ".join(issues[:3]),
+        }
+
+    manifest, quality = await _verified_video_manifest(
+        [(Path(str(report.out)), True, "portrait_video")], require_audio=True
+    )
+    return {
+        "status": "completed",
+        "target": "explainer",
+        "line_id": line_id,
+        "result_video_path": str(report.out),
+        "artifact_manifest": manifest.model_dump(mode="json"),
+        "quality": quality,
+        "render_runtime": "html",
+    }
+
+
 async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     from hevi.production.media_workflows import video_localization_workflow
 
@@ -1351,6 +1496,7 @@ _RENDERERS = {
     "talking_head": _render_explainer_line,
     "avatar_spokesperson": _render_explainer_line,
     "comic_narration": _render_explainer_line,
+    "warm_gold": _render_warm_gold_line,
 }
 
 
