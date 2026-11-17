@@ -995,6 +995,51 @@ async def _render_warm_gold_line(order: dict[str, Any], output_dir: Path) -> dic
     }
 
 
+async def fulfill_from_delivery(data: dict[str, Any]) -> dict[str, Any]:
+    """Map a line that renders itself onto the canonical fulfill contract.
+
+    ``ai_drama`` runs its own pipeline (script → voice → storyboard → assets →
+    segments → edit → publish) and hands back a ``delivery`` block instead of
+    going through the studio fulfill stage.  Without this mapping the studio
+    saw an empty ``fulfill`` and reported "failed" even though the film was
+    already on disk.
+    """
+    delivery = data.get("delivery") or {}
+    if not isinstance(delivery, dict):
+        return {}
+    raw = str(delivery.get("final") or delivery.get("video") or "").strip()
+    if not raw:
+        return {}
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    line_id = str(data.get("line_id") or "")
+    if not path.is_file():
+        return {"status": "failed", "line_id": line_id, "reason": f"成片不存在: {path}"}
+    try:
+        manifest, quality = await _verified_video_manifest(
+            [(path, True, "portrait_video")], require_audio=True
+        )
+    except Exception as exc:  # the truth gate is the contract
+        return {"status": "failed", "line_id": line_id, "reason": f"成片未通过交付门: {exc}"}
+    manifest_payload = manifest.model_dump(mode="json")
+    manifest_payload["verified"] = True
+    return {
+        "status": "completed",
+        "target": str(data.get("handoff") or "none"),
+        "line_id": line_id,
+        "result_video_path": str(path),
+        "artifact_manifest": manifest_payload,
+        "quality": quality,
+        "render_runtime": str(data.get("render_runtime") or "ffmpeg"),
+        "provenance": {
+            "line_id": line_id,
+            "source": "line_delivery",
+            "duration_s": float(delivery.get("duration_s") or 0.0) or None,
+        },
+    }
+
+
 async def _render_localization_line(order: dict[str, Any], output_dir: Path) -> dict[str, Any]:
     from hevi.production.media_workflows import video_localization_workflow
 

@@ -120,6 +120,15 @@ async def run_slate(slate: Slate, *, recipe: Recipe | None = None) -> SlateResul
     order = data.get("production_order") or {}
     pipe_state = getattr(state, "state", "completed")
     fulfill = data.get("fulfill") or {}
+    if not fulfill.get("status") and data.get("delivery"):
+        # A line that renders itself (ai_drama) hands back its own delivery
+        # instead of a studio fulfill block; map it onto the same contract so
+        # the film is verified and downloadable like every other line.
+        from hevi.studio.fulfill import fulfill_from_delivery
+
+        fulfill = await fulfill_from_delivery(data)
+        if fulfill.get("status") == "completed":
+            data["fulfill"] = fulfill
     if not slate.execute:
         status = "scheduled" if order.get("target") and order["target"] != "none" else "planned"
     else:

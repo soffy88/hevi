@@ -9,7 +9,14 @@ from .pipeline import Pipeline
 
 
 def _pipeline(data: dict[str, Any]) -> tuple[Pipeline, dict[str, Any]]:
-    out = Path(str(data.get("out_dir") or "output/ai_drama"))
+    # Each run writes into its own directory: the studio runs one slate at a
+    # time per user, but the shared output/ai_drama/ path let two runs
+    # overwrite each other's clips and final cut.
+    out_dir = str(data.get("out_dir") or "").strip()
+    if not out_dir:
+        slate_id = str(data.get("slate_id") or "").strip()
+        out_dir = f"output/ai_drama/{slate_id}" if slate_id else "output/ai_drama"
+    out = Path(out_dir)
     p = Pipeline(
         out,
         episode_id=str(data.get("episode_id") or data.get("slate_id") or "ai_drama"),

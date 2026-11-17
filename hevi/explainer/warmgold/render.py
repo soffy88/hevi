@@ -48,6 +48,10 @@ CHROMIUM_ARGS = [
     "--force-color-profile=srgb",
 ]
 
+# A 1080x1920 frame rendered by software GL (SwiftShader) can take far longer
+# than Playwright's 30 s default; the warm-gold line failed on that timeout.
+SCREENSHOT_TIMEOUT_MS = 180_000
+
 
 @dataclass
 class RenderReport:
@@ -335,7 +339,10 @@ def _capture(page: Any, indices: list[int], frames_dir: Path, plan: list[dict[st
     for i in indices:
         page.evaluate("(i) => window.__seek(i)", i)
         page.screenshot(
-            path=str(frames_dir / f"f_{i:06d}.png"), animations="disabled", caret="hide"
+            path=str(frames_dir / f"f_{i:06d}.png"),
+            animations="disabled",
+            caret="hide",
+            timeout=SCREENSHOT_TIMEOUT_MS,
         )
 
 
