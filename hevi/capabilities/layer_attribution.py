@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(573 capabilities, one entry each, no "unclassified" remainder).
+(583 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -266,12 +266,14 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.genre_scale_table_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/genre_scale_table_gate.py'},
     'qa.graph_honesty_gate': {"layer": 'oskill', "reason": 'multi-rule gate: source, label/value match, final match, schematic curve (gate rule)', "file": 'hevi/capabilities/graph_honesty_gate.py'},
     'qa.greenscreen_generation_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/greenscreen_generation_gate.py'},
+    'qa.gsap_timeline_honesty_gate': {"layer": 'oskill', "reason": 'discipline gate: one timeline, paused, rendering on update; CSS transforms animated only with fromTo keeping xPercent/yPercent; GSAP is GreenSock standard licence, never MIT', "file": 'hevi/capabilities/gsap_timeline_honesty_gate.py'},
     'qa.h3_config_equivalence_protocol': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/h3_config_equivalence_protocol.py'},
     'qa.h3_config_registration': {"layer": 'obase', "reason": 'H3 配置登记数据资产：config_record 为单一 H3 配置源 + 单配置校验（SPEC §3.2 数据资产）', "file": 'hevi/capabilities/h3_config_registration.py'},
     'qa.h3_frame_align_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/h3_frame_align_gate.py'},
     'qa.h3_stale_defaults_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/h3_stale_defaults_gate.py'},
     'qa.hardest_shot_pilot': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/hardest_shot_pilot.py'},
     'qa.hook_reversal_script_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/hook_reversal_script_gate.py'},
+    'qa.hybrid_render_mode_gate': {"layer": 'oskill', "reason": 'discipline gate: three/svg/hybrid chosen from the theme, hybrid winning when both 3D and overlay work are present; vector colours must name Atlas palettes, force red and velocity blue', "file": 'hevi/capabilities/hybrid_render_mode_gate.py'},
     'qa.hypit_license_note': {"layer": 'oskill', "reason": 'Reference notes plus check_: licence position recorded in our own words with completeness rules (gate rule)', "file": 'hevi/capabilities/hypit_license_note.py'},
     'qa.ig_safe_area_profile': {"layer": 'oskill', "reason": 'multi-rule gate: profile declaration plus per-element box checks (gate rule)', "file": 'hevi/capabilities/ig_safe_area_profile.py'},
     'qa.ink_press_structure_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/ink_press_structure_gate.py'},
@@ -301,6 +303,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.open_skills_method_notes': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/open_skills_method_notes.py'},
     'qa.packaging_component_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/packaging_component_vocabulary.py'},
     'qa.page_contract': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/page_contract.py'},
+    'qa.paid_generation_cost_gate': {"layer": 'oskill', "reason": 'discipline gate: no paid call without a declared model, max_tokens, estimated cost and budget; single-film cap $0.50, HyperFrames version pinned, Anthropic key connected', "file": 'hevi/capabilities/paid_generation_cost_gate.py'},
     'qa.paid_generation_economy_gate': {"layer": 'oskill', "reason": 'discipline gate: paid generation on official token-basis pricing, approved budget, 720p then upscale, hardest first, old segments kept', "file": 'hevi/capabilities/paid_generation_economy_gate.py'},
     'qa.panel_contrast_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/panel_contrast_gate.py'},
     'qa.parametric_pose_template': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/parametric_pose_template.py'},
@@ -311,6 +314,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.premium_composition_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/premium_composition_gate.py'},
     'qa.prerelease_self_check_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/prerelease_self_check_gate.py'},
     'qa.preview_provenance_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/preview_provenance_gate.py'},
+    'qa.preview_video_five_segment_gate': {"layer": 'oskill', "reason": "discipline gate: 30+60+60+60+30=240s, data-composition-id required, one GSAP timeline at window.__timelines['main'], video autoplays with no interactive controls, teaching-line films first pass the source sentence ledger", "file": 'hevi/capabilities/preview_video_five_segment_gate.py'},
     'qa.production_gates': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/production_gates.py'},
     'qa.production_method_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/production_method_vocabulary.py'},
     'qa.prompt_eval_harness': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/prompt_eval_harness.py'},
@@ -360,6 +364,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.shotcraft_card_fidelity_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/shotcraft_card_fidelity_gate.py'},
     'qa.shotcraft_theme_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/shotcraft_theme_vocabulary.py'},
     'qa.shotlist_six_rule_gate': {"layer": 'oskill', "reason": 'discipline gate: change angle every shot, something moving, named movement with reason, 38%/62% framing, palette table with black-and-white check', "file": 'hevi/capabilities/shotlist_six_rule_gate.py'},
+    'qa.slider_dual_channel_gate': {"layer": 'oskill', "reason": 'discipline gate: one slider is the single source of truth; one update must change the 3D object property and the SVG path to the same value in the same frame', "file": 'hevi/capabilities/slider_dual_channel_gate.py'},
     'qa.slow_zoom_clarification': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/slow_zoom_clarification.py'},
     'qa.sound_source_labels_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/sound_source_labels_gate.py'},
     'qa.source_sentence_ledger': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/source_sentence_ledger.py'},
@@ -374,6 +379,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.story_text_probe_gate': {"layer": 'oskill', "reason": 'Story text probe gate: plain-text probe answering memory hook, retention reason and uniqueness; advisory only, never a gate', "file": 'hevi/capabilities/story_text_probe_gate.py'},
     'qa.storyboard_fidelity_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/storyboard_fidelity_gate.py'},
     'qa.storyboard_opening_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/stage_opening.py'},
+    'qa.svg3d_projection_sync_gate': {"layer": 'oskill', "reason": 'discipline gate: world point plus camera matrix plus viewport recomputed to one screen pixel; behind-camera points refused, DPR declared, resize re-projection must agree', "file": 'hevi/capabilities/svg3d_projection_sync_gate.py'},
     'qa.talkback_edit_gate': {"layer": 'oskill', "reason": 'discipline gate: silence cut, subtitles aligned, cutaway stills inserted, one misread sentence re-recorded on its own, never a full rebuild', "file": 'hevi/capabilities/talkback_edit_gate.py'},
     'qa.talkback_film_gate': {"layer": 'oskill', "reason": 'discipline gate: five steps in order, every step verifiable on its own, one misread sentence fixed alone, never a full rebuild', "file": 'hevi/capabilities/talkback_film_gate.py'},
     'qa.talkback_model_select_gate': {"layer": 'oskill', "reason": 'discipline gate: one model per use case, low-resolution 480p sample first, selection basis written down', "file": 'hevi/capabilities/talkback_model_select_gate.py'},
@@ -538,6 +544,8 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.gsap_choreography_vocabulary': {"layer": 'obase', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/gsap_choreography_vocabulary.py'},
     'video.h3_single_segment_adapter': {"layer": 'obase', "reason": 'H3 适配契约：单段适配规格 + 网格/配置校验委托，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/h3_single_segment_adapter.py'},
     'video.h3_storyboard_adapter': {"layer": 'obase', "reason": 'H3 适配契约：分镜适配规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/h3_storyboard_adapter.py'},
+    'video.hybrid_scene_sync_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake hybrid scene sync schema, Three.js scene plus SVG layer plus sync table, executed_here false', "file": 'hevi/capabilities/hybrid_scene_sync_schema.py'},
+    'video.hyperframes_composition_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake HyperFrames composition schema, data-composition-id, duration, tracks, single GSAP timeline mount, executed_here false; GSAP-timeline composition layer, not styles or styled render', "file": 'hevi/capabilities/hyperframes_composition_schema.py'},
     'video.hyperframes_styled_render': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/csk_styles.py'},
     'video.hyperframes_styles': {"layer": 'obase', "reason": '词表/风格库数据资产：静态条目+检索，无业务算法（SPEC §7.3）', "file": 'hevi/capabilities/csk_styles.py'},
     'video.jianying_draft_adapter': {"layer": 'obase', "reason": '导出适配契约：草稿导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/jianying_draft_adapter.py'},
@@ -556,6 +564,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.palette_table_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake per-scene palette table schema with black-and-white readability check, executed_here false', "file": 'hevi/capabilities/palette_table_schema.py'},
     'video.pixstag_generate': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/pixstag.py'},
     'video.platform_safe_zone_schema': {"layer": 'obase', "reason": 'Fake contract: platform safe zone, one of six reviewed platform themes with control occlusions and safe frame; no on-device verification', "file": 'hevi/capabilities/platform_safe_zone_schema.py'},
+    'video.preview_to_video_pipeline_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake preview-to-video pipeline schema, topic to interactive HTML to video HTML to MP4, cost estimate and pinned HyperFrames version, executed_here false', "file": 'hevi/capabilities/preview_to_video_pipeline_schema.py'},
     'video.quarks_particle_contract': {"layer": 'obase', "reason": '导出适配契约：粒子导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/quarks_particle_contract.py'},
     'video.r3f_scene_contract': {"layer": 'obase', "reason": '导出适配契约：场景导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/r3f_scene_contract.py'},
     'video.reference_map_adapter': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/reference_map_adapter.py'},
@@ -570,6 +579,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.single_image_sway': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/single_image_sway.py'},
     'video.step_segmentation': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/video_step_segmentation.py'},
     'video.style_catalog_schema': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/style_catalog_schema.py'},
+    'video.svg3d_overlay_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake SVG 3D overlay schema, anchor labels on 3D points, viewBox, pointer-events none, executed_here false', "file": 'hevi/capabilities/svg3d_overlay_schema.py'},
     'video.talkback_film_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake talkback film schema, executed_here false, five steps in order', "file": 'hevi/capabilities/talkback_film_schema.py'},
     'video.three_layer_project_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake three-layer project schema, executed_here false, nothing built or rendered', "file": 'hevi/capabilities/three_layer_project_schema.py'},
     'video.tweakpane_panel_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake debug panel schema, executed_here false, no DOM created', "file": 'hevi/capabilities/tweakpane_panel_contract.py'},

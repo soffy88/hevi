@@ -563,3 +563,43 @@ exactly as at baseline, verified in a clean e7d6a738 worktree,
 as does the omodul pillars test with its hardcoded 55). New tests
 71 passed; ruff check and format clean. No renames. Production
 untouched.
+
+Aetherviz G4/G5 graft (2026-11-20): A1-A6 + B1-B4, ten new
+capabilities (qa.svg3d_projection_sync_gate,
+qa.slider_dual_channel_gate, qa.hybrid_render_mode_gate,
+qa.preview_video_five_segment_gate, qa.gsap_timeline_honesty_gate,
+qa.paid_generation_cost_gate, video.svg3d_overlay_schema,
+video.hybrid_scene_sync_schema,
+video.preview_to_video_pipeline_schema,
+video.hyperframes_composition_schema). Registry 578 -> 588.
+Sources, read-only: hevi-vs-aetherviz-g4-g5.md and the
+aetherviz-master / aetherviz-master-branch-claude reference
+copies; clean-room restatement only, no SKILL.md/README text,
+no branch web/ code, no vendored GSAP, no demo images, no
+three.min.js, no registration, no paid generation call.
+Projection is standard NDC-to-screen math with a
+behind-camera refusal; Atlas palette names govern A3 (Atlas
+defines no green palette); GSAP is GreenSock standard
+licence, never MIT; the HyperFrames CLI version is unpinned
+upstream and the gates fail it undeclared; paid cost ceiling
+$0.50 per film (public Sonnet 4.6 prices), Anthropic key not
+connected. Teaching-line films must first pass
+qa.source_sentence_ledger (verified: no citation_check
+capability exists in hevi). Layer attribution JSON and the
+generated table were extended through
+scripts/ci/gen_layer_attribution.py from the shared JSON
+(573 -> 583 entries); the table header was hand-synced to
+583 because the generator HEADER constant still reads 461,
+unchanged, same as prior grafts. The conformance scope count
+in tests/test_3o_conformance.py was updated to 588 (live
+non-test registry; 5 anidoodle capabilities remain
+unattributed, a pre-existing gap, so the attribution
+coverage tests still fail exactly as at baseline, verified
+in a clean 54f2972a worktree, as does the omodul pillars
+test with its hardcoded 55). New tests 110 passed; ruff
+check and format clean on the new files (hevi/capabilities/__init__.py,
+hevi/capabilities/layer_attribution.py and
+tests/test_3o_conformance.py were already flagged by ruff
+format at baseline and were left untouched beyond the
+one-line count change and the tail-only append). No renames.
+Production untouched.

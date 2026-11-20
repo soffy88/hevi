@@ -1966,6 +1966,38 @@ from . import talkback_film_schema as _talkback_film_schema  # noqa: E402,F401
 _talkback_film_schema.register_talkback_film_schema_capabilities_once()
 from . import xiaoya_persona_finetune_schema as _xiaoya_persona_finetune_schema  # noqa: E402,F401
 _xiaoya_persona_finetune_schema.register_xiaoya_persona_finetune_schema_capabilities_once()
+# Aetherviz G4/G5 graft (see AETHERVIZ_G4_G5_ATTRIBUTION.md):
+# qa.svg3d_projection_sync_gate, qa.slider_dual_channel_gate,
+# qa.hybrid_render_mode_gate, qa.preview_video_five_segment_gate,
+# qa.gsap_timeline_honesty_gate, qa.paid_generation_cost_gate,
+# video.svg3d_overlay_schema, video.hybrid_scene_sync_schema,
+# video.preview_to_video_pipeline_schema,
+# video.hyperframes_composition_schema
+# (clean-room method only; no SKILL.md/README text, no branch web/
+# code, no vendored GSAP, no demo images, no three.min.js; no
+# registration, no paid generation calls; A gates are discipline
+# only, B schemas are fake contracts, executed_here is false).
+# Appended at the tail only; earlier registrations untouched.
+from . import svg3d_projection_sync_gate as _svg3d_projection_sync_gate  # noqa: E402,F401
+_svg3d_projection_sync_gate.register_svg3d_projection_sync_gate_capabilities_once()
+from . import slider_dual_channel_gate as _slider_dual_channel_gate  # noqa: E402,F401
+_slider_dual_channel_gate.register_slider_dual_channel_gate_capabilities_once()
+from . import hybrid_render_mode_gate as _hybrid_render_mode_gate  # noqa: E402,F401
+_hybrid_render_mode_gate.register_hybrid_render_mode_gate_capabilities_once()
+from . import preview_video_five_segment_gate as _preview_video_five_segment_gate  # noqa: E402,F401
+_preview_video_five_segment_gate.register_preview_video_five_segment_gate_capabilities_once()
+from . import gsap_timeline_honesty_gate as _gsap_timeline_honesty_gate  # noqa: E402,F401
+_gsap_timeline_honesty_gate.register_gsap_timeline_honesty_gate_capabilities_once()
+from . import paid_generation_cost_gate as _paid_generation_cost_gate  # noqa: E402,F401
+_paid_generation_cost_gate.register_paid_generation_cost_gate_capabilities_once()
+from . import svg3d_overlay_schema as _svg3d_overlay_schema  # noqa: E402,F401
+_svg3d_overlay_schema.register_svg3d_overlay_schema_capabilities_once()
+from . import hybrid_scene_sync_schema as _hybrid_scene_sync_schema  # noqa: E402,F401
+_hybrid_scene_sync_schema.register_hybrid_scene_sync_schema_capabilities_once()
+from . import preview_to_video_pipeline_schema as _preview_to_video_pipeline_schema  # noqa: E402,F401
+_preview_to_video_pipeline_schema.register_preview_to_video_pipeline_schema_capabilities_once()
+from . import hyperframes_composition_schema as _hyperframes_composition_schema  # noqa: E402,F401
+_hyperframes_composition_schema.register_hyperframes_composition_schema_capabilities_once()
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
