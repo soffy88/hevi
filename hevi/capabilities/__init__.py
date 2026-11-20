@@ -1915,6 +1915,57 @@ _sand3d_ifc_export_schema.register_sand3d_ifc_export_schema_capabilities_once()
 from . import sand3d_dataset_card_schema as _sand3d_dataset_card_schema  # noqa: E402,F401
 _sand3d_dataset_card_schema.register_sand3d_dataset_card_schema_capabilities_once()
 
+# Digital-host improvement graft (see DIGITAL_HOST_IMPROVEMENT_ATTRIBUTION.md):
+# qa.xiaoya_avatar_asset_gate, qa.xiaoya_halfbody_lipsync_gate,
+# qa.xiaoya_danmaku_filter_route_gate, qa.xiaoya_danmaku_queue_gift_gate,
+# qa.xiaoya_topic_pool_gate, qa.xiaoya_wardrobe_hotswap_gate,
+# qa.xiaoya_reconnect_gate, qa.talkback_edit_gate,
+# qa.xiaoya_persona_finetune_honesty_gate, qa.talkback_film_gate,
+# qa.talkback_model_select_gate, video.xiaoya_avatar_schema,
+# video.xiaoya_halfbody_lipsync_schema, video.xiaoya_danmaku_route_schema,
+# video.xiaoya_topic_pool_schema, video.talkback_film_schema,
+# video.xiaoya_persona_finetune_schema
+# (clean-room method only; no branch code, no Renoise code or
+# material, no weight files, no keys or platform accounts, no
+# clone route connected, no live streaming; A gates are
+# discipline only, B schemas are fake contracts, executed_here
+# is false; finetune weights are missing and the substitute is
+# never claimed equal; the banned host name is not revived).
+# Appended at the tail only; earlier registrations untouched.
+from . import xiaoya_avatar_asset_gate as _xiaoya_avatar_asset_gate  # noqa: E402,F401
+_xiaoya_avatar_asset_gate.register_xiaoya_avatar_asset_gate_capabilities_once()
+from . import xiaoya_halfbody_lipsync_gate as _xiaoya_halfbody_lipsync_gate  # noqa: E402,F401
+_xiaoya_halfbody_lipsync_gate.register_xiaoya_halfbody_lipsync_gate_capabilities_once()
+from . import xiaoya_danmaku_filter_route_gate as _xiaoya_danmaku_filter_route_gate  # noqa: E402,F401
+_xiaoya_danmaku_filter_route_gate.register_xiaoya_danmaku_filter_route_gate_capabilities_once()
+from . import xiaoya_danmaku_queue_gift_gate as _xiaoya_danmaku_queue_gift_gate  # noqa: E402,F401
+_xiaoya_danmaku_queue_gift_gate.register_xiaoya_danmaku_queue_gift_gate_capabilities_once()
+from . import xiaoya_topic_pool_gate as _xiaoya_topic_pool_gate  # noqa: E402,F401
+_xiaoya_topic_pool_gate.register_xiaoya_topic_pool_gate_capabilities_once()
+from . import xiaoya_wardrobe_hotswap_gate as _xiaoya_wardrobe_hotswap_gate  # noqa: E402,F401
+_xiaoya_wardrobe_hotswap_gate.register_xiaoya_wardrobe_hotswap_gate_capabilities_once()
+from . import xiaoya_reconnect_gate as _xiaoya_reconnect_gate  # noqa: E402,F401
+_xiaoya_reconnect_gate.register_xiaoya_reconnect_gate_capabilities_once()
+from . import talkback_edit_gate as _talkback_edit_gate  # noqa: E402,F401
+_talkback_edit_gate.register_talkback_edit_gate_capabilities_once()
+from . import xiaoya_persona_finetune_honesty_gate as _xiaoya_persona_finetune_honesty_gate  # noqa: E402,F401
+_xiaoya_persona_finetune_honesty_gate.register_xiaoya_persona_finetune_honesty_gate_capabilities_once()
+from . import talkback_film_gate as _talkback_film_gate  # noqa: E402,F401
+_talkback_film_gate.register_talkback_film_gate_capabilities_once()
+from . import talkback_model_select_gate as _talkback_model_select_gate  # noqa: E402,F401
+_talkback_model_select_gate.register_talkback_model_select_gate_capabilities_once()
+from . import xiaoya_avatar_schema as _xiaoya_avatar_schema  # noqa: E402,F401
+_xiaoya_avatar_schema.register_xiaoya_avatar_schema_capabilities_once()
+from . import xiaoya_halfbody_lipsync_schema as _xiaoya_halfbody_lipsync_schema  # noqa: E402,F401
+_xiaoya_halfbody_lipsync_schema.register_xiaoya_halfbody_lipsync_schema_capabilities_once()
+from . import xiaoya_danmaku_route_schema as _xiaoya_danmaku_route_schema  # noqa: E402,F401
+_xiaoya_danmaku_route_schema.register_xiaoya_danmaku_route_schema_capabilities_once()
+from . import xiaoya_topic_pool_schema as _xiaoya_topic_pool_schema  # noqa: E402,F401
+_xiaoya_topic_pool_schema.register_xiaoya_topic_pool_schema_capabilities_once()
+from . import talkback_film_schema as _talkback_film_schema  # noqa: E402,F401
+_talkback_film_schema.register_talkback_film_schema_capabilities_once()
+from . import xiaoya_persona_finetune_schema as _xiaoya_persona_finetune_schema  # noqa: E402,F401
+_xiaoya_persona_finetune_schema.register_xiaoya_persona_finetune_schema_capabilities_once()
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.

@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(556 capabilities, one entry each, no "unclassified" remainder).
+(573 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -374,6 +374,9 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.story_text_probe_gate': {"layer": 'oskill', "reason": 'Story text probe gate: plain-text probe answering memory hook, retention reason and uniqueness; advisory only, never a gate', "file": 'hevi/capabilities/story_text_probe_gate.py'},
     'qa.storyboard_fidelity_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/storyboard_fidelity_gate.py'},
     'qa.storyboard_opening_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/stage_opening.py'},
+    'qa.talkback_edit_gate': {"layer": 'oskill', "reason": 'discipline gate: silence cut, subtitles aligned, cutaway stills inserted, one misread sentence re-recorded on its own, never a full rebuild', "file": 'hevi/capabilities/talkback_edit_gate.py'},
+    'qa.talkback_film_gate': {"layer": 'oskill', "reason": 'discipline gate: five steps in order, every step verifiable on its own, one misread sentence fixed alone, never a full rebuild', "file": 'hevi/capabilities/talkback_film_gate.py'},
+    'qa.talkback_model_select_gate': {"layer": 'oskill', "reason": 'discipline gate: one model per use case, low-resolution 480p sample first, selection basis written down', "file": 'hevi/capabilities/talkback_model_select_gate.py'},
     'qa.task_recovery_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/task_recovery_contract.py'},
     'qa.task_recovery_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/task_recovery_gate.py'},
     'qa.template_plan_substitution': {"layer": 'obase', "reason": '外部适配/横切或数据资产/持久化存储（SPEC §3/§7）', "file": 'hevi/capabilities/template_plan_substitution.py'},
@@ -409,6 +412,14 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.workbench_edit_boundary_gate': {"layer": 'oskill', "reason": 'discipline gate: rhythm constants unexposed, demo cards time/layer only, localStorage edits, no write-back; parity-gated identity claims', "file": 'hevi/capabilities/workbench_edit_boundary.py'},
     'qa.workbench_manifest_gate': {"layer": 'oskill', "reason": 'discipline gate: closed six-section manifest vocabulary, pinned version, same-source timeline; judges plans only', "file": 'hevi/capabilities/workbench_manifest_gate.py'},
     'qa.workflow_spec_self_check': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/workflow_spec_self_check.py'},
+    'qa.xiaoya_avatar_asset_gate': {"layer": 'oskill', "reason": 'discipline gate: closed avatar keys, AI-generated or owner-provided face only, Pexels motion release gap as fixed host, banned name refused', "file": 'hevi/capabilities/xiaoya_avatar_asset_gate.py'},
+    'qa.xiaoya_danmaku_filter_route_gate': {"layer": 'oskill', "reason": 'discipline gate: five blocked categories, non-empty allowlist, max length 40, dedupe window, four routes, false-positive check', "file": 'hevi/capabilities/xiaoya_danmaku_filter_route_gate.py'},
+    'qa.xiaoya_danmaku_queue_gift_gate': {"layer": 'oskill', "reason": 'discipline gate: closed three policies, gifts never jump the default queue, maximum age and size, full queue drops non-gifts first, expiry enabled', "file": 'hevi/capabilities/xiaoya_danmaku_queue_gift_gate.py'},
+    'qa.xiaoya_halfbody_lipsync_gate': {"layer": 'oskill', "reason": 'discipline gate: measured Wav2Lip ONNX CPU run only, model files present, realtime factor at least 1, positive lipsync correlation recorded, placeholder card refused', "file": 'hevi/capabilities/xiaoya_halfbody_lipsync_gate.py'},
+    'qa.xiaoya_persona_finetune_honesty_gate': {"layer": 'oskill', "reason": 'discipline gate: weights presence declared, markers stripped by cleaning, violation rate measured after cleaning, substitute never claimed equal to the finetune', "file": 'hevi/capabilities/xiaoya_persona_finetune_honesty_gate.py'},
+    'qa.xiaoya_reconnect_gate': {"layer": 'oskill', "reason": 'discipline gate: 3-second cooldown, at most 6 restarts per 3600-second window, resume line, memory kept, silent after the cap', "file": 'hevi/capabilities/xiaoya_reconnect_gate.py'},
+    'qa.xiaoya_topic_pool_gate': {"layer": 'oskill', "reason": 'discipline gate: at least 100 topics, no repeat until a full round is spoken, pool survives a reconnect', "file": 'hevi/capabilities/xiaoya_topic_pool_gate.py'},
+    'qa.xiaoya_wardrobe_hotswap_gate': {"layer": 'oskill', "reason": 'discipline gate: base avatar xiaoya_e, named items, restore item present, (idle, talk) pair swapped together, crossfade declared', "file": 'hevi/capabilities/xiaoya_wardrobe_hotswap_gate.py'},
     'qa.zoom_track_distinction_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/zoom_track_distinction_gate.py'},
     'research.reference_teardown': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/reference_teardown.py'},
     'riso.compare': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/riso/capabilities.py'},
@@ -559,6 +570,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.single_image_sway': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/single_image_sway.py'},
     'video.step_segmentation': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/video_step_segmentation.py'},
     'video.style_catalog_schema': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/style_catalog_schema.py'},
+    'video.talkback_film_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake talkback film schema, executed_here false, five steps in order', "file": 'hevi/capabilities/talkback_film_schema.py'},
     'video.three_layer_project_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake three-layer project schema, executed_here false, nothing built or rendered', "file": 'hevi/capabilities/three_layer_project_schema.py'},
     'video.tweakpane_panel_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake debug panel schema, executed_here false, no DOM created', "file": 'hevi/capabilities/tweakpane_panel_contract.py'},
     'video.two_tier_synthesis_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/two_tier_synthesis_contract.py'},
@@ -572,6 +584,11 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.word_pop_renderer': {"layer": 'oskill', "reason": '多步组合：字幕契约校验＋字体解析＋ffmpeg 渲染（SPEC §5）；非单原子执行，故由 oprim 更正为 oskill（2026-11-04 收敛复核）', "file": 'hevi/capabilities/word_pop_renderer.py'},
     'video.word_timing_warp_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake word-timing warp, executed_here false, English-only models refused for other languages', "file": 'hevi/capabilities/word_timing_warp_contract.py'},
     'video.workbench_manifest_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake workbench manifest schema, executed_here false, no editor built, parity unverified', "file": 'hevi/capabilities/workbench_manifest_schema.py'},
+    'video.xiaoya_avatar_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake xiaoya avatar schema, executed_here false, real-person face and banned name refused', "file": 'hevi/capabilities/xiaoya_avatar_schema.py'},
+    'video.xiaoya_danmaku_route_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake danmaku route schema, executed_here false, five categories and four routes', "file": 'hevi/capabilities/xiaoya_danmaku_route_schema.py'},
+    'video.xiaoya_halfbody_lipsync_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake half-body lipsync schema, executed_here false, placeholder card refused', "file": 'hevi/capabilities/xiaoya_halfbody_lipsync_schema.py'},
+    'video.xiaoya_persona_finetune_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake persona finetune schema, executed_here false, weights missing must declare an honest substitute', "file": 'hevi/capabilities/xiaoya_persona_finetune_schema.py'},
+    'video.xiaoya_topic_pool_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake topic pool schema, executed_here false, count must equal topics', "file": 'hevi/capabilities/xiaoya_topic_pool_schema.py'},
     'world.athenaion_classical_orders': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/athenaion_orders.py'},
     'world.athenaion_discipline': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/athenaion_contract.py'},
     'world.athenaion_sdf_statue': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/athenaion_statue.py'},

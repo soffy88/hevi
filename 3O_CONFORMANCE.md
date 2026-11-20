@@ -529,3 +529,37 @@ non-test registry; 5 anidoodle capabilities remain
 unattributed, a pre-existing gap, so the attribution
 coverage tests still fail exactly as at baseline). No
 renames; the rename/alias migration plan is unchanged.
+
+## Digital-host improvement graft (2026-11-20)
+
+17 capabilities (11 A gates, oskill; 6 B schemas, obase): the
+Xiaoya avatar asset, half-body lipsync, danmaku filter/route,
+danmaku queue/gift, topic pool, wardrobe hot-swap, and reconnect
+gates, plus the talkback edit, persona finetune honesty, talkback
+film, and model select gates; and the avatar, lipsync, danmaku
+route, topic pool, talkback film, and persona finetune schemas.
+Registry 561 -> 578. Sources, read-only: the live-parity branch
+checkout (HEAD 93f3a718) and the Renoise talkback review; clean-room
+restatement only, no branch code, no Renoise code or material, no
+weight files, no keys or platform accounts, no live streaming, no
+clone route. Measured numbers restated as data: lipsync run 20.68
+fps, realtime factor 1.034, correlation 0.278, lag -1 frame; 105
+topics; 5 filter categories; 3 s / 6 per 3600 s reconnect gate;
+8-frame crossfade; queue max age 180 s, max size 200; max length
+40 characters, dedupe 60 s; finetune violation 0% after cleaning
+vs 52% base model. The persona finetune weights are not on the
+server (training data only in Drive); the gate and the schema
+refuse any claim that the base-model-plus-prompt substitute
+equals the finetune, and the banned host name is not revived.
+Layer attribution JSON and the generated table were extended
+through `scripts/ci/gen_layer_attribution.py` from the shared JSON
+(556 -> 573 entries); the table header was hand-synced to 573
+because the generator HEADER constant still reads 461, unchanged,
+same as prior grafts. The conformance scope count in
+`tests/test_3o_conformance.py` was updated to 578 (live non-test
+registry; 5 anidoodle capabilities remain unattributed, a
+pre-existing gap, so the attribution coverage tests still fail
+exactly as at baseline, verified in a clean e7d6a738 worktree,
+as does the omodul pillars test with its hardcoded 55). New tests
+71 passed; ruff check and format clean. No renames. Production
+untouched.
