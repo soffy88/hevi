@@ -28,7 +28,8 @@ from hevi.capabilities.registry import (
     register,
 )
 
-EXPECTED_COUNT = 619
+EXPECTED_COUNT = 631
+EXPECTED_COUNT = 631
 
 
 def _dummy_capability(name: str, layer: str) -> Capability:

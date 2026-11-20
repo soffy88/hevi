@@ -670,3 +670,38 @@ positive and negative cases. No renames. Image sync (667 MB
 pose subset to ubuntu26 HEVI_POSE_GALLERY_HOME; whether and how
 much of the costume/portrait images to sync) is a separate ops
 item. Production untouched.
+## Animation studio 18 graft (2026-11-20)
+
+12 capabilities (registry 619 -> 631): A1-A6 oskill gates
+(motion_canvas_explainer, motion_layout_gesture,
+ola_smooth_interpolation, twojs_vector_scene,
+gifenc_gif_export, konva_interactive_stage) + B1-B6 obase
+fake contract schemas (explainer task, layout transition
+task, interpolation task, vector scene task, GIF export
+task, interactive stage task), all executed_here false.
+Source: the 18-repo animation-studio post, checked
+read-only in hevi-vs-animation-studio-18.md; only the 6 true
+gaps were grafted (Motion Canvas, Motion layout/gesture
+only, Ola, Two.js, gifenc, Konva), all MIT, clean-room
+method only, no upstream code, no runtime install, no model
+download. Already-in-hevi items (Remotion Skills, Manim,
+Anime.js, Lottie, Blender, Three.js), duplicates (Shifty,
+TweenJS, LUME, Proton), and whole engines (Godot, Babylon.js)
+were not grafted. The post claim of all free is corrected in
+ANIMATION_STUDIO_18_ATTRIBUTION.md: Remotion main repo is a
+custom two-tier license, Blender is GPL (tool call only, code
+never moved), remotion-dev/skills has no LICENSE (text never
+copied); rendering, compute, and time are not free. Layer
+attribution JSON and the generated table were extended through
+scripts/ci/gen_layer_attribution.py from the shared JSON
+(614 -> 626 entries); the table header was hand-synced to 611
+because the generator HEADER constant still reads 461,
+unchanged, same as prior grafts. The conformance scope count
+in tests/test_3o_conformance.py was updated to 631 (live
+non-test registry; 5 anidoodle capabilities remain
+unattributed, a pre-existing gap, so the attribution coverage
+tests still fail exactly as at baseline, as does the omodul
+pillars test with its hardcoded 55). New tests passed; ruff
+check and format clean. No renames. Execution layer (Motion
+Canvas / Motion / Two.js / gifenc / Konva runtimes) is a
+separate work item. Production untouched.

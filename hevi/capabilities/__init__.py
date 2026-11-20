@@ -2082,6 +2082,30 @@ from . import pose_comfyui_gallery_node_schema as _pose_comfyui_gallery_node_sch
 _pose_comfyui_gallery_node_schema.register_pose_comfyui_gallery_node_schema_capabilities_once()
 from . import pose_studio_workbench_schema as _pose_studio_workbench_schema  # noqa: E402,F401
 _pose_studio_workbench_schema.register_pose_studio_workbench_schema_capabilities_once()
+from . import motion_canvas_explainer_gate as _motion_canvas_explainer_gate  # noqa: E402,F401
+_motion_canvas_explainer_gate.register_motion_canvas_explainer_gate_capabilities_once()
+from . import motion_layout_gesture_gate as _motion_layout_gesture_gate  # noqa: E402,F401
+_motion_layout_gesture_gate.register_motion_layout_gesture_gate_capabilities_once()
+from . import ola_smooth_interpolation_gate as _ola_smooth_interpolation_gate  # noqa: E402,F401
+_ola_smooth_interpolation_gate.register_ola_smooth_interpolation_gate_capabilities_once()
+from . import twojs_vector_scene_gate as _twojs_vector_scene_gate  # noqa: E402,F401
+_twojs_vector_scene_gate.register_twojs_vector_scene_gate_capabilities_once()
+from . import gifenc_gif_export_gate as _gifenc_gif_export_gate  # noqa: E402,F401
+_gifenc_gif_export_gate.register_gifenc_gif_export_gate_capabilities_once()
+from . import konva_interactive_stage_gate as _konva_interactive_stage_gate  # noqa: E402,F401
+_konva_interactive_stage_gate.register_konva_interactive_stage_gate_capabilities_once()
+from . import motion_canvas_explainer_task_schema as _motion_canvas_explainer_task_schema  # noqa: E402,F401
+_motion_canvas_explainer_task_schema.register_motion_canvas_explainer_task_schema_capabilities_once()
+from . import motion_layout_transition_task_schema as _motion_layout_transition_task_schema  # noqa: E402,F401
+_motion_layout_transition_task_schema.register_motion_layout_transition_task_schema_capabilities_once()
+from . import ola_interpolation_task_schema as _ola_interpolation_task_schema  # noqa: E402,F401
+_ola_interpolation_task_schema.register_ola_interpolation_task_schema_capabilities_once()
+from . import twojs_vector_scene_task_schema as _twojs_vector_scene_task_schema  # noqa: E402,F401
+_twojs_vector_scene_task_schema.register_twojs_vector_scene_task_schema_capabilities_once()
+from . import gifenc_gif_export_task_schema as _gifenc_gif_export_task_schema  # noqa: E402,F401
+_gifenc_gif_export_task_schema.register_gifenc_gif_export_task_schema_capabilities_once()
+from . import konva_interactive_stage_task_schema as _konva_interactive_stage_task_schema  # noqa: E402,F401
+_konva_interactive_stage_task_schema.register_konva_interactive_stage_task_schema_capabilities_once()
 from .manifest import build_manifest as _build_3o_manifest  # noqa: E402
 from hevi.ai_drama.capabilities import register_ai_drama_capabilities_once
 register_ai_drama_capabilities_once()
