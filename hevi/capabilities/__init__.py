@@ -2052,6 +2052,36 @@ from . import freevideo_agent_mcp_schema as _freevideo_agent_mcp_schema  # noqa:
 _freevideo_agent_mcp_schema.register_freevideo_agent_mcp_schema_capabilities_once()
 from . import freevideo_post_chain_task_schema as _freevideo_post_chain_task_schema  # noqa: E402,F401
 _freevideo_post_chain_task_schema.register_freevideo_post_chain_task_schema_capabilities_once()
+from . import pose_costume_library_gate as _pose_costume_library_gate  # noqa: E402,F401
+_pose_costume_library_gate.register_pose_costume_library_gate_capabilities_once()
+from . import pose_portrait_library_gate as _pose_portrait_library_gate  # noqa: E402,F401
+_pose_portrait_library_gate.register_pose_portrait_library_gate_capabilities_once()
+from . import pose_depth_switch_gate as _pose_depth_switch_gate  # noqa: E402,F401
+_pose_depth_switch_gate.register_pose_depth_switch_gate_capabilities_once()
+from . import pose_character_recipe_gate as _pose_character_recipe_gate  # noqa: E402,F401
+_pose_character_recipe_gate.register_pose_character_recipe_gate_capabilities_once()
+from . import pose_style_preset_gate as _pose_style_preset_gate  # noqa: E402,F401
+_pose_style_preset_gate.register_pose_style_preset_gate_capabilities_once()
+from . import pose_model_select_gate as _pose_model_select_gate  # noqa: E402,F401
+_pose_model_select_gate.register_pose_model_select_gate_capabilities_once()
+from . import pose_rights_gate as _pose_rights_gate  # noqa: E402,F401
+_pose_rights_gate.register_pose_rights_gate_capabilities_once()
+from . import pose_adult_safety_gate as _pose_adult_safety_gate  # noqa: E402,F401
+_pose_adult_safety_gate.register_pose_adult_safety_gate_capabilities_once()
+from . import pose_dynasty_costume_gate as _pose_dynasty_costume_gate  # noqa: E402,F401
+_pose_dynasty_costume_gate.register_pose_dynasty_costume_gate_capabilities_once()
+from . import pose_costume_reference_schema as _pose_costume_reference_schema  # noqa: E402,F401
+_pose_costume_reference_schema.register_pose_costume_reference_schema_capabilities_once()
+from . import pose_portrait_reference_schema as _pose_portrait_reference_schema  # noqa: E402,F401
+_pose_portrait_reference_schema.register_pose_portrait_reference_schema_capabilities_once()
+from . import pose_depth_switch_schema as _pose_depth_switch_schema  # noqa: E402,F401
+_pose_depth_switch_schema.register_pose_depth_switch_schema_capabilities_once()
+from . import pose_character_recipe_schema as _pose_character_recipe_schema  # noqa: E402,F401
+_pose_character_recipe_schema.register_pose_character_recipe_schema_capabilities_once()
+from . import pose_comfyui_gallery_node_schema as _pose_comfyui_gallery_node_schema  # noqa: E402,F401
+_pose_comfyui_gallery_node_schema.register_pose_comfyui_gallery_node_schema_capabilities_once()
+from . import pose_studio_workbench_schema as _pose_studio_workbench_schema  # noqa: E402,F401
+_pose_studio_workbench_schema.register_pose_studio_workbench_schema_capabilities_once()
 from .manifest import build_manifest as _build_3o_manifest  # noqa: E402
 from hevi.ai_drama.capabilities import register_ai_drama_capabilities_once
 register_ai_drama_capabilities_once()

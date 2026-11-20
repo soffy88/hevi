@@ -33,7 +33,7 @@ SYSTEM_KEYS = {
 def build_index(records: list[dict], data_sha256: str) -> dict:
     from collections import Counter
 
-    groups: "OrderedDict[str, dict]" = OrderedDict()
+    groups: OrderedDict[str, dict] = OrderedDict()
     for record in records:
         key = SYSTEM_KEYS[record["体系"]] + "_" + record["姿势编号"]
         group = groups.get(key)
@@ -55,6 +55,10 @@ def build_index(records: list[dict], data_sha256: str) -> dict:
             "id": record["id"],
             "thumb": record["缩略图"],
             "image": record["原图"],
+            # Depth map naming verified against the upstream
+            # img/depth/ tree listing on 2026-11-20: one webp per
+            # pose-by-view record, sharing the record id stem.
+            "depth": "img/depth/" + record["id"] + ".webp",
         }
     out_groups = []
     for group in groups.values():

@@ -628,3 +628,45 @@ as does the omodul pillars test with its hardcoded 55). New tests
 (Python 3.12 + FreeVideo runtime, ~99 GB model download, GPU cold
 boot, real-machine smoke run) is a separate work item. Production
 untouched.
+
+## ai-pose-gallery-zh graft (2026-11-20)
+
+Registry 604 -> 619 (+15): A1 costume library gate (3224 sets,
+giaa 1407 + Shisei 57 + anime 1320 hotlinked + CharaDB 440),
+A2 portrait library gate (1499, CC0 vs non-commercial tension
+unresolved and always marked non-commercial), A3 depth switch
+gate (bundled pose_index.json now carries a depth field on all
+1439 views, naming verified against the upstream img/depth/
+tree listing; disk check before any switch), A4 three-in-one
+character recipe gate (increment over image.multi_ref_compose
+only, compiles into its input shape), A5 style preset gate (12
+presets, provenance hevi-local or upstream-unverified only),
+A6 model selection gate (five protocols, README-sourced models
+refused as stale, keys always user-owned), A7 rights and source
+gate (MIT code-only, images non-commercial, no redistribution,
+objection means removal), A8 18+ safety gate (real gate: SFW
+default on, minors hard-blocked, adult tiers need an explicit
+unlock), A9 dynastic costume gate (Shisei 57 sets / 227 views,
+wangyangming line requires Ming); B1-B6 fake contract schemas
+(costume reference, portrait reference, depth switch,
+character recipe, ComfyUI gallery node with four verified node
+classes, Studio workbench with IndexedDB history), all
+executed_here false. The shared attribution JSON grew 611 -> 626
+entries (the 15 new entries plus 12 entries from a parallel
+motion/animation line — gifenc, konva, motion_canvas,
+motion_layout, ola, twojs — whose capabilities are not in this
+branch). The generated table in this branch covers this
+branch's registry only: 599 -> 614 entries, regenerated with
+`scripts/ci/gen_layer_attribution.py` from a JSON filtered to
+the names registered here; the table header was hand-synced to
+614 because the generator HEADER constant still reads 461,
+unchanged, same as prior grafts. The conformance scope count in
+`tests/test_3o_conformance.py` was updated to 619 (live
+non-test registry; 5 anidoodle capabilities remain
+unattributed, a pre-existing gap, so the attribution coverage
+tests still fail exactly as at baseline, as does the omodul
+pillars test with its hardcoded 55). New tests cover A/B
+positive and negative cases. No renames. Image sync (667 MB
+pose subset to ubuntu26 HEVI_POSE_GALLERY_HOME; whether and how
+much of the costume/portrait images to sync) is a separate ops
+item. Production untouched.

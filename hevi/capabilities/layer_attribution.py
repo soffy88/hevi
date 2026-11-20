@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(599 capabilities, one entry each, no "unclassified" remainder).
+(614 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -319,6 +319,15 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.parametric_pose_template': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/parametric_pose_template.py'},
     'qa.physical_language_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/physical_language_gate.py'},
     'qa.portrait_consent_gate': {"layer": 'oskill', "reason": '多规则授权门禁：consent 登记 + scope/expires/未知肖像 fail-closed（门禁规则）', "file": 'hevi/capabilities/portrait_consent.py'},
+    'qa.pose_adult_safety_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh 18+ safety gate: SFW default on, minors hard-blocked, adult tiers need an explicit unlock (clean-room method)', "file": 'hevi/capabilities/pose_adult_safety_gate.py'},
+    'qa.pose_character_recipe_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh character recipe gate: fixed portrait + costume + pose slots, pose-only separation rule, compiles into image.multi_ref_compose input shape (clean-room method)', "file": 'hevi/capabilities/pose_character_recipe_gate.py'},
+    'qa.pose_costume_library_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh costume library gate: 3224 sets (giaa 1407 + Shisei 57 + anime 1320 hotlinked + CharaDB 440), non-commercial, images external (clean-room method)', "file": 'hevi/capabilities/pose_costume_library_gate.py'},
+    'qa.pose_depth_switch_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh depth switch gate: white/depth modes, depth path derived from record id, disk check before any switch (clean-room method)', "file": 'hevi/capabilities/pose_depth_switch_gate.py'},
+    'qa.pose_dynasty_costume_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh dynastic costume gate: Shisei 57 sets / 227 views, wangyangming line requires Ming (clean-room method)', "file": 'hevi/capabilities/pose_dynasty_costume_gate.py'},
+    'qa.pose_model_select_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh model selection gate: five protocols, README-sourced models refused as stale, keys always user-owned (clean-room method)', "file": 'hevi/capabilities/pose_model_select_gate.py'},
+    'qa.pose_portrait_library_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh portrait library gate: 1499 portraits, CC0 vs non-commercial tension unresolved, always non-commercial, no real-person or minor use (clean-room method)', "file": 'hevi/capabilities/pose_portrait_library_gate.py'},
+    'qa.pose_rights_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh rights and source gate: MIT code-only, images non-commercial, no redistribution, objection means removal (clean-room method)', "file": 'hevi/capabilities/pose_rights_gate.py'},
+    'qa.pose_style_preset_gate': {"layer": 'oskill', "reason": 'ai-pose-gallery-zh style preset gate: 12 presets, provenance hevi-local or upstream-unverified only, no unverified preset names (clean-room method)', "file": 'hevi/capabilities/pose_style_preset_gate.py'},
     'qa.post_production_checklist': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/post_production_checklist.py'},
     'qa.postprocessing_variant_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/postprocessing_variant_gate.py'},
     'qa.premium_composition_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/premium_composition_gate.py'},
@@ -580,6 +589,12 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.palette_table_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake per-scene palette table schema with black-and-white readability check, executed_here false', "file": 'hevi/capabilities/palette_table_schema.py'},
     'video.pixstag_generate': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/pixstag.py'},
     'video.platform_safe_zone_schema': {"layer": 'obase', "reason": 'Fake contract: platform safe zone, one of six reviewed platform themes with control occlusions and safe frame; no on-device verification', "file": 'hevi/capabilities/platform_safe_zone_schema.py'},
+    'video.pose_character_recipe_schema': {"layer": 'obase', "reason": 'ai-pose-gallery-zh character recipe contract (fake): three slots, Chinese prompt, separation rule, compiled multi-ref shape (clean-room method)', "file": 'hevi/capabilities/pose_character_recipe_schema.py'},
+    'video.pose_comfyui_gallery_node_schema': {"layer": 'obase', "reason": 'ai-pose-gallery-zh ComfyUI gallery node contract (fake): four verified node classes, depth switch with img/depth source (clean-room method)', "file": 'hevi/capabilities/pose_comfyui_gallery_node_schema.py'},
+    'video.pose_costume_reference_schema': {"layer": 'obase', "reason": 'ai-pose-gallery-zh costume reference contract (fake): set id, source, gallery path, no-redistribution flag (clean-room method)', "file": 'hevi/capabilities/pose_costume_reference_schema.py'},
+    'video.pose_depth_switch_schema': {"layer": 'obase', "reason": 'ai-pose-gallery-zh depth switch contract (fake): pose key, view, mode, derived depth path (clean-room method)', "file": 'hevi/capabilities/pose_depth_switch_schema.py'},
+    'video.pose_portrait_reference_schema': {"layer": 'obase', "reason": 'ai-pose-gallery-zh portrait reference contract (fake): portrait id, mode, hair length, CC0 tension acknowledged (clean-room method)', "file": 'hevi/capabilities/pose_portrait_reference_schema.py'},
+    'video.pose_studio_workbench_schema': {"layer": 'obase', "reason": 'ai-pose-gallery-zh Studio workbench contract (fake): protocol selection, three slots, background generation, IndexedDB history (clean-room method)', "file": 'hevi/capabilities/pose_studio_workbench_schema.py'},
     'video.preview_to_video_pipeline_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake preview-to-video pipeline schema, topic to interactive HTML to video HTML to MP4, cost estimate and pinned HyperFrames version, executed_here false', "file": 'hevi/capabilities/preview_to_video_pipeline_schema.py'},
     'video.quarks_particle_contract': {"layer": 'obase', "reason": '导出适配契约：粒子导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/quarks_particle_contract.py'},
     'video.r3f_scene_contract': {"layer": 'obase', "reason": '导出适配契约：场景导出规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/r3f_scene_contract.py'},

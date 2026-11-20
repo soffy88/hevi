@@ -51,3 +51,13 @@ upstream code is copied into hevi.
 - Regeneration: after any upstream pose-data change, re-run
   `pose_gallery_data/generate_pose_index.py`, verify the new
   counts, and update this file and `tests/test_pose_library.py`.
+- Depth maps (added 2026-11-20, ai-pose-gallery-zh graft):
+  every view entry in `pose_index.json` now carries a `depth`
+  field (`img/depth/<record_id>.webp`, 1439 views). The naming
+  was verified against the upstream `img/depth/` tree listing
+  on 2026-11-20 (files share the white-model record-id stem).
+  `pose_gallery_data/generate_pose_index.py` derives the same
+  field when regenerating. `pose_library.depth_for()` resolves
+  a view to its depth path; the depth switch gate always checks
+  the file on disk before a switch. Depth images are still
+  resolved from `HEVI_POSE_GALLERY_HOME`, never bundled.

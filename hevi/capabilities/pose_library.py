@@ -256,6 +256,41 @@ def view_files(
     return result
 
 
+def depth_for(pose: dict[str, Any], view: str) -> dict[str, Any]:
+    """Resolve one pose view to its depth map.
+
+    Returns the bundled ``depth`` path from the index plus the
+    matching white-model image path. The depth field is derived
+    from the record id (``img/depth/<record_id>.webp``); the
+    naming was verified against the upstream ``img/depth/``
+    tree listing on 2026-11-20. This helper resolves the path
+    only; the depth switch gate checks the file on disk.
+    """
+    if view not in VIEWS:
+        raise CapabilityError(
+            f"image.pose_library: unknown view {view!r}; known: {list(VIEWS)}"
+        )
+    entry = pose["views"].get(view)
+    if entry is None:
+        raise CapabilityError(
+            f"image.pose_library: pose {pose['key']!r} has no {view!r} view "
+            f"(missing views: {pose['missing_views']})"
+        )
+    depth = entry.get("depth")
+    if not depth:
+        raise CapabilityError(
+            f"image.pose_library: pose {pose['key']!r} view {view!r} has no "
+            "depth field in the bundled index"
+        )
+    return {
+        "pose": pose["key"],
+        "view": view,
+        "record_id": entry["id"],
+        "depth": depth,
+        "image": entry["image"],
+    }
+
+
 def check_gallery(home: str | None = None) -> dict[str, Any]:
     """Check every indexed file against the gallery checkout on disk.
 
