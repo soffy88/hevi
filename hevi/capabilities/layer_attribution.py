@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(626 capabilities, one entry each, no "unclassified" remainder).
+(638 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -182,6 +182,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.ai_tells_ban': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/ai_tells_ban.py'},
     'qa.anatomy_audit_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/anatomy_audit_vocabulary.py'},
     'qa.animejs_v4_vocabulary': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/animejs_v4_vocabulary.py'},
+    'qa.app_demo_film_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/app_demo_film_gate.py'},
     'qa.audacity_version_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/audacity_version_gate.py'},
     'qa.av_duration_consistency_gate': {"layer": 'oprim', "reason": '单判定规则门禁：单个 check_、单谓词族、无子规则组合（门禁规则）', "file": 'hevi/capabilities/av_duration_consistency_gate.py'},
     'qa.ban_revision_log': {"layer": 'obase', "reason": '外部适配/横切或数据资产/持久化存储（SPEC §3/§7）', "file": 'hevi/capabilities/ban_revision_log.py'},
@@ -192,6 +193,7 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.brand_attribution_gate': {"layer": 'oskill', "reason": 'discipline gate: closed twelve-brand acknowledgements list, no affiliation/endorsement, no per-card provenance', "file": 'hevi/capabilities/brand_attribution_gate.py'},
     'qa.browser_check_executor': {"layer": 'oskill', "reason": '多步组合：计划校验门＋多浏览器 Playwright 执行＋报告校验门＋contact sheet，跨子系统编排（SPEC §5）；非同后端单作业，故由 oprim 更正为 oskill（2026-11-04 收敛复核）', "file": 'hevi/capabilities/browser_check_executor.py'},
     'qa.browser_check_matrix': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/browser_check_matrix.py'},
+    'qa.browser_demo_recording_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/browser_demo_recording_gate.py'},
     'qa.camera_baseline_drop_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/camera_baseline_drop_gate.py'},
     'qa.camera_duration_advisory': {"layer": 'oskill', "reason": 'multi-rule advisory algorithm: tier-bound duration + H3 lattice frames, advisory only, no render promise', "file": 'hevi/capabilities/camera_duration_advisory.py'},
     'qa.camera_movement_end_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/camera_movement_end_gate.py'},
@@ -309,6 +311,8 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.motion_canvas_explainer_gate': {"layer": 'oskill', "reason": 'Motion Canvas explainer gate: scenes sum to declared total, audio sync, word-level caption alignment, division of labour between motion_canvas/manim/remotion (clean-room method)', "file": 'hevi/capabilities/motion_canvas_explainer_gate.py'},
     'qa.motion_layout_gesture_gate': {"layer": 'oskill', "reason": 'Motion layout/gesture gate: layout declares before/after, gesture declares start/end, tweening out of scope to GSAP/Anime.js (clean-room method)', "file": 'hevi/capabilities/motion_layout_gesture_gate.py'},
     'qa.motion_variant_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/motion_variant_gate.py'},
+    'qa.multilingual_dubbing_pipeline_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/multilingual_dubbing_pipeline_gate.py'},
+    'qa.multilingual_subtitle_workflow_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/multilingual_subtitle_workflow_gate.py'},
     'qa.multimodal_review': {"layer": 'oprim', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/multimodal_review.py'},
     'qa.narration_alignment_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/narration_alignment_gate.py'},
     'qa.negative_prompt_firewall': {"layer": 'oprim', "reason": '单判定规则门禁：单个 check_、单谓词族、无子规则组合（门禁规则）', "file": 'hevi/capabilities/negative_prompt_firewall_gate.py'},
@@ -428,6 +432,8 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.vibevoice_realtime_speaker_gate': {"layer": 'oskill', "reason": 'discipline gate: only the 25 verified embedded Realtime speaker names pass; reference audio refused, experimental languages need acknowledgement', "file": 'hevi/capabilities/vibevoice_realtime_speaker_gate.py'},
     'qa.vibevoice_tts_disabled_gate': {"layer": 'oskill', "reason": 'discipline gate: official TTS-1.5B path recorded disabled; official-run claims fail, reproductions must declare non-official and unverified', "file": 'hevi/capabilities/vibevoice_tts_disabled_gate.py'},
     'qa.vibevoice_voice_prompt_authorization_gate': {"layer": 'oskill', "reason": 'discipline gate: reference-audio voice prompt is a clone equivalent; own/licensed authorization required, clone requests hard-intercepted', "file": 'hevi/capabilities/vibevoice_voice_prompt_authorization_gate.py'},
+    'qa.video_asset_imagegen_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/video_asset_imagegen_gate.py'},
+    'qa.video_use_orchestration_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/video_use_orchestration_gate.py'},
     'qa.vidu_live_session_gate': {"layer": 'oskill', "reason": 'discipline gate: only the cloud vidu-s2 s_avatar/component session counts as live; async jobs, local rendering, free-run and key-embedding claims fail', "file": 'hevi/capabilities/vidu_live_session_gate.py'},
     'qa.vinyl_toy_identity_gate': {"layer": 'oskill', "reason": 'Vinyl toy identity gate: owner-confirmed avatar never redrawn, body follows source picture, one toy on screen, no flat sticker beside toy, fixed features with positions', "file": 'hevi/capabilities/vinyl_toy_identity_gate.py'},
     'qa.virtual_clock_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/virtual_clock_contract.py'},
@@ -537,11 +543,13 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'text.translate_long': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/longtranslate.py'},
     'transitions.storybook': {"layer": 'oskill', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/registry.py'},
     'video.alpha_cutout_keyer': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/alpha_cutout_keyer.py'},
+    'video.app_demo_film_task_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake task schema, executed_here false, shape violations fail closed', "file": 'hevi/capabilities/app_demo_film_task_schema.py'},
     'video.athenaion_waterfall': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/athenaion_waterfall.py'},
     'video.athenaion_world_engine': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/athenaion_world.py'},
     'video.blender_clay_render': {"layer": 'omodul', "reason": '多关注点业务事务：生成/校验/装配/会话状态组合，交付端到端产物（SPEC §6）', "file": 'hevi/capabilities/blender_clay.py'},
     'video.blender_cycles_render_schema': {"layer": 'obase', "reason": 'Fake contract: Blender Cycles render, Blender 5.2+/Node 22+/Python 3.9+/ffmpeg/headless Chrome, GPU required, OptiX/CUDA/HIP/oneAPI/Metal; no render', "file": 'hevi/capabilities/blender_cycles_render_schema.py'},
     'video.blender_mcp': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/blender_mcp.py'},
+    'video.browser_demo_recording_task_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake task schema, executed_here false, shape violations fail closed', "file": 'hevi/capabilities/browser_demo_recording_task_schema.py'},
     'video.camera_movement_clause_assembler': {"layer": 'obase', "reason": '组装契约：提示词子句组装规格，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/camera_movement_clause_assembler.py'},
     'video.camera_movement_index': {"layer": 'obase', "reason": '词表/风格库数据资产：静态条目+检索，无业务算法（SPEC §7.3）', "file": 'hevi/capabilities/camera_movement_index.py'},
     'video.camera_render_mapping': {"layer": 'obase', "reason": 'contract-only adapter: fake render mapping, executed_here false, 42 movements not_supported with no fallback', "file": 'hevi/capabilities/camera_render_mapping.py'},
@@ -595,6 +603,8 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.motion_beat_chart': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/motion_beat_chart.py'},
     'video.motion_canvas_explainer_task_schema': {"layer": 'obase', "reason": 'Motion Canvas explainer task contract (fake): task id and explainer plan passing the explainer gate (clean-room method)', "file": 'hevi/capabilities/motion_canvas_explainer_task_schema.py'},
     'video.motion_layout_transition_task_schema': {"layer": 'obase', "reason": 'Motion layout transition task contract (fake): task id and layout/gesture plan passing the layout gesture gate (clean-room method)', "file": 'hevi/capabilities/motion_layout_transition_task_schema.py'},
+    'video.multilingual_dubbing_task_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake task schema, executed_here false, shape violations fail closed', "file": 'hevi/capabilities/multilingual_dubbing_task_schema.py'},
+    'video.multilingual_subtitle_task_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake task schema, executed_here false, shape violations fail closed', "file": 'hevi/capabilities/multilingual_subtitle_task_schema.py'},
     'video.multishot_lock': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/multishot_lock.py'},
     'video.ola_interpolation_task_schema': {"layer": 'obase', "reason": 'Ola interpolation task contract (fake): task id and interpolation plan passing the smooth interpolation gate (clean-room method)', "file": 'hevi/capabilities/ola_interpolation_task_schema.py'},
     'video.palette_table_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake per-scene palette table schema with black-and-white readability check, executed_here false', "file": 'hevi/capabilities/palette_table_schema.py'},
@@ -629,6 +639,8 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.twojs_vector_scene_task_schema': {"layer": 'obase', "reason": 'Two.js vector scene task contract (fake): task id and scene graph passing the vector scene gate (clean-room method)', "file": 'hevi/capabilities/twojs_vector_scene_task_schema.py'},
     'video.vibevoice_longform_tts_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake 90-minute/4-speaker TTS contract, executed_here false, no inference', "file": 'hevi/capabilities/vibevoice_longform_tts_contract.py'},
     'video.vibevoice_realtime_speaker_index': {"layer": 'obase', "reason": 'contract-only adapter: fake index of the 25 verified embedded Realtime speaker names, executed_here false, no audio or weights', "file": 'hevi/capabilities/vibevoice_realtime_speaker_index.py'},
+    'video.video_asset_imagegen_task_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake task schema, executed_here false, shape violations fail closed', "file": 'hevi/capabilities/video_asset_imagegen_task_schema.py'},
+    'video.video_use_orchestration_task_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake task schema, executed_here false, shape violations fail closed', "file": 'hevi/capabilities/video_use_orchestration_task_schema.py'},
     'video.vidu_live_session_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake cloud vidu-s2 component session schema, executed_here false, no session starts and no key enters the contract', "file": 'hevi/capabilities/vidu_live_session_schema.py'},
     'video.vinyl_toy_character_schema': {"layer": 'obase', "reason": 'Fake contract: vinyl toy character, one of three kits (parts/pet/sdf), parts/colors/size; no image asset, no build, no render', "file": 'hevi/capabilities/vinyl_toy_character_schema.py'},
     'video.virtual_clock_recorder': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/virtual_clock_recorder.py'},

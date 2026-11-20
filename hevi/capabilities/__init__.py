@@ -2106,6 +2106,30 @@ from . import gifenc_gif_export_task_schema as _gifenc_gif_export_task_schema  #
 _gifenc_gif_export_task_schema.register_gifenc_gif_export_task_schema_capabilities_once()
 from . import konva_interactive_stage_task_schema as _konva_interactive_stage_task_schema  # noqa: E402,F401
 _konva_interactive_stage_task_schema.register_konva_interactive_stage_task_schema_capabilities_once()
+from . import video_use_orchestration_gate as _video_use_orchestration_gate  # noqa: E402,F401
+_video_use_orchestration_gate.register_video_use_orchestration_gate_capabilities_once()
+from . import multilingual_subtitle_workflow_gate as _multilingual_subtitle_workflow_gate  # noqa: E402,F401
+_multilingual_subtitle_workflow_gate.register_multilingual_subtitle_workflow_gate_capabilities_once()
+from . import browser_demo_recording_gate as _browser_demo_recording_gate  # noqa: E402,F401
+_browser_demo_recording_gate.register_browser_demo_recording_gate_capabilities_once()
+from . import video_asset_imagegen_gate as _video_asset_imagegen_gate  # noqa: E402,F401
+_video_asset_imagegen_gate.register_video_asset_imagegen_gate_capabilities_once()
+from . import multilingual_dubbing_pipeline_gate as _multilingual_dubbing_pipeline_gate  # noqa: E402,F401
+_multilingual_dubbing_pipeline_gate.register_multilingual_dubbing_pipeline_gate_capabilities_once()
+from . import app_demo_film_gate as _app_demo_film_gate  # noqa: E402,F401
+_app_demo_film_gate.register_app_demo_film_gate_capabilities_once()
+from . import video_use_orchestration_task_schema as _video_use_orchestration_task_schema  # noqa: E402,F401
+_video_use_orchestration_task_schema.register_video_use_orchestration_task_schema_capabilities_once()
+from . import multilingual_subtitle_task_schema as _multilingual_subtitle_task_schema  # noqa: E402,F401
+_multilingual_subtitle_task_schema.register_multilingual_subtitle_task_schema_capabilities_once()
+from . import browser_demo_recording_task_schema as _browser_demo_recording_task_schema  # noqa: E402,F401
+_browser_demo_recording_task_schema.register_browser_demo_recording_task_schema_capabilities_once()
+from . import video_asset_imagegen_task_schema as _video_asset_imagegen_task_schema  # noqa: E402,F401
+_video_asset_imagegen_task_schema.register_video_asset_imagegen_task_schema_capabilities_once()
+from . import multilingual_dubbing_task_schema as _multilingual_dubbing_task_schema  # noqa: E402,F401
+_multilingual_dubbing_task_schema.register_multilingual_dubbing_task_schema_capabilities_once()
+from . import app_demo_film_task_schema as _app_demo_film_task_schema  # noqa: E402,F401
+_app_demo_film_task_schema.register_app_demo_film_task_schema_capabilities_once()
 from .manifest import build_manifest as _build_3o_manifest  # noqa: E402
 from hevi.ai_drama.capabilities import register_ai_drama_capabilities_once
 register_ai_drama_capabilities_once()
