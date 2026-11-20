@@ -603,3 +603,28 @@ tests/test_3o_conformance.py were already flagged by ruff
 format at baseline and were left untouched beyond the
 one-line count change and the tail-only append). No renames.
 Production untouched.
+## FreeVideo graft (2026-11-20)
+
+Registry 588 -> 604 (+16): A1 adaptive execution planner, A2 low-VRAM
+honesty, A3 VDN-H3 distinction (revision pinned 751739ee, distilled
+derivative never the original H3), A4 MiniMax H3 Community License
+compliance, A5 prompt + drama execution increment over Eian A4 and
+dance A10, A6 preview-first + two-pass, A7 LoRA honesty, A8 voice
+reference authorization (clone equivalent, only authorized voices),
+A9 workflow bundle, A10 post-chain license split; B1-B6 fake contract
+schemas (execution plan, VDN-H3 task, H3 image task, dubbing task,
+agent/MCP, post-chain task), all executed_here false. Layer
+attribution JSON and the generated table were extended through
+`scripts/ci/gen_layer_attribution.py` from the shared JSON (583 ->
+599 entries); the table header was hand-synced to 599 because the
+generator HEADER constant still reads 461, unchanged, same as prior
+grafts. The conformance scope count in
+`tests/test_3o_conformance.py` was updated to 604 (live non-test
+registry; 5 anidoodle capabilities remain unattributed, a
+pre-existing gap, so the attribution coverage tests still fail
+exactly as at baseline, verified in a clean cd071418 worktree,
+as does the omodul pillars test with its hardcoded 55). New tests
+33 passed; ruff check and format clean. No renames. Execution layer
+(Python 3.12 + FreeVideo runtime, ~99 GB model download, GPU cold
+boot, real-machine smoke run) is a separate work item. Production
+untouched.

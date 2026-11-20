@@ -1,7 +1,7 @@
 """Central 3O layer attribution table for the capabilities registry.
 
 Generated from ``~/workspace/3o-conformance/layer_attribution.json``
-(583 capabilities, one entry each, no "unclassified" remainder).
+(599 capabilities, one entry each, no "unclassified" remainder).
 Regenerate — never hand-edit entries — with
 ``scripts/ci/gen_layer_attribution.py`` (reads the JSON, writes this file).
 
@@ -261,6 +261,16 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'qa.forensic_evidence_executor': {"layer": 'oprim', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/forensic_evidence_executor.py'},
     'qa.frame_adapter_contract': {"layer": 'obase', "reason": '契约/模式/目录数据资产：只定义形状与记录，无业务算法（SPEC §7.3 数据资产）', "file": 'hevi/capabilities/frame_adapter_contract.py'},
     'qa.frame_review': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/frame_review.py'},
+    'qa.freevideo_execution_planner_gate': {"layer": 'oskill', "reason": 'FreeVideo adaptive execution planner: residency formula, pinned host cap, disk streaming, prefetch slots, OOM ladder, plan-before-run (clean-room method)', "file": 'hevi/capabilities/freevideo_execution_planner_gate.py'},
+    'qa.freevideo_h3_community_license_gate': {"layer": 'oskill', "reason": 'MiniMax H3 Community License compliance: barred regions, revenue authorization, UI display, no output-to-model improvement, AI disclosure (clean-room method)', "file": 'hevi/capabilities/freevideo_h3_community_license_gate.py'},
+    'qa.freevideo_lora_honesty_gate': {"layer": 'oskill', "reason": 'FreeVideo community LoRA honesty: source and license recorded, adult LoRAs age 24+ (clean-room method)', "file": 'hevi/capabilities/freevideo_lora_honesty_gate.py'},
+    'qa.freevideo_low_vram_honesty_gate': {"layer": 'oskill', "reason": 'FreeVideo low-VRAM honesty: 8 GiB VRAM / 16 GiB host RAM minimums, no zero-cost claims, honest Max time estimates, slow disk acknowledged (clean-room method)', "file": 'hevi/capabilities/freevideo_low_vram_honesty_gate.py'},
+    'qa.freevideo_post_chain_license_gate': {"layer": 'oskill', "reason": 'FreeVideo post-chain license split: Bandit stems non-commercial, Qwen image research-only, GPL code never moved (clean-room method)', "file": 'hevi/capabilities/freevideo_post_chain_license_gate.py'},
+    'qa.freevideo_preview_first_gate': {"layer": 'oskill', "reason": 'FreeVideo preview-first + two-pass: half-resolution first pass reused, two seeds reviewed full size, only liked takes completed (clean-room method)', "file": 'hevi/capabilities/freevideo_preview_first_gate.py'},
+    'qa.freevideo_prompt_drama_execution_gate': {"layer": 'oskill', "reason": 'FreeVideo prompt + drama execution increment over Eian A4 and dance A10: shot lengths, cuts, cast wardrobe, five pre-generation faults, plan-before-run (clean-room method)', "file": 'hevi/capabilities/freevideo_prompt_drama_execution_gate.py'},
+    'qa.freevideo_vdn_h3_distinction_gate': {"layer": 'oskill', "reason": 'VDN-H3 is an 8-step distilled derivative, revision pinned 751739ee, never the original H3 (clean-room method)', "file": 'hevi/capabilities/freevideo_vdn_h3_distinction_gate.py'},
+    'qa.freevideo_voice_reference_authorization_gate': {"layer": 'oskill', "reason": 'FreeVideo dubbing voice reference is a clone equivalent: only own or authorized voices with proof (clean-room method)', "file": 'hevi/capabilities/freevideo_voice_reference_authorization_gate.py'},
+    'qa.freevideo_workflow_bundle_gate': {"layer": 'oskill', "reason": 'FreeVideo workflow bundle: prompt, seed, settings travel with the video, ComfyUI-restorable workflow file, source traceable (clean-room method)', "file": 'hevi/capabilities/freevideo_workflow_bundle_gate.py'},
     'qa.frozen_picture_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/frozen_picture_gate.py'},
     'qa.generation_spec_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/generation_spec_gate.py'},
     'qa.genre_scale_table_gate': {"layer": 'oskill', "reason": '多规则组合门禁/算法：check_ 内联多规则或组合多个子判定（门禁规则）', "file": 'hevi/capabilities/genre_scale_table_gate.py'},
@@ -540,6 +550,12 @@ LAYER_ATTRIBUTION: dict[str, dict[str, Any]] = {
     'video.external_runtime_config_schema': {"layer": 'obase', "reason": 'contract-only adapter: fake runtime configuration schema, executed_here false, nothing launched, no credentials', "file": 'hevi/capabilities/external_runtime_config_schema.py'},
     'video.fasth3_local': {"layer": 'oprim', "reason": '单原子执行/单变换：一次外部执行或单次纯变换，内部往返属同一作业（原子执行约定）', "file": 'hevi/capabilities/fasth3_local.py'},
     'video.four_thread_contract': {"layer": 'obase', "reason": 'contract-only adapter: fake four-thread collaboration contract, budget cap, decisions with bases, mapping only never equivalence', "file": 'hevi/capabilities/four_thread_contract.py'},
+    'video.freevideo_agent_mcp_schema': {"layer": 'obase', "reason": 'FreeVideo agent/MCP contract (fake): agent name, MCP server, plan-before-run, six sections, declared cost (clean-room method)', "file": 'hevi/capabilities/freevideo_agent_mcp_schema.py'},
+    'video.freevideo_dubbing_task_schema': {"layer": 'obase', "reason": 'FreeVideo dubbing task contract (fake): voice reference with authorization proof required (clean-room method)', "file": 'hevi/capabilities/freevideo_dubbing_task_schema.py'},
+    'video.freevideo_execution_plan_schema': {"layer": 'obase', "reason": 'FreeVideo execution plan contract (fake): budgets, resident blocks, prefetch slots, OOM retries, dry-run declaration (clean-room method)', "file": 'hevi/capabilities/freevideo_execution_plan_schema.py'},
+    'video.freevideo_h3_image_task_schema': {"layer": 'obase', "reason": 'FreeVideo H3 Image task contract (fake): image model, at most 16 megapixels, license acknowledged, Qwen path research-only (clean-room method)', "file": 'hevi/capabilities/freevideo_h3_image_task_schema.py'},
+    'video.freevideo_post_chain_task_schema': {"layer": 'obase', "reason": 'FreeVideo post-chain task contract (fake): licensed post steps with license tags (clean-room method)', "file": 'hevi/capabilities/freevideo_post_chain_task_schema.py'},
+    'video.freevideo_vdn_h3_task_schema': {"layer": 'obase', "reason": 'FreeVideo VDN-H3 generation task contract (fake): pinned distilled model identity, quality tier, two-pass flag (clean-room method)', "file": 'hevi/capabilities/freevideo_vdn_h3_task_schema.py'},
     'video.gesture_risk_gate': {"layer": 'oskill', "reason": '多步骤 stateless 算法：组合 ≥2 个原子操作，单关注点、无业务事务语义（SPEC §5）', "file": 'hevi/capabilities/gesture_risk_gate.py'},
     'video.gsap_choreography_vocabulary': {"layer": 'obase', "reason": '人工复核覆写：按 render 体/委托实逻辑归属（见 evidence 所指委托函数），非注册壳文件结构', "file": 'hevi/capabilities/gsap_choreography_vocabulary.py'},
     'video.h3_single_segment_adapter': {"layer": 'obase', "reason": 'H3 适配契约：单段适配规格 + 网格/配置校验委托，执行层 fake（契约数据资产）', "file": 'hevi/capabilities/h3_single_segment_adapter.py'},

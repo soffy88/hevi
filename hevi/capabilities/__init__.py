@@ -2001,6 +2001,57 @@ _hyperframes_composition_schema.register_hyperframes_composition_schema_capabili
 # 3O manifest (HELIOS_3O_SPEC_v3_0 §2.5): element list + layer + signature
 # + version, built after every registration above so it reflects the live
 # registry. Appended at the tail only; earlier registrations untouched.
+# qa.freevideo_execution_planner_gate, qa.freevideo_low_vram_honesty_gate,
+# qa.freevideo_vdn_h3_distinction_gate, qa.freevideo_h3_community_license_gate,
+# qa.freevideo_prompt_drama_execution_gate, qa.freevideo_preview_first_gate,
+# qa.freevideo_lora_honesty_gate, qa.freevideo_voice_reference_authorization_gate,
+# qa.freevideo_workflow_bundle_gate, qa.freevideo_post_chain_license_gate,
+# video.freevideo_execution_plan_schema, video.freevideo_vdn_h3_task_schema,
+# video.freevideo_h3_image_task_schema, video.freevideo_dubbing_task_schema,
+# video.freevideo_agent_mcp_schema, video.freevideo_post_chain_task_schema
+# (clean-room method only, own words; no upstream code, weights, example
+# material, or demo videos; no FreeVideo runtime installed, no model
+# download, no install script run; "free" is never written as zero-cost;
+# VDN-H3 is named as the 8-step distilled derivative, never as the
+# original H3; ComfyUI GPL code is learned from, never moved in;
+# Qwen image stays research-only and Bandit stems stay non-commercial;
+# dubbing voice references are clone equivalents and only authorized
+# voices speak; A gates are discipline only, B schemas are fake
+# contracts, executed_here is false; execution layer is a separate
+# work item on a separate Python 3.12 environment).
+# Appended at the tail only; earlier registrations untouched.
+from . import freevideo_execution_planner_gate as _freevideo_execution_planner_gate  # noqa: E402,F401
+_freevideo_execution_planner_gate.register_freevideo_execution_planner_gate_capabilities_once()
+from . import freevideo_low_vram_honesty_gate as _freevideo_low_vram_honesty_gate  # noqa: E402,F401
+_freevideo_low_vram_honesty_gate.register_freevideo_low_vram_honesty_gate_capabilities_once()
+from . import freevideo_vdn_h3_distinction_gate as _freevideo_vdn_h3_distinction_gate  # noqa: E402,F401
+_freevideo_vdn_h3_distinction_gate.register_freevideo_vdn_h3_distinction_gate_capabilities_once()
+from . import freevideo_h3_community_license_gate as _freevideo_h3_community_license_gate  # noqa: E402,F401
+_freevideo_h3_community_license_gate.register_freevideo_h3_community_license_gate_capabilities_once()
+from . import freevideo_prompt_drama_execution_gate as _freevideo_prompt_drama_execution_gate  # noqa: E402,F401
+_freevideo_prompt_drama_execution_gate.register_freevideo_prompt_drama_execution_gate_capabilities_once()
+from . import freevideo_preview_first_gate as _freevideo_preview_first_gate  # noqa: E402,F401
+_freevideo_preview_first_gate.register_freevideo_preview_first_gate_capabilities_once()
+from . import freevideo_lora_honesty_gate as _freevideo_lora_honesty_gate  # noqa: E402,F401
+_freevideo_lora_honesty_gate.register_freevideo_lora_honesty_gate_capabilities_once()
+from . import freevideo_voice_reference_authorization_gate as _freevideo_voice_reference_authorization_gate  # noqa: E402,F401
+_freevideo_voice_reference_authorization_gate.register_freevideo_voice_reference_authorization_gate_capabilities_once()
+from . import freevideo_workflow_bundle_gate as _freevideo_workflow_bundle_gate  # noqa: E402,F401
+_freevideo_workflow_bundle_gate.register_freevideo_workflow_bundle_gate_capabilities_once()
+from . import freevideo_post_chain_license_gate as _freevideo_post_chain_license_gate  # noqa: E402,F401
+_freevideo_post_chain_license_gate.register_freevideo_post_chain_license_gate_capabilities_once()
+from . import freevideo_execution_plan_schema as _freevideo_execution_plan_schema  # noqa: E402,F401
+_freevideo_execution_plan_schema.register_freevideo_execution_plan_schema_capabilities_once()
+from . import freevideo_vdn_h3_task_schema as _freevideo_vdn_h3_task_schema  # noqa: E402,F401
+_freevideo_vdn_h3_task_schema.register_freevideo_vdn_h3_task_schema_capabilities_once()
+from . import freevideo_h3_image_task_schema as _freevideo_h3_image_task_schema  # noqa: E402,F401
+_freevideo_h3_image_task_schema.register_freevideo_h3_image_task_schema_capabilities_once()
+from . import freevideo_dubbing_task_schema as _freevideo_dubbing_task_schema  # noqa: E402,F401
+_freevideo_dubbing_task_schema.register_freevideo_dubbing_task_schema_capabilities_once()
+from . import freevideo_agent_mcp_schema as _freevideo_agent_mcp_schema  # noqa: E402,F401
+_freevideo_agent_mcp_schema.register_freevideo_agent_mcp_schema_capabilities_once()
+from . import freevideo_post_chain_task_schema as _freevideo_post_chain_task_schema  # noqa: E402,F401
+_freevideo_post_chain_task_schema.register_freevideo_post_chain_task_schema_capabilities_once()
 from .manifest import build_manifest as _build_3o_manifest  # noqa: E402
 from hevi.ai_drama.capabilities import register_ai_drama_capabilities_once
 register_ai_drama_capabilities_once()
