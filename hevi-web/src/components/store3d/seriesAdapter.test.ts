@@ -29,6 +29,12 @@ describe('episodeMediaUrl 播放地址', () => {
     );
   });
 
+  it('有 token 时追加 &token=', () => {
+    expect(episodeMediaUrl('/data/media/x/out.mp4', 't-1')).toBe(
+      '/api/files?path=%2Fdata%2Fmedia%2Fx%2Fout.mp4&token=t-1',
+    );
+  });
+
   it('http(s) URL 直通', () => {
     expect(episodeMediaUrl('https://cdn.example.com/ep1.mp4')).toBe(
       'https://cdn.example.com/ep1.mp4',

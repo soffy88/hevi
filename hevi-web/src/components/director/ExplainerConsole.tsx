@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { explainerApi, presenterApi, productionApi, proStudioApi, taskApi } from '@/lib/api-client';
-import { syncAuthToken } from '@/lib/auth-store';
+import { getToken, syncAuthToken } from '@/lib/auth-store';
 import type { ExplainerRunStatus, Presenter, ProductionTask } from '@/types/api';
 
 type Recipe = 'short_explainer' | 'digital_presenter' | 'code_explainer';
@@ -365,7 +365,7 @@ export function ExplainerConsole() {
               <div className="ex-result__head">🎬 数字人口播成片已完成</div>
               <a
                 className="oui-btn"
-                href={`/api/files?path=${encodeURIComponent(task.result_video_path)}`}
+                href={`/api/files?path=${encodeURIComponent(task.result_video_path)}&token=${encodeURIComponent(getToken() ?? '')}`}
                 download={`explainer_${task.task_id.slice(0, 8)}.mp4`}
               >
                 ⬇ 下载成片

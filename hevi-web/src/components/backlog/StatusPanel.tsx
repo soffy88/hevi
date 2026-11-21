@@ -18,7 +18,7 @@ export default function StatusPanel({ run_id }: StatusProps) {
     async function fetchStatus() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/backlog/runs/${run_id}/status`);
+        const res = await fetch(`/api/backlot/runs/${run_id}/status`);
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
         setStatus(data);

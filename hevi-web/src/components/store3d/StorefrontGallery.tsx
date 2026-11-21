@@ -21,6 +21,7 @@ import { TapeDetailOverlay } from './TapeDetailOverlay';
 import { PlaybackOverlay } from './PlaybackOverlay';
 import { STORE_THEMES, inferTheme, nextTheme, type StoreTheme, type StoreThemeId } from './storeThemes';
 import { episodesToItems, mergeStoreItems } from './seriesAdapter';
+import { getToken } from '@/lib/auth-store';
 
 type ThemeChoice = StoreThemeId | 'auto';
 
@@ -49,7 +50,7 @@ export function StorefrontGallery() {
           await Promise.all(
             seriesList.map(async (s) => {
               const eps = await seriesApi.episodes(s.id).catch(() => [] as Episode[]);
-              return episodesToItems(s, eps);
+              return episodesToItems(s, eps, getToken());
             }),
           )
         ).flat();
