@@ -17,7 +17,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@vladmandic/face-api": "^1.7.15",
-    "next": "^16.3.3",
+    "next": "^16.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reactflow": "^11.11.4",
@@ -35,6 +35,12 @@
     "jsdom": "^30.0.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^5",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "vite": "8.2.6",
+    "sharp": "0.35.5",
+    "undici": "8.12.4",
+    "source-map-js": "1.2.4"
   }
 }

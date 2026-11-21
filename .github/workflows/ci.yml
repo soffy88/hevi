@@ -38,11 +38,18 @@ jobs:
 
       - name: Start object store
         run: |
+          # minio/minio was deleted from Docker Hub 2026-09-11 and
+          # quay.io/minio/minio closed anonymous pulls 2026-09-24, so the
+          # old image can no longer be pulled anywhere. pgsty/silo is the
+          # maintained AGPLv3 MinIO fork: same S3 API, same MINIO_* vars,
+          # same on-disk format, pinned here by RELEASE tag + digest.
+          # Verified 2026-11-21: container starts, /minio/health/live 200,
+          # boto3 bucket put/get roundtrip OK.
           docker run -d --name hevi-ci-minio \
             -p 9000:9000 \
             -e MINIO_ROOT_USER=hevi \
             -e MINIO_ROOT_PASSWORD=hevi1234 \
-            minio/minio:latest server /data
+            pgsty/silo:RELEASE.2026-11-12T00-00-00Z@sha256:c20d112390b9a9ce8c11b8af95ad35bcaa62f4759663c09c936cd8d2b511f329 server /data
           for attempt in {1..30}; do
             curl -fsS http://127.0.0.1:9000/minio/health/live && exit 0
             sleep 2

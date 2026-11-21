@@ -107,6 +107,14 @@ def main() -> int:
         "1",
         "--skip-dirs",
         "services/gen_engine/vibeasr-src/3rdparty/llama.cpp",
+        # Historical 3O backup snapshot (2026-10-19): not shipped or deployed;
+        # its uv.lock duplicates live lockfiles at older versions.
+        "--skip-dirs",
+        ".repo3o_backup",
+        # Vendored upstream project (tt-a1i/archify v3.0.1, MIT): its website/
+        # lockfile is upstream's, and hevi neither builds nor runs that site.
+        "--skip-dirs",
+        "third_party/archify/website",
         "--skip-files",
         "services/gen_engine/third_party/Matcha-TTS/requirements.txt",
         ".",
