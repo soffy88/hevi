@@ -18,7 +18,9 @@ def _finding_count(report: dict[str, Any]) -> int:
     for result in report.get("Results", []):
         total += len(result.get("Vulnerabilities") or [])
         total += len(result.get("Secrets") or [])
-        total += len(result.get("MisconfSummary") or [])
+        # NOTE: MisconfSummary is a dict of counts, not a list of
+        # findings; counting len() of it inflated the total with
+        # phantom findings (24 of the 27 in CI run 44893167817).
         total += len(result.get("Misconfigurations") or [])
     return total
 
