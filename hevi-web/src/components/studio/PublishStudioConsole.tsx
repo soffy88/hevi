@@ -16,14 +16,13 @@ const TABS: Array<TabItem<Tab>> = [
 const MOTION_CATEGORIES = ['转场', '字幕', '片头', '片尾', '特效'];
 
 const VOICE_OPERATIONS = [
-  { key: 'clone', label: '声音克隆',   endpoint: '/voice/clone',   fields: [{ name: 'reference_audio', label: '参考音频路径', placeholder: '/path/to/audio.wav' }, { name: 'text', label: '合成文本', placeholder: '要合成的文字内容' }] },
+  // 声音克隆已移除: 红线要求克隆路由永不接通, 后端 /api/studio/voice/clone 恒 403, 前端不留入口。
   { key: 'dub',   label: '视频配音',   endpoint: '/voice/dub',     fields: [{ name: 'video_path', label: '视频路径', placeholder: '/path/to/video.mp4' }, { name: 'target_language', label: '目标语言', placeholder: 'zh / en / ja' }] },
   { key: 'tts',   label: 'TTS 合成',   endpoint: '/voice/tts',     fields: [{ name: 'text', label: '合成文本', placeholder: '要合成的文字' }, { name: 'speaker', label: '说话人', placeholder: 'speaker_id' }] },
   { key: 'asr',   label: '语音识别',   endpoint: '/voice/asr',     fields: [{ name: 'audio_path', label: '音频路径', placeholder: '/path/to/audio.wav' }] },
 ];
 
 const voiceApiMap: Record<string, (body: Record<string, string>) => Promise<unknown>> = {
-  '/voice/clone': (body) => publishStudioApi.voiceClone({ reference_audio: body.reference_audio, text: body.text }),
   '/voice/dub':   (body) => publishStudioApi.voiceDub({ video_path: body.video_path, target_language: body.target_language }),
 };
 
@@ -53,7 +52,7 @@ export function PublishStudioConsole() {
 
   // ── 编舞生成 ────────────────────────────────────────────────────────────────
   const [danceGpu, setDanceGpu] = useState<Record<string, unknown> | null>(null);
-  const [danceForm, setDanceForm] = useState({ audio_path: '', dance_type: 'urban', duration_s: '' });
+  const [danceForm, setDanceForm] = useState({ audio_path: '', dance_type: 'kpop', duration_s: '' });
   const [danceStatus, setDanceStatus] = useState('');
   const [danceError, setDanceError] = useState('');
 

@@ -272,16 +272,15 @@ class VoiceCloneBody(BaseModel):
 
 @router.post("/voice/clone")
 async def api_clone_voice(req: VoiceCloneBody):
-    """从参考音频克隆声音。"""
-    from hevi.audio.omnivoice_service import VoiceCloneRequest, clone_voice
-    request = VoiceCloneRequest(
-        reference_audio_path=req.reference_audio_path,
-        target_text=req.target_text,
-        language=req.language,
-        output_path=req.output_path,
+    """声音克隆 — 永久禁用 (红线: 克隆路由永不接通)。
+
+    路由保留仅用于返回明确的 403 (而非 404), 绝不调用
+    hevi.audio.omnivoice_service.clone_voice。只走授权音色。
+    """
+    raise HTTPException(
+        status_code=403,
+        detail="Voice cloning is disabled: only authorized preset voices may be used.",
     )
-    result = await clone_voice(request)
-    return result.model_dump()
 
 
 class DubBody(BaseModel):

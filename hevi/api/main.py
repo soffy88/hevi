@@ -46,6 +46,7 @@ from hevi.api.routers.material_corpus import router as material_corpus_router
 from hevi.api.routers.mpt import router as mpt_router
 from hevi.api.routers.narrator import router as narrator_router
 from hevi.api.routers.production_tools_v2 import router as production_tools_v2_router
+from hevi.api.routers.production_tools import router as production_tools_router
 from hevi.api.routers.presenters import router as presenters_router
 from hevi.api.routers.series import router as series_router
 from hevi.api.routers.shortdrama import router as shortdrama_router
@@ -56,6 +57,7 @@ from hevi.api.routers.style import router as style_router
 from hevi.api.routers.style_library import router as style_library_router
 from hevi.api.routers.studio import router as studio_router
 from hevi.api.routers.studio_v2 import router as studio_v2_router
+from hevi.api.routers.publish_studio import router as publish_studio_router
 from hevi.api.routers.production_intelligence import router as production_intelligence_router
 from hevi.api.routers.subjects import router as subjects_router
 from hevi.api.routers.tasks import router as tasks_router
@@ -64,6 +66,7 @@ from hevi.api.routers.templates import router as templates_router
 from hevi.api.routers.tongjian import router as tongjian_router
 from hevi.api.routers.freezone import router as freezone_router
 from hevi.api.routers.embrace_runtime import router as embrace_router
+from hevi.api.routers.files import router as files_router
 from hevi.api.routers.identities import router as identities_router
 from hevi.api.routers.continuity import router as continuity_router
 from hevi.api.routers.incidents import router as incidents_router
@@ -202,8 +205,12 @@ app.include_router(material_corpus_router, prefix="/api")
 app.include_router(backlot_router, prefix="/api")
 app.include_router(studio_router, prefix="/api")
 app.include_router(studio_v2_router, prefix="/api")
+# Publish Studio 挂载: 8 接口曾 404; /voice/clone 在路由层恒 403。
+app.include_router(publish_studio_router, prefix="/api")
 app.include_router(production_intelligence_router, prefix="/api")
 app.include_router(production_tools_v2_router, prefix="/api")
+# v1: /production/backlot/{task_id} 曾死代码。
+app.include_router(production_tools_router, prefix="/api")
 app.include_router(presenters_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(shot_spec_router, prefix="/api")
@@ -254,6 +261,7 @@ app.include_router(embrace_router, prefix="/api")  # 3O 内化运行时(Xia/提�
 app.include_router(svfactory_batch_router, prefix="/api")  # SVFACTORY 批量预设生产与断点续跑
 app.include_router(stickman_router, prefix="/api")
 app.include_router(stickdir_router, prefix="/api")  # 火柴人导演线:提案 + CPU 渲染
+app.include_router(files_router, prefix="/api")  # /api/files 文件代理(播放/下载, token 鉴权)
 
 # MCP Agent 双入口 — 在 /mcp 暴露 hevi skills (Streamable HTTP transport)
 mount_mcp(app)

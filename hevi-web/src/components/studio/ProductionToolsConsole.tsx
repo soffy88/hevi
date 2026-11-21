@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { productionV2Api } from '@/lib/api-client';
+import { getToken } from '@/lib/auth-store';
 import { TabBar, type TabItem } from '@/components/shared';
 
 type Tab = 'seedance' | 'clipper' | 'recipes' | 'digital-human';
@@ -659,7 +660,7 @@ function DigitalHumanTab() {
               <p><strong>成本:</strong> ${previewResult.cost_usd}</p>
               {previewResult.preview_video_path && (
                 <video
-                  src={`/api/files?path=${encodeURIComponent(previewResult.preview_video_path)}`}
+                  src={`/api/files?path=${encodeURIComponent(previewResult.preview_video_path)}&token=${encodeURIComponent(getToken() ?? '')}`}
                   controls
                   className="mt-2 max-h-64 rounded"
                 />
